@@ -727,3 +727,49 @@ export const userDashboardConfigs = mysqlTable("user_dashboard_configs", {
 
 export type UserDashboardConfig = typeof userDashboardConfigs.$inferSelect;
 export type InsertUserDashboardConfig = typeof userDashboardConfigs.$inferInsert;
+
+/**
+ * SPC Defect Categories - Danh mục lỗi SPC
+ */
+export const spcDefectCategories = mysqlTable("spc_defect_categories", {
+  id: int("id").autoincrement().primaryKey(),
+  code: varchar("code", { length: 50 }).notNull(), // Mã lỗi: DEF001, DEF002...
+  name: varchar("name", { length: 200 }).notNull(), // Tên lỗi
+  description: text("description"), // Mô tả chi tiết
+  category: varchar("category", { length: 100 }), // Nhóm lỗi: Machine, Material, Method, Man, Environment
+  severity: varchar("severity", { length: 20 }).notNull().default("medium"), // low, medium, high, critical
+  isActive: int("isActive").notNull().default(1),
+  createdBy: int("createdBy").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type SpcDefectCategory = typeof spcDefectCategories.$inferSelect;
+export type InsertSpcDefectCategory = typeof spcDefectCategories.$inferInsert;
+
+/**
+ * SPC Defect Records - Ghi nhận lỗi SPC
+ */
+export const spcDefectRecords = mysqlTable("spc_defect_records", {
+  id: int("id").autoincrement().primaryKey(),
+  defectCategoryId: int("defectCategoryId").notNull(), // FK to spc_defect_categories
+  productionLineId: int("productionLineId"), // Dây chuyền
+  workstationId: int("workstationId"), // Công trạm
+  productId: int("productId"), // Sản phẩm
+  spcAnalysisId: int("spcAnalysisId"), // FK to spc_analysis_history (nếu phát hiện từ phân tích SPC)
+  ruleViolated: varchar("ruleViolated", { length: 100 }), // Rule vi phạm: Rule1, Rule2... hoặc CPK, CA
+  quantity: int("quantity").notNull().default(1), // Số lượng lỗi
+  notes: text("notes"), // Ghi chú
+  occurredAt: timestamp("occurredAt").notNull(), // Thời điểm xảy ra lỗi
+  reportedBy: int("reportedBy").notNull(), // Người báo cáo
+  status: varchar("status", { length: 20 }).notNull().default("open"), // open, investigating, resolved, closed
+  resolvedAt: timestamp("resolvedAt"), // Thời điểm giải quyết
+  resolvedBy: int("resolvedBy"), // Người giải quyết
+  rootCause: text("rootCause"), // Nguyên nhân gốc
+  correctiveAction: text("correctiveAction"), // Hành động khắc phục
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type SpcDefectRecord = typeof spcDefectRecords.$inferSelect;
+export type InsertSpcDefectRecord = typeof spcDefectRecords.$inferInsert;

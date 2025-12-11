@@ -32,7 +32,11 @@ import {
   processTemplates,
   processSteps,
   processStepMachines,
-  productionLineMachines
+  productionLineMachines,
+  spcDefectCategories,
+  spcDefectRecords,
+  InsertSpcDefectCategory,
+  InsertSpcDefectRecord
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -1667,4 +1671,169 @@ export async function removeProductionLineMachine(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await db.delete(productionLineMachines).where(eq(productionLineMachines.id, id));
+}
+
+// ============ SPC Defect Categories ============
+export async function getSpcDefectCategories() {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(spcDefectCategories).where(eq(spcDefectCategories.isActive, 1));
+}
+
+export async function getSpcDefectCategoryById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(spcDefectCategories).where(eq(spcDefectCategories.id, id)).limit(1);
+  return result[0] || null;
+}
+
+export async function createSpcDefectCategory(data: InsertSpcDefectCategory) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(spcDefectCategories).values(data);
+  return result[0].insertId;
+}
+
+export async function updateSpcDefectCategory(id: number, data: Partial<InsertSpcDefectCategory>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(spcDefectCategories).set(data).where(eq(spcDefectCategories.id, id));
+}
+
+export async function deleteSpcDefectCategory(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(spcDefectCategories).set({ isActive: 0 }).where(eq(spcDefectCategories.id, id));
+}
+
+// ============ SPC Defect Records ============
+export async function getSpcDefectRecords(filters?: {
+  productionLineId?: number;
+  workstationId?: number;
+  productId?: number;
+  defectCategoryId?: number;
+  status?: string;
+  startDate?: Date;
+  endDate?: Date;
+}) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  let query = db.select().from(spcDefectRecords);
+  const conditions: any[] = [];
+  
+  if (filters?.productionLineId) {
+    conditions.push(eq(spcDefectRecords.productionLineId, filters.productionLineId));
+  }
+  if (filters?.workstationId) {
+    conditions.push(eq(spcDefectRecords.workstationId, filters.workstationId));
+  }
+  if (filters?.productId) {
+    conditions.push(eq(spcDefectRecords.productId, filters.productId));
+  }
+  if (filters?.defectCategoryId) {
+    conditions.push(eq(spcDefectRecords.defectCategoryId, filters.defectCategoryId));
+  }
+  if (filters?.status) {
+    conditions.push(eq(spcDefectRecords.status, filters.status));
+  }
+  if (filters?.startDate) {
+    conditions.push(gte(spcDefectRecords.occurredAt, filters.startDate));
+  }
+  if (filters?.endDate) {
+    conditions.push(lte(spcDefectRecords.occurredAt, filters.endDate));
+  }
+  
+  if (conditions.length > 0) {
+    return await query.where(and(...conditions)).orderBy(desc(spcDefectRecords.occurredAt));
+  }
+  return await query.orderBy(desc(spcDefectRecords.occurredAt));
+}
+
+export async function getSpcDefectRecordById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(spcDefectRecords).where(eq(spcDefectRecords.id, id)).limit(1);
+  return result[0] || null;
+}
+
+export async function createSpcDefectRecord(data: InsertSpcDefectRecord) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(spcDefectRecords).values(data);
+  return result[0].insertId;
+}
+
+export async function updateSpcDefectRecord(id: number, data: Partial<InsertSpcDefectRecord>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(spcDefectRecords).set(data).where(eq(spcDefectRecords.id, id));
+}
+
+export async function deleteSpcDefectRecord(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(spcDefectRecords).where(eq(spcDefectRecords.id, id));
+}
+
+// ============ Defect Statistics for Pareto ============
+export async function getDefectStatistics(filters?: {
+  productionLineId?: number;
+  startDate?: Date;
+  endDate?: Date;
+}) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  // Lấy tất cả defect records theo filter
+  const records = await getSpcDefectRecords(filters);
+  
+  // Nhóm theo defect category và tính tổng
+  const categoryStats: Record<number, { categoryId: number; count: number }> = {};
+  for (const record of records) {
+    if (!categoryStats[record.defectCategoryId]) {
+      categoryStats[record.defectCategoryId] = { categoryId: record.defectCategoryId, count: 0 };
+    }
+    categoryStats[record.defectCategoryId].count += record.quantity;
+  }
+  
+  // Lấy thông tin category
+  const categories = await getSpcDefectCategories();
+  const categoryMap = new Map(categories.map(c => [c.id, c]));
+  
+  // Tạo kết quả với thông tin category
+  const result = Object.values(categoryStats).map(stat => ({
+    ...stat,
+    category: categoryMap.get(stat.categoryId),
+  }));
+  
+  // Sắp xếp theo số lượng giảm dần
+  return result.sort((a, b) => b.count - a.count);
+}
+
+// Thống kê lỗi theo rule vi phạm
+export async function getDefectByRuleStatistics(filters?: {
+  productionLineId?: number;
+  startDate?: Date;
+  endDate?: Date;
+}) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const records = await getSpcDefectRecords(filters);
+  
+  // Nhóm theo rule violated
+  const ruleStats: Record<string, number> = {};
+  for (const record of records) {
+    const rule = record.ruleViolated || "Unknown";
+    if (!ruleStats[rule]) {
+      ruleStats[rule] = 0;
+    }
+    ruleStats[rule] += record.quantity;
+  }
+  
+  // Chuyển thành mảng và sắp xếp
+  return Object.entries(ruleStats)
+    .map(([rule, count]) => ({ rule, count }))
+    .sort((a, b) => b.count - a.count);
 }

@@ -278,3 +278,22 @@
 - [x] Cho phép chọn/ẩn các widget (nút Tùy chỉnh trên Dashboard)
 - [x] Lưu cấu hình theo user (dashboardConfigRouter)
 
+
+## Phase 9.5 - Quản lý lỗi SPC và Biểu đồ Pareto
+
+### Quản lý lỗi SPC
+- [x] Tạo bảng spc_defect_categories (danh mục lỗi)
+- [x] Tạo bảng spc_defect_records (ghi nhận lỗi)
+- [x] Tạo API CRUD cho defect categories (defectRouter)
+- [x] Tạo API ghi nhận và thống kê lỗi (getStatistics, getByRuleStatistics)
+- [x] Tạo trang quản lý danh mục lỗi (DefectManagement.tsx)
+- [x] Tạo trang thống kê lỗi theo thời gian (DefectStatistics.tsx)
+
+### Biểu đồ Pareto
+- [x] Tạo biểu đồ Pareto với Recharts ComposedChart
+- [x] Tích hợp vào trang thống kê lỗi (3 tabs: Loại lỗi, Rule vi phạm, Phân bổ)
+- [x] Hiển thị top nguyên nhân vi phạm SPC (sắp xếp theo số lượng)
+- [x] Đường tích lũy phần trăm (80/20 rule - Nhóm A/B/C)
+- [x] Bộ lọc theo thời gian (7/14/30/90 ngày) và dây chuyền
+- [x] Phân loại theo nhóm 5M1E (Machine, Material, Method, Man, Environment, Measurement)
+

@@ -26,6 +26,8 @@ import MachineManagement from "./pages/MachineManagement";
 import ProcessManagement from "./pages/ProcessManagement";
 import AuditLogs from "./pages/AuditLogs";
 import SpcReport from "./pages/SpcReport";
+import DefectManagement from "./pages/DefectManagement";
+import DefectStatistics from "./pages/DefectStatistics";
 import SseNotificationProvider from "./components/SseNotificationProvider";
 
 function Router() {
@@ -48,6 +50,8 @@ function Router() {
       <Route path="/permissions" component={RolePermissionManagement} />
       <Route path="/smtp-settings" component={SmtpSettings} />
       <Route path="/seed-data" component={SeedDataPage} />
+      <Route path="/defects" component={DefectManagement} />
+      <Route path="/defect-statistics" component={DefectStatistics} />
       <Route path="/workstations" component={WorkstationManagement} />
       <Route path="/machines" component={MachineManagement} />
       <Route path="/processes" component={ProcessManagement} />

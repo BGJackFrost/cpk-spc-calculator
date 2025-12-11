@@ -48,6 +48,18 @@ import {
   calculateSpc,
   createProductionLine,
   getProductionLines,
+  getSpcDefectCategories,
+  getSpcDefectCategoryById,
+  createSpcDefectCategory,
+  updateSpcDefectCategory,
+  deleteSpcDefectCategory,
+  getSpcDefectRecords,
+  getSpcDefectRecordById,
+  createSpcDefectRecord,
+  updateSpcDefectRecord,
+  deleteSpcDefectRecord,
+  getDefectStatistics,
+  getDefectByRuleStatistics,
   getProductionLineById,
   updateProductionLine,
   deleteProductionLine,
@@ -1077,6 +1089,155 @@ const permissionRouter = router({
     }),
 });
 
+// Defect Router - Quản lý lỗi SPC
+const defectRouter = router({
+  // Defect Categories
+  listCategories: protectedProcedure.query(async () => {
+    return await getSpcDefectCategories();
+  }),
+
+  getCategoryById: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .query(async ({ input }) => {
+      return await getSpcDefectCategoryById(input.id);
+    }),
+
+  createCategory: protectedProcedure
+    .input(z.object({
+      code: z.string().min(1),
+      name: z.string().min(1),
+      description: z.string().optional(),
+      category: z.string().optional(),
+      severity: z.enum(["low", "medium", "high", "critical"]).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const id = await createSpcDefectCategory({
+        ...input,
+        createdBy: ctx.user.id,
+      });
+      return { id };
+    }),
+
+  updateCategory: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      code: z.string().optional(),
+      name: z.string().optional(),
+      description: z.string().optional(),
+      category: z.string().optional(),
+      severity: z.enum(["low", "medium", "high", "critical"]).optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const { id, ...data } = input;
+      await updateSpcDefectCategory(id, data);
+      return { success: true };
+    }),
+
+  deleteCategory: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      await deleteSpcDefectCategory(input.id);
+      return { success: true };
+    }),
+
+  // Defect Records
+  listRecords: protectedProcedure
+    .input(z.object({
+      productionLineId: z.number().optional(),
+      workstationId: z.number().optional(),
+      productId: z.number().optional(),
+      defectCategoryId: z.number().optional(),
+      status: z.string().optional(),
+      startDate: z.date().optional(),
+      endDate: z.date().optional(),
+    }).optional())
+    .query(async ({ input }) => {
+      return await getSpcDefectRecords(input);
+    }),
+
+  getRecordById: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .query(async ({ input }) => {
+      return await getSpcDefectRecordById(input.id);
+    }),
+
+  createRecord: protectedProcedure
+    .input(z.object({
+      defectCategoryId: z.number(),
+      productionLineId: z.number().optional(),
+      workstationId: z.number().optional(),
+      productId: z.number().optional(),
+      spcAnalysisId: z.number().optional(),
+      ruleViolated: z.string().optional(),
+      quantity: z.number().optional(),
+      notes: z.string().optional(),
+      occurredAt: z.date(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const id = await createSpcDefectRecord({
+        ...input,
+        reportedBy: ctx.user.id,
+      });
+      return { id };
+    }),
+
+  updateRecord: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      defectCategoryId: z.number().optional(),
+      productionLineId: z.number().optional(),
+      workstationId: z.number().optional(),
+      productId: z.number().optional(),
+      ruleViolated: z.string().optional(),
+      quantity: z.number().optional(),
+      notes: z.string().optional(),
+      status: z.enum(["open", "investigating", "resolved", "closed"]).optional(),
+      rootCause: z.string().optional(),
+      correctiveAction: z.string().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const { id, ...data } = input;
+      if (data.status === "resolved" || data.status === "closed") {
+        await updateSpcDefectRecord(id, {
+          ...data,
+          resolvedAt: new Date(),
+          resolvedBy: ctx.user.id,
+        });
+      } else {
+        await updateSpcDefectRecord(id, data);
+      }
+      return { success: true };
+    }),
+
+  deleteRecord: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      await deleteSpcDefectRecord(input.id);
+      return { success: true };
+    }),
+
+  // Statistics for Pareto
+  getStatistics: protectedProcedure
+    .input(z.object({
+      productionLineId: z.number().optional(),
+      startDate: z.date().optional(),
+      endDate: z.date().optional(),
+    }).optional())
+    .query(async ({ input }) => {
+      return await getDefectStatistics(input);
+    }),
+
+  getByRuleStatistics: protectedProcedure
+    .input(z.object({
+      productionLineId: z.number().optional(),
+      startDate: z.date().optional(),
+      endDate: z.date().optional(),
+    }).optional())
+    .query(async ({ input }) => {
+      return await getDefectByRuleStatistics(input);
+    }),
+});
+
 // Email Notification Router
 const emailNotificationRouter = router({
   get: protectedProcedure.query(async ({ ctx }) => {
@@ -1129,6 +1290,7 @@ export const appRouter = router({
   userLine: userLineRouter,
   emailNotification: emailNotificationRouter,
   permission: permissionRouter,
+  defect: defectRouter,
 
   // Process Config router
   processConfig: router({
