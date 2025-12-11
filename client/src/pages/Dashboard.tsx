@@ -11,14 +11,45 @@ import {
   Settings, 
   TrendingUp,
   AlertTriangle,
-  CheckCircle2
+  CheckCircle2,
+  LayoutGrid,
+  Eye,
+  EyeOff
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  DropdownMenuCheckboxItem,
+} from "@/components/ui/dropdown-menu";
+import { toast } from "sonner";
 import { Link } from "wouter";
 
 export default function Dashboard() {
   const { user } = useAuth();
   const { data: mappings } = trpc.mapping.list.useQuery();
   const { data: history } = trpc.spc.history.useQuery({ limit: 10 });
+  const { data: dashboardConfig, refetch: refetchConfig } = trpc.dashboardConfig.get.useQuery();
+  const toggleWidgetMutation = trpc.dashboardConfig.toggleWidget.useMutation({
+    onSuccess: () => {
+      refetchConfig();
+      toast.success("Đã cập nhật cấu hình Dashboard");
+    },
+  });
+
+  const isWidgetVisible = (key: string) => {
+    if (!dashboardConfig) return true;
+    const config = dashboardConfig.find(c => c.widgetKey === key);
+    return config ? config.isVisible === 1 : true;
+  };
+
+  const handleToggleWidget = (key: string) => {
+    const currentVisible = isWidgetVisible(key);
+    toggleWidgetMutation.mutate({ widgetKey: key, isVisible: !currentVisible });
+  };
 
   const recentAlerts = history?.filter(h => h.alertTriggered === 1) || [];
   const totalAnalyses = history?.length || 0;
@@ -86,54 +117,109 @@ export default function Dashboard() {
     <DashboardLayout>
       <div className="space-y-8 animate-fade-in">
         {/* Header */}
-        <div className="flex flex-col gap-2">
-          <h1 className="text-3xl font-bold tracking-tight">
-            Xin chào, {user?.name || "User"}
-          </h1>
-          <p className="text-muted-foreground">
-            Hệ thống phân tích SPC/CPK cho quy trình sản xuất
-          </p>
+        <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-2">
+            <h1 className="text-3xl font-bold tracking-tight">
+              Xin chào, {user?.name || "User"}
+            </h1>
+            <p className="text-muted-foreground">
+              Hệ thống phân tích SPC/CPK cho quy trình sản xuất
+            </p>
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <LayoutGrid className="h-4 w-4 mr-2" />
+                Tùy chỉnh
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>Hiển thị Widget</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuCheckboxItem
+                checked={isWidgetVisible("mapping_count")}
+                onCheckedChange={() => handleToggleWidget("mapping_count")}
+              >
+                Cấu hình Mapping
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={isWidgetVisible("recent_analysis")}
+                onCheckedChange={() => handleToggleWidget("recent_analysis")}
+              >
+                Phân tích gần đây
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={isWidgetVisible("cpk_alerts")}
+                onCheckedChange={() => handleToggleWidget("cpk_alerts")}
+              >
+                Cảnh báo CPK
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={isWidgetVisible("system_status")}
+                onCheckedChange={() => handleToggleWidget("system_status")}
+              >
+                Trạng thái hệ thống
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={isWidgetVisible("quick_actions")}
+                onCheckedChange={() => handleToggleWidget("quick_actions")}
+              >
+                Thao tác nhanh
+              </DropdownMenuCheckboxItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         {/* Stats Grid */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {stats.map((stat, index) => (
-            <Card key={index} className="bg-card rounded-xl border border-border/50 shadow-md hover:shadow-lg transition-all duration-300">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  {stat.title}
-                </CardTitle>
-                <stat.icon className={`h-5 w-5 ${stat.color}`} />
-              </CardHeader>
-              <CardContent>
-                <div className="stat-value">{stat.value}</div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {stat.description}
-                </p>
-              </CardContent>
-            </Card>
-          ))}
+          {stats.map((stat, index) => {
+            const widgetKeys = ["mapping_count", "recent_analysis", "cpk_alerts", "system_status"];
+            const widgetKey = widgetKeys[index];
+            if (!isWidgetVisible(widgetKey)) return null;
+            const IconComponent = stat.icon;
+            return (
+              <Card key={index} className="bg-card rounded-xl border border-border/50 shadow-md hover:shadow-lg transition-all duration-300">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    {stat.title}
+                  </CardTitle>
+                  <IconComponent className={`h-5 w-5 ${stat.color}`} />
+                </CardHeader>
+                <CardContent>
+                  <div className="stat-value">{stat.value}</div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {stat.description}
+                  </p>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
 
         {/* Quick Actions */}
-        <div>
-          <h2 className="text-xl font-semibold mb-4">Thao tác nhanh</h2>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {quickActions.map((action, index) => (
-              <Link key={index} href={action.href}>
-                <Card className={`elegant-card cursor-pointer h-full ${action.primary ? 'border-primary/50 bg-primary/5' : ''}`}>
-                  <CardHeader>
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-2 ${action.primary ? 'bg-primary text-primary-foreground' : 'bg-secondary'}`}>
-                      <action.icon className="h-5 w-5" />
-                    </div>
-                    <CardTitle className="text-base">{action.title}</CardTitle>
-                    <CardDescription>{action.description}</CardDescription>
-                  </CardHeader>
-                </Card>
-              </Link>
-            ))}
+        {isWidgetVisible("quick_actions") && (
+          <div>
+            <h2 className="text-xl font-semibold mb-4">Thao tác nhanh</h2>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              {quickActions.map((action, index) => {
+                const ActionIcon = action.icon;
+                return (
+                  <Link key={index} href={action.href}>
+                    <Card className={`elegant-card cursor-pointer h-full ${action.primary ? 'border-primary/50 bg-primary/5' : ''}`}>
+                      <CardHeader>
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-2 ${action.primary ? 'bg-primary text-primary-foreground' : 'bg-secondary'}`}>
+                          <ActionIcon className="h-5 w-5" />
+                        </div>
+                        <CardTitle className="text-base">{action.title}</CardTitle>
+                        <CardDescription>{action.description}</CardDescription>
+                      </CardHeader>
+                    </Card>
+                  </Link>
+                );
+              })}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Recent Analyses */}
         {history && history.length > 0 && (

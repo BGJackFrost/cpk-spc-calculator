@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import * as XLSX from "xlsx";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,7 +22,8 @@ import {
   Loader2,
   Sun,
   Sunset,
-  Moon
+  Moon,
+  FileSpreadsheet
 } from "lucide-react";
 import {
   LineChart,
@@ -62,11 +64,98 @@ export default function SpcReport() {
     toast.success("Đã làm mới dữ liệu báo cáo");
   };
 
+  // Export Excel mutation
+  const exportExcelMutation = trpc.report.exportExcel.useMutation({
+    onSuccess: (result) => {
+      // Create workbook
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(result.data);
+      
+      // Set column widths
+      ws['!cols'] = [
+        { wch: 20 }, // Ngày
+        { wch: 15 }, // Mã sản phẩm
+        { wch: 20 }, // Trạm
+        { wch: 10 }, // Số mẫu
+        { wch: 12 }, // Mean
+        { wch: 12 }, // Std Dev
+        { wch: 10 }, // Cp
+        { wch: 10 }, // Cpk
+        { wch: 12 }, // UCL
+        { wch: 12 }, // LCL
+        { wch: 10 }, // USL
+        { wch: 10 }, // LSL
+        { wch: 10 }, // Cảnh báo
+      ];
+      
+      XLSX.utils.book_append_sheet(wb, ws, "Báo cáo SPC");
+      
+      // Download file
+      const fileName = `bao-cao-spc-${new Date().toISOString().split('T')[0]}.xlsx`;
+      XLSX.writeFile(wb, fileName);
+      toast.success("Xuất Excel thành công!");
+    },
+    onError: (error) => {
+      toast.error("Lỗi xuất Excel: " + error.message);
+    },
+  });
+
+  const handleExportExcel = async () => {
+    setIsExporting(true);
+    try {
+      await exportExcelMutation.mutateAsync({
+        startDate,
+        endDate: new Date(),
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const handleExportPDF = async () => {
     setIsExporting(true);
     try {
-      // TODO: Implement PDF export
-      toast.info("Chức năng xuất PDF đang được phát triển");
+      // Create a simple text-based report for now
+      if (!spcReport) {
+        toast.error("Không có dữ liệu để xuất");
+        return;
+      }
+      
+      const reportContent = `
+BÁO CÁO TỔNG HỢP SPC
+======================
+Thời gian: ${dateRange} ngày gần nhất
+Ngày xuất: ${new Date().toLocaleDateString('vi-VN')}
+
+THỐNG KÊ TỔNG HỢP
+------------------
+Tổng số mẫu: ${spcReport.summary.totalSamples}
+CPK Trung bình: ${spcReport.summary.avgCpk.toFixed(3)}
+CPK Thấp nhất: ${spcReport.summary.minCpk.toFixed(3)}
+CPK Cao nhất: ${spcReport.summary.maxCpk.toFixed(3)}
+Số vi phạm (CPK < 1.0): ${spcReport.summary.violationCount}
+Số cảnh báo (1.0 ≤ CPK < 1.33): ${spcReport.summary.warningCount}
+Số đạt chuẩn (CPK ≥ 1.33): ${spcReport.summary.goodCount}
+
+THỐNG KÊ THEO CA
+-----------------
+Ca Sáng (6h-14h): ${spcReport.shiftStats.morning.count} mẫu, CPK TB: ${spcReport.shiftStats.morning.avgCpk.toFixed(3)}
+Ca Chiều (14h-22h): ${spcReport.shiftStats.afternoon.count} mẫu, CPK TB: ${spcReport.shiftStats.afternoon.avgCpk.toFixed(3)}
+Ca Tối (22h-6h): ${spcReport.shiftStats.night.count} mẫu, CPK TB: ${spcReport.shiftStats.night.avgCpk.toFixed(3)}
+      `.trim();
+      
+      // Create and download text file
+      const blob = new Blob([reportContent], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `bao-cao-spc-${new Date().toISOString().split('T')[0]}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      toast.success("Xuất báo cáo thành công!");
     } finally {
       setIsExporting(false);
     }
@@ -97,9 +186,13 @@ export default function SpcReport() {
               <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
               Làm mới
             </Button>
+            <Button variant="outline" size="sm" onClick={handleExportExcel} disabled={isExporting}>
+              {isExporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileSpreadsheet className="h-4 w-4 mr-2" />}
+              Xuất Excel
+            </Button>
             <Button variant="outline" size="sm" onClick={handleExportPDF} disabled={isExporting}>
               {isExporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
-              Xuất PDF
+              Xuất TXT
             </Button>
           </div>
         </div>

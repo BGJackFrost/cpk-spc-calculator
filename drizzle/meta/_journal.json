@@ -71,6 +71,13 @@
       "when": 1765436555529,
       "tag": "0009_stormy_professor_monster",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "5",
+      "when": 1765445810958,
+      "tag": "0010_skinny_doctor_spectrum",
+      "breakpoints": true
     }
   ]
 }

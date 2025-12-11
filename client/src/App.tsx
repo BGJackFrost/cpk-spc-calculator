@@ -26,6 +26,7 @@ import MachineManagement from "./pages/MachineManagement";
 import ProcessManagement from "./pages/ProcessManagement";
 import AuditLogs from "./pages/AuditLogs";
 import SpcReport from "./pages/SpcReport";
+import SseNotificationProvider from "./components/SseNotificationProvider";
 
 function Router() {
   return (
@@ -63,8 +64,10 @@ function App() {
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light">
         <TooltipProvider>
-          <Toaster />
-          <Router />
+          <SseNotificationProvider>
+            <Toaster />
+            <Router />
+          </SseNotificationProvider>
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>

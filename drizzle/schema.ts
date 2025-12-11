@@ -710,3 +710,20 @@ export const productionLineMachines = mysqlTable("production_line_machines", {
 
 export type ProductionLineMachine = typeof productionLineMachines.$inferSelect;
 export type InsertProductionLineMachine = typeof productionLineMachines.$inferInsert;
+
+/**
+ * User Dashboard Config - cấu hình widget cho từng user
+ */
+export const userDashboardConfigs = mysqlTable("user_dashboard_configs", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  widgetKey: varchar("widgetKey", { length: 100 }).notNull(), // e.g., "mapping_count", "recent_analysis", "cpk_alerts", "system_status"
+  isVisible: int("isVisible").notNull().default(1),
+  displayOrder: int("displayOrder").notNull().default(0),
+  config: text("config"), // JSON config for widget-specific settings
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type UserDashboardConfig = typeof userDashboardConfigs.$inferSelect;
+export type InsertUserDashboardConfig = typeof userDashboardConfigs.$inferInsert;

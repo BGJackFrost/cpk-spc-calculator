@@ -91,6 +91,7 @@ import {
   samplingRouter,
   dashboardRouter,
   reportRouter,
+  dashboardConfigRouter,
 } from "./routers-extended";
 
 // Admin procedure - only admins can access
@@ -1123,6 +1124,7 @@ export const appRouter = router({
   sampling: samplingRouter,
   dashboard: dashboardRouter,
   report: reportRouter,
+  dashboardConfig: dashboardConfigRouter,
   spcPlan: spcPlanRouter,
   userLine: userLineRouter,
   emailNotification: emailNotificationRouter,

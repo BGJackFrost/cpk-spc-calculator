@@ -256,3 +256,25 @@
 - [x] Gửi event khi có phân tích SPC mới (spc_analysis_complete)
 - [x] Gửi event khi có cảnh báo CPK (cpk_alert)
 
+
+## Phase 9.4 - Xuất báo cáo, Toast và Dashboard tùy chỉnh
+
+### Sửa lỗi SSE Connection
+- [x] Sửa lỗi SSE connection error (require is not defined)
+- [x] Cải thiện error handling trong useSSE hook
+
+### Xuất báo cáo PDF/Excel
+- [x] Tạo API endpoint xuất báo cáo (reportRouter.exportExcel)
+- [ ] Xuất PDF với thống kê và biểu đồ (chưa hoàn thành)
+- [x] Xuất Excel với dữ liệu chi tiết
+
+### Notification Toast SSE
+- [x] Tạo component SseNotificationProvider
+- [x] Hiển thị toast khi có phân tích SPC mới
+- [x] Hiển thị toast khi có cảnh báo CPK
+
+### Dashboard tùy chỉnh
+- [x] Tạo bảng user_dashboard_configs
+- [x] Cho phép chọn/ẩn các widget (nút Tùy chỉnh trên Dashboard)
+- [x] Lưu cấu hình theo user (dashboardConfigRouter)
+

@@ -1,5 +1,8 @@
 import { protectedProcedure, adminProcedure, router } from "./_core/trpc";
 import { z } from "zod";
+import { userDashboardConfigs } from "../drizzle/schema";
+import { eq, and, asc } from "drizzle-orm";
+import { getDb } from "./db";
 import {
   createProductionLine,
   getProductionLines,
@@ -440,8 +443,136 @@ export const dashboardRouter = router({
     }),
 });
 
+// Dashboard Config Router - Cấu hình widget cho user
+export const dashboardConfigRouter = router({
+  // Lấy cấu hình dashboard của user
+  get: protectedProcedure.query(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) return [
+      { widgetKey: "mapping_count", isVisible: 1, displayOrder: 0 },
+      { widgetKey: "recent_analysis", isVisible: 1, displayOrder: 1 },
+      { widgetKey: "cpk_alerts", isVisible: 1, displayOrder: 2 },
+      { widgetKey: "system_status", isVisible: 1, displayOrder: 3 },
+      { widgetKey: "quick_actions", isVisible: 1, displayOrder: 4 },
+    ];
+    
+    const configs = await db.select()
+      .from(userDashboardConfigs)
+      .where(eq(userDashboardConfigs.userId, ctx.user.id))
+      .orderBy(asc(userDashboardConfigs.displayOrder));
+    
+    // Nếu chưa có config, trả về default
+    if (configs.length === 0) {
+      return [
+        { widgetKey: "mapping_count", isVisible: 1, displayOrder: 0 },
+        { widgetKey: "recent_analysis", isVisible: 1, displayOrder: 1 },
+        { widgetKey: "cpk_alerts", isVisible: 1, displayOrder: 2 },
+        { widgetKey: "system_status", isVisible: 1, displayOrder: 3 },
+        { widgetKey: "quick_actions", isVisible: 1, displayOrder: 4 },
+      ];
+    }
+    return configs;
+  }),
+
+  // Cập nhật cấu hình widget
+  update: protectedProcedure
+    .input(z.object({
+      widgets: z.array(z.object({
+        widgetKey: z.string(),
+        isVisible: z.number(),
+        displayOrder: z.number(),
+      })),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      
+      // Xóa config cũ và thêm mới
+      await db.delete(userDashboardConfigs)
+        .where(eq(userDashboardConfigs.userId, ctx.user.id));
+      
+      for (const widget of input.widgets) {
+        await db.insert(userDashboardConfigs).values({
+          userId: ctx.user.id,
+          widgetKey: widget.widgetKey,
+          isVisible: widget.isVisible,
+          displayOrder: widget.displayOrder,
+        });
+      }
+      
+      return { success: true };
+    }),
+
+  // Toggle visibility của một widget
+  toggleWidget: protectedProcedure
+    .input(z.object({
+      widgetKey: z.string(),
+      isVisible: z.boolean(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      
+      // Kiểm tra xem đã có config chưa
+      const existing = await db.select()
+        .from(userDashboardConfigs)
+        .where(and(
+          eq(userDashboardConfigs.userId, ctx.user.id),
+          eq(userDashboardConfigs.widgetKey, input.widgetKey)
+        ));
+      
+      if (existing.length > 0) {
+        await db.update(userDashboardConfigs)
+          .set({ isVisible: input.isVisible ? 1 : 0 })
+          .where(and(
+            eq(userDashboardConfigs.userId, ctx.user.id),
+            eq(userDashboardConfigs.widgetKey, input.widgetKey)
+          ));
+      } else {
+        await db.insert(userDashboardConfigs).values({
+          userId: ctx.user.id,
+          widgetKey: input.widgetKey,
+          isVisible: input.isVisible ? 1 : 0,
+          displayOrder: 99,
+        });
+      }
+      
+      return { success: true };
+    }),
+});
+
 // Report Router - Báo cáo tổng hợp SPC
 export const reportRouter = router({
+  // Xuất báo cáo Excel
+  exportExcel: protectedProcedure
+    .input(z.object({
+      startDate: z.date(),
+      endDate: z.date(),
+    }))
+    .mutation(async ({ input }) => {
+      const { getSpcAnalysisReport } = await import("./db");
+      const data = await getSpcAnalysisReport(input.startDate, input.endDate);
+      
+      // Transform data for Excel
+      const excelData = data.map(d => ({
+        'Ngày': new Date(d.createdAt).toLocaleString('vi-VN'),
+        'Mã sản phẩm': d.productCode,
+        'Trạm': d.stationName,
+        'Số mẫu': d.sampleCount,
+        'Mean': d.mean ? (d.mean / 1000).toFixed(4) : '',
+        'Std Dev': d.stdDev ? (d.stdDev / 1000).toFixed(4) : '',
+        'Cp': d.cp ? (d.cp / 1000).toFixed(3) : '',
+        'Cpk': d.cpk ? (d.cpk / 1000).toFixed(3) : '',
+        'UCL': d.ucl ? (d.ucl / 1000).toFixed(4) : '',
+        'LCL': d.lcl ? (d.lcl / 1000).toFixed(4) : '',
+        'USL': d.usl?.toString() || '',
+        'LSL': d.lsl?.toString() || '',
+        'Cảnh báo': d.alertTriggered ? 'Có' : 'Không',
+      }));
+      
+      return { data: excelData };
+    }),
+
   // Lấy trend CPK theo ngày
   getCpkTrend: protectedProcedure
     .input(z.object({

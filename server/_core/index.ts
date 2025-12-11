@@ -7,6 +7,7 @@ import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
+import { addSseClient, startHeartbeat } from "../sse";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -38,8 +39,7 @@ async function startServer() {
   
   // SSE endpoint for realtime updates
   app.get("/api/sse", (req, res) => {
-    const { addSseClient, startHeartbeat } = require("../sse");
-    const clientId = `client_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const clientId = `client_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
     addSseClient(clientId, res);
     startHeartbeat(30000); // 30 second heartbeat
   });
