@@ -73,6 +73,12 @@ import {
   checkSpcRules,
   evaluateCpkStatus,
   calculateCa,
+  getPermissions,
+  createPermission,
+  getRolePermissions,
+  updateRolePermissions,
+  initDefaultPermissions,
+  checkUserPermission,
 } from "./db";
 import { invokeLLM } from "./_core/llm";
 import { notifyOwner } from "./_core/notification";
@@ -466,6 +472,116 @@ const spcRouter = router({
       return await getSpcAnalysisHistoryByMapping(input.mappingId, input.limit);
     }),
 
+  analyzeWithMapping: protectedProcedure
+    .input(z.object({
+      mappingId: z.number(),
+      startDate: z.date(),
+      endDate: z.date(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      // Get mapping by ID
+      const mapping = await getProductStationMappingById(input.mappingId);
+      if (!mapping) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Mapping configuration not found",
+        });
+      }
+
+      // Get the database connection
+      const connection = await getDatabaseConnectionById(mapping.connectionId);
+      if (!connection) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Database connection not found",
+        });
+      }
+
+      // Query external database for measurement data
+      const query = `
+        SELECT ${mapping.valueColumn} as value, ${mapping.timestampColumn} as timestamp
+        FROM ${mapping.tableName}
+        WHERE ${mapping.productCodeColumn} = ?
+          AND ${mapping.stationColumn} = ?
+          AND ${mapping.timestampColumn} >= ?
+          AND ${mapping.timestampColumn} <= ?
+        ORDER BY ${mapping.timestampColumn} ASC
+      `;
+
+      let rawData: { value: number; timestamp: Date }[];
+      try {
+        const rows = await queryExternalDatabase(
+          connection.connectionString,
+          query,
+          [mapping.productCode, mapping.stationName, input.startDate, input.endDate]
+        );
+        rawData = rows.map(row => ({
+          value: Number(row.value),
+          timestamp: new Date(row.timestamp as string),
+        }));
+      } catch (error) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Failed to query external database: ${error instanceof Error ? error.message : "Unknown error"}`,
+        });
+      }
+
+      if (rawData.length === 0) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "No data found for the specified criteria",
+        });
+      }
+
+      // Calculate SPC metrics
+      const spcResult = calculateSpc(rawData, mapping.usl, mapping.lsl);
+
+      // Check alert thresholds
+      const alertConfig = await getAlertSettings();
+      let alertTriggered = 0;
+      if (alertConfig && spcResult.cpk !== null) {
+        const cpkThreshold = alertConfig.cpkWarningThreshold / 100;
+        if (spcResult.cpk < cpkThreshold) {
+          alertTriggered = 1;
+          if (alertConfig.notifyOwner) {
+            await notifyOwner({
+              title: `CPK Alert: ${mapping.productCode} - ${mapping.stationName}`,
+              content: `CPK value (${spcResult.cpk.toFixed(3)}) is below threshold (${cpkThreshold}). Immediate attention required.`,
+            });
+          }
+        }
+      }
+
+      // Store analysis history
+      const historyId = await createSpcAnalysisHistory({
+        mappingId: mapping.id,
+        productCode: mapping.productCode,
+        stationName: mapping.stationName,
+        startDate: input.startDate,
+        endDate: input.endDate,
+        sampleCount: spcResult.sampleCount,
+        mean: Math.round(spcResult.mean * 1000),
+        stdDev: Math.round(spcResult.stdDev * 1000),
+        cp: spcResult.cp ? Math.round(spcResult.cp * 1000) : null,
+        cpk: spcResult.cpk ? Math.round(spcResult.cpk * 1000) : null,
+        ucl: Math.round(spcResult.ucl * 1000),
+        lcl: Math.round(spcResult.lcl * 1000),
+        usl: mapping.usl,
+        lsl: mapping.lsl,
+        alertTriggered,
+        analyzedBy: ctx.user.id,
+      });
+
+      return {
+        id: historyId,
+        ...spcResult,
+        usl: mapping.usl,
+        lsl: mapping.lsl,
+        target: mapping.target,
+        alertTriggered: alertTriggered === 1,
+      };
+    }),
+
   llmAnalysis: protectedProcedure
     .input(z.object({
       productCode: z.string(),
@@ -624,6 +740,84 @@ const exportRouter = router({
       };
       return { content: generateHtmlReport(exportData), filename: `spc_report_${input.productCode}_${Date.now()}.html` };
     }),
+
+  pdf: protectedProcedure
+    .input(z.object({
+      productCode: z.string(),
+      stationName: z.string(),
+      startDate: z.date(),
+      endDate: z.date(),
+      spcResult: z.object({
+        sampleCount: z.number(),
+        mean: z.number(),
+        stdDev: z.number(),
+        min: z.number(),
+        max: z.number(),
+        range: z.number(),
+        cp: z.number().nullable(),
+        cpk: z.number().nullable(),
+        cpu: z.number().nullable(),
+        cpl: z.number().nullable(),
+        ucl: z.number(),
+        lcl: z.number(),
+        uclR: z.number(),
+        lclR: z.number(),
+        usl: z.number().nullable().optional(),
+        lsl: z.number().nullable().optional(),
+      }),
+    }))
+    .mutation(async ({ input }) => {
+      const exportData: ExportData = {
+        productCode: input.productCode,
+        stationName: input.stationName,
+        startDate: input.startDate,
+        endDate: input.endDate,
+        spcResult: { ...input.spcResult, xBarData: [], rangeData: [], rawData: [] },
+        analysisDate: new Date(),
+      };
+      return { content: generateHtmlReport(exportData), filename: `spc_report_${input.productCode}_${Date.now()}.html` };
+    }),
+
+  excel: protectedProcedure
+    .input(z.object({
+      productCode: z.string(),
+      stationName: z.string(),
+      startDate: z.date(),
+      endDate: z.date(),
+      spcResult: z.object({
+        sampleCount: z.number(),
+        mean: z.number(),
+        stdDev: z.number(),
+        min: z.number(),
+        max: z.number(),
+        range: z.number(),
+        cp: z.number().nullable(),
+        cpk: z.number().nullable(),
+        cpu: z.number().nullable(),
+        cpl: z.number().nullable(),
+        ucl: z.number(),
+        lcl: z.number(),
+        uclR: z.number(),
+        lclR: z.number(),
+        usl: z.number().nullable().optional(),
+        lsl: z.number().nullable().optional(),
+      }),
+      rawData: z.array(z.object({
+        value: z.number(),
+        timestamp: z.date(),
+      })).optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const exportData: ExportData = {
+        productCode: input.productCode,
+        stationName: input.stationName,
+        startDate: input.startDate,
+        endDate: input.endDate,
+        spcResult: { ...input.spcResult, xBarData: [], rangeData: [], rawData: input.rawData || [] },
+        analysisDate: new Date(),
+      };
+      return { content: generateCsvContent(exportData), filename: `spc_report_${input.productCode}_${Date.now()}.csv` };
+    }),
 });
 
 // Alert Settings Router
@@ -736,6 +930,51 @@ const userLineRouter = router({
     }),
 });
 
+// Permission Router
+const permissionRouter = router({
+  list: protectedProcedure.query(async () => {
+    return await getPermissions();
+  }),
+
+  listRolePermissions: protectedProcedure.query(async () => {
+    return await getRolePermissions();
+  }),
+
+  create: adminProcedure
+    .input(z.object({
+      code: z.string().min(1),
+      name: z.string().min(1),
+      description: z.string().optional(),
+      module: z.string().min(1),
+    }))
+    .mutation(async ({ input }) => {
+      const id = await createPermission(input);
+      return { id };
+    }),
+
+  updateRolePermissions: adminProcedure
+    .input(z.object({
+      role: z.string(),
+      permissionIds: z.array(z.number()),
+    }))
+    .mutation(async ({ input }) => {
+      await updateRolePermissions(input.role, input.permissionIds);
+      return { success: true };
+    }),
+
+  initDefaults: adminProcedure.mutation(async () => {
+    await initDefaultPermissions();
+    return { success: true };
+  }),
+
+  check: protectedProcedure
+    .input(z.object({ permissionCode: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const hasPermission = await checkUserPermission(ctx.user.id, ctx.user.role, input.permissionCode);
+      return { hasPermission };
+    }),
+});
+
 // Email Notification Router
 const emailNotificationRouter = router({
   get: protectedProcedure.query(async ({ ctx }) => {
@@ -785,6 +1024,7 @@ export const appRouter = router({
   spcPlan: spcPlanRouter,
   userLine: userLineRouter,
   emailNotification: emailNotificationRouter,
+  permission: permissionRouter,
 });
 
 export type AppRouter = typeof appRouter;

@@ -23,7 +23,11 @@ import {
   spcSamplingPlans,
   userLineAssignments,
   emailNotificationSettings,
-  spcPlanExecutionLogs
+  spcPlanExecutionLogs,
+  permissions,
+  InsertPermission,
+  rolePermissions,
+  userPermissions
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -1224,4 +1228,149 @@ export async function upsertEmailNotificationSettings(userId: number, data: {
       notifyFrequency: data.notifyFrequency || "immediate",
     });
   }
+}
+
+// ============ Permission Functions ============
+
+export async function getPermissions() {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(permissions).orderBy(permissions.module);
+}
+
+export async function createPermission(data: InsertPermission) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(permissions).values(data);
+  return result[0].insertId;
+}
+
+export async function deletePermission(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(permissions).where(eq(permissions.id, id));
+}
+
+export async function getRolePermissions() {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(rolePermissions);
+}
+
+export async function updateRolePermissions(role: string, permissionIds: number[]) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  // Delete existing permissions for this role
+  await db.delete(rolePermissions).where(eq(rolePermissions.role, role as any));
+  
+  // Insert new permissions
+  if (permissionIds.length > 0) {
+    const values = permissionIds.map(permissionId => ({
+      role: role as "user" | "admin" | "operator" | "viewer",
+      permissionId,
+    }));
+    await db.insert(rolePermissions).values(values);
+  }
+}
+
+export async function initDefaultPermissions() {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const defaultPermissions = [
+    { code: "dashboard.view", name: "Xem Dashboard", module: "dashboard" },
+    { code: "dashboard.config", name: "Cấu hình Dashboard", module: "dashboard" },
+    { code: "analyze.view", name: "Xem phân tích SPC", module: "analyze" },
+    { code: "analyze.execute", name: "Thực hiện phân tích", module: "analyze" },
+    { code: "analyze.export", name: "Xuất báo cáo", module: "analyze" },
+    { code: "history.view", name: "Xem lịch sử", module: "history" },
+    { code: "mapping.view", name: "Xem Mapping", module: "mapping" },
+    { code: "mapping.manage", name: "Quản lý Mapping", module: "mapping" },
+    { code: "product.view", name: "Xem sản phẩm", module: "product" },
+    { code: "product.manage", name: "Quản lý sản phẩm", module: "product" },
+    { code: "specification.view", name: "Xem tiêu chuẩn", module: "specification" },
+    { code: "specification.manage", name: "Quản lý tiêu chuẩn", module: "specification" },
+    { code: "production_line.view", name: "Xem dây chuyền", module: "production_line" },
+    { code: "production_line.manage", name: "Quản lý dây chuyền", module: "production_line" },
+    { code: "sampling.view", name: "Xem phương pháp lấy mẫu", module: "sampling" },
+    { code: "sampling.manage", name: "Quản lý phương pháp lấy mẫu", module: "sampling" },
+    { code: "spc_plan.view", name: "Xem kế hoạch SPC", module: "spc_plan" },
+    { code: "spc_plan.manage", name: "Quản lý kế hoạch SPC", module: "spc_plan" },
+    { code: "notification.view", name: "Xem thông báo", module: "notification" },
+    { code: "notification.manage", name: "Quản lý thông báo", module: "notification" },
+    { code: "user.view", name: "Xem người dùng", module: "user" },
+    { code: "user.manage", name: "Quản lý người dùng", module: "user" },
+    { code: "settings.view", name: "Xem cài đặt", module: "settings" },
+    { code: "settings.manage", name: "Quản lý cài đặt", module: "settings" },
+    { code: "permission.view", name: "Xem phân quyền", module: "permission" },
+    { code: "permission.manage", name: "Quản lý phân quyền", module: "permission" },
+  ];
+  
+  // Insert permissions if not exist
+  for (const perm of defaultPermissions) {
+    const existing = await db.select().from(permissions).where(eq(permissions.code, perm.code)).limit(1);
+    if (existing.length === 0) {
+      await db.insert(permissions).values(perm);
+    }
+  }
+  
+  // Get all permission IDs
+  const allPerms = await db.select().from(permissions);
+  const permMap = new Map(allPerms.map(p => [p.code, p.id]));
+  
+  // Set default role permissions
+  const adminPerms = allPerms.map(p => p.id);
+  const operatorPerms = allPerms.filter(p => 
+    p.code.includes(".view") || 
+    ["analyze.execute", "analyze.export", "dashboard.config"].includes(p.code)
+  ).map(p => p.id);
+  const viewerPerms = allPerms.filter(p => p.code.includes(".view")).map(p => p.id);
+  const userPerms = ["dashboard.view", "analyze.view", "history.view"].map(code => permMap.get(code)).filter(Boolean) as number[];
+  
+  await updateRolePermissions("admin", adminPerms);
+  await updateRolePermissions("operator", operatorPerms);
+  await updateRolePermissions("viewer", viewerPerms);
+  await updateRolePermissions("user", userPerms);
+}
+
+export async function getUserPermissions(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(userPermissions).where(eq(userPermissions.userId, userId));
+}
+
+export async function checkUserPermission(userId: number, userRole: string, permissionCode: string): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  
+  // Admin has all permissions
+  if (userRole === "admin") return true;
+  
+  // Get permission ID
+  const perm = await db.select().from(permissions).where(eq(permissions.code, permissionCode)).limit(1);
+  if (perm.length === 0) return false;
+  const permId = perm[0].id;
+  
+  // Check user-specific permission override
+  const userPerm = await db.select().from(userPermissions)
+    .where(and(
+      eq(userPermissions.userId, userId),
+      eq(userPermissions.permissionId, permId)
+    ))
+    .limit(1);
+  
+  if (userPerm.length > 0) {
+    return userPerm[0].granted === 1;
+  }
+  
+  // Check role permission
+  const rolePerm = await db.select().from(rolePermissions)
+    .where(and(
+      eq(rolePermissions.role, userRole as any),
+      eq(rolePermissions.permissionId, permId)
+    ))
+    .limit(1);
+  
+  return rolePerm.length > 0;
 }

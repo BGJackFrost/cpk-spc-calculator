@@ -18,6 +18,7 @@ import ProductionLineManagement from "./pages/ProductionLineManagement";
 import SamplingMethodManagement from "./pages/SamplingMethodManagement";
 import SpcPlanManagement from "./pages/SpcPlanManagement";
 import EmailNotificationSettings from "./pages/EmailNotificationSettings";
+import RolePermissionManagement from "./pages/RolePermissionManagement";
 
 function Router() {
   return (
@@ -36,6 +37,7 @@ function Router() {
       <Route path="/sampling-methods" component={SamplingMethodManagement} />
       <Route path="/spc-plans" component={SpcPlanManagement} />
       <Route path="/email-notifications" component={EmailNotificationSettings} />
+      <Route path="/permissions" component={RolePermissionManagement} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

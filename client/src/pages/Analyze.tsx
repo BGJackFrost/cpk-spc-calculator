@@ -17,7 +17,10 @@ import {
   AlertTriangle,
   CheckCircle2,
   Download,
-  Brain
+  Brain,
+  FileSpreadsheet,
+  FileText,
+  Database
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -30,8 +33,6 @@ import {
   Legend,
   ResponsiveContainer,
   ReferenceLine,
-  BarChart,
-  Bar,
 } from "recharts";
 import { Streamdown } from "streamdown";
 import AdvancedCharts from "@/components/AdvancedCharts";
@@ -73,21 +74,56 @@ interface SpcResult {
   rawData: { value: number; timestamp: Date }[];
 }
 
+interface Mapping {
+  id: number;
+  productCode: string;
+  stationName: string;
+  connectionId: number;
+  tableName: string;
+  valueColumn: string;
+  timestampColumn: string;
+  isActive: number;
+}
+
 export default function Analyze() {
   const [selectedProduct, setSelectedProduct] = useState<string>("");
   const [selectedStation, setSelectedStation] = useState<string>("");
+  const [selectedMapping, setSelectedMapping] = useState<string>("");
   const [startDate, setStartDate] = useState<Date>();
   const [endDate, setEndDate] = useState<Date>();
   const [result, setResult] = useState<SpcResult | null>(null);
   const [llmAnalysis, setLlmAnalysis] = useState<string>("");
+  const [isExporting, setIsExporting] = useState(false);
 
-  const { data: productCodes } = trpc.mapping.getProductCodes.useQuery();
-  const { data: stations, refetch: refetchStations } = trpc.mapping.getStations.useQuery(
-    { productCode: selectedProduct },
-    { enabled: !!selectedProduct }
-  );
+  // Lấy danh sách products từ bảng products
+  const { data: products } = trpc.product.list.useQuery();
+  
+  // Lấy danh sách mappings
+  const { data: allMappings } = trpc.mapping.list.useQuery();
+  
+  // Lọc stations theo product đã chọn
+  const availableStations = useMemo(() => {
+    if (!allMappings || !selectedProduct) return [];
+    const stations = new Set<string>();
+    allMappings.forEach((m: Mapping) => {
+      if (m.productCode === selectedProduct && m.isActive === 1) {
+        stations.add(m.stationName);
+      }
+    });
+    return Array.from(stations);
+  }, [allMappings, selectedProduct]);
 
-  const analyzeMutation = trpc.spc.analyze.useMutation({
+  // Lọc mappings theo product và station đã chọn
+  const availableMappings = useMemo(() => {
+    if (!allMappings || !selectedProduct || !selectedStation) return [];
+    return allMappings.filter((m: Mapping) => 
+      m.productCode === selectedProduct && 
+      m.stationName === selectedStation && 
+      m.isActive === 1
+    );
+  }, [allMappings, selectedProduct, selectedStation]);
+
+  const analyzeMutation = trpc.spc.analyzeWithMapping.useMutation({
     onSuccess: (data) => {
       setResult(data);
       if (data.alertTriggered) {
@@ -101,20 +137,20 @@ export default function Analyze() {
     },
   });
 
-  const exportCsvMutation = trpc.export.csv.useMutation({
+  const exportPdfMutation = trpc.export.pdf.useMutation({
     onSuccess: (data) => {
-      downloadFile(data.content, data.filename, 'text/csv');
-      toast.success("Đã xuất file CSV!");
+      downloadFile(data.content, data.filename, 'text/html');
+      toast.success("Đã xuất file PDF (HTML format)!");
     },
     onError: (error) => {
       toast.error("Lỗi xuất file: " + error.message);
     },
   });
 
-  const exportHtmlMutation = trpc.export.html.useMutation({
+  const exportExcelMutation = trpc.export.excel.useMutation({
     onSuccess: (data) => {
-      downloadFile(data.content, data.filename, 'text/html');
-      toast.success("Đã xuất file HTML!");
+      downloadFile(data.content, data.filename, 'text/csv');
+      toast.success("Đã xuất file Excel (CSV format)!");
     },
     onError: (error) => {
       toast.error("Lỗi xuất file: " + error.message);
@@ -134,20 +170,90 @@ export default function Analyze() {
   const handleProductChange = (value: string) => {
     setSelectedProduct(value);
     setSelectedStation("");
-    refetchStations();
+    setSelectedMapping("");
+  };
+
+  const handleStationChange = (value: string) => {
+    setSelectedStation(value);
+    setSelectedMapping("");
   };
 
   const handleAnalyze = () => {
-    if (!selectedProduct || !selectedStation || !startDate || !endDate) {
-      toast.error("Vui lòng điền đầy đủ thông tin");
+    if (!selectedProduct || !selectedStation || !startDate || !endDate || !selectedMapping) {
+      toast.error("Vui lòng điền đầy đủ thông tin bao gồm Mapping");
       return;
     }
 
     analyzeMutation.mutate({
-      productCode: selectedProduct,
-      stationName: selectedStation,
+      mappingId: parseInt(selectedMapping),
       startDate,
       endDate,
+    });
+  };
+
+  const handleExportPdf = () => {
+    if (!result) return;
+    setIsExporting(true);
+    exportPdfMutation.mutate({
+      productCode: selectedProduct,
+      stationName: selectedStation,
+      startDate: startDate!,
+      endDate: endDate!,
+      spcResult: {
+        sampleCount: result.sampleCount,
+        mean: result.mean,
+        stdDev: result.stdDev,
+        min: result.min,
+        max: result.max,
+        range: result.range,
+        cp: result.cp,
+        cpk: result.cpk,
+        cpu: result.cpu,
+        cpl: result.cpl,
+        ucl: result.ucl,
+        lcl: result.lcl,
+        uclR: result.uclR,
+        lclR: result.lclR,
+        usl: result.usl,
+        lsl: result.lsl,
+      },
+    }, {
+      onSettled: () => setIsExporting(false),
+    });
+  };
+
+  const handleExportExcel = () => {
+    if (!result) return;
+    setIsExporting(true);
+    exportExcelMutation.mutate({
+      productCode: selectedProduct,
+      stationName: selectedStation,
+      startDate: startDate!,
+      endDate: endDate!,
+      spcResult: {
+        sampleCount: result.sampleCount,
+        mean: result.mean,
+        stdDev: result.stdDev,
+        min: result.min,
+        max: result.max,
+        range: result.range,
+        cp: result.cp,
+        cpk: result.cpk,
+        cpu: result.cpu,
+        cpl: result.cpl,
+        ucl: result.ucl,
+        lcl: result.lcl,
+        uclR: result.uclR,
+        lclR: result.lclR,
+        usl: result.usl,
+        lsl: result.lsl,
+      },
+      rawData: result.rawData.map(d => ({
+        value: d.value,
+        timestamp: d.timestamp,
+      })),
+    }, {
+      onSettled: () => setIsExporting(false),
     });
   };
 
@@ -206,7 +312,7 @@ export default function Analyze() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Phân tích SPC/CPK</h1>
           <p className="text-muted-foreground mt-1">
-            Chọn sản phẩm, trạm và khoảng thời gian để phân tích
+            Chọn sản phẩm, trạm, thời gian và mapping để truy vấn dữ liệu từ database ngoài
           </p>
         </div>
 
@@ -218,11 +324,11 @@ export default function Analyze() {
               Thông tin phân tích
             </CardTitle>
             <CardDescription>
-              Chọn các tiêu chí để truy vấn và phân tích dữ liệu kiểm tra
+              Chọn các tiêu chí để truy vấn dữ liệu từ database theo cấu hình mapping
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-5">
               {/* Product Code */}
               <div className="space-y-2">
                 <Label>Mã sản phẩm</Label>
@@ -231,9 +337,9 @@ export default function Analyze() {
                     <SelectValue placeholder="Chọn mã sản phẩm" />
                   </SelectTrigger>
                   <SelectContent>
-                    {productCodes?.map((code) => (
-                      <SelectItem key={code} value={code}>
-                        {code}
+                    {products?.map((product) => (
+                      <SelectItem key={product.id} value={product.code}>
+                        {product.code} - {product.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -245,14 +351,14 @@ export default function Analyze() {
                 <Label>Trạm sản xuất</Label>
                 <Select 
                   value={selectedStation} 
-                  onValueChange={setSelectedStation}
+                  onValueChange={handleStationChange}
                   disabled={!selectedProduct}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Chọn trạm" />
                   </SelectTrigger>
                   <SelectContent>
-                    {stations?.map((station) => (
+                    {availableStations.map((station) => (
                       <SelectItem key={station} value={station}>
                         {station}
                       </SelectItem>
@@ -314,13 +420,37 @@ export default function Analyze() {
                   </PopoverContent>
                 </Popover>
               </div>
+
+              {/* Mapping Selection */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-1">
+                  <Database className="h-4 w-4" />
+                  Mapping
+                </Label>
+                <Select 
+                  value={selectedMapping} 
+                  onValueChange={setSelectedMapping}
+                  disabled={!selectedStation}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Chọn mapping" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableMappings.map((mapping: Mapping) => (
+                      <SelectItem key={mapping.id} value={String(mapping.id)}>
+                        {mapping.tableName} ({mapping.valueColumn})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
-            <div className="mt-6 flex gap-3">
+            <div className="mt-6 flex flex-wrap gap-3">
               <Button 
-                onClick={handleAnalyze} 
-                disabled={analyzeMutation.isPending}
-                className="min-w-[140px]"
+                onClick={handleAnalyze}
+                disabled={analyzeMutation.isPending || !selectedMapping}
+                className="bg-primary hover:bg-primary/90"
               >
                 {analyzeMutation.isPending ? (
                   <>
@@ -330,126 +460,185 @@ export default function Analyze() {
                 ) : (
                   <>
                     <TrendingUp className="mr-2 h-4 w-4" />
-                    Phân tích
+                    Phân tích SPC/CPK
                   </>
                 )}
               </Button>
+
+              {result && (
+                <>
+                  <Button 
+                    variant="outline" 
+                    onClick={handleLlmAnalysis}
+                    disabled={llmMutation.isPending}
+                  >
+                    {llmMutation.isPending ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Đang phân tích AI...
+                      </>
+                    ) : (
+                      <>
+                        <Brain className="mr-2 h-4 w-4" />
+                        Phân tích AI
+                      </>
+                    )}
+                  </Button>
+
+                  <Button 
+                    variant="outline" 
+                    onClick={handleExportPdf}
+                    disabled={isExporting}
+                  >
+                    <FileText className="mr-2 h-4 w-4" />
+                    Xuất PDF
+                  </Button>
+
+                  <Button 
+                    variant="outline" 
+                    onClick={handleExportExcel}
+                    disabled={isExporting}
+                  >
+                    <FileSpreadsheet className="mr-2 h-4 w-4" />
+                    Xuất Excel
+                  </Button>
+                </>
+              )}
             </div>
           </CardContent>
         </Card>
 
         {/* Results */}
         {result && (
-          <div className="space-y-6 animate-slide-up">
+          <>
             {/* Statistics Cards */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
-              <Card className="stat-card">
-                <span className="stat-label">Số mẫu</span>
-                <span className="stat-value">{result.sampleCount}</span>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <Card className="bg-card rounded-xl border border-border/50 shadow-md">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Số mẫu
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{result.sampleCount}</div>
+                </CardContent>
               </Card>
-              <Card className="stat-card">
-                <span className="stat-label">Trung bình</span>
-                <span className="stat-value font-mono">{result.mean.toFixed(4)}</span>
+
+              <Card className="bg-card rounded-xl border border-border/50 shadow-md">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Trung bình (X̄)
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{result.mean.toFixed(4)}</div>
+                  <p className="text-xs text-muted-foreground">
+                    σ = {result.stdDev.toFixed(4)}
+                  </p>
+                </CardContent>
               </Card>
-              <Card className="stat-card">
-                <span className="stat-label">Độ lệch chuẩn</span>
-                <span className="stat-value font-mono">{result.stdDev.toFixed(4)}</span>
+
+              <Card className="bg-card rounded-xl border border-border/50 shadow-md">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Cp
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {result.cp !== null ? result.cp.toFixed(3) : "N/A"}
+                  </div>
+                </CardContent>
               </Card>
-              <Card className="stat-card">
-                <span className="stat-label">Cp</span>
-                <span className="stat-value font-mono">
-                  {result.cp?.toFixed(3) || "N/A"}
-                </span>
-              </Card>
-              <Card className={cn("stat-card", result.alertTriggered && "border-destructive/50 bg-destructive/5")}>
-                <span className="stat-label">Cpk</span>
-                <div className="flex items-center gap-2">
-                  <span className={cn("stat-value font-mono", getCpkStatus(result.cpk).color)}>
-                    {result.cpk?.toFixed(3) || "N/A"}
-                  </span>
-                  {getCpkStatus(result.cpk).icon && (
-                    <span className={getCpkStatus(result.cpk).color}>
-                      {(() => {
-                        const Icon = getCpkStatus(result.cpk).icon;
-                        return Icon ? <Icon className="h-5 w-5" /> : null;
-                      })()}
-                    </span>
-                  )}
-                </div>
-                <span className={cn("text-xs", getCpkStatus(result.cpk).color)}>
-                  {getCpkStatus(result.cpk).label}
-                </span>
-              </Card>
-              <Card className="stat-card">
-                <span className="stat-label">Range</span>
-                <span className="stat-value font-mono">{result.range.toFixed(4)}</span>
+
+              <Card className="bg-card rounded-xl border border-border/50 shadow-md">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                    CPK
+                    {getCpkStatus(result.cpk).icon && (
+                      <span className={getCpkStatus(result.cpk).color}>
+                        {(() => {
+                          const Icon = getCpkStatus(result.cpk).icon;
+                          return Icon ? <Icon className="h-4 w-4" /> : null;
+                        })()}
+                      </span>
+                    )}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className={cn("text-2xl font-bold", getCpkStatus(result.cpk).color)}>
+                    {result.cpk !== null ? result.cpk.toFixed(3) : "N/A"}
+                  </div>
+                  <p className={cn("text-xs", getCpkStatus(result.cpk).color)}>
+                    {getCpkStatus(result.cpk).label}
+                  </p>
+                </CardContent>
               </Card>
             </div>
 
             {/* Control Limits */}
-            <Card className="bg-card rounded-xl border border-border/50 shadow-md hover:shadow-lg transition-all duration-300">
+            <Card className="bg-card rounded-xl border border-border/50 shadow-md">
               <CardHeader>
                 <CardTitle>Giới hạn kiểm soát</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid gap-4 md:grid-cols-4">
-                  <div className="p-4 rounded-lg bg-muted/50">
-                    <p className="text-sm text-muted-foreground">UCL (X-bar)</p>
-                    <p className="text-xl font-mono font-semibold">{result.ucl.toFixed(4)}</p>
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">UCL (X̄)</p>
+                    <p className="text-lg font-semibold">{result.ucl.toFixed(4)}</p>
                   </div>
-                  <div className="p-4 rounded-lg bg-muted/50">
-                    <p className="text-sm text-muted-foreground">LCL (X-bar)</p>
-                    <p className="text-xl font-mono font-semibold">{result.lcl.toFixed(4)}</p>
+                  <div>
+                    <p className="text-sm text-muted-foreground">LCL (X̄)</p>
+                    <p className="text-lg font-semibold">{result.lcl.toFixed(4)}</p>
                   </div>
-                  <div className="p-4 rounded-lg bg-muted/50">
+                  <div>
                     <p className="text-sm text-muted-foreground">USL</p>
-                    <p className="text-xl font-mono font-semibold">{result.usl ?? "N/A"}</p>
+                    <p className="text-lg font-semibold">
+                      {result.usl !== null ? result.usl.toFixed(4) : "N/A"}
+                    </p>
                   </div>
-                  <div className="p-4 rounded-lg bg-muted/50">
+                  <div>
                     <p className="text-sm text-muted-foreground">LSL</p>
-                    <p className="text-xl font-mono font-semibold">{result.lsl ?? "N/A"}</p>
+                    <p className="text-lg font-semibold">
+                      {result.lsl !== null ? result.lsl.toFixed(4) : "N/A"}
+                    </p>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
             {/* X-bar Chart */}
-            <Card className="bg-card rounded-xl border border-border/50 shadow-md hover:shadow-lg transition-all duration-300">
+            <Card className="bg-card rounded-xl border border-border/50 shadow-md">
               <CardHeader>
-                <CardTitle>X-bar Control Chart</CardTitle>
-                <CardDescription>Biểu đồ kiểm soát giá trị trung bình nhóm</CardDescription>
+                <CardTitle>X̄ Chart (Biểu đồ trung bình)</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="h-[400px]">
+                <div className="h-[300px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={xBarChartData}>
-                      <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                      <XAxis 
-                        dataKey="index" 
-                        label={{ value: 'Subgroup', position: 'insideBottom', offset: -5 }}
-                      />
-                      <YAxis 
-                        domain={['auto', 'auto']}
-                        label={{ value: 'Value', angle: -90, position: 'insideLeft' }}
-                      />
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                      <XAxis dataKey="index" />
+                      <YAxis domain={['auto', 'auto']} />
                       <Tooltip 
                         contentStyle={{ 
-                          backgroundColor: 'var(--popover)', 
-                          border: '1px solid var(--border)',
-                          borderRadius: 'var(--radius)'
+                          backgroundColor: 'hsl(var(--card))',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px'
                         }}
                       />
                       <Legend />
-                      <ReferenceLine y={result.ucl} stroke="var(--destructive)" strokeDasharray="5 5" label="UCL" />
-                      <ReferenceLine y={result.mean} stroke="var(--chart-2)" strokeDasharray="3 3" label="Mean" />
-                      <ReferenceLine y={result.lcl} stroke="var(--destructive)" strokeDasharray="5 5" label="LCL" />
+                      <ReferenceLine y={result.ucl} stroke="hsl(var(--destructive))" strokeDasharray="5 5" label="UCL" />
+                      <ReferenceLine y={result.lcl} stroke="hsl(var(--destructive))" strokeDasharray="5 5" label="LCL" />
+                      <ReferenceLine y={result.mean} stroke="hsl(var(--primary))" strokeDasharray="3 3" label="X̄" />
+                      {result.usl && <ReferenceLine y={result.usl} stroke="hsl(var(--warning))" strokeDasharray="2 2" label="USL" />}
+                      {result.lsl && <ReferenceLine y={result.lsl} stroke="hsl(var(--warning))" strokeDasharray="2 2" label="LSL" />}
                       <Line 
                         type="monotone" 
                         dataKey="value" 
-                        stroke="var(--primary)" 
+                        stroke="hsl(var(--chart-1))" 
                         strokeWidth={2}
-                        dot={{ fill: 'var(--primary)', strokeWidth: 2 }}
-                        name="X-bar"
+                        dot={{ fill: 'hsl(var(--chart-1))', strokeWidth: 2 }}
+                        name="X̄"
                       />
                     </LineChart>
                   </ResponsiveContainer>
@@ -458,127 +647,63 @@ export default function Analyze() {
             </Card>
 
             {/* R Chart */}
-            <Card className="bg-card rounded-xl border border-border/50 shadow-md hover:shadow-lg transition-all duration-300">
+            <Card className="bg-card rounded-xl border border-border/50 shadow-md">
               <CardHeader>
-                <CardTitle>R Control Chart</CardTitle>
-                <CardDescription>Biểu đồ kiểm soát phạm vi (Range)</CardDescription>
+                <CardTitle>R Chart (Biểu đồ phạm vi)</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="h-[300px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={rangeChartData}>
-                      <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                    <LineChart data={rangeChartData}>
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                       <XAxis dataKey="index" />
                       <YAxis domain={[0, 'auto']} />
                       <Tooltip 
                         contentStyle={{ 
-                          backgroundColor: 'var(--popover)', 
-                          border: '1px solid var(--border)',
-                          borderRadius: 'var(--radius)'
+                          backgroundColor: 'hsl(var(--card))',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px'
                         }}
                       />
                       <Legend />
-                      <ReferenceLine y={result.uclR} stroke="var(--destructive)" strokeDasharray="5 5" label="UCL-R" />
-                      <Bar 
+                      <ReferenceLine y={result.uclR} stroke="hsl(var(--destructive))" strokeDasharray="5 5" label="UCL" />
+                      <ReferenceLine y={result.lclR} stroke="hsl(var(--destructive))" strokeDasharray="5 5" label="LCL" />
+                      <Line 
+                        type="monotone" 
                         dataKey="value" 
-                        fill="var(--chart-1)" 
+                        stroke="hsl(var(--chart-2))" 
+                        strokeWidth={2}
+                        dot={{ fill: 'hsl(var(--chart-2))', strokeWidth: 2 }}
                         name="Range"
-                        radius={[4, 4, 0, 0]}
                       />
-                    </BarChart>
+                    </LineChart>
                   </ResponsiveContainer>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Advanced Charts - XBar, R, Histograms, Sample Table */}
-            <AdvancedCharts
+            {/* Advanced Charts */}
+            <AdvancedCharts 
               xBarData={result.xBarData}
               rangeData={result.rangeData}
               rawData={result.rawData}
-              mean={result.mean}
               ucl={result.ucl}
               lcl={result.lcl}
               uclR={result.uclR}
               lclR={result.lclR}
+              mean={result.mean}
               usl={result.usl}
               lsl={result.lsl}
             />
 
-            {/* Actions */}
-            <div className="flex gap-3">
-              <Button 
-                onClick={handleLlmAnalysis}
-                disabled={llmMutation.isPending}
-                variant="outline"
-              >
-                {llmMutation.isPending ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Đang phân tích AI...
-                  </>
-                ) : (
-                  <>
-                    <Brain className="mr-2 h-4 w-4" />
-                    Phân tích AI
-                  </>
-                )}
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => {
-                  if (!result || !startDate || !endDate) return;
-                  exportHtmlMutation.mutate({
-                    productCode: selectedProduct,
-                    stationName: selectedStation,
-                    startDate,
-                    endDate,
-                    spcResult: result,
-                  });
-                }}
-                disabled={exportHtmlMutation.isPending}
-              >
-                {exportHtmlMutation.isPending ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Download className="mr-2 h-4 w-4" />
-                )}
-                Xuất HTML
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => {
-                  if (!result || !startDate || !endDate) return;
-                  exportCsvMutation.mutate({
-                    productCode: selectedProduct,
-                    stationName: selectedStation,
-                    startDate,
-                    endDate,
-                    spcResult: result,
-                  });
-                }}
-                disabled={exportCsvMutation.isPending}
-              >
-                {exportCsvMutation.isPending ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Download className="mr-2 h-4 w-4" />
-                )}
-                Xuất CSV
-              </Button>
-            </div>
-
             {/* LLM Analysis */}
             {llmAnalysis && (
-              <Card className="bg-card rounded-xl border border-primary/30 bg-primary/5 shadow-md hover:shadow-lg transition-all duration-300">
+              <Card className="bg-card rounded-xl border border-border/50 shadow-md">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Brain className="h-5 w-5 text-primary" />
                     Phân tích AI
                   </CardTitle>
-                  <CardDescription>
-                    Nhận xét và khuyến nghị từ AI dựa trên dữ liệu SPC
-                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="prose prose-sm max-w-none dark:prose-invert">
@@ -587,7 +712,7 @@ export default function Analyze() {
                 </CardContent>
               </Card>
             )}
-          </div>
+          </>
         )}
       </div>
     </DashboardLayout>

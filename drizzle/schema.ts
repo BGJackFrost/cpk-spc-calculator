@@ -533,3 +533,45 @@ export const spcSummaryStats = mysqlTable("spc_summary_stats", {
 
 export type SpcSummaryStats = typeof spcSummaryStats.$inferSelect;
 export type InsertSpcSummaryStats = typeof spcSummaryStats.$inferInsert;
+
+/**
+ * Permissions - định nghĩa các quyền trong hệ thống
+ */
+export const permissions = mysqlTable("permissions", {
+  id: int("id").autoincrement().primaryKey(),
+  code: varchar("code", { length: 100 }).notNull().unique(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  module: varchar("module", { length: 100 }).notNull(), // dashboard, analyze, settings, etc.
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Permission = typeof permissions.$inferSelect;
+export type InsertPermission = typeof permissions.$inferInsert;
+
+/**
+ * Role Permissions - gán quyền cho vai trò
+ */
+export const rolePermissions = mysqlTable("role_permissions", {
+  id: int("id").autoincrement().primaryKey(),
+  role: mysqlEnum("role", ["user", "admin", "operator", "viewer"]).notNull(),
+  permissionId: int("permissionId").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type RolePermission = typeof rolePermissions.$inferSelect;
+export type InsertRolePermission = typeof rolePermissions.$inferInsert;
+
+/**
+ * User Permissions - gán quyền đặc biệt cho user (override role)
+ */
+export const userPermissions = mysqlTable("user_permissions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  permissionId: int("permissionId").notNull(),
+  granted: int("granted").notNull().default(1), // 1 = granted, 0 = denied
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type UserPermission = typeof userPermissions.$inferSelect;
+export type InsertUserPermission = typeof userPermissions.$inferInsert;

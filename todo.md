@@ -131,3 +131,19 @@
 - [x] Cải tiến thuật toán phát hiện trend và shift
 - [x] Thêm báo cáo SPC tổng hợp theo ca/ngày/tuần
 - [x] Tối ưu hóa hiệu suất cho dữ liệu lớn
+
+## Phase 6 - Nâng cấp Phân tích SPC và Phân quyền
+
+### Nâng cấp trang Phân tích SPC/CPK
+- [x] Sửa logic chọn: Sản phẩm → Trạm → Thời gian → Mapping
+- [x] Truy vấn dữ liệu từ external database theo cấu hình mapping
+- [x] Hiển thị kết quả phân tích SPC/CPK từ dữ liệu thực
+- [x] Thêm chức năng xuất báo cáo PDF
+- [x] Thêm chức năng xuất báo cáo Excel
+
+### Quản lý phân quyền theo vai trò
+- [x] Tạo bảng roles và permissions trong database
+- [x] Tạo trang quản lý vai trò và quyền
+- [x] Kiểm tra quyền trên backend (tRPC procedures)
+- [x] Kiểm tra quyền trên frontend (ẩn/hiện menu, buttons)
+- [x] Gán quyền mặc định cho các vai trò

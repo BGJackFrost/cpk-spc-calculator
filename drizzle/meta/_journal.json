@@ -43,6 +43,13 @@
       "when": 1765419474415,
       "tag": "0005_young_pretty_boy",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1765420506163,
+      "tag": "0006_bright_alex_power",
+      "breakpoints": true
     }
   ]
 }
