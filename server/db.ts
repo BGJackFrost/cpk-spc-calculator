@@ -275,6 +275,26 @@ export async function getSpcAnalysisHistoryByMapping(mappingId: number, limit = 
     .limit(limit);
 }
 
+export async function getRecentAnalysisForPlan(planId: number, limit = 20) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  // Lấy thông tin plan để biết mappingId
+  const plan = await db.select().from(spcSamplingPlans).where(eq(spcSamplingPlans.id, planId)).limit(1);
+  if (plan.length === 0 || !plan[0].mappingId) {
+    // Nếu không có mappingId, trả về các phân tích gần nhất (manual analysis có mappingId = 0)
+    return await db.select().from(spcAnalysisHistory)
+      .orderBy(desc(spcAnalysisHistory.createdAt))
+      .limit(limit);
+  }
+  
+  // Lấy phân tích theo mappingId của plan
+  return await db.select().from(spcAnalysisHistory)
+    .where(eq(spcAnalysisHistory.mappingId, plan[0].mappingId))
+    .orderBy(desc(spcAnalysisHistory.createdAt))
+    .limit(limit);
+}
+
 // Alert Settings operations
 export async function getAlertSettings() {
   const db = await getDb();

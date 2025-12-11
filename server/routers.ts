@@ -582,6 +582,67 @@ const spcRouter = router({
       };
     }),
 
+  // Phân tích thủ công với dữ liệu nhập tay
+  analyzeManual: protectedProcedure
+    .input(z.object({
+      productCode: z.string(),
+      stationName: z.string(),
+      data: z.array(z.number()).min(5, "Cần ít nhất 5 giá trị"),
+      usl: z.number(),
+      lsl: z.number(),
+      target: z.number().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      // Chuyển dữ liệu thành format cần thiết
+      const now = new Date();
+      const rawData = input.data.map((value, index) => ({
+        value,
+        timestamp: new Date(now.getTime() - (input.data.length - index) * 60000), // Mỗi điểm cách nhau 1 phút
+      }));
+
+      // Tính toán SPC
+      const spcResult = calculateSpc(rawData, input.usl, input.lsl);
+
+      // Kiểm tra alert
+      const alertConfig = await getAlertSettings();
+      let alertTriggered = 0;
+      if (alertConfig && spcResult.cpk !== null) {
+        const cpkThreshold = alertConfig.cpkWarningThreshold / 100;
+        if (spcResult.cpk < cpkThreshold) {
+          alertTriggered = 1;
+        }
+      }
+
+      // Lưu lịch sử phân tích
+      const historyId = await createSpcAnalysisHistory({
+        mappingId: 0, // Manual analysis
+        productCode: input.productCode,
+        stationName: input.stationName,
+        startDate: rawData[0].timestamp,
+        endDate: rawData[rawData.length - 1].timestamp,
+        sampleCount: spcResult.sampleCount,
+        mean: Math.round(spcResult.mean * 1000),
+        stdDev: Math.round(spcResult.stdDev * 1000),
+        cp: spcResult.cp ? Math.round(spcResult.cp * 1000) : null,
+        cpk: spcResult.cpk ? Math.round(spcResult.cpk * 1000) : null,
+        ucl: Math.round(spcResult.ucl * 1000),
+        lcl: Math.round(spcResult.lcl * 1000),
+        usl: input.usl,
+        lsl: input.lsl,
+        alertTriggered,
+        analyzedBy: ctx.user.id,
+      });
+
+      return {
+        id: historyId,
+        ...spcResult,
+        usl: input.usl,
+        lsl: input.lsl,
+        target: input.target || null,
+        alertTriggered: alertTriggered === 1,
+      };
+    }),
+
   llmAnalysis: protectedProcedure
     .input(z.object({
       productCode: z.string(),

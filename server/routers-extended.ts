@@ -390,4 +390,52 @@ export const dashboardRouter = router({
       await setDashboardLineSelections(input.dashboardConfigId, selectionsWithDashboardId);
       return { success: true };
     }),
+
+  // Lấy dữ liệu realtime cho SPC Plan
+  getRealtimeData: protectedProcedure
+    .input(z.object({
+      planId: z.number(),
+    }))
+    .query(async ({ input }) => {
+      // Lấy lịch sử phân tích gần nhất cho plan này
+      const { getRecentAnalysisForPlan } = await import("./db");
+      const recentAnalysis = await getRecentAnalysisForPlan(input.planId, 20);
+      
+      if (recentAnalysis.length === 0) {
+        return {
+          hasData: false,
+          data: [],
+          cpk: null,
+          mean: null,
+          ucl: null,
+          lcl: null,
+          usl: null,
+          lsl: null,
+        };
+      }
+
+      // Lấy phân tích mới nhất
+      const latest = recentAnalysis[0];
+      
+      // Chuyển dữ liệu thành format cho chart
+      const chartData = recentAnalysis.map((a: { id: number; mean: number | null; createdAt: Date }, index: number) => ({
+        index: recentAnalysis.length - index,
+        value: a.mean ? a.mean / 1000 : 0,
+        timestamp: a.createdAt,
+      })).reverse();
+
+      return {
+        hasData: true,
+        data: chartData,
+        cpk: latest.cpk ? latest.cpk / 1000 : null,
+        mean: latest.mean ? latest.mean / 1000 : null,
+        ucl: latest.ucl ? latest.ucl / 1000 : null,
+        lcl: latest.lcl ? latest.lcl / 1000 : null,
+        usl: latest.usl,
+        lsl: latest.lsl,
+        sampleCount: latest.sampleCount,
+        stdDev: latest.stdDev ? latest.stdDev / 1000 : null,
+        lastUpdated: latest.createdAt,
+      };
+    }),
 });

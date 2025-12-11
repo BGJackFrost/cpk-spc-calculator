@@ -220,3 +220,20 @@
 ### Phân tích SPC/CPK
 - [x] Sửa lỗi không thể chọn được công trạm (lấy workstations trực tiếp thay vì từ mappings)
 - [x] Sửa lỗi không thể chọn được Cấu hình Mapping (mapping là optional)
+
+## Phase 9.2 - Cải tiến Mapping và Dashboard Realtime
+
+### Seed Data cho Mapping
+- [x] Tạo seed data mapping mẫu với các sản phẩm và workstations có sẵn
+- [x] Thêm vào trang Khởi tạo Dữ liệu
+
+### Chế độ Phân tích không cần Mapping
+- [x] Thêm tab/mode nhập dữ liệu thủ công
+- [x] Thêm option lấy dữ liệu từ SPC Plan đã có
+- [x] Cập nhật UI Analyze.tsx với các chế độ mới
+
+### Dashboard Realtime với dữ liệu thực
+- [x] Tạo API endpoint getRealtimeData để lấy dữ liệu realtime theo kế hoạch SPC
+- [x] Tạo hàm getRecentAnalysisForPlan trong db.ts
+- [x] Tạo component RealtimePlanCard sử dụng dữ liệu thực từ spc_analysis_history
+- [x] Cập nhật Dashboard để hiển thị dữ liệu thực thay vì mock data

@@ -1,6 +1,9 @@
 import { useState, useMemo } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -86,9 +89,15 @@ interface Mapping {
 }
 
 export default function Analyze() {
+  const [analysisMode, setAnalysisMode] = useState<"mapping" | "manual" | "spcplan">("mapping");
   const [selectedProduct, setSelectedProduct] = useState<string>("");
   const [selectedStation, setSelectedStation] = useState<string>("");
   const [selectedMapping, setSelectedMapping] = useState<string>("");
+  const [selectedSpcPlan, setSelectedSpcPlan] = useState<string>("");
+  const [manualData, setManualData] = useState<string>("");
+  const [manualUsl, setManualUsl] = useState<string>("");
+  const [manualLsl, setManualLsl] = useState<string>("");
+  const [manualTarget, setManualTarget] = useState<string>("");
   const [startDate, setStartDate] = useState<Date>();
   const [endDate, setEndDate] = useState<Date>();
   const [result, setResult] = useState<SpcResult | null>(null);
@@ -103,6 +112,9 @@ export default function Analyze() {
   
   // Lấy danh sách mappings
   const { data: allMappings } = trpc.mapping.list.useQuery();
+  
+  // Lấy danh sách SPC Plans
+  const { data: spcPlans } = trpc.spcPlan.list.useQuery();
   
   // Lấy tất cả workstations (không phụ thuộc vào mapping)
   const availableStations = useMemo(() => {
@@ -169,6 +181,20 @@ export default function Analyze() {
     },
   });
 
+  const manualAnalyzeMutation = trpc.spc.analyzeManual.useMutation({
+    onSuccess: (data) => {
+      setResult(data);
+      if (data.alertTriggered) {
+        toast.warning("Cảnh báo: CPK dưới ngưỡng cho phép!");
+      } else {
+        toast.success("Phân tích hoàn tất!");
+      }
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
   const handleProductChange = (value: string) => {
     setSelectedProduct(value);
     setSelectedStation("");
@@ -178,6 +204,45 @@ export default function Analyze() {
   const handleStationChange = (value: string) => {
     setSelectedStation(value);
     setSelectedMapping("");
+  };
+
+  const handleManualAnalyze = () => {
+    if (!selectedProduct || !selectedStation) {
+      toast.error("Vui lòng chọn sản phẩm và trạm");
+      return;
+    }
+    if (!manualUsl || !manualLsl) {
+      toast.error("Vui lòng nhập USL và LSL");
+      return;
+    }
+    if (!manualData.trim()) {
+      toast.error("Vui lòng nhập dữ liệu đo");
+      return;
+    }
+
+    // Parse dữ liệu từ text
+    const dataValues = manualData
+      .split(/[,\n]+/)
+      .map(v => v.trim())
+      .filter(v => v !== '')
+      .map(v => parseFloat(v))
+      .filter(v => !isNaN(v));
+
+    if (dataValues.length < 5) {
+      toast.error("Cần ít nhất 5 giá trị hợp lệ để phân tích");
+      return;
+    }
+
+    const stationName = workstations?.find((w: { id: number; name: string }) => w.id.toString() === selectedStation)?.name || selectedStation;
+
+    manualAnalyzeMutation.mutate({
+      productCode: selectedProduct,
+      stationName,
+      data: dataValues,
+      usl: parseFloat(manualUsl),
+      lsl: parseFloat(manualLsl),
+      target: manualTarget ? parseFloat(manualTarget) : undefined,
+    });
   };
 
   const handleAnalyze = () => {
@@ -326,10 +391,28 @@ export default function Analyze() {
               Thông tin phân tích
             </CardTitle>
             <CardDescription>
-              Chọn các tiêu chí để truy vấn dữ liệu từ database theo cấu hình mapping
+              Chọn chế độ phân tích phù hợp với nguồn dữ liệu của bạn
             </CardDescription>
           </CardHeader>
           <CardContent>
+            <Tabs value={analysisMode} onValueChange={(v) => setAnalysisMode(v as "mapping" | "manual" | "spcplan")} className="w-full">
+              <TabsList className="grid w-full grid-cols-3 mb-6">
+                <TabsTrigger value="mapping" className="flex items-center gap-2">
+                  <Database className="h-4 w-4" />
+                  Database Mapping
+                </TabsTrigger>
+                <TabsTrigger value="manual" className="flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  Nhập thủ công
+                </TabsTrigger>
+                <TabsTrigger value="spcplan" className="flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4" />
+                  Từ Kế hoạch SPC
+                </TabsTrigger>
+              </TabsList>
+
+              {/* Tab 1: Database Mapping */}
+              <TabsContent value="mapping">
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-5">
               {/* Product Code */}
               <div className="space-y-2">
@@ -507,6 +590,133 @@ export default function Analyze() {
                 </>
               )}
             </div>
+              </TabsContent>
+
+              {/* Tab 2: Nhập thủ công */}
+              <TabsContent value="manual">
+                <div className="space-y-4">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>Mã sản phẩm</Label>
+                      <Select value={selectedProduct} onValueChange={handleProductChange}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Chọn mã sản phẩm" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {products?.map((product) => (
+                            <SelectItem key={product.id} value={product.code}>
+                              {product.code} - {product.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Trạm sản xuất</Label>
+                      <Select value={selectedStation} onValueChange={handleStationChange}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Chọn trạm" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableStations.map((station) => (
+                            <SelectItem key={station.id} value={station.id.toString()}>
+                              {station.name} ({station.code})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <div className="space-y-2">
+                      <Label>USL (Giới hạn trên)</Label>
+                      <Input 
+                        type="number" 
+                        placeholder="Ví dụ: 150" 
+                        value={manualUsl}
+                        onChange={(e) => setManualUsl(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>LSL (Giới hạn dưới)</Label>
+                      <Input 
+                        type="number" 
+                        placeholder="Ví dụ: 100" 
+                        value={manualLsl}
+                        onChange={(e) => setManualLsl(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Target (Mục tiêu)</Label>
+                      <Input 
+                        type="number" 
+                        placeholder="Ví dụ: 125" 
+                        value={manualTarget}
+                        onChange={(e) => setManualTarget(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Dữ liệu đo (mỗi giá trị một dòng hoặc cách nhau bằng dấu phẩy)</Label>
+                    <Textarea 
+                      placeholder="Ví dụ:\n125.5\n126.2\n124.8\n125.1\n126.0\n...\n\nHoặc: 125.5, 126.2, 124.8, 125.1, 126.0"
+                      className="min-h-[150px] font-mono"
+                      value={manualData}
+                      onChange={(e) => setManualData(e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">Cần ít nhất 5 giá trị để phân tích</p>
+                  </div>
+                  <Button 
+                    onClick={handleManualAnalyze}
+                    disabled={manualAnalyzeMutation.isPending}
+                    className="bg-primary hover:bg-primary/90"
+                  >
+                    {manualAnalyzeMutation.isPending ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Đang phân tích...
+                      </>
+                    ) : (
+                      <>
+                        <TrendingUp className="mr-2 h-4 w-4" />
+                        Phân tích SPC/CPK
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </TabsContent>
+
+              {/* Tab 3: Từ Kế hoạch SPC */}
+              <TabsContent value="spcplan">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Chọn Kế hoạch SPC</Label>
+                    <Select value={selectedSpcPlan} onValueChange={setSelectedSpcPlan}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Chọn kế hoạch SPC" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {spcPlans?.map((plan) => (
+                          <SelectItem key={plan.id} value={plan.id.toString()}>
+                            {plan.name} - {plan.status === 'active' ? 'Đang chạy' : plan.status}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="bg-muted/50 p-4 rounded-lg">
+                    <p className="text-sm text-muted-foreground">
+                      Tính năng này sẽ lấy dữ liệu từ các lần lấy mẫu đã thực hiện trong kế hoạch SPC đã chọn.
+                      Hiện tại chưa có dữ liệu lấy mẫu thực tế - vui lòng sử dụng chế độ "Nhập thủ công" hoặc "Database Mapping".
+                    </p>
+                  </div>
+                  <Button disabled className="bg-muted">
+                    <TrendingUp className="mr-2 h-4 w-4" />
+                    Phân tích (Sắp ra mắt)
+                  </Button>
+                </div>
+              </TabsContent>
+            </Tabs>
           </CardContent>
         </Card>
 

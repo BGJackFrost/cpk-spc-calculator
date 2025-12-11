@@ -140,6 +140,85 @@ const SAMPLE_SAMPLING_CONFIGS = [
   { name: "Shift Sampling", timeUnit: "hour" as const, sampleSize: 10, intervalValue: 8, intervalUnit: "hour" as const, subgroupSize: 5 },
 ];
 
+// Sample product-station mappings
+const SAMPLE_MAPPINGS = [
+  {
+    productCode: "PCB-001",
+    stationName: "Solder Paste Printing",
+    connectionId: 1,
+    tableName: "solder_paste_data",
+    productCodeColumn: "product_code",
+    stationColumn: "station",
+    valueColumn: "thickness",
+    timestampColumn: "measured_at",
+    usl: 150,
+    lsl: 100,
+    target: 125,
+    isActive: 1,
+    createdBy: 1,
+  },
+  {
+    productCode: "PCB-001",
+    stationName: "AOI Inspection",
+    connectionId: 1,
+    tableName: "aoi_inspection_data",
+    productCodeColumn: "product_code",
+    stationColumn: "station",
+    valueColumn: "defect_count",
+    timestampColumn: "inspected_at",
+    usl: 5,
+    lsl: 0,
+    target: 0,
+    isActive: 1,
+    createdBy: 1,
+  },
+  {
+    productCode: "PCB-001",
+    stationName: "Reflow Oven",
+    connectionId: 1,
+    tableName: "reflow_temperature_data",
+    productCodeColumn: "product_code",
+    stationColumn: "station",
+    valueColumn: "peak_temp",
+    timestampColumn: "recorded_at",
+    usl: 260,
+    lsl: 230,
+    target: 245,
+    isActive: 1,
+    createdBy: 1,
+  },
+  {
+    productCode: "IC-001",
+    stationName: "ICT Testing",
+    connectionId: 1,
+    tableName: "ict_test_data",
+    productCodeColumn: "product_code",
+    stationColumn: "station",
+    valueColumn: "test_value",
+    timestampColumn: "tested_at",
+    usl: 105,
+    lsl: 95,
+    target: 100,
+    isActive: 1,
+    createdBy: 1,
+  },
+  {
+    productCode: "IC-001",
+    stationName: "FCT Testing",
+    connectionId: 1,
+    tableName: "fct_test_data",
+    productCodeColumn: "product_code",
+    stationColumn: "station",
+    valueColumn: "output_voltage",
+    timestampColumn: "tested_at",
+    usl: 525,
+    lsl: 475,
+    target: 500,
+    isActive: 1,
+    createdBy: 1,
+  },
+];
+
 // Sample SPC rules config
 const SAMPLE_SPC_RULES = {
   rule1Enabled: true, rule1Sigma: 3,
@@ -217,11 +296,12 @@ export async function seedSampleData(): Promise<{
   workstations: number;
   specifications: number;
   samplingConfigs: number;
+  mappings: number;
 }> {
   const db = await getDb();
   if (!db) {
     console.warn("[Seed] Database not available");
-    return { connections: 0, products: 0, productionLines: 0, workstations: 0, specifications: 0, samplingConfigs: 0 };
+    return { connections: 0, products: 0, productionLines: 0, workstations: 0, specifications: 0, samplingConfigs: 0, mappings: 0 };
   }
 
   const result = {
@@ -231,6 +311,7 @@ export async function seedSampleData(): Promise<{
     workstations: 0,
     specifications: 0,
     samplingConfigs: 0,
+    mappings: 0,
   };
 
   // Seed database connections
@@ -288,6 +369,24 @@ export async function seedSampleData(): Promise<{
         isActive: 1,
       });
       result.samplingConfigs++;
+    }
+  }
+
+  // Seed product-station mappings
+  for (const mapping of SAMPLE_MAPPINGS) {
+    const existing = await db.select().from(productStationMappings)
+      .where(eq(productStationMappings.productCode, mapping.productCode))
+      .limit(1);
+    
+    // Check if this exact mapping exists
+    const exactMatch = existing.find(e => 
+      e.productCode === mapping.productCode && 
+      e.stationName === mapping.stationName
+    );
+    
+    if (!exactMatch) {
+      await db.insert(productStationMappings).values(mapping);
+      result.mappings++;
     }
   }
 
