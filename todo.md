@@ -147,3 +147,26 @@
 - [x] Kiểm tra quyền trên backend (tRPC procedures)
 - [x] Kiểm tra quyền trên frontend (ẩn/hiện menu, buttons)
 - [x] Gán quyền mặc định cho các vai trò
+
+## Phase 7 - Seed Data, SMTP và Khởi tạo Quyền
+
+### Seed Data mẫu
+- [x] Tạo script seed data cho database connections mẫu
+- [x] Tạo script seed data cho products mẫu
+- [x] Tạo script seed data cho production lines mẫu
+- [x] Tạo script seed data cho workstations mẫu
+- [x] Tạo script seed data cho product specifications (USL/LSL) mẫu
+- [x] Tạo script seed data cho mappings mẫu
+- [x] Tạo dữ liệu kiểm tra mẫu để test flow phân tích SPC
+
+### Cấu hình SMTP
+- [x] Tạo bảng smtp_config trong database
+- [x] Tạo trang cấu hình SMTP settings
+- [x] Tạo service gửi email với nodemailer
+- [x] Tích hợp gửi email khi phát hiện lỗi SPC/CPK
+- [x] Test gửi email thông báo
+
+### Khởi tạo quyền mặc định
+- [x] Tự động khởi tạo permissions khi server khởi động
+- [x] Tự động gán quyền mặc định cho các vai trò
+- [x] Hiển thị trạng thái khởi tạo trên trang Phân quyền

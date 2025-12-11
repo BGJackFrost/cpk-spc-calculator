@@ -19,6 +19,8 @@ import SamplingMethodManagement from "./pages/SamplingMethodManagement";
 import SpcPlanManagement from "./pages/SpcPlanManagement";
 import EmailNotificationSettings from "./pages/EmailNotificationSettings";
 import RolePermissionManagement from "./pages/RolePermissionManagement";
+import SmtpSettings from "./pages/SmtpSettings";
+import SeedDataPage from "./pages/SeedDataPage";
 
 function Router() {
   return (
@@ -38,6 +40,8 @@ function Router() {
       <Route path="/spc-plans" component={SpcPlanManagement} />
       <Route path="/email-notifications" component={EmailNotificationSettings} />
       <Route path="/permissions" component={RolePermissionManagement} />
+      <Route path="/smtp-settings" component={SmtpSettings} />
+      <Route path="/seed-data" component={SeedDataPage} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

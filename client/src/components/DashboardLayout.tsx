@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, LogOut, PanelLeft, TrendingUp, History, FileSpreadsheet, Settings, Activity, Users, Package, Ruler, Factory, Clock, Calendar, Mail, Shield } from "lucide-react";
+import { LayoutDashboard, LogOut, PanelLeft, TrendingUp, History, FileSpreadsheet, Settings, Activity, Users, Package, Ruler, Factory, Clock, Calendar, Mail, Shield, Server, Database } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
@@ -41,6 +41,8 @@ const menuItems = [
   { icon: Mail, label: "Thông báo Email", path: "/email-notifications" },
   { icon: Users, label: "Quản lý Người dùng", path: "/users" },
   { icon: Shield, label: "Phân quyền", path: "/permissions" },
+  { icon: Server, label: "Cấu hình SMTP", path: "/smtp-settings" },
+  { icon: Database, label: "Khởi tạo Dữ liệu", path: "/seed-data" },
   { icon: Settings, label: "Cài đặt", path: "/settings" },
 ];
 

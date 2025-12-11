@@ -1025,6 +1025,56 @@ export const appRouter = router({
   userLine: userLineRouter,
   emailNotification: emailNotificationRouter,
   permission: permissionRouter,
+
+  // Seed data router
+  seed: router({
+    initPermissions: protectedProcedure.mutation(async () => {
+      const { initializePermissions } = await import("./seedData");
+      return await initializePermissions();
+    }),
+    seedSampleData: protectedProcedure.mutation(async () => {
+      const { seedSampleData } = await import("./seedData");
+      return await seedSampleData();
+    }),
+    runAllSeeds: protectedProcedure.mutation(async () => {
+      const { runAllSeeds } = await import("./seedData");
+      await runAllSeeds();
+      return { success: true };
+    }),
+  }),
+
+  // SMTP configuration router
+  smtp: router({
+    getConfig: protectedProcedure.query(async () => {
+      const { getSmtpConfig } = await import("./emailService");
+      return await getSmtpConfig();
+    }),
+    saveConfig: protectedProcedure
+      .input(z.object({
+        host: z.string(),
+        port: z.number(),
+        secure: z.boolean(),
+        username: z.string(),
+        password: z.string(),
+        fromEmail: z.string().email(),
+        fromName: z.string(),
+      }))
+      .mutation(async ({ input }) => {
+        const { saveSmtpConfig } = await import("./emailService");
+        await saveSmtpConfig(input);
+        return { success: true };
+      }),
+    testEmail: protectedProcedure
+      .input(z.object({ email: z.string().email() }))
+      .mutation(async ({ input }) => {
+        const { sendEmail } = await import("./emailService");
+        return await sendEmail(
+          input.email,
+          "[Test] SPC/CPK Calculator Email Test",
+          "<h1>Test Email</h1><p>This is a test email from SPC/CPK Calculator.</p>"
+        );
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

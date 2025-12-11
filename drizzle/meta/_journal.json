@@ -50,6 +50,13 @@
       "when": 1765420506163,
       "tag": "0006_bright_alex_power",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1765429357382,
+      "tag": "0007_fast_texas_twister",
+      "breakpoints": true
     }
   ]
 }

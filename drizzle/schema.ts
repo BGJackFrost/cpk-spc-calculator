@@ -575,3 +575,22 @@ export const userPermissions = mysqlTable("user_permissions", {
 
 export type UserPermission = typeof userPermissions.$inferSelect;
 export type InsertUserPermission = typeof userPermissions.$inferInsert;
+
+/**
+ * SMTP Configuration - cấu hình server email
+ */
+export const smtpConfig = mysqlTable("smtp_config", {
+  id: int("id").autoincrement().primaryKey(),
+  host: varchar("host", { length: 255 }).notNull(),
+  port: int("port").notNull().default(587),
+  secure: int("secure").notNull().default(0), // 0 = false, 1 = true (TLS)
+  username: varchar("username", { length: 255 }).notNull(),
+  password: varchar("password", { length: 255 }).notNull(),
+  fromEmail: varchar("fromEmail", { length: 320 }).notNull(),
+  fromName: varchar("fromName", { length: 255 }).notNull().default("SPC/CPK Calculator"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type SmtpConfig = typeof smtpConfig.$inferSelect;
+export type InsertSmtpConfig = typeof smtpConfig.$inferInsert;
