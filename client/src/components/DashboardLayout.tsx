@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, LogOut, PanelLeft, TrendingUp, History, FileSpreadsheet, Settings, Activity, Users, Package, Ruler, Factory, Clock, Calendar, Mail, Shield, Server, Database, Wrench, Cog, GitBranch, FileText } from "lucide-react";
+import { LayoutDashboard, LogOut, PanelLeft, TrendingUp, History, FileSpreadsheet, Settings, Activity, Users, Package, Ruler, Factory, Clock, Calendar, Mail, Shield, Server, Database, Wrench, Cog, GitBranch, FileText, BarChart3 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
@@ -32,6 +32,7 @@ const menuItems = [
   { icon: Activity, label: "Dây chuyền Realtime", path: "/production-lines" },
   { icon: TrendingUp, label: "Phân tích SPC/CPK", path: "/analyze" },
   { icon: History, label: "Lịch sử", path: "/history" },
+  { icon: BarChart3, label: "Báo cáo SPC", path: "/spc-report" },
   { icon: FileSpreadsheet, label: "Quản lý Mapping", path: "/mappings" },
   { icon: Package, label: "Quản lý Sản phẩm", path: "/products" },
   { icon: Ruler, label: "Tiêu chuẩn USL/LSL", path: "/specifications" },

@@ -90,6 +90,7 @@ import {
   spcRulesRouter,
   samplingRouter,
   dashboardRouter,
+  reportRouter,
 } from "./routers-extended";
 
 // Admin procedure - only admins can access
@@ -633,6 +634,31 @@ const spcRouter = router({
         analyzedBy: ctx.user.id,
       });
 
+      // Send SSE notification
+      try {
+        const { notifySpcAnalysisComplete, notifyCpkAlert } = await import("./sse");
+        notifySpcAnalysisComplete({
+          productCode: input.productCode,
+          stationName: input.stationName,
+          cpk: spcResult.cpk || 0,
+          mean: spcResult.mean,
+          alertTriggered: alertTriggered === 1,
+        });
+        
+        // Send CPK alert if triggered
+        if (alertTriggered === 1 && spcResult.cpk !== null) {
+          notifyCpkAlert({
+            productCode: input.productCode,
+            stationName: input.stationName,
+            cpk: spcResult.cpk,
+            threshold: alertConfig?.cpkWarningThreshold ? alertConfig.cpkWarningThreshold / 100 : 1.0,
+            severity: spcResult.cpk < 1.0 ? "critical" : "warning",
+          });
+        }
+      } catch (e) {
+        console.error("[SSE] Failed to send notification:", e);
+      }
+
       return {
         id: historyId,
         ...spcResult,
@@ -1096,6 +1122,7 @@ export const appRouter = router({
   spcRules: spcRulesRouter,
   sampling: samplingRouter,
   dashboard: dashboardRouter,
+  report: reportRouter,
   spcPlan: spcPlanRouter,
   userLine: userLineRouter,
   emailNotification: emailNotificationRouter,

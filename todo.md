@@ -237,3 +237,22 @@
 - [x] Tạo hàm getRecentAnalysisForPlan trong db.ts
 - [x] Tạo component RealtimePlanCard sử dụng dữ liệu thực từ spc_analysis_history
 - [x] Cập nhật Dashboard để hiển thị dữ liệu thực thay vì mock data
+
+## Phase 9.3 - Báo cáo tổng hợp và Realtime SSE
+
+### Báo cáo tổng hợp SPC theo ca/ngày
+- [x] Tạo trang báo cáo tổng hợp SPC (SpcReport.tsx)
+- [x] Thêm bộ lọc theo ca làm việc (sáng/chiều/tối)
+- [x] Thêm bộ lọc theo ngày/tuần/tháng (7/14/30/90 ngày)
+- [x] Biểu đồ trend CPK qua thời gian (Area Chart)
+- [x] Biểu đồ so sánh CPK giữa các ca (Bar Chart)
+- [x] Bảng thống kê tổng hợp (số lượng mẫu, CPK trung bình, vi phạm)
+- [ ] Xuất báo cáo PDF/Excel (placeholder)
+
+### Server-Sent Events (SSE) cho Realtime
+- [x] Tạo SSE endpoint trong server (/api/sse)
+- [x] Tạo hook useSSE để subscribe events
+- [x] Cập nhật Dashboard Realtime sử dụng SSE (RealtimePlanCard)
+- [x] Gửi event khi có phân tích SPC mới (spc_analysis_complete)
+- [x] Gửi event khi có cảnh báo CPK (cpk_alert)
+

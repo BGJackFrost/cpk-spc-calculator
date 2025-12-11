@@ -25,6 +25,7 @@ import WorkstationManagement from "./pages/WorkstationManagement";
 import MachineManagement from "./pages/MachineManagement";
 import ProcessManagement from "./pages/ProcessManagement";
 import AuditLogs from "./pages/AuditLogs";
+import SpcReport from "./pages/SpcReport";
 
 function Router() {
   return (
@@ -50,6 +51,7 @@ function Router() {
       <Route path="/machines" component={MachineManagement} />
       <Route path="/processes" component={ProcessManagement} />
       <Route path="/audit-logs" component={AuditLogs} />
+      <Route path="/spc-report" component={SpcReport} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

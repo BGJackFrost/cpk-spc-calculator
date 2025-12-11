@@ -35,6 +35,15 @@ async function startServer() {
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
+  
+  // SSE endpoint for realtime updates
+  app.get("/api/sse", (req, res) => {
+    const { addSseClient, startHeartbeat } = require("../sse");
+    const clientId = `client_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    addSseClient(clientId, res);
+    startHeartbeat(30000); // 30 second heartbeat
+  });
+  
   // tRPC API
   app.use(
     "/api/trpc",

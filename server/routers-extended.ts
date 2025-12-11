@@ -439,3 +439,86 @@ export const dashboardRouter = router({
       };
     }),
 });
+
+// Report Router - Báo cáo tổng hợp SPC
+export const reportRouter = router({
+  // Lấy trend CPK theo ngày
+  getCpkTrend: protectedProcedure
+    .input(z.object({
+      days: z.number().min(1).max(365).default(30),
+    }))
+    .query(async ({ input }) => {
+      const { getCpkTrendByDay } = await import("./db");
+      return await getCpkTrendByDay(input.days);
+    }),
+
+  // Lấy báo cáo SPC theo khoảng thời gian
+  getSpcReport: protectedProcedure
+    .input(z.object({
+      startDate: z.date(),
+      endDate: z.date(),
+      productionLineId: z.number().optional(),
+    }))
+    .query(async ({ input }) => {
+      const { getSpcAnalysisReport } = await import("./db");
+      const data = await getSpcAnalysisReport(input.startDate, input.endDate, input.productionLineId);
+      
+      // Tính toán thống kê tổng hợp
+      const totalSamples = data.length;
+      const cpkValues = data.filter(d => d.cpk).map(d => (d.cpk || 0) / 1000);
+      const avgCpk = cpkValues.length > 0 ? cpkValues.reduce((a, b) => a + b, 0) / cpkValues.length : 0;
+      const minCpk = cpkValues.length > 0 ? Math.min(...cpkValues) : 0;
+      const maxCpk = cpkValues.length > 0 ? Math.max(...cpkValues) : 0;
+      const violationCount = cpkValues.filter(c => c < 1.0).length;
+      const warningCount = cpkValues.filter(c => c >= 1.0 && c < 1.33).length;
+      const goodCount = cpkValues.filter(c => c >= 1.33).length;
+      
+      // Group by ca làm việc (sáng: 6-14, chiều: 14-22, tối: 22-6)
+      const byShift: Record<string, number[]> = { morning: [], afternoon: [], night: [] };
+      for (const d of data) {
+        const hour = new Date(d.createdAt).getHours();
+        const cpk = d.cpk ? d.cpk / 1000 : null;
+        if (cpk !== null) {
+          if (hour >= 6 && hour < 14) byShift.morning.push(cpk);
+          else if (hour >= 14 && hour < 22) byShift.afternoon.push(cpk);
+          else byShift.night.push(cpk);
+        }
+      }
+      
+      const shiftStats = {
+        morning: {
+          count: byShift.morning.length,
+          avgCpk: byShift.morning.length > 0 ? byShift.morning.reduce((a, b) => a + b, 0) / byShift.morning.length : 0,
+        },
+        afternoon: {
+          count: byShift.afternoon.length,
+          avgCpk: byShift.afternoon.length > 0 ? byShift.afternoon.reduce((a, b) => a + b, 0) / byShift.afternoon.length : 0,
+        },
+        night: {
+          count: byShift.night.length,
+          avgCpk: byShift.night.length > 0 ? byShift.night.reduce((a, b) => a + b, 0) / byShift.night.length : 0,
+        },
+      };
+      
+      return {
+        summary: {
+          totalSamples,
+          avgCpk,
+          minCpk,
+          maxCpk,
+          violationCount,
+          warningCount,
+          goodCount,
+        },
+        shiftStats,
+        data: data.map(d => ({
+          ...d,
+          cpk: d.cpk ? d.cpk / 1000 : null,
+          mean: d.mean ? d.mean / 1000 : null,
+          stdDev: d.stdDev ? d.stdDev / 1000 : null,
+          ucl: d.ucl ? d.ucl / 1000 : null,
+          lcl: d.lcl ? d.lcl / 1000 : null,
+        })),
+      };
+    }),
+});

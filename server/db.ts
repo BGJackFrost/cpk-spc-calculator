@@ -1,4 +1,4 @@
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql, gte, lte, asc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import mysql from "mysql2/promise";
 import { 
@@ -273,6 +273,59 @@ export async function getSpcAnalysisHistoryByMapping(mappingId: number, limit = 
     .where(eq(spcAnalysisHistory.mappingId, mappingId))
     .orderBy(desc(spcAnalysisHistory.createdAt))
     .limit(limit);
+}
+
+// Lấy báo cáo SPC theo khoảng thời gian
+export async function getSpcAnalysisReport(startDate: Date, endDate: Date, productionLineId?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  let query = db.select().from(spcAnalysisHistory)
+    .where(
+      and(
+        gte(spcAnalysisHistory.createdAt, startDate),
+        lte(spcAnalysisHistory.createdAt, endDate)
+      )
+    )
+    .orderBy(asc(spcAnalysisHistory.createdAt));
+  
+  return await query;
+}
+
+// Lấy thống kê CPK theo ngày
+export async function getCpkTrendByDay(days: number = 30) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
+  
+  const results = await db.select().from(spcAnalysisHistory)
+    .where(gte(spcAnalysisHistory.createdAt, startDate))
+    .orderBy(asc(spcAnalysisHistory.createdAt));
+  
+  // Group by date
+  const grouped: Record<string, { date: string; cpkSum: number; count: number; cpkValues: number[] }> = {};
+  
+  for (const row of results) {
+    const dateKey = new Date(row.createdAt).toISOString().split('T')[0];
+    if (!grouped[dateKey]) {
+      grouped[dateKey] = { date: dateKey, cpkSum: 0, count: 0, cpkValues: [] };
+    }
+    if (row.cpk) {
+      grouped[dateKey].cpkSum += row.cpk / 1000;
+      grouped[dateKey].count++;
+      grouped[dateKey].cpkValues.push(row.cpk / 1000);
+    }
+  }
+  
+  return Object.values(grouped).map(g => ({
+    date: g.date,
+    avgCpk: g.count > 0 ? g.cpkSum / g.count : 0,
+    minCpk: g.cpkValues.length > 0 ? Math.min(...g.cpkValues) : 0,
+    maxCpk: g.cpkValues.length > 0 ? Math.max(...g.cpkValues) : 0,
+    sampleCount: g.count,
+  }));
 }
 
 export async function getRecentAnalysisForPlan(planId: number, limit = 20) {

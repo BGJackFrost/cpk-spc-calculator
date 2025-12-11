@@ -1,6 +1,9 @@
+import { useEffect, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
+import { useSSE } from "@/hooks/useSSE";
+import { Wifi, WifiOff } from "lucide-react";
 import { 
   AlertTriangle, 
   CheckCircle2, 
@@ -42,10 +45,22 @@ interface RealtimePlanCardProps {
 
 export default function RealtimePlanCard({ plan, lineName, samplingName }: RealtimePlanCardProps) {
   // Fetch realtime data for this plan
-  const { data: realtimeData, isLoading } = trpc.dashboard.getRealtimeData.useQuery(
+  const { data: realtimeData, isLoading, refetch } = trpc.dashboard.getRealtimeData.useQuery(
     { planId: plan.id },
-    { refetchInterval: 30000 } // Refetch every 30 seconds
+    { refetchInterval: false } // Disable polling, use SSE instead
   );
+
+  // SSE for realtime updates
+  const handleSpcAnalysisComplete = useCallback((data: any) => {
+    // Refetch data when new analysis is complete for this plan
+    if (data.planId === plan.id || data.mappingId === plan.mappingId) {
+      refetch();
+    }
+  }, [plan.id, plan.mappingId, refetch]);
+
+  const { isConnected } = useSSE({
+    onSpcAnalysisComplete: handleSpcAnalysisComplete,
+  });
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -97,6 +112,14 @@ export default function RealtimePlanCard({ plan, lineName, samplingName }: Realt
           <div className="flex items-center gap-2">
             <Calendar className="h-5 w-5 text-primary" />
             <CardTitle className="text-lg">{plan.name}</CardTitle>
+            {/* SSE Connection Indicator */}
+            <span title={isConnected ? "Realtime connected" : "Realtime disconnected"}>
+              {isConnected ? (
+                <Wifi className="h-3 w-3 text-green-500" />
+              ) : (
+                <WifiOff className="h-3 w-3 text-red-500" />
+              )}
+            </span>
           </div>
           {realtimeData?.hasData && getStatusIcon(status)}
         </div>
