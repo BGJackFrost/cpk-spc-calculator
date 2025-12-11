@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, LogOut, PanelLeft, TrendingUp, History, FileSpreadsheet, Settings } from "lucide-react";
+import { LayoutDashboard, LogOut, PanelLeft, TrendingUp, History, FileSpreadsheet, Settings, Activity } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
@@ -29,6 +29,7 @@ import { Button } from "./ui/button";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
+  { icon: TrendingUp, label: "Dây chuyền Realtime", path: "/production-lines" },
   { icon: TrendingUp, label: "Phân tích SPC/CPK", path: "/analyze" },
   { icon: History, label: "Lịch sử", path: "/history" },
   { icon: FileSpreadsheet, label: "Quản lý Mapping", path: "/mappings" },

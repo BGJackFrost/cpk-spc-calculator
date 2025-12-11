@@ -34,6 +34,7 @@ import {
   Bar,
 } from "recharts";
 import { Streamdown } from "streamdown";
+import { AdvancedCharts } from "@/components/AdvancedCharts";
 
 const downloadFile = (content: string, filename: string, mimeType: string) => {
   const blob = new Blob([content], { type: mimeType });
@@ -489,6 +490,20 @@ export default function Analyze() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Advanced Charts - XBar, R, Histograms, Sample Table */}
+            <AdvancedCharts
+              xBarData={result.xBarData}
+              rangeData={result.rangeData}
+              rawData={result.rawData}
+              mean={result.mean}
+              ucl={result.ucl}
+              lcl={result.lcl}
+              uclR={result.uclR}
+              lclR={result.lclR}
+              usl={result.usl}
+              lsl={result.lsl}
+            />
 
             {/* Actions */}
             <div className="flex gap-3">

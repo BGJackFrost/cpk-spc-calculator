@@ -10,12 +10,14 @@ import Analyze from "./pages/Analyze";
 import History from "./pages/History";
 import Mappings from "./pages/Mappings";
 import Settings from "./pages/Settings";
+import ProductionLinesDashboard from "./pages/ProductionLinesDashboard";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/dashboard" component={Dashboard} />
+      <Route path="/production-lines" component={ProductionLinesDashboard} />
       <Route path="/analyze" component={Analyze} />
       <Route path="/history" component={History} />
       <Route path="/mappings" component={Mappings} />

@@ -424,3 +424,470 @@ export function calculateSpc(
     rawData: data,
   };
 }
+
+
+// Import new schema types
+import {
+  productionLines,
+  workstations,
+  machines,
+  spcRulesConfig,
+  samplingConfigs,
+  dashboardConfigs,
+  dashboardLineSelections,
+  spcRuleViolations,
+  InsertProductionLine,
+  InsertWorkstation,
+  InsertMachine,
+  InsertSpcRulesConfig,
+  InsertSamplingConfig,
+  InsertDashboardConfig,
+  InsertDashboardLineSelection,
+  InsertSpcRuleViolation,
+} from "../drizzle/schema";
+
+// Production Line operations
+export async function createProductionLine(data: InsertProductionLine) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const result = await db.insert(productionLines).values(data);
+  return result[0].insertId;
+}
+
+export async function getProductionLines() {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return await db.select().from(productionLines).where(eq(productionLines.isActive, 1));
+}
+
+export async function getProductionLineById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  
+  const result = await db.select().from(productionLines).where(eq(productionLines.id, id)).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function updateProductionLine(id: number, data: Partial<InsertProductionLine>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  await db.update(productionLines).set(data).where(eq(productionLines.id, id));
+}
+
+export async function deleteProductionLine(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  await db.update(productionLines).set({ isActive: 0 }).where(eq(productionLines.id, id));
+}
+
+// Workstation operations
+export async function createWorkstation(data: InsertWorkstation) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const result = await db.insert(workstations).values(data);
+  return result[0].insertId;
+}
+
+export async function getWorkstationsByLine(productionLineId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return await db.select().from(workstations)
+    .where(and(eq(workstations.productionLineId, productionLineId), eq(workstations.isActive, 1)))
+    .orderBy(workstations.sequenceOrder);
+}
+
+export async function updateWorkstation(id: number, data: Partial<InsertWorkstation>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  await db.update(workstations).set(data).where(eq(workstations.id, id));
+}
+
+export async function deleteWorkstation(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  await db.update(workstations).set({ isActive: 0 }).where(eq(workstations.id, id));
+}
+
+// Machine operations
+export async function createMachine(data: InsertMachine) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const result = await db.insert(machines).values(data);
+  return result[0].insertId;
+}
+
+export async function getMachinesByWorkstation(workstationId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return await db.select().from(machines)
+    .where(and(eq(machines.workstationId, workstationId), eq(machines.isActive, 1)));
+}
+
+export async function updateMachine(id: number, data: Partial<InsertMachine>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  await db.update(machines).set(data).where(eq(machines.id, id));
+}
+
+export async function deleteMachine(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  await db.update(machines).set({ isActive: 0 }).where(eq(machines.id, id));
+}
+
+// SPC Rules Config operations
+export async function getSpcRulesConfig(mappingId?: number) {
+  const db = await getDb();
+  if (!db) return null;
+  
+  const query = mappingId 
+    ? and(eq(spcRulesConfig.mappingId, mappingId), eq(spcRulesConfig.isActive, 1))
+    : eq(spcRulesConfig.isActive, 1);
+  
+  const result = await db.select().from(spcRulesConfig).where(query).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function upsertSpcRulesConfig(data: Partial<InsertSpcRulesConfig>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const existing = await getSpcRulesConfig(data.mappingId ?? undefined);
+  if (existing) {
+    await db.update(spcRulesConfig).set(data).where(eq(spcRulesConfig.id, existing.id));
+    return existing.id;
+  } else {
+    const result = await db.insert(spcRulesConfig).values(data as InsertSpcRulesConfig);
+    return result[0].insertId;
+  }
+}
+
+// Sampling Config operations
+export async function getSamplingConfigs() {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return await db.select().from(samplingConfigs).where(eq(samplingConfigs.isActive, 1));
+}
+
+export async function getSamplingConfigById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  
+  const result = await db.select().from(samplingConfigs).where(eq(samplingConfigs.id, id)).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function createSamplingConfig(data: InsertSamplingConfig) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const result = await db.insert(samplingConfigs).values(data);
+  return result[0].insertId;
+}
+
+export async function updateSamplingConfig(id: number, data: Partial<InsertSamplingConfig>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  await db.update(samplingConfigs).set(data).where(eq(samplingConfigs.id, id));
+}
+
+export async function deleteSamplingConfig(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  await db.update(samplingConfigs).set({ isActive: 0 }).where(eq(samplingConfigs.id, id));
+}
+
+// Dashboard Config operations
+export async function getDashboardConfig(userId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  
+  const result = await db.select().from(dashboardConfigs)
+    .where(eq(dashboardConfigs.userId, userId))
+    .limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function upsertDashboardConfig(data: InsertDashboardConfig) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const existing = await getDashboardConfig(data.userId);
+  if (existing) {
+    await db.update(dashboardConfigs).set(data).where(eq(dashboardConfigs.id, existing.id));
+    return existing.id;
+  } else {
+    const result = await db.insert(dashboardConfigs).values(data);
+    return result[0].insertId;
+  }
+}
+
+// Dashboard Line Selection operations
+export async function getDashboardLineSelections(dashboardConfigId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return await db.select().from(dashboardLineSelections)
+    .where(eq(dashboardLineSelections.dashboardConfigId, dashboardConfigId))
+    .orderBy(dashboardLineSelections.displayOrder);
+}
+
+export async function setDashboardLineSelections(dashboardConfigId: number, selections: InsertDashboardLineSelection[]) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  // Delete existing selections
+  await db.delete(dashboardLineSelections).where(eq(dashboardLineSelections.dashboardConfigId, dashboardConfigId));
+  
+  // Insert new selections
+  if (selections.length > 0) {
+    await db.insert(dashboardLineSelections).values(selections);
+  }
+}
+
+// SPC Rule Violations operations
+export async function createSpcRuleViolation(data: InsertSpcRuleViolation) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const result = await db.insert(spcRuleViolations).values(data);
+  return result[0].insertId;
+}
+
+export async function getSpcRuleViolations(analysisId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return await db.select().from(spcRuleViolations)
+    .where(eq(spcRuleViolations.analysisId, analysisId));
+}
+
+// 8 SPC Rules (Western Electric Rules) checker
+export interface SpcRuleViolationResult {
+  ruleNumber: number;
+  ruleName: string;
+  violated: boolean;
+  violationPoints: number[];
+  description: string;
+}
+
+export function checkSpcRules(
+  xBarData: { index: number; value: number }[],
+  mean: number,
+  ucl: number,
+  lcl: number,
+  rulesConfig?: {
+    rule1Enabled?: number;
+    rule2Enabled?: number;
+    rule3Enabled?: number;
+    rule4Enabled?: number;
+    rule5Enabled?: number;
+    rule6Enabled?: number;
+    rule7Enabled?: number;
+    rule8Enabled?: number;
+  }
+): SpcRuleViolationResult[] {
+  const results: SpcRuleViolationResult[] = [];
+  const sigma = (ucl - mean) / 3;
+  const sigma1Upper = mean + sigma;
+  const sigma1Lower = mean - sigma;
+  const sigma2Upper = mean + 2 * sigma;
+  const sigma2Lower = mean - 2 * sigma;
+
+  // Rule 1: One point beyond 3σ
+  if (rulesConfig?.rule1Enabled !== 0) {
+    const violations = xBarData.filter(d => d.value > ucl || d.value < lcl).map(d => d.index);
+    results.push({
+      ruleNumber: 1,
+      ruleName: "Beyond 3σ",
+      violated: violations.length > 0,
+      violationPoints: violations,
+      description: "One or more points beyond 3σ control limits",
+    });
+  }
+
+  // Rule 2: 9 points in a row on same side of center line
+  if (rulesConfig?.rule2Enabled !== 0) {
+    const violations: number[] = [];
+    for (let i = 8; i < xBarData.length; i++) {
+      const window = xBarData.slice(i - 8, i + 1);
+      const allAbove = window.every(d => d.value > mean);
+      const allBelow = window.every(d => d.value < mean);
+      if (allAbove || allBelow) {
+        violations.push(xBarData[i].index);
+      }
+    }
+    results.push({
+      ruleNumber: 2,
+      ruleName: "9 Same Side",
+      violated: violations.length > 0,
+      violationPoints: violations,
+      description: "9 points in a row on same side of center line",
+    });
+  }
+
+  // Rule 3: 6 points in a row trending up or down
+  if (rulesConfig?.rule3Enabled !== 0) {
+    const violations: number[] = [];
+    for (let i = 5; i < xBarData.length; i++) {
+      const window = xBarData.slice(i - 5, i + 1);
+      let increasing = true;
+      let decreasing = true;
+      for (let j = 1; j < window.length; j++) {
+        if (window[j].value <= window[j - 1].value) increasing = false;
+        if (window[j].value >= window[j - 1].value) decreasing = false;
+      }
+      if (increasing || decreasing) {
+        violations.push(xBarData[i].index);
+      }
+    }
+    results.push({
+      ruleNumber: 3,
+      ruleName: "6 Trending",
+      violated: violations.length > 0,
+      violationPoints: violations,
+      description: "6 points in a row trending up or down",
+    });
+  }
+
+  // Rule 4: 14 points alternating up and down
+  if (rulesConfig?.rule4Enabled !== 0) {
+    const violations: number[] = [];
+    for (let i = 13; i < xBarData.length; i++) {
+      const window = xBarData.slice(i - 13, i + 1);
+      let alternating = true;
+      for (let j = 1; j < window.length - 1; j++) {
+        const prev = window[j - 1].value;
+        const curr = window[j].value;
+        const next = window[j + 1].value;
+        if (!((curr > prev && curr > next) || (curr < prev && curr < next))) {
+          alternating = false;
+          break;
+        }
+      }
+      if (alternating) {
+        violations.push(xBarData[i].index);
+      }
+    }
+    results.push({
+      ruleNumber: 4,
+      ruleName: "14 Alternating",
+      violated: violations.length > 0,
+      violationPoints: violations,
+      description: "14 points alternating up and down",
+    });
+  }
+
+  // Rule 5: 2 of 3 points beyond 2σ
+  if (rulesConfig?.rule5Enabled !== 0) {
+    const violations: number[] = [];
+    for (let i = 2; i < xBarData.length; i++) {
+      const window = xBarData.slice(i - 2, i + 1);
+      const beyond2Sigma = window.filter(d => d.value > sigma2Upper || d.value < sigma2Lower);
+      if (beyond2Sigma.length >= 2) {
+        violations.push(xBarData[i].index);
+      }
+    }
+    results.push({
+      ruleNumber: 5,
+      ruleName: "2 of 3 Beyond 2σ",
+      violated: violations.length > 0,
+      violationPoints: violations,
+      description: "2 of 3 consecutive points beyond 2σ",
+    });
+  }
+
+  // Rule 6: 4 of 5 points beyond 1σ
+  if (rulesConfig?.rule6Enabled !== 0) {
+    const violations: number[] = [];
+    for (let i = 4; i < xBarData.length; i++) {
+      const window = xBarData.slice(i - 4, i + 1);
+      const beyond1Sigma = window.filter(d => d.value > sigma1Upper || d.value < sigma1Lower);
+      if (beyond1Sigma.length >= 4) {
+        violations.push(xBarData[i].index);
+      }
+    }
+    results.push({
+      ruleNumber: 6,
+      ruleName: "4 of 5 Beyond 1σ",
+      violated: violations.length > 0,
+      violationPoints: violations,
+      description: "4 of 5 consecutive points beyond 1σ",
+    });
+  }
+
+  // Rule 7: 15 points within 1σ (stratification)
+  if (rulesConfig?.rule7Enabled !== 0) {
+    const violations: number[] = [];
+    for (let i = 14; i < xBarData.length; i++) {
+      const window = xBarData.slice(i - 14, i + 1);
+      const within1Sigma = window.every(d => d.value >= sigma1Lower && d.value <= sigma1Upper);
+      if (within1Sigma) {
+        violations.push(xBarData[i].index);
+      }
+    }
+    results.push({
+      ruleNumber: 7,
+      ruleName: "15 Within 1σ",
+      violated: violations.length > 0,
+      violationPoints: violations,
+      description: "15 points in a row within 1σ (stratification)",
+    });
+  }
+
+  // Rule 8: 8 points beyond 1σ on both sides
+  if (rulesConfig?.rule8Enabled !== 0) {
+    const violations: number[] = [];
+    for (let i = 7; i < xBarData.length; i++) {
+      const window = xBarData.slice(i - 7, i + 1);
+      const beyond1Sigma = window.every(d => d.value > sigma1Upper || d.value < sigma1Lower);
+      if (beyond1Sigma) {
+        violations.push(xBarData[i].index);
+      }
+    }
+    results.push({
+      ruleNumber: 8,
+      ruleName: "8 Beyond 1σ",
+      violated: violations.length > 0,
+      violationPoints: violations,
+      description: "8 points in a row beyond 1σ on both sides",
+    });
+  }
+
+  return results;
+}
+
+// CPK Status evaluation
+export function evaluateCpkStatus(cpk: number | null, config?: { cpkExcellent?: number; cpkGood?: number; cpkAcceptable?: number }) {
+  if (cpk === null) return { status: "unknown", color: "gray", label: "N/A" };
+  
+  const excellent = (config?.cpkExcellent ?? 167) / 100;
+  const good = (config?.cpkGood ?? 133) / 100;
+  const acceptable = (config?.cpkAcceptable ?? 100) / 100;
+  
+  if (cpk >= excellent) return { status: "excellent", color: "green", label: "Xuất sắc" };
+  if (cpk >= good) return { status: "good", color: "blue", label: "Tốt" };
+  if (cpk >= acceptable) return { status: "acceptable", color: "yellow", label: "Chấp nhận" };
+  return { status: "poor", color: "red", label: "Kém" };
+}
+
+// CA (Capability Analysis) calculation
+export function calculateCa(mean: number, target: number, usl: number, lsl: number): number {
+  const tolerance = usl - lsl;
+  return Math.abs(mean - target) / (tolerance / 2) * 100;
+}

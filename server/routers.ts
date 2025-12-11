@@ -25,10 +25,45 @@ import {
   upsertAlertSettings,
   queryExternalDatabase,
   calculateSpc,
+  createProductionLine,
+  getProductionLines,
+  getProductionLineById,
+  updateProductionLine,
+  deleteProductionLine,
+  createWorkstation,
+  getWorkstationsByLine,
+  updateWorkstation,
+  deleteWorkstation,
+  createMachine,
+  getMachinesByWorkstation,
+  updateMachine,
+  deleteMachine,
+  getSpcRulesConfig,
+  upsertSpcRulesConfig,
+  getSamplingConfigs,
+  getSamplingConfigById,
+  createSamplingConfig,
+  updateSamplingConfig,
+  deleteSamplingConfig,
+  getDashboardConfig,
+  upsertDashboardConfig,
+  getDashboardLineSelections,
+  setDashboardLineSelections,
+  checkSpcRules,
+  evaluateCpkStatus,
+  calculateCa,
 } from "./db";
 import { invokeLLM } from "./_core/llm";
 import { notifyOwner } from "./_core/notification";
 import { generateCsvContent, generateHtmlReport, ExportData } from "./exportUtils";
+import {
+  productionLineRouter,
+  workstationRouter,
+  machineRouter,
+  spcRulesRouter,
+  samplingRouter,
+  dashboardRouter,
+} from "./routers-extended";
 
 // Admin procedure - only admins can access
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -491,6 +526,12 @@ export const appRouter = router({
   spc: spcRouter,
   alert: alertRouter,
   export: exportRouter,
+  productionLine: productionLineRouter,
+  workstation: workstationRouter,
+  machine: machineRouter,
+  spcRules: spcRulesRouter,
+  sampling: samplingRouter,
+  dashboard: dashboardRouter
 });
 
 export type AppRouter = typeof appRouter;
