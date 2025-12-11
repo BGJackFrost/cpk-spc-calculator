@@ -275,3 +275,84 @@ export const spcRuleViolations = mysqlTable("spc_rule_violations", {
 
 export type SpcRuleViolation = typeof spcRuleViolations.$inferSelect;
 export type InsertSpcRuleViolation = typeof spcRuleViolations.$inferInsert;
+
+
+/**
+ * Products - bảng sản phẩm
+ */
+export const products = mysqlTable("products", {
+  id: int("id").autoincrement().primaryKey(),
+  code: varchar("code", { length: 100 }).notNull().unique(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  category: varchar("category", { length: 100 }),
+  unit: varchar("unit", { length: 50 }).default("pcs"),
+  isActive: int("isActive").notNull().default(1),
+  createdBy: int("createdBy").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Product = typeof products.$inferSelect;
+export type InsertProduct = typeof products.$inferInsert;
+
+/**
+ * Product Specifications - tiêu chuẩn USL/LSL cho từng mã sản phẩm và công trạm
+ */
+export const productSpecifications = mysqlTable("product_specifications", {
+  id: int("id").autoincrement().primaryKey(),
+  productId: int("productId").notNull(),
+  workstationId: int("workstationId"),
+  parameterName: varchar("parameterName", { length: 255 }).notNull(),
+  usl: int("usl").notNull(), // Upper Specification Limit * 10000 (for precision)
+  lsl: int("lsl").notNull(), // Lower Specification Limit * 10000
+  target: int("target"), // Target value * 10000
+  unit: varchar("unit", { length: 50 }),
+  description: text("description"),
+  isActive: int("isActive").notNull().default(1),
+  createdBy: int("createdBy").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ProductSpecification = typeof productSpecifications.$inferSelect;
+export type InsertProductSpecification = typeof productSpecifications.$inferInsert;
+
+/**
+ * Production Line Products - cấu hình dây chuyền - sản phẩm
+ */
+export const productionLineProducts = mysqlTable("production_line_products", {
+  id: int("id").autoincrement().primaryKey(),
+  productionLineId: int("productionLineId").notNull(),
+  productId: int("productId").notNull(),
+  isDefault: int("isDefault").notNull().default(0),
+  cycleTime: int("cycleTime"), // in seconds
+  targetOutput: int("targetOutput"), // per hour
+  isActive: int("isActive").notNull().default(1),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ProductionLineProduct = typeof productionLineProducts.$inferSelect;
+export type InsertProductionLineProduct = typeof productionLineProducts.$inferInsert;
+
+/**
+ * Process Configurations - cấu hình quy trình sản xuất
+ */
+export const processConfigs = mysqlTable("process_configs", {
+  id: int("id").autoincrement().primaryKey(),
+  productionLineId: int("productionLineId").notNull(),
+  productId: int("productId").notNull(),
+  workstationId: int("workstationId").notNull(),
+  processName: varchar("processName", { length: 255 }).notNull(),
+  processOrder: int("processOrder").notNull().default(0),
+  standardTime: int("standardTime"), // in seconds
+  description: text("description"),
+  isActive: int("isActive").notNull().default(1),
+  createdBy: int("createdBy").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ProcessConfig = typeof processConfigs.$inferSelect;
+export type InsertProcessConfig = typeof processConfigs.$inferInsert;

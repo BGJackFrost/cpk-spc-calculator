@@ -11,7 +11,15 @@ import {
   InsertDatabaseConnection,
   InsertProductStationMapping,
   InsertSpcAnalysisHistory,
-  InsertAlertSetting
+  InsertAlertSetting,
+  products,
+  InsertProduct,
+  productSpecifications,
+  InsertProductSpecification,
+  processConfigs,
+  InsertProcessConfig,
+  productionLineProducts,
+  InsertProductionLineProduct
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -99,6 +107,20 @@ export async function getUserByOpenId(openId: string) {
   const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
 
   return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getAllUsers() {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return await db.select().from(users);
+}
+
+export async function updateUserRole(userId: number, role: "user" | "admin") {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  await db.update(users).set({ role }).where(eq(users.id, userId));
 }
 
 // Database Connection operations
@@ -890,4 +912,154 @@ export function evaluateCpkStatus(cpk: number | null, config?: { cpkExcellent?: 
 export function calculateCa(mean: number, target: number, usl: number, lsl: number): number {
   const tolerance = usl - lsl;
   return Math.abs(mean - target) / (tolerance / 2) * 100;
+}
+
+
+// Product operations
+export async function createProduct(data: InsertProduct) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const result = await db.insert(products).values(data);
+  return result[0].insertId;
+}
+
+export async function getProducts() {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return await db.select().from(products).where(eq(products.isActive, 1));
+}
+
+export async function getProductById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  
+  const result = await db.select().from(products).where(eq(products.id, id)).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function updateProduct(id: number, data: Partial<InsertProduct>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  await db.update(products).set(data).where(eq(products.id, id));
+}
+
+export async function deleteProduct(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  await db.update(products).set({ isActive: 0 }).where(eq(products.id, id));
+}
+
+// Product Specification operations
+export async function createProductSpecification(data: InsertProductSpecification) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const result = await db.insert(productSpecifications).values(data);
+  return result[0].insertId;
+}
+
+export async function getProductSpecifications(productId?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  if (productId) {
+    return await db.select().from(productSpecifications)
+      .where(and(eq(productSpecifications.productId, productId), eq(productSpecifications.isActive, 1)));
+  }
+  return await db.select().from(productSpecifications).where(eq(productSpecifications.isActive, 1));
+}
+
+export async function getProductSpecificationById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  
+  const result = await db.select().from(productSpecifications).where(eq(productSpecifications.id, id)).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function updateProductSpecification(id: number, data: Partial<InsertProductSpecification>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  await db.update(productSpecifications).set(data).where(eq(productSpecifications.id, id));
+}
+
+export async function deleteProductSpecification(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  await db.update(productSpecifications).set({ isActive: 0 }).where(eq(productSpecifications.id, id));
+}
+
+// Process Config operations
+export async function createProcessConfig(data: InsertProcessConfig) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const result = await db.insert(processConfigs).values(data);
+  return result[0].insertId;
+}
+
+export async function getProcessConfigs(productionLineId?: number, productId?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  let query = db.select().from(processConfigs).where(eq(processConfigs.isActive, 1));
+  if (productionLineId) {
+    query = db.select().from(processConfigs)
+      .where(and(eq(processConfigs.productionLineId, productionLineId), eq(processConfigs.isActive, 1)));
+  }
+  return await query;
+}
+
+export async function updateProcessConfig(id: number, data: Partial<InsertProcessConfig>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  await db.update(processConfigs).set(data).where(eq(processConfigs.id, id));
+}
+
+export async function deleteProcessConfig(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  await db.update(processConfigs).set({ isActive: 0 }).where(eq(processConfigs.id, id));
+}
+
+// Production Line Product operations
+export async function createProductionLineProduct(data: InsertProductionLineProduct) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const result = await db.insert(productionLineProducts).values(data);
+  return result[0].insertId;
+}
+
+export async function getProductionLineProducts(productionLineId?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  if (productionLineId) {
+    return await db.select().from(productionLineProducts)
+      .where(and(eq(productionLineProducts.productionLineId, productionLineId), eq(productionLineProducts.isActive, 1)));
+  }
+  return await db.select().from(productionLineProducts).where(eq(productionLineProducts.isActive, 1));
+}
+
+export async function updateProductionLineProduct(id: number, data: Partial<InsertProductionLineProduct>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  await db.update(productionLineProducts).set(data).where(eq(productionLineProducts.id, id));
+}
+
+export async function deleteProductionLineProduct(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  await db.update(productionLineProducts).set({ isActive: 0 }).where(eq(productionLineProducts.id, id));
 }

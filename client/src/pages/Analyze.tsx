@@ -34,7 +34,7 @@ import {
   Bar,
 } from "recharts";
 import { Streamdown } from "streamdown";
-import { AdvancedCharts } from "@/components/AdvancedCharts";
+import AdvancedCharts from "@/components/AdvancedCharts";
 
 const downloadFile = (content: string, filename: string, mimeType: string) => {
   const blob = new Blob([content], { type: mimeType });

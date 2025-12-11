@@ -11,6 +11,9 @@ import History from "./pages/History";
 import Mappings from "./pages/Mappings";
 import Settings from "./pages/Settings";
 import ProductionLinesDashboard from "./pages/ProductionLinesDashboard";
+import UserManagement from "./pages/UserManagement";
+import ProductManagement from "./pages/ProductManagement";
+import SpecificationManagement from "./pages/SpecificationManagement";
 
 function Router() {
   return (
@@ -22,6 +25,9 @@ function Router() {
       <Route path="/history" component={History} />
       <Route path="/mappings" component={Mappings} />
       <Route path="/settings" component={Settings} />
+      <Route path="/users" component={UserManagement} />
+      <Route path="/products" component={ProductManagement} />
+      <Route path="/specifications" component={SpecificationManagement} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

@@ -56,3 +56,30 @@
 - [x] Biểu đồ thu nhỏ (sparkline) cho mỗi dây chuyền
 - [x] Hiển thị chỉ số SPC cơ bản (CPK, Mean, UCL, LCL)
 - [x] Cập nhật realtime
+
+## Phase 3 - Authentication, CRUD và hiển thị NG
+
+### Authentication & Quản lý người dùng
+- [x] Trang đăng nhập với Manus OAuth (đã có sẵn)
+- [x] Trang quản lý người dùng (danh sách, phân quyền)
+- [x] Phân quyền admin/user cho các chức năng
+
+### Database mở rộng
+- [x] Bảng Product (sản phẩm)
+- [x] Bảng ProductSpecification (USL, LSL cho từng mã sản phẩm)
+- [x] Bảng ProductionLineProduct (cấu hình dây chuyền - sản phẩm)
+- [x] Bảng ProcessConfig (cấu hình quy trình)
+
+### Các trang CRUD
+- [x] Trang quản lý sản phẩm (CRUD)
+- [x] Trang quản lý dây chuyền sản xuất (CRUD)
+- [x] Trang quản lý công trạm (CRUD)
+- [x] Trang quản lý máy móc (CRUD)
+- [x] Trang quản lý tiêu chuẩn USL/LSL (CRUD)
+- [x] Trang quản lý cấu hình quy trình (CRUD)
+
+### Hiển thị điểm NG trên biểu đồ
+- [x] Điểm nằm ngoài USL/LSL hiển thị màu đỏ
+- [x] Điểm vi phạm 8 SPC Rules hiển thị màu đỏ
+- [x] Tooltip hiển thị lý do NG (vi phạm rule nào)
+- [x] Legend cho các loại điểm (OK, NG-USL/LSL, NG-SPC Rule)

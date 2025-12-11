@@ -10,6 +10,17 @@ import {
   getDatabaseConnectionById,
   updateDatabaseConnection,
   deleteDatabaseConnection,
+  getAllUsers,
+  updateUserRole,
+  createProduct,
+  getProducts,
+  getProductById,
+  updateProduct,
+  deleteProduct,
+  createProductSpecification,
+  getProductSpecifications,
+  updateProductSpecification,
+  deleteProductSpecification,
   createProductStationMapping,
   getProductStationMappings,
   getProductStationMappingById,
@@ -71,6 +82,119 @@ const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
     throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
   }
   return next({ ctx });
+});
+
+// User Router
+const userRouter = router({
+  list: adminProcedure.query(async () => {
+    return await getAllUsers();
+  }),
+
+  updateRole: adminProcedure
+    .input(z.object({
+      userId: z.number(),
+      role: z.enum(["user", "admin"]),
+    }))
+    .mutation(async ({ input }) => {
+      await updateUserRole(input.userId, input.role);
+      return { success: true };
+    }),
+});
+
+// Product Router
+const productRouter = router({
+  list: protectedProcedure.query(async () => {
+    return await getProducts();
+  }),
+
+  getById: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .query(async ({ input }) => {
+      return await getProductById(input.id);
+    }),
+
+  create: adminProcedure
+    .input(z.object({
+      code: z.string().min(1),
+      name: z.string().min(1),
+      description: z.string().optional(),
+      category: z.string().optional(),
+      unit: z.string().default("pcs"),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const id = await createProduct({ ...input, createdBy: ctx.user.id });
+      return { id };
+    }),
+
+  update: adminProcedure
+    .input(z.object({
+      id: z.number(),
+      code: z.string().min(1).optional(),
+      name: z.string().min(1).optional(),
+      description: z.string().optional(),
+      category: z.string().optional(),
+      unit: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const { id, ...data } = input;
+      await updateProduct(id, data);
+      return { success: true };
+    }),
+
+  delete: adminProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      await deleteProduct(input.id);
+      return { success: true };
+    }),
+});
+
+// Product Specification Router
+const productSpecRouter = router({
+  list: protectedProcedure
+    .input(z.object({ productId: z.number().optional() }).optional())
+    .query(async ({ input }) => {
+      return await getProductSpecifications(input?.productId);
+    }),
+
+  create: adminProcedure
+    .input(z.object({
+      productId: z.number(),
+      workstationId: z.number().optional(),
+      parameterName: z.string().min(1),
+      usl: z.number(),
+      lsl: z.number(),
+      target: z.number().optional(),
+      unit: z.string().optional(),
+      description: z.string().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const id = await createProductSpecification({ ...input, createdBy: ctx.user.id });
+      return { id };
+    }),
+
+  update: adminProcedure
+    .input(z.object({
+      id: z.number(),
+      parameterName: z.string().optional(),
+      usl: z.number().optional(),
+      lsl: z.number().optional(),
+      target: z.number().optional(),
+      unit: z.string().optional(),
+      description: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const { id, ...data } = input;
+      await updateProductSpecification(id, data);
+      return { success: true };
+    }),
+
+  delete: adminProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      await deleteProductSpecification(input.id);
+      return { success: true };
+    }),
 });
 
 // Database Connection Router
@@ -521,6 +645,9 @@ export const appRouter = router({
     }),
   }),
 
+  user: userRouter,
+  product: productRouter,
+  productSpec: productSpecRouter,
   databaseConnection: databaseConnectionRouter,
   mapping: mappingRouter,
   spc: spcRouter,
