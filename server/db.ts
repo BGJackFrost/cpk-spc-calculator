@@ -1,4 +1,4 @@
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import mysql from "mysql2/promise";
 import { 
@@ -27,7 +27,8 @@ import {
   permissions,
   InsertPermission,
   rolePermissions,
-  userPermissions
+  userPermissions,
+  auditLogs
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -1373,4 +1374,66 @@ export async function checkUserPermission(userId: number, userRole: string, perm
     .limit(1);
   
   return rolePerm.length > 0;
+}
+
+// Get all workstations
+export async function getAllWorkstations() {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(workstations).orderBy(workstations.productionLineId, workstations.sequenceOrder);
+}
+
+// Get all machines
+export async function getAllMachines() {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(machines).orderBy(machines.workstationId);
+}
+
+// ============ Audit Logs ============
+
+export async function getAuditLogs(params: {
+  page: number;
+  pageSize: number;
+  action?: string;
+  module?: string;
+  search?: string;
+}) {
+  const db = await getDb();
+  if (!db) return { logs: [], total: 0, totalPages: 0 };
+
+  const { page, pageSize, action, module, search } = params;
+  const offset = (page - 1) * pageSize;
+
+  let query = db.select().from(auditLogs).orderBy(desc(auditLogs.createdAt));
+
+  // Apply filters
+  const conditions = [];
+  if (action) {
+    conditions.push(eq(auditLogs.action, action as any));
+  }
+  if (module) {
+    conditions.push(eq(auditLogs.module, module));
+  }
+  if (search) {
+    conditions.push(
+      sql`(${auditLogs.description} LIKE ${`%${search}%`} OR ${auditLogs.userName} LIKE ${`%${search}%`})`
+    );
+  }
+
+  if (conditions.length > 0) {
+    query = query.where(and(...conditions)) as any;
+  }
+
+  const logs = await query.limit(pageSize).offset(offset);
+  
+  // Get total count
+  const countResult = await db.select({ count: sql<number>`count(*)` }).from(auditLogs);
+  const total = countResult[0]?.count || 0;
+
+  return {
+    logs,
+    total,
+    totalPages: Math.ceil(total / pageSize),
+  };
 }

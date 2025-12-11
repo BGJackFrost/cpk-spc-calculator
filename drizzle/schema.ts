@@ -594,3 +594,41 @@ export const smtpConfig = mysqlTable("smtp_config", {
 
 export type SmtpConfig = typeof smtpConfig.$inferSelect;
 export type InsertSmtpConfig = typeof smtpConfig.$inferInsert;
+
+/**
+ * Audit Logs - ghi lại các thao tác quan trọng trong hệ thống
+ */
+export const auditLogs = mysqlTable("audit_logs", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  userName: varchar("userName", { length: 255 }),
+  action: mysqlEnum("action", ["create", "update", "delete", "login", "logout", "export", "analyze"]).notNull(),
+  module: varchar("module", { length: 100 }).notNull(), // product, mapping, spc, etc.
+  tableName: varchar("tableName", { length: 100 }),
+  recordId: int("recordId"),
+  oldValue: text("oldValue"), // JSON string
+  newValue: text("newValue"), // JSON string
+  description: text("description"),
+  ipAddress: varchar("ipAddress", { length: 45 }),
+  userAgent: text("userAgent"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type AuditLog = typeof auditLogs.$inferSelect;
+export type InsertAuditLog = typeof auditLogs.$inferInsert;
+
+/**
+ * System Settings - cấu hình hệ thống
+ */
+export const systemSettings = mysqlTable("system_settings", {
+  id: int("id").autoincrement().primaryKey(),
+  key: varchar("key", { length: 100 }).notNull().unique(),
+  value: text("value"),
+  description: text("description"),
+  updatedBy: int("updatedBy"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type SystemSetting = typeof systemSettings.$inferSelect;
+export type InsertSystemSetting = typeof systemSettings.$inferInsert;

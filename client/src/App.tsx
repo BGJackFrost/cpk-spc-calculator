@@ -21,6 +21,10 @@ import EmailNotificationSettings from "./pages/EmailNotificationSettings";
 import RolePermissionManagement from "./pages/RolePermissionManagement";
 import SmtpSettings from "./pages/SmtpSettings";
 import SeedDataPage from "./pages/SeedDataPage";
+import WorkstationManagement from "./pages/WorkstationManagement";
+import MachineManagement from "./pages/MachineManagement";
+import ProcessManagement from "./pages/ProcessManagement";
+import AuditLogs from "./pages/AuditLogs";
 
 function Router() {
   return (
@@ -42,6 +46,10 @@ function Router() {
       <Route path="/permissions" component={RolePermissionManagement} />
       <Route path="/smtp-settings" component={SmtpSettings} />
       <Route path="/seed-data" component={SeedDataPage} />
+      <Route path="/workstations" component={WorkstationManagement} />
+      <Route path="/machines" component={MachineManagement} />
+      <Route path="/processes" component={ProcessManagement} />
+      <Route path="/audit-logs" component={AuditLogs} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

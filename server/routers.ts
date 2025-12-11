@@ -1026,6 +1026,54 @@ export const appRouter = router({
   emailNotification: emailNotificationRouter,
   permission: permissionRouter,
 
+  // Process Config router
+  processConfig: router({
+    list: protectedProcedure.query(async () => {
+      const { getProcessConfigs } = await import("./db");
+      return await getProcessConfigs();
+    }),
+    create: protectedProcedure
+      .input(z.object({
+        processName: z.string().min(1),
+        productionLineId: z.number(),
+        productId: z.number(),
+        workstationId: z.number(),
+        processOrder: z.number().optional(),
+        standardTime: z.number().optional(),
+        description: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        if (ctx.user?.role !== "admin") throw new Error("Admin access required");
+        const { createProcessConfig } = await import("./db");
+        const id = await createProcessConfig({ ...input, createdBy: ctx.user.id });
+        return { id };
+      }),
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        processName: z.string().optional(),
+        processOrder: z.number().optional(),
+        standardTime: z.number().optional(),
+        description: z.string().optional(),
+        isActive: z.number().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        if (ctx.user?.role !== "admin") throw new Error("Admin access required");
+        const { updateProcessConfig } = await import("./db");
+        const { id, ...data } = input;
+        await updateProcessConfig(id, data);
+        return { success: true };
+      }),
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        if (ctx.user?.role !== "admin") throw new Error("Admin access required");
+        const { deleteProcessConfig } = await import("./db");
+        await deleteProcessConfig(input.id);
+        return { success: true };
+      }),
+  }),
+
   // Seed data router
   seed: router({
     initPermissions: protectedProcedure.mutation(async () => {
@@ -1073,6 +1121,22 @@ export const appRouter = router({
           "[Test] SPC/CPK Calculator Email Test",
           "<h1>Test Email</h1><p>This is a test email from SPC/CPK Calculator.</p>"
         );
+      }),
+  }),
+
+  // Audit Logs router
+  audit: router({
+    list: protectedProcedure
+      .input(z.object({
+        page: z.number().default(1),
+        pageSize: z.number().default(20),
+        action: z.string().optional(),
+        module: z.string().optional(),
+        search: z.string().optional(),
+      }))
+      .query(async ({ input }) => {
+        const { getAuditLogs } = await import("./db");
+        return await getAuditLogs(input);
       }),
   }),
 });

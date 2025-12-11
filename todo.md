@@ -170,3 +170,21 @@
 - [x] Tự động khởi tạo permissions khi server khởi động
 - [x] Tự động gán quyền mặc định cho các vai trò
 - [x] Hiển thị trạng thái khởi tạo trên trang Phân quyền
+
+## Phase 8 - CRUD bổ sung và Cải tiến Chuyên nghiệp
+
+### Trang CRUD bổ sung
+- [x] Trang quản lý Công trạm (Workstation CRUD)
+- [x] Trang quản lý Lưu trình/Quy trình (Process CRUD)
+- [x] Trang quản lý Máy (Machine CRUD)
+
+### Tổng hợp và Cải tiến Hệ thống
+- [x] Đánh giá toàn bộ logic và flow của hệ thống (SYSTEM_OVERVIEW.md)
+- [x] Thêm hệ thống Audit Logs theo dõi hoạt động
+- [ ] Tối ưu hóa UX/UI cho các trang chính
+- [ ] Thêm validation và error handling chuyên nghiệp
+- [ ] Cải tiến Dashboard với thống kê chi tiết hơn
+- [ ] Thêm chức năng tìm kiếm và lọc nâng cao
+- [ ] Cải tiến biểu đồ SPC với annotations và markers
+- [ ] Thêm báo cáo tổng hợp theo ca/ngày/tuần/tháng
+- [ ] Cải tiến hệ thống thông báo realtime

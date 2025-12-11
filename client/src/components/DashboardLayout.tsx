@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, LogOut, PanelLeft, TrendingUp, History, FileSpreadsheet, Settings, Activity, Users, Package, Ruler, Factory, Clock, Calendar, Mail, Shield, Server, Database } from "lucide-react";
+import { LayoutDashboard, LogOut, PanelLeft, TrendingUp, History, FileSpreadsheet, Settings, Activity, Users, Package, Ruler, Factory, Clock, Calendar, Mail, Shield, Server, Database, Wrench, Cog, GitBranch, FileText } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
@@ -36,6 +36,9 @@ const menuItems = [
   { icon: Package, label: "Quản lý Sản phẩm", path: "/products" },
   { icon: Ruler, label: "Tiêu chuẩn USL/LSL", path: "/specifications" },
   { icon: Factory, label: "Quản lý Dây chuyền", path: "/production-line-management" },
+  { icon: Wrench, label: "Quản lý Công trạm", path: "/workstations" },
+  { icon: Cog, label: "Quản lý Máy", path: "/machines" },
+  { icon: GitBranch, label: "Quản lý Quy trình", path: "/processes" },
   { icon: Clock, label: "Phương pháp Lấy mẫu", path: "/sampling-methods" },
   { icon: Calendar, label: "Kế hoạch SPC", path: "/spc-plans" },
   { icon: Mail, label: "Thông báo Email", path: "/email-notifications" },
@@ -43,6 +46,7 @@ const menuItems = [
   { icon: Shield, label: "Phân quyền", path: "/permissions" },
   { icon: Server, label: "Cấu hình SMTP", path: "/smtp-settings" },
   { icon: Database, label: "Khởi tạo Dữ liệu", path: "/seed-data" },
+  { icon: FileText, label: "Nhật ký Hoạt động", path: "/audit-logs" },
   { icon: Settings, label: "Cài đặt", path: "/settings" },
 ];
 

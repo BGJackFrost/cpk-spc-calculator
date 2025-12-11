@@ -87,6 +87,11 @@ export const productionLineRouter = router({
 
 // Workstation Router
 export const workstationRouter = router({
+  listAll: protectedProcedure.query(async () => {
+    const { getAllWorkstations } = await import("./db");
+    return await getAllWorkstations();
+  }),
+
   listByLine: protectedProcedure
     .input(z.object({ productionLineId: z.number() }))
     .query(async ({ input }) => {
@@ -141,6 +146,11 @@ export const workstationRouter = router({
 
 // Machine Router
 export const machineRouter = router({
+  listAll: protectedProcedure.query(async () => {
+    const { getAllMachines } = await import("./db");
+    return await getAllMachines();
+  }),
+
   listByWorkstation: protectedProcedure
     .input(z.object({ workstationId: z.number() }))
     .query(async ({ input }) => {
