@@ -37,6 +37,7 @@ interface SpcPlan {
   workstationId?: number | null;
   samplingConfigId: number;
   specificationId?: number | null;
+  mappingId?: number | null;
   status: "draft" | "active" | "paused" | "completed";
   isRecurring: number;
   notifyOnViolation: number;
@@ -73,6 +74,7 @@ export default function SpcPlanManagement() {
     workstationId: 0,
     samplingConfigId: 0,
     specificationId: 0,
+    mappingId: 0,
     isRecurring: true,
     notifyOnViolation: true,
     notifyEmail: "",
@@ -84,6 +86,7 @@ export default function SpcPlanManagement() {
   const { data: products } = trpc.product.list.useQuery();
   const { data: samplingConfigs } = trpc.sampling.list.useQuery();
   const { data: specifications } = trpc.productSpec.list.useQuery();
+  const { data: mappings } = trpc.mapping.list.useQuery();
 
   // Mutations
   const createMutation = trpc.spcPlan.create.useMutation({
@@ -131,6 +134,7 @@ export default function SpcPlanManagement() {
       workstationId: 0,
       samplingConfigId: 0,
       specificationId: 0,
+      mappingId: 0,
       isRecurring: true,
       notifyOnViolation: true,
       notifyEmail: "",
@@ -147,6 +151,7 @@ export default function SpcPlanManagement() {
       productId: formData.productId || undefined,
       workstationId: formData.workstationId || undefined,
       specificationId: formData.specificationId || undefined,
+      mappingId: formData.mappingId || undefined,
     });
   };
 
@@ -158,6 +163,7 @@ export default function SpcPlanManagement() {
       productId: formData.productId || undefined,
       workstationId: formData.workstationId || undefined,
       specificationId: formData.specificationId || undefined,
+      mappingId: formData.mappingId || undefined,
     });
   };
 
@@ -181,6 +187,7 @@ export default function SpcPlanManagement() {
       workstationId: plan.workstationId || 0,
       samplingConfigId: plan.samplingConfigId,
       specificationId: plan.specificationId || 0,
+      mappingId: plan.mappingId || 0,
       isRecurring: plan.isRecurring === 1,
       notifyOnViolation: plan.notifyOnViolation === 1,
       notifyEmail: plan.notifyEmail || "",
@@ -309,6 +316,26 @@ export default function SpcPlanManagement() {
                       </SelectContent>
                     </Select>
                   </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Cấu hình Mapping (nguồn dữ liệu)</Label>
+                  <Select 
+                    value={formData.mappingId.toString()} 
+                    onValueChange={(v) => setFormData({ ...formData, mappingId: parseInt(v) })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Chọn mapping dữ liệu" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="0">-- Không chọn --</SelectItem>
+                      {mappings?.map((m: any) => (
+                        <SelectItem key={m.id} value={m.id.toString()}>
+                          {m.productCode} - {m.stationName} ({m.tableName})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">Chọn mapping để lấy dữ liệu từ database ngoài</p>
                 </div>
                 <div className="space-y-2">
                   <Label>Mô tả</Label>

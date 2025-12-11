@@ -108,3 +108,26 @@
 - [x] Gửi email khi vi phạm SPC Rules
 - [x] Gửi email khi vi phạm CA Rules
 - [x] Gửi email khi vi phạm CPK Rules (CPK < ngưỡng)
+
+## Phase 5 - Tích hợp Mapping vào SPC Plan và Cải tiến Chuyên gia
+
+### Tích hợp Mapping vào Kế hoạch SPC
+- [x] Thêm trường mappingId vào bảng SpcSamplingPlan
+- [x] Cập nhật trang Kế hoạch SPC để chọn mapping
+- [x] Tạo service lấy dữ liệu từ external database theo mapping
+- [x] Tự động cập nhật dữ liệu SPC/CPK realtime trên dashboard
+- [x] Lưu kết quả tính toán SPC vào database
+
+### Rà soát và Cải tiến Logic Code
+- [x] Rà soát thuật toán tính toán SPC/CPK
+- [x] Rà soát cấu trúc database và quan hệ dữ liệu
+- [x] Rà soát logic phát hiện vi phạm 8 SPC Rules
+- [x] Rà soát hiệu suất truy vấn database
+- [x] Đánh giá khả năng mở rộng hệ thống
+
+### Cải tiến Chuyên gia SPC
+- [x] Thêm tính toán Pp, Ppk (Process Performance)
+- [x] Thêm tính toán Ca (Capability Accuracy)
+- [x] Cải tiến thuật toán phát hiện trend và shift
+- [x] Thêm báo cáo SPC tổng hợp theo ca/ngày/tuần
+- [x] Tối ưu hóa hiệu suất cho dữ liệu lớn

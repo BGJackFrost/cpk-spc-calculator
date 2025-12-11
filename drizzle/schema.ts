@@ -370,6 +370,8 @@ export const spcSamplingPlans = mysqlTable("spc_sampling_plans", {
   workstationId: int("workstationId"),
   samplingConfigId: int("samplingConfigId").notNull(),
   specificationId: int("specificationId"),
+  // Mapping to external database
+  mappingId: int("mappingId"),
   // Schedule
   startTime: timestamp("startTime"),
   endTime: timestamp("endTime"),
@@ -447,3 +449,87 @@ export const emailNotificationSettings = mysqlTable("email_notification_settings
 
 export type EmailNotificationSetting = typeof emailNotificationSettings.$inferSelect;
 export type InsertEmailNotificationSetting = typeof emailNotificationSettings.$inferInsert;
+
+
+/**
+ * SPC Realtime Data - dữ liệu SPC realtime cho dashboard
+ */
+export const spcRealtimeData = mysqlTable("spc_realtime_data", {
+  id: int("id").autoincrement().primaryKey(),
+  planId: int("planId").notNull(),
+  productionLineId: int("productionLineId").notNull(),
+  mappingId: int("mappingId"),
+  // Sample data
+  sampleIndex: int("sampleIndex").notNull(),
+  sampleValue: int("sampleValue").notNull(), // * 10000
+  subgroupIndex: int("subgroupIndex").notNull(),
+  subgroupMean: int("subgroupMean"), // * 10000
+  subgroupRange: int("subgroupRange"), // * 10000
+  // Control limits at time of sampling
+  ucl: int("ucl"), // * 10000
+  lcl: int("lcl"), // * 10000
+  usl: int("usl"), // * 10000
+  lsl: int("lsl"), // * 10000
+  centerLine: int("centerLine"), // * 10000
+  // Violation status
+  isOutOfSpec: int("isOutOfSpec").notNull().default(0), // Outside USL/LSL
+  isOutOfControl: int("isOutOfControl").notNull().default(0), // Outside UCL/LCL
+  violatedRules: varchar("violatedRules", { length: 100 }), // Comma-separated rule numbers
+  // Timestamps
+  sampledAt: timestamp("sampledAt").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type SpcRealtimeData = typeof spcRealtimeData.$inferSelect;
+export type InsertSpcRealtimeData = typeof spcRealtimeData.$inferInsert;
+
+/**
+ * SPC Summary Statistics - thống kê tổng hợp SPC theo ca/ngày/tuần
+ */
+export const spcSummaryStats = mysqlTable("spc_summary_stats", {
+  id: int("id").autoincrement().primaryKey(),
+  planId: int("planId").notNull(),
+  productionLineId: int("productionLineId").notNull(),
+  mappingId: int("mappingId"),
+  // Time period
+  periodType: mysqlEnum("periodType", ["shift", "day", "week", "month"]).notNull(),
+  periodStart: timestamp("periodStart").notNull(),
+  periodEnd: timestamp("periodEnd").notNull(),
+  // Statistics
+  sampleCount: int("sampleCount").notNull().default(0),
+  subgroupCount: int("subgroupCount").notNull().default(0),
+  mean: int("mean"), // * 10000
+  stdDev: int("stdDev"), // * 10000
+  min: int("min"), // * 10000
+  max: int("max"), // * 10000
+  range: int("range"), // * 10000
+  // Process capability
+  cp: int("cp"), // * 1000
+  cpk: int("cpk"), // * 1000
+  pp: int("pp"), // * 1000 (Process Performance)
+  ppk: int("ppk"), // * 1000 (Process Performance Index)
+  ca: int("ca"), // * 1000 (Capability Accuracy)
+  // Control limits
+  xBarUcl: int("xBarUcl"), // * 10000
+  xBarLcl: int("xBarLcl"), // * 10000
+  rUcl: int("rUcl"), // * 10000
+  rLcl: int("rLcl"), // * 10000
+  // Violations
+  outOfSpecCount: int("outOfSpecCount").notNull().default(0),
+  outOfControlCount: int("outOfControlCount").notNull().default(0),
+  rule1Violations: int("rule1Violations").notNull().default(0),
+  rule2Violations: int("rule2Violations").notNull().default(0),
+  rule3Violations: int("rule3Violations").notNull().default(0),
+  rule4Violations: int("rule4Violations").notNull().default(0),
+  rule5Violations: int("rule5Violations").notNull().default(0),
+  rule6Violations: int("rule6Violations").notNull().default(0),
+  rule7Violations: int("rule7Violations").notNull().default(0),
+  rule8Violations: int("rule8Violations").notNull().default(0),
+  // Status
+  overallStatus: mysqlEnum("overallStatus", ["excellent", "good", "acceptable", "needs_improvement", "critical"]).notNull().default("good"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type SpcSummaryStats = typeof spcSummaryStats.$inferSelect;
+export type InsertSpcSummaryStats = typeof spcSummaryStats.$inferInsert;
