@@ -210,3 +210,13 @@
 - [x] Thêm trường endTime vào SpcSamplingPlan (nullable)
 - [x] Logic chạy liên tục nếu endTime = null
 - [x] Cập nhật trang Kế hoạch SPC với thời gian bắt đầu/kết thúc
+
+## Bug Fixes - Phase 9.1
+
+### Dây chuyền Realtime
+- [x] Thay đổi từ chọn dây chuyền sang chọn kế hoạch SPC để xem realtime
+- [x] Cập nhật logic hiển thị dữ liệu theo kế hoạch SPC đã chọn
+
+### Phân tích SPC/CPK
+- [x] Sửa lỗi không thể chọn được công trạm (lấy workstations trực tiếp thay vì từ mappings)
+- [x] Sửa lỗi không thể chọn được Cấu hình Mapping (mapping là optional)

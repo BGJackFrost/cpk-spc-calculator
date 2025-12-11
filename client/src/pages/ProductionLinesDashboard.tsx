@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
@@ -12,14 +11,16 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { 
   AlertTriangle, 
   CheckCircle2, 
-  TrendingUp,
   Settings,
   RefreshCw,
   Loader2,
-  Factory,
+  Calendar,
   Plus,
   Trash2,
-  Activity
+  Activity,
+  Clock,
+  Play,
+  Pause
 } from "lucide-react";
 import {
   LineChart,
@@ -32,37 +33,44 @@ import {
   ReferenceLine,
 } from "recharts";
 
-interface ProductionLineCard {
+interface SpcPlan {
+  id: number;
+  name: string;
+  description?: string | null;
+  productionLineId: number;
+  productId?: number | null;
+  samplingConfigId: number;
+  mappingId?: number | null;
+  status: string;
+  startTime?: Date | null;
+  endTime?: Date | null;
+}
+
+interface ProductionLine {
   id: number;
   name: string;
   code: string;
-  lastCpk?: number;
-  lastMean?: number;
-  lastUcl?: number;
-  lastLcl?: number;
-  status: "good" | "warning" | "critical";
-  xBarData: { index: number; value: number }[];
+}
+
+interface SamplingConfig {
+  id: number;
+  name: string;
 }
 
 export default function ProductionLinesDashboard() {
   const { user } = useAuth();
   const [displayCount, setDisplayCount] = useState(4);
   const [refreshInterval, setRefreshInterval] = useState(30);
-  const [selectedLines, setSelectedLines] = useState<number[]>([]);
+  const [selectedPlanIds, setSelectedPlanIds] = useState<number[]>([]);
   const [showConfig, setShowConfig] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [lastRefresh, setLastRefresh] = useState(new Date());
 
-  // Fetch production lines
-  const { data: lines, refetch: refetchLines } = trpc.productionLine.list.useQuery();
+  // Fetch SPC Plans
+  const { data: spcPlans, refetch: refetchPlans } = trpc.spcPlan.list.useQuery();
+  const { data: lines } = trpc.productionLine.list.useQuery();
+  const { data: samplingConfigs } = trpc.sampling.list.useQuery();
   const { data: dashboardConfig, refetch: refetchConfig } = trpc.dashboard.getConfig.useQuery();
-  const { data: lineSelections, refetch: refetchSelections } = trpc.dashboard.getLineSelections.useQuery(
-    { dashboardConfigId: dashboardConfig?.id || 0 },
-    { enabled: !!dashboardConfig?.id }
-  );
-  
-  // User line assignments
-  const { data: userLineAssignments, refetch: refetchUserLines } = trpc.userLine.list.useQuery();
 
   // Update dashboard config
   const updateConfigMutation = trpc.dashboard.upsertConfig.useMutation({
@@ -75,59 +83,23 @@ export default function ProductionLinesDashboard() {
     },
   });
 
-  // Update line selections
-  const updateSelectionsMutation = trpc.dashboard.setLineSelections.useMutation({
-    onSuccess: () => {
-      refetchSelections();
-    },
-    onError: (err: any) => {
-      toast.error(`Cập nhật thất bại: ${err.message}`);
-    },
-  });
-
-  // Add user line assignment
-  const addUserLineMutation = trpc.userLine.add.useMutation({
-    onSuccess: () => {
-      refetchUserLines();
-      toast.success("Thêm dây chuyền thành công");
-    },
-    onError: (err: any) => {
-      toast.error(`Thêm thất bại: ${err.message}`);
-    },
-  });
-
-  // Remove user line assignment
-  const removeUserLineMutation = trpc.userLine.remove.useMutation({
-    onSuccess: () => {
-      refetchUserLines();
-      toast.success("Xóa dây chuyền thành công");
-    },
-    onError: (err: any) => {
-      toast.error(`Xóa thất bại: ${err.message}`);
-    },
-  });
-
   // Initialize from dashboard config
   useEffect(() => {
     if (dashboardConfig) {
       setDisplayCount(dashboardConfig.displayCount);
       setRefreshInterval(dashboardConfig.refreshInterval);
     }
-    if (lineSelections) {
-      setSelectedLines(lineSelections.map((s: { productionLineId: number }) => s.productionLineId));
-    }
-  }, [dashboardConfig, lineSelections]);
+  }, [dashboardConfig]);
 
   // Auto-refresh data
   useEffect(() => {
     const interval = setInterval(() => {
-      refetchLines();
-      refetchUserLines();
+      refetchPlans();
       setLastRefresh(new Date());
     }, refreshInterval * 1000);
 
     return () => clearInterval(interval);
-  }, [refreshInterval, refetchLines, refetchUserLines]);
+  }, [refreshInterval, refetchPlans]);
 
   const handleSaveConfig = async () => {
     setIsLoading(true);
@@ -136,46 +108,23 @@ export default function ProductionLinesDashboard() {
         displayCount,
         refreshInterval,
       });
-
-      if (dashboardConfig?.id && selectedLines.length > 0) {
-        await updateSelectionsMutation.mutateAsync({
-          dashboardConfigId: dashboardConfig.id,
-          selections: selectedLines.map((lineId, idx) => ({
-            productionLineId: lineId,
-            displayOrder: idx,
-            showXbarChart: 1,
-            showRChart: 1,
-            showCpk: 1,
-            showMean: 1,
-            showUclLcl: 1,
-          })),
-        });
-      }
     } finally {
       setIsLoading(false);
       setShowConfig(false);
     }
   };
 
-  const toggleLineSelection = (lineId: number) => {
-    setSelectedLines(prev => {
-      if (prev.includes(lineId)) {
-        return prev.filter(id => id !== lineId);
+  const togglePlanSelection = (planId: number) => {
+    setSelectedPlanIds(prev => {
+      if (prev.includes(planId)) {
+        return prev.filter(id => id !== planId);
       } else if (prev.length < displayCount) {
-        return [...prev, lineId];
+        return [...prev, planId];
       } else {
-        toast.error(`Chỉ có thể chọn tối đa ${displayCount} dây chuyền`);
+        toast.error(`Chỉ có thể chọn tối đa ${displayCount} kế hoạch`);
         return prev;
       }
     });
-  };
-
-  const handleAddUserLine = (lineId: number) => {
-    addUserLineMutation.mutate({ productionLineId: lineId, displayOrder: userLineAssignments?.length || 0 });
-  };
-
-  const handleRemoveUserLine = (assignmentId: number) => {
-    removeUserLineMutation.mutate({ id: assignmentId });
   };
 
   const getStatusColor = (status: string) => {
@@ -204,16 +153,40 @@ export default function ProductionLinesDashboard() {
     return <Badge className="bg-red-100 text-red-700">Cần cải tiến (CPK &lt; 1.0)</Badge>;
   };
 
-  // Get lines to display based on user assignments or selected lines
-  const displayLines = userLineAssignments && userLineAssignments.length > 0
-    ? lines?.filter((line: { id: number }) => userLineAssignments.some((a: { productionLineId: number }) => a.productionLineId === line.id))
-    : selectedLines.length > 0
-    ? lines?.filter((line: { id: number }) => selectedLines.includes(line.id))
-    : lines?.slice(0, displayCount);
+  const getPlanStatusBadge = (status: string) => {
+    switch (status) {
+      case "active":
+        return <Badge className="bg-green-100 text-green-700"><Play className="h-3 w-3 mr-1" />Đang chạy</Badge>;
+      case "paused":
+        return <Badge className="bg-yellow-100 text-yellow-700"><Pause className="h-3 w-3 mr-1" />Tạm dừng</Badge>;
+      case "completed":
+        return <Badge className="bg-gray-100 text-gray-700">Hoàn thành</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
+  };
+
+  const getLineName = (lineId: number) => {
+    const line = lines?.find((l: ProductionLine) => l.id === lineId);
+    return line?.name || `Line ${lineId}`;
+  };
+
+  const getSamplingName = (configId: number) => {
+    const config = samplingConfigs?.find((c: SamplingConfig) => c.id === configId);
+    return config?.name || `Config ${configId}`;
+  };
+
+  // Filter active plans for display
+  const activePlans = spcPlans?.filter((p: SpcPlan) => p.status === "active") || [];
+  
+  // Get plans to display based on selection or show active plans
+  const displayPlans = selectedPlanIds.length > 0
+    ? spcPlans?.filter((p: SpcPlan) => selectedPlanIds.includes(p.id))
+    : activePlans.slice(0, displayCount);
 
   // Generate mock data for demo
-  const generateMockData = (lineId: number) => {
-    const baseValue = 50 + (lineId * 5);
+  const generateMockData = (planId: number) => {
+    const baseValue = 50 + (planId * 3);
     return Array.from({ length: 20 }, (_, i) => ({
       index: i + 1,
       value: baseValue + (Math.random() - 0.5) * 10,
@@ -226,9 +199,9 @@ export default function ProductionLinesDashboard() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Dashboard Dây Chuyền Sản Xuất</h1>
+            <h1 className="text-3xl font-bold tracking-tight">Dashboard Kế hoạch SPC Realtime</h1>
             <p className="text-muted-foreground mt-1">
-              Theo dõi realtime các chỉ số SPC của dây chuyền sản xuất
+              Theo dõi realtime các kế hoạch lấy mẫu SPC đang hoạt động
             </p>
           </div>
           <div className="flex gap-2">
@@ -236,8 +209,7 @@ export default function ProductionLinesDashboard() {
               variant="outline"
               size="sm"
               onClick={() => {
-                refetchLines();
-                refetchUserLines();
+                refetchPlans();
                 setLastRefresh(new Date());
                 toast.success("Đã làm mới dữ liệu");
               }}
@@ -260,7 +232,7 @@ export default function ProductionLinesDashboard() {
         <div className="flex items-center justify-between text-sm text-muted-foreground">
           <div className="flex items-center gap-2">
             <Activity className="h-4 w-4" />
-            <span>Hiển thị {displayLines?.length || 0} / {lines?.length || 0} dây chuyền</span>
+            <span>Hiển thị {displayPlans?.length || 0} / {activePlans.length} kế hoạch đang chạy</span>
           </div>
           <div>
             Cập nhật lần cuối: {lastRefresh.toLocaleTimeString()} | Tự động làm mới mỗi {refreshInterval}s
@@ -273,14 +245,14 @@ export default function ProductionLinesDashboard() {
             <CardHeader>
               <CardTitle>Cấu hình Dashboard</CardTitle>
               <CardDescription>
-                Chọn dây chuyền và cài đặt tần suất cập nhật cho tài khoản của bạn
+                Chọn kế hoạch SPC và cài đặt tần suất cập nhật
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Display Count */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Số lượng dây chuyền hiển thị</Label>
+                  <Label>Số lượng kế hoạch hiển thị</Label>
                   <Select value={displayCount.toString()} onValueChange={(v) => setDisplayCount(parseInt(v))}>
                     <SelectTrigger>
                       <SelectValue />
@@ -288,7 +260,7 @@ export default function ProductionLinesDashboard() {
                     <SelectContent>
                       {[2, 4, 6, 8, 10, 12].map(n => (
                         <SelectItem key={n} value={n.toString()}>
-                          {n} dây chuyền
+                          {n} kế hoạch
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -313,24 +285,24 @@ export default function ProductionLinesDashboard() {
                 </div>
               </div>
 
-              {/* User Line Assignments */}
+              {/* SPC Plan Selection */}
               <div className="space-y-3">
-                <Label>Dây chuyền của bạn</Label>
+                <Label>Chọn kế hoạch SPC để theo dõi</Label>
                 <p className="text-xs text-muted-foreground">
-                  Chọn các dây chuyền bạn muốn theo dõi. Các dây chuyền này sẽ được lưu vào tài khoản của bạn.
+                  Chọn các kế hoạch SPC bạn muốn theo dõi realtime. Nếu không chọn, sẽ hiển thị các kế hoạch đang chạy.
                 </p>
                 
-                {/* Current assignments */}
-                {userLineAssignments && userLineAssignments.length > 0 && (
+                {/* Selected plans */}
+                {selectedPlanIds.length > 0 && (
                   <div className="flex flex-wrap gap-2 mb-4">
-                    {userLineAssignments.map((assignment: { id: number; productionLineId: number }) => {
-                      const line = lines?.find((l: { id: number }) => l.id === assignment.productionLineId);
+                    {selectedPlanIds.map((planId) => {
+                      const plan = spcPlans?.find((p: SpcPlan) => p.id === planId);
                       return (
-                        <Badge key={assignment.id} variant="secondary" className="flex items-center gap-1 py-1.5">
-                          <Factory className="h-3 w-3" />
-                          {line?.name || `Line ${assignment.productionLineId}`}
+                        <Badge key={planId} variant="secondary" className="flex items-center gap-1 py-1.5">
+                          <Calendar className="h-3 w-3" />
+                          {plan?.name || `Plan ${planId}`}
                           <button
-                            onClick={() => handleRemoveUserLine(assignment.id)}
+                            onClick={() => togglePlanSelection(planId)}
                             className="ml-1 hover:text-destructive"
                           >
                             <Trash2 className="h-3 w-3" />
@@ -341,49 +313,32 @@ export default function ProductionLinesDashboard() {
                   </div>
                 )}
 
-                {/* Add new lines */}
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 max-h-48 overflow-y-auto p-2 border rounded-lg">
-                  {lines?.filter((line: { id: number }) => !userLineAssignments?.some((a: { productionLineId: number }) => a.productionLineId === line.id))
-                    .map((line: { id: number; name: string; code: string }) => (
-                    <Button
-                      key={line.id}
-                      variant="outline"
-                      size="sm"
-                      className="justify-start"
-                      onClick={() => handleAddUserLine(line.id)}
-                      disabled={addUserLineMutation.isPending}
+                {/* Available plans */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-64 overflow-y-auto p-2 border rounded-lg">
+                  {spcPlans?.filter((plan: SpcPlan) => !selectedPlanIds.includes(plan.id))
+                    .map((plan: SpcPlan) => (
+                    <div
+                      key={plan.id}
+                      className={`p-3 border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors ${
+                        plan.status === "active" ? "border-green-200 bg-green-50/30" : ""
+                      }`}
+                      onClick={() => togglePlanSelection(plan.id)}
                     >
-                      <Plus className="h-3 w-3 mr-1" />
-                      {line.name}
-                    </Button>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-medium text-sm">{plan.name}</span>
+                        {getPlanStatusBadge(plan.status)}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        <div className="flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          {getSamplingName(plan.samplingConfigId)}
+                        </div>
+                        <div>Dây chuyền: {getLineName(plan.productionLineId)}</div>
+                      </div>
+                    </div>
                   ))}
                 </div>
               </div>
-
-              {/* Global Line Selection (Admin) */}
-              {user?.role === "admin" && (
-                <div className="space-y-3 pt-4 border-t">
-                  <Label>Cấu hình toàn cục (Admin)</Label>
-                  <div className="grid grid-cols-2 gap-4 max-h-64 overflow-y-auto">
-                    {lines?.map((line: { id: number; name: string }) => (
-                      <div key={line.id} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`line-${line.id}`}
-                          checked={selectedLines.includes(line.id)}
-                          onCheckedChange={() => toggleLineSelection(line.id)}
-                          disabled={selectedLines.length >= displayCount && !selectedLines.includes(line.id)}
-                        />
-                        <label
-                          htmlFor={`line-${line.id}`}
-                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                        >
-                          {line.name}
-                        </label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
 
               {/* Save Button */}
               <div className="flex justify-end pt-4">
@@ -396,16 +351,16 @@ export default function ProductionLinesDashboard() {
           </Card>
         )}
 
-        {/* Production Lines Grid */}
-        {displayLines && displayLines.length > 0 ? (
+        {/* SPC Plans Grid */}
+        {displayPlans && displayPlans.length > 0 ? (
           <div className={`grid gap-4 ${
             displayCount <= 2 ? 'grid-cols-1 md:grid-cols-2' :
             displayCount <= 4 ? 'grid-cols-1 md:grid-cols-2' :
             displayCount <= 6 ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' :
             'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
           }`}>
-            {displayLines.slice(0, displayCount).map((line: { id: number; name: string; code: string }) => {
-              const mockData = generateMockData(line.id);
+            {displayPlans.slice(0, displayCount).map((plan: SpcPlan) => {
+              const mockData = generateMockData(plan.id);
               const lastValue = mockData[mockData.length - 1]?.value || 0;
               const mean = mockData.reduce((sum, d) => sum + d.value, 0) / mockData.length;
               const stdDev = Math.sqrt(mockData.reduce((sum, d) => sum + Math.pow(d.value - mean, 2), 0) / mockData.length);
@@ -415,18 +370,24 @@ export default function ProductionLinesDashboard() {
               const status = mockCpk >= 1.33 ? "good" : mockCpk >= 1.0 ? "warning" : "critical";
 
               return (
-                <Card key={line.id} className="bg-card rounded-xl border border-border/50 shadow-md hover:shadow-lg transition-shadow">
+                <Card key={plan.id} className="bg-card rounded-xl border border-border/50 shadow-md hover:shadow-lg transition-shadow">
                   <CardHeader className="pb-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Factory className="h-5 w-5 text-primary" />
-                        <CardTitle className="text-lg">{line.name}</CardTitle>
+                        <Calendar className="h-5 w-5 text-primary" />
+                        <CardTitle className="text-lg">{plan.name}</CardTitle>
                       </div>
                       {getStatusIcon(status)}
                     </div>
-                    <CardDescription className="flex items-center justify-between">
-                      <span>Mã: {line.code}</span>
-                      {getStatusBadge(mockCpk)}
+                    <CardDescription className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span>Dây chuyền: {getLineName(plan.productionLineId)}</span>
+                        {getPlanStatusBadge(plan.status)}
+                      </div>
+                      <div className="flex items-center gap-1 text-xs">
+                        <Clock className="h-3 w-3" />
+                        {getSamplingName(plan.samplingConfigId)}
+                      </div>
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -477,6 +438,20 @@ export default function ProductionLinesDashboard() {
                         <div className="font-bold text-red-600">{lcl.toFixed(3)}</div>
                       </div>
                     </div>
+
+                    {/* Time info */}
+                    {(plan.startTime || plan.endTime) && (
+                      <div className="text-xs text-muted-foreground border-t pt-2">
+                        {plan.startTime && (
+                          <div>Bắt đầu: {new Date(plan.startTime).toLocaleString('vi-VN')}</div>
+                        )}
+                        {plan.endTime ? (
+                          <div>Kết thúc: {new Date(plan.endTime).toLocaleString('vi-VN')}</div>
+                        ) : (
+                          <div className="text-green-600">Chạy liên tục</div>
+                        )}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               );
@@ -485,10 +460,10 @@ export default function ProductionLinesDashboard() {
         ) : (
           <Card className="bg-card rounded-xl border border-border/50 shadow-md">
             <CardContent className="py-12 text-center">
-              <Factory className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-              <h3 className="text-lg font-semibold mb-2">Chưa có dây chuyền nào</h3>
+              <Calendar className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+              <h3 className="text-lg font-semibold mb-2">Chưa có kế hoạch SPC nào đang chạy</h3>
               <p className="text-muted-foreground mb-4">
-                Hãy thêm dây chuyền vào danh sách theo dõi của bạn hoặc liên hệ Admin để được cấu hình.
+                Hãy tạo và kích hoạt kế hoạch SPC để theo dõi realtime, hoặc chọn kế hoạch từ cấu hình.
               </p>
               <Button onClick={() => setShowConfig(true)}>
                 <Settings className="h-4 w-4 mr-2" />

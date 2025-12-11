@@ -98,30 +98,32 @@ export default function Analyze() {
   // Lấy danh sách products từ bảng products
   const { data: products } = trpc.product.list.useQuery();
   
+  // Lấy danh sách workstations
+  const { data: workstations } = trpc.workstation.listAll.useQuery();
+  
   // Lấy danh sách mappings
   const { data: allMappings } = trpc.mapping.list.useQuery();
   
-  // Lọc stations theo product đã chọn
+  // Lấy tất cả workstations (không phụ thuộc vào mapping)
   const availableStations = useMemo(() => {
-    if (!allMappings || !selectedProduct) return [];
-    const stations = new Set<string>();
-    allMappings.forEach((m: Mapping) => {
-      if (m.productCode === selectedProduct && m.isActive === 1) {
-        stations.add(m.stationName);
-      }
-    });
-    return Array.from(stations);
-  }, [allMappings, selectedProduct]);
+    if (!workstations) return [];
+    return workstations.map((w: { id: number; name: string; code: string }) => ({
+      id: w.id,
+      name: w.name,
+      code: w.code
+    }));
+  }, [workstations]);
 
-  // Lọc mappings theo product và station đã chọn
+  // Lọc mappings theo product và station đã chọn (optional)
   const availableMappings = useMemo(() => {
     if (!allMappings || !selectedProduct || !selectedStation) return [];
+    const stationName = workstations?.find((w: { id: number; name: string }) => w.id.toString() === selectedStation)?.name || '';
     return allMappings.filter((m: Mapping) => 
       m.productCode === selectedProduct && 
-      m.stationName === selectedStation && 
+      m.stationName === stationName && 
       m.isActive === 1
     );
-  }, [allMappings, selectedProduct, selectedStation]);
+  }, [allMappings, selectedProduct, selectedStation, workstations]);
 
   const analyzeMutation = trpc.spc.analyzeWithMapping.useMutation({
     onSuccess: (data) => {
@@ -359,8 +361,8 @@ export default function Analyze() {
                   </SelectTrigger>
                   <SelectContent>
                     {availableStations.map((station) => (
-                      <SelectItem key={station} value={station}>
-                        {station}
+                      <SelectItem key={station.id} value={station.id.toString()}>
+                        {station.name} ({station.code})
                       </SelectItem>
                     ))}
                   </SelectContent>
