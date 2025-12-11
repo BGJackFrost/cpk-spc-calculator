@@ -1,0 +1,536 @@
+import React, { useState } from "react";
+import DashboardLayout from "@/components/DashboardLayout";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { trpc } from "@/lib/trpc";
+import { toast } from "sonner";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { 
+  Calendar, 
+  Plus,
+  Pencil,
+  Trash2,
+  Loader2,
+  Search,
+  Play,
+  Pause,
+  CheckCircle,
+  AlertTriangle,
+  Clock,
+  Factory,
+  Mail
+} from "lucide-react";
+
+interface SpcPlan {
+  id: number;
+  name: string;
+  description?: string | null;
+  productionLineId: number;
+  productId?: number | null;
+  workstationId?: number | null;
+  samplingConfigId: number;
+  specificationId?: number | null;
+  status: "draft" | "active" | "paused" | "completed";
+  isRecurring: number;
+  notifyOnViolation: number;
+  notifyEmail?: string | null;
+  lastRunAt?: Date | null;
+  nextRunAt?: Date | null;
+  isActive: number;
+}
+
+const statusColors: Record<string, string> = {
+  draft: "bg-gray-100 text-gray-700",
+  active: "bg-green-100 text-green-700",
+  paused: "bg-yellow-100 text-yellow-700",
+  completed: "bg-blue-100 text-blue-700",
+};
+
+const statusLabels: Record<string, string> = {
+  draft: "Nháp",
+  active: "Đang chạy",
+  paused: "Tạm dừng",
+  completed: "Hoàn thành",
+};
+
+export default function SpcPlanManagement() {
+  const { user } = useAuth();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [editingPlan, setEditingPlan] = useState<SpcPlan | null>(null);
+  const [formData, setFormData] = useState({
+    name: "",
+    description: "",
+    productionLineId: 0,
+    productId: 0,
+    workstationId: 0,
+    samplingConfigId: 0,
+    specificationId: 0,
+    isRecurring: true,
+    notifyOnViolation: true,
+    notifyEmail: "",
+  });
+
+  // Fetch data
+  const { data: spcPlans, isLoading, refetch } = trpc.spcPlan.list.useQuery();
+  const { data: productionLines } = trpc.productionLine.list.useQuery();
+  const { data: products } = trpc.product.list.useQuery();
+  const { data: samplingConfigs } = trpc.sampling.list.useQuery();
+  const { data: specifications } = trpc.productSpec.list.useQuery();
+
+  // Mutations
+  const createMutation = trpc.spcPlan.create.useMutation({
+    onSuccess: () => {
+      toast.success("Tạo kế hoạch SPC thành công");
+      refetch();
+      setIsCreateDialogOpen(false);
+      resetForm();
+    },
+    onError: (err) => toast.error(`Lỗi: ${err.message}`),
+  });
+
+  const updateMutation = trpc.spcPlan.update.useMutation({
+    onSuccess: () => {
+      toast.success("Cập nhật kế hoạch thành công");
+      refetch();
+      setEditingPlan(null);
+      resetForm();
+    },
+    onError: (err) => toast.error(`Lỗi: ${err.message}`),
+  });
+
+  const deleteMutation = trpc.spcPlan.delete.useMutation({
+    onSuccess: () => {
+      toast.success("Xóa kế hoạch thành công");
+      refetch();
+    },
+    onError: (err) => toast.error(`Lỗi: ${err.message}`),
+  });
+
+  const updateStatusMutation = trpc.spcPlan.updateStatus.useMutation({
+    onSuccess: () => {
+      toast.success("Cập nhật trạng thái thành công");
+      refetch();
+    },
+    onError: (err) => toast.error(`Lỗi: ${err.message}`),
+  });
+
+  const resetForm = () => {
+    setFormData({
+      name: "",
+      description: "",
+      productionLineId: 0,
+      productId: 0,
+      workstationId: 0,
+      samplingConfigId: 0,
+      specificationId: 0,
+      isRecurring: true,
+      notifyOnViolation: true,
+      notifyEmail: "",
+    });
+  };
+
+  const handleCreate = () => {
+    if (!formData.name || !formData.productionLineId || !formData.samplingConfigId) {
+      toast.error("Vui lòng nhập đầy đủ thông tin bắt buộc");
+      return;
+    }
+    createMutation.mutate({
+      ...formData,
+      productId: formData.productId || undefined,
+      workstationId: formData.workstationId || undefined,
+      specificationId: formData.specificationId || undefined,
+    });
+  };
+
+  const handleUpdate = () => {
+    if (!editingPlan) return;
+    updateMutation.mutate({
+      id: editingPlan.id,
+      ...formData,
+      productId: formData.productId || undefined,
+      workstationId: formData.workstationId || undefined,
+      specificationId: formData.specificationId || undefined,
+    });
+  };
+
+  const handleDelete = (id: number) => {
+    if (confirm("Bạn có chắc chắn muốn xóa kế hoạch này?")) {
+      deleteMutation.mutate({ id });
+    }
+  };
+
+  const handleStatusChange = (id: number, status: "active" | "paused") => {
+    updateStatusMutation.mutate({ id, status });
+  };
+
+  const openEditDialog = (plan: SpcPlan) => {
+    setEditingPlan(plan);
+    setFormData({
+      name: plan.name,
+      description: plan.description || "",
+      productionLineId: plan.productionLineId,
+      productId: plan.productId || 0,
+      workstationId: plan.workstationId || 0,
+      samplingConfigId: plan.samplingConfigId,
+      specificationId: plan.specificationId || 0,
+      isRecurring: plan.isRecurring === 1,
+      notifyOnViolation: plan.notifyOnViolation === 1,
+      notifyEmail: plan.notifyEmail || "",
+    });
+  };
+
+  const filteredPlans = spcPlans?.filter((p: SpcPlan) =>
+    p.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const getLineName = (id: number) => productionLines?.find((l: any) => l.id === id)?.name || "-";
+  const getProductName = (id: number | null | undefined) => id ? products?.find((p: any) => p.id === id)?.name || "-" : "-";
+  const getSamplingName = (id: number) => samplingConfigs?.find((s: any) => s.id === id)?.name || "-";
+
+  if (user?.role !== "admin") {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-[60vh]">
+          <Card className="max-w-md">
+            <CardHeader>
+              <CardTitle className="text-destructive">Không có quyền truy cập</CardTitle>
+              <CardDescription>Bạn cần quyền Admin để truy cập trang này</CardDescription>
+            </CardHeader>
+          </Card>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  return (
+    <DashboardLayout>
+      <div className="space-y-6 animate-fade-in">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Kế hoạch lấy mẫu SPC</h1>
+            <p className="text-muted-foreground mt-1">Quản lý kế hoạch lấy mẫu tự động và gán vào dây chuyền</p>
+          </div>
+          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={() => resetForm()}>
+                <Plus className="h-4 w-4 mr-2" />
+                Tạo kế hoạch
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Tạo kế hoạch lấy mẫu SPC</DialogTitle>
+                <DialogDescription>Cấu hình kế hoạch lấy mẫu tự động cho dây chuyền</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
+                <div className="space-y-2">
+                  <Label>Tên kế hoạch *</Label>
+                  <Input
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    placeholder="VD: Kế hoạch SPC Line 1 - Sản phẩm A"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Dây chuyền sản xuất *</Label>
+                    <Select 
+                      value={formData.productionLineId.toString()} 
+                      onValueChange={(v) => setFormData({ ...formData, productionLineId: parseInt(v) })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Chọn dây chuyền" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {productionLines?.map((line: any) => (
+                          <SelectItem key={line.id} value={line.id.toString()}>{line.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Phương pháp lấy mẫu *</Label>
+                    <Select 
+                      value={formData.samplingConfigId.toString()} 
+                      onValueChange={(v) => setFormData({ ...formData, samplingConfigId: parseInt(v) })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Chọn phương pháp" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {samplingConfigs?.map((config: any) => (
+                          <SelectItem key={config.id} value={config.id.toString()}>{config.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Sản phẩm (tùy chọn)</Label>
+                    <Select 
+                      value={formData.productId.toString()} 
+                      onValueChange={(v) => setFormData({ ...formData, productId: parseInt(v) })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Chọn sản phẩm" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="0">-- Không chọn --</SelectItem>
+                        {products?.map((product: any) => (
+                          <SelectItem key={product.id} value={product.id.toString()}>{product.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Tiêu chuẩn USL/LSL (tùy chọn)</Label>
+                    <Select 
+                      value={formData.specificationId.toString()} 
+                      onValueChange={(v) => setFormData({ ...formData, specificationId: parseInt(v) })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Chọn tiêu chuẩn" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="0">-- Không chọn --</SelectItem>
+                        {specifications?.map((spec: any) => (
+                          <SelectItem key={spec.id} value={spec.id.toString()}>{spec.parameterName}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Mô tả</Label>
+                  <Textarea
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    placeholder="Mô tả chi tiết về kế hoạch..."
+                    rows={2}
+                  />
+                </div>
+                <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                  <div className="space-y-0.5">
+                    <Label>Lặp lại tự động</Label>
+                    <p className="text-xs text-muted-foreground">Chạy kế hoạch theo chu kỳ</p>
+                  </div>
+                  <Switch
+                    checked={formData.isRecurring}
+                    onCheckedChange={(v) => setFormData({ ...formData, isRecurring: v })}
+                  />
+                </div>
+                <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                  <div className="space-y-0.5">
+                    <Label>Thông báo khi vi phạm</Label>
+                    <p className="text-xs text-muted-foreground">Gửi email khi phát hiện lỗi SPC</p>
+                  </div>
+                  <Switch
+                    checked={formData.notifyOnViolation}
+                    onCheckedChange={(v) => setFormData({ ...formData, notifyOnViolation: v })}
+                  />
+                </div>
+                {formData.notifyOnViolation && (
+                  <div className="space-y-2">
+                    <Label>Email nhận thông báo</Label>
+                    <Input
+                      type="email"
+                      value={formData.notifyEmail}
+                      onChange={(e) => setFormData({ ...formData, notifyEmail: e.target.value })}
+                      placeholder="email@example.com"
+                    />
+                  </div>
+                )}
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>Hủy</Button>
+                <Button onClick={handleCreate} disabled={createMutation.isPending}>
+                  {createMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                  Tạo kế hoạch
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        {/* Table */}
+        <Card className="bg-card rounded-xl border border-border/50 shadow-md">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              Danh sách kế hoạch SPC
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-4 mb-6">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Tìm kiếm kế hoạch..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="border-b bg-muted/50">
+                    <tr>
+                      <th className="px-4 py-3 text-left font-semibold">Tên kế hoạch</th>
+                      <th className="px-4 py-3 text-left font-semibold">Dây chuyền</th>
+                      <th className="px-4 py-3 text-left font-semibold">Sản phẩm</th>
+                      <th className="px-4 py-3 text-left font-semibold">Phương pháp</th>
+                      <th className="px-4 py-3 text-center font-semibold">Trạng thái</th>
+                      <th className="px-4 py-3 text-center font-semibold">Thông báo</th>
+                      <th className="px-4 py-3 text-left font-semibold">Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredPlans?.map((plan: SpcPlan) => (
+                      <tr key={plan.id} className="border-b hover:bg-muted/30">
+                        <td className="px-4 py-3">
+                          <div>
+                            <div className="font-medium">{plan.name}</div>
+                            {plan.description && (
+                              <div className="text-xs text-muted-foreground">{plan.description}</div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="inline-flex items-center gap-1">
+                            <Factory className="h-3 w-3" />
+                            {getLineName(plan.productionLineId)}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground">{getProductName(plan.productId)}</td>
+                        <td className="px-4 py-3">
+                          <span className="inline-flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {getSamplingName(plan.samplingConfigId)}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <Badge className={statusColors[plan.status]}>
+                            {statusLabels[plan.status]}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          {plan.notifyOnViolation === 1 ? (
+                            <Mail className="h-4 w-4 text-green-600 mx-auto" />
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex gap-1">
+                            {plan.status === "active" ? (
+                              <Button variant="ghost" size="sm" onClick={() => handleStatusChange(plan.id, "paused")}>
+                                <Pause className="h-4 w-4 text-yellow-600" />
+                              </Button>
+                            ) : plan.status !== "completed" && (
+                              <Button variant="ghost" size="sm" onClick={() => handleStatusChange(plan.id, "active")}>
+                                <Play className="h-4 w-4 text-green-600" />
+                              </Button>
+                            )}
+                            <Dialog open={editingPlan?.id === plan.id} onOpenChange={(open) => !open && setEditingPlan(null)}>
+                              <DialogTrigger asChild>
+                                <Button variant="ghost" size="sm" onClick={() => openEditDialog(plan)}>
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent className="max-w-2xl">
+                                <DialogHeader>
+                                  <DialogTitle>Chỉnh sửa kế hoạch</DialogTitle>
+                                </DialogHeader>
+                                <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
+                                  <div className="space-y-2">
+                                    <Label>Tên kế hoạch</Label>
+                                    <Input value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                      <Label>Dây chuyền</Label>
+                                      <Select value={formData.productionLineId.toString()} onValueChange={(v) => setFormData({ ...formData, productionLineId: parseInt(v) })}>
+                                        <SelectTrigger><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                          {productionLines?.map((line: any) => (
+                                            <SelectItem key={line.id} value={line.id.toString()}>{line.name}</SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                    <div className="space-y-2">
+                                      <Label>Phương pháp lấy mẫu</Label>
+                                      <Select value={formData.samplingConfigId.toString()} onValueChange={(v) => setFormData({ ...formData, samplingConfigId: parseInt(v) })}>
+                                        <SelectTrigger><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                          {samplingConfigs?.map((config: any) => (
+                                            <SelectItem key={config.id} value={config.id.toString()}>{config.name}</SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label>Mô tả</Label>
+                                    <Textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} rows={2} />
+                                  </div>
+                                  <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                                    <Label>Thông báo khi vi phạm</Label>
+                                    <Switch checked={formData.notifyOnViolation} onCheckedChange={(v) => setFormData({ ...formData, notifyOnViolation: v })} />
+                                  </div>
+                                  {formData.notifyOnViolation && (
+                                    <div className="space-y-2">
+                                      <Label>Email nhận thông báo</Label>
+                                      <Input type="email" value={formData.notifyEmail} onChange={(e) => setFormData({ ...formData, notifyEmail: e.target.value })} />
+                                    </div>
+                                  )}
+                                </div>
+                                <DialogFooter>
+                                  <Button variant="outline" onClick={() => setEditingPlan(null)}>Hủy</Button>
+                                  <Button onClick={handleUpdate} disabled={updateMutation.isPending}>
+                                    {updateMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                                    Lưu
+                                  </Button>
+                                </DialogFooter>
+                              </DialogContent>
+                            </Dialog>
+                            <Button variant="ghost" size="sm" onClick={() => handleDelete(plan.id)}>
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {filteredPlans?.length === 0 && (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>Chưa có kế hoạch SPC nào</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </DashboardLayout>
+  );
+}

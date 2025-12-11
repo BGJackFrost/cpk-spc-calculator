@@ -356,3 +356,94 @@ export const processConfigs = mysqlTable("process_configs", {
 
 export type ProcessConfig = typeof processConfigs.$inferSelect;
 export type InsertProcessConfig = typeof processConfigs.$inferInsert;
+
+
+/**
+ * SPC Sampling Plans - kế hoạch lấy mẫu SPC
+ */
+export const spcSamplingPlans = mysqlTable("spc_sampling_plans", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  productionLineId: int("productionLineId").notNull(),
+  productId: int("productId"),
+  workstationId: int("workstationId"),
+  samplingConfigId: int("samplingConfigId").notNull(),
+  specificationId: int("specificationId"),
+  // Schedule
+  startTime: timestamp("startTime"),
+  endTime: timestamp("endTime"),
+  isRecurring: int("isRecurring").notNull().default(1),
+  // Status
+  status: mysqlEnum("status", ["draft", "active", "paused", "completed"]).notNull().default("draft"),
+  lastRunAt: timestamp("lastRunAt"),
+  nextRunAt: timestamp("nextRunAt"),
+  // Notification settings
+  notifyOnViolation: int("notifyOnViolation").notNull().default(1),
+  notifyEmail: varchar("notifyEmail", { length: 320 }),
+  // Metadata
+  isActive: int("isActive").notNull().default(1),
+  createdBy: int("createdBy").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type SpcSamplingPlan = typeof spcSamplingPlans.$inferSelect;
+export type InsertSpcSamplingPlan = typeof spcSamplingPlans.$inferInsert;
+
+/**
+ * User Line Assignments - gán dây chuyền cho user để hiển thị trên dashboard
+ */
+export const userLineAssignments = mysqlTable("user_line_assignments", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  productionLineId: int("productionLineId").notNull(),
+  displayOrder: int("displayOrder").notNull().default(0),
+  isVisible: int("isVisible").notNull().default(1),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type UserLineAssignment = typeof userLineAssignments.$inferSelect;
+export type InsertUserLineAssignment = typeof userLineAssignments.$inferInsert;
+
+/**
+ * SPC Plan Execution Logs - lịch sử chạy kế hoạch SPC
+ */
+export const spcPlanExecutionLogs = mysqlTable("spc_plan_execution_logs", {
+  id: int("id").autoincrement().primaryKey(),
+  planId: int("planId").notNull(),
+  executedAt: timestamp("executedAt").defaultNow().notNull(),
+  status: mysqlEnum("status", ["success", "failed", "partial"]).notNull(),
+  sampleCount: int("sampleCount").notNull().default(0),
+  violationCount: int("violationCount").notNull().default(0),
+  cpkValue: int("cpkValue"), // * 100
+  meanValue: int("meanValue"), // * 10000
+  stdDevValue: int("stdDevValue"), // * 10000
+  errorMessage: text("errorMessage"),
+  notificationSent: int("notificationSent").notNull().default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type SpcPlanExecutionLog = typeof spcPlanExecutionLogs.$inferSelect;
+export type InsertSpcPlanExecutionLog = typeof spcPlanExecutionLogs.$inferInsert;
+
+/**
+ * Email Notification Settings - cấu hình thông báo email
+ */
+export const emailNotificationSettings = mysqlTable("email_notification_settings", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  email: varchar("email", { length: 320 }).notNull(),
+  notifyOnSpcViolation: int("notifyOnSpcViolation").notNull().default(1),
+  notifyOnCaViolation: int("notifyOnCaViolation").notNull().default(1),
+  notifyOnCpkViolation: int("notifyOnCpkViolation").notNull().default(1),
+  cpkThreshold: int("cpkThreshold").notNull().default(133), // * 100, default 1.33
+  notifyFrequency: mysqlEnum("notifyFrequency", ["immediate", "hourly", "daily"]).notNull().default("immediate"),
+  isActive: int("isActive").notNull().default(1),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type EmailNotificationSetting = typeof emailNotificationSettings.$inferSelect;
+export type InsertEmailNotificationSetting = typeof emailNotificationSettings.$inferInsert;

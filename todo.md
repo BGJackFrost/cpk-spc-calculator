@@ -83,3 +83,28 @@
 - [x] Điểm vi phạm 8 SPC Rules hiển thị màu đỏ
 - [x] Tooltip hiển thị lý do NG (vi phạm rule nào)
 - [x] Legend cho các loại điểm (OK, NG-USL/LSL, NG-SPC Rule)
+
+## Phase 4 - CRUD bổ sung, Kế hoạch lấy mẫu, Dashboard nâng cao, Email thông báo
+
+### Trang CRUD bổ sung
+- [x] Trang quản lý dây chuyền sản xuất (Production Line CRUD)
+- [x] Trang quản lý phương pháp lấy mẫu (Sampling Method CRUD)
+- [x] Trang quản lý Production Line Process (quy trình dây chuyền)
+
+### Kế hoạch lấy mẫu SPC
+- [x] Database schema cho SPC Sampling Plan
+- [x] Trang tạo/quản lý kế hoạch lấy mẫu SPC
+- [x] Gán kế hoạch vào Line sản xuất
+- [x] Chạy lấy mẫu tự động theo kế hoạch
+- [x] Hiển thị kết quả theo user đã cấu hình
+
+### Dashboard nâng cao
+- [x] Cấu hình số lượng dây chuyền hiển thị theo user
+- [x] Hiển thị dây chuyền đã cấu hình cho từng user
+- [x] Lưu cấu hình dashboard vào database
+
+### Thông báo Email
+- [x] Cấu hình email cho từng user
+- [x] Gửi email khi vi phạm SPC Rules
+- [x] Gửi email khi vi phạm CA Rules
+- [x] Gửi email khi vi phạm CPK Rules (CPK < ngưỡng)

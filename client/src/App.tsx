@@ -14,6 +14,10 @@ import ProductionLinesDashboard from "./pages/ProductionLinesDashboard";
 import UserManagement from "./pages/UserManagement";
 import ProductManagement from "./pages/ProductManagement";
 import SpecificationManagement from "./pages/SpecificationManagement";
+import ProductionLineManagement from "./pages/ProductionLineManagement";
+import SamplingMethodManagement from "./pages/SamplingMethodManagement";
+import SpcPlanManagement from "./pages/SpcPlanManagement";
+import EmailNotificationSettings from "./pages/EmailNotificationSettings";
 
 function Router() {
   return (
@@ -28,6 +32,10 @@ function Router() {
       <Route path="/users" component={UserManagement} />
       <Route path="/products" component={ProductManagement} />
       <Route path="/specifications" component={SpecificationManagement} />
+      <Route path="/production-line-management" component={ProductionLineManagement} />
+      <Route path="/sampling-methods" component={SamplingMethodManagement} />
+      <Route path="/spc-plans" component={SpcPlanManagement} />
+      <Route path="/email-notifications" component={EmailNotificationSettings} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

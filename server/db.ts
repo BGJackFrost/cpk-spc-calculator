@@ -19,7 +19,11 @@ import {
   processConfigs,
   InsertProcessConfig,
   productionLineProducts,
-  InsertProductionLineProduct
+  InsertProductionLineProduct,
+  spcSamplingPlans,
+  userLineAssignments,
+  emailNotificationSettings,
+  spcPlanExecutionLogs
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -1062,4 +1066,162 @@ export async function deleteProductionLineProduct(id: number) {
   if (!db) throw new Error("Database not available");
   
   await db.update(productionLineProducts).set({ isActive: 0 }).where(eq(productionLineProducts.id, id));
+}
+
+
+// ============ SPC Sampling Plans ============
+export async function createSpcSamplingPlan(data: {
+  name: string;
+  description?: string;
+  productionLineId: number;
+  productId?: number;
+  workstationId?: number;
+  samplingConfigId: number;
+  specificationId?: number;
+  isRecurring?: boolean;
+  notifyOnViolation?: boolean;
+  notifyEmail?: string;
+  createdBy: number;
+}) {
+  const db = await getDb();
+  if (!db) return null;
+  
+  const result = await db.insert(spcSamplingPlans).values({
+    name: data.name,
+    description: data.description || null,
+    productionLineId: data.productionLineId,
+    productId: data.productId || null,
+    workstationId: data.workstationId || null,
+    samplingConfigId: data.samplingConfigId,
+    specificationId: data.specificationId || null,
+    isRecurring: data.isRecurring ? 1 : 0,
+    notifyOnViolation: data.notifyOnViolation ? 1 : 0,
+    notifyEmail: data.notifyEmail || null,
+    createdBy: data.createdBy,
+  });
+  return result;
+}
+
+export async function getSpcSamplingPlans() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(spcSamplingPlans).orderBy(spcSamplingPlans.createdAt);
+}
+
+export async function getSpcSamplingPlanById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(spcSamplingPlans).where(eq(spcSamplingPlans.id, id)).limit(1);
+  return result[0] || null;
+}
+
+export async function updateSpcSamplingPlan(id: number, data: Partial<{
+  name: string;
+  description: string;
+  productionLineId: number;
+  productId: number;
+  workstationId: number;
+  samplingConfigId: number;
+  specificationId: number;
+  isRecurring: boolean;
+  notifyOnViolation: boolean;
+  notifyEmail: string;
+  status: "draft" | "active" | "paused" | "completed";
+}>) {
+  const db = await getDb();
+  if (!db) return;
+  
+  const updateData: any = {};
+  if (data.name !== undefined) updateData.name = data.name;
+  if (data.description !== undefined) updateData.description = data.description;
+  if (data.productionLineId !== undefined) updateData.productionLineId = data.productionLineId;
+  if (data.productId !== undefined) updateData.productId = data.productId;
+  if (data.workstationId !== undefined) updateData.workstationId = data.workstationId;
+  if (data.samplingConfigId !== undefined) updateData.samplingConfigId = data.samplingConfigId;
+  if (data.specificationId !== undefined) updateData.specificationId = data.specificationId;
+  if (data.isRecurring !== undefined) updateData.isRecurring = data.isRecurring ? 1 : 0;
+  if (data.notifyOnViolation !== undefined) updateData.notifyOnViolation = data.notifyOnViolation ? 1 : 0;
+  if (data.notifyEmail !== undefined) updateData.notifyEmail = data.notifyEmail;
+  if (data.status !== undefined) updateData.status = data.status;
+  
+  await db.update(spcSamplingPlans).set(updateData).where(eq(spcSamplingPlans.id, id));
+}
+
+export async function deleteSpcSamplingPlan(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(spcSamplingPlans).where(eq(spcSamplingPlans.id, id));
+}
+
+// ============ User Line Assignments ============
+export async function getUserLineAssignments(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(userLineAssignments).where(eq(userLineAssignments.userId, userId)).orderBy(userLineAssignments.displayOrder);
+}
+
+export async function createUserLineAssignment(userId: number, productionLineId: number, displayOrder: number = 0) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(userLineAssignments).values({
+    userId,
+    productionLineId,
+    displayOrder,
+  });
+  return result;
+}
+
+export async function deleteUserLineAssignment(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(userLineAssignments).where(eq(userLineAssignments.id, id));
+}
+
+export async function updateUserLineAssignmentOrder(id: number, displayOrder: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(userLineAssignments).set({ displayOrder }).where(eq(userLineAssignments.id, id));
+}
+
+// ============ Email Notification Settings ============
+export async function getEmailNotificationSettings(userId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(emailNotificationSettings).where(eq(emailNotificationSettings.userId, userId)).limit(1);
+  return result[0] || null;
+}
+
+export async function upsertEmailNotificationSettings(userId: number, data: {
+  email: string;
+  notifyOnSpcViolation?: boolean;
+  notifyOnCaViolation?: boolean;
+  notifyOnCpkViolation?: boolean;
+  cpkThreshold?: number;
+  notifyFrequency?: "immediate" | "hourly" | "daily";
+}) {
+  const db = await getDb();
+  if (!db) return;
+  
+  const existing = await getEmailNotificationSettings(userId);
+  
+  if (existing) {
+    await db.update(emailNotificationSettings).set({
+      email: data.email,
+      notifyOnSpcViolation: data.notifyOnSpcViolation !== undefined ? (data.notifyOnSpcViolation ? 1 : 0) : existing.notifyOnSpcViolation,
+      notifyOnCaViolation: data.notifyOnCaViolation !== undefined ? (data.notifyOnCaViolation ? 1 : 0) : existing.notifyOnCaViolation,
+      notifyOnCpkViolation: data.notifyOnCpkViolation !== undefined ? (data.notifyOnCpkViolation ? 1 : 0) : existing.notifyOnCpkViolation,
+      cpkThreshold: data.cpkThreshold !== undefined ? data.cpkThreshold : existing.cpkThreshold,
+      notifyFrequency: data.notifyFrequency || existing.notifyFrequency,
+    }).where(eq(emailNotificationSettings.userId, userId));
+  } else {
+    await db.insert(emailNotificationSettings).values({
+      userId,
+      email: data.email,
+      notifyOnSpcViolation: data.notifyOnSpcViolation !== undefined ? (data.notifyOnSpcViolation ? 1 : 0) : 1,
+      notifyOnCaViolation: data.notifyOnCaViolation !== undefined ? (data.notifyOnCaViolation ? 1 : 0) : 1,
+      notifyOnCpkViolation: data.notifyOnCpkViolation !== undefined ? (data.notifyOnCpkViolation ? 1 : 0) : 1,
+      cpkThreshold: data.cpkThreshold || 133,
+      notifyFrequency: data.notifyFrequency || "immediate",
+    });
+  }
 }

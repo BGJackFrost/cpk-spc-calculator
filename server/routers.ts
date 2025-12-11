@@ -21,6 +21,16 @@ import {
   getProductSpecifications,
   updateProductSpecification,
   deleteProductSpecification,
+  createSpcSamplingPlan,
+  getSpcSamplingPlans,
+  getSpcSamplingPlanById,
+  updateSpcSamplingPlan,
+  deleteSpcSamplingPlan,
+  getUserLineAssignments,
+  createUserLineAssignment,
+  deleteUserLineAssignment,
+  getEmailNotificationSettings,
+  upsertEmailNotificationSettings,
   createProductStationMapping,
   getProductStationMappings,
   getProductStationMappingById,
@@ -634,6 +644,117 @@ const alertRouter = router({
     }),
 });
 
+// SPC Plan Router
+const spcPlanRouter = router({
+  list: protectedProcedure.query(async () => {
+    return await getSpcSamplingPlans();
+  }),
+
+  getById: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .query(async ({ input }) => {
+      return await getSpcSamplingPlanById(input.id);
+    }),
+
+  create: adminProcedure
+    .input(z.object({
+      name: z.string(),
+      description: z.string().optional(),
+      productionLineId: z.number(),
+      productId: z.number().optional(),
+      workstationId: z.number().optional(),
+      samplingConfigId: z.number(),
+      specificationId: z.number().optional(),
+      isRecurring: z.boolean().optional(),
+      notifyOnViolation: z.boolean().optional(),
+      notifyEmail: z.string().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      return await createSpcSamplingPlan({ ...input, createdBy: ctx.user.id });
+    }),
+
+  update: adminProcedure
+    .input(z.object({
+      id: z.number(),
+      name: z.string().optional(),
+      description: z.string().optional(),
+      productionLineId: z.number().optional(),
+      productId: z.number().optional(),
+      workstationId: z.number().optional(),
+      samplingConfigId: z.number().optional(),
+      specificationId: z.number().optional(),
+      isRecurring: z.boolean().optional(),
+      notifyOnViolation: z.boolean().optional(),
+      notifyEmail: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const { id, ...data } = input;
+      await updateSpcSamplingPlan(id, data);
+      return { success: true };
+    }),
+
+  updateStatus: adminProcedure
+    .input(z.object({
+      id: z.number(),
+      status: z.enum(["draft", "active", "paused", "completed"]),
+    }))
+    .mutation(async ({ input }) => {
+      await updateSpcSamplingPlan(input.id, { status: input.status });
+      return { success: true };
+    }),
+
+  delete: adminProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      await deleteSpcSamplingPlan(input.id);
+      return { success: true };
+    }),
+});
+
+// User Line Assignment Router
+const userLineRouter = router({
+  list: protectedProcedure.query(async ({ ctx }) => {
+    return await getUserLineAssignments(ctx.user.id);
+  }),
+
+  add: protectedProcedure
+    .input(z.object({
+      productionLineId: z.number(),
+      displayOrder: z.number().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      return await createUserLineAssignment(ctx.user.id, input.productionLineId, input.displayOrder || 0);
+    }),
+
+  remove: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      await deleteUserLineAssignment(input.id);
+      return { success: true };
+    }),
+});
+
+// Email Notification Router
+const emailNotificationRouter = router({
+  get: protectedProcedure.query(async ({ ctx }) => {
+    return await getEmailNotificationSettings(ctx.user.id);
+  }),
+
+  update: protectedProcedure
+    .input(z.object({
+      email: z.string().email(),
+      notifyOnSpcViolation: z.boolean().optional(),
+      notifyOnCaViolation: z.boolean().optional(),
+      notifyOnCpkViolation: z.boolean().optional(),
+      cpkThreshold: z.number().optional(),
+      notifyFrequency: z.enum(["immediate", "hourly", "daily"]).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      await upsertEmailNotificationSettings(ctx.user.id, input);
+      return { success: true };
+    }),
+});
+
 export const appRouter = router({
   system: systemRouter,
   auth: router({
@@ -658,7 +779,10 @@ export const appRouter = router({
   machine: machineRouter,
   spcRules: spcRulesRouter,
   sampling: samplingRouter,
-  dashboard: dashboardRouter
+  dashboard: dashboardRouter,
+  spcPlan: spcPlanRouter,
+  userLine: userLineRouter,
+  emailNotification: emailNotificationRouter,
 });
 
 export type AppRouter = typeof appRouter;

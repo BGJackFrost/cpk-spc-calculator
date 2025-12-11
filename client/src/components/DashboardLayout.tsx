@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, LogOut, PanelLeft, TrendingUp, History, FileSpreadsheet, Settings, Activity, Users, Package, Ruler } from "lucide-react";
+import { LayoutDashboard, LogOut, PanelLeft, TrendingUp, History, FileSpreadsheet, Settings, Activity, Users, Package, Ruler, Factory, Clock, Calendar, Mail } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
@@ -29,12 +29,16 @@ import { Button } from "./ui/button";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
-  { icon: TrendingUp, label: "Dây chuyền Realtime", path: "/production-lines" },
+  { icon: Activity, label: "Dây chuyền Realtime", path: "/production-lines" },
   { icon: TrendingUp, label: "Phân tích SPC/CPK", path: "/analyze" },
   { icon: History, label: "Lịch sử", path: "/history" },
   { icon: FileSpreadsheet, label: "Quản lý Mapping", path: "/mappings" },
   { icon: Package, label: "Quản lý Sản phẩm", path: "/products" },
   { icon: Ruler, label: "Tiêu chuẩn USL/LSL", path: "/specifications" },
+  { icon: Factory, label: "Quản lý Dây chuyền", path: "/production-line-management" },
+  { icon: Clock, label: "Phương pháp Lấy mẫu", path: "/sampling-methods" },
+  { icon: Calendar, label: "Kế hoạch SPC", path: "/spc-plans" },
+  { icon: Mail, label: "Thông báo Email", path: "/email-notifications" },
   { icon: Users, label: "Quản lý Người dùng", path: "/users" },
   { icon: Settings, label: "Cài đặt", path: "/settings" },
 ];
