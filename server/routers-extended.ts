@@ -45,6 +45,9 @@ export const productionLineRouter = router({
       code: z.string().min(1),
       description: z.string().optional(),
       location: z.string().optional(),
+      productId: z.number().optional(),
+      processTemplateId: z.number().optional(),
+      supervisorId: z.number().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
       if (ctx.user?.role !== "admin") {
@@ -61,8 +64,12 @@ export const productionLineRouter = router({
     .input(z.object({
       id: z.number(),
       name: z.string().optional(),
+      code: z.string().optional(),
       description: z.string().optional(),
       location: z.string().optional(),
+      productId: z.number().optional(),
+      processTemplateId: z.number().optional(),
+      supervisorId: z.number().optional(),
       isActive: z.number().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
@@ -81,6 +88,31 @@ export const productionLineRouter = router({
         throw new Error("Admin access required");
       }
       await deleteProductionLine(input.id);
+      return { success: true };
+    }),
+
+  listMachines: protectedProcedure
+    .input(z.object({ lineId: z.number() }))
+    .query(async ({ input }) => {
+      const { getProductionLineMachines } = await import("./db");
+      return await getProductionLineMachines(input.lineId);
+    }),
+
+  addMachine: protectedProcedure
+    .input(z.object({ lineId: z.number(), machineId: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      if (ctx.user?.role !== "admin") throw new Error("Admin access required");
+      const { addProductionLineMachine } = await import("./db");
+      await addProductionLineMachine(input.lineId, input.machineId, ctx.user.id);
+      return { success: true };
+    }),
+
+  removeMachine: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      if (ctx.user?.role !== "admin") throw new Error("Admin access required");
+      const { removeProductionLineMachine } = await import("./db");
+      await removeProductionLineMachine(input.id);
       return { success: true };
     }),
 });

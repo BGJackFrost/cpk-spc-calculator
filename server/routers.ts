@@ -860,12 +860,20 @@ const spcPlanRouter = router({
       samplingConfigId: z.number(),
       specificationId: z.number().optional(),
       mappingId: z.number().optional(),
+      startTime: z.number().optional(), // Unix timestamp in ms
+      endTime: z.number().optional(), // Unix timestamp in ms, null = continuous
       isRecurring: z.boolean().optional(),
       notifyOnViolation: z.boolean().optional(),
       notifyEmail: z.string().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      return await createSpcSamplingPlan({ ...input, createdBy: ctx.user.id });
+      const { startTime, endTime, ...rest } = input;
+      return await createSpcSamplingPlan({ 
+        ...rest, 
+        startTime: startTime ? new Date(startTime) : undefined,
+        endTime: endTime ? new Date(endTime) : undefined,
+        createdBy: ctx.user.id 
+      });
     }),
 
   update: adminProcedure
@@ -879,13 +887,19 @@ const spcPlanRouter = router({
       samplingConfigId: z.number().optional(),
       specificationId: z.number().optional(),
       mappingId: z.number().optional(),
+      startTime: z.number().optional(), // Unix timestamp in ms
+      endTime: z.number().optional(), // Unix timestamp in ms, null = continuous
       isRecurring: z.boolean().optional(),
       notifyOnViolation: z.boolean().optional(),
       notifyEmail: z.string().optional(),
     }))
     .mutation(async ({ input }) => {
-      const { id, ...data } = input;
-      await updateSpcSamplingPlan(id, data);
+      const { id, startTime, endTime, ...data } = input;
+      await updateSpcSamplingPlan(id, {
+        ...data,
+        startTime: startTime ? new Date(startTime) : undefined,
+        endTime: endTime ? new Date(endTime) : undefined,
+      });
       return { success: true };
     }),
 
@@ -1070,6 +1084,133 @@ export const appRouter = router({
         if (ctx.user?.role !== "admin") throw new Error("Admin access required");
         const { deleteProcessConfig } = await import("./db");
         await deleteProcessConfig(input.id);
+        return { success: true };
+      }),
+  }),
+
+  // Process Template router
+  processTemplate: router({
+    list: protectedProcedure.query(async () => {
+      const { getProcessTemplates } = await import("./db");
+      return await getProcessTemplates();
+    }),
+    create: protectedProcedure
+      .input(z.object({
+        name: z.string().min(1),
+        code: z.string().min(1),
+        description: z.string().optional(),
+        version: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        if (ctx.user?.role !== "admin") throw new Error("Admin access required");
+        const { createProcessTemplate } = await import("./db");
+        await createProcessTemplate({ ...input, createdBy: ctx.user.id });
+        return { success: true };
+      }),
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        name: z.string().optional(),
+        code: z.string().optional(),
+        description: z.string().optional(),
+        version: z.string().optional(),
+        isActive: z.number().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        if (ctx.user?.role !== "admin") throw new Error("Admin access required");
+        const { updateProcessTemplate } = await import("./db");
+        const { id, ...data } = input;
+        await updateProcessTemplate(id, data);
+        return { success: true };
+      }),
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        if (ctx.user?.role !== "admin") throw new Error("Admin access required");
+        const { deleteProcessTemplate } = await import("./db");
+        await deleteProcessTemplate(input.id);
+        return { success: true };
+      }),
+    listSteps: protectedProcedure
+      .input(z.object({ templateId: z.number() }))
+      .query(async ({ input }) => {
+        const { getProcessSteps } = await import("./db");
+        return await getProcessSteps(input.templateId);
+      }),
+    createStep: protectedProcedure
+      .input(z.object({
+        processTemplateId: z.number(),
+        name: z.string().min(1),
+        code: z.string().min(1),
+        description: z.string().optional(),
+        sequenceOrder: z.number(),
+        standardTime: z.number().optional(),
+        isRequired: z.number().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        if (ctx.user?.role !== "admin") throw new Error("Admin access required");
+        const { createProcessStep } = await import("./db");
+        await createProcessStep(input);
+        return { success: true };
+      }),
+    updateStep: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        name: z.string().optional(),
+        code: z.string().optional(),
+        description: z.string().optional(),
+        standardTime: z.number().optional(),
+        isRequired: z.number().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        if (ctx.user?.role !== "admin") throw new Error("Admin access required");
+        const { updateProcessStep } = await import("./db");
+        const { id, ...data } = input;
+        await updateProcessStep(id, data);
+        return { success: true };
+      }),
+    deleteStep: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        if (ctx.user?.role !== "admin") throw new Error("Admin access required");
+        const { deleteProcessStep } = await import("./db");
+        await deleteProcessStep(input.id);
+        return { success: true };
+      }),
+    moveStep: protectedProcedure
+      .input(z.object({ stepId: z.number(), direction: z.enum(["up", "down"]) }))
+      .mutation(async ({ input, ctx }) => {
+        if (ctx.user?.role !== "admin") throw new Error("Admin access required");
+        const { moveProcessStep } = await import("./db");
+        await moveProcessStep(input.stepId, input.direction);
+        return { success: true };
+      }),
+    listStepMachines: protectedProcedure
+      .input(z.object({ stepId: z.number() }))
+      .query(async ({ input }) => {
+        const { getProcessStepMachines } = await import("./db");
+        return await getProcessStepMachines(input.stepId);
+      }),
+    createStepMachine: protectedProcedure
+      .input(z.object({
+        processStepId: z.number(),
+        machineName: z.string().min(1),
+        machineCode: z.string().optional(),
+        isRequired: z.number().optional(),
+        quantity: z.number().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        if (ctx.user?.role !== "admin") throw new Error("Admin access required");
+        const { createProcessStepMachine } = await import("./db");
+        await createProcessStepMachine(input);
+        return { success: true };
+      }),
+    deleteStepMachine: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        if (ctx.user?.role !== "admin") throw new Error("Admin access required");
+        const { deleteProcessStepMachine } = await import("./db");
+        await deleteProcessStepMachine(input.id);
         return { success: true };
       }),
   }),

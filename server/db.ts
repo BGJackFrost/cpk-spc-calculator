@@ -28,7 +28,11 @@ import {
   InsertPermission,
   rolePermissions,
   userPermissions,
-  auditLogs
+  auditLogs,
+  processTemplates,
+  processSteps,
+  processStepMachines,
+  productionLineMachines
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -1083,6 +1087,9 @@ export async function createSpcSamplingPlan(data: {
   workstationId?: number;
   samplingConfigId: number;
   specificationId?: number;
+  mappingId?: number;
+  startTime?: Date;
+  endTime?: Date;
   isRecurring?: boolean;
   notifyOnViolation?: boolean;
   notifyEmail?: string;
@@ -1099,6 +1106,9 @@ export async function createSpcSamplingPlan(data: {
     workstationId: data.workstationId || null,
     samplingConfigId: data.samplingConfigId,
     specificationId: data.specificationId || null,
+    mappingId: data.mappingId || null,
+    startTime: data.startTime || null,
+    endTime: data.endTime || null,
     isRecurring: data.isRecurring ? 1 : 0,
     notifyOnViolation: data.notifyOnViolation ? 1 : 0,
     notifyEmail: data.notifyEmail || null,
@@ -1128,6 +1138,9 @@ export async function updateSpcSamplingPlan(id: number, data: Partial<{
   workstationId: number;
   samplingConfigId: number;
   specificationId: number;
+  mappingId: number;
+  startTime: Date;
+  endTime: Date;
   isRecurring: boolean;
   notifyOnViolation: boolean;
   notifyEmail: string;
@@ -1144,6 +1157,9 @@ export async function updateSpcSamplingPlan(id: number, data: Partial<{
   if (data.workstationId !== undefined) updateData.workstationId = data.workstationId;
   if (data.samplingConfigId !== undefined) updateData.samplingConfigId = data.samplingConfigId;
   if (data.specificationId !== undefined) updateData.specificationId = data.specificationId;
+  if (data.mappingId !== undefined) updateData.mappingId = data.mappingId;
+  if (data.startTime !== undefined) updateData.startTime = data.startTime;
+  if (data.endTime !== undefined) updateData.endTime = data.endTime;
   if (data.isRecurring !== undefined) updateData.isRecurring = data.isRecurring ? 1 : 0;
   if (data.notifyOnViolation !== undefined) updateData.notifyOnViolation = data.notifyOnViolation ? 1 : 0;
   if (data.notifyEmail !== undefined) updateData.notifyEmail = data.notifyEmail;
@@ -1436,4 +1452,146 @@ export async function getAuditLogs(params: {
     total,
     totalPages: Math.ceil(total / pageSize),
   };
+}
+
+
+// ============================================
+// Process Template Functions
+// ============================================
+
+export async function getProcessTemplates() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(processTemplates).orderBy(processTemplates.name);
+}
+
+export async function getProcessTemplateById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(processTemplates).where(eq(processTemplates.id, id)).limit(1);
+  return result[0];
+}
+
+export async function createProcessTemplate(data: { name: string; code: string; description?: string; version?: string; createdBy: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.insert(processTemplates).values({
+    name: data.name,
+    code: data.code,
+    description: data.description || null,
+    version: data.version || "1.0",
+    createdBy: data.createdBy,
+  });
+}
+
+export async function updateProcessTemplate(id: number, data: { name?: string; code?: string; description?: string; version?: string; isActive?: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(processTemplates).set(data).where(eq(processTemplates.id, id));
+}
+
+export async function deleteProcessTemplate(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(processTemplates).where(eq(processTemplates.id, id));
+}
+
+// Process Steps
+export async function getProcessSteps(templateId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(processSteps).where(eq(processSteps.processTemplateId, templateId)).orderBy(processSteps.sequenceOrder);
+}
+
+export async function createProcessStep(data: { processTemplateId: number; name: string; code: string; description?: string; sequenceOrder: number; standardTime?: number; isRequired?: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.insert(processSteps).values({
+    processTemplateId: data.processTemplateId,
+    name: data.name,
+    code: data.code,
+    description: data.description || null,
+    sequenceOrder: data.sequenceOrder,
+    standardTime: data.standardTime || null,
+    isRequired: data.isRequired ?? 1,
+  });
+}
+
+export async function updateProcessStep(id: number, data: { name?: string; code?: string; description?: string; sequenceOrder?: number; standardTime?: number; isRequired?: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(processSteps).set(data).where(eq(processSteps.id, id));
+}
+
+export async function deleteProcessStep(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(processSteps).where(eq(processSteps.id, id));
+}
+
+export async function moveProcessStep(stepId: number, direction: "up" | "down") {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const step = await db.select().from(processSteps).where(eq(processSteps.id, stepId)).limit(1);
+  if (!step[0]) return;
+  
+  const currentOrder = step[0].sequenceOrder;
+  const templateId = step[0].processTemplateId;
+  const newOrder = direction === "up" ? currentOrder - 1 : currentOrder + 1;
+  
+  // Find the step to swap with
+  const otherStep = await db.select().from(processSteps)
+    .where(and(eq(processSteps.processTemplateId, templateId), eq(processSteps.sequenceOrder, newOrder)))
+    .limit(1);
+  
+  if (otherStep[0]) {
+    // Swap orders
+    await db.update(processSteps).set({ sequenceOrder: currentOrder }).where(eq(processSteps.id, otherStep[0].id));
+    await db.update(processSteps).set({ sequenceOrder: newOrder }).where(eq(processSteps.id, stepId));
+  }
+}
+
+// Process Step Machines
+export async function getProcessStepMachines(stepId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(processStepMachines).where(eq(processStepMachines.processStepId, stepId));
+}
+
+export async function createProcessStepMachine(data: { processStepId: number; machineName: string; machineCode?: string; isRequired?: number; quantity?: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.insert(processStepMachines).values({
+    processStepId: data.processStepId,
+    machineName: data.machineName,
+    machineCode: data.machineCode || null,
+    isRequired: data.isRequired ?? 1,
+    quantity: data.quantity ?? 1,
+  });
+}
+
+export async function deleteProcessStepMachine(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(processStepMachines).where(eq(processStepMachines.id, id));
+}
+
+// Production Line Machines
+export async function getProductionLineMachines(lineId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(productionLineMachines).where(eq(productionLineMachines.productionLineId, lineId));
+}
+
+export async function addProductionLineMachine(lineId: number, machineId: number, assignedBy: number = 1) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.insert(productionLineMachines).values({ productionLineId: lineId, machineId, assignedBy, isActive: 1 });
+}
+
+export async function removeProductionLineMachine(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(productionLineMachines).where(eq(productionLineMachines.id, id));
 }

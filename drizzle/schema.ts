@@ -116,6 +116,10 @@ export const productionLines = mysqlTable("production_lines", {
   code: varchar("code", { length: 100 }).notNull().unique(),
   description: text("description"),
   location: varchar("location", { length: 255 }),
+  // New fields for improved production line management
+  productId: int("productId"), // Sản phẩm sản xuất trên dây chuyền
+  processTemplateId: int("processTemplateId"), // Quy trình sản xuất
+  supervisorId: int("supervisorId"), // Người phụ trách
   isActive: int("isActive").notNull().default(1),
   createdBy: int("createdBy").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -632,3 +636,77 @@ export const systemSettings = mysqlTable("system_settings", {
 
 export type SystemSetting = typeof systemSettings.$inferSelect;
 export type InsertSystemSetting = typeof systemSettings.$inferInsert;
+
+
+/**
+ * Process Templates - mẫu quy trình sản xuất
+ */
+export const processTemplates = mysqlTable("process_templates", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  code: varchar("code", { length: 100 }).notNull().unique(),
+  description: text("description"),
+  version: varchar("version", { length: 50 }).default("1.0"),
+  isActive: int("isActive").notNull().default(1),
+  createdBy: int("createdBy").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ProcessTemplate = typeof processTemplates.$inferSelect;
+export type InsertProcessTemplate = typeof processTemplates.$inferInsert;
+
+/**
+ * Process Steps - công đoạn trong quy trình
+ */
+export const processSteps = mysqlTable("process_steps", {
+  id: int("id").autoincrement().primaryKey(),
+  processTemplateId: int("processTemplateId").notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  code: varchar("code", { length: 100 }).notNull(),
+  description: text("description"),
+  sequenceOrder: int("sequenceOrder").notNull().default(1), // Thứ tự công đoạn
+  standardTime: int("standardTime"), // Thời gian tiêu chuẩn (giây)
+  workstationTypeId: int("workstationTypeId"), // Loại công trạm cần thiết
+  isRequired: int("isRequired").notNull().default(1), // Bắt buộc hay không
+  isActive: int("isActive").notNull().default(1),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ProcessStep = typeof processSteps.$inferSelect;
+export type InsertProcessStep = typeof processSteps.$inferInsert;
+
+/**
+ * Process Step Machines - máy móc cho từng công đoạn
+ */
+export const processStepMachines = mysqlTable("process_step_machines", {
+  id: int("id").autoincrement().primaryKey(),
+  processStepId: int("processStepId").notNull(),
+  machineTypeId: int("machineTypeId"), // Loại máy cần thiết
+  machineName: varchar("machineName", { length: 255 }).notNull(),
+  machineCode: varchar("machineCode", { length: 100 }),
+  isRequired: int("isRequired").notNull().default(1),
+  quantity: int("quantity").notNull().default(1), // Số lượng máy cần
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ProcessStepMachine = typeof processStepMachines.$inferSelect;
+export type InsertProcessStepMachine = typeof processStepMachines.$inferInsert;
+
+/**
+ * Production Line Machines - máy cụ thể được gán vào dây chuyền
+ */
+export const productionLineMachines = mysqlTable("production_line_machines", {
+  id: int("id").autoincrement().primaryKey(),
+  productionLineId: int("productionLineId").notNull(),
+  machineId: int("machineId").notNull(), // Máy cụ thể từ bảng machines
+  processStepId: int("processStepId"), // Công đoạn mà máy này thực hiện
+  assignedAt: timestamp("assignedAt").defaultNow().notNull(),
+  assignedBy: int("assignedBy").notNull(),
+  isActive: int("isActive").notNull().default(1),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ProductionLineMachine = typeof productionLineMachines.$inferSelect;
+export type InsertProductionLineMachine = typeof productionLineMachines.$inferInsert;

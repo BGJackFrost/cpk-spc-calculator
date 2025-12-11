@@ -188,3 +188,25 @@
 - [ ] Cải tiến biểu đồ SPC với annotations và markers
 - [ ] Thêm báo cáo tổng hợp theo ca/ngày/tuần/tháng
 - [ ] Cải tiến hệ thống thông báo realtime
+
+## Phase 9 - Cải tiến Quy trình, Dây chuyền và Kế hoạch SPC
+
+### Cải tiến Quy trình
+- [x] Tạo bảng ProcessTemplate (mẫu quy trình)
+- [x] Tạo bảng ProcessStep (công đoạn trong quy trình)
+- [x] Tạo bảng ProcessStepMachine (máy móc cho từng công đoạn)
+- [x] Cập nhật trang Quản lý Quy trình với giao diện kéo thả công đoạn
+- [x] Cho phép thêm/xóa máy móc vào từng công đoạn
+
+### Cải tiến Dây chuyền sản xuất
+- [x] Thêm trường productId vào ProductionLine
+- [x] Thêm trường processTemplateId vào ProductionLine
+- [x] Thêm trường supervisorId (người phụ trách) vào ProductionLine
+- [x] Tạo bảng ProductionLineMachine (máy cụ thể cho dây chuyền)
+- [x] Cập nhật trang Quản lý Dây chuyền với form mới
+
+### Cải tiến Kế hoạch SPC
+- [x] Thêm trường startTime vào SpcSamplingPlan
+- [x] Thêm trường endTime vào SpcSamplingPlan (nullable)
+- [x] Logic chạy liên tục nếu endTime = null
+- [x] Cập nhật trang Kế hoạch SPC với thời gian bắt đầu/kết thúc

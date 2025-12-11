@@ -64,6 +64,13 @@
       "when": 1765433049960,
       "tag": "0008_wide_vampiro",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "5",
+      "when": 1765436555529,
+      "tag": "0009_stormy_professor_monster",
+      "breakpoints": true
     }
   ]
 }

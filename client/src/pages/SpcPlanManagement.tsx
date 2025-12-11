@@ -38,6 +38,8 @@ interface SpcPlan {
   samplingConfigId: number;
   specificationId?: number | null;
   mappingId?: number | null;
+  startTime?: Date | null;
+  endTime?: Date | null;
   status: "draft" | "active" | "paused" | "completed";
   isRecurring: number;
   notifyOnViolation: number;
@@ -75,6 +77,8 @@ export default function SpcPlanManagement() {
     samplingConfigId: 0,
     specificationId: 0,
     mappingId: 0,
+    startTime: "",
+    endTime: "",
     isRecurring: true,
     notifyOnViolation: true,
     notifyEmail: "",
@@ -135,6 +139,8 @@ export default function SpcPlanManagement() {
       samplingConfigId: 0,
       specificationId: 0,
       mappingId: 0,
+      startTime: "",
+      endTime: "",
       isRecurring: true,
       notifyOnViolation: true,
       notifyEmail: "",
@@ -152,6 +158,8 @@ export default function SpcPlanManagement() {
       workstationId: formData.workstationId || undefined,
       specificationId: formData.specificationId || undefined,
       mappingId: formData.mappingId || undefined,
+      startTime: formData.startTime ? new Date(formData.startTime).getTime() : undefined,
+      endTime: formData.endTime ? new Date(formData.endTime).getTime() : undefined,
     });
   };
 
@@ -164,6 +172,8 @@ export default function SpcPlanManagement() {
       workstationId: formData.workstationId || undefined,
       specificationId: formData.specificationId || undefined,
       mappingId: formData.mappingId || undefined,
+      startTime: formData.startTime ? new Date(formData.startTime).getTime() : undefined,
+      endTime: formData.endTime ? new Date(formData.endTime).getTime() : undefined,
     });
   };
 
@@ -188,6 +198,8 @@ export default function SpcPlanManagement() {
       samplingConfigId: plan.samplingConfigId,
       specificationId: plan.specificationId || 0,
       mappingId: plan.mappingId || 0,
+      startTime: plan.startTime ? new Date(plan.startTime).toISOString().slice(0, 16) : "",
+      endTime: plan.endTime ? new Date(plan.endTime).toISOString().slice(0, 16) : "",
       isRecurring: plan.isRecurring === 1,
       notifyOnViolation: plan.notifyOnViolation === 1,
       notifyEmail: plan.notifyEmail || "",
@@ -346,6 +358,26 @@ export default function SpcPlanManagement() {
                     rows={2}
                   />
                 </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Thời gian bắt đầu</Label>
+                    <Input
+                      type="datetime-local"
+                      value={formData.startTime}
+                      onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+                    />
+                    <p className="text-xs text-muted-foreground">Để trống nếu bắt đầu ngay</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Thời gian kết thúc</Label>
+                    <Input
+                      type="datetime-local"
+                      value={formData.endTime}
+                      onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
+                    />
+                    <p className="text-xs text-muted-foreground">Để trống nếu chạy liên tục</p>
+                  </div>
+                </div>
                 <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
                   <div className="space-y-0.5">
                     <Label>Lặp lại tự động</Label>
@@ -423,6 +455,7 @@ export default function SpcPlanManagement() {
                       <th className="px-4 py-3 text-left font-semibold">Dây chuyền</th>
                       <th className="px-4 py-3 text-left font-semibold">Sản phẩm</th>
                       <th className="px-4 py-3 text-left font-semibold">Phương pháp</th>
+                      <th className="px-4 py-3 text-left font-semibold">Thời gian</th>
                       <th className="px-4 py-3 text-center font-semibold">Trạng thái</th>
                       <th className="px-4 py-3 text-center font-semibold">Thông báo</th>
                       <th className="px-4 py-3 text-left font-semibold">Thao tác</th>
@@ -451,6 +484,18 @@ export default function SpcPlanManagement() {
                             <Clock className="h-3 w-3" />
                             {getSamplingName(plan.samplingConfigId)}
                           </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="text-sm">
+                            <div className="flex items-center gap-1">
+                              <span className="text-muted-foreground">Bắt đầu:</span>
+                              {plan.startTime ? new Date(plan.startTime).toLocaleString('vi-VN') : 'Ngay'}
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <span className="text-muted-foreground">Kết thúc:</span>
+                              {plan.endTime ? new Date(plan.endTime).toLocaleString('vi-VN') : <span className="text-green-600">Liên tục</span>}
+                            </div>
+                          </div>
                         </td>
                         <td className="px-4 py-3 text-center">
                           <Badge className={statusColors[plan.status]}>
@@ -517,6 +562,25 @@ export default function SpcPlanManagement() {
                                   <div className="space-y-2">
                                     <Label>Mô tả</Label>
                                     <Textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} rows={2} />
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                      <Label>Thời gian bắt đầu</Label>
+                                      <Input
+                                        type="datetime-local"
+                                        value={formData.startTime}
+                                        onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+                                      />
+                                    </div>
+                                    <div className="space-y-2">
+                                      <Label>Thời gian kết thúc</Label>
+                                      <Input
+                                        type="datetime-local"
+                                        value={formData.endTime}
+                                        onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
+                                      />
+                                      <p className="text-xs text-muted-foreground">Để trống nếu chạy liên tục</p>
+                                    </div>
                                   </div>
                                   <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
                                     <Label>Thông báo khi vi phạm</Label>
