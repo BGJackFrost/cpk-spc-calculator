@@ -48,6 +48,8 @@ import {
   getLicenses,
   getActiveLicense,
   getLicenseByKey,
+  getLicensesExpiringSoon,
+  getExpiredLicenses,
   createLicense,
   activateLicense,
   deactivateLicense,
@@ -2386,6 +2388,54 @@ export const appRouter = router({
     seedDefault: protectedProcedure.mutation(async () => {
       await seedDefaultLicense();
       return { success: true };
+    }),
+    checkExpiry: protectedProcedure
+      .input(z.object({ daysBeforeExpiry: z.number().default(30) }))
+      .query(async ({ input }) => {
+        const expiringSoon = await getLicensesExpiringSoon(input.daysBeforeExpiry);
+        const expired = await getExpiredLicenses();
+        return { expiringSoon, expired };
+      }),
+    sendExpiryNotifications: protectedProcedure.mutation(async ({ ctx }) => {
+      if (ctx.user?.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+      
+      const expiring7Days = await getLicensesExpiringSoon(7);
+      const expiring30Days = await getLicensesExpiringSoon(30);
+      const expired = await getExpiredLicenses();
+      
+      const notifications: { type: string; license: string; company: string; email: string; expiresAt: Date | null }[] = [];
+      
+      for (const license of expiring7Days) {
+        notifications.push({
+          type: "7_days_warning",
+          license: license.licenseKey,
+          company: license.companyName || "Unknown",
+          email: license.contactEmail || "",
+          expiresAt: license.expiresAt,
+        });
+      }
+      
+      for (const license of expiring30Days.filter(l => !expiring7Days.find(e => e.id === l.id))) {
+        notifications.push({
+          type: "30_days_warning",
+          license: license.licenseKey,
+          company: license.companyName || "Unknown",
+          email: license.contactEmail || "",
+          expiresAt: license.expiresAt,
+        });
+      }
+      
+      for (const license of expired) {
+        notifications.push({
+          type: "expired",
+          license: license.licenseKey,
+          company: license.companyName || "Unknown",
+          email: license.contactEmail || "",
+          expiresAt: license.expiresAt,
+        });
+      }
+      
+      return { success: true, notifications, count: notifications.length };
     }),
   }),
 });

@@ -2864,3 +2864,40 @@ export async function seedDefaultLicense() {
   
   await db.insert(licenses).values(trialLicense);
 }
+
+
+// Check licenses expiring soon (within specified days)
+export async function getLicensesExpiringSoon(daysBeforeExpiry: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const now = new Date();
+  const futureDate = new Date(now.getTime() + daysBeforeExpiry * 24 * 60 * 60 * 1000);
+  
+  return await db.select()
+    .from(licenses)
+    .where(
+      and(
+        eq(licenses.isActive, 1),
+        lte(licenses.expiresAt, futureDate),
+        gte(licenses.expiresAt, now)
+      )
+    );
+}
+
+// Get expired licenses
+export async function getExpiredLicenses() {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const now = new Date();
+  
+  return await db.select()
+    .from(licenses)
+    .where(
+      and(
+        eq(licenses.isActive, 1),
+        lte(licenses.expiresAt, now)
+      )
+    );
+}

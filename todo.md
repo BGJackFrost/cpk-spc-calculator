@@ -576,3 +576,25 @@
 - [x] Ctrl+/: Hiển thị danh sách shortcuts
 - [x] Tạo KeyboardShortcutsHelp component
 - [x] Tích hợp vào trang Analyze
+
+
+## Phase 21 - Keyboard Shortcuts mở rộng, License Notifications, Dashboard Widget
+
+### Keyboard Shortcuts mở rộng
+- [x] Tích hợp vào SpcPlanManagement (Ctrl+S lưu, Ctrl+N tạo mới, Esc đóng, Ctrl+/ help)
+- [x] Tích hợp vào Mappings (Ctrl+S lưu, Ctrl+N tạo mới, Esc đóng, Ctrl+/ help)
+- [ ] Tích hợp vào ProductManagement (tương lai)
+- [ ] Tích hợp vào các trang CRUD khác (tương lai)
+
+### License Expiry Notifications
+- [x] Tạo API checkExpiry kiểm tra license sắp hết hạn (7/30 ngày)
+- [x] Tạo API sendExpiryNotifications gửi thông báo
+- [x] Tạo hàm getLicensesExpiringSoon và getExpiredLicenses trong db.ts
+- [ ] Tạo scheduled job kiểm tra hàng ngày (tương lai)
+
+### Dashboard License Widget
+- [x] Tạo component LicenseStatusWidget
+- [x] Hiển thị thông tin license hiện tại (loại, hết hạn, giới hạn users/lines/plans)
+- [x] Hiển thị cảnh báo nếu sắp hết hạn (màu vàng/đỏ)
+- [x] Chỉ hiển thị cho admin
+- [x] Thêm vào Dashboard chính (cạnh Quick Actions)

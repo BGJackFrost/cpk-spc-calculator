@@ -32,6 +32,8 @@ import {
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useKeyboardShortcuts, createCommonShortcuts } from "@/hooks/useKeyboardShortcuts";
+import { KeyboardShortcutsHelp } from "@/components/KeyboardShortcutsHelp";
 
 interface SpcPlan {
   id: number;
@@ -78,6 +80,7 @@ export default function SpcPlanManagement() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingPlan, setEditingPlan] = useState<SpcPlan | null>(null);
+  const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -226,6 +229,34 @@ export default function SpcPlanManagement() {
   const handleStatusChange = (id: number, status: "active" | "paused") => {
     updateStatusMutation.mutate({ id, status });
   };
+
+  // Keyboard shortcuts
+  const shortcuts = createCommonShortcuts({
+    onSave: () => {
+      if (isCreateDialogOpen) {
+        handleCreate();
+      } else if (editingPlan) {
+        handleUpdate();
+      }
+    },
+    onNew: () => {
+      resetForm();
+      setIsCreateDialogOpen(true);
+    },
+    onClose: () => {
+      setIsCreateDialogOpen(false);
+      setEditingPlan(null);
+    },
+  });
+  
+  shortcuts.push({
+    key: "/",
+    ctrl: true,
+    action: () => setShowShortcutsHelp(true),
+    description: "Hiển thị phím tắt",
+  });
+
+  useKeyboardShortcuts({ shortcuts });
 
   const openEditDialog = (plan: SpcPlan) => {
     setEditingPlan(plan);
@@ -856,6 +887,16 @@ export default function SpcPlanManagement() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Keyboard Shortcuts Help */}
+      <KeyboardShortcutsHelp 
+        open={showShortcutsHelp} 
+        onOpenChange={setShowShortcutsHelp}
+        additionalShortcuts={[
+          { keys: "Ctrl + S", description: "Lưu kế hoạch" },
+          { keys: "Ctrl + N", description: "Tạo kế hoạch mới" },
+        ]}
+      />
     </DashboardLayout>
   );
 }

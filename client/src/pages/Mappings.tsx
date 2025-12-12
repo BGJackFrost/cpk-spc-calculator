@@ -28,6 +28,8 @@ import { Plus, Pencil, Trash2, FileSpreadsheet, Loader2, Filter, ChevronDown, Ch
 import { Switch } from "@/components/ui/switch";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { useKeyboardShortcuts, createCommonShortcuts } from "@/hooks/useKeyboardShortcuts";
+import { KeyboardShortcutsHelp } from "@/components/KeyboardShortcutsHelp";
 
 interface MappingFormData {
   productCode: string;
@@ -77,6 +79,7 @@ export default function Mappings() {
   const [cloneData, setCloneData] = useState({ productCode: "", stationName: "" });
   const [importFile, setImportFile] = useState<File | null>(null);
   const [skipExisting, setSkipExisting] = useState(true);
+  const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
 
   const { data: mappings, refetch } = trpc.mapping.list.useQuery();
   const { data: connections } = trpc.databaseConnection.list.useQuery(undefined, {
@@ -215,6 +218,32 @@ export default function Mappings() {
     }
     setShowPreviewDialog(true);
   };
+
+  // Keyboard shortcuts
+  const shortcuts = createCommonShortcuts({
+    onSave: () => {
+      if (isDialogOpen) {
+        handleSubmit();
+      }
+    },
+    onNew: () => {
+      resetForm();
+      setIsDialogOpen(true);
+    },
+    onClose: () => {
+      setIsDialogOpen(false);
+      setEditingId(null);
+    },
+  });
+  
+  shortcuts.push({
+    key: "/",
+    ctrl: true,
+    action: () => setShowShortcutsHelp(true),
+    description: "Hiển thị phím tắt",
+  });
+
+  useKeyboardShortcuts({ shortcuts });
 
   const handleExportJSON = async () => {
     try {
@@ -1103,6 +1132,16 @@ export default function Mappings() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Keyboard Shortcuts Help */}
+      <KeyboardShortcutsHelp 
+        open={showShortcutsHelp} 
+        onOpenChange={setShowShortcutsHelp}
+        additionalShortcuts={[
+          { keys: "Ctrl + S", description: "Lưu mapping" },
+          { keys: "Ctrl + N", description: "Tạo mapping mới" },
+        ]}
+      />
     </DashboardLayout>
   );
 }

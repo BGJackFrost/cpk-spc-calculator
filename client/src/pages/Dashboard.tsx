@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { Link } from "wouter";
+import { LicenseStatusWidget } from "@/components/LicenseStatusWidget";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -196,30 +197,38 @@ export default function Dashboard() {
           })}
         </div>
 
-        {/* Quick Actions */}
-        {isWidgetVisible("quick_actions") && (
-          <div>
-            <h2 className="text-xl font-semibold mb-4">Thao tác nhanh</h2>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              {quickActions.map((action, index) => {
-                const ActionIcon = action.icon;
-                return (
-                  <Link key={index} href={action.href}>
-                    <Card className={`elegant-card cursor-pointer h-full ${action.primary ? 'border-primary/50 bg-primary/5' : ''}`}>
-                      <CardHeader>
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-2 ${action.primary ? 'bg-primary text-primary-foreground' : 'bg-secondary'}`}>
-                          <ActionIcon className="h-5 w-5" />
-                        </div>
-                        <CardTitle className="text-base">{action.title}</CardTitle>
-                        <CardDescription>{action.description}</CardDescription>
-                      </CardHeader>
-                    </Card>
-                  </Link>
-                );
-              })}
-            </div>
+        {/* License Status Widget - Admin Only */}
+        <div className="grid gap-4 md:grid-cols-4">
+          <div className="md:col-span-3">
+            {/* Quick Actions */}
+            {isWidgetVisible("quick_actions") && (
+              <div>
+                <h2 className="text-xl font-semibold mb-4">Thao tác nhanh</h2>
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                  {quickActions.map((action, index) => {
+                    const ActionIcon = action.icon;
+                    return (
+                      <Link key={index} href={action.href}>
+                        <Card className={`elegant-card cursor-pointer h-full ${action.primary ? 'border-primary/50 bg-primary/5' : ''}`}>
+                          <CardHeader>
+                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-2 ${action.primary ? 'bg-primary text-primary-foreground' : 'bg-secondary'}`}>
+                              <ActionIcon className="h-5 w-5" />
+                            </div>
+                            <CardTitle className="text-base">{action.title}</CardTitle>
+                            <CardDescription>{action.description}</CardDescription>
+                          </CardHeader>
+                        </Card>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
-        )}
+          <div className="md:col-span-1">
+            <LicenseStatusWidget />
+          </div>
+        </div>
 
         {/* Recent Analyses */}
         {history && history.length > 0 && (
