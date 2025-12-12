@@ -492,3 +492,21 @@
 - [x] Cập nhật trạng thái Phase 14 (SPC Visualization, Rules Management)
 - [x] Cập nhật trạng thái Phase 15 (Seed Rules, Realtime Data, Export)
 - [x] Cập nhật thống kê tổng quan hệ thống (28 bảng, 24 routers, 32 trang)
+
+
+## Phase 17 - Nâng cao Mapping (Filter, Preview, Validate)
+
+### Lưu Filter Conditions vào Database
+- [x] Thêm trường filterConditions (JSON) vào bảng mappings
+- [x] Cập nhật API create/update mapping để lưu filterConditions
+- [x] Cập nhật form để load filterConditions khi edit
+
+### Preview Data
+- [x] Tạo API previewData lấy 10 dòng mẫu từ database nguồn
+- [x] Thêm nút "Xem trước dữ liệu" trong form
+- [x] Hiển thị dialog với bảng dữ liệu mẫu và query SQL
+
+### Validate Connection
+- [x] Tạo API testConnectionById kiểm tra kết nối database
+- [x] Thêm nút "Test Connection" trong form với icon trạng thái
+- [x] Hiển thị kết quả test (thành công/thất bại) với màu sắc

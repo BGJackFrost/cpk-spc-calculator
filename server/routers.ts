@@ -376,6 +376,80 @@ const databaseConnectionRouter = router({
         throw new Error(`Failed to get columns: ${error instanceof Error ? error.message : "Unknown error"}`);
       }
     }),
+
+  // Test connection by ID
+  testConnectionById: adminProcedure
+    .input(z.object({ connectionId: z.number() }))
+    .mutation(async ({ input }) => {
+      const connection = await getDatabaseConnectionById(input.connectionId);
+      if (!connection) {
+        return { success: false, message: "Connection not found" };
+      }
+      try {
+        await queryExternalDatabase(connection.connectionString, "SELECT 1");
+        return { success: true, message: "Kết nối thành công!", databaseType: connection.databaseType };
+      } catch (error) {
+        return { success: false, message: error instanceof Error ? error.message : "Kết nối thất bại" };
+      }
+    }),
+
+  // Preview data from table with filter conditions
+  previewData: adminProcedure
+    .input(z.object({
+      connectionId: z.number(),
+      tableName: z.string(),
+      columns: z.array(z.string()).optional(),
+      filterConditions: z.array(z.object({
+        column: z.string(),
+        operator: z.enum(["=", "!=", ">", "<", ">=", "<=", "LIKE", "IN"]),
+        value: z.string(),
+      })).optional(),
+      limit: z.number().default(10),
+    }))
+    .query(async ({ input }) => {
+      const connection = await getDatabaseConnectionById(input.connectionId);
+      if (!connection) {
+        throw new Error("Connection not found");
+      }
+      try {
+        // Build SELECT columns
+        const selectColumns = input.columns && input.columns.length > 0
+          ? input.columns.map(c => `\`${c}\``).join(", ")
+          : "*";
+        
+        // Build WHERE clause from filter conditions
+        let whereClause = "";
+        if (input.filterConditions && input.filterConditions.length > 0) {
+          const conditions = input.filterConditions.map(fc => {
+            if (fc.operator === "IN") {
+              const values = fc.value.split(",").map(v => `'${v.trim()}'`).join(", ");
+              return `\`${fc.column}\` IN (${values})`;
+            } else if (fc.operator === "LIKE") {
+              return `\`${fc.column}\` LIKE '${fc.value}'`;
+            } else {
+              // Check if value is numeric
+              const numValue = parseFloat(fc.value);
+              if (!isNaN(numValue)) {
+                return `\`${fc.column}\` ${fc.operator} ${numValue}`;
+              }
+              return `\`${fc.column}\` ${fc.operator} '${fc.value}'`;
+            }
+          });
+          whereClause = " WHERE " + conditions.join(" AND ");
+        }
+        
+        const query = `SELECT ${selectColumns} FROM \`${input.tableName}\`${whereClause} LIMIT ${input.limit}`;
+        const result = await queryExternalDatabase(connection.connectionString, query);
+        
+        return {
+          data: result,
+          query: query,
+          rowCount: result.length,
+        };
+      } catch (error) {
+        throw new Error(`Failed to preview data: ${error instanceof Error ? error.message : "Unknown error"}`);
+      }
+    }),
 });
 
 // Product-Station Mapping Router
@@ -403,6 +477,7 @@ const mappingRouter = router({
       usl: z.number().optional(),
       lsl: z.number().optional(),
       target: z.number().optional(),
+      filterConditions: z.string().optional(), // JSON array of filter conditions
     }))
     .mutation(async ({ input, ctx }) => {
       const id = await createProductStationMapping({
@@ -426,6 +501,7 @@ const mappingRouter = router({
       usl: z.number().nullable().optional(),
       lsl: z.number().nullable().optional(),
       target: z.number().nullable().optional(),
+      filterConditions: z.string().nullable().optional(), // JSON array of filter conditions
     }))
     .mutation(async ({ input }) => {
       const { id, ...data } = input;

@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/table";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, FileSpreadsheet, Loader2, Filter, ChevronDown, ChevronUp, X } from "lucide-react";
+import { Plus, Pencil, Trash2, FileSpreadsheet, Loader2, Filter, ChevronDown, ChevronUp, X, Eye, CheckCircle, XCircle, Database } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -68,6 +68,9 @@ export default function Mappings() {
   const [formData, setFormData] = useState<MappingFormData>(defaultFormData);
   const [showAdvancedFilter, setShowAdvancedFilter] = useState(false);
   const [filterConditions, setFilterConditions] = useState<FilterCondition[]>([]);
+  const [showPreviewDialog, setShowPreviewDialog] = useState(false);
+  const [connectionTestResult, setConnectionTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [testingConnection, setTestingConnection] = useState(false);
 
   const { data: mappings, refetch } = trpc.mapping.list.useQuery();
   const { data: connections } = trpc.databaseConnection.list.useQuery(undefined, {
@@ -87,6 +90,38 @@ export default function Mappings() {
   );
 
   const utils = trpc.useUtils();
+
+  // Test connection mutation
+  const testConnectionMutation = trpc.databaseConnection.testConnectionById.useMutation({
+    onSuccess: (result) => {
+      setConnectionTestResult(result);
+      setTestingConnection(false);
+      if (result.success) {
+        toast.success(result.message);
+      } else {
+        toast.error(result.message);
+      }
+    },
+    onError: (error) => {
+      setConnectionTestResult({ success: false, message: error.message });
+      setTestingConnection(false);
+      toast.error(error.message);
+    },
+  });
+
+  // Preview data query
+  const { data: previewData, isLoading: loadingPreview, refetch: refetchPreview } = trpc.databaseConnection.previewData.useQuery(
+    {
+      connectionId: formData.connectionId,
+      tableName: formData.tableName,
+      columns: [formData.productCodeColumn, formData.stationColumn, formData.valueColumn, formData.timestampColumn].filter(Boolean),
+      filterConditions: filterConditions.filter(fc => fc.column && fc.value),
+      limit: 10,
+    },
+    {
+      enabled: showPreviewDialog && formData.connectionId > 0 && formData.tableName.length > 0,
+    }
+  );
 
   const createMutation = trpc.mapping.create.useMutation({
     onSuccess: () => {
@@ -125,6 +160,26 @@ export default function Mappings() {
   const resetForm = () => {
     setFormData(defaultFormData);
     setEditingId(null);
+    setFilterConditions([]);
+    setConnectionTestResult(null);
+  };
+
+  const handleTestConnection = () => {
+    if (formData.connectionId <= 0) {
+      toast.error("Vui lòng chọn kết nối database trước");
+      return;
+    }
+    setTestingConnection(true);
+    setConnectionTestResult(null);
+    testConnectionMutation.mutate({ connectionId: formData.connectionId });
+  };
+
+  const handlePreviewData = () => {
+    if (formData.connectionId <= 0 || !formData.tableName) {
+      toast.error("Vui lòng chọn kết nối và bảng dữ liệu trước");
+      return;
+    }
+    setShowPreviewDialog(true);
   };
 
   const handleEdit = (mapping: typeof mappings extends (infer T)[] | undefined ? T : never) => {
@@ -143,6 +198,19 @@ export default function Mappings() {
       lsl: mapping.lsl ?? undefined,
       target: mapping.target ?? undefined,
     });
+    // Load filter conditions from mapping
+    if ((mapping as any).filterConditions) {
+      try {
+        const conditions = JSON.parse((mapping as any).filterConditions);
+        setFilterConditions(conditions);
+        setShowAdvancedFilter(conditions.length > 0);
+      } catch {
+        setFilterConditions([]);
+      }
+    } else {
+      setFilterConditions([]);
+    }
+    setConnectionTestResult(null);
     setIsDialogOpen(true);
   };
 
@@ -152,13 +220,21 @@ export default function Mappings() {
       return;
     }
 
+    // Prepare filter conditions JSON
+    const validFilterConditions = filterConditions.filter(fc => fc.column && fc.value);
+    const filterConditionsJson = validFilterConditions.length > 0 ? JSON.stringify(validFilterConditions) : null;
+
     if (editingId) {
       updateMutation.mutate({
         id: editingId,
         ...formData,
+        filterConditions: filterConditionsJson,
       });
     } else {
-      createMutation.mutate(formData);
+      createMutation.mutate({
+        ...formData,
+        filterConditions: filterConditionsJson ?? undefined,
+      });
     }
   };
 
@@ -239,32 +315,58 @@ export default function Mappings() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Database Connection *</Label>
-                    <Select
-                      value={formData.connectionId.toString()}
-                      onValueChange={(value) => {
-                        setFormData({ 
-                          ...formData, 
-                          connectionId: parseInt(value),
-                          tableName: "", // Reset table khi đổi connection
-                          productCodeColumn: "product_code",
-                          stationColumn: "station",
-                          valueColumn: "value",
-                          timestampColumn: "timestamp",
-                        });
-                        setFilterConditions([]);
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Chọn connection" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {connections?.map((conn) => (
-                          <SelectItem key={conn.id} value={conn.id.toString()}>
-                            {conn.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="flex gap-2">
+                      <Select
+                        value={formData.connectionId.toString()}
+                        onValueChange={(value) => {
+                          setFormData({ 
+                            ...formData, 
+                            connectionId: parseInt(value),
+                            tableName: "", // Reset table khi đổi connection
+                            productCodeColumn: "product_code",
+                            stationColumn: "station",
+                            valueColumn: "value",
+                            timestampColumn: "timestamp",
+                          });
+                          setFilterConditions([]);
+                          setConnectionTestResult(null);
+                        }}
+                      >
+                        <SelectTrigger className="flex-1">
+                          <SelectValue placeholder="Chọn connection" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {connections?.map((conn) => (
+                            <SelectItem key={conn.id} value={conn.id.toString()}>
+                              {conn.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={handleTestConnection}
+                        disabled={formData.connectionId <= 0 || testingConnection}
+                        title="Test kết nối"
+                      >
+                        {testingConnection ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : connectionTestResult?.success ? (
+                          <CheckCircle className="h-4 w-4 text-green-500" />
+                        ) : connectionTestResult?.success === false ? (
+                          <XCircle className="h-4 w-4 text-red-500" />
+                        ) : (
+                          <Database className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                    {connectionTestResult && (
+                      <p className={`text-xs ${connectionTestResult.success ? 'text-green-600' : 'text-red-600'}`}>
+                        {connectionTestResult.message}
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label>Tên bảng * {loadingTables && <Loader2 className="inline h-3 w-3 animate-spin" />}</Label>
@@ -515,19 +617,30 @@ export default function Mappings() {
                   </CollapsibleContent>
                 </Collapsible>
               </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-                  Hủy
-                </Button>
+              <DialogFooter className="flex justify-between sm:justify-between">
                 <Button 
-                  onClick={handleSubmit}
-                  disabled={createMutation.isPending || updateMutation.isPending}
+                  type="button"
+                  variant="secondary" 
+                  onClick={handlePreviewData}
+                  disabled={formData.connectionId <= 0 || !formData.tableName}
                 >
-                  {(createMutation.isPending || updateMutation.isPending) && (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  )}
-                  {editingId ? "Cập nhật" : "Tạo mới"}
+                  <Eye className="mr-2 h-4 w-4" />
+                  Xem trước dữ liệu
                 </Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                    Hủy
+                  </Button>
+                  <Button 
+                    onClick={handleSubmit}
+                    disabled={createMutation.isPending || updateMutation.isPending}
+                  >
+                    {(createMutation.isPending || updateMutation.isPending) && (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    )}
+                    {editingId ? "Cập nhật" : "Tạo mới"}
+                  </Button>
+                </div>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -600,6 +713,76 @@ export default function Mappings() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Preview Data Dialog */}
+      <Dialog open={showPreviewDialog} onOpenChange={setShowPreviewDialog}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="h-5 w-5" />
+              Xem trước dữ liệu
+            </DialogTitle>
+            <DialogDescription>
+              Hiển thị 10 dòng mẫu từ bảng <code className="bg-muted px-1 rounded">{formData.tableName}</code>
+              {filterConditions.filter(fc => fc.column && fc.value).length > 0 && (
+                <span> với {filterConditions.filter(fc => fc.column && fc.value).length} điều kiện lọc</span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 overflow-auto">
+            {loadingPreview ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                <span className="ml-2 text-muted-foreground">Đang tải dữ liệu...</span>
+              </div>
+            ) : previewData?.data && previewData.data.length > 0 ? (
+              <div className="space-y-4">
+                <div className="text-sm text-muted-foreground">
+                  <strong>Query:</strong> <code className="bg-muted px-2 py-1 rounded text-xs">{previewData.query}</code>
+                </div>
+                <div className="rounded-lg border overflow-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        {Object.keys(previewData.data[0]).map((key) => (
+                          <TableHead key={key} className="whitespace-nowrap">{key}</TableHead>
+                        ))}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {previewData.data.map((row: Record<string, unknown>, idx: number) => (
+                        <TableRow key={idx}>
+                          {Object.values(row).map((value, cellIdx) => (
+                            <TableCell key={cellIdx} className="font-mono text-sm">
+                              {value === null ? <span className="text-muted-foreground italic">NULL</span> : String(value)}
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  Hiển thị {previewData.rowCount} dòng
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <FileSpreadsheet className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-medium">Không có dữ liệu</h3>
+                <p className="text-muted-foreground mt-1">
+                  Không tìm thấy dữ liệu phù hợp với các điều kiện lọc
+                </p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowPreviewDialog(false)}>
+              Đóng
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }

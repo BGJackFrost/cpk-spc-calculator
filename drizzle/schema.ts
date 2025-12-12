@@ -52,6 +52,7 @@ export const productStationMappings = mysqlTable("product_station_mappings", {
   usl: int("usl"),
   lsl: int("lsl"),
   target: int("target"),
+  filterConditions: text("filterConditions"), // JSON array of filter conditions
   isActive: int("isActive").notNull().default(1),
   createdBy: int("createdBy").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
