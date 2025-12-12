@@ -60,6 +60,17 @@ import {
   deleteSpcDefectRecord,
   getDefectStatistics,
   getDefectByRuleStatistics,
+  getMachineTypes,
+  getMachineTypeById,
+  createMachineType,
+  updateMachineType,
+  deleteMachineType,
+  getFixtures,
+  getFixtureById,
+  createFixture,
+  updateFixture,
+  deleteFixture,
+  getFixturesWithMachineInfo,
   getProductionLineById,
   updateProductionLine,
   deleteProductionLine,
@@ -1089,6 +1100,117 @@ const permissionRouter = router({
     }),
 });
 
+// Machine Type Router - Quản lý loại máy
+const machineTypeRouter = router({
+  list: protectedProcedure.query(async () => {
+    return await getMachineTypes();
+  }),
+
+  getById: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .query(async ({ input }) => {
+      return await getMachineTypeById(input.id);
+    }),
+
+  create: protectedProcedure
+    .input(z.object({
+      code: z.string().min(1),
+      name: z.string().min(1),
+      description: z.string().optional(),
+      category: z.string().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const id = await createMachineType({
+        ...input,
+        createdBy: ctx.user.id,
+      });
+      return { id };
+    }),
+
+  update: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      code: z.string().optional(),
+      name: z.string().optional(),
+      description: z.string().optional(),
+      category: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const { id, ...data } = input;
+      await updateMachineType(id, data);
+      return { success: true };
+    }),
+
+  delete: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      await deleteMachineType(input.id);
+      return { success: true };
+    }),
+});
+
+// Fixture Router - Quản lý Fixture
+const fixtureRouter = router({
+  list: protectedProcedure
+    .input(z.object({ machineId: z.number().optional() }).optional())
+    .query(async ({ input }) => {
+      return await getFixtures(input?.machineId);
+    }),
+
+  listWithMachineInfo: protectedProcedure.query(async () => {
+    return await getFixturesWithMachineInfo();
+  }),
+
+  getById: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .query(async ({ input }) => {
+      return await getFixtureById(input.id);
+    }),
+
+  create: protectedProcedure
+    .input(z.object({
+      machineId: z.number(),
+      code: z.string().min(1),
+      name: z.string().min(1),
+      description: z.string().optional(),
+      position: z.number().optional(),
+      status: z.enum(["active", "maintenance", "inactive"]).optional(),
+      installDate: z.date().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const id = await createFixture({
+        ...input,
+        createdBy: ctx.user.id,
+      });
+      return { id };
+    }),
+
+  update: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      machineId: z.number().optional(),
+      code: z.string().optional(),
+      name: z.string().optional(),
+      description: z.string().optional(),
+      position: z.number().optional(),
+      status: z.enum(["active", "maintenance", "inactive"]).optional(),
+      installDate: z.date().optional(),
+      lastMaintenanceDate: z.date().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const { id, ...data } = input;
+      await updateFixture(id, data);
+      return { success: true };
+    }),
+
+  delete: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      await deleteFixture(input.id);
+      return { success: true };
+    }),
+});
+
 // Defect Router - Quản lý lỗi SPC
 const defectRouter = router({
   // Defect Categories
@@ -1291,6 +1413,8 @@ export const appRouter = router({
   emailNotification: emailNotificationRouter,
   permission: permissionRouter,
   defect: defectRouter,
+  machineType: machineTypeRouter,
+  fixture: fixtureRouter,
 
   // Process Config router
   processConfig: router({

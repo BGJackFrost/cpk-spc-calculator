@@ -94,6 +94,8 @@ export default function Analyze() {
   const [selectedStation, setSelectedStation] = useState<string>("");
   const [selectedMapping, setSelectedMapping] = useState<string>("");
   const [selectedSpcPlan, setSelectedSpcPlan] = useState<string>("");
+  const [selectedMachine, setSelectedMachine] = useState<string>("");
+  const [selectedFixture, setSelectedFixture] = useState<string>("all");
   const [manualData, setManualData] = useState<string>("");
   const [manualUsl, setManualUsl] = useState<string>("");
   const [manualLsl, setManualLsl] = useState<string>("");
@@ -115,6 +117,15 @@ export default function Analyze() {
   
   // Lấy danh sách SPC Plans
   const { data: spcPlans } = trpc.spcPlan.list.useQuery();
+  
+  // Lấy danh sách máy
+  const { data: machines } = trpc.machine.listAll.useQuery();
+  
+  // Lấy danh sách fixtures theo máy đã chọn
+  const { data: fixtures } = trpc.fixture.list.useQuery(
+    { machineId: selectedMachine ? parseInt(selectedMachine) : undefined },
+    { enabled: !!selectedMachine }
+  );
   
   // Lấy tất cả workstations (không phụ thuộc vào mapping)
   const availableStations = useMemo(() => {
@@ -528,6 +539,64 @@ export default function Analyze() {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+            </div>
+
+            {/* Machine and Fixture Selection */}
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mt-6 p-4 bg-muted/30 rounded-lg border border-border/50">
+              <div className="lg:col-span-3">
+                <Label className="text-sm font-medium text-muted-foreground">Tùy chọn nâng cao: Lọc theo Máy và Fixture</Label>
+              </div>
+              {/* Machine */}
+              <div className="space-y-2">
+                <Label>Máy</Label>
+                <Select 
+                  value={selectedMachine} 
+                  onValueChange={(v) => {
+                    setSelectedMachine(v);
+                    setSelectedFixture("all");
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Tất cả máy" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tất cả máy</SelectItem>
+                    {machines?.map((machine) => (
+                      <SelectItem key={machine.id} value={machine.id.toString()}>
+                        {machine.code} - {machine.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Fixture */}
+              <div className="space-y-2">
+                <Label>Fixture</Label>
+                <Select 
+                  value={selectedFixture} 
+                  onValueChange={setSelectedFixture}
+                  disabled={!selectedMachine || selectedMachine === "all"}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Tất cả Fixture" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tất cả Fixture (tính chung)</SelectItem>
+                    {fixtures?.map((fixture) => (
+                      <SelectItem key={fixture.id} value={fixture.id.toString()}>
+                        {fixture.code} - {fixture.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex items-end">
+                <p className="text-xs text-muted-foreground">
+                  Chọn "Tất cả Fixture" để tính SPC/CPK cho toàn bộ máy, hoặc chọn Fixture cụ thể để phân tích riêng.
+                </p>
               </div>
             </div>
 

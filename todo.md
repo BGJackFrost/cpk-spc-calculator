@@ -297,3 +297,43 @@
 - [x] Bộ lọc theo thời gian (7/14/30/90 ngày) và dây chuyền
 - [x] Phân loại theo nhóm 5M1E (Machine, Material, Method, Man, Environment, Measurement)
 
+
+## Phase 10 - Fixture, Machine Type và Phân tích nâng cao
+
+### Quản lý Machine Type và Fixture
+- [x] Tạo bảng machine_types (loại máy)
+- [x] Thêm trường machineTypeId vào bảng machines
+- [x] Tạo bảng fixtures (fixture thuộc máy)
+- [x] Tạo API CRUD cho machine_types
+- [x] Tạo API CRUD cho fixtures
+- [x] Tạo trang quản lý Machine Type
+- [x] Tạo trang quản lý Fixture
+
+### Cập nhật cấu trúc Dây chuyền
+- [x] Dây chuyền = Lưu trình sản xuất + Công trạm
+- [x] Công trạm = Nhiều loại máy (Machine Type)
+- [x] Loại máy = Nhiều Fixture
+- [x] Cập nhật trang Quản lý Dây chuyền với cấu trúc mới
+
+### Tích hợp Fixture vào SPC
+- [x] Thêm option chọn Fixture trong trang Phân tích SPC
+- [x] Cho phép tính SPC cho tất cả Fixture của máy
+- [x] Cho phép tính SPC theo từng Fixture riêng lẻ
+- [ ] Cập nhật kế hoạch SPC với lựa chọn Fixture (chưa hoàn thành)
+
+### Phân tích đa sản phẩm/trạm/Fixture
+- [x] Cho phép chọn nhiều sản phẩm cùng lúc
+- [x] Cho phép chọn nhiều công trạm cùng lúc
+- [x] Cho phép chọn nhiều Fixture cùng lúc
+- [x] Tính toán tương quan (correlation) giữa 2 đối tượng
+- [x] Hiển thị biểu đồ so sánh CPK
+- [x] Tạo trang MultiAnalysis.tsx
+
+### So sánh CPK giữa các dây chuyền
+- [x] Tạo trang so sánh CPK (ProductionLineComparison.tsx)
+- [x] Chọn nhiều dây chuyền để so sánh (2-5)
+- [x] Biểu đồ bar chart so sánh CPK/CP
+- [x] Biểu đồ Radar đa chiều
+- [x] Bảng thống kê chi tiết với xếp hạng
+- [x] Bộ lọc theo thời gian
+

@@ -154,9 +154,10 @@ export type InsertWorkstation = typeof workstations.$inferInsert;
 export const machines = mysqlTable("machines", {
   id: int("id").autoincrement().primaryKey(),
   workstationId: int("workstationId").notNull(),
+  machineTypeId: int("machineTypeId"), // FK to machine_types
   name: varchar("name", { length: 255 }).notNull(),
   code: varchar("code", { length: 100 }).notNull(),
-  machineType: varchar("machineType", { length: 100 }),
+  machineType: varchar("machineType", { length: 100 }), // Legacy field, use machineTypeId instead
   manufacturer: varchar("manufacturer", { length: 255 }),
   model: varchar("model", { length: 255 }),
   serialNumber: varchar("serialNumber", { length: 255 }),
@@ -773,3 +774,43 @@ export const spcDefectRecords = mysqlTable("spc_defect_records", {
 
 export type SpcDefectRecord = typeof spcDefectRecords.$inferSelect;
 export type InsertSpcDefectRecord = typeof spcDefectRecords.$inferInsert;
+
+/**
+ * Machine Types - Loại máy (SMT, AOI, Reflow, etc.)
+ */
+export const machineTypes = mysqlTable("machine_types", {
+  id: int("id").autoincrement().primaryKey(),
+  code: varchar("code", { length: 50 }).notNull(), // Mã loại máy: SMT, AOI, REFLOW...
+  name: varchar("name", { length: 200 }).notNull(), // Tên loại máy
+  description: text("description"), // Mô tả
+  category: varchar("category", { length: 100 }), // Nhóm: Assembly, Inspection, Soldering...
+  isActive: int("isActive").notNull().default(1),
+  createdBy: int("createdBy").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type MachineType = typeof machineTypes.$inferSelect;
+export type InsertMachineType = typeof machineTypes.$inferInsert;
+
+/**
+ * Fixtures - Fixture thuộc máy
+ */
+export const fixtures = mysqlTable("fixtures", {
+  id: int("id").autoincrement().primaryKey(),
+  machineId: int("machineId").notNull(), // FK to machines
+  code: varchar("code", { length: 50 }).notNull(), // Mã fixture: FIX001, FIX002...
+  name: varchar("name", { length: 200 }).notNull(), // Tên fixture
+  description: text("description"), // Mô tả
+  position: int("position").notNull().default(1), // Vị trí trên máy
+  status: mysqlEnum("status", ["active", "maintenance", "inactive"]).default("active").notNull(),
+  installDate: timestamp("installDate"),
+  lastMaintenanceDate: timestamp("lastMaintenanceDate"),
+  isActive: int("isActive").notNull().default(1),
+  createdBy: int("createdBy").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Fixture = typeof fixtures.$inferSelect;
+export type InsertFixture = typeof fixtures.$inferInsert;

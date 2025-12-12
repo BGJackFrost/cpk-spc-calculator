@@ -36,7 +36,11 @@ import {
   spcDefectCategories,
   spcDefectRecords,
   InsertSpcDefectCategory,
-  InsertSpcDefectRecord
+  InsertSpcDefectRecord,
+  machineTypes,
+  InsertMachineType,
+  fixtures,
+  InsertFixture
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -1836,4 +1840,93 @@ export async function getDefectByRuleStatistics(filters?: {
   return Object.entries(ruleStats)
     .map(([rule, count]) => ({ rule, count }))
     .sort((a, b) => b.count - a.count);
+}
+
+
+// ============ Machine Types CRUD ============
+export async function getMachineTypes() {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(machineTypes).where(eq(machineTypes.isActive, 1));
+}
+
+export async function getMachineTypeById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(machineTypes).where(eq(machineTypes.id, id));
+  return result[0] || null;
+}
+
+export async function createMachineType(data: Omit<InsertMachineType, "id" | "createdAt" | "updatedAt">) {
+  const db = await getDb();
+  if (!db) return 0;
+  const result = await db.insert(machineTypes).values(data);
+  return result[0].insertId;
+}
+
+export async function updateMachineType(id: number, data: Partial<InsertMachineType>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(machineTypes).set(data).where(eq(machineTypes.id, id));
+}
+
+export async function deleteMachineType(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(machineTypes).set({ isActive: 0 }).where(eq(machineTypes.id, id));
+}
+
+// ============ Fixtures CRUD ============
+export async function getFixtures(machineId?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  if (machineId) {
+    return await db.select().from(fixtures)
+      .where(and(eq(fixtures.machineId, machineId), eq(fixtures.isActive, 1)));
+  }
+  return await db.select().from(fixtures).where(eq(fixtures.isActive, 1));
+}
+
+export async function getFixtureById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(fixtures).where(eq(fixtures.id, id));
+  return result[0] || null;
+}
+
+export async function createFixture(data: Omit<InsertFixture, "id" | "createdAt" | "updatedAt">) {
+  const db = await getDb();
+  if (!db) return 0;
+  const result = await db.insert(fixtures).values(data);
+  return result[0].insertId;
+}
+
+export async function updateFixture(id: number, data: Partial<InsertFixture>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(fixtures).set(data).where(eq(fixtures.id, id));
+}
+
+export async function deleteFixture(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(fixtures).set({ isActive: 0 }).where(eq(fixtures.id, id));
+}
+
+// Lấy fixtures theo máy với thông tin máy
+export async function getFixturesWithMachineInfo() {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const allFixtures = await db.select().from(fixtures).where(eq(fixtures.isActive, 1));
+  const allMachines = await getAllMachines();
+  
+  return allFixtures.map(fixture => {
+    const machine = allMachines.find(m => m.id === fixture.machineId);
+    return {
+      ...fixture,
+      machineName: machine?.name || "Unknown",
+      machineCode: machine?.code || "Unknown",
+    };
+  });
 }

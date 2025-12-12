@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, LogOut, PanelLeft, TrendingUp, History, FileSpreadsheet, Settings, Activity, Users, Package, Ruler, Factory, Clock, Calendar, Mail, Shield, Server, Database, Wrench, Cog, GitBranch, FileText, BarChart3, AlertTriangle } from "lucide-react";
+import { LayoutDashboard, LogOut, PanelLeft, TrendingUp, History, FileSpreadsheet, Settings, Activity, Users, Package, Ruler, Factory, Clock, Calendar, Mail, Shield, Server, Database, Wrench, Cog, GitBranch, FileText, BarChart3, AlertTriangle, Cpu, GitCompare, ArrowUpDown } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
@@ -31,6 +31,8 @@ const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
   { icon: Activity, label: "Dây chuyền Realtime", path: "/production-lines" },
   { icon: TrendingUp, label: "Phân tích SPC/CPK", path: "/analyze" },
+  { icon: GitCompare, label: "Phân tích Đa Đối tượng", path: "/multi-analysis" },
+  { icon: ArrowUpDown, label: "So sánh Dây chuyền", path: "/line-comparison" },
   { icon: History, label: "Lịch sử", path: "/history" },
   { icon: BarChart3, label: "Báo cáo SPC", path: "/spc-report" },
   { icon: AlertTriangle, label: "Quản lý Lỗi", path: "/defects" },
@@ -41,6 +43,8 @@ const menuItems = [
   { icon: Factory, label: "Quản lý Dây chuyền", path: "/production-line-management" },
   { icon: Wrench, label: "Quản lý Công trạm", path: "/workstations" },
   { icon: Cog, label: "Quản lý Máy", path: "/machines" },
+  { icon: Cpu, label: "Loại Máy", path: "/machine-types" },
+  { icon: Wrench, label: "Quản lý Fixture", path: "/fixtures" },
   { icon: GitBranch, label: "Quản lý Quy trình", path: "/processes" },
   { icon: Clock, label: "Phương pháp Lấy mẫu", path: "/sampling-methods" },
   { icon: Calendar, label: "Kế hoạch SPC", path: "/spc-plans" },
