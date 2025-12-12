@@ -130,6 +130,7 @@ import {
 import { invokeLLM } from "./_core/llm";
 import { notifyOwner } from "./_core/notification";
 import { generateCsvContent, generateHtmlReport, ExportData } from "./exportUtils";
+import { generatePdfHtml, generateExcelBuffer, generateEnhancedCsv, ExportData as EnhancedExportData } from "./exportService";
 import {
   productionLineRouter,
   workstationRouter,
@@ -1371,6 +1372,199 @@ const exportRouter = router({
         analysisDate: new Date(),
       };
       return { content: generateCsvContent(exportData), filename: `spc_report_${input.productCode}_${Date.now()}.csv` };
+    }),
+
+  // Enhanced PDF export with professional formatting
+  pdfEnhanced: protectedProcedure
+    .input(z.object({
+      productCode: z.string(),
+      stationName: z.string(),
+      startDate: z.date(),
+      endDate: z.date(),
+      analysisType: z.enum(["single", "batch", "spc-plan"]).optional(),
+      planName: z.string().optional(),
+      usl: z.number().nullable().optional(),
+      lsl: z.number().nullable().optional(),
+      target: z.number().nullable().optional(),
+      spcResult: z.object({
+        sampleCount: z.number(),
+        mean: z.number(),
+        stdDev: z.number(),
+        min: z.number(),
+        max: z.number(),
+        range: z.number(),
+        cp: z.number().nullable(),
+        cpk: z.number().nullable(),
+        cpu: z.number().nullable(),
+        cpl: z.number().nullable(),
+        ucl: z.number(),
+        lcl: z.number(),
+        uclR: z.number(),
+        lclR: z.number(),
+        xBarData: z.array(z.object({
+          index: z.number(),
+          value: z.number(),
+          timestamp: z.date(),
+        })).optional(),
+        rangeData: z.array(z.object({
+          index: z.number(),
+          value: z.number(),
+        })).optional(),
+        rawData: z.array(z.object({
+          value: z.number(),
+          timestamp: z.date(),
+        })).optional(),
+      }),
+    }))
+    .mutation(async ({ input }) => {
+      const exportData: EnhancedExportData = {
+        productCode: input.productCode,
+        stationName: input.stationName,
+        startDate: input.startDate,
+        endDate: input.endDate,
+        analysisType: input.analysisType,
+        planName: input.planName,
+        usl: input.usl,
+        lsl: input.lsl,
+        target: input.target,
+        spcResult: {
+          ...input.spcResult,
+          xBarData: input.spcResult.xBarData || [],
+          rangeData: input.spcResult.rangeData || [],
+          rawData: input.spcResult.rawData || [],
+        },
+        analysisDate: new Date(),
+      };
+      const html = generatePdfHtml(exportData);
+      return { content: html, filename: `spc_report_${input.productCode}_${Date.now()}.html`, mimeType: "text/html" };
+    }),
+
+  // Enhanced Excel export with multiple sheets
+  excelEnhanced: protectedProcedure
+    .input(z.object({
+      productCode: z.string(),
+      stationName: z.string(),
+      startDate: z.date(),
+      endDate: z.date(),
+      analysisType: z.enum(["single", "batch", "spc-plan"]).optional(),
+      planName: z.string().optional(),
+      usl: z.number().nullable().optional(),
+      lsl: z.number().nullable().optional(),
+      target: z.number().nullable().optional(),
+      spcResult: z.object({
+        sampleCount: z.number(),
+        mean: z.number(),
+        stdDev: z.number(),
+        min: z.number(),
+        max: z.number(),
+        range: z.number(),
+        cp: z.number().nullable(),
+        cpk: z.number().nullable(),
+        cpu: z.number().nullable(),
+        cpl: z.number().nullable(),
+        ucl: z.number(),
+        lcl: z.number(),
+        uclR: z.number(),
+        lclR: z.number(),
+        xBarData: z.array(z.object({
+          index: z.number(),
+          value: z.number(),
+          timestamp: z.date(),
+        })).optional(),
+        rangeData: z.array(z.object({
+          index: z.number(),
+          value: z.number(),
+        })).optional(),
+        rawData: z.array(z.object({
+          value: z.number(),
+          timestamp: z.date(),
+        })).optional(),
+      }),
+    }))
+    .mutation(async ({ input }) => {
+      const exportData: EnhancedExportData = {
+        productCode: input.productCode,
+        stationName: input.stationName,
+        startDate: input.startDate,
+        endDate: input.endDate,
+        analysisType: input.analysisType,
+        planName: input.planName,
+        usl: input.usl,
+        lsl: input.lsl,
+        target: input.target,
+        spcResult: {
+          ...input.spcResult,
+          xBarData: input.spcResult.xBarData || [],
+          rangeData: input.spcResult.rangeData || [],
+          rawData: input.spcResult.rawData || [],
+        },
+        analysisDate: new Date(),
+      };
+      const buffer = await generateExcelBuffer(exportData);
+      const base64 = buffer.toString("base64");
+      return { 
+        content: base64, 
+        filename: `spc_report_${input.productCode}_${Date.now()}.xlsx`, 
+        mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        isBase64: true
+      };
+    }),
+
+  // Enhanced CSV export
+  csvEnhanced: protectedProcedure
+    .input(z.object({
+      productCode: z.string(),
+      stationName: z.string(),
+      startDate: z.date(),
+      endDate: z.date(),
+      analysisType: z.enum(["single", "batch", "spc-plan"]).optional(),
+      spcResult: z.object({
+        sampleCount: z.number(),
+        mean: z.number(),
+        stdDev: z.number(),
+        min: z.number(),
+        max: z.number(),
+        range: z.number(),
+        cp: z.number().nullable(),
+        cpk: z.number().nullable(),
+        cpu: z.number().nullable(),
+        cpl: z.number().nullable(),
+        ucl: z.number(),
+        lcl: z.number(),
+        uclR: z.number(),
+        lclR: z.number(),
+        xBarData: z.array(z.object({
+          index: z.number(),
+          value: z.number(),
+          timestamp: z.date(),
+        })).optional(),
+        rangeData: z.array(z.object({
+          index: z.number(),
+          value: z.number(),
+        })).optional(),
+        rawData: z.array(z.object({
+          value: z.number(),
+          timestamp: z.date(),
+        })).optional(),
+      }),
+    }))
+    .mutation(async ({ input }) => {
+      const exportData: EnhancedExportData = {
+        productCode: input.productCode,
+        stationName: input.stationName,
+        startDate: input.startDate,
+        endDate: input.endDate,
+        analysisType: input.analysisType,
+        spcResult: {
+          ...input.spcResult,
+          xBarData: input.spcResult.xBarData || [],
+          rangeData: input.spcResult.rangeData || [],
+          rawData: input.spcResult.rawData || [],
+        },
+        analysisDate: new Date(),
+      };
+      const csv = generateEnhancedCsv(exportData);
+      return { content: csv, filename: `spc_report_${input.productCode}_${Date.now()}.csv`, mimeType: "text/csv" };
     }),
 });
 

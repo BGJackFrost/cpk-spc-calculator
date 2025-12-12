@@ -1,0 +1,732 @@
+import ExcelJS from "exceljs";
+import { SpcResult } from "./db";
+
+export interface ExportData {
+  productCode: string;
+  stationName: string;
+  startDate: Date;
+  endDate: Date;
+  spcResult: SpcResult;
+  analysisDate: Date;
+  analysisType?: "single" | "batch" | "spc-plan";
+  planName?: string;
+  usl?: number | null;
+  lsl?: number | null;
+  target?: number | null;
+}
+
+// Helper function to get CPK status
+function getCpkStatus(cpk: number | null): { color: string; label: string; bgColor: string } {
+  if (cpk === null) return { color: "#6b7280", label: "N/A", bgColor: "#f3f4f6" };
+  if (cpk >= 1.67) return { color: "#10b981", label: "Xuất sắc", bgColor: "#d1fae5" };
+  if (cpk >= 1.33) return { color: "#3b82f6", label: "Tốt", bgColor: "#dbeafe" };
+  if (cpk >= 1.0) return { color: "#f59e0b", label: "Chấp nhận được", bgColor: "#fef3c7" };
+  return { color: "#ef4444", label: "Kém", bgColor: "#fee2e2" };
+}
+
+// Generate professional PDF-ready HTML report
+export function generatePdfHtml(data: ExportData): string {
+  const cpkStatus = getCpkStatus(data.spcResult.cpk);
+  const analysisTypeLabel = data.analysisType === "batch" ? "Phân tích hàng loạt" : 
+                            data.analysisType === "spc-plan" ? "Kế hoạch SPC" : "Phân tích đơn";
+
+  return `<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Báo cáo SPC/CPK - ${data.productCode}</title>
+  <style>
+    @page { size: A4; margin: 20mm; }
+    @media print {
+      body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif; 
+      line-height: 1.6; 
+      color: #1f2937; 
+      background: white;
+      font-size: 11pt;
+    }
+    .container { max-width: 100%; padding: 0; }
+    
+    /* Header */
+    .header { 
+      background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+      color: white;
+      padding: 24px;
+      border-radius: 12px;
+      margin-bottom: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .header-left h1 { font-size: 24px; font-weight: 700; margin-bottom: 4px; }
+    .header-left p { font-size: 12px; opacity: 0.9; }
+    .header-right { text-align: right; }
+    .header-right .type-badge {
+      background: rgba(255,255,255,0.2);
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .header-right .date { font-size: 11px; margin-top: 8px; opacity: 0.9; }
+    
+    /* Info Grid */
+    .info-grid { 
+      display: grid; 
+      grid-template-columns: repeat(4, 1fr); 
+      gap: 12px; 
+      margin-bottom: 24px; 
+    }
+    .info-item { 
+      background: #f8fafc; 
+      padding: 16px; 
+      border-radius: 8px; 
+      border-left: 4px solid #3b82f6;
+    }
+    .info-item label { 
+      font-size: 10px; 
+      color: #64748b; 
+      text-transform: uppercase; 
+      letter-spacing: 0.5px;
+      font-weight: 600;
+    }
+    .info-item .value { 
+      display: block; 
+      font-size: 14px; 
+      font-weight: 600; 
+      color: #1e293b; 
+      margin-top: 4px; 
+    }
+    
+    /* CPK Highlight */
+    .cpk-section {
+      display: grid;
+      grid-template-columns: 1fr 2fr;
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+    .cpk-highlight { 
+      text-align: center; 
+      padding: 32px; 
+      background: ${cpkStatus.bgColor};
+      border-radius: 12px;
+      border: 2px solid ${cpkStatus.color};
+    }
+    .cpk-highlight .value { 
+      font-size: 56px; 
+      font-weight: 800; 
+      color: ${cpkStatus.color}; 
+      line-height: 1;
+    }
+    .cpk-highlight .label { 
+      font-size: 12px; 
+      color: #64748b; 
+      margin-top: 8px;
+      font-weight: 500;
+    }
+    .cpk-highlight .status { 
+      display: inline-block; 
+      padding: 6px 16px; 
+      border-radius: 20px; 
+      font-size: 12px; 
+      font-weight: 600; 
+      color: white; 
+      background: ${cpkStatus.color}; 
+      margin-top: 12px; 
+    }
+    
+    /* Capability Indices */
+    .capability-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+    .capability-item {
+      background: #f8fafc;
+      padding: 16px;
+      border-radius: 8px;
+      text-align: center;
+    }
+    .capability-item .name { font-size: 11px; color: #64748b; font-weight: 600; }
+    .capability-item .value { font-size: 24px; font-weight: 700; color: #1e293b; margin-top: 4px; }
+    .capability-item .desc { font-size: 9px; color: #94a3b8; margin-top: 2px; }
+    
+    /* Section */
+    .section { 
+      background: white; 
+      border-radius: 12px; 
+      border: 1px solid #e2e8f0; 
+      padding: 20px; 
+      margin-bottom: 20px;
+      page-break-inside: avoid;
+    }
+    .section h2 { 
+      font-size: 14px; 
+      color: #1e293b; 
+      margin-bottom: 16px; 
+      padding-bottom: 12px; 
+      border-bottom: 2px solid #e2e8f0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .section h2::before {
+      content: '';
+      width: 4px;
+      height: 16px;
+      background: #3b82f6;
+      border-radius: 2px;
+    }
+    
+    /* Stats Grid */
+    .stats-grid { 
+      display: grid; 
+      grid-template-columns: repeat(6, 1fr); 
+      gap: 12px; 
+    }
+    .stat-item { 
+      text-align: center; 
+      padding: 12px; 
+      background: #f8fafc; 
+      border-radius: 8px; 
+    }
+    .stat-item .value { font-size: 18px; font-weight: 700; color: #1e293b; }
+    .stat-item .label { font-size: 10px; color: #64748b; margin-top: 4px; }
+    
+    /* Table */
+    table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+    th { 
+      background: #f1f5f9; 
+      font-size: 10px; 
+      text-transform: uppercase; 
+      letter-spacing: 0.5px; 
+      color: #64748b;
+      font-weight: 600;
+    }
+    td { font-family: 'SF Mono', 'Consolas', monospace; }
+    tr:nth-child(even) { background: #f8fafc; }
+    
+    /* Spec Limits */
+    .spec-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+    .spec-item {
+      text-align: center;
+      padding: 16px;
+      border-radius: 8px;
+    }
+    .spec-item.usl { background: #fef2f2; border: 1px solid #fecaca; }
+    .spec-item.target { background: #f0fdf4; border: 1px solid #bbf7d0; }
+    .spec-item.lsl { background: #eff6ff; border: 1px solid #bfdbfe; }
+    .spec-item .label { font-size: 10px; color: #64748b; font-weight: 600; }
+    .spec-item .value { font-size: 20px; font-weight: 700; margin-top: 4px; }
+    .spec-item.usl .value { color: #dc2626; }
+    .spec-item.target .value { color: #16a34a; }
+    .spec-item.lsl .value { color: #2563eb; }
+    
+    /* Footer */
+    .footer { 
+      text-align: center; 
+      margin-top: 32px; 
+      padding-top: 16px; 
+      border-top: 1px solid #e2e8f0; 
+      color: #94a3b8; 
+      font-size: 10px; 
+    }
+    .footer .logo { font-weight: 700; color: #3b82f6; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="header-left">
+        <h1>Báo cáo Phân tích SPC/CPK</h1>
+        <p>Statistical Process Control Analysis Report</p>
+      </div>
+      <div class="header-right">
+        <div class="type-badge">${analysisTypeLabel}</div>
+        <div class="date">Ngày tạo: ${data.analysisDate.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
+      </div>
+    </div>
+
+    <div class="info-grid">
+      <div class="info-item">
+        <label>Mã sản phẩm</label>
+        <span class="value">${data.productCode}</span>
+      </div>
+      <div class="info-item">
+        <label>Trạm/Station</label>
+        <span class="value">${data.stationName}</span>
+      </div>
+      <div class="info-item">
+        <label>Khoảng thời gian</label>
+        <span class="value">${data.startDate.toLocaleDateString('vi-VN')} - ${data.endDate.toLocaleDateString('vi-VN')}</span>
+      </div>
+      <div class="info-item">
+        <label>Số mẫu</label>
+        <span class="value">${data.spcResult.sampleCount} mẫu</span>
+      </div>
+    </div>
+
+    <div class="cpk-section">
+      <div class="cpk-highlight">
+        <div class="value">${data.spcResult.cpk?.toFixed(3) ?? 'N/A'}</div>
+        <div class="label">Chỉ số năng lực quy trình (Cpk)</div>
+        <div class="status">${cpkStatus.label}</div>
+      </div>
+      <div class="capability-grid">
+        <div class="capability-item">
+          <div class="name">Cp</div>
+          <div class="value">${data.spcResult.cp?.toFixed(3) ?? 'N/A'}</div>
+          <div class="desc">Process Capability</div>
+        </div>
+        <div class="capability-item">
+          <div class="name">Cpk</div>
+          <div class="value">${data.spcResult.cpk?.toFixed(3) ?? 'N/A'}</div>
+          <div class="desc">Capability Index</div>
+        </div>
+        <div class="capability-item">
+          <div class="name">Cpu</div>
+          <div class="value">${data.spcResult.cpu?.toFixed(3) ?? 'N/A'}</div>
+          <div class="desc">Upper Capability</div>
+        </div>
+        <div class="capability-item">
+          <div class="name">Cpl</div>
+          <div class="value">${data.spcResult.cpl?.toFixed(3) ?? 'N/A'}</div>
+          <div class="desc">Lower Capability</div>
+        </div>
+      </div>
+    </div>
+
+    ${data.usl !== undefined || data.lsl !== undefined || data.target !== undefined ? `
+    <div class="section">
+      <h2>Giới hạn Specification</h2>
+      <div class="spec-grid">
+        <div class="spec-item usl">
+          <div class="label">USL (Giới hạn trên)</div>
+          <div class="value">${data.usl?.toFixed(4) ?? 'N/A'}</div>
+        </div>
+        <div class="spec-item target">
+          <div class="label">Target (Mục tiêu)</div>
+          <div class="value">${data.target?.toFixed(4) ?? 'N/A'}</div>
+        </div>
+        <div class="spec-item lsl">
+          <div class="label">LSL (Giới hạn dưới)</div>
+          <div class="value">${data.lsl?.toFixed(4) ?? 'N/A'}</div>
+        </div>
+      </div>
+    </div>
+    ` : ''}
+
+    <div class="section">
+      <h2>Thống kê mô tả</h2>
+      <div class="stats-grid">
+        <div class="stat-item">
+          <div class="value">${data.spcResult.sampleCount}</div>
+          <div class="label">Số mẫu</div>
+        </div>
+        <div class="stat-item">
+          <div class="value">${data.spcResult.mean.toFixed(4)}</div>
+          <div class="label">Trung bình</div>
+        </div>
+        <div class="stat-item">
+          <div class="value">${data.spcResult.stdDev.toFixed(4)}</div>
+          <div class="label">Độ lệch chuẩn</div>
+        </div>
+        <div class="stat-item">
+          <div class="value">${data.spcResult.min.toFixed(4)}</div>
+          <div class="label">Giá trị nhỏ nhất</div>
+        </div>
+        <div class="stat-item">
+          <div class="value">${data.spcResult.max.toFixed(4)}</div>
+          <div class="label">Giá trị lớn nhất</div>
+        </div>
+        <div class="stat-item">
+          <div class="value">${data.spcResult.range.toFixed(4)}</div>
+          <div class="label">Khoảng biến thiên</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Giới hạn kiểm soát (Control Limits)</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Loại giới hạn</th>
+            <th>Giá trị</th>
+            <th>Mô tả</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>UCL (X-bar)</td>
+            <td>${data.spcResult.ucl.toFixed(6)}</td>
+            <td>Giới hạn kiểm soát trên cho biểu đồ X-bar</td>
+          </tr>
+          <tr>
+            <td>CL (X-bar)</td>
+            <td>${data.spcResult.mean.toFixed(6)}</td>
+            <td>Đường trung tâm cho biểu đồ X-bar</td>
+          </tr>
+          <tr>
+            <td>LCL (X-bar)</td>
+            <td>${data.spcResult.lcl.toFixed(6)}</td>
+            <td>Giới hạn kiểm soát dưới cho biểu đồ X-bar</td>
+          </tr>
+          <tr>
+            <td>UCL (R)</td>
+            <td>${data.spcResult.uclR.toFixed(6)}</td>
+            <td>Giới hạn kiểm soát trên cho biểu đồ R</td>
+          </tr>
+          <tr>
+            <td>LCL (R)</td>
+            <td>${data.spcResult.lclR.toFixed(6)}</td>
+            <td>Giới hạn kiểm soát dưới cho biểu đồ R</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="footer">
+      <p class="logo">SPC/CPK Calculator System</p>
+      <p>Báo cáo được tạo tự động • ${new Date().getFullYear()} All rights reserved</p>
+    </div>
+  </div>
+</body>
+</html>`;
+}
+
+// Generate Excel workbook with professional formatting
+export async function generateExcelBuffer(data: ExportData): Promise<Buffer> {
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = "SPC/CPK Calculator";
+  workbook.created = new Date();
+  
+  // Summary Sheet
+  const summarySheet = workbook.addWorksheet("Tổng quan", {
+    properties: { tabColor: { argb: "3B82F6" } }
+  });
+  
+  // Set column widths
+  summarySheet.columns = [
+    { width: 25 },
+    { width: 20 },
+    { width: 20 },
+    { width: 20 },
+  ];
+  
+  // Title
+  summarySheet.mergeCells("A1:D1");
+  const titleCell = summarySheet.getCell("A1");
+  titleCell.value = "BÁO CÁO PHÂN TÍCH SPC/CPK";
+  titleCell.font = { size: 18, bold: true, color: { argb: "1E40AF" } };
+  titleCell.alignment = { horizontal: "center", vertical: "middle" };
+  summarySheet.getRow(1).height = 35;
+  
+  // Subtitle
+  summarySheet.mergeCells("A2:D2");
+  const subtitleCell = summarySheet.getCell("A2");
+  subtitleCell.value = "Statistical Process Control Analysis Report";
+  subtitleCell.font = { size: 11, italic: true, color: { argb: "64748B" } };
+  subtitleCell.alignment = { horizontal: "center" };
+  
+  // Info section
+  const infoStartRow = 4;
+  const infoData = [
+    ["Mã sản phẩm:", data.productCode, "Trạm/Station:", data.stationName],
+    ["Ngày bắt đầu:", data.startDate.toLocaleDateString("vi-VN"), "Ngày kết thúc:", data.endDate.toLocaleDateString("vi-VN")],
+    ["Ngày phân tích:", data.analysisDate.toLocaleString("vi-VN"), "Số mẫu:", data.spcResult.sampleCount.toString()],
+  ];
+  
+  infoData.forEach((row, idx) => {
+    const rowNum = infoStartRow + idx;
+    summarySheet.getRow(rowNum).values = row;
+    summarySheet.getCell(`A${rowNum}`).font = { bold: true, color: { argb: "64748B" } };
+    summarySheet.getCell(`C${rowNum}`).font = { bold: true, color: { argb: "64748B" } };
+  });
+  
+  // CPK Highlight
+  const cpkRow = 8;
+  summarySheet.mergeCells(`A${cpkRow}:D${cpkRow}`);
+  const cpkCell = summarySheet.getCell(`A${cpkRow}`);
+  const cpkStatus = getCpkStatus(data.spcResult.cpk);
+  cpkCell.value = `CPK: ${data.spcResult.cpk?.toFixed(3) ?? "N/A"} - ${cpkStatus.label}`;
+  cpkCell.font = { size: 24, bold: true, color: { argb: cpkStatus.color.replace("#", "") } };
+  cpkCell.alignment = { horizontal: "center", vertical: "middle" };
+  cpkCell.fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: cpkStatus.bgColor.replace("#", "") }
+  };
+  summarySheet.getRow(cpkRow).height = 45;
+  
+  // Process Capability Section
+  const capStartRow = 10;
+  summarySheet.getCell(`A${capStartRow}`).value = "Chỉ số năng lực quy trình";
+  summarySheet.getCell(`A${capStartRow}`).font = { size: 14, bold: true };
+  summarySheet.mergeCells(`A${capStartRow}:D${capStartRow}`);
+  
+  const capHeaders = ["Chỉ số", "Giá trị", "Mô tả", ""];
+  summarySheet.getRow(capStartRow + 1).values = capHeaders;
+  summarySheet.getRow(capStartRow + 1).font = { bold: true };
+  summarySheet.getRow(capStartRow + 1).fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: "F1F5F9" }
+  };
+  
+  const capData = [
+    ["Cp", data.spcResult.cp?.toFixed(4) ?? "N/A", "Process Capability"],
+    ["Cpk", data.spcResult.cpk?.toFixed(4) ?? "N/A", "Capability Index"],
+    ["Cpu", data.spcResult.cpu?.toFixed(4) ?? "N/A", "Upper Capability"],
+    ["Cpl", data.spcResult.cpl?.toFixed(4) ?? "N/A", "Lower Capability"],
+  ];
+  
+  capData.forEach((row, idx) => {
+    summarySheet.getRow(capStartRow + 2 + idx).values = row;
+  });
+  
+  // Statistics Section
+  const statsStartRow = capStartRow + 7;
+  summarySheet.getCell(`A${statsStartRow}`).value = "Thống kê mô tả";
+  summarySheet.getCell(`A${statsStartRow}`).font = { size: 14, bold: true };
+  summarySheet.mergeCells(`A${statsStartRow}:D${statsStartRow}`);
+  
+  const statsHeaders = ["Chỉ tiêu", "Giá trị", "", ""];
+  summarySheet.getRow(statsStartRow + 1).values = statsHeaders;
+  summarySheet.getRow(statsStartRow + 1).font = { bold: true };
+  summarySheet.getRow(statsStartRow + 1).fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: "F1F5F9" }
+  };
+  
+  const statsData = [
+    ["Số mẫu", data.spcResult.sampleCount],
+    ["Trung bình (Mean)", data.spcResult.mean.toFixed(6)],
+    ["Độ lệch chuẩn (Std Dev)", data.spcResult.stdDev.toFixed(6)],
+    ["Giá trị nhỏ nhất (Min)", data.spcResult.min.toFixed(6)],
+    ["Giá trị lớn nhất (Max)", data.spcResult.max.toFixed(6)],
+    ["Khoảng biến thiên (Range)", data.spcResult.range.toFixed(6)],
+  ];
+  
+  statsData.forEach((row, idx) => {
+    summarySheet.getRow(statsStartRow + 2 + idx).values = row;
+  });
+  
+  // Control Limits Section
+  const limitsStartRow = statsStartRow + 9;
+  summarySheet.getCell(`A${limitsStartRow}`).value = "Giới hạn kiểm soát";
+  summarySheet.getCell(`A${limitsStartRow}`).font = { size: 14, bold: true };
+  summarySheet.mergeCells(`A${limitsStartRow}:D${limitsStartRow}`);
+  
+  const limitsHeaders = ["Giới hạn", "Giá trị", "Mô tả", ""];
+  summarySheet.getRow(limitsStartRow + 1).values = limitsHeaders;
+  summarySheet.getRow(limitsStartRow + 1).font = { bold: true };
+  summarySheet.getRow(limitsStartRow + 1).fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: "F1F5F9" }
+  };
+  
+  const limitsData = [
+    ["UCL (X-bar)", data.spcResult.ucl.toFixed(6), "Upper Control Limit"],
+    ["CL (X-bar)", data.spcResult.mean.toFixed(6), "Center Line"],
+    ["LCL (X-bar)", data.spcResult.lcl.toFixed(6), "Lower Control Limit"],
+    ["UCL (R)", data.spcResult.uclR.toFixed(6), "Upper Control Limit (Range)"],
+    ["LCL (R)", data.spcResult.lclR.toFixed(6), "Lower Control Limit (Range)"],
+  ];
+  
+  limitsData.forEach((row, idx) => {
+    summarySheet.getRow(limitsStartRow + 2 + idx).values = row;
+  });
+  
+  // Data Sheet - X-bar data
+  if (data.spcResult.xBarData && data.spcResult.xBarData.length > 0) {
+    const dataSheet = workbook.addWorksheet("Dữ liệu X-bar", {
+      properties: { tabColor: { argb: "10B981" } }
+    });
+    
+    dataSheet.columns = [
+      { header: "Subgroup", key: "index", width: 12 },
+      { header: "Giá trị", key: "value", width: 18 },
+      { header: "Thời gian", key: "timestamp", width: 22 },
+      { header: "UCL", key: "ucl", width: 18 },
+      { header: "CL", key: "cl", width: 18 },
+      { header: "LCL", key: "lcl", width: 18 },
+    ];
+    
+    dataSheet.getRow(1).font = { bold: true };
+    dataSheet.getRow(1).fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "1E40AF" }
+    };
+    dataSheet.getRow(1).font = { bold: true, color: { argb: "FFFFFF" } };
+    
+    data.spcResult.xBarData.forEach((point) => {
+      dataSheet.addRow({
+        index: point.index,
+        value: point.value,
+        timestamp: point.timestamp.toLocaleString("vi-VN"),
+        ucl: data.spcResult.ucl,
+        cl: data.spcResult.mean,
+        lcl: data.spcResult.lcl,
+      });
+    });
+  }
+  
+  // Range Data Sheet
+  if (data.spcResult.rangeData && data.spcResult.rangeData.length > 0) {
+    const rangeSheet = workbook.addWorksheet("Dữ liệu Range", {
+      properties: { tabColor: { argb: "F59E0B" } }
+    });
+    
+    rangeSheet.columns = [
+      { header: "Subgroup", key: "index", width: 12 },
+      { header: "Range", key: "value", width: 18 },
+      { header: "UCL (R)", key: "uclR", width: 18 },
+      { header: "LCL (R)", key: "lclR", width: 18 },
+    ];
+    
+    rangeSheet.getRow(1).font = { bold: true };
+    rangeSheet.getRow(1).fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "F59E0B" }
+    };
+    rangeSheet.getRow(1).font = { bold: true, color: { argb: "FFFFFF" } };
+    
+    data.spcResult.rangeData.forEach((point) => {
+      rangeSheet.addRow({
+        index: point.index,
+        value: point.value,
+        uclR: data.spcResult.uclR,
+        lclR: data.spcResult.lclR,
+      });
+    });
+  }
+  
+  // Raw Data Sheet
+  if (data.spcResult.rawData && data.spcResult.rawData.length > 0) {
+    const rawSheet = workbook.addWorksheet("Dữ liệu thô", {
+      properties: { tabColor: { argb: "8B5CF6" } }
+    });
+    
+    rawSheet.columns = [
+      { header: "#", key: "index", width: 8 },
+      { header: "Giá trị", key: "value", width: 18 },
+      { header: "Thời gian", key: "timestamp", width: 22 },
+    ];
+    
+    rawSheet.getRow(1).font = { bold: true };
+    rawSheet.getRow(1).fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "8B5CF6" }
+    };
+    rawSheet.getRow(1).font = { bold: true, color: { argb: "FFFFFF" } };
+    
+    data.spcResult.rawData.forEach((point, idx) => {
+      rawSheet.addRow({
+        index: idx + 1,
+        value: point.value,
+        timestamp: point.timestamp.toLocaleString("vi-VN"),
+      });
+    });
+  }
+  
+  // Generate buffer
+  const buffer = await workbook.xlsx.writeBuffer();
+  return Buffer.from(buffer);
+}
+
+// Generate CSV content (enhanced)
+export function generateEnhancedCsv(data: ExportData): string {
+  const lines: string[] = [];
+  const cpkStatus = getCpkStatus(data.spcResult.cpk);
+  
+  // BOM for UTF-8
+  lines.push("\uFEFF");
+  
+  // Header
+  lines.push("BÁO CÁO PHÂN TÍCH SPC/CPK");
+  lines.push("Statistical Process Control Analysis Report");
+  lines.push("");
+  
+  // Info
+  lines.push("THÔNG TIN CHUNG");
+  lines.push(`Mã sản phẩm,${data.productCode}`);
+  lines.push(`Trạm/Station,${data.stationName}`);
+  lines.push(`Khoảng thời gian,${data.startDate.toLocaleDateString('vi-VN')} - ${data.endDate.toLocaleDateString('vi-VN')}`);
+  lines.push(`Ngày phân tích,${data.analysisDate.toLocaleString('vi-VN')}`);
+  lines.push(`Số mẫu,${data.spcResult.sampleCount}`);
+  lines.push("");
+  
+  // CPK Status
+  lines.push("CHỈ SỐ NĂNG LỰC QUY TRÌNH");
+  lines.push(`CPK,${data.spcResult.cpk?.toFixed(4) ?? 'N/A'},${cpkStatus.label}`);
+  lines.push(`Cp,${data.spcResult.cp?.toFixed(4) ?? 'N/A'}`);
+  lines.push(`Cpu,${data.spcResult.cpu?.toFixed(4) ?? 'N/A'}`);
+  lines.push(`Cpl,${data.spcResult.cpl?.toFixed(4) ?? 'N/A'}`);
+  lines.push("");
+  
+  // Statistics
+  lines.push("THỐNG KÊ MÔ TẢ");
+  lines.push("Chỉ tiêu,Giá trị");
+  lines.push(`Trung bình (Mean),${data.spcResult.mean.toFixed(6)}`);
+  lines.push(`Độ lệch chuẩn (Std Dev),${data.spcResult.stdDev.toFixed(6)}`);
+  lines.push(`Giá trị nhỏ nhất (Min),${data.spcResult.min.toFixed(6)}`);
+  lines.push(`Giá trị lớn nhất (Max),${data.spcResult.max.toFixed(6)}`);
+  lines.push(`Khoảng biến thiên (Range),${data.spcResult.range.toFixed(6)}`);
+  lines.push("");
+  
+  // Control Limits
+  lines.push("GIỚI HẠN KIỂM SOÁT");
+  lines.push("Giới hạn,Giá trị");
+  lines.push(`UCL (X-bar),${data.spcResult.ucl.toFixed(6)}`);
+  lines.push(`CL (X-bar),${data.spcResult.mean.toFixed(6)}`);
+  lines.push(`LCL (X-bar),${data.spcResult.lcl.toFixed(6)}`);
+  lines.push(`UCL (R),${data.spcResult.uclR.toFixed(6)}`);
+  lines.push(`LCL (R),${data.spcResult.lclR.toFixed(6)}`);
+  lines.push("");
+  
+  // X-bar Data
+  if (data.spcResult.xBarData && data.spcResult.xBarData.length > 0) {
+    lines.push("DỮ LIỆU X-BAR");
+    lines.push("Subgroup,Giá trị,Thời gian");
+    data.spcResult.xBarData.forEach(point => {
+      lines.push(`${point.index},${point.value.toFixed(6)},${point.timestamp.toLocaleString('vi-VN')}`);
+    });
+    lines.push("");
+  }
+  
+  // Range Data
+  if (data.spcResult.rangeData && data.spcResult.rangeData.length > 0) {
+    lines.push("DỮ LIỆU RANGE");
+    lines.push("Subgroup,Range");
+    data.spcResult.rangeData.forEach(point => {
+      lines.push(`${point.index},${point.value.toFixed(6)}`);
+    });
+    lines.push("");
+  }
+  
+  // Raw Data
+  if (data.spcResult.rawData && data.spcResult.rawData.length > 0) {
+    lines.push("DỮ LIỆU THÔ");
+    lines.push("#,Giá trị,Thời gian");
+    data.spcResult.rawData.forEach((point, idx) => {
+      lines.push(`${idx + 1},${point.value.toFixed(6)},${point.timestamp.toLocaleString('vi-VN')}`);
+    });
+  }
+  
+  return lines.join("\n");
+}

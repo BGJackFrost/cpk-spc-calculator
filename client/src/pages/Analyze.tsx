@@ -165,20 +165,35 @@ export default function Analyze() {
     },
   });
 
-  const exportPdfMutation = trpc.export.pdf.useMutation({
+  const exportPdfMutation = trpc.export.pdfEnhanced.useMutation({
     onSuccess: (data) => {
-      downloadFile(data.content, data.filename, 'text/html');
-      toast.success("Đã xuất file PDF (HTML format)!");
+      downloadFile(data.content, data.filename, data.mimeType);
+      toast.success("Đã xuất báo cáo PDF!");
     },
     onError: (error) => {
       toast.error("Lỗi xuất file: " + error.message);
     },
   });
 
-  const exportExcelMutation = trpc.export.excel.useMutation({
+  const exportExcelMutation = trpc.export.excelEnhanced.useMutation({
     onSuccess: (data) => {
-      downloadFile(data.content, data.filename, 'text/csv');
-      toast.success("Đã xuất file Excel (CSV format)!");
+      // Decode base64 and download as Excel file
+      const byteCharacters = atob(data.content);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: data.mimeType });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = data.filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success("Đã xuất file Excel!");
     },
     onError: (error) => {
       toast.error("Lỗi xuất file: " + error.message);
@@ -316,9 +331,14 @@ export default function Analyze() {
         lcl: result.lcl,
         uclR: result.uclR,
         lclR: result.lclR,
-        usl: result.usl,
-        lsl: result.lsl,
+        xBarData: result.xBarData,
+        rangeData: result.rangeData,
+        rawData: result.rawData,
       },
+      usl: result.usl,
+      lsl: result.lsl,
+      target: result.target,
+      analysisType: "single",
     }, {
       onSettled: () => setIsExporting(false),
     });
@@ -347,13 +367,14 @@ export default function Analyze() {
         lcl: result.lcl,
         uclR: result.uclR,
         lclR: result.lclR,
-        usl: result.usl,
-        lsl: result.lsl,
+        xBarData: result.xBarData,
+        rangeData: result.rangeData,
+        rawData: result.rawData,
       },
-      rawData: result.rawData.map(d => ({
-        value: d.value,
-        timestamp: d.timestamp,
-      })),
+      usl: result.usl,
+      lsl: result.lsl,
+      target: result.target,
+      analysisType: "single",
     }, {
       onSettled: () => setIsExporting(false),
     });

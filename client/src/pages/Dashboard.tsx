@@ -1,5 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import DashboardLayout from "@/components/DashboardLayout";
+import GuidedTour from "@/components/GuidedTour";
+import { useGuidedTour, dashboardTourSteps } from "@/hooks/useGuidedTour";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
@@ -14,7 +16,8 @@ import {
   CheckCircle2,
   LayoutGrid,
   Eye,
-  EyeOff
+  EyeOff,
+  HelpCircle
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -34,6 +37,10 @@ export default function Dashboard() {
   const { data: mappings } = trpc.mapping.list.useQuery();
   const { data: history } = trpc.spc.history.useQuery({ limit: 10 });
   const { data: dashboardConfig, refetch: refetchConfig } = trpc.dashboardConfig.get.useQuery();
+  
+  // Guided Tour
+  const { run, stepIndex, steps, handleCallback, startTour, isCompleted } = useGuidedTour("dashboard", dashboardTourSteps);
+  
   const toggleWidgetMutation = trpc.dashboardConfig.toggleWidget.useMutation({
     onSuccess: () => {
       refetchConfig();
@@ -116,6 +123,9 @@ export default function Dashboard() {
 
   return (
     <DashboardLayout>
+      {/* Guided Tour */}
+      <GuidedTour run={run} stepIndex={stepIndex} steps={steps} onCallback={handleCallback} />
+      
       <div className="space-y-8 animate-fade-in">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -127,52 +137,59 @@ export default function Dashboard() {
               Hệ thống phân tích SPC/CPK cho quy trình sản xuất
             </p>
           </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
-                <LayoutGrid className="h-4 w-4 mr-2" />
-                Tùy chỉnh
+          <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <LayoutGrid className="h-4 w-4 mr-2" />
+                  Tùy chỉnh
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>Hiển thị Widget</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuCheckboxItem
+                  checked={isWidgetVisible("mapping_count")}
+                  onCheckedChange={() => handleToggleWidget("mapping_count")}
+                >
+                  Cấu hình Mapping
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem
+                  checked={isWidgetVisible("recent_analysis")}
+                  onCheckedChange={() => handleToggleWidget("recent_analysis")}
+                >
+                  Phân tích gần đây
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem
+                  checked={isWidgetVisible("cpk_alerts")}
+                  onCheckedChange={() => handleToggleWidget("cpk_alerts")}
+                >
+                  Cảnh báo CPK
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem
+                  checked={isWidgetVisible("system_status")}
+                  onCheckedChange={() => handleToggleWidget("system_status")}
+                >
+                  Trạng thái hệ thống
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem
+                  checked={isWidgetVisible("quick_actions")}
+                  onCheckedChange={() => handleToggleWidget("quick_actions")}
+                >
+                  Thao tác nhanh
+                </DropdownMenuCheckboxItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            {isCompleted && (
+              <Button variant="ghost" size="sm" onClick={startTour} title="Xem lại hướng dẫn">
+                <HelpCircle className="h-4 w-4" />
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel>Hiển thị Widget</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuCheckboxItem
-                checked={isWidgetVisible("mapping_count")}
-                onCheckedChange={() => handleToggleWidget("mapping_count")}
-              >
-                Cấu hình Mapping
-              </DropdownMenuCheckboxItem>
-              <DropdownMenuCheckboxItem
-                checked={isWidgetVisible("recent_analysis")}
-                onCheckedChange={() => handleToggleWidget("recent_analysis")}
-              >
-                Phân tích gần đây
-              </DropdownMenuCheckboxItem>
-              <DropdownMenuCheckboxItem
-                checked={isWidgetVisible("cpk_alerts")}
-                onCheckedChange={() => handleToggleWidget("cpk_alerts")}
-              >
-                Cảnh báo CPK
-              </DropdownMenuCheckboxItem>
-              <DropdownMenuCheckboxItem
-                checked={isWidgetVisible("system_status")}
-                onCheckedChange={() => handleToggleWidget("system_status")}
-              >
-                Trạng thái hệ thống
-              </DropdownMenuCheckboxItem>
-              <DropdownMenuCheckboxItem
-                checked={isWidgetVisible("quick_actions")}
-                onCheckedChange={() => handleToggleWidget("quick_actions")}
-              >
-                Thao tác nhanh
-              </DropdownMenuCheckboxItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+            )}
+          </div>
         </div>
 
         {/* Stats Grid */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div data-tour="dashboard-stats" className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {stats.map((stat, index) => {
             const widgetKeys = ["mapping_count", "recent_analysis", "cpk_alerts", "system_status"];
             const widgetKey = widgetKeys[index];
@@ -202,14 +219,17 @@ export default function Dashboard() {
           <div className="md:col-span-3">
             {/* Quick Actions */}
             {isWidgetVisible("quick_actions") && (
-              <div>
+              <div data-tour="quick-actions">
                 <h2 className="text-xl font-semibold mb-4">Thao tác nhanh</h2>
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                   {quickActions.map((action, index) => {
                     const ActionIcon = action.icon;
                     return (
                       <Link key={index} href={action.href}>
-                        <Card className={`elegant-card cursor-pointer h-full ${action.primary ? 'border-primary/50 bg-primary/5' : ''}`}>
+                        <Card 
+                          className={`elegant-card cursor-pointer h-full ${action.primary ? 'border-primary/50 bg-primary/5' : ''}`}
+                          data-tour={action.primary ? "analyze-button" : undefined}
+                        >
                           <CardHeader>
                             <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-2 ${action.primary ? 'bg-primary text-primary-foreground' : 'bg-secondary'}`}>
                               <ActionIcon className="h-5 w-5" />
@@ -225,7 +245,7 @@ export default function Dashboard() {
               </div>
             )}
           </div>
-          <div className="md:col-span-1">
+          <div className="md:col-span-1" data-tour="license-status">
             <LicenseStatusWidget />
           </div>
         </div>

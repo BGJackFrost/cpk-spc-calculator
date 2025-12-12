@@ -653,3 +653,25 @@
 
 ### Lỗi License key không hợp lệ trên trang /spc-report
 - [x] Kiểm tra và sửa lỗi API mutation gây ra lỗi License key (đã fix)
+
+
+## Phase 22 - Guided Tour, Rate Limiting và Export PDF/Excel
+
+### Guided Tour
+- [x] Cài đặt thư viện react-joyride cho guided tour
+- [x] Tạo hook useGuidedTour để quản lý trạng thái tour
+- [x] Tạo component GuidedTour với các bước hướng dẫn
+- [x] Tích hợp tour vào Dashboard với các bước giới thiệu
+- [x] Lưu trạng thái đã xem tour vào localStorage
+
+### Rate Limiting
+- [x] Cài đặt thư viện express-rate-limit
+- [x] Cấu hình rate limiter cho API endpoints
+- [x] Thêm middleware rate limiting vào server
+- [x] Xử lý response khi vượt quá giới hạn
+
+### Export PDF/Excel nâng cao
+- [x] Nâng cấp export PDF với định dạng đẹp hơn
+- [x] Thêm export Excel/PDF cho trang Analyze (phân tích đơn)
+- [x] Thêm export Excel/PDF cho trang BatchAnalysis (sử dụng cùng endpoints) (phân tích đa đối tượng)
+- [x] Thêm export Excel/PDF cho trang SpcReport (sử dụng cùng endpoints)nLineComparison (so sánh dây chuyền)
