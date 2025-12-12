@@ -476,3 +476,19 @@
 - [x] Tạo hàm handleExportPNG xuất ra PNG
 - [x] Tạo hàm handleExportPDF xuất ra PDF
 - [x] Thêm nút Export dropdown trên trang Visualization
+
+
+## Phase 16 - Cải tiến Mapping và Cập nhật UPGRADE_PLAN
+
+### Cải tiến chức năng Thêm Mapping
+- [x] Tạo API lấy danh sách bảng từ database connection (getTables)
+- [x] Tạo API lấy danh sách cột từ bảng đã chọn (getColumns)
+- [x] Cập nhật form Thêm Mapping với dropdown chọn bảng động
+- [x] Cập nhật các control map cột với dropdown động
+- [x] Thêm chức năng Filter mở rộng (Collapsible Advanced Filter)
+- [x] Cho phép thêm nhiều điều kiện filter (AND) với 8 toán tử
+
+### Cập nhật UPGRADE_PLAN.md
+- [x] Cập nhật trạng thái Phase 14 (SPC Visualization, Rules Management)
+- [x] Cập nhật trạng thái Phase 15 (Seed Rules, Realtime Data, Export)
+- [x] Cập nhật thống kê tổng quan hệ thống (28 bảng, 24 routers, 32 trang)

@@ -24,7 +24,9 @@ import {
 } from "@/components/ui/table";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, FileSpreadsheet, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, FileSpreadsheet, Loader2, Filter, ChevronDown, ChevronUp, X } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useAuth } from "@/_core/hooks/useAuth";
 
 interface MappingFormData {
@@ -52,17 +54,37 @@ const defaultFormData: MappingFormData = {
   timestampColumn: "timestamp",
 };
 
+interface FilterCondition {
+  column: string;
+  operator: "=" | "!=" | ">" | "<" | ">=" | "<=" | "LIKE" | "IN";
+  value: string;
+}
+
 export default function Mappings() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<MappingFormData>(defaultFormData);
+  const [showAdvancedFilter, setShowAdvancedFilter] = useState(false);
+  const [filterConditions, setFilterConditions] = useState<FilterCondition[]>([]);
 
   const { data: mappings, refetch } = trpc.mapping.list.useQuery();
   const { data: connections } = trpc.databaseConnection.list.useQuery(undefined, {
     enabled: isAdmin,
   });
+
+  // Dynamic schema loading - lấy danh sách bảng khi chọn connection
+  const { data: tablesData, isLoading: loadingTables } = trpc.databaseConnection.getTables.useQuery(
+    { connectionId: formData.connectionId },
+    { enabled: formData.connectionId > 0 }
+  );
+
+  // Lấy danh sách cột khi chọn bảng
+  const { data: columnsData, isLoading: loadingColumns } = trpc.databaseConnection.getColumns.useQuery(
+    { connectionId: formData.connectionId, tableName: formData.tableName },
+    { enabled: formData.connectionId > 0 && formData.tableName.length > 0 }
+  );
 
   const utils = trpc.useUtils();
 
@@ -219,7 +241,18 @@ export default function Mappings() {
                     <Label>Database Connection *</Label>
                     <Select
                       value={formData.connectionId.toString()}
-                      onValueChange={(value) => setFormData({ ...formData, connectionId: parseInt(value) })}
+                      onValueChange={(value) => {
+                        setFormData({ 
+                          ...formData, 
+                          connectionId: parseInt(value),
+                          tableName: "", // Reset table khi đổi connection
+                          productCodeColumn: "product_code",
+                          stationColumn: "station",
+                          valueColumn: "value",
+                          timestampColumn: "timestamp",
+                        });
+                        setFilterConditions([]);
+                      }}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Chọn connection" />
@@ -234,50 +267,115 @@ export default function Mappings() {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label>Tên bảng *</Label>
-                    <Input
+                    <Label>Tên bảng * {loadingTables && <Loader2 className="inline h-3 w-3 animate-spin" />}</Label>
+                    <Select
                       value={formData.tableName}
-                      onChange={(e) => setFormData({ ...formData, tableName: e.target.value })}
-                      placeholder="VD: machine_data"
-                    />
+                      onValueChange={(value) => {
+                        setFormData({ 
+                          ...formData, 
+                          tableName: value,
+                          productCodeColumn: "product_code",
+                          stationColumn: "station",
+                          valueColumn: "value",
+                          timestampColumn: "timestamp",
+                        });
+                        setFilterConditions([]);
+                      }}
+                      disabled={!formData.connectionId || loadingTables}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={formData.connectionId ? "Chọn bảng" : "Chọn connection trước"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {tablesData?.tables?.map((table) => (
+                          <SelectItem key={table} value={table}>
+                            {table}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Cột mã sản phẩm</Label>
-                    <Input
+                    <Label>Cột mã sản phẩm {loadingColumns && <Loader2 className="inline h-3 w-3 animate-spin" />}</Label>
+                    <Select
                       value={formData.productCodeColumn}
-                      onChange={(e) => setFormData({ ...formData, productCodeColumn: e.target.value })}
-                      placeholder="product_code"
-                    />
+                      onValueChange={(value) => setFormData({ ...formData, productCodeColumn: value })}
+                      disabled={!formData.tableName || loadingColumns}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Chọn cột" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {columnsData?.columns?.map((col) => (
+                          <SelectItem key={col.name} value={col.name}>
+                            {col.name} <span className="text-muted-foreground text-xs">({col.type})</span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <Label>Cột trạm</Label>
-                    <Input
+                    <Select
                       value={formData.stationColumn}
-                      onChange={(e) => setFormData({ ...formData, stationColumn: e.target.value })}
-                      placeholder="station"
-                    />
+                      onValueChange={(value) => setFormData({ ...formData, stationColumn: value })}
+                      disabled={!formData.tableName || loadingColumns}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Chọn cột" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {columnsData?.columns?.map((col) => (
+                          <SelectItem key={col.name} value={col.name}>
+                            {col.name} <span className="text-muted-foreground text-xs">({col.type})</span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Cột giá trị</Label>
-                    <Input
+                    <Select
                       value={formData.valueColumn}
-                      onChange={(e) => setFormData({ ...formData, valueColumn: e.target.value })}
-                      placeholder="value"
-                    />
+                      onValueChange={(value) => setFormData({ ...formData, valueColumn: value })}
+                      disabled={!formData.tableName || loadingColumns}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Chọn cột" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {columnsData?.columns?.map((col) => (
+                          <SelectItem key={col.name} value={col.name}>
+                            {col.name} <span className="text-muted-foreground text-xs">({col.type})</span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <Label>Cột thời gian</Label>
-                    <Input
+                    <Select
                       value={formData.timestampColumn}
-                      onChange={(e) => setFormData({ ...formData, timestampColumn: e.target.value })}
-                      placeholder="timestamp"
-                    />
+                      onValueChange={(value) => setFormData({ ...formData, timestampColumn: value })}
+                      disabled={!formData.tableName || loadingColumns}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Chọn cột" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {columnsData?.columns?.map((col) => (
+                          <SelectItem key={col.name} value={col.name}>
+                            {col.name} <span className="text-muted-foreground text-xs">({col.type})</span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 
@@ -310,6 +408,112 @@ export default function Mappings() {
                     />
                   </div>
                 </div>
+
+                {/* Advanced Filter Section */}
+                <Collapsible open={showAdvancedFilter} onOpenChange={setShowAdvancedFilter}>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="outline" className="w-full justify-between" type="button">
+                      <span className="flex items-center gap-2">
+                        <Filter className="h-4 w-4" />
+                        Bộ lọc nâng cao {filterConditions.length > 0 && `(${filterConditions.length} điều kiện)`}
+                      </span>
+                      {showAdvancedFilter ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-4 pt-4">
+                    <div className="text-sm text-muted-foreground">
+                      Thêm các điều kiện lọc để tối ưu dữ liệu cần lấy từ bảng. Các điều kiện sẽ được kết hợp bằng AND.
+                    </div>
+                    
+                    {filterConditions.map((condition, index) => (
+                      <div key={index} className="flex gap-2 items-end">
+                        <div className="flex-1 space-y-1">
+                          <Label className="text-xs">Cột</Label>
+                          <Select
+                            value={condition.column}
+                            onValueChange={(value) => {
+                              const newConditions = [...filterConditions];
+                              newConditions[index].column = value;
+                              setFilterConditions(newConditions);
+                            }}
+                            disabled={!formData.tableName}
+                          >
+                            <SelectTrigger className="h-9">
+                              <SelectValue placeholder="Chọn cột" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {columnsData?.columns?.map((col) => (
+                                <SelectItem key={col.name} value={col.name}>
+                                  {col.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="w-24 space-y-1">
+                          <Label className="text-xs">Toán tử</Label>
+                          <Select
+                            value={condition.operator}
+                            onValueChange={(value) => {
+                              const newConditions = [...filterConditions];
+                              newConditions[index].operator = value as FilterCondition["operator"];
+                              setFilterConditions(newConditions);
+                            }}
+                          >
+                            <SelectTrigger className="h-9">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="=">=</SelectItem>
+                              <SelectItem value="!=">!=</SelectItem>
+                              <SelectItem value=">">&gt;</SelectItem>
+                              <SelectItem value="<">&lt;</SelectItem>
+                              <SelectItem value=">=">&gt;=</SelectItem>
+                              <SelectItem value="<=">&lt;=</SelectItem>
+                              <SelectItem value="LIKE">LIKE</SelectItem>
+                              <SelectItem value="IN">IN</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="flex-1 space-y-1">
+                          <Label className="text-xs">Giá trị</Label>
+                          <Input
+                            className="h-9"
+                            value={condition.value}
+                            onChange={(e) => {
+                              const newConditions = [...filterConditions];
+                              newConditions[index].value = e.target.value;
+                              setFilterConditions(newConditions);
+                            }}
+                            placeholder={condition.operator === "IN" ? "val1,val2,val3" : "Giá trị"}
+                          />
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-9 w-9"
+                          onClick={() => {
+                            setFilterConditions(filterConditions.filter((_, i) => i !== index));
+                          }}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                    
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setFilterConditions([...filterConditions, { column: "", operator: "=", value: "" }]);
+                      }}
+                      disabled={!formData.tableName}
+                    >
+                      <Plus className="h-4 w-4 mr-1" />
+                      Thêm điều kiện
+                    </Button>
+                  </CollapsibleContent>
+                </Collapsible>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setIsDialogOpen(false)}>

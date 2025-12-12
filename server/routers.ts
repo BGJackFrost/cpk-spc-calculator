@@ -302,6 +302,80 @@ const databaseConnectionRouter = router({
         return { success: false, message: error instanceof Error ? error.message : "Connection failed" };
       }
     }),
+
+  // Lấy danh sách bảng từ database connection
+  getTables: adminProcedure
+    .input(z.object({ connectionId: z.number() }))
+    .query(async ({ input }) => {
+      const connection = await getDatabaseConnectionById(input.connectionId);
+      if (!connection) {
+        throw new Error("Connection not found");
+      }
+      try {
+        // Query to get table names based on database type
+        let query = "";
+        if (connection.databaseType === "mysql" || connection.databaseType === "mariadb") {
+          query = "SHOW TABLES";
+        } else if (connection.databaseType === "postgresql") {
+          query = "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'";
+        } else if (connection.databaseType === "mssql") {
+          query = "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE'";
+        } else {
+          query = "SHOW TABLES"; // Default to MySQL syntax
+        }
+        
+        const result = await queryExternalDatabase(connection.connectionString, query);
+        // Extract table names from result
+        const tables = result.map((row: Record<string, unknown>) => {
+          const values = Object.values(row);
+          return values[0] as string;
+        });
+        return { tables };
+      } catch (error) {
+        throw new Error(`Failed to get tables: ${error instanceof Error ? error.message : "Unknown error"}`);
+      }
+    }),
+
+  // Lấy danh sách cột từ bảng
+  getColumns: adminProcedure
+    .input(z.object({ connectionId: z.number(), tableName: z.string() }))
+    .query(async ({ input }) => {
+      const connection = await getDatabaseConnectionById(input.connectionId);
+      if (!connection) {
+        throw new Error("Connection not found");
+      }
+      try {
+        let query = "";
+        if (connection.databaseType === "mysql" || connection.databaseType === "mariadb") {
+          query = `DESCRIBE \`${input.tableName}\``;
+        } else if (connection.databaseType === "postgresql") {
+          query = `SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '${input.tableName}'`;
+        } else if (connection.databaseType === "mssql") {
+          query = `SELECT COLUMN_NAME, DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = '${input.tableName}'`;
+        } else {
+          query = `DESCRIBE \`${input.tableName}\``;
+        }
+        
+        const result = await queryExternalDatabase(connection.connectionString, query);
+        // Extract column info from result
+        const columns = result.map((row: Record<string, unknown>) => {
+          if (connection.databaseType === "mysql" || connection.databaseType === "mariadb") {
+            return {
+              name: row.Field as string,
+              type: row.Type as string,
+            };
+          } else {
+            return {
+              name: (row.column_name || row.COLUMN_NAME) as string,
+              type: (row.data_type || row.DATA_TYPE) as string,
+            };
+          }
+        });
+        return { columns };
+      } catch (error) {
+        throw new Error(`Failed to get columns: ${error instanceof Error ? error.message : "Unknown error"}`);
+      }
+    }),
 });
 
 // Product-Station Mapping Router
