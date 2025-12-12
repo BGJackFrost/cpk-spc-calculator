@@ -510,3 +510,24 @@
 - [x] Tạo API testConnectionById kiểm tra kết nối database
 - [x] Thêm nút "Test Connection" trong form với icon trạng thái
 - [x] Hiển thị kết quả test (thành công/thất bại) với màu sắc
+
+
+## Phase 18 - Import/Export, Clone, Templates cho Mapping
+
+### Import/Export Mapping
+- [x] Tạo API export mapping ra JSON (mapping.export)
+- [x] Tạo API export mapping ra CSV (mapping.export)
+- [x] Tạo API import mapping từ JSON/CSV (mapping.import)
+- [x] Thêm nút Export (dropdown JSON/CSV) trên header
+- [x] Thêm dialog Import với file upload và option bỏ qua trùng
+
+### Clone Mapping
+- [x] Tạo API clone mapping (mapping.clone)
+- [x] Thêm nút Clone vào actions của mỗi mapping
+- [x] Hiển thị dialog nhập mã sản phẩm/trạm mới
+
+### Mapping Templates
+- [x] Tạo bảng mapping_templates trong database
+- [x] Tạo API CRUD cho templates (mappingTemplateRouter)
+- [x] Thêm dropdown "Áp dụng Template" trong form tạo mapping
+- [x] Tạo 5 templates mặc định (SMT Solder Paste, Pick & Place, Reflow, ICT, AOI)

@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/table";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, FileSpreadsheet, Loader2, Filter, ChevronDown, ChevronUp, X, Eye, CheckCircle, XCircle, Database } from "lucide-react";
+import { Plus, Pencil, Trash2, FileSpreadsheet, Loader2, Filter, ChevronDown, ChevronUp, X, Eye, CheckCircle, XCircle, Database, Download, Upload, Copy } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -71,9 +71,18 @@ export default function Mappings() {
   const [showPreviewDialog, setShowPreviewDialog] = useState(false);
   const [connectionTestResult, setConnectionTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [testingConnection, setTestingConnection] = useState(false);
+  const [showImportDialog, setShowImportDialog] = useState(false);
+  const [showCloneDialog, setShowCloneDialog] = useState(false);
+  const [cloneSourceId, setCloneSourceId] = useState<number | null>(null);
+  const [cloneData, setCloneData] = useState({ productCode: "", stationName: "" });
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [skipExisting, setSkipExisting] = useState(true);
 
   const { data: mappings, refetch } = trpc.mapping.list.useQuery();
   const { data: connections } = trpc.databaseConnection.list.useQuery(undefined, {
+    enabled: isAdmin,
+  });
+  const { data: templates } = trpc.mappingTemplate.list.useQuery(undefined, {
     enabled: isAdmin,
   });
 
@@ -157,6 +166,31 @@ export default function Mappings() {
     },
   });
 
+  const cloneMutation = trpc.mapping.clone.useMutation({
+    onSuccess: () => {
+      toast.success("Nhân bản mapping thành công!");
+      setShowCloneDialog(false);
+      setCloneSourceId(null);
+      setCloneData({ productCode: "", stationName: "" });
+      utils.mapping.list.invalidate();
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  const importMutation = trpc.mapping.importAll.useMutation({
+    onSuccess: (result) => {
+      toast.success(`Import thành công: ${result.imported} mapping, bỏ qua ${result.skipped}`);
+      setShowImportDialog(false);
+      setImportFile(null);
+      utils.mapping.list.invalidate();
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
   const resetForm = () => {
     setFormData(defaultFormData);
     setEditingId(null);
@@ -180,6 +214,130 @@ export default function Mappings() {
       return;
     }
     setShowPreviewDialog(true);
+  };
+
+  const handleExportJSON = async () => {
+    try {
+      const data = await utils.mapping.exportAll.fetch();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `mappings-export-${new Date().toISOString().split("T")[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Xuất file thành công!");
+    } catch (error) {
+      toast.error("Lỗi khi xuất file");
+    }
+  };
+
+  const handleExportCSV = async () => {
+    try {
+      const data = await utils.mapping.exportAll.fetch();
+      const headers = ["productCode", "stationName", "connectionId", "tableName", "productCodeColumn", "stationColumn", "valueColumn", "timestampColumn", "usl", "lsl", "target"];
+      const csvContent = [
+        headers.join(","),
+        ...data.mappings.map(m => headers.map(h => m[h as keyof typeof m] ?? "").join(","))
+      ].join("\n");
+      const blob = new Blob([csvContent], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `mappings-export-${new Date().toISOString().split("T")[0]}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Xuất file CSV thành công!");
+    } catch (error) {
+      toast.error("Lỗi khi xuất file");
+    }
+  };
+
+  const handleImportFile = async () => {
+    if (!importFile) {
+      toast.error("Vui lòng chọn file");
+      return;
+    }
+    try {
+      const text = await importFile.text();
+      let mappingsData;
+      if (importFile.name.endsWith(".json")) {
+        const parsed = JSON.parse(text);
+        mappingsData = parsed.mappings || parsed;
+      } else if (importFile.name.endsWith(".csv")) {
+        const lines = text.split("\n").filter(l => l.trim());
+        const headers = lines[0].split(",");
+        mappingsData = lines.slice(1).map(line => {
+          const values = line.split(",");
+          const obj: Record<string, string | number | null> = {};
+          headers.forEach((h, i) => {
+            const val = values[i]?.trim();
+            if (["connectionId", "usl", "lsl", "target"].includes(h)) {
+              obj[h] = val ? parseInt(val) : null;
+            } else {
+              obj[h] = val || "";
+            }
+          });
+          return obj;
+        });
+      } else {
+        toast.error("Định dạng file không hợp lệ. Vui lòng sử dụng JSON hoặc CSV.");
+        return;
+      }
+      importMutation.mutate({ mappings: mappingsData, skipExisting });
+    } catch (error) {
+      toast.error("Lỗi khi đọc file: " + (error instanceof Error ? error.message : "Unknown error"));
+    }
+  };
+
+  const handleClone = (id: number) => {
+    const mapping = mappings?.find(m => m.id === id);
+    if (mapping) {
+      setCloneSourceId(id);
+      setCloneData({
+        productCode: mapping.productCode + "-copy",
+        stationName: mapping.stationName,
+      });
+      setShowCloneDialog(true);
+    }
+  };
+
+  const handleCloneSubmit = () => {
+    if (!cloneSourceId || !cloneData.productCode || !cloneData.stationName) {
+      toast.error("Vui lòng điền đầy đủ thông tin");
+      return;
+    }
+    cloneMutation.mutate({
+      id: cloneSourceId,
+      newProductCode: cloneData.productCode,
+      newStationName: cloneData.stationName,
+    });
+  };
+
+  const applyTemplate = (templateId: number) => {
+    const template = templates?.find(t => t.id === templateId);
+    if (template) {
+      setFormData(prev => ({
+        ...prev,
+        tableName: template.tableName || prev.tableName,
+        productCodeColumn: template.productCodeColumn || "product_code",
+        stationColumn: template.stationColumn || "station",
+        valueColumn: template.valueColumn || "value",
+        timestampColumn: template.timestampColumn || "timestamp",
+        usl: template.defaultUsl ?? prev.usl,
+        lsl: template.defaultLsl ?? prev.lsl,
+        target: template.defaultTarget ?? prev.target,
+      }));
+      if (template.filterConditions) {
+        try {
+          const conditions = JSON.parse(template.filterConditions);
+          setFilterConditions(conditions);
+        } catch (e) {
+          // Ignore parse errors
+        }
+      }
+      toast.success(`Đã áp dụng template: ${template.name}`);
+    }
   };
 
   const handleEdit = (mapping: typeof mappings extends (infer T)[] | undefined ? T : never) => {
@@ -275,16 +433,45 @@ export default function Mappings() {
               Cấu hình mapping giữa sản phẩm, trạm và bảng dữ liệu
             </p>
           </div>
-          <Dialog open={isDialogOpen} onOpenChange={(open) => {
-            setIsDialogOpen(open);
-            if (!open) resetForm();
-          }}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                Thêm Mapping
+          <div className="flex gap-2">
+            {/* Export Dropdown */}
+            <div className="relative group">
+              <Button variant="outline">
+                <Download className="mr-2 h-4 w-4" />
+                Xuất
+                <ChevronDown className="ml-2 h-4 w-4" />
               </Button>
-            </DialogTrigger>
+              <div className="absolute right-0 mt-1 w-40 bg-popover border rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                <button
+                  onClick={handleExportJSON}
+                  className="w-full px-4 py-2 text-left text-sm hover:bg-accent rounded-t-md"
+                >
+                  Xuất JSON
+                </button>
+                <button
+                  onClick={handleExportCSV}
+                  className="w-full px-4 py-2 text-left text-sm hover:bg-accent rounded-b-md"
+                >
+                  Xuất CSV
+                </button>
+              </div>
+            </div>
+            {/* Import Button */}
+            <Button variant="outline" onClick={() => setShowImportDialog(true)}>
+              <Upload className="mr-2 h-4 w-4" />
+              Nhập
+            </Button>
+            {/* Add Mapping Dialog */}
+            <Dialog open={isDialogOpen} onOpenChange={(open) => {
+              setIsDialogOpen(open);
+              if (!open) resetForm();
+            }}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Thêm Mapping
+                </Button>
+              </DialogTrigger>
             <DialogContent className="max-w-2xl">
               <DialogHeader>
                 <DialogTitle>{editingId ? "Sửa Mapping" : "Thêm Mapping mới"}</DialogTitle>
@@ -293,6 +480,33 @@ export default function Mappings() {
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
+                {/* Template Selector */}
+                {templates && templates.length > 0 && !editingId && (
+                  <div className="space-y-2 p-3 bg-muted/50 rounded-lg border border-dashed">
+                    <Label className="flex items-center gap-2">
+                      <FileSpreadsheet className="h-4 w-4" />
+                      Áp dụng Template (tùy chọn)
+                    </Label>
+                    <Select onValueChange={(value) => applyTemplate(parseInt(value))}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Chọn template để điền nhanh các trường" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {templates.map((template) => (
+                          <SelectItem key={template.id} value={template.id.toString()}>
+                            <div className="flex flex-col">
+                              <span>{template.name}</span>
+                              {template.category && (
+                                <span className="text-xs text-muted-foreground">{template.category}</span>
+                              )}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Mã sản phẩm *</Label>
@@ -644,6 +858,7 @@ export default function Mappings() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+          </div>
         </div>
 
         {/* Mappings Table */}
@@ -683,7 +898,16 @@ export default function Mappings() {
                             <Button
                               variant="ghost"
                               size="icon"
+                              onClick={() => handleClone(mapping.id)}
+                              title="Nhân bản"
+                            >
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
                               onClick={() => handleEdit(mapping)}
+                              title="Sửa"
                             >
                               <Pencil className="h-4 w-4" />
                             </Button>
@@ -691,6 +915,7 @@ export default function Mappings() {
                               variant="ghost"
                               size="icon"
                               onClick={() => handleDelete(mapping.id)}
+                              title="Xóa"
                             >
                               <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
@@ -779,6 +1004,101 @@ export default function Mappings() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowPreviewDialog(false)}>
               Đóng
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Import Dialog */}
+      <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Upload className="h-5 w-5" />
+              Nhập Mapping
+            </DialogTitle>
+            <DialogDescription>
+              Nhập danh sách mapping từ file JSON hoặc CSV
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Chọn file (JSON hoặc CSV)</Label>
+              <Input
+                type="file"
+                accept=".json,.csv"
+                onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch
+                checked={skipExisting}
+                onCheckedChange={setSkipExisting}
+              />
+              <Label>Bỏ qua mapping đã tồn tại</Label>
+            </div>
+            {importFile && (
+              <div className="text-sm text-muted-foreground">
+                File: {importFile.name} ({(importFile.size / 1024).toFixed(1)} KB)
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setShowImportDialog(false);
+              setImportFile(null);
+            }}>
+              Hủy
+            </Button>
+            <Button onClick={handleImportFile} disabled={!importFile || importMutation.isPending}>
+              {importMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Nhập
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Clone Dialog */}
+      <Dialog open={showCloneDialog} onOpenChange={setShowCloneDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Copy className="h-5 w-5" />
+              Nhân bản Mapping
+            </DialogTitle>
+            <DialogDescription>
+              Tạo mapping mới từ mapping hiện có với mã sản phẩm và trạm mới
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Mã sản phẩm mới *</Label>
+              <Input
+                value={cloneData.productCode}
+                onChange={(e) => setCloneData({ ...cloneData, productCode: e.target.value })}
+                placeholder="VD: PROD-002"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Tên trạm mới *</Label>
+              <Input
+                value={cloneData.stationName}
+                onChange={(e) => setCloneData({ ...cloneData, stationName: e.target.value })}
+                placeholder="VD: Station-B"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setShowCloneDialog(false);
+              setCloneSourceId(null);
+              setCloneData({ productCode: "", stationName: "" });
+            }}>
+              Hủy
+            </Button>
+            <Button onClick={handleCloneSubmit} disabled={cloneMutation.isPending}>
+              {cloneMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Nhân bản
             </Button>
           </DialogFooter>
         </DialogContent>

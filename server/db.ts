@@ -50,7 +50,9 @@ import {
   caRules,
   InsertCaRule,
   cpkRules,
-  InsertCpkRule
+  InsertCpkRule,
+  mappingTemplates,
+  InsertMappingTemplate
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -2646,4 +2648,115 @@ export async function seedAllDefaultRules() {
   await seedDefaultSpcRules();
   await seedDefaultCaRules();
   await seedDefaultCpkRules();
+}
+
+
+// =====================
+// Mapping Templates CRUD
+// =====================
+
+export async function getMappingTemplates() {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(mappingTemplates).where(eq(mappingTemplates.isActive, 1));
+}
+
+export async function getMappingTemplateById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(mappingTemplates).where(eq(mappingTemplates.id, id)).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function createMappingTemplate(data: InsertMappingTemplate) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(mappingTemplates).values(data);
+  return result[0].insertId;
+}
+
+export async function updateMappingTemplate(id: number, data: Partial<InsertMappingTemplate>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(mappingTemplates).set(data).where(eq(mappingTemplates.id, id));
+}
+
+export async function deleteMappingTemplate(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(mappingTemplates).set({ isActive: 0 }).where(eq(mappingTemplates.id, id));
+}
+
+export async function seedDefaultMappingTemplates() {
+  const db = await getDb();
+  if (!db) return;
+
+  const defaultTemplates: InsertMappingTemplate[] = [
+    {
+      name: "SMT Solder Paste Printing",
+      description: "Template cho công đoạn in keo hàn SMT",
+      category: "SMT",
+      tableName: "smt_solder_paste_data",
+      productCodeColumn: "product_code",
+      stationColumn: "station_name",
+      valueColumn: "volume",
+      timestampColumn: "measured_at",
+      defaultUsl: 120,
+      defaultLsl: 80,
+      defaultTarget: 100,
+    },
+    {
+      name: "SMT Pick & Place",
+      description: "Template cho công đoạn gắp linh kiện SMT",
+      category: "SMT",
+      tableName: "smt_placement_data",
+      productCodeColumn: "product_code",
+      stationColumn: "machine_id",
+      valueColumn: "placement_accuracy",
+      timestampColumn: "timestamp",
+      defaultUsl: 50,
+      defaultLsl: -50,
+      defaultTarget: 0,
+    },
+    {
+      name: "Reflow Oven Temperature",
+      description: "Template cho nhiệt độ lò reflow",
+      category: "SMT",
+      tableName: "reflow_temperature_data",
+      productCodeColumn: "product_code",
+      stationColumn: "zone",
+      valueColumn: "temperature",
+      timestampColumn: "recorded_at",
+      defaultUsl: 250,
+      defaultLsl: 230,
+      defaultTarget: 240,
+    },
+    {
+      name: "ICT Test Results",
+      description: "Template cho kết quả kiểm tra ICT",
+      category: "Testing",
+      tableName: "ict_test_results",
+      productCodeColumn: "board_id",
+      stationColumn: "test_station",
+      valueColumn: "resistance_value",
+      timestampColumn: "test_time",
+    },
+    {
+      name: "AOI Inspection",
+      description: "Template cho kiểm tra quang học tự động",
+      category: "Inspection",
+      tableName: "aoi_inspection_data",
+      productCodeColumn: "pcb_id",
+      stationColumn: "aoi_machine",
+      valueColumn: "defect_count",
+      timestampColumn: "inspection_time",
+      defaultUsl: 5,
+      defaultLsl: 0,
+      defaultTarget: 0,
+    },
+  ];
+
+  for (const template of defaultTemplates) {
+    await db.insert(mappingTemplates).values(template);
+  }
 }

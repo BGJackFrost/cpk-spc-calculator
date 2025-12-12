@@ -39,6 +39,12 @@ import {
   deleteProductStationMapping,
   getUniqueProductCodes,
   getStationsByProductCode,
+  getMappingTemplates,
+  getMappingTemplateById,
+  createMappingTemplate,
+  updateMappingTemplate,
+  deleteMappingTemplate,
+  seedDefaultMappingTemplates,
   createSpcAnalysisHistory,
   getSpcAnalysisHistory,
   getSpcAnalysisHistoryByMapping,
@@ -525,6 +531,178 @@ const mappingRouter = router({
     .query(async ({ input }) => {
       return await getStationsByProductCode(input.productCode);
     }),
+
+  // Export all mappings to JSON
+  exportAll: adminProcedure.query(async () => {
+    const mappings = await getProductStationMappings();
+    return {
+      exportedAt: new Date().toISOString(),
+      version: "1.0",
+      count: mappings.length,
+      mappings: mappings.map(m => ({
+        productCode: m.productCode,
+        stationName: m.stationName,
+        connectionId: m.connectionId,
+        tableName: m.tableName,
+        productCodeColumn: m.productCodeColumn,
+        stationColumn: m.stationColumn,
+        valueColumn: m.valueColumn,
+        timestampColumn: m.timestampColumn,
+        usl: m.usl,
+        lsl: m.lsl,
+        target: m.target,
+        filterConditions: m.filterConditions,
+      })),
+    };
+  }),
+
+  // Import mappings from JSON
+  importAll: adminProcedure
+    .input(z.object({
+      mappings: z.array(z.object({
+        productCode: z.string(),
+        stationName: z.string(),
+        connectionId: z.number(),
+        tableName: z.string(),
+        productCodeColumn: z.string().optional(),
+        stationColumn: z.string().optional(),
+        valueColumn: z.string().optional(),
+        timestampColumn: z.string().optional(),
+        usl: z.number().nullable().optional(),
+        lsl: z.number().nullable().optional(),
+        target: z.number().nullable().optional(),
+        filterConditions: z.string().nullable().optional(),
+      })),
+      skipExisting: z.boolean().default(true),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      let imported = 0;
+      let skipped = 0;
+      for (const mapping of input.mappings) {
+        // Check if mapping already exists
+        const existing = await findProductStationMapping(mapping.productCode, mapping.stationName);
+        if (existing && input.skipExisting) {
+          skipped++;
+          continue;
+        }
+        if (existing) {
+          // Update existing
+          await updateProductStationMapping(existing.id, mapping);
+        } else {
+          // Create new
+          await createProductStationMapping({
+            ...mapping,
+            productCodeColumn: mapping.productCodeColumn || "product_code",
+            stationColumn: mapping.stationColumn || "station",
+            valueColumn: mapping.valueColumn || "value",
+            timestampColumn: mapping.timestampColumn || "timestamp",
+            createdBy: ctx.user.id,
+          });
+        }
+        imported++;
+      }
+      return { imported, skipped, total: input.mappings.length };
+    }),
+
+  // Clone a mapping
+  clone: adminProcedure
+    .input(z.object({
+      id: z.number(),
+      newProductCode: z.string().min(1),
+      newStationName: z.string().min(1),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const original = await getProductStationMappingById(input.id);
+      if (!original) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Mapping không tồn tại" });
+      }
+      const newId = await createProductStationMapping({
+        productCode: input.newProductCode,
+        stationName: input.newStationName,
+        connectionId: original.connectionId,
+        tableName: original.tableName,
+        productCodeColumn: original.productCodeColumn,
+        stationColumn: original.stationColumn,
+        valueColumn: original.valueColumn,
+        timestampColumn: original.timestampColumn,
+        usl: original.usl,
+        lsl: original.lsl,
+        target: original.target,
+        filterConditions: original.filterConditions,
+        createdBy: ctx.user.id,
+      });
+      return { id: newId };
+    }),
+});
+
+// Mapping Template Router
+const mappingTemplateRouter = router({
+  list: protectedProcedure.query(async () => {
+    return await getMappingTemplates();
+  }),
+
+  getById: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .query(async ({ input }) => {
+      return await getMappingTemplateById(input.id);
+    }),
+
+  create: adminProcedure
+    .input(z.object({
+      name: z.string().min(1),
+      description: z.string().optional(),
+      category: z.string().optional(),
+      tableName: z.string().optional(),
+      productCodeColumn: z.string().optional(),
+      stationColumn: z.string().optional(),
+      valueColumn: z.string().optional(),
+      timestampColumn: z.string().optional(),
+      defaultUsl: z.number().optional(),
+      defaultLsl: z.number().optional(),
+      defaultTarget: z.number().optional(),
+      filterConditions: z.string().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const id = await createMappingTemplate({
+        ...input,
+        createdBy: ctx.user.id,
+      });
+      return { id };
+    }),
+
+  update: adminProcedure
+    .input(z.object({
+      id: z.number(),
+      name: z.string().min(1).optional(),
+      description: z.string().nullable().optional(),
+      category: z.string().nullable().optional(),
+      tableName: z.string().nullable().optional(),
+      productCodeColumn: z.string().optional(),
+      stationColumn: z.string().optional(),
+      valueColumn: z.string().optional(),
+      timestampColumn: z.string().optional(),
+      defaultUsl: z.number().nullable().optional(),
+      defaultLsl: z.number().nullable().optional(),
+      defaultTarget: z.number().nullable().optional(),
+      filterConditions: z.string().nullable().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const { id, ...data } = input;
+      await updateMappingTemplate(id, data);
+      return { success: true };
+    }),
+
+  delete: adminProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      await deleteMappingTemplate(input.id);
+      return { success: true };
+    }),
+
+  seedDefaults: adminProcedure.mutation(async () => {
+    await seedDefaultMappingTemplates();
+    return { success: true };
+  }),
 });
 
 // SPC Analysis Router
@@ -1660,6 +1838,7 @@ export const appRouter = router({
   productSpec: productSpecRouter,
   databaseConnection: databaseConnectionRouter,
   mapping: mappingRouter,
+  mappingTemplate: mappingTemplateRouter,
   spc: spcRouter,
   alert: alertRouter,
   export: exportRouter,

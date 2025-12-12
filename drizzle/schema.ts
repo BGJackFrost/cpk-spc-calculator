@@ -892,3 +892,30 @@ export const cpkRules = mysqlTable("cpk_rules", {
 
 export type CpkRule = typeof cpkRules.$inferSelect;
 export type InsertCpkRule = typeof cpkRules.$inferInsert;
+
+
+/**
+ * Mapping Templates - các mẫu mapping phổ biến
+ */
+export const mappingTemplates = mysqlTable("mapping_templates", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  category: varchar("category", { length: 100 }), // SMT, Assembly, Testing, etc.
+  tableName: varchar("tableName", { length: 255 }),
+  productCodeColumn: varchar("productCodeColumn", { length: 255 }).default("product_code"),
+  stationColumn: varchar("stationColumn", { length: 255 }).default("station"),
+  valueColumn: varchar("valueColumn", { length: 255 }).default("value"),
+  timestampColumn: varchar("timestampColumn", { length: 255 }).default("timestamp"),
+  defaultUsl: int("defaultUsl"),
+  defaultLsl: int("defaultLsl"),
+  defaultTarget: int("defaultTarget"),
+  filterConditions: text("filterConditions"), // JSON array of default filter conditions
+  isActive: int("isActive").notNull().default(1),
+  createdBy: int("createdBy"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type MappingTemplate = typeof mappingTemplates.$inferSelect;
+export type InsertMappingTemplate = typeof mappingTemplates.$inferInsert;
