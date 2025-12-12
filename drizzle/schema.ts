@@ -945,3 +945,45 @@ export const licenses = mysqlTable("licenses", {
 
 export type License = typeof licenses.$inferSelect;
 export type InsertLicense = typeof licenses.$inferInsert;
+
+
+/**
+ * Webhooks - stores webhook configurations for notifications
+ */
+export const webhooks = mysqlTable("webhooks", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  url: text("url").notNull(),
+  webhookType: mysqlEnum("webhookType", ["slack", "teams", "custom"]).notNull().default("custom"),
+  secret: varchar("secret", { length: 255 }),
+  headers: text("headers"), // JSON object of custom headers
+  events: text("events").notNull(), // JSON array of event types: cpk_alert, rule_violation, analysis_complete
+  isActive: int("isActive").notNull().default(1),
+  triggerCount: int("triggerCount").notNull().default(0),
+  lastTriggeredAt: timestamp("lastTriggeredAt"),
+  lastError: text("lastError"),
+  createdBy: int("createdBy").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Webhook = typeof webhooks.$inferSelect;
+export type InsertWebhook = typeof webhooks.$inferInsert;
+
+/**
+ * Webhook logs - stores webhook delivery logs
+ */
+export const webhookLogs = mysqlTable("webhook_logs", {
+  id: int("id").autoincrement().primaryKey(),
+  webhookId: int("webhookId").notNull(),
+  eventType: varchar("eventType", { length: 50 }).notNull(),
+  payload: text("payload").notNull(), // JSON payload sent
+  responseStatus: int("responseStatus"),
+  responseBody: text("responseBody"),
+  success: int("success").notNull().default(0),
+  errorMessage: text("errorMessage"),
+  sentAt: timestamp("sentAt").defaultNow().notNull(),
+});
+
+export type WebhookLog = typeof webhookLogs.$inferSelect;
+export type InsertWebhookLog = typeof webhookLogs.$inferInsert;

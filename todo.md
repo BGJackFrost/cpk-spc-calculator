@@ -694,3 +694,19 @@
 - [x] Tạo component LanguageSwitcher
 - [x] Thêm vào header/sidebar (trong user dropdown menu)
 - [x] Lưu preference vào localStorage
+
+
+## Phase 24 - Mở rộng Translations và Webhook Support
+
+### Mở rộng Translations
+- [x] Thêm translations cho trang Analyze
+- [x] Thêm translations cho trang SpcReport
+- [x] Thêm translations cho các form quản lý (Product, Mapping, Rules)
+- [x] Thêm translations cho Webhook
+
+### Webhook Support
+- [x] Tạo bảng webhooks trong database
+- [x] Tạo trang quản lý Webhooks
+- [x] Tạo service gửi webhook notifications
+- [x] Tích hợp webhook vào quy trình phân tích SPC khi có cảnh báo CPK
+- [x] Hỗ trợ Slack và Microsoft Teams

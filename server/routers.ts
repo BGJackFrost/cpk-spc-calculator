@@ -2,6 +2,7 @@ import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { triggerLicenseExpiryCheck } from "./scheduledJobs";
+import { triggerWebhooks, testWebhook } from "./webhookService";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
@@ -799,6 +800,19 @@ const spcRouter = router({
               content: `CPK value (${spcResult.cpk.toFixed(3)}) is below threshold (${cpkThreshold}). Immediate attention required.`,
             });
           }
+          // Trigger webhooks for CPK alert
+          try {
+            await triggerWebhooks("cpk_alert", {
+              productCode: input.productCode,
+              stationName: input.stationName,
+              cpk: spcResult.cpk,
+              cpkThreshold,
+              severity: spcResult.cpk < cpkThreshold * 0.5 ? "critical" : "warning",
+              message: `CPK value (${spcResult.cpk.toFixed(3)}) is below threshold (${cpkThreshold})`,
+            });
+          } catch (webhookError) {
+            console.error("Webhook trigger failed:", webhookError);
+          }
         }
       }
 
@@ -920,6 +934,19 @@ const spcRouter = router({
               title: `CPK Alert: ${mapping.productCode} - ${mapping.stationName}`,
               content: `CPK value (${spcResult.cpk.toFixed(3)}) is below threshold (${cpkThreshold}). Immediate attention required.`,
             });
+          }
+          // Trigger webhooks for CPK alert
+          try {
+            await triggerWebhooks("cpk_alert", {
+              productCode: mapping.productCode,
+              stationName: mapping.stationName,
+              cpk: spcResult.cpk,
+              cpkThreshold,
+              severity: spcResult.cpk < cpkThreshold * 0.5 ? "critical" : "warning",
+              message: `CPK value (${spcResult.cpk.toFixed(3)}) is below threshold (${cpkThreshold})`,
+            });
+          } catch (webhookError) {
+            console.error("Webhook trigger failed:", webhookError);
           }
         }
       }
@@ -2646,6 +2673,160 @@ export const appRouter = router({
         message: `Checked licenses: ${result.expiringSoon30} expiring in 30 days, ${result.expiringSoon7} expiring in 7 days, ${result.expired} expired`
       };
     }),
+  }),
+  
+  // Webhook router
+  webhook: router({
+    list: protectedProcedure.query(async ({ ctx }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+      }
+      const { getDb } = await import("./db");
+      const db = await getDb();
+      if (!db) return [];
+      const { webhooks } = await import("../drizzle/schema");
+      return db.select().from(webhooks).orderBy(webhooks.createdAt);
+    }),
+    
+    getById: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { getDb } = await import("./db");
+        const db = await getDb();
+        if (!db) return null;
+        const { webhooks } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        const [webhook] = await db.select().from(webhooks).where(eq(webhooks.id, input.id));
+        return webhook || null;
+      }),
+    
+    create: protectedProcedure
+      .input(z.object({
+        name: z.string().min(1),
+        url: z.string().url(),
+        webhookType: z.enum(["slack", "teams", "custom"]),
+        secret: z.string().optional(),
+        headers: z.string().optional(),
+        events: z.array(z.enum(["cpk_alert", "rule_violation", "analysis_complete"])),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { getDb } = await import("./db");
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+        const { webhooks } = await import("../drizzle/schema");
+        const result = await db.insert(webhooks).values({
+          name: input.name,
+          url: input.url,
+          webhookType: input.webhookType,
+          secret: input.secret || null,
+          headers: input.headers || null,
+          events: JSON.stringify(input.events),
+          createdBy: ctx.user.id,
+        });
+        return { success: true, id: Number(result[0].insertId) };
+      }),
+    
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        name: z.string().min(1).optional(),
+        url: z.string().url().optional(),
+        webhookType: z.enum(["slack", "teams", "custom"]).optional(),
+        secret: z.string().optional(),
+        headers: z.string().optional(),
+        events: z.array(z.enum(["cpk_alert", "rule_violation", "analysis_complete"])).optional(),
+        isActive: z.number().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { getDb } = await import("./db");
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+        const { webhooks } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        const updateData: Record<string, unknown> = {};
+        if (input.name !== undefined) updateData.name = input.name;
+        if (input.url !== undefined) updateData.url = input.url;
+        if (input.webhookType !== undefined) updateData.webhookType = input.webhookType;
+        if (input.secret !== undefined) updateData.secret = input.secret;
+        if (input.headers !== undefined) updateData.headers = input.headers;
+        if (input.events !== undefined) updateData.events = JSON.stringify(input.events);
+        if (input.isActive !== undefined) updateData.isActive = input.isActive;
+        await db.update(webhooks).set(updateData).where(eq(webhooks.id, input.id));
+        return { success: true };
+      }),
+    
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { getDb } = await import("./db");
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+        const { webhooks } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        await db.delete(webhooks).where(eq(webhooks.id, input.id));
+        return { success: true };
+      }),
+    
+    test: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        return testWebhook(input.id);
+      }),
+    
+    getLogs: protectedProcedure
+      .input(z.object({
+        webhookId: z.number().optional(),
+        limit: z.number().default(50),
+      }))
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { getDb } = await import("./db");
+        const db = await getDb();
+        if (!db) return [];
+        const { webhookLogs } = await import("../drizzle/schema");
+        const { eq, desc } = await import("drizzle-orm");
+        if (input.webhookId) {
+          return db.select().from(webhookLogs).where(eq(webhookLogs.webhookId, input.webhookId)).orderBy(desc(webhookLogs.sentAt)).limit(input.limit);
+        }
+        return db.select().from(webhookLogs).orderBy(desc(webhookLogs.sentAt)).limit(input.limit);
+      }),
+    
+    trigger: protectedProcedure
+      .input(z.object({
+        eventType: z.enum(["cpk_alert", "rule_violation", "analysis_complete"]),
+        data: z.object({
+          productCode: z.string().optional(),
+          stationName: z.string().optional(),
+          cpk: z.number().optional(),
+          cpkThreshold: z.number().optional(),
+          ruleViolation: z.string().optional(),
+          message: z.string().optional(),
+          severity: z.enum(["info", "warning", "critical"]).optional(),
+        }),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        return triggerWebhooks(input.eventType, input.data);
+      }),
   }),
 });
 

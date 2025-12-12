@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, LogOut, PanelLeft, TrendingUp, History, FileSpreadsheet, Settings, Activity, Users, Package, Ruler, Factory, Clock, Calendar, Mail, Shield, Server, Database, Wrench, Cog, GitBranch, FileText, BarChart3, AlertTriangle, Cpu, GitCompare, ArrowUpDown, Info, BookOpen, Layers, Key } from "lucide-react";
+import { LayoutDashboard, LogOut, PanelLeft, TrendingUp, History, FileSpreadsheet, Settings, Activity, Users, Package, Ruler, Factory, Clock, Calendar, Mail, Shield, Server, Database, Wrench, Cog, GitBranch, FileText, BarChart3, AlertTriangle, Cpu, GitCompare, ArrowUpDown, Info, BookOpen, Layers, Key, Webhook } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
@@ -62,10 +62,12 @@ const menuItemsConfig = [
   { icon: BookOpen, labelKey: "nav.rulesManagement", path: "/rules" },
   { icon: Info, labelKey: "nav.about", path: "/about" },
   { icon: Key, labelKey: "nav.licenseManagement", path: "/license-management", adminOnly: true },
+  { icon: Webhook, labelKey: "nav.webhookManagement", path: "/webhooks", adminOnly: true },
 ];
 
 // Fallback labels for keys not in translation files
 const fallbackLabels: Record<string, string> = {
+  "nav.webhookManagement": "Webhook Management",
   "productionLine": "Quản lý Dây chuyền",
   "workstation": "Quản lý Công trạm",
   "machine": "Quản lý Máy",
