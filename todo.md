@@ -555,3 +555,24 @@
   - seedDefault: Tạo trial license mặc định
 - [x] Tích hợp License API vào trang About.tsx
 - [x] Cập nhật UPGRADE_PLAN.md với Phase 19
+
+
+## Phase 20 - License Management và Keyboard Shortcuts
+
+### Trang quản lý License
+- [x] Tạo trang LicenseManagement.tsx
+- [x] Hiển thị danh sách tất cả licenses với stats cards
+- [x] Form tạo license mới với các trường: type, company, email, maxUsers, maxProductionLines, expiresAt
+- [x] Nút kích hoạt/hủy kích hoạt license
+- [x] Nút xóa license và copy key
+- [x] Thêm route /license-management vào App.tsx
+- [x] Thêm menu License vào sidebar (chỉ admin)
+
+### Keyboard Shortcuts
+- [x] Tạo hook useKeyboardShortcuts
+- [x] Ctrl+S: Lưu form hiện tại
+- [x] Ctrl+Enter: Chạy phân tích/submit
+- [x] Esc: Đóng dialog
+- [x] Ctrl+/: Hiển thị danh sách shortcuts
+- [x] Tạo KeyboardShortcutsHelp component
+- [x] Tích hợp vào trang Analyze

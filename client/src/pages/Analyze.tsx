@@ -39,6 +39,8 @@ import {
 } from "recharts";
 import { Streamdown } from "streamdown";
 import AdvancedCharts from "@/components/AdvancedCharts";
+import { useKeyboardShortcuts, createCommonShortcuts } from "@/hooks/useKeyboardShortcuts";
+import { KeyboardShortcutsHelp } from "@/components/KeyboardShortcutsHelp";
 
 const downloadFile = (content: string, filename: string, mimeType: string) => {
   const blob = new Blob([content], { type: mimeType });
@@ -105,6 +107,7 @@ export default function Analyze() {
   const [result, setResult] = useState<SpcResult | null>(null);
   const [llmAnalysis, setLlmAnalysis] = useState<string>("");
   const [isExporting, setIsExporting] = useState(false);
+  const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
 
   // Lấy danh sách products từ bảng products
   const { data: products } = trpc.product.list.useQuery();
@@ -268,6 +271,27 @@ export default function Analyze() {
       endDate,
     });
   };
+
+  // Keyboard shortcuts
+  const shortcuts = createCommonShortcuts({
+    onSubmit: () => {
+      if (analysisMode === "mapping") {
+        handleAnalyze();
+      } else if (analysisMode === "manual") {
+        handleManualAnalyze();
+      }
+    },
+  });
+  
+  // Add help shortcut
+  shortcuts.push({
+    key: "/",
+    ctrl: true,
+    action: () => setShowShortcutsHelp(true),
+    description: "Hiển thị phím tắt (Ctrl+/)",
+  });
+
+  useKeyboardShortcuts({ shortcuts });
 
   const handleExportPdf = () => {
     if (!result) return;
@@ -996,6 +1020,15 @@ export default function Analyze() {
           </>
         )}
       </div>
+
+      {/* Keyboard Shortcuts Help */}
+      <KeyboardShortcutsHelp 
+        open={showShortcutsHelp} 
+        onOpenChange={setShowShortcutsHelp}
+        additionalShortcuts={[
+          { keys: "Ctrl + Enter", description: "Chạy phân tích" },
+        ]}
+      />
     </DashboardLayout>
   );
 }
