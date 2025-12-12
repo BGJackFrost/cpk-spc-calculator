@@ -647,3 +647,9 @@
 - [x] Gửi thông báo cho license hết hạn trong 7/30 ngày
 - [x] Khởi tạo jobs trong server startup (initScheduledJobs)
 - [x] Function triggerLicenseExpiryCheck cho manual trigger
+
+
+## Bug Fixes - Phase 21.1
+
+### Lỗi License key không hợp lệ trên trang /spc-report
+- [x] Kiểm tra và sửa lỗi API mutation gây ra lỗi License key (đã fix)

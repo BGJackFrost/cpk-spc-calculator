@@ -1,0 +1,18 @@
+{
+  "query": "SELECT id, licenseKey, licenseType, companyName, isActive, expiresAt FROM licenses;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute SELECT id, licenseKey, licenseType, companyName, isActive, expiresAt FROM licenses;",
+  "rows": [
+    {
+      "id": "1",
+      "licenseKey": "5OLOD-CR1L9-LWKVU-LMZJO",
+      "licenseType": "trial",
+      "companyName": "BoyD",
+      "isActive": "1",
+      "expiresAt": "2026-01-11 08:24:55"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tlicenseKey\tlicenseType\tcompanyName\tisActive\texpiresAt\n1\t5OLOD-CR1L9-LWKVU-LMZJO\ttrial\tBoyD\t1\t2026-01-11 08:24:55\n",
+  "stderr": "",
+  "execution_time_ms": 1596
+}
