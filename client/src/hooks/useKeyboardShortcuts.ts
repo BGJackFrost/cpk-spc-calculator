@@ -75,6 +75,7 @@ export function createCommonShortcuts(options: {
   onNew?: () => void;
   onSearch?: () => void;
   onRefresh?: () => void;
+  onHelp?: () => void;
 }): ShortcutConfig[] {
   const shortcuts: ShortcutConfig[] = [];
 
@@ -128,6 +129,15 @@ export function createCommonShortcuts(options: {
       ctrl: true,
       action: options.onRefresh,
       description: "Làm mới (Ctrl+R)",
+    });
+  }
+
+  if (options.onHelp) {
+    shortcuts.push({
+      key: "/",
+      ctrl: true,
+      action: options.onHelp,
+      description: "Hiển thị phím tắt (Ctrl+/)",
     });
   }
 

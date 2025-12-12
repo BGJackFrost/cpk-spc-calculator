@@ -1,6 +1,7 @@
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
+import { triggerLicenseExpiryCheck } from "./scheduledJobs";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
@@ -2436,6 +2437,20 @@ export const appRouter = router({
       }
       
       return { success: true, notifications, count: notifications.length };
+    }),
+    
+    // Trigger manual license expiry check (admin only)
+    triggerCheck: protectedProcedure.mutation(async ({ ctx }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Only admin can trigger license check" });
+      }
+      
+      const result = await triggerLicenseExpiryCheck();
+      return {
+        success: true,
+        ...result,
+        message: `Checked licenses: ${result.expiringSoon30} expiring in 30 days, ${result.expiringSoon7} expiring in 7 days, ${result.expired} expired`
+      };
     }),
   }),
 });

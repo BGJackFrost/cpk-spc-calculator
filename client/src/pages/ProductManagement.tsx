@@ -15,8 +15,11 @@ import {
   Pencil,
   Trash2,
   Loader2,
-  Search
+  Search,
+  Keyboard
 } from "lucide-react";
+import { useKeyboardShortcuts, createCommonShortcuts } from "@/hooks/useKeyboardShortcuts";
+import { KeyboardShortcutsHelp } from "@/components/KeyboardShortcutsHelp";
 
 interface Product {
   id: number;
@@ -34,6 +37,7 @@ export default function ProductManagement() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
   const [formData, setFormData] = useState({
     code: "",
     name: "",
@@ -120,6 +124,32 @@ export default function ProductManagement() {
       unit: product.unit || "pcs",
     });
   };
+
+  // Keyboard shortcuts
+  const shortcuts = createCommonShortcuts({
+    onSave: () => {
+      if (isCreateDialogOpen) {
+        handleCreate();
+      } else if (editingProduct) {
+        handleUpdate();
+      }
+    },
+    onNew: () => setIsCreateDialogOpen(true),
+    onClose: () => {
+      setIsCreateDialogOpen(false);
+      setEditingProduct(null);
+    },
+  });
+  
+  // Add help shortcut
+  shortcuts.push({
+    key: "/",
+    ctrl: true,
+    action: () => setShowShortcutsHelp(true),
+    description: "Hiển thị phím tắt (Ctrl+/)",
+  });
+  
+  useKeyboardShortcuts({ shortcuts });
 
   const filteredProducts = products?.filter((p: Product) =>
     p.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -321,6 +351,11 @@ export default function ProductManagement() {
           </CardContent>
         </Card>
       </div>
+      {/* Keyboard Shortcuts Help */}
+      <KeyboardShortcutsHelp
+        open={showShortcutsHelp}
+        onOpenChange={setShowShortcutsHelp}
+      />
     </DashboardLayout>
   );
 }

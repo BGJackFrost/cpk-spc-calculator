@@ -10,7 +10,9 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Key, Trash2, Power, PowerOff, RefreshCw, Copy, CheckCircle, XCircle, Calendar, Users, Factory, Shield } from "lucide-react";
+import { Plus, Key, Trash2, Power, PowerOff, RefreshCw, Copy, CheckCircle, XCircle, Calendar, Users, Factory, Shield, Keyboard } from "lucide-react";
+import { useKeyboardShortcuts, createCommonShortcuts } from "@/hooks/useKeyboardShortcuts";
+import { KeyboardShortcutsHelp } from "@/components/KeyboardShortcutsHelp";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 
@@ -35,6 +37,7 @@ interface License {
 
 export default function LicenseManagement() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
   const [formData, setFormData] = useState({
     licenseType: "standard" as "trial" | "standard" | "professional" | "enterprise",
     companyName: "",
@@ -101,6 +104,20 @@ export default function LicenseManagement() {
       expiresInDays: 365,
     });
   };
+
+  // Keyboard shortcuts
+  useKeyboardShortcuts({
+    shortcuts: createCommonShortcuts({
+      onNew: () => {
+        regenerateKey();
+        setIsCreateDialogOpen(true);
+      },
+      onClose: () => {
+        setIsCreateDialogOpen(false);
+      },
+      onHelp: () => setShowShortcutsHelp(true),
+    }),
+  });
 
   const handleCreate = () => {
     const expiresAt = new Date();
@@ -468,6 +485,11 @@ export default function LicenseManagement() {
           </DialogContent>
         </Dialog>
       </div>
+      {/* Keyboard Shortcuts Help */}
+      <KeyboardShortcutsHelp
+        open={showShortcutsHelp}
+        onOpenChange={setShowShortcutsHelp}
+      />
     </DashboardLayout>
   );
 }

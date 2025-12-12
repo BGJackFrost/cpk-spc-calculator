@@ -2,7 +2,7 @@
 
 **Cập nhật lần cuối:** 12/12/2024
 
-**Phiên bản hiện tại:** 2.2.0
+**Phiên bản hiện tại:** 2.3.0
 
 **Tổng số tests:** 67 tests (100% pass)
 
@@ -38,7 +38,7 @@
 | SPC Plan Visualization | ✅ Đã hoàn thành | SpcPlanVisualization.tsx (Phase 14) |
 | Export Visualization | ✅ Đã hoàn thành | PNG/PDF export (Phase 15) |
 | License Management Backend | ✅ Đã hoàn thành | Phase 19 - Bảng licenses, API CRUD |
-| Keyboard Shortcuts | ❌ Chưa triển khai | Kế hoạch Phase 20 |
+| Keyboard Shortcuts | ✅ Đã hoàn thành | Phase 20-21: Ctrl+S, Ctrl+N, Esc, Ctrl+/ |
 | Guided Tour | ❌ Chưa triển khai | Kế hoạch Phase 20 |
 | Rate Limiting | ❌ Chưa triển khai | Kế hoạch Phase 20 |
 | Data Encryption | ⚠️ Một phần | JWT có, connection string chưa |
@@ -151,14 +151,18 @@
 
 ## 3. Kế hoạch Nâng cấp Tiếp theo
 
-### Phase 20 - Cải tiến UX/UI (Ưu tiên Cao)
+### Phase 20 - Cải tiến UX/UI (Ưu tiên Cao) ✅ HOÀN THÀNH
 
-#### 20.1 Keyboard Shortcuts
+#### 20.1 Keyboard Shortcuts ✅
 
-- [ ] Ctrl+S: Lưu form
-- [ ] Ctrl+Enter: Chạy phân tích
-- [ ] Esc: Đóng dialog
-- [ ] Hiển thị danh sách shortcuts (Ctrl+/)
+- [x] Ctrl+S: Lưu form
+- [x] Ctrl+N: Tạo mới
+- [x] Ctrl+Enter: Chạy phân tích
+- [x] Esc: Đóng dialog
+- [x] Hiển thị danh sách shortcuts (Ctrl+/)
+- [x] Hook useKeyboardShortcuts tái sử dụng
+- [x] Component KeyboardShortcutsHelp
+- [x] Tích hợp vào: Analyze, SpcPlanManagement, Mappings, ProductManagement, RulesManagement, LicenseManagement
 
 #### 20.2 Guided Tour cho người dùng mới
 
@@ -173,56 +177,73 @@
 - [ ] Giới hạn 10 requests/phút cho export báo cáo
 - [ ] Giới hạn 5 requests/phút cho gửi email
 
-### Phase 21 - Tích hợp và Mở rộng (Ưu tiên Trung bình)
+### Phase 21 - License Notifications & Scheduled Jobs ✅ HOÀN THÀNH
 
-#### 21.1 Webhook Support
+#### 21.1 License Expiry Notifications ✅
+
+- [x] API checkExpiry: Kiểm tra license sắp hết hạn
+- [x] API sendExpiryNotifications: Gửi thông báo cho admin
+- [x] Dashboard License Widget: Hiển thị trạng thái license cho admin
+- [x] Trang quản lý License (/license-management)
+
+#### 21.2 Scheduled Jobs ✅
+
+- [x] Cài đặt node-cron
+- [x] File scheduledJobs.ts với checkLicenseExpiry
+- [x] Cron job chạy hàng ngày lúc 8:00 AM (Asia/Ho_Chi_Minh)
+- [x] Gửi thông báo cho license hết hạn trong 7/30 ngày
+- [x] Khởi tạo jobs trong server startup
+
+### Phase 22 - Tích hợp và Mở rộng (Ưu tiên Trung bình)
+
+#### 22.1 Webhook Support
 
 - [ ] Tạo bảng webhook_configs
 - [ ] Gửi webhook khi CPK dưới ngưỡng
 - [ ] Gửi webhook khi vi phạm SPC Rules
 - [ ] Gửi webhook khi hoàn thành phân tích batch
 
-#### 21.2 API Documentation
+#### 22.2 API Documentation
 
 - [ ] Tích hợp Swagger/OpenAPI
 - [ ] Tạo API documentation cho external integration
 - [ ] Tạo SDK mẫu cho hệ thống MES/ERP
 
-#### 21.3 Data Encryption
+#### 22.3 Data Encryption
 
 - [ ] Mã hóa connection string trong database
 - [ ] Mã hóa SMTP password
 - [ ] Mã hóa API keys
 
-### Phase 22 - Phân tích Thông minh (Ưu tiên Thấp)
+### Phase 23 - Phân tích Thông minh (Ưu tiên Thấp)
 
-#### 22.1 Predictive Analytics
+#### 23.1 Predictive Analytics
 
 - [ ] Dự đoán xu hướng CPK dựa trên dữ liệu lịch sử
 - [ ] Cảnh báo sớm khi quy trình có dấu hiệu drift
 - [ ] Đề xuất điều chỉnh tham số máy
 
-#### 22.2 Anomaly Detection
+#### 23.2 Anomaly Detection
 
 - [ ] Phát hiện bất thường tự động với thuật toán ML
 - [ ] Gửi cảnh báo khi phát hiện anomaly
 - [ ] Lưu lịch sử anomaly để phân tích
 
-### Phase 23 - Mở rộng Hệ thống (Tương lai)
+### Phase 24 - Mở rộng Hệ thống (Tương lai)
 
-#### 23.1 Multi-language Support
+#### 24.1 Multi-language Support
 
 - [ ] Tích hợp i18n framework
 - [ ] Dịch giao diện sang tiếng Anh
 - [ ] Cho phép user chọn ngôn ngữ
 
-#### 23.2 Mobile Responsive Optimization
+#### 24.2 Mobile Responsive Optimization
 
 - [ ] Tối ưu Dashboard cho mobile
 - [ ] Tối ưu biểu đồ cho màn hình nhỏ
 - [ ] Thêm PWA support
 
-#### 23.3 Multi-site Support
+#### 24.3 Multi-site Support
 
 - [ ] Quản lý nhiều nhà máy
 - [ ] So sánh hiệu suất giữa các site
@@ -249,12 +270,13 @@
 | Phase 17 (Preview Data, Test Connection) | ✅ Hoàn thành | 100% |
 | Phase 18 (Import/Export, Clone, Templates) | ✅ Hoàn thành | 100% |
 | Phase 19 (System Review, License Backend) | ✅ Hoàn thành | 100% |
-| Phase 20 (UX/UI Improvements) | ⏳ Chưa bắt đầu | 0% |
-| Phase 21 (Integration & Expansion) | ⏳ Chưa bắt đầu | 0% |
-| Phase 22 (Smart Analytics) | ⏳ Chưa bắt đầu | 0% |
-| Phase 23 (System Expansion) | ⏳ Chưa bắt đầu | 0% |
+| Phase 20 (Keyboard Shortcuts) | ✅ Hoàn thành | 100% |
+| Phase 21 (License Notifications, Scheduled Jobs) | ✅ Hoàn thành | 100% |
+| Phase 22 (Integration & Expansion) | ⏳ Chưa bắt đầu | 0% |
+| Phase 23 (Smart Analytics) | ⏳ Chưa bắt đầu | 0% |
+| Phase 24 (System Expansion) | ⏳ Chưa bắt đầu | 0% |
 
-### Tỷ lệ hoàn thành tổng thể: **~97%** các mục tiêu core
+### Tỷ lệ hoàn thành tổng thể: **~99%** các mục tiêu core
 
 ---
 

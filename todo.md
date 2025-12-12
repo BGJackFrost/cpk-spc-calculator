@@ -598,3 +598,52 @@
 - [x] Hiển thị cảnh báo nếu sắp hết hạn (màu vàng/đỏ)
 - [x] Chỉ hiển thị cho admin
 - [x] Thêm vào Dashboard chính (cạnh Quick Actions)
+
+
+## Phase 22 - Scheduled Job License Check và Keyboard Shortcuts mở rộng
+
+### Scheduled Job cho License Check
+- [ ] Tạo module scheduledJobs.ts với node-cron
+- [ ] Tạo job kiểm tra license hàng ngày lúc 8:00 sáng
+- [ ] Gọi API checkExpiry và sendExpiryNotifications
+- [ ] Ghi log kết quả vào audit_logs
+- [ ] Khởi động jobs khi server start
+
+### Keyboard Shortcuts mở rộng
+- [ ] Tích hợp vào ProductManagement (Ctrl+S, Ctrl+N, Esc, Ctrl+/)
+- [ ] Tích hợp vào RulesManagement (Ctrl+S, Ctrl+N, Esc, Ctrl+/)
+- [ ] Tích hợp vào LicenseManagement (Ctrl+S, Ctrl+N, Esc, Ctrl+/)
+
+
+## Phase 20 - Keyboard Shortcuts (Hoàn thành)
+
+### Keyboard Shortcuts
+- [x] Hook useKeyboardShortcuts tái sử dụng
+- [x] Component KeyboardShortcutsHelp dialog
+- [x] Ctrl+S: Lưu form
+- [x] Ctrl+N: Tạo mới
+- [x] Ctrl+Enter: Chạy phân tích
+- [x] Esc: Đóng dialog
+- [x] Ctrl+/: Hiển thị danh sách shortcuts
+- [x] Tích hợp vào Analyze.tsx
+- [x] Tích hợp vào SpcPlanManagement.tsx
+- [x] Tích hợp vào Mappings.tsx
+- [x] Tích hợp vào ProductManagement.tsx
+- [x] Tích hợp vào RulesManagement.tsx
+- [x] Tích hợp vào LicenseManagement.tsx
+
+## Phase 21 - License Notifications & Scheduled Jobs (Hoàn thành)
+
+### License Expiry Notifications
+- [x] API checkExpiry: Kiểm tra license sắp hết hạn (7/30 ngày)
+- [x] API sendExpiryNotifications: Gửi thông báo cho admin
+- [x] Dashboard License Widget: Hiển thị trạng thái license cho admin
+- [x] Trang quản lý License (/license-management)
+
+### Scheduled Jobs
+- [x] Cài đặt node-cron package
+- [x] File scheduledJobs.ts với checkLicenseExpiry function
+- [x] Cron job chạy hàng ngày lúc 8:00 AM (Asia/Ho_Chi_Minh timezone)
+- [x] Gửi thông báo cho license hết hạn trong 7/30 ngày
+- [x] Khởi tạo jobs trong server startup (initScheduledJobs)
+- [x] Function triggerLicenseExpiryCheck cho manual trigger

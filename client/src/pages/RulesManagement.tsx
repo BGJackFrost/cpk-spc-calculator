@@ -25,7 +25,10 @@ import {
   Target,
   Trash2,
   Zap,
+  Keyboard,
 } from "lucide-react";
+import { useKeyboardShortcuts, createCommonShortcuts } from "@/hooks/useKeyboardShortcuts";
+import { KeyboardShortcutsHelp } from "@/components/KeyboardShortcutsHelp";
 
 type SpcRule = {
   id: number;
@@ -80,6 +83,7 @@ export default function RulesManagement() {
   const [isAddingSpcRule, setIsAddingSpcRule] = useState(false);
   const [isAddingCaRule, setIsAddingCaRule] = useState(false);
   const [isAddingCpkRule, setIsAddingCpkRule] = useState(false);
+  const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
 
   // Queries
   const { data: spcRules = [], refetch: refetchSpcRules } = trpc.rules.getSpcRules.useQuery();
@@ -185,6 +189,32 @@ export default function RulesManagement() {
       toast.success("Đã khởi tạo các rules mặc định");
     },
   });
+
+  // Keyboard shortcuts
+  const shortcuts = createCommonShortcuts({
+    onNew: () => {
+      if (activeTab === "spc") setIsAddingSpcRule(true);
+      else if (activeTab === "ca") setIsAddingCaRule(true);
+      else if (activeTab === "cpk") setIsAddingCpkRule(true);
+    },
+    onClose: () => {
+      setEditingSpcRule(null);
+      setEditingCaRule(null);
+      setEditingCpkRule(null);
+      setIsAddingSpcRule(false);
+      setIsAddingCaRule(false);
+      setIsAddingCpkRule(false);
+    },
+  });
+  
+  shortcuts.push({
+    key: "/",
+    ctrl: true,
+    action: () => setShowShortcutsHelp(true),
+    description: "Hiển thị phím tắt (Ctrl+/)",
+  });
+  
+  useKeyboardShortcuts({ shortcuts });
 
   const getSeverityBadge = (severity: string) => {
     switch (severity) {
@@ -1204,6 +1234,11 @@ export default function RulesManagement() {
           </DialogContent>
         </Dialog>
       </div>
+      {/* Keyboard Shortcuts Help */}
+      <KeyboardShortcutsHelp
+        open={showShortcutsHelp}
+        onOpenChange={setShowShortcutsHelp}
+      />
     </DashboardLayout>
   );
 }
