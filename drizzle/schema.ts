@@ -377,6 +377,9 @@ export const spcSamplingPlans = mysqlTable("spc_sampling_plans", {
   specificationId: int("specificationId"),
   // Mapping to external database
   mappingId: int("mappingId"),
+  // Fixture (optional - for fixture-specific SPC)
+  machineId: int("machineId"),
+  fixtureId: int("fixtureId"),
   // Schedule
   startTime: timestamp("startTime"),
   endTime: timestamp("endTime"),

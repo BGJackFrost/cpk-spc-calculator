@@ -40,7 +40,11 @@ import {
   machineTypes,
   InsertMachineType,
   fixtures,
-  InsertFixture
+  InsertFixture,
+  spcRealtimeData,
+  InsertSpcRealtimeData,
+  spcSummaryStats,
+  InsertSpcSummaryStats
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -1169,6 +1173,8 @@ export async function createSpcSamplingPlan(data: {
   samplingConfigId: number;
   specificationId?: number;
   mappingId?: number;
+  machineId?: number;
+  fixtureId?: number;
   startTime?: Date;
   endTime?: Date;
   isRecurring?: boolean;
@@ -1188,6 +1194,8 @@ export async function createSpcSamplingPlan(data: {
     samplingConfigId: data.samplingConfigId,
     specificationId: data.specificationId || null,
     mappingId: data.mappingId || null,
+    machineId: data.machineId || null,
+    fixtureId: data.fixtureId || null,
     startTime: data.startTime || null,
     endTime: data.endTime || null,
     isRecurring: data.isRecurring ? 1 : 0,
@@ -1220,6 +1228,8 @@ export async function updateSpcSamplingPlan(id: number, data: Partial<{
   samplingConfigId: number;
   specificationId: number;
   mappingId: number;
+  machineId: number;
+  fixtureId: number;
   startTime: Date;
   endTime: Date;
   isRecurring: boolean;
@@ -1239,6 +1249,8 @@ export async function updateSpcSamplingPlan(id: number, data: Partial<{
   if (data.samplingConfigId !== undefined) updateData.samplingConfigId = data.samplingConfigId;
   if (data.specificationId !== undefined) updateData.specificationId = data.specificationId;
   if (data.mappingId !== undefined) updateData.mappingId = data.mappingId;
+  if (data.machineId !== undefined) updateData.machineId = data.machineId;
+  if (data.fixtureId !== undefined) updateData.fixtureId = data.fixtureId;
   if (data.startTime !== undefined) updateData.startTime = data.startTime;
   if (data.endTime !== undefined) updateData.endTime = data.endTime;
   if (data.isRecurring !== undefined) updateData.isRecurring = data.isRecurring ? 1 : 0;
@@ -1929,4 +1941,276 @@ export async function getFixturesWithMachineInfo() {
       machineCode: machine?.code || "Unknown",
     };
   });
+}
+
+// ==================== SPC Realtime Data ====================
+
+export async function saveSpcRealtimeData(data: Omit<InsertSpcRealtimeData, "id" | "createdAt">) {
+  const db = await getDb();
+  if (!db) return 0;
+  const result = await db.insert(spcRealtimeData).values(data);
+  return result[0].insertId;
+}
+
+export async function saveSpcRealtimeDataBatch(dataList: Omit<InsertSpcRealtimeData, "id" | "createdAt">[]) {
+  const db = await getDb();
+  if (!db) return 0;
+  if (dataList.length === 0) return 0;
+  const result = await db.insert(spcRealtimeData).values(dataList);
+  return result[0].affectedRows;
+}
+
+export async function getSpcRealtimeDataByPlan(planId: number, limit: number = 100) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(spcRealtimeData)
+    .where(eq(spcRealtimeData.planId, planId))
+    .orderBy(desc(spcRealtimeData.sampledAt))
+    .limit(limit);
+}
+
+export async function getSpcRealtimeDataByPlanPaginated(
+  planId: number, 
+  page: number = 1, 
+  pageSize: number = 50
+) {
+  const db = await getDb();
+  if (!db) return { data: [], total: 0, page, pageSize, totalPages: 0 };
+  
+  const offset = (page - 1) * pageSize;
+  
+  const [data, countResult] = await Promise.all([
+    db.select().from(spcRealtimeData)
+      .where(eq(spcRealtimeData.planId, planId))
+      .orderBy(desc(spcRealtimeData.sampledAt))
+      .limit(pageSize)
+      .offset(offset),
+    db.select({ count: sql<number>`count(*)` }).from(spcRealtimeData)
+      .where(eq(spcRealtimeData.planId, planId))
+  ]);
+  
+  const total = countResult[0]?.count || 0;
+  const totalPages = Math.ceil(total / pageSize);
+  
+  return { data, total, page, pageSize, totalPages };
+}
+
+export async function getSpcRealtimeDataByTimeRange(
+  planId: number, 
+  startTime: Date, 
+  endTime: Date
+) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(spcRealtimeData)
+    .where(and(
+      eq(spcRealtimeData.planId, planId),
+      gte(spcRealtimeData.sampledAt, startTime),
+      lte(spcRealtimeData.sampledAt, endTime)
+    ))
+    .orderBy(asc(spcRealtimeData.sampledAt));
+}
+
+export async function deleteSpcRealtimeDataByPlan(planId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(spcRealtimeData).where(eq(spcRealtimeData.planId, planId));
+}
+
+// ==================== SPC Summary Stats ====================
+
+export async function saveSpcSummaryStats(data: Omit<InsertSpcSummaryStats, "id" | "createdAt" | "updatedAt">) {
+  const db = await getDb();
+  if (!db) return 0;
+  const result = await db.insert(spcSummaryStats).values(data);
+  return result[0].insertId;
+}
+
+export async function getSpcSummaryStatsByPlan(planId: number, periodType?: string) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  if (periodType) {
+    return await db.select().from(spcSummaryStats)
+      .where(and(
+        eq(spcSummaryStats.planId, planId),
+        eq(spcSummaryStats.periodType, periodType as "shift" | "day" | "week" | "month")
+      ))
+      .orderBy(desc(spcSummaryStats.periodStart));
+  }
+  
+  return await db.select().from(spcSummaryStats)
+    .where(eq(spcSummaryStats.planId, planId))
+    .orderBy(desc(spcSummaryStats.periodStart));
+}
+
+export async function getSpcSummaryStatsByTimeRange(
+  planId: number,
+  periodType: "shift" | "day" | "week" | "month",
+  startTime: Date,
+  endTime: Date
+) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(spcSummaryStats)
+    .where(and(
+      eq(spcSummaryStats.planId, planId),
+      eq(spcSummaryStats.periodType, periodType),
+      gte(spcSummaryStats.periodStart, startTime),
+      lte(spcSummaryStats.periodEnd, endTime)
+    ))
+    .orderBy(asc(spcSummaryStats.periodStart));
+}
+
+export async function getLatestSpcSummaryStats(planId: number, periodType: "shift" | "day" | "week" | "month") {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(spcSummaryStats)
+    .where(and(
+      eq(spcSummaryStats.planId, planId),
+      eq(spcSummaryStats.periodType, periodType)
+    ))
+    .orderBy(desc(spcSummaryStats.periodStart))
+    .limit(1);
+  return result[0] || null;
+}
+
+export async function updateSpcSummaryStats(id: number, data: Partial<InsertSpcSummaryStats>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(spcSummaryStats).set(data).where(eq(spcSummaryStats.id, id));
+}
+
+export async function upsertSpcSummaryStats(
+  planId: number,
+  productionLineId: number,
+  periodType: "shift" | "day" | "week" | "month",
+  periodStart: Date,
+  periodEnd: Date,
+  data: Partial<InsertSpcSummaryStats>
+) {
+  const db = await getDb();
+  if (!db) return 0;
+  
+  // Check if exists
+  const existing = await db.select().from(spcSummaryStats)
+    .where(and(
+      eq(spcSummaryStats.planId, planId),
+      eq(spcSummaryStats.periodType, periodType),
+      eq(spcSummaryStats.periodStart, periodStart)
+    ))
+    .limit(1);
+  
+  if (existing.length > 0) {
+    await db.update(spcSummaryStats).set(data).where(eq(spcSummaryStats.id, existing[0].id));
+    return existing[0].id;
+  } else {
+    const result = await db.insert(spcSummaryStats).values({
+      planId,
+      productionLineId,
+      periodType,
+      periodStart,
+      periodEnd,
+      ...data
+    });
+    return result[0].insertId;
+  }
+}
+
+// ==================== Pagination Helpers ====================
+
+export async function getSpcAnalysisHistoryPaginated(
+  page: number = 1, 
+  pageSize: number = 20,
+  filters?: {
+    productCode?: string;
+    stationName?: string;
+    startDate?: Date;
+    endDate?: Date;
+  }
+) {
+  const db = await getDb();
+  if (!db) return { data: [], total: 0, page, pageSize, totalPages: 0 };
+  
+  const offset = (page - 1) * pageSize;
+  const conditions = [];
+  
+  if (filters?.productCode) {
+    conditions.push(eq(spcAnalysisHistory.productCode, filters.productCode));
+  }
+  if (filters?.stationName) {
+    conditions.push(eq(spcAnalysisHistory.stationName, filters.stationName));
+  }
+  if (filters?.startDate) {
+    conditions.push(gte(spcAnalysisHistory.createdAt, filters.startDate));
+  }
+  if (filters?.endDate) {
+    conditions.push(lte(spcAnalysisHistory.createdAt, filters.endDate));
+  }
+  
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+  
+  const [data, countResult] = await Promise.all([
+    whereClause 
+      ? db.select().from(spcAnalysisHistory).where(whereClause).orderBy(desc(spcAnalysisHistory.createdAt)).limit(pageSize).offset(offset)
+      : db.select().from(spcAnalysisHistory).orderBy(desc(spcAnalysisHistory.createdAt)).limit(pageSize).offset(offset),
+    whereClause
+      ? db.select({ count: sql<number>`count(*)` }).from(spcAnalysisHistory).where(whereClause)
+      : db.select({ count: sql<number>`count(*)` }).from(spcAnalysisHistory)
+  ]);
+  
+  const total = countResult[0]?.count || 0;
+  const totalPages = Math.ceil(total / pageSize);
+  
+  return { data, total, page, pageSize, totalPages };
+}
+
+export async function getAuditLogsPaginated(
+  page: number = 1,
+  pageSize: number = 50,
+  filters?: {
+    userId?: number;
+    action?: string;
+    tableName?: string;
+    startDate?: Date;
+    endDate?: Date;
+  }
+) {
+  const db = await getDb();
+  if (!db) return { data: [], total: 0, page, pageSize, totalPages: 0 };
+  
+  const offset = (page - 1) * pageSize;
+  const conditions = [];
+  
+  if (filters?.userId) {
+    conditions.push(eq(auditLogs.userId, filters.userId));
+  }
+  if (filters?.action) {
+    conditions.push(eq(auditLogs.action, filters.action as "create" | "update" | "delete" | "login" | "logout" | "export" | "analyze"));
+  }
+  if (filters?.tableName) {
+    conditions.push(eq(auditLogs.tableName, filters.tableName));
+  }
+  if (filters?.startDate) {
+    conditions.push(gte(auditLogs.createdAt, filters.startDate));
+  }
+  if (filters?.endDate) {
+    conditions.push(lte(auditLogs.createdAt, filters.endDate));
+  }
+  
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+  
+  const [data, countResult] = await Promise.all([
+    whereClause
+      ? db.select().from(auditLogs).where(whereClause).orderBy(desc(auditLogs.createdAt)).limit(pageSize).offset(offset)
+      : db.select().from(auditLogs).orderBy(desc(auditLogs.createdAt)).limit(pageSize).offset(offset),
+    whereClause
+      ? db.select({ count: sql<number>`count(*)` }).from(auditLogs).where(whereClause)
+      : db.select({ count: sql<number>`count(*)` }).from(auditLogs)
+  ]);
+  
+  const total = countResult[0]?.count || 0;
+  const totalPages = Math.ceil(total / pageSize);
+  
+  return { data, total, page, pageSize, totalPages };
 }

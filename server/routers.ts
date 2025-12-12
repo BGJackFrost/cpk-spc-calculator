@@ -102,6 +102,12 @@ import {
   updateRolePermissions,
   initDefaultPermissions,
   checkUserPermission,
+  getSpcAnalysisHistoryPaginated,
+  getSpcRealtimeDataByPlan,
+  getSpcRealtimeDataByPlanPaginated,
+  getSpcSummaryStatsByPlan,
+  getSpcSummaryStatsByTimeRange,
+  getAuditLogsPaginated,
 } from "./db";
 import { invokeLLM } from "./_core/llm";
 import { notifyOwner } from "./_core/notification";
@@ -693,6 +699,77 @@ const spcRouter = router({
       };
     }),
 
+  // Pagination cho lịch sử phân tích
+  historyPaginated: protectedProcedure
+    .input(z.object({
+      page: z.number().min(1).default(1),
+      pageSize: z.number().min(10).max(100).default(20),
+      productCode: z.string().optional(),
+      stationName: z.string().optional(),
+      startDate: z.date().optional(),
+      endDate: z.date().optional(),
+    }))
+    .query(async ({ input }) => {
+      return await getSpcAnalysisHistoryPaginated(
+        input.page,
+        input.pageSize,
+        {
+          productCode: input.productCode,
+          stationName: input.stationName,
+          startDate: input.startDate,
+          endDate: input.endDate,
+        }
+      );
+    }),
+
+  // Lấy dữ liệu realtime theo plan
+  getRealtimeData: protectedProcedure
+    .input(z.object({
+      planId: z.number(),
+      limit: z.number().optional().default(100),
+    }))
+    .query(async ({ input }) => {
+      return await getSpcRealtimeDataByPlan(input.planId, input.limit);
+    }),
+
+  // Lấy dữ liệu realtime theo plan với pagination
+  getRealtimeDataPaginated: protectedProcedure
+    .input(z.object({
+      planId: z.number(),
+      page: z.number().min(1).default(1),
+      pageSize: z.number().min(10).max(100).default(50),
+    }))
+    .query(async ({ input }) => {
+      return await getSpcRealtimeDataByPlanPaginated(input.planId, input.page, input.pageSize);
+    }),
+
+  // Lấy thống kê tổng hợp theo plan
+  getSummaryStats: protectedProcedure
+    .input(z.object({
+      planId: z.number(),
+      periodType: z.enum(["shift", "day", "week", "month"]).optional(),
+    }))
+    .query(async ({ input }) => {
+      return await getSpcSummaryStatsByPlan(input.planId, input.periodType);
+    }),
+
+  // Lấy thống kê tổng hợp theo khoảng thời gian
+  getSummaryStatsByTimeRange: protectedProcedure
+    .input(z.object({
+      planId: z.number(),
+      periodType: z.enum(["shift", "day", "week", "month"]),
+      startTime: z.date(),
+      endTime: z.date(),
+    }))
+    .query(async ({ input }) => {
+      return await getSpcSummaryStatsByTimeRange(
+        input.planId,
+        input.periodType,
+        input.startTime,
+        input.endTime
+      );
+    }),
+
   llmAnalysis: protectedProcedure
     .input(z.object({
       productCode: z.string(),
@@ -971,6 +1048,8 @@ const spcPlanRouter = router({
       samplingConfigId: z.number(),
       specificationId: z.number().optional(),
       mappingId: z.number().optional(),
+      machineId: z.number().optional(),
+      fixtureId: z.number().optional(),
       startTime: z.number().optional(), // Unix timestamp in ms
       endTime: z.number().optional(), // Unix timestamp in ms, null = continuous
       isRecurring: z.boolean().optional(),
@@ -998,6 +1077,8 @@ const spcPlanRouter = router({
       samplingConfigId: z.number().optional(),
       specificationId: z.number().optional(),
       mappingId: z.number().optional(),
+      machineId: z.number().optional(),
+      fixtureId: z.number().optional(),
       startTime: z.number().optional(), // Unix timestamp in ms
       endTime: z.number().optional(), // Unix timestamp in ms, null = continuous
       isRecurring: z.boolean().optional(),

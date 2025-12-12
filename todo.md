@@ -337,3 +337,40 @@
 - [x] Bảng thống kê chi tiết với xếp hạng
 - [x] Bộ lọc theo thời gian
 
+
+## Phase 11 - Tích hợp spc_realtime_data, Pagination, Fixture vào SPC Plan
+
+### Tích hợp spc_realtime_data và spc_summary_stats
+- [x] Tạo các hàm CRUD cho spc_realtime_data (insertRealtimeData, getRealtimeData)
+- [x] Tạo các hàm CRUD cho spc_summary_stats (getSummaryStats, updateSummaryStats)
+- [x] Tạo API endpoints trong spcRouter
+- [ ] Tự động tổng hợp vào spc_summary_stats theo ca/ngày/tuần/tháng (chưa hoàn thành)
+
+### Pagination cho các danh sách lớn
+- [x] Tạo component Pagination tái sử dụng (Pagination.tsx)
+- [x] Thêm pagination cho trang Lịch sử phân tích (History.tsx)
+- [x] Thêm pagination cho Audit Logs (getAuditLogsPaginated)
+- [ ] Thêm pagination cho bảng dữ liệu mẫu (chưa hoàn thành)
+
+### Hoàn thiện Fixture vào SPC Plan
+- [x] Thêm trường machineId và fixtureId vào bảng spc_sampling_plans
+- [x] Cập nhật API create/update SPC Plan
+- [x] Thêm selector Machine và Fixture vào form SPC Plan
+- [x] Lọc Fixture theo Machine đã chọn
+
+## Phase 12 - Caching Layer và Tối ưu Database
+
+### Caching Layer
+- [x] Tạo module cache.ts với in-memory cache (MemoryCache class)
+- [x] Định nghĩa cache keys cho các loại dữ liệu (products, workstations, machines, etc.)
+- [x] Định nghĩa TTL cho từng loại cache (SHORT/MEDIUM/LONG/VERY_LONG)
+- [x] Tạo helper withCache() cho async functions
+- [x] Tạo hàm invalidateCache() khi dữ liệu thay đổi
+
+### Tối ưu Database
+- [x] Thêm indexes cho spc_analysis_history (productCode, stationName, createdAt, cpk)
+- [x] Thêm indexes cho spc_sampling_plans (status, productionLineId)
+- [x] Thêm indexes cho audit_logs (userId, action, createdAt)
+- [x] Thêm indexes cho machines, fixtures, products
+- [ ] Tối ưu các query JOIN phức tạp (chưa hoàn thành)
+

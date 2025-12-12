@@ -38,6 +38,8 @@ interface SpcPlan {
   samplingConfigId: number;
   specificationId?: number | null;
   mappingId?: number | null;
+  machineId?: number | null;
+  fixtureId?: number | null;
   startTime?: Date | null;
   endTime?: Date | null;
   status: "draft" | "active" | "paused" | "completed";
@@ -77,6 +79,8 @@ export default function SpcPlanManagement() {
     samplingConfigId: 0,
     specificationId: 0,
     mappingId: 0,
+    machineId: 0,
+    fixtureId: 0,
     startTime: "",
     endTime: "",
     isRecurring: true,
@@ -91,6 +95,8 @@ export default function SpcPlanManagement() {
   const { data: samplingConfigs } = trpc.sampling.list.useQuery();
   const { data: specifications } = trpc.productSpec.list.useQuery();
   const { data: mappings } = trpc.mapping.list.useQuery();
+  const { data: machines } = trpc.machine.listAll.useQuery();
+  const { data: fixtures } = trpc.fixture.list.useQuery();
 
   // Mutations
   const createMutation = trpc.spcPlan.create.useMutation({
@@ -139,6 +145,8 @@ export default function SpcPlanManagement() {
       samplingConfigId: 0,
       specificationId: 0,
       mappingId: 0,
+      machineId: 0,
+      fixtureId: 0,
       startTime: "",
       endTime: "",
       isRecurring: true,
@@ -146,6 +154,11 @@ export default function SpcPlanManagement() {
       notifyEmail: "",
     });
   };
+
+  // Filter fixtures by selected machine
+  const filteredFixtures = fixtures?.filter(f => 
+    formData.machineId ? f.machineId === formData.machineId : true
+  ) || [];
 
   const handleCreate = () => {
     if (!formData.name || !formData.productionLineId || !formData.samplingConfigId) {
@@ -158,6 +171,8 @@ export default function SpcPlanManagement() {
       workstationId: formData.workstationId || undefined,
       specificationId: formData.specificationId || undefined,
       mappingId: formData.mappingId || undefined,
+      machineId: formData.machineId || undefined,
+      fixtureId: formData.fixtureId || undefined,
       startTime: formData.startTime ? new Date(formData.startTime).getTime() : undefined,
       endTime: formData.endTime ? new Date(formData.endTime).getTime() : undefined,
     });
@@ -172,6 +187,8 @@ export default function SpcPlanManagement() {
       workstationId: formData.workstationId || undefined,
       specificationId: formData.specificationId || undefined,
       mappingId: formData.mappingId || undefined,
+      machineId: formData.machineId || undefined,
+      fixtureId: formData.fixtureId || undefined,
       startTime: formData.startTime ? new Date(formData.startTime).getTime() : undefined,
       endTime: formData.endTime ? new Date(formData.endTime).getTime() : undefined,
     });
@@ -198,6 +215,8 @@ export default function SpcPlanManagement() {
       samplingConfigId: plan.samplingConfigId,
       specificationId: plan.specificationId || 0,
       mappingId: plan.mappingId || 0,
+      machineId: plan.machineId || 0,
+      fixtureId: plan.fixtureId || 0,
       startTime: plan.startTime ? new Date(plan.startTime).toISOString().slice(0, 16) : "",
       endTime: plan.endTime ? new Date(plan.endTime).toISOString().slice(0, 16) : "",
       isRecurring: plan.isRecurring === 1,
@@ -348,6 +367,51 @@ export default function SpcPlanManagement() {
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-muted-foreground">Chọn mapping để lấy dữ liệu từ database ngoài</p>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Máy (tuỳ chọn)</Label>
+                    <Select 
+                      value={formData.machineId.toString()} 
+                      onValueChange={(v) => {
+                        const machineId = parseInt(v);
+                        setFormData({ ...formData, machineId, fixtureId: 0 });
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Chọn máy" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="0">-- Tất cả máy --</SelectItem>
+                        {machines?.map((m: any) => (
+                          <SelectItem key={m.id} value={m.id.toString()}>
+                            {m.name} ({m.code})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Fixture (tuỳ chọn)</Label>
+                    <Select 
+                      value={formData.fixtureId.toString()} 
+                      onValueChange={(v) => setFormData({ ...formData, fixtureId: parseInt(v) })}
+                      disabled={!formData.machineId}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Chọn fixture" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="0">-- Tất cả fixture --</SelectItem>
+                        {filteredFixtures.map((f: any) => (
+                          <SelectItem key={f.id} value={f.id.toString()}>
+                            {f.name} ({f.code})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">Chọn máy trước để lọc fixture</p>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label>Mô tả</Label>
