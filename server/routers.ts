@@ -1055,6 +1055,9 @@ const spcPlanRouter = router({
       isRecurring: z.boolean().optional(),
       notifyOnViolation: z.boolean().optional(),
       notifyEmail: z.string().optional(),
+      enabledSpcRules: z.string().optional(), // JSON array of rule IDs
+      enabledCaRules: z.string().optional(),
+      enabledCpkRules: z.string().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const { startTime, endTime, ...rest } = input;
@@ -1084,6 +1087,9 @@ const spcPlanRouter = router({
       isRecurring: z.boolean().optional(),
       notifyOnViolation: z.boolean().optional(),
       notifyEmail: z.string().optional(),
+      enabledSpcRules: z.string().optional(), // JSON array of rule IDs
+      enabledCaRules: z.string().optional(),
+      enabledCpkRules: z.string().optional(),
     }))
     .mutation(async ({ input }) => {
       const { id, startTime, endTime, ...data } = input;
@@ -1736,6 +1742,211 @@ export const appRouter = router({
         const { getAuditLogs } = await import("./db");
         return await getAuditLogs(input);
       }),
+  }),
+
+  // Rules Management router
+  rules: router({
+    // SPC Rules
+    getSpcRules: protectedProcedure.query(async () => {
+      const { getSpcRules } = await import("./db");
+      return await getSpcRules();
+    }),
+    getSpcRuleById: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        const { getSpcRuleById } = await import("./db");
+        return await getSpcRuleById(input.id);
+      }),
+    createSpcRule: protectedProcedure
+      .input(z.object({
+        code: z.string(),
+        name: z.string(),
+        description: z.string().optional(),
+        category: z.string().default("western_electric"),
+        formula: z.string().optional(),
+        example: z.string().optional(),
+        severity: z.enum(["warning", "critical"]).default("warning"),
+        threshold: z.number().optional(),
+        consecutivePoints: z.number().optional(),
+        sigmaLevel: z.number().optional(),
+        isEnabled: z.number().default(1),
+        sortOrder: z.number().default(0),
+      }))
+      .mutation(async ({ input }) => {
+        const { createSpcRule } = await import("./db");
+        return await createSpcRule(input);
+      }),
+    updateSpcRule: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        code: z.string().optional(),
+        name: z.string().optional(),
+        description: z.string().optional(),
+        category: z.string().optional(),
+        formula: z.string().optional(),
+        example: z.string().optional(),
+        severity: z.enum(["warning", "critical"]).optional(),
+        threshold: z.number().optional(),
+        consecutivePoints: z.number().optional(),
+        sigmaLevel: z.number().optional(),
+        isEnabled: z.number().optional(),
+        sortOrder: z.number().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { id, ...data } = input;
+        const { updateSpcRule } = await import("./db");
+        await updateSpcRule(id, data);
+        return { success: true };
+      }),
+    deleteSpcRule: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const { deleteSpcRule } = await import("./db");
+        await deleteSpcRule(input.id);
+        return { success: true };
+      }),
+    toggleSpcRule: protectedProcedure
+      .input(z.object({ id: z.number(), isEnabled: z.boolean() }))
+      .mutation(async ({ input }) => {
+        const { toggleSpcRule } = await import("./db");
+        await toggleSpcRule(input.id, input.isEnabled);
+        return { success: true };
+      }),
+
+    // CA Rules
+    getCaRules: protectedProcedure.query(async () => {
+      const { getCaRules } = await import("./db");
+      return await getCaRules();
+    }),
+    getCaRuleById: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        const { getCaRuleById } = await import("./db");
+        return await getCaRuleById(input.id);
+      }),
+    createCaRule: protectedProcedure
+      .input(z.object({
+        code: z.string(),
+        name: z.string(),
+        description: z.string().optional(),
+        formula: z.string().optional(),
+        example: z.string().optional(),
+        severity: z.enum(["warning", "critical"]).default("warning"),
+        minValue: z.number().optional(),
+        maxValue: z.number().optional(),
+        isEnabled: z.number().default(1),
+        sortOrder: z.number().default(0),
+      }))
+      .mutation(async ({ input }) => {
+        const { createCaRule } = await import("./db");
+        return await createCaRule(input);
+      }),
+    updateCaRule: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        code: z.string().optional(),
+        name: z.string().optional(),
+        description: z.string().optional(),
+        formula: z.string().optional(),
+        example: z.string().optional(),
+        severity: z.enum(["warning", "critical"]).optional(),
+        minValue: z.number().optional(),
+        maxValue: z.number().optional(),
+        isEnabled: z.number().optional(),
+        sortOrder: z.number().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { id, ...data } = input;
+        const { updateCaRule } = await import("./db");
+        await updateCaRule(id, data);
+        return { success: true };
+      }),
+    deleteCaRule: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const { deleteCaRule } = await import("./db");
+        await deleteCaRule(input.id);
+        return { success: true };
+      }),
+    toggleCaRule: protectedProcedure
+      .input(z.object({ id: z.number(), isEnabled: z.boolean() }))
+      .mutation(async ({ input }) => {
+        const { toggleCaRule } = await import("./db");
+        await toggleCaRule(input.id, input.isEnabled);
+        return { success: true };
+      }),
+
+    // CPK Rules
+    getCpkRules: protectedProcedure.query(async () => {
+      const { getCpkRules } = await import("./db");
+      return await getCpkRules();
+    }),
+    getCpkRuleById: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        const { getCpkRuleById } = await import("./db");
+        return await getCpkRuleById(input.id);
+      }),
+    createCpkRule: protectedProcedure
+      .input(z.object({
+        code: z.string(),
+        name: z.string(),
+        description: z.string().optional(),
+        minCpk: z.number().optional(),
+        maxCpk: z.number().optional(),
+        status: z.string(),
+        color: z.string().optional(),
+        action: z.string().optional(),
+        severity: z.enum(["info", "warning", "critical"]).default("info"),
+        isEnabled: z.number().default(1),
+        sortOrder: z.number().default(0),
+      }))
+      .mutation(async ({ input }) => {
+        const { createCpkRule } = await import("./db");
+        return await createCpkRule(input);
+      }),
+    updateCpkRule: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        code: z.string().optional(),
+        name: z.string().optional(),
+        description: z.string().optional(),
+        minCpk: z.number().optional(),
+        maxCpk: z.number().optional(),
+        status: z.string().optional(),
+        color: z.string().optional(),
+        action: z.string().optional(),
+        severity: z.enum(["info", "warning", "critical"]).optional(),
+        isEnabled: z.number().optional(),
+        sortOrder: z.number().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { id, ...data } = input;
+        const { updateCpkRule } = await import("./db");
+        await updateCpkRule(id, data);
+        return { success: true };
+      }),
+    deleteCpkRule: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const { deleteCpkRule } = await import("./db");
+        await deleteCpkRule(input.id);
+        return { success: true };
+      }),
+    toggleCpkRule: protectedProcedure
+      .input(z.object({ id: z.number(), isEnabled: z.boolean() }))
+      .mutation(async ({ input }) => {
+        const { toggleCpkRule } = await import("./db");
+        await toggleCpkRule(input.id, input.isEnabled);
+        return { success: true };
+      }),
+
+    // Seed default rules
+    seedDefaultRules: protectedProcedure.mutation(async () => {
+      const { seedAllDefaultRules } = await import("./db");
+      await seedAllDefaultRules();
+      return { success: true };
+    }),
   }),
 });
 

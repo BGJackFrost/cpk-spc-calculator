@@ -44,7 +44,13 @@ import {
   spcRealtimeData,
   InsertSpcRealtimeData,
   spcSummaryStats,
-  InsertSpcSummaryStats
+  InsertSpcSummaryStats,
+  spcRules,
+  InsertSpcRule,
+  caRules,
+  InsertCaRule,
+  cpkRules,
+  InsertCpkRule
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -2213,4 +2219,431 @@ export async function getAuditLogsPaginated(
   const totalPages = Math.ceil(total / pageSize);
   
   return { data, total, page, pageSize, totalPages };
+}
+
+
+// ==================== SPC Rules ====================
+
+export async function getSpcRules() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(spcRules).orderBy(asc(spcRules.sortOrder));
+}
+
+export async function getSpcRuleById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(spcRules).where(eq(spcRules.id, id));
+  return result[0];
+}
+
+export async function getSpcRuleByCode(code: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(spcRules).where(eq(spcRules.code, code));
+  return result[0];
+}
+
+export async function getEnabledSpcRules() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(spcRules).where(eq(spcRules.isEnabled, 1)).orderBy(asc(spcRules.sortOrder));
+}
+
+export async function createSpcRule(data: Omit<InsertSpcRule, "id" | "createdAt" | "updatedAt">) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(spcRules).values(data);
+  return result[0].insertId;
+}
+
+export async function updateSpcRule(id: number, data: Partial<InsertSpcRule>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(spcRules).set(data).where(eq(spcRules.id, id));
+}
+
+export async function deleteSpcRule(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(spcRules).where(eq(spcRules.id, id));
+}
+
+export async function toggleSpcRule(id: number, isEnabled: boolean) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(spcRules).set({ isEnabled: isEnabled ? 1 : 0 }).where(eq(spcRules.id, id));
+}
+
+// ==================== CA Rules ====================
+
+export async function getCaRules() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(caRules).orderBy(asc(caRules.sortOrder));
+}
+
+export async function getCaRuleById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(caRules).where(eq(caRules.id, id));
+  return result[0];
+}
+
+export async function getCaRuleByCode(code: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(caRules).where(eq(caRules.code, code));
+  return result[0];
+}
+
+export async function getEnabledCaRules() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(caRules).where(eq(caRules.isEnabled, 1)).orderBy(asc(caRules.sortOrder));
+}
+
+export async function createCaRule(data: Omit<InsertCaRule, "id" | "createdAt" | "updatedAt">) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(caRules).values(data);
+  return result[0].insertId;
+}
+
+export async function updateCaRule(id: number, data: Partial<InsertCaRule>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(caRules).set(data).where(eq(caRules.id, id));
+}
+
+export async function deleteCaRule(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(caRules).where(eq(caRules.id, id));
+}
+
+export async function toggleCaRule(id: number, isEnabled: boolean) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(caRules).set({ isEnabled: isEnabled ? 1 : 0 }).where(eq(caRules.id, id));
+}
+
+// ==================== CPK Rules ====================
+
+export async function getCpkRules() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(cpkRules).orderBy(asc(cpkRules.sortOrder));
+}
+
+export async function getCpkRuleById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(cpkRules).where(eq(cpkRules.id, id));
+  return result[0];
+}
+
+export async function getCpkRuleByCode(code: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(cpkRules).where(eq(cpkRules.code, code));
+  return result[0];
+}
+
+export async function getEnabledCpkRules() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(cpkRules).where(eq(cpkRules.isEnabled, 1)).orderBy(asc(cpkRules.sortOrder));
+}
+
+export async function createCpkRule(data: Omit<InsertCpkRule, "id" | "createdAt" | "updatedAt">) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(cpkRules).values(data);
+  return result[0].insertId;
+}
+
+export async function updateCpkRule(id: number, data: Partial<InsertCpkRule>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(cpkRules).set(data).where(eq(cpkRules.id, id));
+}
+
+export async function deleteCpkRule(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(cpkRules).where(eq(cpkRules.id, id));
+}
+
+export async function toggleCpkRule(id: number, isEnabled: boolean) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(cpkRules).set({ isEnabled: isEnabled ? 1 : 0 }).where(eq(cpkRules.id, id));
+}
+
+// ==================== Seed Default Rules ====================
+
+export async function seedDefaultSpcRules() {
+  const db = await getDb();
+  if (!db) return;
+  const existing = await db.select().from(spcRules);
+  if (existing.length > 0) return;
+
+  const defaultRules = [
+    {
+      code: "RULE1",
+      name: "Điểm ngoài giới hạn kiểm soát",
+      description: "Một điểm nằm ngoài giới hạn kiểm soát 3σ (UCL hoặc LCL)",
+      category: "western_electric",
+      formula: "X > UCL hoặc X < LCL",
+      example: "Nếu UCL = 10.5 và LCL = 9.5, điểm 10.8 sẽ vi phạm rule này",
+      severity: "critical" as const,
+      consecutivePoints: 1,
+      sigmaLevel: 3,
+      isEnabled: 1,
+      sortOrder: 1
+    },
+    {
+      code: "RULE2",
+      name: "9 điểm liên tiếp cùng phía",
+      description: "9 điểm liên tiếp nằm cùng một phía của đường trung tâm (CL)",
+      category: "western_electric",
+      formula: "9 điểm liên tiếp > CL hoặc 9 điểm liên tiếp < CL",
+      example: "9 điểm liên tiếp đều nằm trên đường trung tâm",
+      severity: "warning" as const,
+      consecutivePoints: 9,
+      sigmaLevel: 0,
+      isEnabled: 1,
+      sortOrder: 2
+    },
+    {
+      code: "RULE3",
+      name: "6 điểm tăng/giảm liên tục",
+      description: "6 điểm liên tiếp tăng dần hoặc giảm dần (trend)",
+      category: "western_electric",
+      formula: "X1 < X2 < X3 < X4 < X5 < X6 hoặc X1 > X2 > X3 > X4 > X5 > X6",
+      example: "6 điểm: 10.1, 10.2, 10.3, 10.4, 10.5, 10.6",
+      severity: "warning" as const,
+      consecutivePoints: 6,
+      sigmaLevel: 0,
+      isEnabled: 1,
+      sortOrder: 3
+    },
+    {
+      code: "RULE4",
+      name: "14 điểm dao động xen kẽ",
+      description: "14 điểm liên tiếp dao động lên xuống xen kẽ",
+      category: "western_electric",
+      formula: "Điểm tăng giảm xen kẽ 14 lần liên tiếp",
+      example: "10.1, 10.3, 10.2, 10.4, 10.3, 10.5...",
+      severity: "warning" as const,
+      consecutivePoints: 14,
+      sigmaLevel: 0,
+      isEnabled: 1,
+      sortOrder: 4
+    },
+    {
+      code: "RULE5",
+      name: "2/3 điểm trong vùng 2σ-3σ",
+      description: "2 trong 3 điểm liên tiếp nằm trong vùng 2σ đến 3σ cùng phía",
+      category: "western_electric",
+      formula: "2/3 điểm trong khoảng (CL+2σ, UCL) hoặc (LCL, CL-2σ)",
+      example: "3 điểm: 10.4, 10.45, 10.35 với 2σ = 10.3",
+      severity: "warning" as const,
+      consecutivePoints: 3,
+      sigmaLevel: 2,
+      isEnabled: 1,
+      sortOrder: 5
+    },
+    {
+      code: "RULE6",
+      name: "4/5 điểm trong vùng 1σ-3σ",
+      description: "4 trong 5 điểm liên tiếp nằm trong vùng 1σ đến 3σ cùng phía",
+      category: "western_electric",
+      formula: "4/5 điểm trong khoảng (CL+1σ, UCL) hoặc (LCL, CL-1σ)",
+      example: "5 điểm với 4 điểm nằm trên vùng 1σ",
+      severity: "warning" as const,
+      consecutivePoints: 5,
+      sigmaLevel: 1,
+      isEnabled: 1,
+      sortOrder: 6
+    },
+    {
+      code: "RULE7",
+      name: "15 điểm trong vùng ±1σ",
+      description: "15 điểm liên tiếp nằm trong vùng ±1σ (stratification)",
+      category: "western_electric",
+      formula: "15 điểm trong khoảng (CL-1σ, CL+1σ)",
+      example: "15 điểm đều nằm gần đường trung tâm",
+      severity: "warning" as const,
+      consecutivePoints: 15,
+      sigmaLevel: 1,
+      isEnabled: 1,
+      sortOrder: 7
+    },
+    {
+      code: "RULE8",
+      name: "8 điểm ngoài vùng ±1σ",
+      description: "8 điểm liên tiếp nằm ngoài vùng ±1σ cả hai phía (mixture)",
+      category: "western_electric",
+      formula: "8 điểm nằm ngoài (CL-1σ, CL+1σ) xen kẽ hai phía",
+      example: "8 điểm dao động mạnh giữa hai phía",
+      severity: "warning" as const,
+      consecutivePoints: 8,
+      sigmaLevel: 1,
+      isEnabled: 1,
+      sortOrder: 8
+    }
+  ];
+
+  for (const rule of defaultRules) {
+    await db.insert(spcRules).values(rule);
+  }
+}
+
+export async function seedDefaultCaRules() {
+  const db = await getDb();
+  if (!db) return;
+  const existing = await db.select().from(caRules);
+  if (existing.length > 0) return;
+
+  const defaultRules = [
+    {
+      code: "CA_EXCELLENT",
+      name: "Ca Xuất sắc",
+      description: "Độ chính xác quy trình xuất sắc, tâm quy trình gần như trùng với tâm spec",
+      formula: "|Ca| ≤ 0.125 (12.5%)",
+      example: "Ca = 0.05 → Quy trình rất chính xác",
+      severity: "warning" as const,
+      minValue: 0,
+      maxValue: 125,
+      isEnabled: 1,
+      sortOrder: 1
+    },
+    {
+      code: "CA_GOOD",
+      name: "Ca Tốt",
+      description: "Độ chính xác quy trình tốt, cần theo dõi",
+      formula: "0.125 < |Ca| ≤ 0.25 (12.5% - 25%)",
+      example: "Ca = 0.18 → Quy trình tốt nhưng cần theo dõi",
+      severity: "warning" as const,
+      minValue: 125,
+      maxValue: 250,
+      isEnabled: 1,
+      sortOrder: 2
+    },
+    {
+      code: "CA_ACCEPTABLE",
+      name: "Ca Chấp nhận được",
+      description: "Độ chính xác quy trình chấp nhận được, cần cải tiến",
+      formula: "0.25 < |Ca| ≤ 0.50 (25% - 50%)",
+      example: "Ca = 0.35 → Cần điều chỉnh tâm quy trình",
+      severity: "warning" as const,
+      minValue: 250,
+      maxValue: 500,
+      isEnabled: 1,
+      sortOrder: 3
+    },
+    {
+      code: "CA_POOR",
+      name: "Ca Kém",
+      description: "Độ chính xác quy trình kém, cần hành động ngay",
+      formula: "|Ca| > 0.50 (> 50%)",
+      example: "Ca = 0.65 → Quy trình lệch tâm nghiêm trọng",
+      severity: "critical" as const,
+      minValue: 500,
+      maxValue: null,
+      isEnabled: 1,
+      sortOrder: 4
+    }
+  ];
+
+  for (const rule of defaultRules) {
+    await db.insert(caRules).values(rule);
+  }
+}
+
+export async function seedDefaultCpkRules() {
+  const db = await getDb();
+  if (!db) return;
+  const existing = await db.select().from(cpkRules);
+  if (existing.length > 0) return;
+
+  const defaultRules = [
+    {
+      code: "CPK_EXCELLENT",
+      name: "CPK Xuất sắc",
+      description: "Năng lực quy trình xuất sắc, quy trình rất ổn định",
+      minCpk: 1670,
+      maxCpk: null,
+      status: "excellent",
+      color: "green",
+      action: "Duy trì quy trình hiện tại, có thể xem xét giảm tần suất kiểm tra",
+      severity: "info" as const,
+      isEnabled: 1,
+      sortOrder: 1
+    },
+    {
+      code: "CPK_GOOD",
+      name: "CPK Tốt",
+      description: "Năng lực quy trình tốt, đáp ứng yêu cầu",
+      minCpk: 1330,
+      maxCpk: 1670,
+      status: "good",
+      color: "blue",
+      action: "Tiếp tục theo dõi, tìm cơ hội cải tiến",
+      severity: "info" as const,
+      isEnabled: 1,
+      sortOrder: 2
+    },
+    {
+      code: "CPK_ACCEPTABLE",
+      name: "CPK Chấp nhận được",
+      description: "Năng lực quy trình chấp nhận được, cần cải tiến",
+      minCpk: 1000,
+      maxCpk: 1330,
+      status: "acceptable",
+      color: "yellow",
+      action: "Phân tích nguyên nhân biến động, lập kế hoạch cải tiến",
+      severity: "warning" as const,
+      isEnabled: 1,
+      sortOrder: 3
+    },
+    {
+      code: "CPK_POOR",
+      name: "CPK Kém",
+      description: "Năng lực quy trình kém, cần hành động khẩn cấp",
+      minCpk: 670,
+      maxCpk: 1000,
+      status: "poor",
+      color: "orange",
+      action: "Kiểm tra 100% sản phẩm, phân tích và khắc phục ngay",
+      severity: "warning" as const,
+      isEnabled: 1,
+      sortOrder: 4
+    },
+    {
+      code: "CPK_UNACCEPTABLE",
+      name: "CPK Không chấp nhận",
+      description: "Năng lực quy trình không chấp nhận được, dừng sản xuất",
+      minCpk: null,
+      maxCpk: 670,
+      status: "unacceptable",
+      color: "red",
+      action: "Dừng sản xuất, kiểm tra toàn bộ, tìm và khắc phục nguyên nhân gốc",
+      severity: "critical" as const,
+      isEnabled: 1,
+      sortOrder: 5
+    }
+  ];
+
+  for (const rule of defaultRules) {
+    await db.insert(cpkRules).values(rule);
+  }
+}
+
+export async function seedAllDefaultRules() {
+  await seedDefaultSpcRules();
+  await seedDefaultCaRules();
+  await seedDefaultCpkRules();
 }

@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, LogOut, PanelLeft, TrendingUp, History, FileSpreadsheet, Settings, Activity, Users, Package, Ruler, Factory, Clock, Calendar, Mail, Shield, Server, Database, Wrench, Cog, GitBranch, FileText, BarChart3, AlertTriangle, Cpu, GitCompare, ArrowUpDown, Info } from "lucide-react";
+import { LayoutDashboard, LogOut, PanelLeft, TrendingUp, History, FileSpreadsheet, Settings, Activity, Users, Package, Ruler, Factory, Clock, Calendar, Mail, Shield, Server, Database, Wrench, Cog, GitBranch, FileText, BarChart3, AlertTriangle, Cpu, GitCompare, ArrowUpDown, Info, BookOpen, Layers } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
@@ -30,6 +30,7 @@ import { Button } from "./ui/button";
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
   { icon: Activity, label: "Dây chuyền Realtime", path: "/production-lines" },
+  { icon: Layers, label: "Trực quan SPC Plan", path: "/spc-visualization" },
   { icon: TrendingUp, label: "Phân tích SPC/CPK", path: "/analyze" },
   { icon: GitCompare, label: "Phân tích Đa Đối tượng", path: "/multi-analysis" },
   { icon: ArrowUpDown, label: "So sánh Dây chuyền", path: "/line-comparison" },
@@ -55,6 +56,7 @@ const menuItems = [
   { icon: Database, label: "Khởi tạo Dữ liệu", path: "/seed-data" },
   { icon: FileText, label: "Nhật ký Hoạt động", path: "/audit-logs" },
   { icon: Settings, label: "Cài đặt", path: "/settings" },
+  { icon: BookOpen, label: "Quản lý Rules", path: "/rules" },
   { icon: Info, label: "Thông tin Hệ thống", path: "/about" },
 ];
 

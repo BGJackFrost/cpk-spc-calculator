@@ -218,7 +218,7 @@ export default function ProductionLinesDashboard() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {[2, 4, 6, 8, 10, 12].map(n => (
+                      {[2, 4, 6, 8, 10, 12, 16, 20, 24, 30].map(n => (
                         <SelectItem key={n} value={n.toString()}>
                           {n} kế hoạch
                         </SelectItem>
@@ -317,7 +317,9 @@ export default function ProductionLinesDashboard() {
             displayCount <= 2 ? 'grid-cols-1 md:grid-cols-2' :
             displayCount <= 4 ? 'grid-cols-1 md:grid-cols-2' :
             displayCount <= 6 ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' :
-            'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
+            displayCount <= 12 ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' :
+            displayCount <= 20 ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5' :
+            'grid-cols-1 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6'
           }`}>
             {displayPlans.slice(0, displayCount).map((plan: SpcPlan) => (
               <RealtimePlanCard

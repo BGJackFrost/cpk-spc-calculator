@@ -408,3 +408,42 @@
 - [x] So sánh các gói license (Trial, Standard, Professional, Enterprise)
 - [x] Thêm route /about vào App.tsx
 - [x] Thêm menu "Thông tin Hệ thống" vào DashboardLayout
+
+## Phase 14 - SPC Plan Visualization và Quản lý Rules
+
+### Trang quản lý Rules
+- [x] Tạo bảng spc_rules trong database (code, name, description, category, enabled, threshold)
+- [x] Tạo bảng ca_rules trong database
+- [x] Tạo bảng cpk_rules trong database
+- [x] Tạo API CRUD cho SPC/CA/CPK Rules
+- [x] Tạo trang RulesManagement.tsx với 3 tabs
+- [x] Thêm route /rules và menu "Quản lý Rules" vào sidebar
+- [x] Tạo trang RulesManagement.tsx với 3 tabs (SPC Rules, CA Rules, CPK Rules)
+- [x] Cho phép admin điều chỉnh tiêu chuẩn của từng rule
+- [x] Hiển thị mô tả chi tiết và ví dụ cho mỗi rule
+
+### Nâng cấp SPC Plan với Rules toggle
+- [x] Thêm trường enabledSpcRules (JSON array) vào bảng spc_sampling_plans
+- [x] Thêm trường enabledCaRules (JSON array) vào bảng spc_sampling_plans
+- [x] Thêm trường enabledCpkRules (JSON array) vào bảng spc_sampling_plans
+- [x] Cập nhật form SPC Plan với checkboxes để bật/tắt từng rule
+- [ ] Cập nhật logic phân tích SPC để chỉ kiểm tra các rules đã bật
+
+### Tăng giới hạn Dây chuyền Realtime
+- [x] Tăng giới hạn hiển thị từ 12 lên 30 kế hoạch
+- [x] Cập nhật grid layout cho số lượng lớn hơn
+
+### Trang SPC Plan Visualization
+- [x] Tạo trang SpcPlanVisualization.tsx
+- [x] Hiển thị sơ đồ dây chuyền sản xuất trực quan (conveyor belt visual)
+- [x] Hiển thị các Workstation/Machine/Fixture trên sơ đồ
+- [x] Hiển thị các chỉ số SPC cơ bản (CPK, status) cho mỗi node
+- [x] Cho phép người dùng cấu hình chỉ số hiển thị
+- [x] Click vào node để mở trang chi tiết
+- [x] 2 chế độ xem: Hierarchy (dây chuyền) và Grid (lưới)
+
+### Trang chi tiết Workstation/Machine/Fixture
+- [x] Tạo trang SpcVisualizationDetail.tsx (chung cho tất cả)
+- [x] Hiển thị danh sách kế hoạch SPC liên quan
+- [x] Hiển thị các entity con (workstation → machine → fixture)
+- [x] Breadcrumb navigation giữa các cấp

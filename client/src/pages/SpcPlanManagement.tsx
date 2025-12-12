@@ -25,8 +25,13 @@ import {
   AlertTriangle,
   Clock,
   Factory,
-  Mail
+  Mail,
+  Shield,
+  Zap,
+  Target
 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface SpcPlan {
   id: number;
@@ -46,6 +51,9 @@ interface SpcPlan {
   isRecurring: number;
   notifyOnViolation: number;
   notifyEmail?: string | null;
+  enabledSpcRules?: string | null;
+  enabledCaRules?: string | null;
+  enabledCpkRules?: string | null;
   lastRunAt?: Date | null;
   nextRunAt?: Date | null;
   isActive: number;
@@ -86,6 +94,9 @@ export default function SpcPlanManagement() {
     isRecurring: true,
     notifyOnViolation: true,
     notifyEmail: "",
+    enabledSpcRules: [] as number[],
+    enabledCaRules: [] as number[],
+    enabledCpkRules: [] as number[],
   });
 
   // Fetch data
@@ -97,6 +108,9 @@ export default function SpcPlanManagement() {
   const { data: mappings } = trpc.mapping.list.useQuery();
   const { data: machines } = trpc.machine.listAll.useQuery();
   const { data: fixtures } = trpc.fixture.list.useQuery();
+  const { data: spcRules = [] } = trpc.rules.getSpcRules.useQuery();
+  const { data: caRules = [] } = trpc.rules.getCaRules.useQuery();
+  const { data: cpkRules = [] } = trpc.rules.getCpkRules.useQuery();
 
   // Mutations
   const createMutation = trpc.spcPlan.create.useMutation({
@@ -152,6 +166,9 @@ export default function SpcPlanManagement() {
       isRecurring: true,
       notifyOnViolation: true,
       notifyEmail: "",
+      enabledSpcRules: [],
+      enabledCaRules: [],
+      enabledCpkRules: [],
     });
   };
 
@@ -175,6 +192,9 @@ export default function SpcPlanManagement() {
       fixtureId: formData.fixtureId || undefined,
       startTime: formData.startTime ? new Date(formData.startTime).getTime() : undefined,
       endTime: formData.endTime ? new Date(formData.endTime).getTime() : undefined,
+      enabledSpcRules: JSON.stringify(formData.enabledSpcRules),
+      enabledCaRules: JSON.stringify(formData.enabledCaRules),
+      enabledCpkRules: JSON.stringify(formData.enabledCpkRules),
     });
   };
 
@@ -191,6 +211,9 @@ export default function SpcPlanManagement() {
       fixtureId: formData.fixtureId || undefined,
       startTime: formData.startTime ? new Date(formData.startTime).getTime() : undefined,
       endTime: formData.endTime ? new Date(formData.endTime).getTime() : undefined,
+      enabledSpcRules: JSON.stringify(formData.enabledSpcRules),
+      enabledCaRules: JSON.stringify(formData.enabledCaRules),
+      enabledCpkRules: JSON.stringify(formData.enabledCpkRules),
     });
   };
 
@@ -222,6 +245,9 @@ export default function SpcPlanManagement() {
       isRecurring: plan.isRecurring === 1,
       notifyOnViolation: plan.notifyOnViolation === 1,
       notifyEmail: plan.notifyEmail || "",
+      enabledSpcRules: plan.enabledSpcRules ? JSON.parse(plan.enabledSpcRules) : [],
+      enabledCaRules: plan.enabledCaRules ? JSON.parse(plan.enabledCaRules) : [],
+      enabledCpkRules: plan.enabledCpkRules ? JSON.parse(plan.enabledCpkRules) : [],
     });
   };
 
@@ -473,6 +499,150 @@ export default function SpcPlanManagement() {
                     />
                   </div>
                 )}
+
+                {/* Rules Configuration */}
+                <div className="border rounded-lg p-4 space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Shield className="h-5 w-5 text-primary" />
+                    <Label className="text-base font-medium">Cấu hình Rules</Label>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Chọn các rules sẽ được áp dụng cho kế hoạch này. Bỏ chọn để tắt rule.
+                  </p>
+                  <Tabs defaultValue="spc" className="w-full">
+                    <TabsList className="grid w-full grid-cols-3">
+                      <TabsTrigger value="spc" className="flex items-center gap-1">
+                        <Zap className="h-3 w-3" /> SPC ({formData.enabledSpcRules.length}/{spcRules.length})
+                      </TabsTrigger>
+                      <TabsTrigger value="ca" className="flex items-center gap-1">
+                        <Target className="h-3 w-3" /> CA ({formData.enabledCaRules.length}/{caRules.length})
+                      </TabsTrigger>
+                      <TabsTrigger value="cpk" className="flex items-center gap-1">
+                        <CheckCircle className="h-3 w-3" /> CPK ({formData.enabledCpkRules.length}/{cpkRules.length})
+                      </TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="spc" className="space-y-2 mt-4">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-sm font-medium">SPC Rules (Western Electric)</span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            const allIds = spcRules.filter((r: any) => r.isEnabled === 1).map((r: any) => r.id);
+                            setFormData({ ...formData, enabledSpcRules: formData.enabledSpcRules.length === allIds.length ? [] : allIds });
+                          }}
+                        >
+                          {formData.enabledSpcRules.length === spcRules.filter((r: any) => r.isEnabled === 1).length ? "Bỏ chọn tất cả" : "Chọn tất cả"}
+                        </Button>
+                      </div>
+                      <div className="grid grid-cols-1 gap-2 max-h-[200px] overflow-y-auto">
+                        {spcRules.filter((r: any) => r.isEnabled === 1).map((rule: any) => (
+                          <div key={rule.id} className="flex items-start gap-3 p-2 rounded hover:bg-muted/50">
+                            <Checkbox
+                              id={`spc-${rule.id}`}
+                              checked={formData.enabledSpcRules.includes(rule.id)}
+                              onCheckedChange={(checked) => {
+                                setFormData({
+                                  ...formData,
+                                  enabledSpcRules: checked
+                                    ? [...formData.enabledSpcRules, rule.id]
+                                    : formData.enabledSpcRules.filter(id => id !== rule.id)
+                                });
+                              }}
+                            />
+                            <div className="flex-1">
+                              <label htmlFor={`spc-${rule.id}`} className="text-sm font-medium cursor-pointer">
+                                {rule.code}: {rule.name}
+                              </label>
+                              <p className="text-xs text-muted-foreground">{rule.description}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </TabsContent>
+                    <TabsContent value="ca" className="space-y-2 mt-4">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-sm font-medium">CA Rules (Độ chính xác)</span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            const allIds = caRules.filter((r: any) => r.isEnabled === 1).map((r: any) => r.id);
+                            setFormData({ ...formData, enabledCaRules: formData.enabledCaRules.length === allIds.length ? [] : allIds });
+                          }}
+                        >
+                          {formData.enabledCaRules.length === caRules.filter((r: any) => r.isEnabled === 1).length ? "Bỏ chọn tất cả" : "Chọn tất cả"}
+                        </Button>
+                      </div>
+                      <div className="grid grid-cols-1 gap-2 max-h-[200px] overflow-y-auto">
+                        {caRules.filter((r: any) => r.isEnabled === 1).map((rule: any) => (
+                          <div key={rule.id} className="flex items-start gap-3 p-2 rounded hover:bg-muted/50">
+                            <Checkbox
+                              id={`ca-${rule.id}`}
+                              checked={formData.enabledCaRules.includes(rule.id)}
+                              onCheckedChange={(checked) => {
+                                setFormData({
+                                  ...formData,
+                                  enabledCaRules: checked
+                                    ? [...formData.enabledCaRules, rule.id]
+                                    : formData.enabledCaRules.filter(id => id !== rule.id)
+                                });
+                              }}
+                            />
+                            <div className="flex-1">
+                              <label htmlFor={`ca-${rule.id}`} className="text-sm font-medium cursor-pointer">
+                                {rule.code}: {rule.name}
+                              </label>
+                              <p className="text-xs text-muted-foreground">{rule.formula}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </TabsContent>
+                    <TabsContent value="cpk" className="space-y-2 mt-4">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-sm font-medium">CPK Rules (Năng lực quy trình)</span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            const allIds = cpkRules.filter((r: any) => r.isEnabled === 1).map((r: any) => r.id);
+                            setFormData({ ...formData, enabledCpkRules: formData.enabledCpkRules.length === allIds.length ? [] : allIds });
+                          }}
+                        >
+                          {formData.enabledCpkRules.length === cpkRules.filter((r: any) => r.isEnabled === 1).length ? "Bỏ chọn tất cả" : "Chọn tất cả"}
+                        </Button>
+                      </div>
+                      <div className="grid grid-cols-1 gap-2 max-h-[200px] overflow-y-auto">
+                        {cpkRules.filter((r: any) => r.isEnabled === 1).map((rule: any) => (
+                          <div key={rule.id} className="flex items-start gap-3 p-2 rounded hover:bg-muted/50">
+                            <Checkbox
+                              id={`cpk-${rule.id}`}
+                              checked={formData.enabledCpkRules.includes(rule.id)}
+                              onCheckedChange={(checked) => {
+                                setFormData({
+                                  ...formData,
+                                  enabledCpkRules: checked
+                                    ? [...formData.enabledCpkRules, rule.id]
+                                    : formData.enabledCpkRules.filter(id => id !== rule.id)
+                                });
+                              }}
+                            />
+                            <div className="flex-1">
+                              <label htmlFor={`cpk-${rule.id}`} className="text-sm font-medium cursor-pointer">
+                                {rule.code}: {rule.name}
+                              </label>
+                              <p className="text-xs text-muted-foreground">{rule.action}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </TabsContent>
+                  </Tabs>
+                </div>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>Hủy</Button>

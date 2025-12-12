@@ -391,6 +391,10 @@ export const spcSamplingPlans = mysqlTable("spc_sampling_plans", {
   // Notification settings
   notifyOnViolation: int("notifyOnViolation").notNull().default(1),
   notifyEmail: varchar("notifyEmail", { length: 320 }),
+  // Rules configuration - JSON array of enabled rule IDs
+  enabledSpcRules: text("enabledSpcRules"), // JSON array: [1,2,3,4,5,6,7,8]
+  enabledCaRules: text("enabledCaRules"), // JSON array: [1,2,3,4]
+  enabledCpkRules: text("enabledCpkRules"), // JSON array: [1,2,3,4,5]
   // Metadata
   isActive: int("isActive").notNull().default(1),
   createdBy: int("createdBy").notNull(),
@@ -817,3 +821,73 @@ export const fixtures = mysqlTable("fixtures", {
 
 export type Fixture = typeof fixtures.$inferSelect;
 export type InsertFixture = typeof fixtures.$inferInsert;
+
+
+/**
+ * SPC Rules - Quản lý các quy tắc SPC (Western Electric Rules)
+ */
+export const spcRules = mysqlTable("spc_rules", {
+  id: int("id").autoincrement().primaryKey(),
+  code: varchar("code", { length: 50 }).notNull().unique(), // RULE1, RULE2, ...
+  name: varchar("name", { length: 200 }).notNull(),
+  description: text("description"), // Mô tả chi tiết rule
+  category: varchar("category", { length: 100 }).notNull().default("western_electric"), // western_electric, nelson, etc.
+  formula: text("formula"), // Công thức/điều kiện
+  example: text("example"), // Ví dụ minh họa
+  severity: mysqlEnum("severity", ["warning", "critical"]).default("warning").notNull(),
+  threshold: int("threshold"), // Ngưỡng (nếu có)
+  consecutivePoints: int("consecutivePoints"), // Số điểm liên tiếp
+  sigmaLevel: int("sigmaLevel"), // Mức sigma (1, 2, 3)
+  isEnabled: int("isEnabled").notNull().default(1),
+  sortOrder: int("sortOrder").notNull().default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type SpcRule = typeof spcRules.$inferSelect;
+export type InsertSpcRule = typeof spcRules.$inferInsert;
+
+/**
+ * CA Rules - Quản lý các quy tắc Control Analysis
+ */
+export const caRules = mysqlTable("ca_rules", {
+  id: int("id").autoincrement().primaryKey(),
+  code: varchar("code", { length: 50 }).notNull().unique(), // CA1, CA2, ...
+  name: varchar("name", { length: 200 }).notNull(),
+  description: text("description"),
+  formula: text("formula"),
+  example: text("example"),
+  severity: mysqlEnum("severity", ["warning", "critical"]).default("warning").notNull(),
+  minValue: int("minValue"), // Giá trị min (nhân 1000)
+  maxValue: int("maxValue"), // Giá trị max (nhân 1000)
+  isEnabled: int("isEnabled").notNull().default(1),
+  sortOrder: int("sortOrder").notNull().default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type CaRule = typeof caRules.$inferSelect;
+export type InsertCaRule = typeof caRules.$inferInsert;
+
+/**
+ * CPK Rules - Quản lý các quy tắc CPK/Process Capability
+ */
+export const cpkRules = mysqlTable("cpk_rules", {
+  id: int("id").autoincrement().primaryKey(),
+  code: varchar("code", { length: 50 }).notNull().unique(), // CPK_EXCELLENT, CPK_GOOD, ...
+  name: varchar("name", { length: 200 }).notNull(),
+  description: text("description"),
+  minCpk: int("minCpk"), // Giá trị CPK min (nhân 1000, vd: 1330 = 1.33)
+  maxCpk: int("maxCpk"), // Giá trị CPK max (nhân 1000)
+  status: varchar("status", { length: 50 }).notNull(), // excellent, good, acceptable, poor, unacceptable
+  color: varchar("color", { length: 20 }), // Màu hiển thị: green, yellow, orange, red
+  action: text("action"), // Hành động khuyến nghị
+  severity: mysqlEnum("severity", ["info", "warning", "critical"]).default("info").notNull(),
+  isEnabled: int("isEnabled").notNull().default(1),
+  sortOrder: int("sortOrder").notNull().default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type CpkRule = typeof cpkRules.$inferSelect;
+export type InsertCpkRule = typeof cpkRules.$inferInsert;

@@ -33,6 +33,9 @@ import FixtureManagement from "./pages/FixtureManagement";
 import MultiAnalysis from "./pages/MultiAnalysis";
 import ProductionLineComparison from "./pages/ProductionLineComparison";
 import About from "./pages/About";
+import RulesManagement from "./pages/RulesManagement";
+import SpcPlanVisualization from "./pages/SpcPlanVisualization";
+import SpcVisualizationDetail from "./pages/SpcVisualizationDetail";
 import SseNotificationProvider from "./components/SseNotificationProvider";
 
 function Router() {
@@ -67,6 +70,9 @@ function Router() {
       <Route path="/multi-analysis" component={MultiAnalysis} />
       <Route path="/line-comparison" component={ProductionLineComparison} />
       <Route path="/about" component={About} />
+      <Route path="/rules" component={RulesManagement} />
+      <Route path="/spc-visualization" component={SpcPlanVisualization} />
+      <Route path="/spc-visualization/:type/:id" component={SpcVisualizationDetail} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
