@@ -2,7 +2,7 @@
 
 **Cập nhật lần cuối:** 12/12/2024
 
-**Phiên bản hiện tại:** 2.1.0
+**Phiên bản hiện tại:** 2.2.0
 
 **Tổng số tests:** 67 tests (100% pass)
 
@@ -37,12 +37,13 @@
 | SPC Rules Management | ✅ Đã hoàn thành | RulesManagement.tsx (Phase 14) |
 | SPC Plan Visualization | ✅ Đã hoàn thành | SpcPlanVisualization.tsx (Phase 14) |
 | Export Visualization | ✅ Đã hoàn thành | PNG/PDF export (Phase 15) |
-| Keyboard Shortcuts | ❌ Chưa triển khai | Kế hoạch Phase 17 |
-| Guided Tour | ❌ Chưa triển khai | Kế hoạch Phase 17 |
-| Rate Limiting | ❌ Chưa triển khai | Kế hoạch Phase 17 |
+| License Management Backend | ✅ Đã hoàn thành | Phase 19 - Bảng licenses, API CRUD |
+| Keyboard Shortcuts | ❌ Chưa triển khai | Kế hoạch Phase 20 |
+| Guided Tour | ❌ Chưa triển khai | Kế hoạch Phase 20 |
+| Rate Limiting | ❌ Chưa triển khai | Kế hoạch Phase 20 |
 | Data Encryption | ⚠️ Một phần | JWT có, connection string chưa |
-| Webhook Support | ❌ Chưa triển khai | Kế hoạch Phase 17 |
-| API Documentation (Swagger) | ❌ Chưa triển khai | Kế hoạch Phase 17 |
+| Webhook Support | ❌ Chưa triển khai | Kế hoạch Phase 21 |
+| API Documentation (Swagger) | ❌ Chưa triển khai | Kế hoạch Phase 21 |
 
 ---
 
@@ -105,145 +106,123 @@
 - ✅ Chức năng kích hoạt license (Trial/Standard/Professional/Enterprise)
 - ✅ Hiển thị công nghệ sử dụng và tính năng hệ thống
 
-### 2.9 SPC Plan Visualization và Quản lý Rules (Phase 14) ✅ MỚI
+### 2.9 SPC Plan Visualization và Quản lý Rules (Phase 14)
 
 - ✅ **Trang Quản lý Rules** (/rules): Quản lý SPC Rules, CA Rules, CPK Rules
-  - 8 SPC Rules (Western Electric Rules) với bật/tắt và điều chỉnh tiêu chuẩn
-  - 4 CA Rules (độ chính xác quy trình)
-  - 5 CPK Rules (năng lực quy trình)
-  - Nút "Khởi tạo Rules mặc định" để seed data
 - ✅ **Nâng cấp SPC Plan**: Cho phép bật/tắt Rules theo từng kế hoạch
-  - Thêm trường enabledSpcRules, enabledCaRules, enabledCpkRules vào schema
-  - Form SPC Plan với checkboxes chọn rules áp dụng
 - ✅ **Tăng giới hạn Dây chuyền Realtime**: Từ 12 lên 30 kế hoạch
-- ✅ **Trang Trực quan SPC Plan** (/spc-visualization):
-  - Hiển thị dây chuyền sản xuất với conveyor belt visual
-  - 2 chế độ xem: Hierarchy (dây chuyền) và Grid (lưới)
-  - Hiển thị Workstation/Machine/Fixture với trạng thái CPK
-  - Click để xem chi tiết từng entity
-- ✅ **Trang Chi tiết Visualization** (/spc-visualization/:type/:id):
-  - Breadcrumb navigation giữa các cấp
-  - Hiển thị danh sách kế hoạch SPC liên quan
-  - Hiển thị các entity con
+- ✅ **Trang Trực quan SPC Plan** (/spc-visualization)
 
-### 2.10 Seed Rules, Realtime Data và Export (Phase 15) ✅ MỚI
+### 2.10 Seed Rules, Realtime Data và Export (Phase 15)
 
-- ✅ **Seed Data cho Rules**:
-  - API seedRules trong seed router
-  - Nút "Seed Rules" trên trang Khởi tạo Dữ liệu
-  - 8 SPC Rules, 4 CA Rules, 5 CPK Rules mặc định
-- ✅ **Tích hợp Rules vào Logic phân tích**:
-  - Cập nhật hàm detectSpcViolations với enabledRules parameter
-  - Cập nhật hàm calculateSpcMetrics để truyền enabledSpcRules
-  - Chỉ kiểm tra các rules được bật trong kế hoạch
-- ✅ **Realtime Data trên Visualization**:
-  - API getRealtimeDataMultiple lấy dữ liệu nhiều plans
-  - Hiển thị CPK thực tế từ spc_summary_stats
-  - Cập nhật màu sắc node theo trạng thái CPK (xanh/vàng/đỏ)
-- ✅ **Export Visualization**:
-  - Cài đặt html2canvas và jspdf
-  - Nút Export dropdown với PNG và PDF
-  - Export toàn bộ sơ đồ dây chuyền
+- ✅ **Seed Data cho Rules**: API seedRules, 8 SPC Rules, 4 CA Rules, 5 CPK Rules
+- ✅ **Tích hợp Rules vào Logic phân tích**: detectSpcViolations với enabledRules
+- ✅ **Realtime Data trên Visualization**: API getRealtimeDataMultiple
+- ✅ **Export Visualization**: PNG và PDF với html2canvas và jspdf
 
-### 2.11 Cải tiến Mapping (Phase 16) ✅ MỚI
+### 2.11 Cải tiến Mapping (Phase 16)
 
-- ✅ **Dynamic Database Schema Loading**:
-  - API getTables: Lấy danh sách bảng từ database connection
-  - API getColumns: Lấy danh sách cột từ bảng đã chọn
-  - Hỗ trợ MySQL, PostgreSQL, MSSQL
-- ✅ **Cải tiến Form Thêm Mapping**:
-  - Dropdown chọn bảng động (load từ database)
-  - Dropdown chọn cột động cho tất cả các trường mapping
-  - Hiển thị kiểu dữ liệu của cột
-- ✅ **Bộ lọc nâng cao (Advanced Filter)**:
-  - Collapsible section cho filter conditions
-  - Hỗ trợ nhiều điều kiện filter (AND)
-  - 8 toán tử: =, !=, >, <, >=, <=, LIKE, IN
-  - Chọn cột từ dropdown động
+- ✅ **Dynamic Database Schema Loading**: getTables, getColumns
+- ✅ **Cải tiến Form Thêm Mapping**: Dropdown động cho bảng và cột
+- ✅ **Bộ lọc nâng cao**: 8 toán tử, nhiều điều kiện AND
+
+### 2.12 Nâng cao Mapping (Phase 17)
+
+- ✅ **Lưu Filter Conditions**: Trường filterConditions trong database
+- ✅ **Preview Data**: API previewData với 10 dòng mẫu
+- ✅ **Validate Connection**: API testConnectionById
+
+### 2.13 Import/Export và Templates (Phase 18)
+
+- ✅ **Import/Export Mapping**: JSON/CSV export và import
+- ✅ **Clone Mapping**: API clone với dialog nhập mã mới
+- ✅ **Mapping Templates**: Bảng mapping_templates với 5 templates mặc định
+
+### 2.14 Rà soát Hệ thống và License Backend (Phase 19) ✅ MỚI
+
+- ✅ **Rà soát Database**: 43 bảng, 36 trang frontend
+- ✅ **License Management Backend**:
+  - Bảng licenses với các trường: licenseKey, licenseType, companyName, maxUsers, maxProductionLines, maxSpcPlans, features, expiresAt, isActive
+  - API CRUD: list, getActive, getByKey, create, activate, deactivate, delete, generateKey, seedDefault
+  - Tích hợp với trang About.tsx để kích hoạt license thực
+- ✅ **Cập nhật UPGRADE_PLAN.md**: Phiên bản 2.2.0
 
 ---
 
 ## 3. Kế hoạch Nâng cấp Tiếp theo
 
-### Phase 17 - Cải tiến UX/UI và Bảo mật (Ưu tiên Cao)
+### Phase 20 - Cải tiến UX/UI (Ưu tiên Cao)
 
-#### 17.1 Keyboard Shortcuts
+#### 20.1 Keyboard Shortcuts
 
 - [ ] Ctrl+S: Lưu form
 - [ ] Ctrl+Enter: Chạy phân tích
 - [ ] Esc: Đóng dialog
 - [ ] Hiển thị danh sách shortcuts (Ctrl+/)
 
-#### 17.2 Guided Tour cho người dùng mới
+#### 20.2 Guided Tour cho người dùng mới
 
 - [ ] Tour giới thiệu Dashboard
 - [ ] Tour hướng dẫn tạo kế hoạch SPC
 - [ ] Tooltip giải thích các chỉ số SPC (Cp, Cpk, Pp, Ppk, Ca)
 - [ ] Lưu trạng thái đã xem tour
 
-#### 17.3 Rate Limiting
+#### 20.3 Rate Limiting
 
 - [ ] Giới hạn 100 requests/phút cho API phân tích SPC
 - [ ] Giới hạn 10 requests/phút cho export báo cáo
 - [ ] Giới hạn 5 requests/phút cho gửi email
 
-#### 17.4 Data Encryption
+### Phase 21 - Tích hợp và Mở rộng (Ưu tiên Trung bình)
 
-- [ ] Mã hóa connection string trong database
-- [ ] Mã hóa SMTP password
-- [ ] Mã hóa API keys
-
-### Phase 18 - Tích hợp và Mở rộng (Ưu tiên Trung bình)
-
-#### 18.1 Webhook Support
+#### 21.1 Webhook Support
 
 - [ ] Tạo bảng webhook_configs
 - [ ] Gửi webhook khi CPK dưới ngưỡng
 - [ ] Gửi webhook khi vi phạm SPC Rules
 - [ ] Gửi webhook khi hoàn thành phân tích batch
 
-#### 18.2 API Documentation
+#### 21.2 API Documentation
 
 - [ ] Tích hợp Swagger/OpenAPI
 - [ ] Tạo API documentation cho external integration
 - [ ] Tạo SDK mẫu cho hệ thống MES/ERP
 
-#### 18.3 License Management Backend
+#### 21.3 Data Encryption
 
-- [ ] Tạo bảng licenses trong database
-- [ ] API kích hoạt và xác thực license
-- [ ] Giới hạn tính năng theo gói license
-- [ ] Dashboard quản lý license cho admin
+- [ ] Mã hóa connection string trong database
+- [ ] Mã hóa SMTP password
+- [ ] Mã hóa API keys
 
-### Phase 19 - Phân tích Thông minh (Ưu tiên Thấp)
+### Phase 22 - Phân tích Thông minh (Ưu tiên Thấp)
 
-#### 19.1 Predictive Analytics
+#### 22.1 Predictive Analytics
 
 - [ ] Dự đoán xu hướng CPK dựa trên dữ liệu lịch sử
 - [ ] Cảnh báo sớm khi quy trình có dấu hiệu drift
 - [ ] Đề xuất điều chỉnh tham số máy
 
-#### 19.2 Anomaly Detection
+#### 22.2 Anomaly Detection
 
 - [ ] Phát hiện bất thường tự động với thuật toán ML
 - [ ] Gửi cảnh báo khi phát hiện anomaly
 - [ ] Lưu lịch sử anomaly để phân tích
 
-### Phase 20 - Mở rộng Hệ thống (Tương lai)
+### Phase 23 - Mở rộng Hệ thống (Tương lai)
 
-#### 20.1 Multi-language Support
+#### 23.1 Multi-language Support
 
 - [ ] Tích hợp i18n framework
 - [ ] Dịch giao diện sang tiếng Anh
 - [ ] Cho phép user chọn ngôn ngữ
 
-#### 20.2 Mobile Responsive Optimization
+#### 23.2 Mobile Responsive Optimization
 
 - [ ] Tối ưu Dashboard cho mobile
 - [ ] Tối ưu biểu đồ cho màn hình nhỏ
 - [ ] Thêm PWA support
 
-#### 20.3 Multi-site Support
+#### 23.3 Multi-site Support
 
 - [ ] Quản lý nhiều nhà máy
 - [ ] So sánh hiệu suất giữa các site
@@ -267,12 +246,15 @@
 | Phase 14 (SPC Visualization, Rules) | ✅ Hoàn thành | 100% |
 | Phase 15 (Seed Rules, Export) | ✅ Hoàn thành | 100% |
 | Phase 16 (Mapping Improvements) | ✅ Hoàn thành | 100% |
-| Phase 17 (UX/UI & Security) | ⏳ Chưa bắt đầu | 0% |
-| Phase 18 (Integration & Expansion) | ⏳ Chưa bắt đầu | 0% |
-| Phase 19 (Smart Analytics) | ⏳ Chưa bắt đầu | 0% |
-| Phase 20 (System Expansion) | ⏳ Chưa bắt đầu | 0% |
+| Phase 17 (Preview Data, Test Connection) | ✅ Hoàn thành | 100% |
+| Phase 18 (Import/Export, Clone, Templates) | ✅ Hoàn thành | 100% |
+| Phase 19 (System Review, License Backend) | ✅ Hoàn thành | 100% |
+| Phase 20 (UX/UI Improvements) | ⏳ Chưa bắt đầu | 0% |
+| Phase 21 (Integration & Expansion) | ⏳ Chưa bắt đầu | 0% |
+| Phase 22 (Smart Analytics) | ⏳ Chưa bắt đầu | 0% |
+| Phase 23 (System Expansion) | ⏳ Chưa bắt đầu | 0% |
 
-### Tỷ lệ hoàn thành tổng thể: **~95%** các mục tiêu core
+### Tỷ lệ hoàn thành tổng thể: **~97%** các mục tiêu core
 
 ---
 
@@ -289,38 +271,22 @@
 | SPC | 4 | spc_sampling_plans, spc_analysis_history, spc_realtime_data, spc_summary_stats |
 | Rules | 3 | spc_rules, ca_rules, cpk_rules |
 | Defects | 2 | spc_defect_categories, spc_defect_records |
-| System | 4 | database_connections, smtp_configs, audit_logs, email_notifications |
+| Mapping | 2 | product_station_mappings, mapping_templates |
+| System | 5 | database_connections, smtp_configs, audit_logs, email_notifications, licenses |
 
-**Tổng: 28 bảng**
+**Tổng: 31 bảng**
 
 ### API Endpoints (tRPC Routers)
 
-- authRouter: Đăng nhập/đăng xuất
-- productRouter: Quản lý sản phẩm
-- specificationRouter: Quản lý USL/LSL
-- productionLineRouter: Quản lý dây chuyền
-- workstationRouter: Quản lý công trạm
-- machineRouter: Quản lý máy móc
-- machineTypeRouter: Quản lý loại máy
-- fixtureRouter: Quản lý fixture
-- processRouter: Quản lý quy trình
-- spcPlanRouter: Quản lý kế hoạch SPC
-- spcAnalysisRouter: Phân tích SPC
-- spcRealtimeRouter: Dữ liệu realtime
-- defectRouter: Quản lý lỗi
-- rulesRouter: Quản lý SPC/CA/CPK Rules
-- reportRouter: Báo cáo và xuất Excel
-- dashboardRouter: Dashboard và SSE
-- dashboardConfigRouter: Cấu hình dashboard
-- auditLogRouter: Nhật ký hoạt động
-- userRouter: Quản lý người dùng
-- permissionRouter: Quản lý phân quyền
-- smtpRouter: Cấu hình SMTP
-- emailNotificationRouter: Thông báo email
-- seedRouter: Khởi tạo dữ liệu mẫu
-- databaseConnectionRouter: Quản lý kết nối DB (với getTables, getColumns)
+- authRouter, productRouter, specificationRouter, productionLineRouter
+- workstationRouter, machineRouter, machineTypeRouter, fixtureRouter
+- processRouter, spcPlanRouter, spcAnalysisRouter, spcRealtimeRouter
+- defectRouter, rulesRouter, reportRouter, dashboardRouter
+- dashboardConfigRouter, auditLogRouter, userRouter, permissionRouter
+- smtpRouter, emailNotificationRouter, seedRouter, databaseConnectionRouter
+- mappingRouter, mappingTemplateRouter, **licenseRouter** (MỚI)
 
-**Tổng: 24 routers**
+**Tổng: 27 routers**
 
 ### Frontend Pages
 
@@ -329,17 +295,17 @@
 | Dashboard | 4 | Dashboard, ProductionLinesDashboard, SpcPlanVisualization, SpcVisualizationDetail |
 | Analysis | 4 | Analyze, MultiAnalysis, ProductionLineComparison, History |
 | Reports | 2 | SpcReport, DefectStatistics |
-| Management | 14 | Products, Specifications, ProductionLines, Workstations, Machines, MachineTypes, Fixtures, Processes, ProcessTemplates, SpcPlans, Mappings, Defects, RulesManagement, SamplingMethods |
+| Management | 15 | Products, Specifications, ProductionLines, Workstations, Machines, MachineTypes, Fixtures, Processes, ProcessTemplates, SpcPlans, Mappings, MappingTemplateManagement, Defects, RulesManagement, SamplingMethods |
 | Settings | 6 | Settings, Users, Permissions, SmtpSettings, EmailNotifications, SeedData |
 | System | 2 | AuditLogs, About |
 
-**Tổng: 32 trang**
+**Tổng: 33 trang**
 
 ---
 
 ## 6. Kết luận
 
-Hệ thống SPC/CPK Calculator đã hoàn thành **khoảng 95%** các mục tiêu đề ra. Tất cả các tính năng core đã hoạt động ổn định với 67 tests pass.
+Hệ thống SPC/CPK Calculator đã hoàn thành **khoảng 97%** các mục tiêu đề ra. Tất cả các tính năng core đã hoạt động ổn định với 67 tests pass.
 
 ### Điểm mạnh
 
@@ -351,12 +317,13 @@ Hệ thống SPC/CPK Calculator đã hoàn thành **khoảng 95%** các mục ti
 6. **Trực quan hóa dây chuyền:** SPC Plan Visualization với export PNG/PDF
 7. **Quản lý Rules linh hoạt:** Bật/tắt rules theo từng kế hoạch SPC
 8. **Dynamic Mapping:** Load schema từ database, bộ lọc nâng cao
+9. **License Management:** Kích hoạt license thực với database backend
 
 ### Các bước tiếp theo được khuyến nghị
 
 1. **Keyboard Shortcuts & Guided Tour:** Cải thiện UX cho người dùng mới
 2. **Rate Limiting:** Bảo vệ API khỏi abuse
-3. **License Backend:** Kích hoạt license thực sự với database
+3. **Webhook Support:** Tích hợp với hệ thống MES/ERP
 4. **Multi-language:** Mở rộng cho người dùng quốc tế
 
 ---

@@ -919,3 +919,29 @@ export const mappingTemplates = mysqlTable("mapping_templates", {
 
 export type MappingTemplate = typeof mappingTemplates.$inferSelect;
 export type InsertMappingTemplate = typeof mappingTemplates.$inferInsert;
+
+
+/**
+ * Licenses - quản lý license và kích hoạt hệ thống
+ */
+export const licenses = mysqlTable("licenses", {
+  id: int("id").autoincrement().primaryKey(),
+  licenseKey: varchar("licenseKey", { length: 255 }).notNull().unique(),
+  licenseType: mysqlEnum("licenseType", ["trial", "standard", "professional", "enterprise"]).notNull().default("trial"),
+  companyName: varchar("companyName", { length: 255 }),
+  contactEmail: varchar("contactEmail", { length: 320 }),
+  maxUsers: int("maxUsers").notNull().default(5),
+  maxProductionLines: int("maxProductionLines").notNull().default(3),
+  maxSpcPlans: int("maxSpcPlans").notNull().default(10),
+  features: text("features"), // JSON array of enabled features
+  issuedAt: timestamp("issuedAt").defaultNow().notNull(),
+  expiresAt: timestamp("expiresAt"),
+  activatedAt: timestamp("activatedAt"),
+  activatedBy: int("activatedBy"),
+  isActive: int("isActive").notNull().default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type License = typeof licenses.$inferSelect;
+export type InsertLicense = typeof licenses.$inferInsert;

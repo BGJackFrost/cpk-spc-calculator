@@ -1,0 +1,20 @@
+CREATE TABLE `licenses` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`licenseKey` varchar(255) NOT NULL,
+	`licenseType` enum('trial','standard','professional','enterprise') NOT NULL DEFAULT 'trial',
+	`companyName` varchar(255),
+	`contactEmail` varchar(320),
+	`maxUsers` int NOT NULL DEFAULT 5,
+	`maxProductionLines` int NOT NULL DEFAULT 3,
+	`maxSpcPlans` int NOT NULL DEFAULT 10,
+	`features` text,
+	`issuedAt` timestamp NOT NULL DEFAULT (now()),
+	`expiresAt` timestamp,
+	`activatedAt` timestamp,
+	`activatedBy` int,
+	`isActive` int NOT NULL DEFAULT 0,
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `licenses_id` PRIMARY KEY(`id`),
+	CONSTRAINT `licenses_licenseKey_unique` UNIQUE(`licenseKey`)
+);

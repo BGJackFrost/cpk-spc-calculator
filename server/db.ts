@@ -52,7 +52,9 @@ import {
   cpkRules,
   InsertCpkRule,
   mappingTemplates,
-  InsertMappingTemplate
+  InsertMappingTemplate,
+  licenses,
+  InsertLicense
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -2759,4 +2761,106 @@ export async function seedDefaultMappingTemplates() {
   for (const template of defaultTemplates) {
     await db.insert(mappingTemplates).values(template);
   }
+}
+
+
+// ============ LICENSE OPERATIONS ============
+
+export async function getLicenses() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(licenses).orderBy(desc(licenses.createdAt));
+}
+
+export async function getActiveLicense() {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(licenses).where(eq(licenses.isActive, 1)).limit(1);
+  return result[0] || null;
+}
+
+export async function getLicenseByKey(licenseKey: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(licenses).where(eq(licenses.licenseKey, licenseKey)).limit(1);
+  return result[0] || null;
+}
+
+export async function createLicense(data: InsertLicense) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.insert(licenses).values(data);
+}
+
+export async function activateLicense(licenseKey: string, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  // Deactivate all other licenses first
+  await db.update(licenses).set({ isActive: 0 }).where(eq(licenses.isActive, 1));
+  
+  // Activate the new license
+  await db.update(licenses)
+    .set({ 
+      isActive: 1, 
+      activatedAt: new Date(), 
+      activatedBy: userId 
+    })
+    .where(eq(licenses.licenseKey, licenseKey));
+}
+
+export async function deactivateLicense(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(licenses).set({ isActive: 0 }).where(eq(licenses.id, id));
+}
+
+export async function deleteLicense(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(licenses).where(eq(licenses.id, id));
+}
+
+// Generate a random license key
+export function generateLicenseKey(): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  const segments = 4;
+  const segmentLength = 5;
+  const parts: string[] = [];
+  
+  for (let i = 0; i < segments; i++) {
+    let segment = '';
+    for (let j = 0; j < segmentLength; j++) {
+      segment += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    parts.push(segment);
+  }
+  
+  return parts.join('-');
+}
+
+// Seed default trial license
+export async function seedDefaultLicense() {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const existingLicense = await getActiveLicense();
+  if (existingLicense) {
+    return; // Already has an active license
+  }
+  
+  const trialLicense: InsertLicense = {
+    licenseKey: generateLicenseKey(),
+    licenseType: 'trial',
+    companyName: 'Trial Company',
+    contactEmail: 'trial@example.com',
+    maxUsers: 5,
+    maxProductionLines: 3,
+    maxSpcPlans: 10,
+    features: JSON.stringify(['basic_spc', 'basic_cpk', 'basic_reports']),
+    isActive: 1,
+    activatedAt: new Date(),
+  };
+  
+  await db.insert(licenses).values(trialLicense);
 }

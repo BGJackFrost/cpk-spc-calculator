@@ -531,3 +531,27 @@
 - [x] Tạo API CRUD cho templates (mappingTemplateRouter)
 - [x] Thêm dropdown "Áp dụng Template" trong form tạo mapping
 - [x] Tạo 5 templates mặc định (SMT Solder Paste, Pick & Place, Reflow, ICT, AOI)
+
+
+## Phase 19 - Rà soát Hệ thống và License Backend
+
+### Rà soát Database và CRUD
+- [x] Kiểm tra tất cả 43 bảng database
+- [x] Xác nhận 36 trang frontend đã có
+- [x] Tạo file SYSTEM_REVIEW.md với phân tích chi tiết
+
+### License Management Backend
+- [x] Tạo bảng licenses trong database
+- [x] Thêm CRUD functions cho licenses trong db.ts
+- [x] Tạo licenseRouter với các API:
+  - list: Lấy danh sách licenses
+  - getActive: Lấy license đang active
+  - getByKey: Tìm license theo key
+  - create: Tạo license mới
+  - activate: Kích hoạt license
+  - deactivate: Hủy kích hoạt license
+  - delete: Xóa license
+  - generateKey: Tạo license key ngẫu nhiên
+  - seedDefault: Tạo trial license mặc định
+- [x] Tích hợp License API vào trang About.tsx
+- [x] Cập nhật UPGRADE_PLAN.md với Phase 19

@@ -127,6 +127,13 @@
       "when": 1765518672460,
       "tag": "0017_useful_magneto",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "5",
+      "when": 1765523870197,
+      "tag": "0018_aberrant_daimon_hellstrom",
+      "breakpoints": true
     }
   ]
 }

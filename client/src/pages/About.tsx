@@ -57,19 +57,26 @@ export default function About() {
   const [isActivating, setIsActivating] = useState(false);
   const [copied, setCopied] = useState(false);
   
-  // Mock license status - in real implementation, this would come from database
-  const [licenseStatus, setLicenseStatus] = useState<{
-    isActive: boolean;
-    type: "trial" | "standard" | "professional" | "enterprise";
-    expiresAt: Date | null;
-    maxUsers: number;
-    maxProductionLines: number;
-  }>({
-    isActive: false,
-    type: "trial",
-    expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days trial
-    maxUsers: 5,
-    maxProductionLines: 3,
+  // Fetch active license from database
+  const { data: activeLicense, refetch: refetchLicense } = trpc.license.getActive.useQuery();
+  
+  const licenseStatus = {
+    isActive: activeLicense?.isActive === 1,
+    type: (activeLicense?.licenseType || "trial") as "trial" | "standard" | "professional" | "enterprise",
+    expiresAt: activeLicense?.expiresAt ? new Date(activeLicense.expiresAt) : null,
+    maxUsers: activeLicense?.maxUsers || 5,
+    maxProductionLines: activeLicense?.maxProductionLines || 3,
+  };
+  
+  const activateMutation = trpc.license.activate.useMutation({
+    onSuccess: () => {
+      toast.success("Kích hoạt license thành công!");
+      refetchLicense();
+      setLicenseKey("");
+    },
+    onError: (error) => {
+      toast.error(error.message || "Kích hoạt thất bại");
+    },
   });
 
   const handleActivateLicense = async () => {
@@ -79,44 +86,11 @@ export default function About() {
     }
 
     setIsActivating(true);
-    
-    // Simulate license activation
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // Mock validation - in real implementation, this would call an API
-    if (licenseKey.startsWith("SPC-PRO-")) {
-      setLicenseStatus({
-        isActive: true,
-        type: "professional",
-        expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
-        maxUsers: 50,
-        maxProductionLines: 20,
-      });
-      toast.success("Kích hoạt license thành công!");
-    } else if (licenseKey.startsWith("SPC-STD-")) {
-      setLicenseStatus({
-        isActive: true,
-        type: "standard",
-        expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
-        maxUsers: 20,
-        maxProductionLines: 10,
-      });
-      toast.success("Kích hoạt license thành công!");
-    } else if (licenseKey.startsWith("SPC-ENT-")) {
-      setLicenseStatus({
-        isActive: true,
-        type: "enterprise",
-        expiresAt: null, // Unlimited
-        maxUsers: -1, // Unlimited
-        maxProductionLines: -1, // Unlimited
-      });
-      toast.success("Kích hoạt license Enterprise thành công!");
-    } else {
-      toast.error("Mã license không hợp lệ");
+    try {
+      await activateMutation.mutateAsync({ licenseKey: licenseKey.trim() });
+    } finally {
+      setIsActivating(false);
     }
-    
-    setIsActivating(false);
-    setLicenseKey("");
   };
 
   const getLicenseTypeBadge = (type: string) => {

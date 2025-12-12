@@ -45,6 +45,15 @@ import {
   updateMappingTemplate,
   deleteMappingTemplate,
   seedDefaultMappingTemplates,
+  getLicenses,
+  getActiveLicense,
+  getLicenseByKey,
+  createLicense,
+  activateLicense,
+  deactivateLicense,
+  deleteLicense,
+  generateLicenseKey,
+  seedDefaultLicense,
   createSpcAnalysisHistory,
   getSpcAnalysisHistory,
   getSpcAnalysisHistoryByMapping,
@@ -2305,6 +2314,77 @@ export const appRouter = router({
     seedDefaultRules: protectedProcedure.mutation(async () => {
       const { seedAllDefaultRules } = await import("./db");
       await seedAllDefaultRules();
+      return { success: true };
+    }),
+  }),
+
+  // License Management router
+  license: router({
+    list: protectedProcedure.query(async () => {
+      return await getLicenses();
+    }),
+    getActive: publicProcedure.query(async () => {
+      return await getActiveLicense();
+    }),
+    getByKey: protectedProcedure
+      .input(z.object({ licenseKey: z.string() }))
+      .query(async ({ input }) => {
+        return await getLicenseByKey(input.licenseKey);
+      }),
+    create: protectedProcedure
+      .input(z.object({
+        licenseKey: z.string().optional(),
+        licenseType: z.enum(["trial", "standard", "professional", "enterprise"]).default("trial"),
+        companyName: z.string().optional(),
+        contactEmail: z.string().email().optional(),
+        maxUsers: z.number().default(5),
+        maxProductionLines: z.number().default(3),
+        maxSpcPlans: z.number().default(10),
+        features: z.string().optional(),
+        expiresAt: z.date().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        if (ctx.user?.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        const licenseKey = input.licenseKey || generateLicenseKey();
+        await createLicense({
+          ...input,
+          licenseKey,
+          isActive: 0,
+        });
+        return { success: true, licenseKey };
+      }),
+    activate: protectedProcedure
+      .input(z.object({ licenseKey: z.string() }))
+      .mutation(async ({ input, ctx }) => {
+        const license = await getLicenseByKey(input.licenseKey);
+        if (!license) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "License key không hợp lệ" });
+        }
+        if (license.expiresAt && new Date(license.expiresAt) < new Date()) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "License đã hết hạn" });
+        }
+        await activateLicense(input.licenseKey, ctx.user?.id || 0);
+        return { success: true, license };
+      }),
+    deactivate: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        if (ctx.user?.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        await deactivateLicense(input.id);
+        return { success: true };
+      }),
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        if (ctx.user?.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        await deleteLicense(input.id);
+        return { success: true };
+      }),
+    generateKey: protectedProcedure.query(() => {
+      return { licenseKey: generateLicenseKey() };
+    }),
+    seedDefault: protectedProcedure.mutation(async () => {
+      await seedDefaultLicense();
       return { success: true };
     }),
   }),
