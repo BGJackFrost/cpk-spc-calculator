@@ -116,12 +116,12 @@ export default function DefectStatistics() {
           <p className="text-muted-foreground">Phân tích Pareto và thống kê lỗi trong quy trình sản xuất</p>
         </div>
         <div className="flex items-center gap-4">
-          <Select value={selectedLineId} onValueChange={setSelectedLineId}>
+          <Select value={selectedLineId || "all"} onValueChange={(v) => setSelectedLineId(v === "all" ? "" : v)}>
             <SelectTrigger className="w-[200px]">
               <SelectValue placeholder="Tất cả dây chuyền" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Tất cả dây chuyền</SelectItem>
+              <SelectItem value="all">Tất cả dây chuyền</SelectItem>
               {productionLines?.map(line => (
                 <SelectItem key={line.id} value={line.id.toString()}>{line.name}</SelectItem>
               ))}
