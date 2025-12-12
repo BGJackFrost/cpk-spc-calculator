@@ -233,12 +233,12 @@ export default function MultiAnalysis() {
 
               <div className="space-y-2">
                 <Label>Máy (tùy chọn)</Label>
-                <Select value={newItem.machineId} onValueChange={(v) => setNewItem({ ...newItem, machineId: v, fixtureId: "" })}>
+                <Select value={newItem.machineId || "all"} onValueChange={(v) => setNewItem({ ...newItem, machineId: v === "all" ? "" : v, fixtureId: "" })}>
                   <SelectTrigger>
                     <SelectValue placeholder="Tất cả máy" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Tất cả máy</SelectItem>
+                    <SelectItem value="all">Tất cả máy</SelectItem>
                     {machines?.map(m => (
                       <SelectItem key={m.id} value={m.id.toString()}>{m.code} - {m.name}</SelectItem>
                     ))}
@@ -249,15 +249,15 @@ export default function MultiAnalysis() {
               <div className="space-y-2">
                 <Label>Fixture (tùy chọn)</Label>
                 <Select 
-                  value={newItem.fixtureId} 
-                  onValueChange={(v) => setNewItem({ ...newItem, fixtureId: v })}
+                  value={newItem.fixtureId || "all"} 
+                  onValueChange={(v) => setNewItem({ ...newItem, fixtureId: v === "all" ? "" : v })}
                   disabled={!newItem.machineId}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Tất cả Fixture" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Tất cả Fixture</SelectItem>
+                    <SelectItem value="all">Tất cả Fixture</SelectItem>
                     {fixtures?.map(f => (
                       <SelectItem key={f.id} value={f.id.toString()}>{f.code} - {f.name}</SelectItem>
                     ))}
