@@ -374,3 +374,37 @@
 - [x] Thêm indexes cho machines, fixtures, products
 - [ ] Tối ưu các query JOIN phức tạp (chưa hoàn thành)
 
+
+## Phase 12.1 - Sửa lỗi và trang About
+
+### Rà soát trang bị lỗi mất thanh menu
+- [ ] Tìm các trang có SelectItem value="" gây crash
+- [ ] Sửa tất cả SelectItem value="" thành value="all"
+- [ ] Kiểm tra các trang có lỗi khác gây mất DashboardLayout
+
+### Trang About
+- [ ] Tạo trang About.tsx với thông tin hệ thống
+- [ ] Hiển thị phiên bản ứng dụng
+- [ ] Hiển thị thông tin license/bản quyền
+- [ ] Thêm chức năng nhập mã kích hoạt bản quyền
+- [ ] Lưu trạng thái kích hoạt vào database
+- [ ] Thêm menu About vào sidebar
+
+
+## Phase 13 - Sửa lỗi Sidebar và Trang About
+
+### Sửa lỗi Sidebar Menu
+- [x] Thêm DashboardLayout vào DefectManagement.tsx (/defects)
+- [x] Thêm DashboardLayout vào DefectStatistics.tsx (/defect-statistics)
+- [x] Thêm DashboardLayout vào MachineTypeManagement.tsx (/machine-types)
+- [x] Thêm DashboardLayout vào FixtureManagement.tsx (/fixtures)
+
+### Trang About
+- [x] Tạo trang About.tsx với thông tin hệ thống
+- [x] Hiển thị phiên bản và ngày build
+- [x] Hiển thị danh sách tính năng hệ thống
+- [x] Hiển thị công nghệ sử dụng (tech stack)
+- [x] Chức năng kích hoạt license
+- [x] So sánh các gói license (Trial, Standard, Professional, Enterprise)
+- [x] Thêm route /about vào App.tsx
+- [x] Thêm menu "Thông tin Hệ thống" vào DashboardLayout

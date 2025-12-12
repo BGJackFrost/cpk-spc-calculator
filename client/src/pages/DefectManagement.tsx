@@ -1,4 +1,5 @@
 import { useState } from "react";
+import DashboardLayout from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -223,6 +224,7 @@ export default function DefectManagement() {
   };
 
   return (
+    <DashboardLayout>
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
@@ -563,5 +565,6 @@ export default function DefectManagement() {
         </TabsContent>
       </Tabs>
     </div>
+    </DashboardLayout>
   );
 }

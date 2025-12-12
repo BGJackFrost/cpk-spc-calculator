@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import DashboardLayout from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -109,6 +110,7 @@ export default function DefectStatistics() {
   }, [defectStats]);
 
   return (
+    <DashboardLayout>
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
@@ -447,5 +449,6 @@ export default function DefectStatistics() {
         </TabsContent>
       </Tabs>
     </div>
+    </DashboardLayout>
   );
 }

@@ -32,6 +32,7 @@ import MachineTypeManagement from "./pages/MachineTypeManagement";
 import FixtureManagement from "./pages/FixtureManagement";
 import MultiAnalysis from "./pages/MultiAnalysis";
 import ProductionLineComparison from "./pages/ProductionLineComparison";
+import About from "./pages/About";
 import SseNotificationProvider from "./components/SseNotificationProvider";
 
 function Router() {
@@ -65,6 +66,7 @@ function Router() {
       <Route path="/fixtures" component={FixtureManagement} />
       <Route path="/multi-analysis" component={MultiAnalysis} />
       <Route path="/line-comparison" component={ProductionLineComparison} />
+      <Route path="/about" component={About} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
