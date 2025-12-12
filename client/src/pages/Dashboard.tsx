@@ -2,6 +2,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import DashboardLayout from "@/components/DashboardLayout";
 import GuidedTour from "@/components/GuidedTour";
 import { useGuidedTour, dashboardTourSteps } from "@/hooks/useGuidedTour";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
@@ -34,6 +35,7 @@ import { LicenseStatusWidget } from "@/components/LicenseStatusWidget";
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const { data: mappings } = trpc.mapping.list.useQuery();
   const { data: history } = trpc.spc.history.useQuery({ limit: 10 });
   const { data: dashboardConfig, refetch: refetchConfig } = trpc.dashboardConfig.get.useQuery();
@@ -64,58 +66,58 @@ export default function Dashboard() {
 
   const stats = [
     {
-      title: "Cấu hình Mapping",
+      title: t.dashboard.mappingConfig,
       value: mappings?.length || 0,
       icon: Database,
-      description: "Product-Station mappings",
+      description: t.dashboard.productStationMappings,
       color: "text-chart-1",
     },
     {
-      title: "Phân tích gần đây",
+      title: t.dashboard.recentAnalysis,
       value: totalAnalyses,
       icon: BarChart3,
-      description: "Trong 30 ngày qua",
+      description: t.dashboard.inLast30Days,
       color: "text-chart-2",
     },
     {
-      title: "Cảnh báo CPK",
+      title: t.dashboard.cpkAlerts,
       value: recentAlerts.length,
       icon: AlertTriangle,
-      description: "Cần xem xét",
+      description: t.dashboard.needReview,
       color: recentAlerts.length > 0 ? "text-destructive" : "text-chart-3",
     },
     {
-      title: "Trạng thái",
-      value: recentAlerts.length === 0 ? "Tốt" : "Cảnh báo",
+      title: t.dashboard.systemStatus,
+      value: recentAlerts.length === 0 ? t.dashboard.good : t.dashboard.warning,
       icon: recentAlerts.length === 0 ? CheckCircle2 : AlertTriangle,
-      description: "Hệ thống sản xuất",
+      description: t.dashboard.productionSystem,
       color: recentAlerts.length === 0 ? "text-chart-3" : "text-warning",
     },
   ];
 
   const quickActions = [
     {
-      title: "Phân tích SPC/CPK",
-      description: "Chọn sản phẩm và trạm để phân tích",
+      title: t.dashboard.analyzeSpcCpk,
+      description: t.dashboard.selectProductStation,
       icon: TrendingUp,
       href: "/analyze",
       primary: true,
     },
     {
-      title: "Lịch sử phân tích",
-      description: "Xem các phân tích đã thực hiện",
+      title: t.dashboard.analysisHistory,
+      description: t.dashboard.viewPastAnalyses,
       icon: History,
       href: "/history",
     },
     {
-      title: "Quản lý Mapping",
-      description: "Cấu hình product-station mapping",
+      title: t.dashboard.manageMappings,
+      description: t.dashboard.configureMapping,
       icon: FileSpreadsheet,
       href: "/mappings",
     },
     {
-      title: "Cài đặt hệ thống",
-      description: "Cấu hình database và cảnh báo",
+      title: t.dashboard.systemSettings,
+      description: t.dashboard.configureDatabase,
       icon: Settings,
       href: "/settings",
     },
@@ -131,10 +133,10 @@ export default function Dashboard() {
         <div className="flex items-center justify-between">
           <div className="flex flex-col gap-2">
             <h1 className="text-3xl font-bold tracking-tight">
-              Xin chào, {user?.name || "User"}
+              {t.dashboard.welcome}, {user?.name || "User"}
             </h1>
             <p className="text-muted-foreground">
-              Hệ thống phân tích SPC/CPK cho quy trình sản xuất
+              {t.dashboard.subtitle}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -142,41 +144,41 @@ export default function Dashboard() {
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm">
                   <LayoutGrid className="h-4 w-4 mr-2" />
-                  Tùy chỉnh
+                  {t.dashboard.customize}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>Hiển thị Widget</DropdownMenuLabel>
+                <DropdownMenuLabel>{t.dashboard.showWidget}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuCheckboxItem
                   checked={isWidgetVisible("mapping_count")}
                   onCheckedChange={() => handleToggleWidget("mapping_count")}
                 >
-                  Cấu hình Mapping
+                  {t.dashboard.mappingConfig}
                 </DropdownMenuCheckboxItem>
                 <DropdownMenuCheckboxItem
                   checked={isWidgetVisible("recent_analysis")}
                   onCheckedChange={() => handleToggleWidget("recent_analysis")}
                 >
-                  Phân tích gần đây
+                  {t.dashboard.recentAnalysis}
                 </DropdownMenuCheckboxItem>
                 <DropdownMenuCheckboxItem
                   checked={isWidgetVisible("cpk_alerts")}
                   onCheckedChange={() => handleToggleWidget("cpk_alerts")}
                 >
-                  Cảnh báo CPK
+                  {t.dashboard.cpkAlerts}
                 </DropdownMenuCheckboxItem>
                 <DropdownMenuCheckboxItem
                   checked={isWidgetVisible("system_status")}
                   onCheckedChange={() => handleToggleWidget("system_status")}
                 >
-                  Trạng thái hệ thống
+                  {t.dashboard.systemStatus}
                 </DropdownMenuCheckboxItem>
                 <DropdownMenuCheckboxItem
                   checked={isWidgetVisible("quick_actions")}
                   onCheckedChange={() => handleToggleWidget("quick_actions")}
                 >
-                  Thao tác nhanh
+                  {t.dashboard.quickActions}
                 </DropdownMenuCheckboxItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -220,7 +222,7 @@ export default function Dashboard() {
             {/* Quick Actions */}
             {isWidgetVisible("quick_actions") && (
               <div data-tour="quick-actions">
-                <h2 className="text-xl font-semibold mb-4">Thao tác nhanh</h2>
+                <h2 className="text-xl font-semibold mb-4">{t.dashboard.quickActions}</h2>
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                   {quickActions.map((action, index) => {
                     const ActionIcon = action.icon;
@@ -254,10 +256,10 @@ export default function Dashboard() {
         {history && history.length > 0 && (
           <div>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold">Phân tích gần đây</h2>
+              <h2 className="text-xl font-semibold">{t.dashboard.recentAnalysis}</h2>
               <Link href="/history">
                 <Button variant="ghost" size="sm">
-                  Xem tất cả
+                  {t.common.viewAll}
                 </Button>
               </Link>
             </div>

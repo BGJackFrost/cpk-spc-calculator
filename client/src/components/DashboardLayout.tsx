@@ -26,40 +26,58 @@ import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
+import { LanguageSwitcher } from "./LanguageSwitcher";
+import { useLanguage } from "../contexts/LanguageContext";
 
-const menuItems = [
-  { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
-  { icon: Activity, label: "Dây chuyền Realtime", path: "/production-lines" },
-  { icon: Layers, label: "Trực quan SPC Plan", path: "/spc-visualization" },
-  { icon: TrendingUp, label: "Phân tích SPC/CPK", path: "/analyze" },
-  { icon: GitCompare, label: "Phân tích Đa Đối tượng", path: "/multi-analysis" },
-  { icon: ArrowUpDown, label: "So sánh Dây chuyền", path: "/line-comparison" },
-  { icon: History, label: "Lịch sử", path: "/history" },
-  { icon: BarChart3, label: "Báo cáo SPC", path: "/spc-report" },
-  { icon: AlertTriangle, label: "Quản lý Lỗi", path: "/defects" },
-  { icon: BarChart3, label: "Thống kê Lỗi (Pareto)", path: "/defect-statistics" },
-  { icon: FileSpreadsheet, label: "Quản lý Mapping", path: "/mappings" },
-  { icon: Package, label: "Quản lý Sản phẩm", path: "/products" },
-  { icon: Ruler, label: "Tiêu chuẩn USL/LSL", path: "/specifications" },
-  { icon: Factory, label: "Quản lý Dây chuyền", path: "/production-line-management" },
-  { icon: Wrench, label: "Quản lý Công trạm", path: "/workstations" },
-  { icon: Cog, label: "Quản lý Máy", path: "/machines" },
-  { icon: Cpu, label: "Loại Máy", path: "/machine-types" },
-  { icon: Wrench, label: "Quản lý Fixture", path: "/fixtures" },
-  { icon: GitBranch, label: "Quản lý Quy trình", path: "/processes" },
-  { icon: Clock, label: "Phương pháp Lấy mẫu", path: "/sampling-methods" },
-  { icon: Calendar, label: "Kế hoạch SPC", path: "/spc-plans" },
-  { icon: Mail, label: "Thông báo Email", path: "/email-notifications" },
-  { icon: Users, label: "Quản lý Người dùng", path: "/users" },
-  { icon: Shield, label: "Phân quyền", path: "/permissions" },
-  { icon: Server, label: "Cấu hình SMTP", path: "/smtp-settings" },
-  { icon: Database, label: "Khởi tạo Dữ liệu", path: "/seed-data" },
-  { icon: FileText, label: "Nhật ký Hoạt động", path: "/audit-logs" },
-  { icon: Settings, label: "Cài đặt", path: "/settings" },
-  { icon: BookOpen, label: "Quản lý Rules", path: "/rules" },
-  { icon: Info, label: "Thông tin Hệ thống", path: "/about" },
-  { icon: Key, label: "Quản lý License", path: "/license-management", adminOnly: true },
+// Menu items with translation keys
+const menuItemsConfig = [
+  { icon: LayoutDashboard, labelKey: "nav.dashboard", path: "/dashboard" },
+  { icon: Activity, labelKey: "nav.realtimeConveyor", path: "/production-lines" },
+  { icon: Layers, labelKey: "nav.spcPlanOverview", path: "/spc-visualization" },
+  { icon: TrendingUp, labelKey: "nav.analyze", path: "/analyze" },
+  { icon: GitCompare, labelKey: "nav.multiObjectAnalysis", path: "/multi-analysis" },
+  { icon: ArrowUpDown, labelKey: "nav.lineComparison", path: "/line-comparison" },
+  { icon: History, labelKey: "nav.history", path: "/history" },
+  { icon: BarChart3, labelKey: "nav.spcReport", path: "/spc-report" },
+  { icon: AlertTriangle, labelKey: "nav.errorManagement", path: "/defects" },
+  { icon: BarChart3, labelKey: "nav.paretoChart", path: "/defect-statistics" },
+  { icon: FileSpreadsheet, labelKey: "nav.mappingManagement", path: "/mappings" },
+  { icon: Package, labelKey: "nav.productManagement", path: "/products" },
+  { icon: Ruler, labelKey: "nav.specificationManagement", path: "/specifications" },
+  { icon: Factory, labelKey: "productionLine", path: "/production-line-management" },
+  { icon: Wrench, labelKey: "workstation", path: "/workstations" },
+  { icon: Cog, labelKey: "machine", path: "/machines" },
+  { icon: Cpu, labelKey: "machineType", path: "/machine-types" },
+  { icon: Wrench, labelKey: "fixture", path: "/fixtures" },
+  { icon: GitBranch, labelKey: "process", path: "/processes" },
+  { icon: Clock, labelKey: "samplingMethod", path: "/sampling-methods" },
+  { icon: Calendar, labelKey: "nav.spcPlanManagement", path: "/spc-plans" },
+  { icon: Mail, labelKey: "emailNotification", path: "/email-notifications" },
+  { icon: Users, labelKey: "nav.userManagement", path: "/users" },
+  { icon: Shield, labelKey: "permission", path: "/permissions" },
+  { icon: Server, labelKey: "smtpConfig", path: "/smtp-settings" },
+  { icon: Database, labelKey: "seedData", path: "/seed-data" },
+  { icon: FileText, labelKey: "nav.auditLog", path: "/audit-logs" },
+  { icon: Settings, labelKey: "common.settings", path: "/settings" },
+  { icon: BookOpen, labelKey: "nav.rulesManagement", path: "/rules" },
+  { icon: Info, labelKey: "nav.about", path: "/about" },
+  { icon: Key, labelKey: "nav.licenseManagement", path: "/license-management", adminOnly: true },
 ];
+
+// Fallback labels for keys not in translation files
+const fallbackLabels: Record<string, string> = {
+  "productionLine": "Quản lý Dây chuyền",
+  "workstation": "Quản lý Công trạm",
+  "machine": "Quản lý Máy",
+  "machineType": "Loại Máy",
+  "fixture": "Quản lý Fixture",
+  "process": "Quản lý Quy trình",
+  "samplingMethod": "Phương pháp Lấy mẫu",
+  "emailNotification": "Thông báo Email",
+  "permission": "Phân quyền",
+  "smtpConfig": "Cấu hình SMTP",
+  "seedData": "Khởi tạo Dữ liệu",
+};
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
 const DEFAULT_WIDTH = 280;
@@ -141,7 +159,16 @@ function DashboardLayoutContent({
   const isCollapsed = state === "collapsed";
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
-  const activeMenuItem = menuItems.find(item => item.path === location);
+  const { translate, t } = useLanguage();
+  
+  // Get label for menu item
+  const getLabel = (labelKey: string) => {
+    const translated = translate(labelKey);
+    if (translated !== labelKey) return translated;
+    return fallbackLabels[labelKey] || labelKey;
+  };
+  
+  const activeMenuItem = menuItemsConfig.find(item => item.path === location);
   const isMobile = useIsMobile();
 
   useEffect(() => {
@@ -209,22 +236,23 @@ function DashboardLayoutContent({
 
           <SidebarContent className="gap-0">
             <SidebarMenu className="px-2 py-1">
-              {menuItems
+              {menuItemsConfig
                 .filter(item => !item.adminOnly || user?.role === "admin")
                 .map(item => {
                 const isActive = location === item.path;
+                const label = getLabel(item.labelKey);
                 return (
                   <SidebarMenuItem key={item.path}>
                     <SidebarMenuButton
                       isActive={isActive}
                       onClick={() => setLocation(item.path)}
-                      tooltip={item.label}
+                      tooltip={label}
                       className={`h-10 transition-all font-normal`}
                     >
                       <item.icon
                         className={`h-4 w-4 ${isActive ? "text-primary" : ""}`}
                       />
-                      <span>{item.label}</span>
+                      <span>{label}</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 );
@@ -252,12 +280,15 @@ function DashboardLayoutContent({
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem className="cursor-pointer">
+                  <LanguageSwitcher variant="full" className="w-full border-0 justify-start px-0 h-auto" />
+                </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={logout}
                   className="cursor-pointer text-destructive focus:text-destructive"
                 >
                   <LogOut className="mr-2 h-4 w-4" />
-                  <span>Sign out</span>
+                  <span>{t.common.logout}</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -281,7 +312,7 @@ function DashboardLayoutContent({
               <div className="flex items-center gap-3">
                 <div className="flex flex-col gap-1">
                   <span className="tracking-tight text-foreground">
-                    {activeMenuItem?.label ?? "Menu"}
+                    {activeMenuItem ? getLabel(activeMenuItem.labelKey) : "Menu"}
                   </span>
                 </div>
               </div>

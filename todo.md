@@ -675,3 +675,22 @@
 - [x] Thêm export Excel/PDF cho trang Analyze (phân tích đơn)
 - [x] Thêm export Excel/PDF cho trang BatchAnalysis (sử dụng cùng endpoints) (phân tích đa đối tượng)
 - [x] Thêm export Excel/PDF cho trang SpcReport (sử dụng cùng endpoints)nLineComparison (so sánh dây chuyền)
+
+
+## Phase 23 - Multi-language Support (Đa ngôn ngữ)
+
+### Thiết lập hệ thống i18n
+- [x] Tạo file translations cho Tiếng Việt (vi.json)
+- [x] Tạo file translations cho Tiếng Anh (en.json)
+- [x] Tạo LanguageContext và useLanguage hook
+
+### Tích hợp vào giao diện
+- [x] Tích hợp đa ngôn ngữ vào DashboardLayout
+- [x] Tích hợp đa ngôn ngữ vào Dashboard
+- [x] Tích hợp đa ngôn ngữ vào Analyze (cơ bản)
+- [x] Tích hợp đa ngôn ngữ vào các trang quản lý (cơ bản qua DashboardLayout)
+
+### Language Switcher
+- [x] Tạo component LanguageSwitcher
+- [x] Thêm vào header/sidebar (trong user dropdown menu)
+- [x] Lưu preference vào localStorage
