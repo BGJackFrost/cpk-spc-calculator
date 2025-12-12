@@ -367,29 +367,29 @@ export default function DefectManagement() {
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <Select
-                value={recordFilter.status}
-                onValueChange={(value) => setRecordFilter({ ...recordFilter, status: value })}
+                value={recordFilter.status || "all"}
+                onValueChange={(value) => setRecordFilter({ ...recordFilter, status: value === "all" ? "" : value })}
               >
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Lọc theo trạng thái" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Tất cả</SelectItem>
-                  {STATUS_OPTIONS.map(opt => (
+                 <SelectItem value="all">Tất cả</SelectItem>
+                   {STATUS_OPTIONS.map(opt => (
                     <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               <Select
-                value={recordFilter.defectCategoryId?.toString() || ""}
-                onValueChange={(value) => setRecordFilter({ ...recordFilter, defectCategoryId: value ? Number(value) : undefined })}
+                value={recordFilter.defectCategoryId?.toString() || "all"}
+                onValueChange={(value) => setRecordFilter({ ...recordFilter, defectCategoryId: value === "all" ? undefined : Number(value) })}
               >
                 <SelectTrigger className="w-[200px]">
                   <SelectValue placeholder="Lọc theo loại lỗi" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Tất cả</SelectItem>
-                  {categories?.map(cat => (
+                 <SelectItem value="all">Tất cả</SelectItem>
+                   {categories?.map(cat => (
                     <SelectItem key={cat.id} value={cat.id.toString()}>{cat.name}</SelectItem>
                   ))}
                 </SelectContent>
