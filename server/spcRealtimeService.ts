@@ -85,7 +85,8 @@ export function calculateSpcMetrics(
   subgroups: SubgroupData[],
   usl: number | null,
   lsl: number | null,
-  target: number | null
+  target: number | null,
+  enabledSpcRules?: number[] // Array of enabled SPC rule numbers (1-8)
 ): SpcCalculationResult {
   if (subgroups.length === 0) {
     return {
@@ -162,8 +163,8 @@ export function calculateSpcMetrics(
     ca = Math.abs(xBar - targetValue) / ((usl - lsl) / 2);
   }
 
-  // Detect violations
-  const violations = detectSpcViolations(subgroups, xBar, withinStdDev, xBarUcl, xBarLcl, usl, lsl);
+  // Detect violations (only check enabled rules)
+  const violations = detectSpcViolations(subgroups, xBar, withinStdDev, xBarUcl, xBarLcl, usl, lsl, enabledSpcRules);
 
   // Determine overall status
   let overallStatus: "excellent" | "good" | "acceptable" | "needs_improvement" | "critical" = "good";
@@ -216,7 +217,8 @@ export function detectSpcViolations(
   ucl: number,
   lcl: number,
   usl: number | null,
-  lsl: number | null
+  lsl: number | null,
+  enabledRules?: number[] // Array of enabled rule numbers (1-8), if undefined all rules are enabled
 ): SpcViolation[] {
   const violations: SpcViolation[] = [];
   const means = subgroups.map(sg => sg.mean);
@@ -231,7 +233,7 @@ export function detectSpcViolations(
     const value = means[i];
 
     // Rule 1: One point beyond 3 sigma (beyond UCL or LCL)
-    if (value > ucl || value < lcl) {
+    if ((!enabledRules || enabledRules.includes(1)) && (value > ucl || value < lcl)) {
       violations.push({
         ruleNumber: 1,
         ruleName: "Beyond 3σ",
@@ -242,7 +244,7 @@ export function detectSpcViolations(
     }
 
     // Rule 2: Nine points in a row on same side of center line
-    if (i >= 8) {
+    if ((!enabledRules || enabledRules.includes(2)) && i >= 8) {
       const last9 = means.slice(i - 8, i + 1);
       const allAbove = last9.every(v => v > xBar);
       const allBelow = last9.every(v => v < xBar);
@@ -258,7 +260,7 @@ export function detectSpcViolations(
     }
 
     // Rule 3: Six points in a row steadily increasing or decreasing
-    if (i >= 5) {
+    if ((!enabledRules || enabledRules.includes(3)) && i >= 5) {
       const last6 = means.slice(i - 5, i + 1);
       let increasing = true;
       let decreasing = true;
@@ -278,7 +280,7 @@ export function detectSpcViolations(
     }
 
     // Rule 4: Fourteen points in a row alternating up and down
-    if (i >= 13) {
+    if ((!enabledRules || enabledRules.includes(4)) && i >= 13) {
       const last14 = means.slice(i - 13, i + 1);
       let alternating = true;
       for (let j = 2; j < last14.length; j++) {
@@ -301,7 +303,7 @@ export function detectSpcViolations(
     }
 
     // Rule 5: Two out of three points beyond 2 sigma on same side
-    if (i >= 2) {
+    if ((!enabledRules || enabledRules.includes(5)) && i >= 2) {
       const last3 = means.slice(i - 2, i + 1);
       const above2Sigma = last3.filter(v => v > zone2Upper).length;
       const below2Sigma = last3.filter(v => v < zone2Lower).length;
@@ -317,7 +319,7 @@ export function detectSpcViolations(
     }
 
     // Rule 6: Four out of five points beyond 1 sigma on same side
-    if (i >= 4) {
+    if ((!enabledRules || enabledRules.includes(6)) && i >= 4) {
       const last5 = means.slice(i - 4, i + 1);
       const above1Sigma = last5.filter(v => v > zone1Upper).length;
       const below1Sigma = last5.filter(v => v < zone1Lower).length;
@@ -333,7 +335,7 @@ export function detectSpcViolations(
     }
 
     // Rule 7: Fifteen points in a row within 1 sigma (stratification)
-    if (i >= 14) {
+    if ((!enabledRules || enabledRules.includes(7)) && i >= 14) {
       const last15 = means.slice(i - 14, i + 1);
       const allWithin1Sigma = last15.every(v => v >= zone1Lower && v <= zone1Upper);
       if (allWithin1Sigma) {
@@ -348,7 +350,7 @@ export function detectSpcViolations(
     }
 
     // Rule 8: Eight points in a row beyond 1 sigma on either side (mixture)
-    if (i >= 7) {
+    if ((!enabledRules || enabledRules.includes(8)) && i >= 7) {
       const last8 = means.slice(i - 7, i + 1);
       const allBeyond1Sigma = last8.every(v => v > zone1Upper || v < zone1Lower);
       if (allBeyond1Sigma) {

@@ -447,3 +447,32 @@
 - [x] Hiển thị danh sách kế hoạch SPC liên quan
 - [x] Hiển thị các entity con (workstation → machine → fixture)
 - [x] Breadcrumb navigation giữa các cấp
+
+
+## Phase 15 - Seed Rules, Tích hợp Rules, Realtime Visualization, Export
+
+### Seed Data cho Rules
+- [x] Tạo seed data cho 8 SPC Rules (Western Electric Rules)
+- [x] Tạo seed data cho CA Rules (Ca, Cp thresholds)
+- [x] Tạo seed data cho CPK Rules (CPK thresholds)
+- [x] Thêm vào trang Khởi tạo Dữ liệu
+
+### Tích hợp Rules vào Logic phân tích
+- [x] Cập nhật hàm detectSpcViolations để nhận danh sách rules đã bật
+- [x] Cập nhật hàm calculateSpcMetrics để truyền enabledSpcRules
+- [x] Chỉ kiểm tra các SPC Rules được bật trong kế hoạch
+- [ ] Chỉ kiểm tra các CA Rules được bật trong kế hoạch
+- [ ] Chỉ kiểm tra các CPK Rules được bật trong kế hoạch
+
+### Realtime Data trên Visualization
+- [x] Tạo API getRealtimeDataMultiple để lấy dữ liệu nhiều plans
+- [x] Lấy dữ liệu CPK/Mean từ spc_summary_stats
+- [x] Hiển thị CPK thực tế trên các node workstation
+- [x] Cập nhật màu sắc node theo trạng thái CPK (xanh/vàng/đỏ)
+- [x] Cập nhật status badge theo realtime CPK
+
+### Export Visualization
+- [x] Cài đặt html2canvas và jspdf
+- [x] Tạo hàm handleExportPNG xuất ra PNG
+- [x] Tạo hàm handleExportPDF xuất ra PDF
+- [x] Thêm nút Export dropdown trên trang Visualization

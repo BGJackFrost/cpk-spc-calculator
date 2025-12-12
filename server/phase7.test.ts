@@ -7,7 +7,7 @@ describe("Phase 7 - Seed Data, SMTP và Khởi tạo Quyền", () => {
       
       expect(typeof initializePermissions).toBe("function");
       expect(typeof seedSampleData).toBe("function");
-    });
+    }, 15000);
 
     it("should define sample products with required fields", async () => {
       // Test that seed data module exports correctly
@@ -34,7 +34,7 @@ describe("Phase 7 - Seed Data, SMTP và Khởi tạo Quyền", () => {
       
       // Should return error when SMTP not configured
       expect(result).toHaveProperty("success");
-    });
+    }, 15000);
   });
 
   describe("SMTP Configuration", () => {

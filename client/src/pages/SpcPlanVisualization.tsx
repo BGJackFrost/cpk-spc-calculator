@@ -26,8 +26,18 @@ import {
   Eye,
   BarChart3,
   Layers,
-  Box
+  Box,
+  Download,
+  FileImage,
+  FileText
 } from "lucide-react";
+import { toast } from "sonner";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface SpcPlan {
   id: number;
@@ -90,7 +100,86 @@ export default function SpcPlanVisualization() {
   const { data: machines = [] } = trpc.machine.listAll.useQuery();
   const { data: fixtures = [] } = trpc.fixture.list.useQuery();
   const { data: spcPlans = [] } = trpc.spcPlan.list.useQuery();
-  // Realtime stats will be fetched per plan in detail pages
+  
+  // Get active plan IDs for realtime data fetching
+  const activePlanIds = useMemo(() => {
+    return spcPlans.filter((p: SpcPlan) => p.status === "active").map((p: SpcPlan) => p.id);
+  }, [spcPlans]);
+
+  // Fetch realtime data for all active plans
+  const { data: realtimeDataMap = {} } = trpc.spc.getRealtimeDataMultiple.useQuery(
+    { planIds: activePlanIds },
+    { 
+      enabled: activePlanIds.length > 0,
+      refetchInterval: 30000, // Refresh every 30 seconds
+    }
+  );
+
+  // Export functions
+  const handleExportPNG = async () => {
+    try {
+      toast.info("Đang xuất hình ảnh...");
+      // Use html2canvas to capture the visualization
+      const element = document.getElementById('spc-visualization-content');
+      if (!element) {
+        toast.error("Không tìm thấy nội dung để xuất");
+        return;
+      }
+      
+      const html2canvas = (await import('html2canvas')).default;
+      const canvas = await html2canvas(element, {
+        backgroundColor: '#ffffff',
+        scale: 2,
+        useCORS: true,
+      });
+      
+      const link = document.createElement('a');
+      link.download = `spc-visualization-${new Date().toISOString().split('T')[0]}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      toast.success("Đã xuất hình ảnh thành công");
+    } catch (error) {
+      console.error('Export PNG error:', error);
+      toast.error("Lỗi khi xuất hình ảnh");
+    }
+  };
+
+  const handleExportPDF = async () => {
+    try {
+      toast.info("Đang xuất PDF...");
+      const element = document.getElementById('spc-visualization-content');
+      if (!element) {
+        toast.error("Không tìm thấy nội dung để xuất");
+        return;
+      }
+      
+      const html2canvas = (await import('html2canvas')).default;
+      const { jsPDF } = await import('jspdf');
+      
+      const canvas = await html2canvas(element, {
+        backgroundColor: '#ffffff',
+        scale: 2,
+        useCORS: true,
+      });
+      
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: 'a4',
+      });
+      
+      const imgWidth = 280; // A4 landscape width minus margins
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      
+      pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, imgHeight);
+      pdf.save(`spc-visualization-${new Date().toISOString().split('T')[0]}.pdf`);
+      toast.success("Đã xuất PDF thành công");
+    } catch (error) {
+      console.error('Export PDF error:', error);
+      toast.error("Lỗi khi xuất PDF");
+    }
+  };
 
   // Filter data by selected line
   const filteredWorkstations = useMemo(() => {
@@ -130,16 +219,31 @@ export default function SpcPlanVisualization() {
     }
   };
 
-  // Get status badge
+  // Get status badge based on realtime data
   const getStatusBadge = (plans: SpcPlan[]) => {
     const activePlans = plans.filter(p => p.status === "active");
-    const hasViolation = false; // TODO: Check from realtimeStats
     
     if (activePlans.length === 0) {
       return <Badge variant="outline" className="text-xs">Không có kế hoạch</Badge>;
     }
+    
+    // Check if any active plan has poor CPK (< 1.0)
+    const hasViolation = activePlans.some(p => {
+      const data = realtimeDataMap[p.id];
+      return data && data.cpk !== null && data.cpk < 1.0;
+    });
+    
+    // Check if any active plan has warning CPK (< 1.33)
+    const hasWarning = activePlans.some(p => {
+      const data = realtimeDataMap[p.id];
+      return data && data.cpk !== null && data.cpk < 1.33;
+    });
+    
     if (hasViolation) {
-      return <Badge variant="destructive" className="text-xs"><AlertTriangle className="h-3 w-3 mr-1" />Cảnh báo</Badge>;
+      return <Badge variant="destructive" className="text-xs"><AlertTriangle className="h-3 w-3 mr-1" />CPK thấp</Badge>;
+    }
+    if (hasWarning) {
+      return <Badge className="bg-yellow-500 text-xs"><AlertTriangle className="h-3 w-3 mr-1" />Cần chú ý</Badge>;
     }
     return <Badge className="bg-green-500 text-xs"><CheckCircle2 className="h-3 w-3 mr-1" />Bình thường</Badge>;
   };
@@ -217,11 +321,20 @@ export default function SpcPlanVisualization() {
                         <span className="text-[10px] text-muted-foreground">{wsMachines.length} máy</span>
                         
                         {/* Metrics display */}
-                        {hasActivePlan && metrics.find(m => m.key === "cpk")?.enabled && (
-                          <div className="mt-1 px-2 py-0.5 bg-white rounded text-[10px] font-mono">
-                            CPK: 1.45
-                          </div>
-                        )}
+                        {hasActivePlan && metrics.find(m => m.key === "cpk")?.enabled && (() => {
+                          // Find active plan for this workstation and get its realtime data
+                          const activePlan = wsPlans.find((p: SpcPlan) => p.status === "active");
+                          const planData = activePlan ? realtimeDataMap[activePlan.id] : null;
+                          const cpkValue = planData?.cpk;
+                          const cpkColor = cpkValue === null || cpkValue === undefined ? 'text-gray-500' : 
+                                          cpkValue >= 1.33 ? 'text-green-600' : 
+                                          cpkValue >= 1.0 ? 'text-yellow-600' : 'text-red-600';
+                          return (
+                            <div className={`mt-1 px-2 py-0.5 bg-white rounded text-[10px] font-mono ${cpkColor}`}>
+                              CPK: {cpkValue !== null && cpkValue !== undefined ? cpkValue.toFixed(2) : 'N/A'}
+                            </div>
+                          );
+                        })()}
                       </div>
                       
                       {/* Arrow connector */}
@@ -509,6 +622,26 @@ export default function SpcPlanVisualization() {
               </Button>
             </div>
 
+            {/* Export button */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Download className="h-4 w-4 mr-1" />
+                  Xuất
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => handleExportPNG()}>
+                  <FileImage className="h-4 w-4 mr-2" />
+                  Xuất PNG
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExportPDF()}>
+                  <FileText className="h-4 w-4 mr-2" />
+                  Xuất PDF
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
             {/* Config button */}
             <Button variant="outline" size="sm" onClick={() => setShowConfigDialog(true)}>
               <Settings2 className="h-4 w-4 mr-1" />
@@ -576,6 +709,7 @@ export default function SpcPlanVisualization() {
         </div>
 
         {/* Main content */}
+        <div id="spc-visualization-content">
         {viewMode === "hierarchy" ? (
           <div className="space-y-6">
             {(selectedLineId 
@@ -586,6 +720,7 @@ export default function SpcPlanVisualization() {
         ) : (
           renderGridView()
         )}
+        </div>
 
         {/* Config Dialog */}
         <Dialog open={showConfigDialog} onOpenChange={setShowConfigDialog}>

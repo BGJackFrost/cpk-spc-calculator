@@ -50,6 +50,15 @@ export default function SeedDataPage() {
     },
   });
 
+  const seedRulesMutation = trpc.seed.seedRules.useMutation({
+    onSuccess: () => {
+      toast.success("Đã khởi tạo SPC/CA/CPK Rules mặc định thành công");
+    },
+    onError: (error) => {
+      toast.error(`Lỗi: ${error.message}`);
+    },
+  });
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -154,6 +163,44 @@ export default function SeedDataPage() {
             </CardContent>
           </Card>
 
+          {/* Seed Rules */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="h-5 w-5 text-purple-500" />
+                Khởi tạo Rules
+              </CardTitle>
+              <CardDescription>
+                Tạo 8 SPC Rules (Western Electric), 4 CA Rules, 5 CPK Rules mặc định
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Button
+                onClick={() => seedRulesMutation.mutate()}
+                disabled={seedRulesMutation.isPending}
+                className="w-full"
+                variant="outline"
+              >
+                {seedRulesMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Đang khởi tạo...
+                  </>
+                ) : (
+                  <>
+                    <Play className="mr-2 h-4 w-4" />
+                    Khởi tạo Rules
+                  </>
+                )}
+              </Button>
+              <div className="text-sm text-muted-foreground">
+                <p>• 8 SPC Rules (Western Electric)</p>
+                <p>• 4 CA Rules (độ chính xác)</p>
+                <p>• 5 CPK Rules (năng lực quy trình)</p>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Run All Seeds */}
           <Card>
             <CardHeader>
@@ -162,7 +209,7 @@ export default function SeedDataPage() {
                 Chạy Tất cả
               </CardTitle>
               <CardDescription>
-                Chạy tất cả các seed cùng một lúc (quyền + dữ liệu mẫu)
+                Chạy tất cả các seed cùng một lúc (quyền + dữ liệu mẫu + rules)
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">

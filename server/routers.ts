@@ -743,6 +743,32 @@ const spcRouter = router({
       return await getSpcRealtimeDataByPlanPaginated(input.planId, input.page, input.pageSize);
     }),
 
+  // Lấy dữ liệu realtime cho nhiều plans cùng lúc
+  getRealtimeDataMultiple: protectedProcedure
+    .input(z.object({
+      planIds: z.array(z.number()),
+    }))
+    .query(async ({ input }) => {
+      const result: Record<number, { cpk: number | null; mean: number | null; stdDev: number | null; sampleCount: number; lastUpdated: Date | null; status: string }> = {};
+      for (const planId of input.planIds) {
+        // Get summary stats instead of realtime data for CPK/Mean
+        const stats = await getSpcSummaryStatsByPlan(planId, "day");
+        if (stats && stats.length > 0) {
+          const latest = stats[0];
+          const cpkValue = latest.cpk ? latest.cpk / 1000 : null;
+          result[planId] = {
+            cpk: cpkValue,
+            mean: latest.mean ? latest.mean / 10000 : null,
+            stdDev: latest.stdDev ? latest.stdDev / 10000 : null,
+            sampleCount: latest.sampleCount || 0,
+            lastUpdated: latest.periodEnd,
+            status: cpkValue === null ? "unknown" : cpkValue >= 1.33 ? "good" : cpkValue >= 1.0 ? "acceptable" : "poor",
+          };
+        }
+      }
+      return result;
+    }),
+
   // Lấy thống kê tổng hợp theo plan
   getSummaryStats: protectedProcedure
     .input(z.object({
@@ -1692,6 +1718,11 @@ export const appRouter = router({
       const { runAllSeeds } = await import("./seedData");
       await runAllSeeds();
       return { success: true };
+    }),
+    seedRules: protectedProcedure.mutation(async () => {
+      const { seedAllDefaultRules } = await import("./db");
+      await seedAllDefaultRules();
+      return { success: true, message: "Đã khởi tạo SPC/CA/CPK Rules mặc định" };
     }),
   }),
 
