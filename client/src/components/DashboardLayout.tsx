@@ -135,7 +135,6 @@ const menuGroups: MenuGroup[] = [
     icon: ShieldCheck,
     items: [
       { icon: Settings, labelKey: "common.settings", path: "/settings" },
-      { icon: Database, labelKey: "nav.connectionManager", path: "/connection-manager", adminOnly: true },
       { icon: Database, labelKey: "nav.databaseSettings", path: "/database-setting", adminOnly: true },
       { icon: FolderClock, labelKey: "nav.backupHistory", path: "/backup-history", adminOnly: true },
       { icon: Building2, labelKey: "nav.companyInfo", path: "/company-info", adminOnly: true },

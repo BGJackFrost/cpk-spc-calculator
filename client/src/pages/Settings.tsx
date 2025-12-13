@@ -236,6 +236,10 @@ export default function Settings() {
               <Database className="h-4 w-4" />
               Database Connections
             </TabsTrigger>
+            <TabsTrigger value="explorer" className="gap-2">
+              <Database className="h-4 w-4" />
+              Khám phá dữ liệu
+            </TabsTrigger>
             <TabsTrigger value="alerts" className="gap-2">
               <Bell className="h-4 w-4" />
               Cảnh báo
@@ -522,6 +526,31 @@ export default function Settings() {
                       updateAlertMutation.mutate({ notifyOwner: checked ? 1 : 0 });
                     }}
                   />
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Explorer Tab - Link to ConnectionManager */}
+          <TabsContent value="explorer">
+            <Card className="bg-card rounded-xl border border-border/50 shadow-md hover:shadow-lg transition-all duration-300">
+              <CardHeader>
+                <CardTitle>Khám phá dữ liệu Database</CardTitle>
+                <CardDescription>
+                  Xem cấu trúc và dữ liệu từ các kết nối database đã cấu hình
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="text-center py-8">
+                  <Database className="h-16 w-16 text-primary mx-auto mb-4" />
+                  <h3 className="text-lg font-medium mb-2">Quản lý Kết nối Database</h3>
+                  <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+                    Truy cập trang Quản lý kết nối để xem danh sách bảng, cấu trúc và dữ liệu từ các database đã kết nối.
+                  </p>
+                  <Button onClick={() => window.location.href = '/connection-manager'}>
+                    <Database className="mr-2 h-4 w-4" />
+                    Mở Quản lý Kết nối
+                  </Button>
                 </div>
               </CardContent>
             </Card>

@@ -1131,3 +1131,6 @@
 - [x] Fix lỗi "databaseTypes.map is not a function" trong ConnectionManager.tsx
 
 - [x] Thêm menu "Quản lý Database" cho /database-setting vào sidebar
+
+- [x] Gộp trang /settings và /connection-manager thành một trang với tabs
+- [x] Sửa lỗi 404 khi truy cập /database-setting

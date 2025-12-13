@@ -58,6 +58,7 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/setup" component={SystemSetup} />
       <Route path="/database-settings" component={DatabaseSettings} />
+      <Route path="/database-setting" component={DatabaseSettings} />
       <Route path="/connection-manager" component={ConnectionManager} />
       <Route path="/company-info" component={CompanyInfo} />
       <Route path="/local-login" component={LocalLogin} />
