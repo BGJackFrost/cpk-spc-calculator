@@ -1129,3 +1129,5 @@
 ## Bug Fixes - Phase 42
 
 - [x] Fix lỗi "databaseTypes.map is not a function" trong ConnectionManager.tsx
+
+- [x] Thêm menu "Quản lý Database" cho /database-setting vào sidebar
