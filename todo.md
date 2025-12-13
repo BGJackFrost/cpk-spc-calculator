@@ -1164,3 +1164,5 @@
 ## Bug Fixes - Phase 46
 
 - [x] Fix lỗi không xem được bảng mẫu trong Database Explorer
+
+- [x] Fix lỗi validation databaseType - thêm "internal" vào z.enum

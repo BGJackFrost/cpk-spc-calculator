@@ -320,7 +320,7 @@ const databaseConnectionRouter = router({
   create: adminProcedure
     .input(z.object({
       name: z.string().min(1),
-      databaseType: z.enum(["mysql", "sqlserver", "oracle", "postgres", "access", "excel"]),
+      databaseType: z.enum(["mysql", "sqlserver", "oracle", "postgres", "access", "excel", "internal"]),
       host: z.string().optional(),
       port: z.number().optional(),
       database: z.string().optional(),
@@ -340,7 +340,7 @@ const databaseConnectionRouter = router({
     .input(z.object({
       id: z.number(),
       name: z.string().min(1).optional(),
-      databaseType: z.enum(["mysql", "sqlserver", "oracle", "postgres", "access", "excel"]).optional(),
+      databaseType: z.enum(["mysql", "sqlserver", "oracle", "postgres", "access", "excel", "internal"]).optional(),
       host: z.string().optional(),
       port: z.number().optional(),
       database: z.string().optional(),
@@ -367,7 +367,7 @@ const databaseConnectionRouter = router({
   // Test kết nối mới (chưa lưu)
   testConnection: adminProcedure
     .input(z.object({
-      databaseType: z.enum(["mysql", "sqlserver", "oracle", "postgres", "access", "excel"]),
+      databaseType: z.enum(["mysql", "sqlserver", "oracle", "postgres", "access", "excel", "internal"]),
       host: z.string().optional(),
       port: z.number().optional(),
       database: z.string().optional(),
