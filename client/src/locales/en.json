@@ -121,6 +121,8 @@
     "exportPdf": "Export PDF",
     "exportExcel": "Export Excel",
     "aiAnalysis": "AI Analysis",
+    "aiAnalysisComplete": "AI analysis complete!",
+    "aiAnalysisError": "Cannot analyze",
     "manualInput": "Manual Input",
     "fromDatabase": "From Database",
     "cpkStatus": {
@@ -205,7 +207,11 @@
     "activateLicense": "Activate License",
     "enterLicenseKey": "Enter License Key",
     "activate": "Activate",
-    "deactivate": "Deactivate"
+    "deactivate": "Deactivate",
+    "expired": "Expired",
+    "active": "Active",
+    "notActivated": "Not activated",
+    "noActiveLicense": "No license activated"
   },
   "alerts": {
     "cpkWarning": "Warning: CPK below threshold!",

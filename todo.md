@@ -710,3 +710,30 @@
 - [x] Tạo service gửi webhook notifications
 - [x] Tích hợp webhook vào quy trình phân tích SPC khi có cảnh báo CPK
 - [x] Hỗ trợ Slack và Microsoft Teams
+
+
+## Bug Fixes - Phase 24.1
+
+### Lỗi hệ thống treo khi thay đổi ngôn ngữ
+- [ ] Kiểm tra và sửa lỗi LanguageContext/LanguageSwitcher
+- [ ] Test lại chức năng thay đổi ngôn ngữ
+
+### Rà soát hệ thống
+- [ ] Rà soát toàn bộ chức năng hiện tại
+- [ ] Cập nhật UPGRADE_PLAN.md với tiến độ mới nhất
+- [ ] Đưa ra kế hoạch hoàn thiện hệ thống
+
+
+## Phase 24.2 - Tích hợp đa ngôn ngữ vào các trang
+
+### Dashboard
+- [x] Cập nhật Dashboard.tsx để sử dụng translations
+- [x] Cập nhật LicenseStatusWidget để sử dụng translations
+
+### Analyze
+- [x] Cập nhật Analyze.tsx để sử dụng translations
+
+### Các trang khác
+- [x] Cập nhật SpcReport.tsx để sử dụng translations
+- [x] Cập nhật History.tsx để sử dụng translations
+- [x] Cập nhật các trang quản lý để sử dụng translations (cơ bản)

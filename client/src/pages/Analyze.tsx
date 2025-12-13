@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -91,6 +92,7 @@ interface Mapping {
 }
 
 export default function Analyze() {
+  const { t, language } = useLanguage();
   const [analysisMode, setAnalysisMode] = useState<"mapping" | "manual" | "spcplan">("mapping");
   const [selectedProduct, setSelectedProduct] = useState<string>("");
   const [selectedStation, setSelectedStation] = useState<string>("");
@@ -155,9 +157,9 @@ export default function Analyze() {
     onSuccess: (data) => {
       setResult(data);
       if (data.alertTriggered) {
-        toast.warning("Cảnh báo: CPK dưới ngưỡng cho phép!");
+        toast.warning(t.alerts?.cpkWarning || "Cảnh báo: CPK dưới ngưỡng cho phép!");
       } else {
-        toast.success("Phân tích hoàn tất!");
+        toast.success(t.alerts?.analysisComplete || "Phân tích hoàn tất!");
       }
     },
     onError: (error) => {
@@ -168,10 +170,10 @@ export default function Analyze() {
   const exportPdfMutation = trpc.export.pdfEnhanced.useMutation({
     onSuccess: (data) => {
       downloadFile(data.content, data.filename, data.mimeType);
-      toast.success("Đã xuất báo cáo PDF!");
+      toast.success(t.export?.exportSuccess || "Đã xuất báo cáo PDF!");
     },
     onError: (error) => {
-      toast.error("Lỗi xuất file: " + error.message);
+      toast.error((t.export?.exportError || "Lỗi xuất file") + ": " + error.message);
     },
   });
 
@@ -193,20 +195,20 @@ export default function Analyze() {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      toast.success("Đã xuất file Excel!");
+      toast.success(t.export?.exportSuccess || "Đã xuất file Excel!");
     },
     onError: (error) => {
-      toast.error("Lỗi xuất file: " + error.message);
+      toast.error((t.export?.exportError || "Lỗi xuất file") + ": " + error.message);
     },
   });
 
   const llmMutation = trpc.spc.llmAnalysis.useMutation({
     onSuccess: (data) => {
       setLlmAnalysis(typeof data.analysis === 'string' ? data.analysis : "");
-      toast.success("Phân tích AI hoàn tất!");
+      toast.success(t.analyze?.aiAnalysisComplete || "Phân tích AI hoàn tất!");
     },
     onError: (error) => {
-      toast.error("Không thể phân tích: " + error.message);
+      toast.error((t.analyze?.aiAnalysisError || "Không thể phân tích") + ": " + error.message);
     },
   });
 

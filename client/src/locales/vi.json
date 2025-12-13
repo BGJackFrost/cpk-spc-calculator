@@ -121,6 +121,8 @@
     "exportPdf": "Xuất PDF",
     "exportExcel": "Xuất Excel",
     "aiAnalysis": "Phân tích AI",
+    "aiAnalysisComplete": "Phân tích AI hoàn tất!",
+    "aiAnalysisError": "Không thể phân tích",
     "manualInput": "Nhập thủ công",
     "fromDatabase": "Từ Database",
     "cpkStatus": {
@@ -205,7 +207,11 @@
     "activateLicense": "Kích hoạt License",
     "enterLicenseKey": "Nhập License Key",
     "activate": "Kích hoạt",
-    "deactivate": "Hủy kích hoạt"
+    "deactivate": "Hủy kích hoạt",
+    "expired": "Đã hết hạn",
+    "active": "Đang hoạt động",
+    "notActivated": "Chưa kích hoạt",
+    "noActiveLicense": "Chưa có license nào được kích hoạt"
   },
   "alerts": {
     "cpkWarning": "Cảnh báo: CPK dưới ngưỡng cho phép!",

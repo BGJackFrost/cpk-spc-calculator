@@ -3,11 +3,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { Key, AlertTriangle, CheckCircle, Clock, Users, Factory, FileText, ExternalLink } from "lucide-react";
 import { Link } from "wouter";
 
 export function LicenseStatusWidget() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const isAdmin = user?.role === "admin";
   
   const { data: activeLicense, isLoading } = trpc.license.getActive.useQuery();
@@ -38,10 +40,10 @@ export function LicenseStatusWidget() {
   };
 
   const getStatusText = () => {
-    if (isExpired) return "Đã hết hạn";
-    if (isExpiringSoon) return `Còn ${daysUntilExpiry} ngày`;
-    if (!activeLicense) return "Chưa kích hoạt";
-    return "Đang hoạt động";
+    if (isExpired) return t.license?.expired || "Đã hết hạn";
+    if (isExpiringSoon) return `${t.license?.daysRemaining || "Còn"} ${daysUntilExpiry} ${t.license?.days || "ngày"}`;
+    if (!activeLicense) return t.license?.notActivated || "Chưa kích hoạt";
+    return t.license?.active || "Đang hoạt động";
   };
 
   const getLicenseTypeLabel = (type: string) => {
@@ -60,7 +62,7 @@ export function LicenseStatusWidget() {
         <CardTitle className="flex items-center justify-between text-sm font-medium">
           <div className="flex items-center gap-2">
             <Key className="h-4 w-4" />
-            Trạng thái License
+            {t.dashboard?.licenseStatus || "Trạng thái License"}
           </div>
           {getStatusIcon()}
         </CardTitle>
@@ -69,20 +71,20 @@ export function LicenseStatusWidget() {
         {activeLicense ? (
           <>
             <div className="flex items-center justify-between">
-              <span className="text-xs opacity-70">Loại</span>
+              <span className="text-xs opacity-70">{t.license?.type || "Loại"}</span>
               <Badge variant="outline" className="text-xs">
                 {getLicenseTypeLabel(activeLicense.licenseType)}
               </Badge>
             </div>
             
             <div className="flex items-center justify-between">
-              <span className="text-xs opacity-70">Trạng thái</span>
+              <span className="text-xs opacity-70">{t.common?.status || "Trạng thái"}</span>
               <span className="text-xs font-medium">{getStatusText()}</span>
             </div>
 
             {activeLicense.expiresAt && (
               <div className="flex items-center justify-between">
-                <span className="text-xs opacity-70">Hết hạn</span>
+                <span className="text-xs opacity-70">{t.license?.expiresAt || "Hết hạn"}</span>
                 <span className="text-xs font-medium">
                   {new Date(activeLicense.expiresAt).toLocaleDateString("vi-VN")}
                 </span>
@@ -115,14 +117,14 @@ export function LicenseStatusWidget() {
           </>
         ) : (
           <div className="text-center py-2">
-            <p className="text-xs opacity-70 mb-2">Chưa có license nào được kích hoạt</p>
+            <p className="text-xs opacity-70 mb-2">{t.license?.noActiveLicense || "Chưa có license nào được kích hoạt"}</p>
           </div>
         )}
 
         <Link href="/license-management">
           <Button variant="outline" size="sm" className="w-full text-xs">
             <ExternalLink className="h-3 w-3 mr-1" />
-            Quản lý License
+            {t.dashboard?.manageLicense || "Quản lý License"}
           </Button>
         </Link>
       </CardContent>

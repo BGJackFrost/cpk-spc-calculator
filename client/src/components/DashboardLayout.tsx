@@ -65,9 +65,8 @@ const menuItemsConfig = [
   { icon: Webhook, labelKey: "nav.webhookManagement", path: "/webhooks", adminOnly: true },
 ];
 
-// Fallback labels for keys not in translation files
-const fallbackLabels: Record<string, string> = {
-  "nav.webhookManagement": "Webhook Management",
+// Fallback labels for keys not in translation files (by language)
+const fallbackLabelsVi: Record<string, string> = {
   "productionLine": "Quản lý Dây chuyền",
   "workstation": "Quản lý Công trạm",
   "machine": "Quản lý Máy",
@@ -79,6 +78,20 @@ const fallbackLabels: Record<string, string> = {
   "permission": "Phân quyền",
   "smtpConfig": "Cấu hình SMTP",
   "seedData": "Khởi tạo Dữ liệu",
+};
+
+const fallbackLabelsEn: Record<string, string> = {
+  "productionLine": "Production Line Management",
+  "workstation": "Workstation Management",
+  "machine": "Machine Management",
+  "machineType": "Machine Type",
+  "fixture": "Fixture Management",
+  "process": "Process Management",
+  "samplingMethod": "Sampling Method",
+  "emailNotification": "Email Notification",
+  "permission": "Permissions",
+  "smtpConfig": "SMTP Configuration",
+  "seedData": "Seed Data",
 };
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
@@ -161,12 +174,13 @@ function DashboardLayoutContent({
   const isCollapsed = state === "collapsed";
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
-  const { translate, t } = useLanguage();
+  const { translate, t, language } = useLanguage();
   
-  // Get label for menu item
+  // Get label for menu item based on current language
   const getLabel = (labelKey: string) => {
     const translated = translate(labelKey);
     if (translated !== labelKey) return translated;
+    const fallbackLabels = language === 'en' ? fallbackLabelsEn : fallbackLabelsVi;
     return fallbackLabels[labelKey] || labelKey;
   };
   
@@ -282,9 +296,7 @@ function DashboardLayoutContent({
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem className="cursor-pointer">
-                  <LanguageSwitcher variant="full" className="w-full border-0 justify-start px-0 h-auto" />
-                </DropdownMenuItem>
+                <LanguageSwitcher variant="inline" className="px-1 py-1" />
                 <DropdownMenuItem
                   onClick={logout}
                   className="cursor-pointer text-destructive focus:text-destructive"

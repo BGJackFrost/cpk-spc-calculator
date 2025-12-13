@@ -1,6 +1,7 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import * as XLSX from "xlsx";
 import DashboardLayout from "@/components/DashboardLayout";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -42,6 +43,7 @@ import {
 } from "recharts";
 
 export default function SpcReport() {
+  const { t } = useLanguage();
   const [dateRange, setDateRange] = useState<"7" | "14" | "30" | "90">("30");
   const [isExporting, setIsExporting] = useState(false);
 
@@ -61,7 +63,7 @@ export default function SpcReport() {
   const handleRefresh = () => {
     refetchTrend();
     refetchReport();
-    toast.success("Đã làm mới dữ liệu báo cáo");
+    toast.success(t.common?.refresh || "Đã làm mới dữ liệu báo cáo");
   };
 
   // Export Excel mutation
@@ -93,10 +95,10 @@ export default function SpcReport() {
       // Download file
       const fileName = `bao-cao-spc-${new Date().toISOString().split('T')[0]}.xlsx`;
       XLSX.writeFile(wb, fileName);
-      toast.success("Xuất Excel thành công!");
+      toast.success(t.export?.exportSuccess || "Xuất Excel thành công!");
     },
     onError: (error) => {
-      toast.error("Lỗi xuất Excel: " + error.message);
+      toast.error((t.export?.exportError || "Lỗi xuất Excel") + ": " + error.message);
     },
   });
 

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -19,6 +20,7 @@ import {
 import { Pagination } from "@/components/Pagination";
 
 export default function History() {
+  const { t } = useLanguage();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [productCodeFilter, setProductCodeFilter] = useState("");
@@ -62,10 +64,10 @@ export default function History() {
   const getCpkBadge = (cpk: number | null) => {
     if (cpk === null) return <Badge variant="secondary">N/A</Badge>;
     const cpkValue = cpk / 1000;
-    if (cpkValue >= 1.67) return <Badge className="bg-chart-3 text-white">Xuất sắc ({cpkValue.toFixed(3)})</Badge>;
-    if (cpkValue >= 1.33) return <Badge className="bg-chart-2 text-white">Tốt ({cpkValue.toFixed(3)})</Badge>;
-    if (cpkValue >= 1.0) return <Badge className="bg-warning text-warning-foreground">Chấp nhận ({cpkValue.toFixed(3)})</Badge>;
-    return <Badge variant="destructive">Không đạt ({cpkValue.toFixed(3)})</Badge>;
+    if (cpkValue >= 1.67) return <Badge className="bg-chart-3 text-white">{t.analyze?.cpkStatus?.excellent || "Xuất sắc"} ({cpkValue.toFixed(3)})</Badge>;
+    if (cpkValue >= 1.33) return <Badge className="bg-chart-2 text-white">{t.analyze?.cpkStatus?.good || "Tốt"} ({cpkValue.toFixed(3)})</Badge>;
+    if (cpkValue >= 1.0) return <Badge className="bg-warning text-warning-foreground">{t.analyze?.cpkStatus?.acceptable || "Chấp nhận"} ({cpkValue.toFixed(3)})</Badge>;
+    return <Badge variant="destructive">{t.analyze?.cpkStatus?.poor || "Không đạt"} ({cpkValue.toFixed(3)})</Badge>;
   };
 
   const hasFilters = appliedFilters.productCode || appliedFilters.stationName;
