@@ -3,6 +3,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { triggerLicenseExpiryCheck } from "./scheduledJobs";
 import { triggerWebhooks, testWebhook } from "./webhookService";
+import { storagePut } from "./storage";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
@@ -1485,6 +1486,16 @@ const exportRouter = router({
       const html = generatePdfHtml(exportData);
       const filename = `spc_report_${input.productCode}_${Date.now()}.html`;
       
+      // Upload to S3
+      let fileUrl: string | null = null;
+      try {
+        const s3Key = `exports/pdf/${ctx.user.id}/${filename}`;
+        const { url } = await storagePut(s3Key, html, 'text/html');
+        fileUrl = url;
+      } catch (error) {
+        console.error('Failed to upload PDF to S3:', error);
+      }
+      
       // Save to export history
       await createExportHistory({
         userId: ctx.user.id,
@@ -1499,9 +1510,10 @@ const exportRouter = router({
         cpk: input.spcResult.cpk ? Math.round(input.spcResult.cpk * 10000) : null,
         fileName: filename,
         fileSize: html.length,
+        fileUrl: fileUrl,
       });
       
-      return { content: html, filename, mimeType: "text/html" };
+      return { content: html, filename, mimeType: "text/html", fileUrl };
     }),
 
   // Enhanced Excel export with multiple sheets
@@ -1569,6 +1581,16 @@ const exportRouter = router({
       const base64 = buffer.toString("base64");
       const filename = `spc_report_${input.productCode}_${Date.now()}.xlsx`;
       
+      // Upload to S3
+      let fileUrl: string | null = null;
+      try {
+        const s3Key = `exports/excel/${ctx.user.id}/${filename}`;
+        const { url } = await storagePut(s3Key, buffer, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        fileUrl = url;
+      } catch (error) {
+        console.error('Failed to upload Excel to S3:', error);
+      }
+      
       // Save to export history
       await createExportHistory({
         userId: ctx.user.id,
@@ -1583,13 +1605,15 @@ const exportRouter = router({
         cpk: input.spcResult.cpk ? Math.round(input.spcResult.cpk * 10000) : null,
         fileName: filename,
         fileSize: buffer.length,
+        fileUrl: fileUrl,
       });
       
       return { 
         content: base64, 
         filename, 
         mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        isBase64: true
+        isBase64: true,
+        fileUrl
       };
     }),
 
@@ -1648,6 +1672,108 @@ const exportRouter = router({
       };
       const csv = generateEnhancedCsv(exportData);
       return { content: csv, filename: `spc_report_${input.productCode}_${Date.now()}.csv`, mimeType: "text/csv" };
+    }),
+
+  // Send report via email
+  sendReportEmail: protectedProcedure
+    .input(z.object({
+      recipientEmail: z.string().email(),
+      productCode: z.string(),
+      stationName: z.string(),
+      reportType: z.enum(["pdf", "excel"]),
+      fileUrl: z.string().optional(),
+      spcResult: z.object({
+        sampleCount: z.number(),
+        mean: z.number(),
+        stdDev: z.number(),
+        cpk: z.number().nullable(),
+        cp: z.number().nullable(),
+      }),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const { sendEmail } = await import("./emailService");
+      
+      const cpkValue = input.spcResult.cpk ? input.spcResult.cpk.toFixed(2) : 'N/A';
+      const cpValue = input.spcResult.cp ? input.spcResult.cp.toFixed(2) : 'N/A';
+      
+      const subject = `[SPC/CPK Report] ${input.productCode} - ${input.stationName}`;
+      
+      const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: #1a56db; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+    .content { background: #f9fafb; padding: 20px; border: 1px solid #e5e7eb; }
+    .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 20px 0; }
+    .stat-box { background: white; padding: 15px; border-radius: 8px; border: 1px solid #e5e7eb; }
+    .stat-label { font-size: 12px; color: #6b7280; text-transform: uppercase; }
+    .stat-value { font-size: 24px; font-weight: bold; color: #1a56db; }
+    .cpk-good { color: #10b981; }
+    .cpk-warning { color: #f59e0b; }
+    .cpk-bad { color: #ef4444; }
+    .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 12px; }
+    .download-btn { display: inline-block; background: #1a56db; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-top: 15px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>SPC/CPK Analysis Report</h1>
+      <p>${input.productCode} - ${input.stationName}</p>
+    </div>
+    <div class="content">
+      <h2>Analysis Summary</h2>
+      <div class="stats">
+        <div class="stat-box">
+          <div class="stat-label">Sample Count</div>
+          <div class="stat-value">${input.spcResult.sampleCount}</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Mean</div>
+          <div class="stat-value">${input.spcResult.mean.toFixed(4)}</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Std Dev</div>
+          <div class="stat-value">${input.spcResult.stdDev.toFixed(4)}</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">CPK</div>
+          <div class="stat-value ${input.spcResult.cpk && input.spcResult.cpk >= 1.33 ? 'cpk-good' : input.spcResult.cpk && input.spcResult.cpk >= 1.0 ? 'cpk-warning' : 'cpk-bad'}">${cpkValue}</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">CP</div>
+          <div class="stat-value">${cpValue}</div>
+        </div>
+      </div>
+      ${input.fileUrl ? `
+      <p>You can download the full ${input.reportType.toUpperCase()} report using the link below:</p>
+      <a href="${input.fileUrl}" class="download-btn">Download ${input.reportType.toUpperCase()} Report</a>
+      ` : ''}
+    </div>
+    <div class="footer">
+      <p>This report was generated by SPC/CPK Calculator</p>
+      <p>Sent by: ${ctx.user.name || ctx.user.email || 'Unknown'}</p>
+      <p>Generated at: ${new Date().toLocaleString('vi-VN')}</p>
+    </div>
+  </div>
+</body>
+</html>
+      `;
+      
+      const result = await sendEmail(input.recipientEmail, subject, html);
+      
+      if (!result.success) {
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: result.error || 'Failed to send email',
+        });
+      }
+      
+      return { success: true, message: `Report sent to ${input.recipientEmail}` };
     }),
 });
 

@@ -800,3 +800,23 @@
 - [x] Thêm thống kê số lượng PDF/Excel đã xuất
 - [x] Thêm chức năng xóa bản ghi
 - [x] Thêm route và menu sidebar
+
+
+## Phase 28 - S3 Storage, Bộ lọc và Email báo cáo
+
+### Lưu file lên S3
+- [x] Cập nhật pdfEnhanced để lưu file HTML lên S3
+- [x] Cập nhật excelEnhanced để lưu file Excel lên S3
+- [x] Cập nhật export_history với fileUrl từ S3
+- [x] Cho phép tải lại file từ lịch sử
+
+### Bộ lọc nâng cao
+- [x] Thêm bộ lọc theo ngày (từ ngày - đến ngày)
+- [x] Thêm bộ lọc theo loại file (PDF/Excel)
+- [x] Thêm bộ lọc theo mã sản phẩm
+- [x] Cập nhật UI ExportHistory với bộ lọc client-side
+
+### Email báo cáo
+- [x] Thêm nút gửi email trong trang Analyze (cả 3 tabs)
+- [x] Tạo mutation sendReportEmail trong exportRouter
+- [x] Tạo dialog nhập địa chỉ email với template HTML chuyên nghiệp

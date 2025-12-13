@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import { useLanguage } from "@/contexts/LanguageContext";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -7,6 +7,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -18,13 +27,20 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { FileText, FileSpreadsheet, Trash2, Download, BarChart3, RefreshCw } from "lucide-react";
+import { FileText, FileSpreadsheet, Trash2, Download, BarChart3, RefreshCw, Filter, X, Calendar, Search } from "lucide-react";
 
 export default function ExportHistory() {
   const { t, language } = useLanguage();
   const [deleteId, setDeleteId] = useState<number | null>(null);
+  
+  // Filter states
+  const [filterType, setFilterType] = useState<string>("all");
+  const [filterProductCode, setFilterProductCode] = useState<string>("");
+  const [filterDateFrom, setFilterDateFrom] = useState<string>("");
+  const [filterDateTo, setFilterDateTo] = useState<string>("");
+  const [showFilters, setShowFilters] = useState(false);
 
-  const { data: exports, isLoading, refetch } = trpc.exportHistory.list.useQuery({ limit: 100 });
+  const { data: exports, isLoading, refetch } = trpc.exportHistory.list.useQuery({ limit: 500 });
   const { data: stats } = trpc.exportHistory.stats.useQuery();
   
   const deleteMutation = trpc.exportHistory.delete.useMutation({
@@ -37,6 +53,57 @@ export default function ExportHistory() {
       toast.error(error.message);
     },
   });
+
+  // Filtered exports
+  const filteredExports = useMemo(() => {
+    if (!exports) return [];
+    
+    return exports.filter((record) => {
+      // Filter by type
+      if (filterType !== "all" && record.exportType !== filterType) {
+        return false;
+      }
+      
+      // Filter by product code
+      if (filterProductCode && record.productCode) {
+        if (!record.productCode.toLowerCase().includes(filterProductCode.toLowerCase())) {
+          return false;
+        }
+      } else if (filterProductCode && !record.productCode) {
+        return false;
+      }
+      
+      // Filter by date range
+      if (filterDateFrom) {
+        const fromDate = new Date(filterDateFrom);
+        fromDate.setHours(0, 0, 0, 0);
+        const recordDate = new Date(record.createdAt);
+        if (recordDate < fromDate) {
+          return false;
+        }
+      }
+      
+      if (filterDateTo) {
+        const toDate = new Date(filterDateTo);
+        toDate.setHours(23, 59, 59, 999);
+        const recordDate = new Date(record.createdAt);
+        if (recordDate > toDate) {
+          return false;
+        }
+      }
+      
+      return true;
+    });
+  }, [exports, filterType, filterProductCode, filterDateFrom, filterDateTo]);
+
+  const hasActiveFilters = filterType !== "all" || filterProductCode || filterDateFrom || filterDateTo;
+
+  const clearFilters = () => {
+    setFilterType("all");
+    setFilterProductCode("");
+    setFilterDateFrom("");
+    setFilterDateTo("");
+  };
 
   const formatDate = (date: Date | string | null) => {
     if (!date) return "-";
@@ -92,6 +159,16 @@ export default function ExportHistory() {
     return <Badge variant="secondary">{language === 'vi' ? label.vi : label.en}</Badge>;
   };
 
+  const handleDownload = (record: NonNullable<typeof exports>[0]) => {
+    if (record.fileUrl) {
+      window.open(record.fileUrl, '_blank');
+    } else {
+      toast.error(language === 'vi' 
+        ? 'File không còn khả dụng để tải xuống' 
+        : 'File is no longer available for download');
+    }
+  };
+
   const pdfCount = stats?.find(s => s.exportType === 'pdf')?.count || 0;
   const excelCount = stats?.find(s => s.exportType === 'excel')?.count || 0;
 
@@ -110,14 +187,109 @@ export default function ExportHistory() {
                 : 'View and manage exported reports'}
             </p>
           </div>
-          <Button variant="outline" onClick={() => refetch()}>
-            <RefreshCw className="h-4 w-4 mr-2" />
-            {language === 'vi' ? 'Làm mới' : 'Refresh'}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button 
+              variant={showFilters ? "default" : "outline"} 
+              onClick={() => setShowFilters(!showFilters)}
+            >
+              <Filter className="h-4 w-4 mr-2" />
+              {language === 'vi' ? 'Bộ lọc' : 'Filters'}
+              {hasActiveFilters && (
+                <Badge variant="secondary" className="ml-2 h-5 w-5 p-0 flex items-center justify-center">
+                  !
+                </Badge>
+              )}
+            </Button>
+            <Button variant="outline" onClick={() => refetch()}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              {language === 'vi' ? 'Làm mới' : 'Refresh'}
+            </Button>
+          </div>
         </div>
 
+        {/* Filters Panel */}
+        {showFilters && (
+          <Card>
+            <CardHeader className="pb-4">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg">
+                  {language === 'vi' ? 'Bộ lọc nâng cao' : 'Advanced Filters'}
+                </CardTitle>
+                {hasActiveFilters && (
+                  <Button variant="ghost" size="sm" onClick={clearFilters}>
+                    <X className="h-4 w-4 mr-1" />
+                    {language === 'vi' ? 'Xóa bộ lọc' : 'Clear filters'}
+                  </Button>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                {/* File Type Filter */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    {language === 'vi' ? 'Loại file' : 'File Type'}
+                  </Label>
+                  <Select value={filterType} onValueChange={setFilterType}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">
+                        {language === 'vi' ? 'Tất cả' : 'All'}
+                      </SelectItem>
+                      <SelectItem value="pdf">PDF</SelectItem>
+                      <SelectItem value="excel">Excel</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Product Code Filter */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <Search className="h-4 w-4" />
+                    {language === 'vi' ? 'Mã sản phẩm' : 'Product Code'}
+                  </Label>
+                  <Input
+                    placeholder={language === 'vi' ? 'Tìm kiếm...' : 'Search...'}
+                    value={filterProductCode}
+                    onChange={(e) => setFilterProductCode(e.target.value)}
+                  />
+                </div>
+
+                {/* Date From Filter */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    {language === 'vi' ? 'Từ ngày' : 'From Date'}
+                  </Label>
+                  <Input
+                    type="date"
+                    value={filterDateFrom}
+                    onChange={(e) => setFilterDateFrom(e.target.value)}
+                  />
+                </div>
+
+                {/* Date To Filter */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    {language === 'vi' ? 'Đến ngày' : 'To Date'}
+                  </Label>
+                  <Input
+                    type="date"
+                    value={filterDateTo}
+                    onChange={(e) => setFilterDateTo(e.target.value)}
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -157,6 +329,24 @@ export default function ExportHistory() {
               </div>
             </CardContent>
           </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                {language === 'vi' ? 'Kết quả lọc' : 'Filtered Results'}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-2">
+                <Filter className="h-5 w-5 text-blue-500" />
+                <span className="text-2xl font-bold">{filteredExports.length}</span>
+                {hasActiveFilters && (
+                  <span className="text-sm text-muted-foreground">
+                    / {exports?.length || 0}
+                  </span>
+                )}
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Export History Table */}
@@ -167,6 +357,11 @@ export default function ExportHistory() {
               {language === 'vi' 
                 ? 'Các báo cáo SPC/CPK đã xuất gần đây' 
                 : 'Recently exported SPC/CPK reports'}
+              {hasActiveFilters && (
+                <span className="ml-2 text-primary">
+                  ({language === 'vi' ? 'Đang lọc' : 'Filtered'})
+                </span>
+              )}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -176,7 +371,7 @@ export default function ExportHistory() {
                   <Skeleton key={i} className="h-12 w-full" />
                 ))}
               </div>
-            ) : exports && exports.length > 0 ? (
+            ) : filteredExports && filteredExports.length > 0 ? (
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -188,11 +383,12 @@ export default function ExportHistory() {
                     <TableHead>CPK</TableHead>
                     <TableHead>{language === 'vi' ? 'Kích thước' : 'Size'}</TableHead>
                     <TableHead>{language === 'vi' ? 'Ngày xuất' : 'Exported'}</TableHead>
+                    <TableHead>{language === 'vi' ? 'Tải xuống' : 'Download'}</TableHead>
                     <TableHead className="text-right">{language === 'vi' ? 'Thao tác' : 'Actions'}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {exports.map((record) => (
+                  {filteredExports.map((record) => (
                     <TableRow key={record.id}>
                       <TableCell>{getExportTypeBadge(record.exportType)}</TableCell>
                       <TableCell className="font-medium">{record.productCode || '-'}</TableCell>
@@ -202,25 +398,31 @@ export default function ExportHistory() {
                       <TableCell>{getCpkBadge(record.cpk)}</TableCell>
                       <TableCell>{formatFileSize(record.fileSize)}</TableCell>
                       <TableCell>{formatDate(record.createdAt)}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          {record.fileUrl && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => window.open(record.fileUrl!, '_blank')}
-                            >
-                              <Download className="h-4 w-4" />
-                            </Button>
-                          )}
+                      <TableCell>
+                        {record.fileUrl ? (
                           <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setDeleteId(record.id)}
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDownload(record)}
+                            className="flex items-center gap-1"
                           >
-                            <Trash2 className="h-4 w-4 text-destructive" />
+                            <Download className="h-4 w-4" />
+                            {language === 'vi' ? 'Tải' : 'Download'}
                           </Button>
-                        </div>
+                        ) : (
+                          <Badge variant="secondary" className="text-xs">
+                            {language === 'vi' ? 'Không khả dụng' : 'Not available'}
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setDeleteId(record.id)}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -229,12 +431,23 @@ export default function ExportHistory() {
             ) : (
               <div className="text-center py-8 text-muted-foreground">
                 <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>{language === 'vi' ? 'Chưa có báo cáo nào được xuất' : 'No reports exported yet'}</p>
-                <p className="text-sm mt-2">
-                  {language === 'vi' 
-                    ? 'Xuất báo cáo từ trang Phân tích SPC/CPK để bắt đầu' 
-                    : 'Export reports from the SPC/CPK Analysis page to get started'}
-                </p>
+                {hasActiveFilters ? (
+                  <>
+                    <p>{language === 'vi' ? 'Không tìm thấy báo cáo phù hợp' : 'No matching reports found'}</p>
+                    <Button variant="link" onClick={clearFilters} className="mt-2">
+                      {language === 'vi' ? 'Xóa bộ lọc' : 'Clear filters'}
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <p>{language === 'vi' ? 'Chưa có báo cáo nào được xuất' : 'No reports exported yet'}</p>
+                    <p className="text-sm mt-2">
+                      {language === 'vi' 
+                        ? 'Xuất báo cáo từ trang Phân tích SPC/CPK để bắt đầu' 
+                        : 'Export reports from the SPC/CPK Analysis page to get started'}
+                    </p>
+                  </>
+                )}
               </div>
             )}
           </CardContent>

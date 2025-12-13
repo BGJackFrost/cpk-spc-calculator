@@ -26,7 +26,8 @@ import {
   FileSpreadsheet,
   FileText,
   Database,
-  Eye
+  Eye,
+  Mail
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -114,6 +115,10 @@ export default function Analyze() {
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
   const [showPdfPreview, setShowPdfPreview] = useState(false);
   const [pdfPreviewContent, setPdfPreviewContent] = useState<string>("");
+  const [showEmailDialog, setShowEmailDialog] = useState(false);
+  const [emailRecipient, setEmailRecipient] = useState<string>("");
+  const [lastExportedFileUrl, setLastExportedFileUrl] = useState<string | null>(null);
+  const [lastExportType, setLastExportType] = useState<"pdf" | "excel">("pdf");
 
   // Lấy danh sách products từ bảng products
   const { data: products } = trpc.product.list.useQuery();
@@ -174,6 +179,10 @@ export default function Analyze() {
   const exportPdfMutation = trpc.export.pdfEnhanced.useMutation({
     onSuccess: (data) => {
       downloadFile(data.content, data.filename, data.mimeType);
+      if (data.fileUrl) {
+        setLastExportedFileUrl(data.fileUrl);
+        setLastExportType("pdf");
+      }
       toast.success(t.export?.exportSuccess || "Đã xuất báo cáo PDF!");
     },
     onError: (error) => {
@@ -199,10 +208,25 @@ export default function Analyze() {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+      if (data.fileUrl) {
+        setLastExportedFileUrl(data.fileUrl);
+        setLastExportType("excel");
+      }
       toast.success(t.export?.exportSuccess || "Đã xuất file Excel!");
     },
     onError: (error) => {
       toast.error((t.export?.exportError || "Lỗi xuất file") + ": " + error.message);
+    },
+  });
+
+  const sendEmailMutation = trpc.export.sendReportEmail.useMutation({
+    onSuccess: (data) => {
+      toast.success(data.message || (language === 'vi' ? 'Đã gửi email thành công!' : 'Email sent successfully!'));
+      setShowEmailDialog(false);
+      setEmailRecipient("");
+    },
+    onError: (error) => {
+      toast.error(error.message);
     },
   });
 
@@ -784,6 +808,15 @@ export default function Analyze() {
                     <FileSpreadsheet className="mr-2 h-4 w-4" />
                     {language === 'vi' ? 'Xuất Excel' : 'Export Excel'}
                   </Button>
+
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setShowEmailDialog(true)}
+                    disabled={!result}
+                  >
+                    <Mail className="mr-2 h-4 w-4" />
+                    {language === 'vi' ? 'Gửi Email' : 'Send Email'}
+                  </Button>
                 </>
               )}
             </div>
@@ -928,6 +961,15 @@ export default function Analyze() {
                           <FileSpreadsheet className="mr-2 h-4 w-4" />
                           {language === 'vi' ? 'Xuất Excel' : 'Export Excel'}
                         </Button>
+
+                        <Button 
+                          variant="outline" 
+                          onClick={() => setShowEmailDialog(true)}
+                          disabled={!result}
+                        >
+                          <Mail className="mr-2 h-4 w-4" />
+                          {language === 'vi' ? 'Gửi Email' : 'Send Email'}
+                        </Button>
                       </>
                     )}
                   </div>
@@ -1027,6 +1069,15 @@ export default function Analyze() {
                         >
                           <FileSpreadsheet className="mr-2 h-4 w-4" />
                           {language === 'vi' ? 'Xuất Excel' : 'Export Excel'}
+                        </Button>
+
+                        <Button 
+                          variant="outline" 
+                          onClick={() => setShowEmailDialog(true)}
+                          disabled={!result}
+                        >
+                          <Mail className="mr-2 h-4 w-4" />
+                          {language === 'vi' ? 'Gửi Email' : 'Send Email'}
                         </Button>
                       </>
                     )}
@@ -1286,6 +1337,77 @@ export default function Analyze() {
             }}>
               <Download className="mr-2 h-4 w-4" />
               {language === 'vi' ? 'Tải PDF' : 'Download PDF'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Email Report Dialog */}
+      <Dialog open={showEmailDialog} onOpenChange={setShowEmailDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {language === 'vi' ? 'Gửi báo cáo qua Email' : 'Send Report via Email'}
+            </DialogTitle>
+            <DialogDescription>
+              {language === 'vi' 
+                ? 'Nhập địa chỉ email người nhận để gửi báo cáo phân tích SPC/CPK.'
+                : 'Enter recipient email address to send the SPC/CPK analysis report.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">
+                {language === 'vi' ? 'Địa chỉ Email' : 'Email Address'}
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="example@company.com"
+                value={emailRecipient}
+                onChange={(e) => setEmailRecipient(e.target.value)}
+              />
+            </div>
+            {lastExportedFileUrl && (
+              <div className="text-sm text-muted-foreground">
+                {language === 'vi' 
+                  ? `Sẽ gửi kèm link tải báo cáo ${lastExportType.toUpperCase()} đã xuất.`
+                  : `Will include download link for the exported ${lastExportType.toUpperCase()} report.`}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEmailDialog(false)}>
+              {language === 'vi' ? 'Hủy' : 'Cancel'}
+            </Button>
+            <Button 
+              onClick={() => {
+                if (!emailRecipient || !result) return;
+                sendEmailMutation.mutate({
+                  recipientEmail: emailRecipient,
+                  productCode: selectedProduct || 'Manual',
+                  stationName: workstations?.find((w: { id: number; name: string }) => w.id.toString() === selectedStation)?.name || 'Manual',
+                  reportType: lastExportType,
+                  fileUrl: lastExportedFileUrl || undefined,
+                  spcResult: {
+                    sampleCount: result.sampleCount,
+                    mean: result.mean,
+                    stdDev: result.stdDev,
+                    cpk: result.cpk,
+                    cp: result.cp,
+                  },
+                });
+              }}
+              disabled={!emailRecipient || sendEmailMutation.isPending}
+            >
+              {sendEmailMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {language === 'vi' ? 'Đang gửi...' : 'Sending...'}
+                </>
+              ) : (
+                language === 'vi' ? 'Gửi Email' : 'Send Email'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
