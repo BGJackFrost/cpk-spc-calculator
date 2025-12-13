@@ -110,6 +110,8 @@ export default function BackupHistory() {
   const [schedulerStatus, setSchedulerStatus] = useState<SchedulerStatus | null>(null);
   const [backupConfig, setBackupConfig] = useState<BackupConfig | null>(null);
   const [exportPreview, setExportPreview] = useState<{sections: {name: string; count: number; description: string}[]} | null>(null);
+  const [exportPreviewLoading, setExportPreviewLoading] = useState(true);
+  const [exportPreviewError, setExportPreviewError] = useState<string | null>(null);
 
   const pageSize = 20;
 
@@ -168,14 +170,24 @@ export default function BackupHistory() {
   };
 
   const fetchExportPreview = async () => {
+    setExportPreviewLoading(true);
+    setExportPreviewError(null);
     try {
       const response = await fetch('/api/trpc/settingsExport.preview');
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
       const data = await response.json();
       if (data.result?.data) {
         setExportPreview(data.result.data);
+      } else if (data.error) {
+        throw new Error(data.error.message || 'Lỗi tải dữ liệu preview');
       }
     } catch (error) {
       console.error("Error fetching export preview:", error);
+      setExportPreviewError(error instanceof Error ? error.message : 'Không thể tải dữ liệu preview');
+    } finally {
+      setExportPreviewLoading(false);
     }
   };
 
@@ -661,9 +673,55 @@ export default function BackupHistory() {
                     Bao gồm: Cấu hình hệ thống, thông tin công ty, cài đặt cảnh báo, 
                     danh sách sản phẩm, dây chuyền, máy móc, và mapping.
                   </div>
-                  {exportPreview && exportPreview.sections && exportPreview.sections.length > 0 && (
+                  
+                  {/* Loading State */}
+                  {exportPreviewLoading && (
                     <div className="space-y-2">
                       <p className="text-sm font-medium">Dữ liệu sẽ xuất:</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {[1, 2, 3, 4, 5, 6].map((i) => (
+                          <div key={i} className="flex justify-between items-center">
+                            <div className="h-4 bg-muted rounded animate-pulse w-24"></div>
+                            <div className="h-5 bg-muted rounded animate-pulse w-8"></div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Error State */}
+                  {!exportPreviewLoading && exportPreviewError && (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 text-destructive">
+                        <XCircle className="w-4 h-4" />
+                        <span className="text-sm">{exportPreviewError}</span>
+                      </div>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={fetchExportPreview}
+                        className="w-full"
+                      >
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                        Thử lại
+                      </Button>
+                    </div>
+                  )}
+                  
+                  {/* Success State */}
+                  {!exportPreviewLoading && !exportPreviewError && exportPreview && exportPreview.sections && exportPreview.sections.length > 0 && (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium">Dữ liệu sẽ xuất:</p>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={fetchExportPreview}
+                          className="h-6 px-2"
+                        >
+                          <RefreshCw className="w-3 h-3" />
+                        </Button>
+                      </div>
                       <div className="grid grid-cols-2 gap-2 text-sm">
                         {exportPreview.sections.slice(0, 6).map((s) => (
                           <div key={s.name} className="flex justify-between">
@@ -674,7 +732,16 @@ export default function BackupHistory() {
                       </div>
                     </div>
                   )}
-                  <Button onClick={handleExport} disabled={isExporting} className="w-full">
+                  
+                  {/* Empty State */}
+                  {!exportPreviewLoading && !exportPreviewError && (!exportPreview || !exportPreview.sections || exportPreview.sections.length === 0) && (
+                    <div className="text-center py-4 text-muted-foreground">
+                      <Database className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">Không có dữ liệu để xuất</p>
+                    </div>
+                  )}
+                  
+                  <Button onClick={handleExport} disabled={isExporting || exportPreviewLoading} className="w-full">
                     {isExporting ? (
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     ) : (

@@ -1076,3 +1076,9 @@
 ## Bug Fixes
 
 - [x] Fix lỗi "Cannot read properties of undefined (reading 'slice')" trong BackupHistory.tsx
+
+## Phase 40 - Export Preview Improvements
+
+- [x] Loading state cho Export Preview - skeleton loading
+- [x] Error handling - hiển thị thông báo lỗi nếu API thất bại
+- [x] Retry mechanism - nút thử lại khi không tải được dữ liệu
