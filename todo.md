@@ -1151,3 +1151,7 @@
 - [ ] Thêm kết nối database mẫu để test
 - [x] Error state UI với thông báo lỗi rõ ràng
 - [x] Refresh button để làm mới danh sách kết nối
+
+## Phase 45 - Kết nối Database Mẫu
+
+- [x] Tạo kết nối database mẫu (internal database) để người dùng thử nghiệm
