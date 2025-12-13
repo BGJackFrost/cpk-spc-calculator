@@ -18,6 +18,7 @@ interface Machine {
   name: string;
   code: string;
   workstationId: number;
+  machineTypeId: number | null;
   machineType: string | null;
   manufacturer: string | null;
   model: string | null;
@@ -27,6 +28,15 @@ interface Machine {
   isActive: number;
   createdAt: Date;
   updatedAt: Date;
+}
+
+interface MachineType {
+  id: number;
+  code: string;
+  name: string;
+  description: string | null;
+  category: string | null;
+  isActive: number;
 }
 
 interface Workstation {
@@ -45,6 +55,7 @@ export default function MachineManagement() {
     name: "",
     code: "",
     workstationId: "",
+    machineTypeId: "",
     machineType: "",
     manufacturer: "",
     model: "",
@@ -54,6 +65,7 @@ export default function MachineManagement() {
 
   const { data: machines, isLoading, refetch } = trpc.machine.listAll.useQuery();
   const { data: workstations } = trpc.workstation.listAll.useQuery();
+  const { data: machineTypes } = trpc.machineType.list.useQuery();
 
   const createMutation = trpc.machine.create.useMutation({
     onSuccess: () => {
@@ -88,6 +100,7 @@ export default function MachineManagement() {
       name: "",
       code: "",
       workstationId: "",
+      machineTypeId: "",
       machineType: "",
       manufacturer: "",
       model: "",
@@ -108,6 +121,7 @@ export default function MachineManagement() {
       name: machine.name,
       code: machine.code,
       workstationId: machine.workstationId.toString(),
+      machineTypeId: machine.machineTypeId?.toString() || "none",
       machineType: machine.machineType || "",
       manufacturer: machine.manufacturer || "",
       model: machine.model || "",
@@ -127,6 +141,7 @@ export default function MachineManagement() {
       name: formData.name,
       code: formData.code,
       workstationId: parseInt(formData.workstationId),
+      machineTypeId: formData.machineTypeId && formData.machineTypeId !== "none" ? parseInt(formData.machineTypeId) : undefined,
       machineType: formData.machineType || undefined,
       manufacturer: formData.manufacturer || undefined,
       model: formData.model || undefined,
@@ -321,23 +336,44 @@ export default function MachineManagement() {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="workstationId">Công trạm *</Label>
-                <Select
-                  value={formData.workstationId}
-                  onValueChange={(value) => setFormData({ ...formData, workstationId: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Chọn công trạm" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {workstations?.map((ws: Workstation) => (
-                      <SelectItem key={ws.id} value={ws.id.toString()}>
-                        {ws.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="workstationId">Công trạm *</Label>
+                  <Select
+                    value={formData.workstationId}
+                    onValueChange={(value) => setFormData({ ...formData, workstationId: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Chọn công trạm" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {workstations?.map((ws: Workstation) => (
+                        <SelectItem key={ws.id} value={ws.id.toString()}>
+                          {ws.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="machineTypeId">Loại máy</Label>
+                  <Select
+                    value={formData.machineTypeId}
+                    onValueChange={(value) => setFormData({ ...formData, machineTypeId: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Chọn loại máy" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Không chọn</SelectItem>
+                      {machineTypes?.map((mt: MachineType) => (
+                        <SelectItem key={mt.id} value={mt.id.toString()}>
+                          {mt.name} ({mt.code})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">

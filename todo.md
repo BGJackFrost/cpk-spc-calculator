@@ -1192,3 +1192,16 @@
 ### Sửa lỗi menu sidebar
 - [x] Rà soát các trang bị mất menu trái
 - [x] Sửa lỗi ConnectionManager.tsx (databaseTypes.map, connections.map)
+
+## Phase 49 - Sửa lỗi Mapping và Thêm Loại Máy
+
+### Sửa lỗi chọn Mapping
+- [x] Kiểm tra lỗi không chọn được Mapping trong trang Analyze - nguyên nhân: không có mapping khớp với product code và station name
+- [x] Sửa lỗi dropdown Mapping - tạo 18 mappings mẫu cho 6 sản phẩm x 3 trạm
+
+### Thêm loại máy
+- [x] Thêm trường machineTypeId vào bảng machines (đã có sẵn trong schema)
+- [x] Cập nhật UI quản lý máy với dropdown loại máy (MachineManagement.tsx)
+- [x] Cập nhật API machine.create và machine.update để hỗ trợ machineTypeId
+- [x] Hiển thị loại máy trong danh sách máy của dây chuyền (ProductionLineManagement.tsx)
+- [x] Thêm loại máy vào cấu hình dây chuyền sản xuất (hiển thị badge loại máy trong danh sách máy)

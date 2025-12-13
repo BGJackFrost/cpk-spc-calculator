@@ -1,0 +1,146 @@
+{
+  "query": "SHOW COLUMNS FROM product_station_mappings;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute SHOW COLUMNS FROM product_station_mappings;",
+  "rows": [
+    {
+      "Field": "id",
+      "Type": "int(11)",
+      "Null": "NO",
+      "Key": "PRI",
+      "Default": "NULL",
+      "Extra": "auto_increment"
+    },
+    {
+      "Field": "productCode",
+      "Type": "varchar(100)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "stationName",
+      "Type": "varchar(100)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "connectionId",
+      "Type": "int(11)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "tableName",
+      "Type": "varchar(255)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "productCodeColumn",
+      "Type": "varchar(100)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "product_code",
+      "Extra": ""
+    },
+    {
+      "Field": "stationColumn",
+      "Type": "varchar(100)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "station",
+      "Extra": ""
+    },
+    {
+      "Field": "valueColumn",
+      "Type": "varchar(100)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "value",
+      "Extra": ""
+    },
+    {
+      "Field": "timestampColumn",
+      "Type": "varchar(100)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "timestamp",
+      "Extra": ""
+    },
+    {
+      "Field": "usl",
+      "Type": "int(11)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "lsl",
+      "Type": "int(11)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "target",
+      "Type": "int(11)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "isActive",
+      "Type": "int(11)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "1",
+      "Extra": ""
+    },
+    {
+      "Field": "createdBy",
+      "Type": "int(11)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "createdAt",
+      "Type": "timestamp",
+      "Null": "NO",
+      "Key": "",
+      "Default": "CURRENT_TIMESTAMP",
+      "Extra": ""
+    },
+    {
+      "Field": "updatedAt",
+      "Type": "timestamp",
+      "Null": "NO",
+      "Key": "",
+      "Default": "CURRENT_TIMESTAMP",
+      "Extra": "DEFAULT_GENERATED on update CURRENT_TIMESTAMP"
+    },
+    {
+      "Field": "filterConditions",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    }
+  ],
+  "messages": [],
+  "stdout": "Field\tType\tNull\tKey\tDefault\tExtra\nid\tint(11)\tNO\tPRI\tNULL\tauto_increment\nproductCode\tvarchar(100)\tNO\t\tNULL\t\nstationName\tvarchar(100)\tNO\t\tNULL\t\nconnectionId\tint(11)\tNO\t\tNULL\t\ntableName\tvarchar(255)\tNO\t\tNULL\t\nproductCodeColumn\tvarchar(100)\tNO\t\tproduct_code\t\nstationColumn\tvarchar(100)\tNO\t\tstation\t\nvalueColumn\tvarchar(100)\tNO\t\tvalue\t\ntimestampColumn\tvarchar(100)\tNO\t\ttimestamp\t\nusl\tint(11)\tYES\t\tNULL\t\nlsl\tint(11)\tYES\t\tNULL\t\ntarget\tint(11)\tYES\t\tNULL\t\nisActive\tint(11)\tNO\t\t1\t\ncreatedBy\tint(11)\tNO\t\tNULL\t\ncreatedAt\ttimestamp\tNO\t\tCURRENT_TIMESTAMP\t\nupdatedAt\ttimestamp\tNO\t\tCURRENT_TIMESTAMP\tDEFAULT_GENERATED on update CURRENT_TIMESTAMP\nfilterConditions\ttext\tYES\t\tNULL\t\n",
+  "stderr": "",
+  "execution_time_ms": 1555
+}

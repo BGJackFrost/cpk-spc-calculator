@@ -1738,7 +1738,25 @@ export async function deleteProcessStepMachine(id: number) {
 export async function getProductionLineMachines(lineId: number) {
   const db = await getDb();
   if (!db) return [];
-  return await db.select().from(productionLineMachines).where(eq(productionLineMachines.productionLineId, lineId));
+  
+  // Join with machines and machine_types to get full info
+  const results = await db
+    .select({
+      id: productionLineMachines.id,
+      productionLineId: productionLineMachines.productionLineId,
+      machineId: productionLineMachines.machineId,
+      machineName: machines.name,
+      machineCode: machines.code,
+      machineTypeId: machines.machineTypeId,
+      machineTypeName: machineTypes.name,
+      machineTypeCode: machineTypes.code,
+    })
+    .from(productionLineMachines)
+    .leftJoin(machines, eq(productionLineMachines.machineId, machines.id))
+    .leftJoin(machineTypes, eq(machines.machineTypeId, machineTypes.id))
+    .where(eq(productionLineMachines.productionLineId, lineId));
+  
+  return results;
 }
 
 export async function addProductionLineMachine(lineId: number, machineId: number, assignedBy: number = 1) {

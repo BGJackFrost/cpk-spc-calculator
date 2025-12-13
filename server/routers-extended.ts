@@ -197,6 +197,7 @@ export const machineRouter = router({
       workstationId: z.number(),
       name: z.string().min(1),
       code: z.string().min(1),
+      machineTypeId: z.number().optional(),
       machineType: z.string().optional(),
       manufacturer: z.string().optional(),
       model: z.string().optional(),
@@ -215,6 +216,7 @@ export const machineRouter = router({
     .input(z.object({
       id: z.number(),
       name: z.string().optional(),
+      machineTypeId: z.number().nullable().optional(),
       machineType: z.string().optional(),
       manufacturer: z.string().optional(),
       model: z.string().optional(),

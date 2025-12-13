@@ -354,7 +354,12 @@ export default function ProductionLineManagement() {
                       <div key={lm.id} className="py-3 flex items-center justify-between">
                         <div>
                           <p className="font-medium">{lm.machineName || `Máy #${lm.machineId}`}</p>
-                          {lm.machineCode && <p className="text-sm text-muted-foreground">{lm.machineCode}</p>}
+                          <div className="flex items-center gap-2">
+                            {lm.machineCode && <span className="text-sm text-muted-foreground">{lm.machineCode}</span>}
+                            {lm.machineTypeName && (
+                              <Badge variant="outline" className="text-xs">{lm.machineTypeName}</Badge>
+                            )}
+                          </div>
                         </div>
                         <Button variant="ghost" size="icon" onClick={() => removeMachineMutation.mutate({ id: lm.id })}>
                           <Trash2 className="h-4 w-4 text-destructive" />
