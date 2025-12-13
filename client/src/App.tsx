@@ -37,7 +37,6 @@ import RulesManagement from "./pages/RulesManagement";
 import SpcPlanVisualization from "./pages/SpcPlanVisualization";
 import SpcVisualizationDetail from "./pages/SpcVisualizationDetail";
 import SseNotificationProvider from "./components/SseNotificationProvider";
-import LicenseManagement from "./pages/LicenseManagement";
 import WebhookManagement from "./pages/WebhookManagement";
 import ReportTemplateManagement from "./pages/ReportTemplateManagement";
 import ExportHistory from "./pages/ExportHistory";
@@ -83,7 +82,6 @@ function Router() {
       <Route path="/multi-analysis" component={MultiAnalysis} />
       <Route path="/line-comparison" component={ProductionLineComparison} />
       <Route path="/about" component={About} />
-      <Route path="/license-management" component={LicenseManagement} />
       <Route path="/rules" component={RulesManagement} />
       <Route path="/webhooks" component={WebhookManagement} />
       <Route path="/report-templates" component={ReportTemplateManagement} />

@@ -954,3 +954,20 @@
 - [x] Bộ lọc theo username, ngày, loại sự kiện, loại xác thực
 - [x] Cards thống kê (tổng, login success, logout, failed)
 - [x] Thêm routes và menu items trong DashboardLayout
+
+
+## Phase 34 - Tổng hợp tài liệu và cải tiến License
+
+### Tài liệu phiên bản hệ thống
+- [x] Tạo file VERSION_HISTORY.md tổng hợp tất cả 33 phases
+- [x] Liệt kê đầy đủ tính năng theo 7 module (35+ trang)
+- [x] Thống kê số lượng (153 tests, 100+ API, 40+ bảng DB)
+- [x] Đề xuất 20 ý tưởng hoàn thiện hệ thống theo 4 cấp độ
+
+### Cải tiến License Menu
+- [x] Rà soát trùng lặp menu License (3 trang → 2 trang)
+- [x] Xóa trang /license-management trùng lặp
+- [x] Đổi tên menu chuyên nghiệp hơn:
+  - "Kích hoạt License" → "Cổng License" (License Portal)
+  - "Quản lý License" → "Quản trị License" (License Administration)
+- [x] Cập nhật icons phù hợp (Key cho Portal, Shield cho Admin)
