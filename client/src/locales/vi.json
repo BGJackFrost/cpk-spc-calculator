@@ -64,7 +64,16 @@
     "webhookManagement": "Quản lý Webhook",
     "userManagement": "Quản lý Người dùng",
     "auditLog": "Nhật ký Audit",
-    "about": "Giới thiệu"
+    "about": "Giới thiệu",
+    "databaseSettings": "Cài đặt Database",
+    "backupHistory": "Lịch sử Backup",
+    "companyInfo": "Thông tin Công ty",
+    "localUserManagement": "Quản lý User Local",
+    "loginHistory": "Lịch sử Đăng nhập",
+    "licensePortal": "Kích hoạt License",
+    "licenseAdmin": "Quản lý License",
+    "reportTemplates": "Mẫu Báo cáo",
+    "exportHistory": "Lịch sử Xuất file"
   },
   "dashboard": {
     "welcome": "Xin chào",

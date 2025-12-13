@@ -4,6 +4,7 @@ import { adminProcedure, publicProcedure, protectedProcedure, router } from "./t
 import { getDb } from "../db";
 import { systemConfig, companyInfo } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
+import { storagePut } from "../storage";
 
 export const systemRouter = router({
   health: publicProcedure
@@ -246,5 +247,41 @@ export const systemRouter = router({
         });
       }
       return { success: true };
+    }),
+
+  // Upload company logo to S3
+  uploadLogo: protectedProcedure
+    .input(
+      z.object({
+        filename: z.string(),
+        contentType: z.string(),
+        base64Data: z.string(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database connection failed");
+      
+      // Convert base64 to buffer
+      const buffer = Buffer.from(input.base64Data, "base64");
+      
+      // Generate unique filename
+      const timestamp = Date.now();
+      const ext = input.filename.split(".").pop() || "png";
+      const fileKey = `company-logos/logo-${timestamp}.${ext}`;
+      
+      // Upload to S3
+      const { url } = await storagePut(fileKey, buffer, input.contentType);
+      
+      // Update company info with new logo URL
+      const [existing] = await db.select().from(companyInfo).limit(1);
+      if (existing) {
+        await db
+          .update(companyInfo)
+          .set({ logo: url })
+          .where(eq(companyInfo.id, existing.id));
+      }
+      
+      return { success: true, url };
     }),
 });

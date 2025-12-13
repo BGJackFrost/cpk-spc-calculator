@@ -1140,3 +1140,25 @@ export const companyInfo = mysqlTable("company_info", {
 
 export type CompanyInfo = typeof companyInfo.$inferSelect;
 export type InsertCompanyInfo = typeof companyInfo.$inferInsert;
+
+
+/**
+ * Database Backups - stores backup history and metadata
+ */
+export const databaseBackups = mysqlTable("database_backups", {
+  id: int("id").autoincrement().primaryKey(),
+  filename: varchar("filename", { length: 255 }).notNull(),
+  fileSize: int("fileSize"), // Size in bytes
+  fileUrl: text("fileUrl"), // S3 URL or local path
+  backupType: mysqlEnum("backupType", ["daily", "weekly", "manual"]).notNull().default("manual"),
+  status: mysqlEnum("status", ["pending", "completed", "failed"]).notNull().default("pending"),
+  errorMessage: text("errorMessage"),
+  storageLocation: mysqlEnum("storageLocation", ["s3", "local"]).notNull().default("s3"),
+  tablesIncluded: text("tablesIncluded"), // JSON array of table names
+  createdBy: int("createdBy"), // null for automated backups
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  completedAt: timestamp("completedAt"),
+});
+
+export type DatabaseBackup = typeof databaseBackups.$inferSelect;
+export type InsertDatabaseBackup = typeof databaseBackups.$inferInsert;

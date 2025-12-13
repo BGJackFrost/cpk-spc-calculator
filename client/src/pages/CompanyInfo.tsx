@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,10 +7,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
-import { Building2, Save, RefreshCw, Globe, Phone, Mail, MapPin } from "lucide-react";
+import { Building2, Save, RefreshCw, Globe, Phone, Mail, MapPin, Upload, Image, Trash2, Loader2 } from "lucide-react";
 
 export default function CompanyInfo() {
   const [isEditing, setIsEditing] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
     companyName: "",
     companyCode: "",
@@ -34,6 +36,16 @@ export default function CompanyInfo() {
     }
   });
 
+  const uploadLogoMutation = trpc.system.uploadLogo.useMutation({
+    onSuccess: (data) => {
+      setFormData(prev => ({ ...prev, logo: data.url }));
+      toast.success("Đã upload logo thành công");
+    },
+    onError: (error) => {
+      toast.error("Lỗi upload logo: " + error.message);
+    }
+  });
+
   useEffect(() => {
     if (companyInfo) {
       setFormData({
@@ -51,6 +63,49 @@ export default function CompanyInfo() {
 
   const handleSave = () => {
     saveMutation.mutate(formData);
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error("Vui lòng chọn file hình ảnh");
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("File quá lớn. Kích thước tối đa là 5MB");
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      // Convert file to base64
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const base64 = reader.result as string;
+        await uploadLogoMutation.mutateAsync({
+          filename: file.name,
+          contentType: file.type,
+          base64Data: base64.split(',')[1] // Remove data:image/xxx;base64, prefix
+        });
+        setIsUploading(false);
+      };
+      reader.onerror = () => {
+        toast.error("Lỗi đọc file");
+        setIsUploading(false);
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      setIsUploading(false);
+    }
+  };
+
+  const handleRemoveLogo = () => {
+    setFormData(prev => ({ ...prev, logo: "" }));
   };
 
   return (
@@ -138,20 +193,92 @@ export default function CompanyInfo() {
 
             <Card className="md:col-span-2">
               <CardHeader>
-                <CardTitle>Logo công ty</CardTitle>
-                <CardDescription>URL hình ảnh logo</CardDescription>
+                <CardTitle className="flex items-center gap-2">
+                  <Image className="h-5 w-5" />
+                  Logo công ty
+                </CardTitle>
+                <CardDescription>Upload hoặc nhập URL hình ảnh logo</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="logo">URL Logo</Label>
-                  <Input id="logo" value={formData.logo} onChange={(e) => setFormData({ ...formData, logo: e.target.value })} disabled={!isEditing} placeholder="https://example.com/logo.png" />
-                </div>
+                {/* Logo Preview */}
                 {formData.logo && (
-                  <div className="flex items-center gap-4">
-                    <div className="border rounded-lg p-4 bg-muted/50">
-                      <img src={formData.logo} alt="Logo công ty" className="max-h-24 max-w-48 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                  <div className="flex items-center gap-4 p-4 border rounded-lg bg-muted/30">
+                    <div className="border rounded-lg p-4 bg-white dark:bg-gray-900">
+                      <img 
+                        src={formData.logo} 
+                        alt="Logo công ty" 
+                        className="max-h-24 max-w-48 object-contain" 
+                        onError={(e) => { 
+                          (e.target as HTMLImageElement).src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect fill="%23f0f0f0" width="100" height="100"/><text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="%23999">No Image</text></svg>';
+                        }} 
+                      />
                     </div>
-                    <p className="text-sm text-muted-foreground">Xem trước logo</p>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">Logo hiện tại</p>
+                      <p className="text-xs text-muted-foreground break-all">{formData.logo}</p>
+                    </div>
+                    {isEditing && (
+                      <Button variant="outline" size="sm" onClick={handleRemoveLogo}>
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Xóa
+                      </Button>
+                    )}
+                  </div>
+                )}
+
+                {/* Upload Section */}
+                {isEditing && (
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-4">
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileSelect}
+                        className="hidden"
+                      />
+                      <Button 
+                        variant="outline" 
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isUploading}
+                      >
+                        {isUploading ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Upload className="h-4 w-4 mr-2" />
+                        )}
+                        {isUploading ? "Đang upload..." : "Upload Logo"}
+                      </Button>
+                      <span className="text-sm text-muted-foreground">
+                        Hỗ trợ: PNG, JPG, GIF (tối đa 5MB)
+                      </span>
+                    </div>
+
+                    <div className="relative">
+                      <div className="absolute inset-0 flex items-center">
+                        <span className="w-full border-t" />
+                      </div>
+                      <div className="relative flex justify-center text-xs uppercase">
+                        <span className="bg-background px-2 text-muted-foreground">hoặc</span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="logo">Nhập URL Logo</Label>
+                      <Input 
+                        id="logo" 
+                        value={formData.logo} 
+                        onChange={(e) => setFormData({ ...formData, logo: e.target.value })} 
+                        placeholder="https://example.com/logo.png" 
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {!isEditing && !formData.logo && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Image className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                    <p>Chưa có logo. Bấm "Chỉnh sửa" để thêm logo.</p>
                   </div>
                 )}
               </CardContent>

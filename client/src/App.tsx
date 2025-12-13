@@ -49,6 +49,7 @@ import LoginHistoryPage from "./pages/LoginHistoryPage";
 import SystemSetup from "./pages/SystemSetup";
 import DatabaseSettings from "./pages/DatabaseSettings";
 import CompanyInfo from "./pages/CompanyInfo";
+import BackupHistory from "./pages/BackupHistory";
 
 function Router() {
   return (
@@ -95,6 +96,7 @@ function Router() {
       <Route path="/license-activation" component={LicenseActivation} />
       <Route path="/license-admin" component={LicenseAdmin} />
       <Route path="/login-history" component={LoginHistoryPage} />
+      <Route path="/backup-history" component={BackupHistory} />
       <Route path="/spc-visualization" component={SpcPlanVisualization} />
       <Route path="/spc-visualization/:type/:id" component={SpcVisualizationDetail} />
       <Route path="/404" component={NotFound} />

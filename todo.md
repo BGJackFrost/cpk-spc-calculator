@@ -1023,3 +1023,25 @@
 - [x] Rà soát tất cả modules trong hệ thống (7 nhóm, 40+ modules)
 - [x] Cập nhật MODULES array đầy đủ với 40 modules
 - [x] Cập nhật DEFAULT_PERMISSIONS với 80+ permissions cho tất cả chức năng
+
+
+## Phase 38 - Permission Middleware, Backup History, Upload Logo
+
+### Áp dụng Permission Middleware
+- [x] Thêm requirePermission() vào product router
+- [x] Thêm requirePermission() vào specification router
+- [x] Thêm requirePermission() vào user management router
+- [x] Thêm requirePermission() vào license router
+- [x] Thêm requirePermission() vào system router
+
+### Database Backup History
+- [x] Tạo bảng database_backups để lưu lịch sử
+- [x] Tạo trang BackupHistory.tsx
+- [x] API liệt kê danh sách backups
+- [x] API tạo backup thủ công
+- [x] Thêm route và menu
+
+### Upload Logo công ty
+- [x] Tạo API upload logo lên S3
+- [x] Cập nhật CompanyInfo.tsx với file upload
+- [x] Hiển thị preview logo sau khi upload

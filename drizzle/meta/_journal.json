@@ -141,6 +141,13 @@
       "when": 1765601861472,
       "tag": "0019_futuristic_junta",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "5",
+      "when": 1765602654611,
+      "tag": "0020_opposite_psylocke",
+      "breakpoints": true
     }
   ]
 }

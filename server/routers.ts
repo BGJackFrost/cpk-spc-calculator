@@ -3688,6 +3688,61 @@ export const appRouter = router({
         return manualRetryWebhook(input.logId);
       }),
   }),
+  
+  // Backup router
+  backup: router({
+    list: protectedProcedure
+      .input(z.object({
+        page: z.number().default(1),
+        pageSize: z.number().default(20),
+        type: z.enum(["daily", "weekly", "manual"]).optional(),
+      }))
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { listBackups } = await import("./backupService");
+        return listBackups(input);
+      }),
+    
+    stats: protectedProcedure.query(async ({ ctx }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+      }
+      const { getBackupStats } = await import("./backupService");
+      return getBackupStats();
+    }),
+    
+    schedulerStatus: protectedProcedure.query(async ({ ctx }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+      }
+      const { getSchedulerStatus } = await import("./backupService");
+      return getSchedulerStatus();
+    }),
+    
+    create: protectedProcedure
+      .input(z.object({
+        type: z.enum(["daily", "weekly", "manual"]).default("manual"),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { createBackup } = await import("./backupService");
+        return createBackup(input.type, ctx.user.id);
+      }),
+    
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { deleteBackup } = await import("./backupService");
+        return deleteBackup(input.id);
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;
