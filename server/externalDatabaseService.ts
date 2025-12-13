@@ -5,7 +5,7 @@
 
 import { getDb } from "./db";
 import { databaseConnections } from "../drizzle/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { encrypt, decrypt, isEncrypted } from "./encryptionService";
 
 // Database type enum
@@ -428,10 +428,17 @@ async function getAccessTables(connection: typeof databaseConnections.$inferSele
 
 /**
  * Get Internal database tables (current app database)
+ * Only shows sample/demo tables for user testing
  */
 async function getInternalTables(): Promise<TableInfo[]> {
   const db = await getDb();
   if (!db) throw new Error('Database not connected');
+  
+  // Whitelist of sample tables to show (for demo purposes)
+  const SAMPLE_TABLES = [
+    'sample_products',
+    'sample_measurements',
+  ];
   
   // Get all tables from current database
   const [rows] = await db.execute(`
@@ -442,13 +449,16 @@ async function getInternalTables(): Promise<TableInfo[]> {
     FROM information_schema.TABLES 
     WHERE TABLE_SCHEMA = DATABASE()
     ORDER BY TABLE_NAME
-  `) as [Array<{ name: string; type: string; rowCount: number }>, unknown];
+  `) as unknown as [Array<{ name: string; type: string; rowCount: number }>, unknown];
   
-  return rows.map(row => ({
-    name: row.name,
-    type: row.type === "VIEW" ? "view" as const : "table" as const,
-    rowCount: row.rowCount || 0,
-  }));
+  // Only show sample tables (whitelist approach)
+  return rows
+    .filter(row => SAMPLE_TABLES.includes(row.name.toLowerCase()))
+    .map(row => ({
+      name: row.name,
+      type: row.type === "VIEW" ? "view" as const : "table" as const,
+      rowCount: row.rowCount || 0,
+    }));
 }
 
 /**
@@ -684,7 +694,7 @@ async function getInternalTableSchema(tableName: string): Promise<ColumnInfo[]> 
   const db = await getDb();
   if (!db) throw new Error('Database not connected');
   
-  const [rows] = await db.execute(`
+  const [rows] = await db.execute(sql.raw(`
     SELECT 
       COLUMN_NAME as name,
       COLUMN_TYPE as type,
@@ -692,9 +702,9 @@ async function getInternalTableSchema(tableName: string): Promise<ColumnInfo[]> 
       COLUMN_KEY as columnKey,
       COLUMN_DEFAULT as defaultValue
     FROM information_schema.COLUMNS 
-    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '${tableName.replace(/'/g, "''")}'
     ORDER BY ORDINAL_POSITION
-  `, [tableName]) as [Array<{ name: string; type: string; nullable: string; columnKey: string; defaultValue: string | null }>, unknown];
+  `)) as unknown as [Array<{ name: string; type: string; nullable: string; columnKey: string; defaultValue: string | null }>, unknown];
   
   return rows.map(row => ({
     name: row.name,
@@ -721,7 +731,7 @@ async function getInternalTableData(
   const offset = (page - 1) * pageSize;
   
   // Get total count
-  const [countResult] = await db.execute(`SELECT COUNT(*) as total FROM \`${tableName}\``) as [Array<{ total: number }>, unknown];
+  const [countResult] = await db.execute(`SELECT COUNT(*) as total FROM \`${tableName}\``) as unknown as [Array<{ total: number }>, unknown];
   const total = countResult[0]?.total || 0;
   
   // Build query with optional sorting
@@ -731,7 +741,7 @@ async function getInternalTableData(
   }
   query += ` LIMIT ${pageSize} OFFSET ${offset}`;
   
-  const [rows] = await db.execute(query) as [Array<Record<string, unknown>>, unknown];
+  const [rows] = await db.execute(query) as unknown as [Array<Record<string, unknown>>, unknown];
   
   // Get column names from first row or schema
   const columns = rows.length > 0 ? Object.keys(rows[0]) : [];

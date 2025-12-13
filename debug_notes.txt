@@ -1,0 +1,12 @@
+Debug Notes - Phase 47
+
+Vấn đề: Phần "Chọn Kết nối Database" hiển thị "Chưa có kết nối nào" mặc dù đã có kết nối "Internal Database (Demo)" trong bảng trên.
+
+Nguyên nhân có thể:
+1. DatabaseExplorer component không fetch đúng API
+2. API trả về dữ liệu không đúng format
+3. Component không được render đúng cách
+
+Cần kiểm tra:
+1. fetchConnections trong DatabaseExplorer.tsx
+2. API databaseConnection.list trong routers.ts

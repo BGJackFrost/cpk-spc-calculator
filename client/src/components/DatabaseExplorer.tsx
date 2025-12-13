@@ -133,8 +133,8 @@ export default function DatabaseExplorer() {
         credentials: "include",
       });
       const result = await response.json();
-      if (result.result?.data && Array.isArray(result.result.data)) {
-        setConnections(result.result.data);
+      if (result.result?.data?.json && Array.isArray(result.result.data.json)) {
+        setConnections(result.result.data.json);
       } else {
         setConnections([]);
       }
@@ -180,17 +180,20 @@ export default function DatabaseExplorer() {
     
     try {
       setLoadingExternalTables(true);
-      const response = await fetch("/api/trpc/databaseConnection.getTables", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const response = await fetch(`/api/trpc/databaseConnection.getTables?input=${encodeURIComponent(JSON.stringify({ json: { connectionId: connection.id } }))}`, {
+        method: "GET",
         credentials: "include",
-        body: JSON.stringify({ connectionId: connection.id }),
       });
       const result = await response.json();
-      if (result.result?.data) {
-        setExternalTables(result.result.data);
+      // tRPC returns data in result.result.data.json format
+      const data = result.result?.data?.json || result.result?.data;
+      if (data) {
+        // Extract tables array from the response
+        const tables = data.tableInfo || data.tables || [];
+        setExternalTables(tables);
       }
     } catch (error) {
+      console.error("Error loading tables:", error);
       toast.error("Lỗi khi tải danh sách bảng");
     } finally {
       setLoadingExternalTables(false);
@@ -202,11 +205,9 @@ export default function DatabaseExplorer() {
     if (!selectedConnection) return;
     
     try {
-      const response = await fetch("/api/trpc/databaseConnection.getColumns", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const response = await fetch(`/api/trpc/databaseConnection.getColumns?input=${encodeURIComponent(JSON.stringify({ json: { connectionId: selectedConnection.id, tableName } }))}`, {
+        method: "GET",
         credentials: "include",
-        body: JSON.stringify({ connectionId: selectedConnection.id, tableName }),
       });
       const result = await response.json();
       if (result.result?.data) {
@@ -228,31 +229,35 @@ export default function DatabaseExplorer() {
     
     try {
       setLoadingExternalData(true);
-      const response = await fetch("/api/trpc/databaseConnection.previewData", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const queryParams = {
+          json: {
+            connectionId: selectedConnection.id,
+            tableName,
+            page,
+            pageSize,
+            sortColumn: sortColumn || undefined,
+            sortDirection: sortDir || "asc",
+          }
+        };
+      const response = await fetch(`/api/trpc/databaseConnection.previewData?input=${encodeURIComponent(JSON.stringify(queryParams))}`, {
+        method: "GET",
         credentials: "include",
-        body: JSON.stringify({
-          connectionId: selectedConnection.id,
-          tableName,
-          limit: pageSize,
-          offset: (page - 1) * pageSize,
-          sortColumn: sortColumn || undefined,
-          sortDirection: sortDir || undefined,
-        }),
       });
       const result = await response.json();
-      if (result.result?.data) {
+      // tRPC returns data in result.result.data.json format
+      const data = result.result?.data?.json || result.result?.data;
+      if (data) {
         setExternalTableData({
-          columns: result.result.data.columns || [],
-          rows: result.result.data.rows || [],
-          total: result.result.data.total || 0,
+          columns: data.columns || [],
+          rows: data.rows || [],
+          total: data.total || 0,
           page,
           pageSize,
         });
         setShowDataDialog(true);
       }
     } catch (error) {
+      console.error("Error loading table data:", error);
       toast.error("Lỗi khi tải dữ liệu bảng");
     } finally {
       setLoadingExternalData(false);

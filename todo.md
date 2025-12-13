@@ -1166,3 +1166,10 @@
 - [x] Fix lỗi không xem được bảng mẫu trong Database Explorer
 
 - [x] Fix lỗi validation databaseType - thêm "internal" vào z.enum
+
+## Phase 47 - Test và Lọc Bảng
+
+- [x] Test kết nối mẫu qua browser
+- [x] Lọc bảng hệ thống - ẩn các bảng như migrations, sessions (sử dụng whitelist chỉ hiển thị sample_products và sample_measurements)
+- [x] Sửa lỗi API calls trong DatabaseExplorer (GET method với json wrapper)
+- [x] Sửa lỗi TypeScript trong externalDatabaseService.ts
