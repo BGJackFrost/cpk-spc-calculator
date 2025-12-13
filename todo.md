@@ -1082,3 +1082,21 @@
 - [x] Loading state cho Export Preview - skeleton loading
 - [x] Error handling - hiển thị thông báo lỗi nếu API thất bại
 - [x] Retry mechanism - nút thử lại khi không tải được dữ liệu
+
+
+## Phase 41 - Quản lý kết nối Database & Data Encryption
+
+### Quản lý kết nối Database
+- [x] Đổi tên menu "Cài đặt Hệ thống" thành "Quản lý kết nối"
+- [x] API lấy danh sách các bảng trong database
+- [x] API xem dữ liệu trong bảng với Select Top
+- [x] API sắp xếp dữ liệu theo cột
+- [x] Trang UI xem thông tin kết nối
+- [x] UI xem danh sách bảng và số bản ghi
+- [x] UI xem dữ liệu bảng với pagination và sort
+
+### Data Encryption
+- [x] Tạo encryption service với AES-256-GCM
+- [x] Mã hóa thông tin kết nối database
+- [x] Mã hóa API keys và secrets
+- [x] Mã hóa thông tin nhạy cảm trong settings

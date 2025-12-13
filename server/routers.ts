@@ -3885,6 +3885,64 @@ export const appRouter = router({
         });
       }),
   }),
+  
+  // Database Explorer router
+  databaseExplorer: router({
+    connectionInfo: protectedProcedure.query(async ({ ctx }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+      }
+      const { getConnectionInfo } = await import("./databaseExplorerService");
+      return getConnectionInfo();
+    }),
+    
+    tables: protectedProcedure.query(async ({ ctx }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+      }
+      const { getTables } = await import("./databaseExplorerService");
+      return getTables();
+    }),
+    
+    tableData: protectedProcedure
+      .input(z.object({
+        tableName: z.string(),
+        page: z.number().default(1),
+        pageSize: z.number().min(1).max(500).default(50),
+        sortColumn: z.string().optional(),
+        sortDirection: z.enum(["asc", "desc"]).default("asc"),
+      }))
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { getTableData } = await import("./databaseExplorerService");
+        return getTableData(input.tableName, {
+          page: input.page,
+          pageSize: input.pageSize,
+          sortColumn: input.sortColumn,
+          sortDirection: input.sortDirection,
+        });
+      }),
+    
+    tableSchema: protectedProcedure
+      .input(z.object({ tableName: z.string() }))
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { getTableSchema } = await import("./databaseExplorerService");
+        return getTableSchema(input.tableName);
+      }),
+    
+    stats: protectedProcedure.query(async ({ ctx }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+      }
+      const { getDatabaseStats } = await import("./databaseExplorerService");
+      return getDatabaseStats();
+    }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;
