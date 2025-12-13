@@ -9,7 +9,7 @@ import { eq } from "drizzle-orm";
 import { encrypt, decrypt, isEncrypted } from "./encryptionService";
 
 // Database type enum
-export type DatabaseType = "mysql" | "sqlserver" | "oracle" | "postgres" | "access" | "excel";
+export type DatabaseType = "mysql" | "sqlserver" | "oracle" | "postgres" | "access" | "excel" | "internal";
 
 // Connection configuration
 export interface ConnectionConfig {
@@ -68,6 +68,7 @@ const DEFAULT_PORTS: Record<DatabaseType, number> = {
   postgres: 5432,
   access: 0,
   excel: 0,
+  internal: 0,
 };
 
 /**
@@ -335,6 +336,8 @@ export async function getTables(connectionId: number): Promise<TableInfo[]> {
       return await getExcelTables(connection);
     case "access":
       return await getAccessTables(connection);
+    case "internal":
+      return await getInternalTables();
     default:
       throw new Error(`Unsupported database type: ${connection.databaseType}`);
   }
@@ -424,6 +427,31 @@ async function getAccessTables(connection: typeof databaseConnections.$inferSele
 }
 
 /**
+ * Get Internal database tables (current app database)
+ */
+async function getInternalTables(): Promise<TableInfo[]> {
+  const db = await getDb();
+  if (!db) throw new Error('Database not connected');
+  
+  // Get all tables from current database
+  const [rows] = await db.execute(`
+    SELECT 
+      TABLE_NAME as name,
+      TABLE_TYPE as type,
+      TABLE_ROWS as rowCount
+    FROM information_schema.TABLES 
+    WHERE TABLE_SCHEMA = DATABASE()
+    ORDER BY TABLE_NAME
+  `) as [Array<{ name: string; type: string; rowCount: number }>, unknown];
+  
+  return rows.map(row => ({
+    name: row.name,
+    type: row.type === "VIEW" ? "view" as const : "table" as const,
+    rowCount: row.rowCount || 0,
+  }));
+}
+
+/**
  * Get table schema
  */
 export async function getTableSchema(connectionId: number, tableName: string): Promise<ColumnInfo[]> {
@@ -435,6 +463,8 @@ export async function getTableSchema(connectionId: number, tableName: string): P
       return await getMySQLTableSchema(connection, tableName);
     case "excel":
       return await getExcelTableSchema(connection, tableName);
+    case "internal":
+      return await getInternalTableSchema(tableName);
     default:
       throw new Error(`Schema retrieval not supported for ${connection.databaseType}`);
   }
@@ -526,6 +556,8 @@ export async function getTableData(
       return await getMySQLTableData(connection, tableName, page, pageSize, sortColumn, sortDirection);
     case "excel":
       return await getExcelTableData(connection, tableName, page, pageSize, sortColumn, sortDirection);
+    case "internal":
+      return await getInternalTableData(tableName, page, pageSize, sortColumn, sortDirection);
     default:
       throw new Error(`Data retrieval not supported for ${connection.databaseType}`);
   }
@@ -646,6 +678,74 @@ export async function updateConnectionTestStatus(id: number, status: string) {
 }
 
 /**
+ * Get Internal table schema
+ */
+async function getInternalTableSchema(tableName: string): Promise<ColumnInfo[]> {
+  const db = await getDb();
+  if (!db) throw new Error('Database not connected');
+  
+  const [rows] = await db.execute(`
+    SELECT 
+      COLUMN_NAME as name,
+      COLUMN_TYPE as type,
+      IS_NULLABLE as nullable,
+      COLUMN_KEY as columnKey,
+      COLUMN_DEFAULT as defaultValue
+    FROM information_schema.COLUMNS 
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?
+    ORDER BY ORDINAL_POSITION
+  `, [tableName]) as [Array<{ name: string; type: string; nullable: string; columnKey: string; defaultValue: string | null }>, unknown];
+  
+  return rows.map(row => ({
+    name: row.name,
+    type: row.type,
+    nullable: row.nullable === "YES",
+    isPrimaryKey: row.columnKey === "PRI",
+    defaultValue: row.defaultValue || undefined,
+  }));
+}
+
+/**
+ * Get Internal table data
+ */
+async function getInternalTableData(
+  tableName: string,
+  page: number,
+  pageSize: number,
+  sortColumn?: string,
+  sortDirection: "asc" | "desc" = "asc"
+): Promise<QueryResult> {
+  const db = await getDb();
+  if (!db) throw new Error('Database not connected');
+  
+  const offset = (page - 1) * pageSize;
+  
+  // Get total count
+  const [countResult] = await db.execute(`SELECT COUNT(*) as total FROM \`${tableName}\``) as [Array<{ total: number }>, unknown];
+  const total = countResult[0]?.total || 0;
+  
+  // Build query with optional sorting
+  let query = `SELECT * FROM \`${tableName}\``;
+  if (sortColumn) {
+    query += ` ORDER BY \`${sortColumn}\` ${sortDirection.toUpperCase()}`;
+  }
+  query += ` LIMIT ${pageSize} OFFSET ${offset}`;
+  
+  const [rows] = await db.execute(query) as [Array<Record<string, unknown>>, unknown];
+  
+  // Get column names from first row or schema
+  const columns = rows.length > 0 ? Object.keys(rows[0]) : [];
+  
+  return {
+    columns,
+    rows,
+    total,
+    page,
+    pageSize,
+  };
+}
+
+/**
  * Get supported database types
  */
 export function getSupportedDatabaseTypes() {
@@ -656,5 +756,6 @@ export function getSupportedDatabaseTypes() {
     { value: "oracle", label: "Oracle", icon: "database", defaultPort: 1521 },
     { value: "access", label: "Microsoft Access", icon: "file", defaultPort: 0 },
     { value: "excel", label: "Excel (.xlsx/.xls)", icon: "file", defaultPort: 0 },
+    { value: "internal", label: "Internal Database (Demo)", icon: "database", defaultPort: 0 },
   ];
 }

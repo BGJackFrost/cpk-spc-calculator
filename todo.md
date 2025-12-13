@@ -1160,3 +1160,7 @@
 
 - [x] Tạo bảng dữ liệu mẫu trong database (sample_measurements, sample_products)
 - [x] Cải thiện UI chọn kết nối với nút Load để hiển thị danh sách bảng và dữ liệu
+
+## Bug Fixes - Phase 46
+
+- [x] Fix lỗi không xem được bảng mẫu trong Database Explorer

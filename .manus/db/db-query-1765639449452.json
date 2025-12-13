@@ -1,0 +1,28 @@
+{
+  "query": "SELECT id, name, databaseType, host, port, `database`, username FROM database_connections WHERE name LIKE '%Demo%';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute SELECT id, name, databaseType, host, port, `database`, username FROM database_connections WHERE name LIKE '%Demo%';",
+  "rows": [
+    {
+      "id": "1",
+      "name": "MachineDatabase Demo",
+      "databaseType": "mysql",
+      "host": "NULL",
+      "port": "NULL",
+      "database": "NULL",
+      "username": "NULL"
+    },
+    {
+      "id": "30001",
+      "name": "Internal Database (Demo)",
+      "databaseType": "mysql",
+      "host": "localhost",
+      "port": "3306",
+      "database": "cpk_spc_calculator",
+      "username": "demo_user"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tdatabaseType\thost\tport\tdatabase\tusername\n1\tMachineDatabase Demo\tmysql\tNULL\tNULL\tNULL\tNULL\n30001\tInternal Database (Demo)\tmysql\tlocalhost\t3306\tcpk_spc_calculator\tdemo_user\n",
+  "stderr": "",
+  "execution_time_ms": 1536
+}
