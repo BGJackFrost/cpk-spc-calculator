@@ -1173,3 +1173,22 @@
 - [x] Lọc bảng hệ thống - ẩn các bảng như migrations, sessions (sử dụng whitelist chỉ hiển thị sample_products và sample_measurements)
 - [x] Sửa lỗi API calls trong DatabaseExplorer (GET method với json wrapper)
 - [x] Sửa lỗi TypeScript trong externalDatabaseService.ts
+
+## Phase 48 - Cập nhật Dữ liệu Mẫu và Hướng dẫn Triển khai
+
+### Cập nhật dữ liệu mẫu
+- [x] Lấy danh sách sản phẩm từ bảng products
+- [x] Lấy danh sách công trạm từ bảng workstations
+- [x] Cập nhật sample_measurements với tên sản phẩm và công trạm thực (90 bản ghi)
+
+### Hướng dẫn triển khai Windows Server 2019
+- [x] Tạo tài liệu hướng dẫn cài đặt Node.js
+- [x] Hướng dẫn cài đặt MySQL/TiDB
+- [x] Hướng dẫn cấu hình biến môi trường
+- [x] Hướng dẫn build và chạy ứng dụng
+- [x] Hướng dẫn cấu hình IIS reverse proxy (optional)
+- [x] Hướng dẫn cấu hình Windows Service (PM2/NSSM)
+
+### Sửa lỗi menu sidebar
+- [x] Rà soát các trang bị mất menu trái
+- [x] Sửa lỗi ConnectionManager.tsx (databaseTypes.map, connections.map)

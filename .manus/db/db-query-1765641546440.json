@@ -1,0 +1,38 @@
+{
+  "query": "SELECT code, name FROM products",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute SELECT code, name FROM products",
+  "rows": [
+    {
+      "code": "SP001",
+      "name": "Sản phẩm A"
+    },
+    {
+      "code": "PCB-001",
+      "name": "PCB Board Type A"
+    },
+    {
+      "code": "PCB-002",
+      "name": "PCB Board Type B"
+    },
+    {
+      "code": "IC-001",
+      "name": "IC Chip 8-bit"
+    },
+    {
+      "code": "IC-002",
+      "name": "IC Chip 16-bit"
+    },
+    {
+      "code": "CAP-001",
+      "name": "Capacitor 100uF"
+    },
+    {
+      "code": "RES-001",
+      "name": "Resistor 10K"
+    }
+  ],
+  "messages": [],
+  "stdout": "code\tname\nSP001\tSản phẩm A\nPCB-001\tPCB Board Type A\nPCB-002\tPCB Board Type B\nIC-001\tIC Chip 8-bit\nIC-002\tIC Chip 16-bit\nCAP-001\tCapacitor 100uF\nRES-001\tResistor 10K\n",
+  "stderr": "",
+  "execution_time_ms": 1518
+}

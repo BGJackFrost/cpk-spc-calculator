@@ -206,13 +206,15 @@ export default function ConnectionManager() {
   // Fetch external connections
   const fetchConnections = useCallback(async () => {
     try {
-      const response = await fetch("/api/trpc/databaseConnection.list", {
+      const response = await fetch("/api/trpc/databaseConnection.list?input=" + encodeURIComponent(JSON.stringify({ json: {} })), {
         method: "GET",
         credentials: "include",
       });
       const result = await response.json();
-      if (result.result?.data) {
-        setConnections(result.result.data);
+      if (result.result?.data?.json) {
+        setConnections(result.result.data.json);
+      } else if (result.result?.data) {
+        setConnections(Array.isArray(result.result.data) ? result.result.data : []);
       }
     } catch (error) {
       console.error("Failed to fetch connections:", error);
@@ -225,12 +227,14 @@ export default function ConnectionManager() {
   // Fetch database types
   const fetchDatabaseTypes = useCallback(async () => {
     try {
-      const response = await fetch("/api/trpc/databaseConnection.getSupportedTypes", {
+      const response = await fetch("/api/trpc/databaseConnection.getSupportedTypes?input=" + encodeURIComponent(JSON.stringify({ json: {} })), {
         method: "GET",
         credentials: "include",
       });
       const result = await response.json();
-      if (result.result?.data) {
+      if (result.result?.data?.json) {
+        setDatabaseTypes(result.result.data.json);
+      } else if (result.result?.data) {
         setDatabaseTypes(result.result.data);
       }
     } catch (error) {

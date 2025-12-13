@@ -1,0 +1,45 @@
+{
+  "query": "SELECT id, code, name FROM products LIMIT 10",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute SELECT id, code, name FROM products LIMIT 10",
+  "rows": [
+    {
+      "id": "1",
+      "code": "SP001",
+      "name": "Sản phẩm A"
+    },
+    {
+      "id": "30001",
+      "code": "PCB-001",
+      "name": "PCB Board Type A"
+    },
+    {
+      "id": "30002",
+      "code": "PCB-002",
+      "name": "PCB Board Type B"
+    },
+    {
+      "id": "30003",
+      "code": "IC-001",
+      "name": "IC Chip 8-bit"
+    },
+    {
+      "id": "30004",
+      "code": "IC-002",
+      "name": "IC Chip 16-bit"
+    },
+    {
+      "id": "30005",
+      "code": "CAP-001",
+      "name": "Capacitor 100uF"
+    },
+    {
+      "id": "30006",
+      "code": "RES-001",
+      "name": "Resistor 10K"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tcode\tname\n1\tSP001\tSản phẩm A\n30001\tPCB-001\tPCB Board Type A\n30002\tPCB-002\tPCB Board Type B\n30003\tIC-001\tIC Chip 8-bit\n30004\tIC-002\tIC Chip 16-bit\n30005\tCAP-001\tCapacitor 100uF\n30006\tRES-001\tResistor 10K\n",
+  "stderr": "",
+  "execution_time_ms": 1603
+}
