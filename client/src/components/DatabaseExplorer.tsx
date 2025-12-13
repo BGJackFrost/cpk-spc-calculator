@@ -129,8 +129,10 @@ export default function DatabaseExplorer() {
         credentials: "include",
       });
       const result = await response.json();
-      if (result.result?.data) {
+      if (result.result?.data && Array.isArray(result.result.data)) {
         setConnections(result.result.data);
+      } else {
+        setConnections([]);
       }
     } catch (error) {
       console.error("Error fetching connections:", error);
@@ -287,7 +289,7 @@ export default function DatabaseExplorer() {
             </div>
           ) : (
             <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-              {connections.map((conn) => (
+              {(connections || []).map((conn) => (
                 <Card
                   key={conn.id}
                   className={`cursor-pointer transition-all hover:shadow-md ${

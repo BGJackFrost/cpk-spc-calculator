@@ -1140,3 +1140,7 @@
 - [x] Nhúng trực tiếp nội dung ConnectionManager vào tab "Khám phá dữ liệu"
 - [x] Đổi tên menu thành "Cài đặt & Kết nối"
 - [x] Thêm breadcrumb navigation giữa các trang liên quan
+
+## Bug Fixes - Phase 43
+
+- [x] Fix lỗi "connections.map is not a function" trong DatabaseExplorer
