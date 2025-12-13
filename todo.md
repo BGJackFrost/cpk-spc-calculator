@@ -929,3 +929,28 @@
 - [x] Kiểm tra và validate license với hardware fingerprint binding
 - [x] Generate offline license file cho khách hàng không có internet
 - [x] Thêm 6 API endpoints mới: activateOnline, generateOfflineFile, activateOffline, validate, statistics, revoke
+
+
+## Phase 33 - UI Hybrid Activation, License Admin Dashboard, Login History
+
+### Trang UI Hybrid Activation
+- [x] Tạo trang LicenseActivation.tsx
+- [x] Tab Online Activation (nhập license key)
+- [x] Tab Offline Activation (upload file .lic)
+- [x] Hiển thị hardware fingerprint với copy button
+- [x] Hiển thị trạng thái license hiện tại với chi tiết (công ty, loại, ngày hết hạn, giới hạn)
+
+### Dashboard License Admin
+- [x] Tạo trang LicenseAdmin.tsx
+- [x] Cards thống kê (total, by status, expiring soon)
+- [x] Phân bố theo loại license (trial, standard, professional, enterprise)
+- [x] Bảng danh sách licenses với copy key, view details
+- [x] Actions: generate offline file, revoke, view details
+- [x] Dialog tạo license mới với form đầy đủ
+
+### Trang Lịch sử đăng nhập
+- [x] Tạo trang LoginHistoryPage.tsx
+- [x] Bảng hiển thị login history với icons và badges
+- [x] Bộ lọc theo username, ngày, loại sự kiện, loại xác thực
+- [x] Cards thống kê (tổng, login success, logout, failed)
+- [x] Thêm routes và menu items trong DashboardLayout

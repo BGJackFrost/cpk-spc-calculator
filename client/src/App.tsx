@@ -44,6 +44,9 @@ import ExportHistory from "./pages/ExportHistory";
 import LocalLogin from "./pages/LocalLogin";
 import LocalUserManagement from "./pages/LocalUserManagement";
 import ChangePassword from "./pages/ChangePassword";
+import LicenseActivation from "./pages/LicenseActivation";
+import LicenseAdmin from "./pages/LicenseAdmin";
+import LoginHistoryPage from "./pages/LoginHistoryPage";
 
 function Router() {
   return (
@@ -85,6 +88,9 @@ function Router() {
       <Route path="/webhooks" component={WebhookManagement} />
       <Route path="/report-templates" component={ReportTemplateManagement} />
       <Route path="/export-history" component={ExportHistory} />
+      <Route path="/license-activation" component={LicenseActivation} />
+      <Route path="/license-admin" component={LicenseAdmin} />
+      <Route path="/login-history" component={LoginHistoryPage} />
       <Route path="/spc-visualization" component={SpcPlanVisualization} />
       <Route path="/spc-visualization/:type/:id" component={SpcVisualizationDetail} />
       <Route path="/404" component={NotFound} />

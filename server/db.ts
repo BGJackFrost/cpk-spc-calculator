@@ -3140,10 +3140,16 @@ export async function getLoginStats(userId?: number) {
 
   const loginCount = results.find(r => r.eventType === "login")?.count || 0;
   const failedCount = results.find(r => r.eventType === "login_failed")?.count || 0;
+  const logoutCount = results.find(r => r.eventType === "logout")?.count || 0;
   const lastLogin = results.find(r => r.eventType === "login")?.lastEvent || null;
+  const total = loginCount + failedCount + logoutCount;
 
   return {
+    total,
     totalLogins: loginCount,
+    loginSuccess: loginCount,
+    loginFailed: failedCount,
+    logoutCount,
     lastLogin,
     failedAttempts: failedCount,
   };
