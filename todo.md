@@ -991,3 +991,11 @@
 - [x] Thêm toggle Dark/Light trong dropdown menu của DashboardLayout
 - [x] CSS variables cho dark theme đã có sẵn trong index.css
 - [x] Lưu preference vào localStorage tự động
+
+
+## Bug Fixes
+
+### Registration failed on /local-users
+- [x] Kiểm tra localAuth.register mutation
+- [x] Sửa lỗi Registration failed - bảng local_users chưa tồn tại trong database
+- [x] Tạo bảng local_users và login_history bằng SQL trực tiếp
