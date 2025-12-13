@@ -1,0 +1,9 @@
+{
+  "query": "INSERT INTO report_templates (name, description, companyName, headerText, footerText, isDefault, isActive)\nVALUES ('Mẫu mặc định', 'Template báo cáo mặc định của hệ thống', 'SPC/CPK Calculator', 'Báo cáo Phân tích SPC/CPK', 'Được tạo bởi SPC/CPK Calculator', 1, 1);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute INSERT INTO report_templates (name, description, companyName, headerText, footerText, isDefault, isActive)\nVALUES ('Mẫu mặc định', 'Template báo cáo mặc định của hệ thống', 'SPC/CPK Calculator', 'Báo cáo Phân tích SPC/CPK', 'Được tạo bởi SPC/CPK Calculator', 1, 1);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1550
+}

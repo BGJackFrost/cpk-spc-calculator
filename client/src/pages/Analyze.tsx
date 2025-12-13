@@ -212,6 +212,21 @@ export default function Analyze() {
     },
   });
 
+  // Mutation phân tích từ SPC Plan
+  const analyzeFromPlanMutation = trpc.spcPlan.analyzeFromPlan.useMutation({
+    onSuccess: (data) => {
+      setResult(data);
+      if (data.alertTriggered) {
+        toast.warning(t.alerts?.cpkWarning || "Cảnh báo: CPK dưới ngưỡng cho phép!");
+      } else {
+        toast.success(t.alerts?.analysisComplete || "Phân tích hoàn tất!");
+      }
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
   const manualAnalyzeMutation = trpc.spc.analyzeManual.useMutation({
     onSuccess: (data) => {
       setResult(data);
@@ -313,11 +328,14 @@ export default function Analyze() {
   const handleExportPdf = () => {
     if (!result) return;
     setIsExporting(true);
+    const now = new Date();
+    const exportStartDate = startDate || now;
+    const exportEndDate = endDate || now;
     exportPdfMutation.mutate({
-      productCode: selectedProduct,
-      stationName: selectedStation,
-      startDate: startDate!,
-      endDate: endDate!,
+      productCode: selectedProduct || "Manual",
+      stationName: selectedStation || "Manual Input",
+      startDate: exportStartDate,
+      endDate: exportEndDate,
       spcResult: {
         sampleCount: result.sampleCount,
         mean: result.mean,
@@ -349,11 +367,14 @@ export default function Analyze() {
   const handleExportExcel = () => {
     if (!result) return;
     setIsExporting(true);
+    const now = new Date();
+    const exportStartDate = startDate || now;
+    const exportEndDate = endDate || now;
     exportExcelMutation.mutate({
-      productCode: selectedProduct,
-      stationName: selectedStation,
-      startDate: startDate!,
-      endDate: endDate!,
+      productCode: selectedProduct || "Manual",
+      stationName: selectedStation || "Manual Input",
+      startDate: exportStartDate,
+      endDate: exportEndDate,
       spcResult: {
         sampleCount: result.sampleCount,
         mean: result.mean,
@@ -865,13 +886,31 @@ export default function Analyze() {
                   <div className="bg-muted/50 p-4 rounded-lg">
                     <p className="text-sm text-muted-foreground">
                       Tính năng này sẽ lấy dữ liệu từ các lần lấy mẫu đã thực hiện trong kế hoạch SPC đã chọn.
-                      Hiện tại chưa có dữ liệu lấy mẫu thực tế - vui lòng sử dụng chế độ "Nhập thủ công" hoặc "Database Mapping".
+                      Chọn một kế hoạch SPC đang hoạt động và nhấn "Phân tích" để tính toán SPC/CPK từ dữ liệu lấy mẫu thực tế.
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-3">
-                    <Button disabled className="bg-muted">
-                      <TrendingUp className="mr-2 h-4 w-4" />
-                      Phân tích (Sắp ra mắt)
+                    <Button 
+                      onClick={() => {
+                        if (!selectedSpcPlan) {
+                          toast.error("Vui lòng chọn kế hoạch SPC");
+                          return;
+                        }
+                        analyzeFromPlanMutation.mutate({ planId: parseInt(selectedSpcPlan) });
+                      }}
+                      disabled={!selectedSpcPlan || analyzeFromPlanMutation.isPending}
+                    >
+                      {analyzeFromPlanMutation.isPending ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Đang phân tích...
+                        </>
+                      ) : (
+                        <>
+                          <TrendingUp className="mr-2 h-4 w-4" />
+                          Phân tích
+                        </>
+                      )}
                     </Button>
 
                     {result && (

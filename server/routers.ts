@@ -21,6 +21,7 @@ import {
   deleteProduct,
   createProductSpecification,
   getProductSpecifications,
+  getProductSpecificationById,
   updateProductSpecification,
   deleteProductSpecification,
   createSpcSamplingPlan,
@@ -127,6 +128,12 @@ import {
   getSpcSummaryStatsByPlan,
   getSpcSummaryStatsByTimeRange,
   getAuditLogsPaginated,
+  getReportTemplates,
+  getReportTemplateById,
+  getDefaultReportTemplate,
+  createReportTemplate,
+  updateReportTemplate,
+  deleteReportTemplate,
 } from "./db";
 import { invokeLLM } from "./_core/llm";
 import { notifyOwner } from "./_core/notification";
@@ -1704,6 +1711,134 @@ const spcPlanRouter = router({
       await deleteSpcSamplingPlan(input.id);
       return { success: true };
     }),
+
+  // Phân tích SPC/CPK từ dữ liệu lấy mẫu của kế hoạch SPC
+  analyzeFromPlan: protectedProcedure
+    .input(z.object({
+      planId: z.number(),
+    }))
+    .mutation(async ({ input }) => {
+      const { planId } = input;
+      
+      // Lấy thông tin kế hoạch SPC
+      const plan = await getSpcSamplingPlanById(planId);
+      if (!plan) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Không tìm thấy kế hoạch SPC" });
+      }
+
+      // Lấy dữ liệu lấy mẫu từ bảng spc_realtime_data
+      const samples = await getSpcRealtimeDataByPlan(planId, 10000);
+      
+      if (samples.length < 5) {
+        throw new TRPCError({ 
+          code: "BAD_REQUEST", 
+          message: `Cần ít nhất 5 mẫu để phân tích. Hiện tại có ${samples.length} mẫu.` 
+        });
+      }
+
+      // Chuyển đổi dữ liệu (giá trị được lưu * 10000)
+      const values = samples.map(s => s.sampleValue / 10000);
+      
+      // Lấy USL/LSL từ specification nếu có
+      let usl: number | null = null;
+      let lsl: number | null = null;
+      let target: number | null = null;
+      
+      if (plan.specificationId) {
+        const spec = await getProductSpecificationById(plan.specificationId);
+        if (spec) {
+          usl = spec.usl ? spec.usl / 10000 : null;
+          lsl = spec.lsl ? spec.lsl / 10000 : null;
+          target = spec.target ? spec.target / 10000 : null;
+        }
+      }
+
+      // Tính toán SPC/CPK
+      const n = values.length;
+      const mean = values.reduce((a, b) => a + b, 0) / n;
+      const variance = values.reduce((sum, v) => sum + Math.pow(v - mean, 2), 0) / (n - 1);
+      const stdDev = Math.sqrt(variance);
+      const min = Math.min(...values);
+      const max = Math.max(...values);
+      const range = max - min;
+
+      // Control limits (3-sigma)
+      const ucl = mean + 3 * stdDev;
+      const lcl = mean - 3 * stdDev;
+
+      // Range chart limits
+      const d2 = 2.326; // for n=5
+      const d3 = 0;
+      const d4 = 2.114;
+      const avgRange = range;
+      const uclR = d4 * avgRange;
+      const lclR = d3 * avgRange;
+
+      // Process capability
+      let cp: number | null = null;
+      let cpk: number | null = null;
+      let cpu: number | null = null;
+      let cpl: number | null = null;
+
+      if (usl !== null && lsl !== null && stdDev > 0) {
+        cp = (usl - lsl) / (6 * stdDev);
+        cpu = (usl - mean) / (3 * stdDev);
+        cpl = (mean - lsl) / (3 * stdDev);
+        cpk = Math.min(cpu, cpl);
+      } else if (usl !== null && stdDev > 0) {
+        cpu = (usl - mean) / (3 * stdDev);
+        cpk = cpu;
+      } else if (lsl !== null && stdDev > 0) {
+        cpl = (mean - lsl) / (3 * stdDev);
+        cpk = cpl;
+      }
+
+      // Chuẩn bị dữ liệu biểu đồ
+      const xBarData = samples.map((s, i) => ({
+        index: i + 1,
+        value: s.sampleValue / 10000,
+        timestamp: s.sampledAt,
+      }));
+
+      const rangeData = samples.map((s, i) => ({
+        index: i + 1,
+        value: s.subgroupRange ? s.subgroupRange / 10000 : 0,
+      }));
+
+      const rawData = samples.map(s => ({
+        value: s.sampleValue / 10000,
+        timestamp: s.sampledAt,
+      }));
+
+      // Kiểm tra cảnh báo CPK
+      const alertTriggered = cpk !== null && cpk < 1.0;
+
+      return {
+        id: planId,
+        sampleCount: n,
+        mean,
+        stdDev,
+        min,
+        max,
+        range,
+        cp,
+        cpk,
+        cpu,
+        cpl,
+        ucl,
+        lcl,
+        uclR,
+        lclR,
+        usl,
+        lsl,
+        target,
+        alertTriggered,
+        xBarData,
+        rangeData,
+        rawData,
+        planName: plan.name,
+      };
+    }),
 });
 
 // User Line Assignment Router
@@ -2090,6 +2225,74 @@ export const appRouter = router({
   defect: defectRouter,
   machineType: machineTypeRouter,
   fixture: fixtureRouter,
+
+  // Report Template router
+  reportTemplate: router({
+    list: protectedProcedure.query(async () => {
+      return await getReportTemplates();
+    }),
+    getById: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        return await getReportTemplateById(input.id);
+      }),
+    getDefault: protectedProcedure.query(async () => {
+      return await getDefaultReportTemplate();
+    }),
+    create: adminProcedure
+      .input(z.object({
+        name: z.string().min(1),
+        description: z.string().optional(),
+        companyName: z.string().optional(),
+        companyLogo: z.string().optional(),
+        headerText: z.string().optional(),
+        footerText: z.string().optional(),
+        primaryColor: z.string().optional(),
+        secondaryColor: z.string().optional(),
+        fontFamily: z.string().optional(),
+        showLogo: z.number().optional(),
+        showCompanyName: z.number().optional(),
+        showDate: z.number().optional(),
+        showCharts: z.number().optional(),
+        showRawData: z.number().optional(),
+        isDefault: z.number().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const id = await createReportTemplate({ ...input, createdBy: ctx.user.id });
+        return { id };
+      }),
+    update: adminProcedure
+      .input(z.object({
+        id: z.number(),
+        name: z.string().optional(),
+        description: z.string().optional(),
+        companyName: z.string().optional(),
+        companyLogo: z.string().optional(),
+        headerText: z.string().optional(),
+        footerText: z.string().optional(),
+        primaryColor: z.string().optional(),
+        secondaryColor: z.string().optional(),
+        fontFamily: z.string().optional(),
+        showLogo: z.number().optional(),
+        showCompanyName: z.number().optional(),
+        showDate: z.number().optional(),
+        showCharts: z.number().optional(),
+        showRawData: z.number().optional(),
+        isDefault: z.number().optional(),
+        isActive: z.number().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { id, ...data } = input;
+        await updateReportTemplate(id, data);
+        return { success: true };
+      }),
+    delete: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await deleteReportTemplate(input.id);
+        return { success: true };
+      }),
+  }),
 
   // Process Config router
   processConfig: router({

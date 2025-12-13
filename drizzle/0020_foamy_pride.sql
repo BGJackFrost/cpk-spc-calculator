@@ -1,0 +1,23 @@
+CREATE TABLE `report_templates` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`name` varchar(255) NOT NULL,
+	`description` text,
+	`companyName` varchar(255),
+	`companyLogo` text,
+	`headerText` text,
+	`footerText` text,
+	`primaryColor` varchar(20) DEFAULT '#3b82f6',
+	`secondaryColor` varchar(20) DEFAULT '#64748b',
+	`fontFamily` varchar(100) DEFAULT 'Arial',
+	`showLogo` int NOT NULL DEFAULT 1,
+	`showCompanyName` int NOT NULL DEFAULT 1,
+	`showDate` int NOT NULL DEFAULT 1,
+	`showCharts` int NOT NULL DEFAULT 1,
+	`showRawData` int NOT NULL DEFAULT 0,
+	`isDefault` int NOT NULL DEFAULT 0,
+	`isActive` int NOT NULL DEFAULT 1,
+	`createdBy` int,
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `report_templates_id` PRIMARY KEY(`id`)
+);

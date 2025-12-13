@@ -987,3 +987,37 @@ export const webhookLogs = mysqlTable("webhook_logs", {
 
 export type WebhookLog = typeof webhookLogs.$inferSelect;
 export type InsertWebhookLog = typeof webhookLogs.$inferInsert;
+
+
+/**
+ * Report Templates - mẫu báo cáo tùy chỉnh
+ */
+export const reportTemplates = mysqlTable("report_templates", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  // Header settings
+  companyName: varchar("companyName", { length: 255 }),
+  companyLogo: text("companyLogo"), // URL hoặc base64
+  headerText: text("headerText"),
+  footerText: text("footerText"),
+  // Style settings
+  primaryColor: varchar("primaryColor", { length: 20 }).default("#3b82f6"),
+  secondaryColor: varchar("secondaryColor", { length: 20 }).default("#64748b"),
+  fontFamily: varchar("fontFamily", { length: 100 }).default("Arial"),
+  // Content settings
+  showLogo: int("showLogo").notNull().default(1),
+  showCompanyName: int("showCompanyName").notNull().default(1),
+  showDate: int("showDate").notNull().default(1),
+  showCharts: int("showCharts").notNull().default(1),
+  showRawData: int("showRawData").notNull().default(0),
+  // Status
+  isDefault: int("isDefault").notNull().default(0),
+  isActive: int("isActive").notNull().default(1),
+  createdBy: int("createdBy"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ReportTemplate = typeof reportTemplates.$inferSelect;
+export type InsertReportTemplate = typeof reportTemplates.$inferInsert;

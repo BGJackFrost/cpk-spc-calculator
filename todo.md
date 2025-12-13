@@ -746,3 +746,21 @@
 - [x] Đảm bảo nút xuất PDF/Excel hiển thị cho cả chế độ nhập thủ công
 - [x] Đảm bảo nút xuất PDF/Excel hiển thị cho chế độ từ kế hoạch SPC
 - [x] Kiểm tra và sửa lỗi nếu có (71 tests pass)
+
+
+## Phase 25 - Hoàn thiện SPC Plan, Template báo cáo, Sửa lỗi Export
+
+### Sửa lỗi xuất PDF/Excel trong Nhập Thủ Công
+- [x] Kiểm tra và sửa lỗi export trong chế độ nhập thủ công
+- [x] Đảm bảo dữ liệu được truyền đúng khi export (sử dụng ngày hiện tại nếu không có startDate/endDate)
+
+### Hoàn thiện tab Từ Kế hoạch SPC
+- [x] Tạo mutation phân tích từ SPC Plan (analyzeFromPlan)
+- [x] Lấy dữ liệu lấy mẫu từ SPC Plan samples (spc_realtime_data)
+- [x] Kích hoạt nút phân tích
+
+### Template báo cáo tùy chỉnh
+- [x] Tạo bảng report_templates trong database
+- [x] Tạo trang quản lý template báo cáo (ReportTemplateManagement.tsx)
+- [x] Cho phép tùy chỉnh logo, header, footer
+- [ ] Tích hợp template vào export PDF (cần cập nhật exportService.ts)

@@ -54,7 +54,9 @@ import {
   mappingTemplates,
   InsertMappingTemplate,
   licenses,
-  InsertLicense
+  InsertLicense,
+  reportTemplates,
+  InsertReportTemplate
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -2900,4 +2902,60 @@ export async function getExpiredLicenses() {
         lte(licenses.expiresAt, now)
       )
     );
+}
+
+
+// ==================== Report Templates ====================
+
+export async function getReportTemplates() {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(reportTemplates).orderBy(desc(reportTemplates.createdAt));
+}
+
+export async function getReportTemplateById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(reportTemplates).where(eq(reportTemplates.id, id)).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function getDefaultReportTemplate() {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(reportTemplates)
+    .where(and(eq(reportTemplates.isDefault, 1), eq(reportTemplates.isActive, 1)))
+    .limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function createReportTemplate(data: Omit<InsertReportTemplate, 'id' | 'createdAt' | 'updatedAt'>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  // Nếu đây là template mặc định, bỏ mặc định của các template khác
+  if (data.isDefault) {
+    await db.update(reportTemplates).set({ isDefault: 0 }).where(eq(reportTemplates.isDefault, 1));
+  }
+  
+  const result = await db.insert(reportTemplates).values(data);
+  return result[0].insertId;
+}
+
+export async function updateReportTemplate(id: number, data: Partial<InsertReportTemplate>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  // Nếu đây là template mặc định, bỏ mặc định của các template khác
+  if (data.isDefault) {
+    await db.update(reportTemplates).set({ isDefault: 0 }).where(eq(reportTemplates.isDefault, 1));
+  }
+  
+  await db.update(reportTemplates).set(data).where(eq(reportTemplates.id, id));
+}
+
+export async function deleteReportTemplate(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(reportTemplates).where(eq(reportTemplates.id, id));
 }
