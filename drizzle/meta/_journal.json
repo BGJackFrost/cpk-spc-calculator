@@ -138,57 +138,8 @@
     {
       "idx": 19,
       "version": "5",
-      "when": 1765582086121,
-      "tag": "0019_dashing_diamondback",
-      "breakpoints": true
-    },
-    {
-      "idx": 20,
-      "version": "5",
-      "when": 1765590328292,
-      "tag": "0020_foamy_pride",
-      "breakpoints": true
-    },
-    {
-      "idx": 21,
-      "version": "5",
-      "when": 1765592265207,
-      "tag": "0021_bent_mulholland_black",
-      "breakpoints": true
-    },
-    {
-      "idx": 22,
-      "version": "5",
-      "when": 1765593569564,
-      "tag": "0022_giant_betty_ross",
-      "breakpoints": true
-    },
-    {
-      "idx": 23,
-      "version": "5",
-      "when": 1765594071856,
-      "tag": "0023_previous_glorian",
-      "breakpoints": true
-    },
-    {
-      "idx": 24,
-      "version": "5",
-      "when": 1765596114680,
-      "tag": "0024_common_diamondback",
-      "breakpoints": true
-    },
-    {
-      "idx": 25,
-      "version": "5",
-      "when": 1765597650120,
-      "tag": "0025_massive_hemingway",
-      "breakpoints": true
-    },
-    {
-      "idx": 26,
-      "version": "5",
-      "when": 1765601199177,
-      "tag": "0026_amused_electro",
+      "when": 1765601861472,
+      "tag": "0019_futuristic_junta",
       "breakpoints": true
     }
   ]

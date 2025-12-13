@@ -136,6 +136,7 @@ const menuGroups: MenuGroup[] = [
     items: [
       { icon: Settings, labelKey: "common.settings", path: "/settings" },
       { icon: Database, labelKey: "nav.databaseSettings", path: "/database-settings", adminOnly: true },
+      { icon: Building2, labelKey: "nav.companyInfo", path: "/company-info", adminOnly: true },
       { icon: Mail, labelKey: "emailNotification", path: "/email-notifications" },
       { icon: Server, labelKey: "smtpConfig", path: "/smtp-settings" },
       { icon: Webhook, labelKey: "nav.webhookManagement", path: "/webhooks", adminOnly: true },
@@ -170,6 +171,7 @@ const fallbackLabelsVi: Record<string, string> = {
   "nav.licensePortal": "Cổng License",
   "nav.licenseAdmin": "Quản trị License",
   "nav.databaseSettings": "Cấu hình Database",
+  "nav.companyInfo": "Thông tin Công ty",
   "menuGroup.dashboard": "Tổng quan",
   "menuGroup.analysis": "Phân tích",
   "menuGroup.quality": "Chất lượng",
@@ -198,6 +200,7 @@ const fallbackLabelsEn: Record<string, string> = {
   "nav.licensePortal": "License Portal",
   "nav.licenseAdmin": "License Administration",
   "nav.databaseSettings": "Database Settings",
+  "nav.companyInfo": "Company Info",
   "menuGroup.dashboard": "Overview",
   "menuGroup.analysis": "Analysis",
   "menuGroup.quality": "Quality",

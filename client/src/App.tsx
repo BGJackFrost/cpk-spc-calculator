@@ -48,6 +48,7 @@ import LicenseAdmin from "./pages/LicenseAdmin";
 import LoginHistoryPage from "./pages/LoginHistoryPage";
 import SystemSetup from "./pages/SystemSetup";
 import DatabaseSettings from "./pages/DatabaseSettings";
+import CompanyInfo from "./pages/CompanyInfo";
 
 function Router() {
   return (
@@ -55,6 +56,7 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/setup" component={SystemSetup} />
       <Route path="/database-settings" component={DatabaseSettings} />
+      <Route path="/company-info" component={CompanyInfo} />
       <Route path="/local-login" component={LocalLogin} />
       <Route path="/change-password" component={ChangePassword} />
       <Route path="/dashboard" component={Dashboard} />
