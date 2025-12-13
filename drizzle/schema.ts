@@ -1097,3 +1097,46 @@ export const exportHistory = mysqlTable("export_history", {
 
 export type ExportHistory = typeof exportHistory.$inferSelect;
 export type InsertExportHistory = typeof exportHistory.$inferInsert;
+
+
+/**
+ * System Configuration - stores system setup and configuration
+ */
+export const systemConfig = mysqlTable("system_config", {
+  id: int("id").autoincrement().primaryKey(),
+  configKey: varchar("configKey", { length: 100 }).notNull().unique(),
+  configValue: text("configValue"),
+  configType: varchar("configType", { length: 50 }).notNull().default("string"), // string, number, boolean, json
+  description: text("description"),
+  isEncrypted: int("isEncrypted").notNull().default(0), // For sensitive data
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type SystemConfig = typeof systemConfig.$inferSelect;
+export type InsertSystemConfig = typeof systemConfig.$inferInsert;
+
+/**
+ * Company Info - stores customer/company information
+ */
+export const companyInfo = mysqlTable("company_info", {
+  id: int("id").autoincrement().primaryKey(),
+  companyName: varchar("companyName", { length: 255 }).notNull(),
+  companyCode: varchar("companyCode", { length: 50 }),
+  address: text("address"),
+  phone: varchar("phone", { length: 50 }),
+  email: varchar("email", { length: 320 }),
+  website: varchar("website", { length: 255 }),
+  taxCode: varchar("taxCode", { length: 50 }),
+  logo: text("logo"), // Base64 or URL
+  industry: varchar("industry", { length: 100 }), // Manufacturing, Electronics, etc.
+  contactPerson: varchar("contactPerson", { length: 255 }),
+  contactPhone: varchar("contactPhone", { length: 50 }),
+  contactEmail: varchar("contactEmail", { length: 320 }),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type CompanyInfo = typeof companyInfo.$inferSelect;
+export type InsertCompanyInfo = typeof companyInfo.$inferInsert;

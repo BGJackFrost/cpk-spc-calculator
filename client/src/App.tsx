@@ -46,11 +46,15 @@ import ChangePassword from "./pages/ChangePassword";
 import LicenseActivation from "./pages/LicenseActivation";
 import LicenseAdmin from "./pages/LicenseAdmin";
 import LoginHistoryPage from "./pages/LoginHistoryPage";
+import SystemSetup from "./pages/SystemSetup";
+import DatabaseSettings from "./pages/DatabaseSettings";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
+      <Route path="/setup" component={SystemSetup} />
+      <Route path="/database-settings" component={DatabaseSettings} />
       <Route path="/local-login" component={LocalLogin} />
       <Route path="/change-password" component={ChangePassword} />
       <Route path="/dashboard" component={Dashboard} />

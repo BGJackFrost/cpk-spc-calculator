@@ -135,6 +135,7 @@ const menuGroups: MenuGroup[] = [
     icon: ShieldCheck,
     items: [
       { icon: Settings, labelKey: "common.settings", path: "/settings" },
+      { icon: Database, labelKey: "nav.databaseSettings", path: "/database-settings", adminOnly: true },
       { icon: Mail, labelKey: "emailNotification", path: "/email-notifications" },
       { icon: Server, labelKey: "smtpConfig", path: "/smtp-settings" },
       { icon: Webhook, labelKey: "nav.webhookManagement", path: "/webhooks", adminOnly: true },
@@ -168,6 +169,7 @@ const fallbackLabelsVi: Record<string, string> = {
   "nav.loginHistory": "Lịch sử Đăng nhập",
   "nav.licensePortal": "Cổng License",
   "nav.licenseAdmin": "Quản trị License",
+  "nav.databaseSettings": "Cấu hình Database",
   "menuGroup.dashboard": "Tổng quan",
   "menuGroup.analysis": "Phân tích",
   "menuGroup.quality": "Chất lượng",
@@ -195,6 +197,7 @@ const fallbackLabelsEn: Record<string, string> = {
   "nav.loginHistory": "Login History",
   "nav.licensePortal": "License Portal",
   "nav.licenseAdmin": "License Administration",
+  "nav.databaseSettings": "Database Settings",
   "menuGroup.dashboard": "Overview",
   "menuGroup.analysis": "Analysis",
   "menuGroup.quality": "Quality",

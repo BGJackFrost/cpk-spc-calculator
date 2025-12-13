@@ -999,3 +999,27 @@
 - [x] Kiểm tra localAuth.register mutation
 - [x] Sửa lỗi Registration failed - bảng local_users chưa tồn tại trong database
 - [x] Tạo bảng local_users và login_history bằng SQL trực tiếp
+
+
+## Phase 36 - System Setup, Database Management, Permissions Update
+
+### Trang khởi tạo hệ thống (System Setup Wizard)
+- [x] Tạo trang /setup cho lần đầu cài đặt (SystemSetup.tsx)
+- [x] Step 1: Cấu hình database local (host, port, user, password, database)
+- [x] Step 2: Thông tin công ty (tên, mã, địa chỉ, liên hệ)
+- [x] Step 3: Tạo tài khoản Admin (username, password, email)
+- [x] Lưu cấu hình vào bảng system_config và company_info
+- [x] Redirect về Dashboard sau khi hoàn thành
+- [x] Tạo API systemRouter với getSetupStatus, saveSetupConfig, saveCompanyInfo, completeSetup
+
+### Quản lý Database Local
+- [x] Tạo trang DatabaseSettings.tsx với 3 tabs (Kết nối, Trạng thái, Sao lưu)
+- [x] Form cấu hình connection (host, port, user, password, database)
+- [x] Test connection button
+- [x] Lưu cấu hình vào system_config
+- [x] Thêm route /database-settings và menu trong sidebar
+
+### Cập nhật MODULES và DEFAULT_PERMISSIONS
+- [x] Rà soát tất cả modules trong hệ thống (7 nhóm, 40+ modules)
+- [x] Cập nhật MODULES array đầy đủ với 40 modules
+- [x] Cập nhật DEFAULT_PERMISSIONS với 80+ permissions cho tất cả chức năng
