@@ -1124,3 +1124,8 @@
 - [x] Chọn kết nối → Load tables
 - [x] Chọn table → Xem dữ liệu
 - [x] Select Top và Sort dữ liệu
+
+
+## Bug Fixes - Phase 42
+
+- [x] Fix lỗi "databaseTypes.map is not a function" trong ConnectionManager.tsx

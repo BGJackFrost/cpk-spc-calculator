@@ -140,7 +140,14 @@ export default function ConnectionManager() {
   
   // External connections state
   const [connections, setConnections] = useState<ExternalConnection[]>([]);
-  const [databaseTypes, setDatabaseTypes] = useState<DatabaseType[]>([]);
+  const [databaseTypes, setDatabaseTypes] = useState<DatabaseType[]>([
+    { value: "mysql", label: "MySQL / MariaDB", icon: "database", defaultPort: 3306 },
+    { value: "postgres", label: "PostgreSQL", icon: "database", defaultPort: 5432 },
+    { value: "sqlserver", label: "SQL Server", icon: "database", defaultPort: 1433 },
+    { value: "oracle", label: "Oracle", icon: "database", defaultPort: 1521 },
+    { value: "access", label: "Microsoft Access", icon: "file", defaultPort: 0 },
+    { value: "excel", label: "Excel (.xlsx/.xls)", icon: "file", defaultPort: 0 },
+  ]);
   const [loadingConnections, setLoadingConnections] = useState(true);
   const [selectedConnection, setSelectedConnection] = useState<ExternalConnection | null>(null);
   
@@ -682,7 +689,7 @@ export default function ConnectionManager() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {databaseTypes.map((type) => (
+                          {(databaseTypes || []).map((type) => (
                             <SelectItem key={type.value} value={type.value}>
                               <div className="flex items-center gap-2">
                                 {getDatabaseIcon(type.value)}
