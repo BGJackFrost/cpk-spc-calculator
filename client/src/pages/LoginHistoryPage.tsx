@@ -20,8 +20,18 @@ import {
   Globe,
   Clock,
   CheckCircle2,
-  AlertTriangle
+  AlertTriangle,
+  Download,
+  FileSpreadsheet,
+  FileText
 } from "lucide-react";
+import { toast } from "sonner";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export default function LoginHistoryPage() {
   const [filters, setFilters] = useState({
@@ -119,6 +129,42 @@ export default function LoginHistoryPage() {
     });
   };
   
+  const [isExporting, setIsExporting] = useState(false);
+  
+  const exportMutation = trpc.localAuth.exportLoginHistory.useMutation({
+    onSuccess: (data) => {
+      // Create download link
+      const blob = new Blob([data.content], { type: data.mimeType });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = data.filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      toast.success(`Đã xuất ${data.filename}`);
+      setIsExporting(false);
+    },
+    onError: (error) => {
+      toast.error(`Lỗi xuất dữ liệu: ${error.message}`);
+      setIsExporting(false);
+    },
+  });
+  
+  const handleExport = (format: 'csv' | 'excel') => {
+    setIsExporting(true);
+    exportMutation.mutate({
+      format,
+      username: filters.username || undefined,
+      eventType: filters.eventType !== 'all' ? filters.eventType as any : undefined,
+      authType: filters.authType !== 'all' ? filters.authType as any : undefined,
+      startDate: filters.dateFrom || undefined,
+      endDate: filters.dateTo || undefined,
+    });
+  };
+  
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -127,16 +173,36 @@ export default function LoginHistoryPage() {
             <h1 className="text-2xl font-bold">Lịch sử đăng nhập</h1>
             <p className="text-muted-foreground">Theo dõi hoạt động đăng nhập/đăng xuất của người dùng</p>
           </div>
-          <Button 
-            variant="outline" 
-            onClick={() => {
-              loginHistoryQuery.refetch();
-              loginStatsQuery.refetch();
-            }}
-          >
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Làm mới
-          </Button>
+          <div className="flex gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" disabled={isExporting}>
+                  <Download className="h-4 w-4 mr-2" />
+                  {isExporting ? 'Đang xuất...' : 'Xuất báo cáo'}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => handleExport('csv')}>
+                  <FileText className="h-4 w-4 mr-2" />
+                  Xuất CSV
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport('excel')}>
+                  <FileSpreadsheet className="h-4 w-4 mr-2" />
+                  Xuất Excel
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                loginHistoryQuery.refetch();
+                loginStatsQuery.refetch();
+              }}
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Làm mới
+            </Button>
+          </div>
         </div>
         
         {/* Statistics Cards */}

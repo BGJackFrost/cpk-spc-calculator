@@ -2565,6 +2565,95 @@ export const appRouter = router({
         return getLoginStats(input.userId);
       }),
 
+    // Export login history to CSV/Excel (admin only)
+    exportLoginHistory: protectedProcedure
+      .input(z.object({
+        format: z.enum(['csv', 'excel']),
+        userId: z.number().optional(),
+        username: z.string().optional(),
+        eventType: z.enum(['login', 'logout', 'login_failed']).optional(),
+        authType: z.enum(['manus', 'local']).optional(),
+        startDate: z.string().optional(),
+        endDate: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin access required' });
+        }
+        
+        // Get all login history (no pagination for export)
+        const allHistory = await getLoginHistory({ 
+          userId: input.userId, 
+          page: 1, 
+          pageSize: 10000 
+        });
+        
+        // Filter by additional criteria
+        let filteredRecords = allHistory.logs;
+        if (input.username) {
+          filteredRecords = filteredRecords.filter((r: any) => 
+            r.username?.toLowerCase().includes(input.username!.toLowerCase())
+          );
+        }
+        if (input.eventType) {
+          filteredRecords = filteredRecords.filter((r: any) => r.eventType === input.eventType);
+        }
+        if (input.authType) {
+          filteredRecords = filteredRecords.filter((r: any) => r.authType === input.authType);
+        }
+        if (input.startDate) {
+          const start = new Date(input.startDate).getTime();
+          filteredRecords = filteredRecords.filter((r: any) => new Date(r.createdAt).getTime() >= start);
+        }
+        if (input.endDate) {
+          const end = new Date(input.endDate).getTime() + 86400000; // Include end date
+          filteredRecords = filteredRecords.filter((r: any) => new Date(r.createdAt).getTime() < end);
+        }
+        
+        // Generate content
+        const headers = ['ID', 'User ID', 'Username', 'Auth Type', 'Event Type', 'IP Address', 'User Agent', 'Created At'];
+        const rows = filteredRecords.map((r: any) => [
+          r.id.toString(),
+          r.userId?.toString() || '',
+          r.username || '',
+          r.authType || '',
+          r.eventType || '',
+          r.ipAddress || '',
+          r.userAgent || '',
+          new Date(r.createdAt).toISOString(),
+        ]);
+        
+        if (input.format === 'csv') {
+          const csvContent = [headers.join(','), ...rows.map((row: string[]) => row.map((cell: string) => `"${cell.replace(/"/g, '""')}"`).join(','))].join('\n');
+          return {
+            content: csvContent,
+            filename: `login-history-${new Date().toISOString().split('T')[0]}.csv`,
+            mimeType: 'text/csv',
+          };
+        } else {
+          // Excel format using simple HTML table
+          const htmlContent = `
+            <html>
+              <head><meta charset="UTF-8"></head>
+              <body>
+                <h1>Login History Report</h1>
+                <p>Generated: ${new Date().toLocaleString()}</p>
+                <p>Total Records: ${filteredRecords.length}</p>
+                <table border="1">
+                  <tr>${headers.map((h: string) => `<th>${h}</th>`).join('')}</tr>
+                  ${rows.map((row: string[]) => `<tr>${row.map((cell: string) => `<td>${cell}</td>`).join('')}</tr>`).join('')}
+                </table>
+              </body>
+            </html>
+          `;
+          return {
+            content: htmlContent,
+            filename: `login-history-${new Date().toISOString().split('T')[0]}.xls`,
+            mimeType: 'application/vnd.ms-excel',
+          };
+        }
+      }),
+
     // Get current local user from token
     me: publicProcedure.query(({ ctx }) => {
       const token = ctx.req.cookies?.['local_auth_token'];

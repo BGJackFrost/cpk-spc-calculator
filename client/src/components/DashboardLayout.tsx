@@ -32,8 +32,9 @@ import {
   Mail, Shield, Server, Database, Wrench, Cog, GitBranch, FileText, 
   BarChart3, AlertTriangle, Cpu, GitCompare, ArrowUpDown, Info, BookOpen, 
   Layers, Key, Webhook, FileType, FolderClock, UserCog, ChevronRight,
-  Gauge, ClipboardList, Building2, ShieldCheck, Boxes
+  Gauge, ClipboardList, Building2, ShieldCheck, Boxes, Moon, Sun
 } from "lucide-react";
+import { useTheme } from "../contexts/ThemeContext";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
@@ -318,6 +319,27 @@ function DashboardLayoutContent({
   };
   
   const isMobile = useIsMobile();
+  const { theme, toggleTheme, switchable } = useTheme();
+  
+  // Theme Toggle Component
+  const ThemeToggle = () => {
+    if (!switchable || !toggleTheme) return null;
+    return (
+      <DropdownMenuItem onClick={toggleTheme}>
+        {theme === 'dark' ? (
+          <>
+            <Sun className="mr-2 h-4 w-4" />
+            {language === 'en' ? 'Light Mode' : 'Chế độ sáng'}
+          </>
+        ) : (
+          <>
+            <Moon className="mr-2 h-4 w-4" />
+            {language === 'en' ? 'Dark Mode' : 'Chế độ tối'}
+          </>
+        )}
+      </DropdownMenuItem>
+    );
+  };
 
   useEffect(() => {
     if (isCollapsed) {
@@ -503,6 +525,7 @@ function DashboardLayoutContent({
                 </div>
                 <div className="border-t my-1" />
                 <LanguageSwitcher />
+                <ThemeToggle />
                 <div className="border-t my-1" />
                 <DropdownMenuItem
                   onClick={() => {

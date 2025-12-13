@@ -971,3 +971,23 @@
   - "Kích hoạt License" → "Cổng License" (License Portal)
   - "Quản lý License" → "Quản trị License" (License Administration)
 - [x] Cập nhật icons phù hợp (Key cho Portal, Shield cho Admin)
+
+
+## Phase 35 - Export Login History, License Renewal Email, Dark Mode
+
+### Export Login History
+- [x] Tạo API exportLoginHistory xuất ra Excel/CSV
+- [x] Thêm nút Export trong trang LoginHistoryPage với dropdown
+- [x] Hỗ trợ export theo bộ lọc hiện tại (username, eventType, authType, date range)
+### License Renewal Email
+- [x] Tạo scheduled job kiểm tra license sắp hết hạn (9:00 AM hàng ngày)
+- [x] Gửi email cảnh báo khi còn 30 ngày (warning - màu vàng)
+- [x] Gửi email khẩn cấp khi còn 7 ngày (urgent - màu đỏ)
+- [x] Template email HTML chuyên nghiệp với thông tin license
+- [x] Thêm export function triggerLicenseRenewalEmails cho testing
+
+### Dark Mode
+- [x] Cập nhật ThemeProvider hỗ trợ dark mode (switchable=true)
+- [x] Thêm toggle Dark/Light trong dropdown menu của DashboardLayout
+- [x] CSS variables cho dark theme đã có sẵn trong index.css
+- [x] Lưu preference vào localStorage tự động
