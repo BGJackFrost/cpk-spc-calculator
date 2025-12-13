@@ -820,3 +820,36 @@
 - [x] Thêm nút gửi email trong trang Analyze (cả 3 tabs)
 - [x] Tạo mutation sendReportEmail trong exportRouter
 - [x] Tạo dialog nhập địa chỉ email với template HTML chuyên nghiệp
+
+
+## Phase 29 - SMTP thực, Authentication Local, Offline Mode và Webhook Retry
+
+### Cấu hình SMTP thực
+- [x] Cài đặt nodemailer package
+- [x] Cập nhật emailService.ts để sử dụng nodemailer thực
+- [ ] Thêm trang cấu hình SMTP trong Settings
+- [ ] Test gửi email thực
+
+### Authentication Local (Offline)
+- [x] Tạo bảng local_users với username/password
+- [x] Tạo trang đăng nhập local (/local-login) với login/register tabs
+- [x] Tạo API authentication local (login, register, logout, me, list, update, deactivate)
+- [x] Tạo localAuthService.ts với bcrypt và JWT
+- [x] Thêm biến môi trường AUTH_MODE (manus | local)
+- [x] Tạo default admin user (admin/admin123)
+
+### Rà soát Offline Mode
+- [x] Kiểm tra các dependencies cần internet (LLM, S3, OAuth)
+- [x] Chuyển LLM analysis về optional với fallback offline analysis
+- [x] Chuyển S3 storage về local file storage (optional) với fallback tự động
+- [x] Tạo file cấu hình offlineConfig.ts với các biến môi trường
+- [x] Tài liệu hướng dẫn triển khai offline (trong offlineConfig.ts)
+
+### Webhook Retry Mechanism
+- [x] Thêm cột retryCount, lastRetryAt, nextRetryAt, retryStatus vào webhook_logs
+- [x] Tạo hàm processWebhookRetries với exponential backoff
+- [x] Thêm scheduled job chạy mỗi phút để xử lý retry
+- [x] Thêm API endpoints: retryStats, processRetries, retryOne
+- [x] Thêm cron job retry webhooks mỗi phút
+- [x] Exponential backoff (1min, 5min, 15min, 1hour, 2hour)
+- [x] Giới hạn tối đa 5 lần retry

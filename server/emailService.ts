@@ -6,6 +6,7 @@
 import { getDb } from "./db";
 import { smtpConfig, emailNotificationSettings } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
+import nodemailer from "nodemailer";
 
 // Email template types
 export type EmailType = "spc_violation" | "cpk_warning" | "ca_violation" | "daily_report";
@@ -220,7 +221,7 @@ function generateCpkWarningEmail(data: CpkWarningEmailData): { subject: string; 
 }
 
 /**
- * Send email using configured SMTP (placeholder - would use nodemailer in production)
+ * Send email using configured SMTP with nodemailer
  */
 export async function sendEmail(
   to: string,
@@ -234,31 +235,41 @@ export async function sendEmail(
     return { success: false, error: "SMTP not configured" };
   }
 
-  // In production, this would use nodemailer
-  // For now, we log the email and return success
-  console.log(`[Email] Would send email to: ${to}`);
-  console.log(`[Email] Subject: ${subject}`);
-  console.log(`[Email] Using SMTP: ${smtpSettings.host}:${smtpSettings.port}`);
-  
-  // Simulate email sending
-  // In production:
-  // const transporter = nodemailer.createTransport({
-  //   host: smtpSettings.host,
-  //   port: smtpSettings.port,
-  //   secure: smtpSettings.secure,
-  //   auth: {
-  //     user: smtpSettings.username,
-  //     pass: smtpSettings.password,
-  //   },
-  // });
-  // await transporter.sendMail({
-  //   from: `"${smtpSettings.fromName}" <${smtpSettings.fromEmail}>`,
-  //   to,
-  //   subject,
-  //   html,
-  // });
+  try {
+    console.log(`[Email] Sending email to: ${to}`);
+    console.log(`[Email] Subject: ${subject}`);
+    console.log(`[Email] Using SMTP: ${smtpSettings.host}:${smtpSettings.port}`);
+    
+    // Create nodemailer transporter
+    const transporter = nodemailer.createTransport({
+      host: smtpSettings.host,
+      port: smtpSettings.port,
+      secure: smtpSettings.secure, // true for 465, false for other ports
+      auth: {
+        user: smtpSettings.username,
+        pass: smtpSettings.password,
+      },
+      // Allow self-signed certificates for internal SMTP servers
+      tls: {
+        rejectUnauthorized: false
+      }
+    });
 
-  return { success: true };
+    // Send email
+    const info = await transporter.sendMail({
+      from: `"${smtpSettings.fromName}" <${smtpSettings.fromEmail}>`,
+      to,
+      subject,
+      html,
+    });
+
+    console.log(`[Email] Email sent successfully. Message ID: ${info.messageId}`);
+    return { success: true };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    console.error(`[Email] Failed to send email: ${errorMessage}`);
+    return { success: false, error: errorMessage };
+  }
 }
 
 /**

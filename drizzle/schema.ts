@@ -19,6 +19,25 @@ export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
 /**
+ * Local users for offline authentication
+ */
+export const localUsers = mysqlTable("local_users", {
+  id: int("id").autoincrement().primaryKey(),
+  username: varchar("username", { length: 100 }).notNull().unique(),
+  passwordHash: varchar("passwordHash", { length: 255 }).notNull(),
+  name: text("name"),
+  email: varchar("email", { length: 320 }),
+  role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
+  isActive: int("isActive").notNull().default(1),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  lastSignedIn: timestamp("lastSignedIn"),
+});
+
+export type LocalUser = typeof localUsers.$inferSelect;
+export type InsertLocalUser = typeof localUsers.$inferInsert;
+
+/**
  * Database connections - stores external database connection strings
  */
 export const databaseConnections = mysqlTable("database_connections", {
@@ -983,6 +1002,12 @@ export const webhookLogs = mysqlTable("webhook_logs", {
   success: int("success").notNull().default(0),
   errorMessage: text("errorMessage"),
   sentAt: timestamp("sentAt").defaultNow().notNull(),
+  // Retry mechanism fields
+  retryCount: int("retryCount").notNull().default(0),
+  maxRetries: int("maxRetries").notNull().default(5),
+  nextRetryAt: timestamp("nextRetryAt"),
+  lastRetryAt: timestamp("lastRetryAt"),
+  retryStatus: varchar("retryStatus", { length: 20 }).default("none"), // none, pending, exhausted
 });
 
 export type WebhookLog = typeof webhookLogs.$inferSelect;

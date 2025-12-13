@@ -4,6 +4,17 @@ import { systemRouter } from "./_core/systemRouter";
 import { triggerLicenseExpiryCheck } from "./scheduledJobs";
 import { triggerWebhooks, testWebhook } from "./webhookService";
 import { storagePut } from "./storage";
+import {
+  registerLocalUser,
+  loginLocalUser,
+  verifyLocalToken,
+  getLocalUserById,
+  listLocalUsers,
+  updateLocalUser,
+  deactivateLocalUser,
+  ensureDefaultAdmin,
+  type LocalAuthUser,
+} from "./localAuthService";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
@@ -1198,6 +1209,56 @@ const spcRouter = router({
       })),
     }))
     .mutation(async ({ input }) => {
+      // Check if LLM is available (offline mode check)
+      const { isLlmAvailable } = await import("./offlineConfig");
+      
+      if (!isLlmAvailable()) {
+        // Return a basic analysis when LLM is not available (offline mode)
+        const cpkValue = input.spcData.cpk;
+        let cpkAssessment = "";
+        let recommendation = "";
+        
+        if (cpkValue === null) {
+          cpkAssessment = "Không thể tính CPK (thiếu USL/LSL)";
+          recommendation = "Cần xác định giới hạn kỹ thuật (USL/LSL) để đánh giá năng lực quy trình.";
+        } else if (cpkValue >= 1.67) {
+          cpkAssessment = "Xuất sắc (CPK >= 1.67)";
+          recommendation = "Quy trình hoạt động rất tốt. Duy trì các điều kiện hiện tại.";
+        } else if (cpkValue >= 1.33) {
+          cpkAssessment = "Tốt (CPK >= 1.33)";
+          recommendation = "Quy trình ổn định. Tiếp tục giám sát để duy trì chất lượng.";
+        } else if (cpkValue >= 1.0) {
+          cpkAssessment = "Chấp nhận được (CPK >= 1.0)";
+          recommendation = "Cần cải thiện quy trình. Xem xét giảm biến động hoặc điều chỉnh tâm quy trình.";
+        } else {
+          cpkAssessment = "Không đạt (CPK < 1.0)";
+          recommendation = "Cần cải tiến ngay. Kiểm tra nguyên nhân gốc của biến động và thực hiện hành động khắc phục.";
+        }
+        
+        return {
+          analysis: `## Phân tích SPC/CPK (Chế độ Offline)
+
+**Sản phẩm:** ${input.productCode}  
+**Trạm:** ${input.stationName}
+
+### Thống kê cơ bản
+- Số mẫu: ${input.spcData.sampleCount}
+- Trung bình: ${input.spcData.mean.toFixed(4)}
+- Độ lệch chuẩn: ${input.spcData.stdDev.toFixed(4)}
+- Cp: ${input.spcData.cp?.toFixed(3) || "N/A"}
+- Cpk: ${input.spcData.cpk?.toFixed(3) || "N/A"}
+
+### Đánh giá năng lực quy trình
+${cpkAssessment}
+
+### Khuyến nghị
+${recommendation}
+
+---
+*Lưu ý: Phân tích này được tạo tự động trong chế độ offline. Để có phân tích chi tiết hơn, vui lòng kết nối internet và sử dụng tính năng phân tích AI.*`,
+        };
+      }
+      
       const prompt = `Bạn là chuyên gia phân tích SPC/CPK trong sản xuất. Hãy phân tích dữ liệu sau và đưa ra nhận xét, khuyến nghị cải tiến:
 
 Sản phẩm: ${input.productCode}
@@ -2376,6 +2437,114 @@ export const appRouter = router({
     }),
   }),
 
+  // Local authentication for offline mode
+  localAuth: router({
+    // Register new local user
+    register: publicProcedure
+      .input(z.object({
+        username: z.string().min(3).max(100),
+        password: z.string().min(6),
+        name: z.string().optional(),
+        email: z.string().email().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const result = await registerLocalUser(input);
+        if (!result.success) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: result.error });
+        }
+        return result;
+      }),
+
+    // Login with local credentials
+    login: publicProcedure
+      .input(z.object({
+        username: z.string(),
+        password: z.string(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const result = await loginLocalUser(input);
+        if (!result.success) {
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: result.error });
+        }
+        // Set cookie with token
+        if (result.token) {
+          const cookieOptions = getSessionCookieOptions(ctx.req);
+          ctx.res.cookie('local_auth_token', result.token, {
+            ...cookieOptions,
+            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+          });
+        }
+        return { success: true, user: result.user };
+      }),
+
+    // Logout local user
+    logout: publicProcedure.mutation(({ ctx }) => {
+      const cookieOptions = getSessionCookieOptions(ctx.req);
+      ctx.res.clearCookie('local_auth_token', { ...cookieOptions, maxAge: -1 });
+      return { success: true };
+    }),
+
+    // Get current local user from token
+    me: publicProcedure.query(({ ctx }) => {
+      const token = ctx.req.cookies?.['local_auth_token'];
+      if (!token) return null;
+      return verifyLocalToken(token);
+    }),
+
+    // List all local users (admin only)
+    list: protectedProcedure.query(async ({ ctx }) => {
+      if (ctx.user.role !== 'admin') {
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin access required' });
+      }
+      return listLocalUsers();
+    }),
+
+    // Update local user (admin only)
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        name: z.string().optional(),
+        email: z.string().email().optional(),
+        password: z.string().min(6).optional(),
+        role: z.enum(['user', 'admin']).optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin access required' });
+        }
+        const result = await updateLocalUser(input.id, {
+          name: input.name,
+          email: input.email,
+          password: input.password,
+          role: input.role,
+        });
+        if (!result.success) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: result.error });
+        }
+        return result;
+      }),
+
+    // Deactivate local user (admin only)
+    deactivate: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin access required' });
+        }
+        const result = await deactivateLocalUser(input.id);
+        if (!result.success) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: result.error });
+        }
+        return result;
+      }),
+
+    // Initialize default admin (first time setup)
+    initAdmin: publicProcedure.mutation(async () => {
+      await ensureDefaultAdmin();
+      return { success: true, message: 'Default admin initialized' };
+    }),
+  }),
+
   user: userRouter,
   product: productRouter,
   productSpec: productSpecRouter,
@@ -3237,6 +3406,35 @@ export const appRouter = router({
           throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
         }
         return triggerWebhooks(input.eventType, input.data);
+      }),
+    
+    // Retry statistics
+    retryStats: protectedProcedure.query(async ({ ctx }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+      }
+      const { getRetryStats } = await import("./webhookService");
+      return getRetryStats();
+    }),
+    
+    // Process pending retries manually
+    processRetries: protectedProcedure.mutation(async ({ ctx }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+      }
+      const { processWebhookRetries } = await import("./webhookService");
+      return processWebhookRetries();
+    }),
+    
+    // Manual retry a specific failed webhook
+    retryOne: protectedProcedure
+      .input(z.object({ logId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { manualRetryWebhook } = await import("./webhookService");
+        return manualRetryWebhook(input.logId);
       }),
   }),
 });

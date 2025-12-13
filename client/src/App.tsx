@@ -41,11 +41,13 @@ import LicenseManagement from "./pages/LicenseManagement";
 import WebhookManagement from "./pages/WebhookManagement";
 import ReportTemplateManagement from "./pages/ReportTemplateManagement";
 import ExportHistory from "./pages/ExportHistory";
+import LocalLogin from "./pages/LocalLogin";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
+      <Route path="/local-login" component={LocalLogin} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/production-lines" component={ProductionLinesDashboard} />
       <Route path="/analyze" component={Analyze} />

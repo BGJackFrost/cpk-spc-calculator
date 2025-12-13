@@ -1,9 +1,26 @@
 // Preconfigured storage helpers for Manus WebDev templates
 // Uses the Biz-provided storage proxy (Authorization: Bearer <token>)
+// With fallback to local file storage for offline mode
 
 import { ENV } from './_core/env';
+import * as fs from 'fs';
+import * as path from 'path';
 
 type StorageConfig = { baseUrl: string; apiKey: string };
+
+// Check if S3 storage is available
+export function isS3StorageAvailable(): boolean {
+  return !!(ENV.forgeApiUrl && ENV.forgeApiKey) && process.env.STORAGE_MODE !== 'local';
+}
+
+// Get local storage path
+function getLocalStoragePath(): string {
+  const storagePath = process.env.LOCAL_STORAGE_PATH || './uploads';
+  if (!fs.existsSync(storagePath)) {
+    fs.mkdirSync(storagePath, { recursive: true });
+  }
+  return storagePath;
+}
 
 function getStorageConfig(): StorageConfig {
   const baseUrl = ENV.forgeApiUrl;
@@ -67,11 +84,19 @@ function buildAuthHeaders(apiKey: string): HeadersInit {
   return { Authorization: `Bearer ${apiKey}` };
 }
 
+/**
+ * Upload file to storage (S3 or local fallback)
+ */
 export async function storagePut(
   relKey: string,
   data: Buffer | Uint8Array | string,
   contentType = "application/octet-stream"
 ): Promise<{ key: string; url: string }> {
+  // Check if S3 is available, otherwise use local storage
+  if (!isS3StorageAvailable()) {
+    return storagePutLocal(relKey, data, contentType);
+  }
+  
   const { baseUrl, apiKey } = getStorageConfig();
   const key = normalizeKey(relKey);
   const uploadUrl = buildUploadUrl(baseUrl, key);
@@ -92,11 +117,65 @@ export async function storagePut(
   return { key, url };
 }
 
+/**
+ * Get file URL from storage (S3 or local fallback)
+ */
 export async function storageGet(relKey: string): Promise<{ key: string; url: string; }> {
+  // Check if S3 is available, otherwise use local storage
+  if (!isS3StorageAvailable()) {
+    return storageGetLocal(relKey);
+  }
+  
   const { baseUrl, apiKey } = getStorageConfig();
   const key = normalizeKey(relKey);
   return {
     key,
     url: await buildDownloadUrl(baseUrl, key, apiKey),
   };
+}
+
+/**
+ * Upload file to local storage (offline mode)
+ */
+export async function storagePutLocal(
+  relKey: string,
+  data: Buffer | Uint8Array | string,
+  _contentType = "application/octet-stream"
+): Promise<{ key: string; url: string }> {
+  const basePath = getLocalStoragePath();
+  const key = normalizeKey(relKey);
+  const filePath = path.join(basePath, key);
+  
+  // Ensure directory exists
+  const dir = path.dirname(filePath);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  
+  // Convert data to Buffer if needed
+  let buffer: Buffer;
+  if (typeof data === 'string') {
+    buffer = Buffer.from(data, 'utf-8');
+  } else if (data instanceof Uint8Array) {
+    buffer = Buffer.from(data);
+  } else {
+    buffer = data;
+  }
+  
+  fs.writeFileSync(filePath, buffer);
+  
+  // Return URL for local access
+  const url = `/uploads/${key}`;
+  console.log(`[LocalStorage] Saved file to: ${filePath}, URL: ${url}`);
+  
+  return { key, url };
+}
+
+/**
+ * Get file URL from local storage (offline mode)
+ */
+export async function storageGetLocal(relKey: string): Promise<{ key: string; url: string; }> {
+  const key = normalizeKey(relKey);
+  const url = `/uploads/${key}`;
+  return { key, url };
 }

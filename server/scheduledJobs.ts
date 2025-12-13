@@ -6,6 +6,7 @@
 import cron from 'node-cron';
 import { getLicensesExpiringSoon, getExpiredLicenses } from './db';
 import { notifyOwner } from './_core/notification';
+import { processWebhookRetries, getRetryStats } from './webhookService';
 
 // Track if jobs are already initialized
 let jobsInitialized = false;
@@ -99,6 +100,14 @@ export function initScheduledJobs(): void {
   });
   
   console.log('[ScheduledJob] Scheduled: License expiry check at 8:00 AM daily (Asia/Ho_Chi_Minh)');
+  
+  // Webhook retry processor - runs every minute
+  cron.schedule('0 * * * * *', async () => {
+    console.log('[ScheduledJob] Triggered: Webhook retry processor');
+    await processWebhookRetries();
+  });
+  
+  console.log('[ScheduledJob] Scheduled: Webhook retry processor every minute');
   
   jobsInitialized = true;
   console.log('[ScheduledJob] All scheduled jobs initialized successfully');

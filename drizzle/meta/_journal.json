@@ -155,6 +155,20 @@
       "when": 1765592265207,
       "tag": "0021_bent_mulholland_black",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "5",
+      "when": 1765593569564,
+      "tag": "0022_giant_betty_ross",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "5",
+      "when": 1765594071856,
+      "tag": "0023_previous_glorian",
+      "breakpoints": true
     }
   ]
 }
