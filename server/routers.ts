@@ -3334,6 +3334,87 @@ export const appRouter = router({
         message: `Checked licenses: ${result.expiringSoon30} expiring in 30 days, ${result.expiringSoon7} expiring in 7 days, ${result.expired} expired`
       };
     }),
+    
+    // Hybrid Activation - Online activation
+    activateOnline: publicProcedure
+      .input(z.object({
+        licenseKey: z.string(),
+        hardwareFingerprint: z.string(),
+      }))
+      .mutation(async ({ input }) => {
+        const { licenseServer } = await import("./licenseServer");
+        const result = await licenseServer.activateOnline(input.licenseKey, input.hardwareFingerprint);
+        if (!result.success) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: result.error });
+        }
+        return { success: true, license: result.license };
+      }),
+    
+    // Hybrid Activation - Generate offline license file
+    generateOfflineFile: protectedProcedure
+      .input(z.object({
+        licenseKey: z.string(),
+        hardwareFingerprint: z.string(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { licenseServer } = await import("./licenseServer");
+        const result = await licenseServer.generateOfflineFile(input.licenseKey, input.hardwareFingerprint);
+        if (!result.success) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: result.error });
+        }
+        return { success: true, fileContent: result.fileContent };
+      }),
+    
+    // Hybrid Activation - Offline activation
+    activateOffline: publicProcedure
+      .input(z.object({
+        licenseFileContent: z.string(),
+        hardwareFingerprint: z.string(),
+      }))
+      .mutation(async ({ input }) => {
+        const { licenseServer } = await import("./licenseServer");
+        const result = await licenseServer.activateOffline(input.licenseFileContent, input.hardwareFingerprint);
+        if (!result.success) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: result.error });
+        }
+        return { success: true, license: result.license };
+      }),
+    
+    // Hybrid Activation - Validate license
+    validate: publicProcedure
+      .input(z.object({
+        licenseKey: z.string(),
+        hardwareFingerprint: z.string().optional(),
+      }))
+      .query(async ({ input }) => {
+        const { licenseServer } = await import("./licenseServer");
+        const result = await licenseServer.validateLicense(input.licenseKey, input.hardwareFingerprint);
+        return { valid: result.valid, error: result.error, license: result.license };
+      }),
+    
+    // Hybrid Activation - Get statistics
+    statistics: protectedProcedure.query(async ({ ctx }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+      }
+      const { licenseServer } = await import("./licenseServer");
+      return await licenseServer.getStatistics();
+    }),
+    
+    // Hybrid Activation - Revoke license
+    revoke: protectedProcedure
+      .input(z.object({ licenseKey: z.string() }))
+      .mutation(async ({ input, ctx }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { licenseServer } = await import("./licenseServer");
+        const success = await licenseServer.revokeLicense(input.licenseKey);
+        return { success };
+      }),
   }),
   
   // Webhook router

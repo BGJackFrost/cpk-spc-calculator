@@ -895,3 +895,37 @@
 - [x] Ghi log khi đăng nhập thất bại
 - [x] Ghi log khi đăng xuất
 - [x] Thêm API loginHistory và loginStats cho admin
+
+
+## Phase 32 - Menu Optimization, Permissions, License System, Hybrid Activation
+
+### Cập nhật UPGRADE_PLAN.md
+- [x] Rà soát tiến độ dự án hiện tại (31 phases hoàn thành)
+- [x] Cập nhật các tính năng đã hoàn thành (125 tests, 37 bảng, 30 trang)
+- [x] Đưa ra kế hoạch nâng cấp tiếp theo (Phase 32-36)
+
+### Tối ưu Menu Sidebar
+- [x] Phân loại menu theo 7 nhóm chức năng (Tổng quan, Phân tích, Chất lượng, Sản xuất, Dữ liệu chính, Người dùng, Hệ thống)
+- [x] Thêm collapsible groups cho menu với lưu trạng thái vào localStorage
+- [x] Tối ưu hiển thị theo role người dùng (adminOnly items)
+- [x] Thêm icons phù hợp cho từng nhóm (Gauge, TrendingUp, ClipboardList, Building2, Boxes, Users, ShieldCheck)
+
+### Cập nhật Phân quyền đầy đủ
+- [x] Rà soát tất cả các chức năng trong hệ thống (7 nhóm, 30+ trang)
+- [x] Thêm 56 permissions mới cho tất cả chức năng
+- [x] Phân nhóm permissions theo module (Dashboard, Analysis, Quality, Production, Master Data, Users, System)
+- [x] Cập nhật role permissions mặc định (admin, operator, viewer, user)
+
+### Tách License Management
+- [x] Tạo licenseServer.ts - module độc lập cho License Server
+- [x] API endpoints: createLicense, activateOnline, activateOffline, validateLicense, revokeLicense
+- [x] Cập nhật schema licenses với các cột mới (licenseStatus, hardwareFingerprint, offlineLicenseFile, activationMode)
+- [x] LicenseServer class với singleton pattern
+
+### Hybrid Activation (Online/Offline)
+- [x] Thiết kế cơ chế activation hybrid với 3 mode: online, offline, hybrid
+- [x] Online activation qua License Server (activateOnline API)
+- [x] Offline activation bằng file license (.lic) với signature verification
+- [x] Kiểm tra và validate license với hardware fingerprint binding
+- [x] Generate offline license file cho khách hàng không có internet
+- [x] Thêm 6 API endpoints mới: activateOnline, generateOfflineFile, activateOffline, validate, statistics, revoke

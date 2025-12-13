@@ -1405,32 +1405,80 @@ export async function initDefaultPermissions() {
   if (!db) throw new Error("Database not available");
   
   const defaultPermissions = [
+    // Dashboard & Overview
     { code: "dashboard.view", name: "Xem Dashboard", module: "dashboard" },
     { code: "dashboard.config", name: "Cấu hình Dashboard", module: "dashboard" },
+    { code: "realtime.view", name: "Xem Realtime Conveyor", module: "realtime" },
+    { code: "spc_visualization.view", name: "Xem SPC Plan Overview", module: "spc_visualization" },
+    
+    // Analysis
     { code: "analyze.view", name: "Xem phân tích SPC", module: "analyze" },
     { code: "analyze.execute", name: "Thực hiện phân tích", module: "analyze" },
     { code: "analyze.export", name: "Xuất báo cáo", module: "analyze" },
+    { code: "multi_analysis.view", name: "Xem phân tích đa đối tượng", module: "multi_analysis" },
+    { code: "line_comparison.view", name: "Xem so sánh dây chuyền", module: "line_comparison" },
     { code: "history.view", name: "Xem lịch sử", module: "history" },
-    { code: "mapping.view", name: "Xem Mapping", module: "mapping" },
-    { code: "mapping.manage", name: "Quản lý Mapping", module: "mapping" },
+    { code: "spc_report.view", name: "Xem báo cáo SPC", module: "spc_report" },
+    { code: "spc_report.export", name: "Xuất báo cáo SPC", module: "spc_report" },
+    
+    // Quality
+    { code: "defect.view", name: "Xem quản lý lỗi", module: "defect" },
+    { code: "defect.manage", name: "Quản lý lỗi", module: "defect" },
+    { code: "defect_statistics.view", name: "Xem thống kê lỗi Pareto", module: "defect_statistics" },
+    { code: "rules.view", name: "Xem quản lý Rules", module: "rules" },
+    { code: "rules.manage", name: "Quản lý Rules", module: "rules" },
+    
+    // Production
+    { code: "production_line.view", name: "Xem dây chuyền", module: "production_line" },
+    { code: "production_line.manage", name: "Quản lý dây chuyền", module: "production_line" },
+    { code: "workstation.view", name: "Xem công trạm", module: "workstation" },
+    { code: "workstation.manage", name: "Quản lý công trạm", module: "workstation" },
+    { code: "machine.view", name: "Xem máy", module: "machine" },
+    { code: "machine.manage", name: "Quản lý máy", module: "machine" },
+    { code: "machine_type.view", name: "Xem loại máy", module: "machine_type" },
+    { code: "machine_type.manage", name: "Quản lý loại máy", module: "machine_type" },
+    { code: "fixture.view", name: "Xem fixture", module: "fixture" },
+    { code: "fixture.manage", name: "Quản lý fixture", module: "fixture" },
+    { code: "process.view", name: "Xem quy trình", module: "process" },
+    { code: "process.manage", name: "Quản lý quy trình", module: "process" },
+    
+    // Master Data
     { code: "product.view", name: "Xem sản phẩm", module: "product" },
     { code: "product.manage", name: "Quản lý sản phẩm", module: "product" },
     { code: "specification.view", name: "Xem tiêu chuẩn", module: "specification" },
     { code: "specification.manage", name: "Quản lý tiêu chuẩn", module: "specification" },
-    { code: "production_line.view", name: "Xem dây chuyền", module: "production_line" },
-    { code: "production_line.manage", name: "Quản lý dây chuyền", module: "production_line" },
+    { code: "mapping.view", name: "Xem Mapping", module: "mapping" },
+    { code: "mapping.manage", name: "Quản lý Mapping", module: "mapping" },
     { code: "sampling.view", name: "Xem phương pháp lấy mẫu", module: "sampling" },
     { code: "sampling.manage", name: "Quản lý phương pháp lấy mẫu", module: "sampling" },
     { code: "spc_plan.view", name: "Xem kế hoạch SPC", module: "spc_plan" },
     { code: "spc_plan.manage", name: "Quản lý kế hoạch SPC", module: "spc_plan" },
-    { code: "notification.view", name: "Xem thông báo", module: "notification" },
-    { code: "notification.manage", name: "Quản lý thông báo", module: "notification" },
+    
+    // Users
     { code: "user.view", name: "Xem người dùng", module: "user" },
     { code: "user.manage", name: "Quản lý người dùng", module: "user" },
-    { code: "settings.view", name: "Xem cài đặt", module: "settings" },
-    { code: "settings.manage", name: "Quản lý cài đặt", module: "settings" },
+    { code: "local_user.view", name: "Xem người dùng local", module: "local_user" },
+    { code: "local_user.manage", name: "Quản lý người dùng local", module: "local_user" },
     { code: "permission.view", name: "Xem phân quyền", module: "permission" },
     { code: "permission.manage", name: "Quản lý phân quyền", module: "permission" },
+    
+    // System
+    { code: "settings.view", name: "Xem cài đặt", module: "settings" },
+    { code: "settings.manage", name: "Quản lý cài đặt", module: "settings" },
+    { code: "notification.view", name: "Xem thông báo", module: "notification" },
+    { code: "notification.manage", name: "Quản lý thông báo", module: "notification" },
+    { code: "smtp.view", name: "Xem cấu hình SMTP", module: "smtp" },
+    { code: "smtp.manage", name: "Quản lý cấu hình SMTP", module: "smtp" },
+    { code: "webhook.view", name: "Xem webhook", module: "webhook" },
+    { code: "webhook.manage", name: "Quản lý webhook", module: "webhook" },
+    { code: "license.view", name: "Xem license", module: "license" },
+    { code: "license.manage", name: "Quản lý license", module: "license" },
+    { code: "audit_log.view", name: "Xem audit log", module: "audit_log" },
+    { code: "seed_data.execute", name: "Khởi tạo dữ liệu mẫu", module: "seed_data" },
+    { code: "report_template.view", name: "Xem template báo cáo", module: "report_template" },
+    { code: "report_template.manage", name: "Quản lý template báo cáo", module: "report_template" },
+    { code: "export_history.view", name: "Xem lịch sử xuất", module: "export_history" },
+    { code: "about.view", name: "Xem thông tin hệ thống", module: "about" },
   ];
   
   // Insert permissions if not exist

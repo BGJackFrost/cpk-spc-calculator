@@ -176,6 +176,13 @@
       "when": 1765596114680,
       "tag": "0024_common_diamondback",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "5",
+      "when": 1765597650120,
+      "tag": "0025_massive_hemingway",
+      "breakpoints": true
     }
   ]
 }

@@ -965,6 +965,7 @@ export const licenses = mysqlTable("licenses", {
   id: int("id").autoincrement().primaryKey(),
   licenseKey: varchar("licenseKey", { length: 255 }).notNull().unique(),
   licenseType: mysqlEnum("licenseType", ["trial", "standard", "professional", "enterprise"]).notNull().default("trial"),
+  licenseStatus: mysqlEnum("licenseStatus", ["pending", "active", "expired", "revoked"]).notNull().default("pending"),
   companyName: varchar("companyName", { length: 255 }),
   contactEmail: varchar("contactEmail", { length: 320 }),
   maxUsers: int("maxUsers").notNull().default(5),
@@ -976,6 +977,10 @@ export const licenses = mysqlTable("licenses", {
   activatedAt: timestamp("activatedAt"),
   activatedBy: int("activatedBy"),
   isActive: int("isActive").notNull().default(0),
+  hardwareFingerprint: varchar("hardwareFingerprint", { length: 64 }), // For hardware binding
+  offlineLicenseFile: text("offlineLicenseFile"), // Base64 encoded offline license
+  activationMode: mysqlEnum("activationMode", ["online", "offline", "hybrid"]).default("online"),
+  lastValidatedAt: timestamp("lastValidatedAt"), // Last online validation
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

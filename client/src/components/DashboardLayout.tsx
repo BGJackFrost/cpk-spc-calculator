@@ -19,9 +19,21 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, LogOut, PanelLeft, TrendingUp, History, FileSpreadsheet, Settings, Activity, Users, Package, Ruler, Factory, Clock, Calendar, Mail, Shield, Server, Database, Wrench, Cog, GitBranch, FileText, BarChart3, AlertTriangle, Cpu, GitCompare, ArrowUpDown, Info, BookOpen, Layers, Key, Webhook, FileType, FolderClock, UserCog } from "lucide-react";
+import { 
+  LayoutDashboard, LogOut, PanelLeft, TrendingUp, History, FileSpreadsheet, 
+  Settings, Activity, Users, Package, Ruler, Factory, Clock, Calendar, 
+  Mail, Shield, Server, Database, Wrench, Cog, GitBranch, FileText, 
+  BarChart3, AlertTriangle, Cpu, GitCompare, ArrowUpDown, Info, BookOpen, 
+  Layers, Key, Webhook, FileType, FolderClock, UserCog, ChevronRight,
+  Gauge, ClipboardList, Building2, ShieldCheck, Boxes
+} from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
@@ -29,43 +41,109 @@ import { Button } from "./ui/button";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { useLanguage } from "../contexts/LanguageContext";
 
-// Menu items with translation keys
-const menuItemsConfig = [
-  { icon: LayoutDashboard, labelKey: "nav.dashboard", path: "/dashboard" },
-  { icon: Activity, labelKey: "nav.realtimeConveyor", path: "/production-lines" },
-  { icon: Layers, labelKey: "nav.spcPlanOverview", path: "/spc-visualization" },
-  { icon: TrendingUp, labelKey: "nav.analyze", path: "/analyze" },
-  { icon: GitCompare, labelKey: "nav.multiObjectAnalysis", path: "/multi-analysis" },
-  { icon: ArrowUpDown, labelKey: "nav.lineComparison", path: "/line-comparison" },
-  { icon: History, labelKey: "nav.history", path: "/history" },
-  { icon: BarChart3, labelKey: "nav.spcReport", path: "/spc-report" },
-  { icon: AlertTriangle, labelKey: "nav.errorManagement", path: "/defects" },
-  { icon: BarChart3, labelKey: "nav.paretoChart", path: "/defect-statistics" },
-  { icon: FileSpreadsheet, labelKey: "nav.mappingManagement", path: "/mappings" },
-  { icon: Package, labelKey: "nav.productManagement", path: "/products" },
-  { icon: Ruler, labelKey: "nav.specificationManagement", path: "/specifications" },
-  { icon: Factory, labelKey: "productionLine", path: "/production-line-management" },
-  { icon: Wrench, labelKey: "workstation", path: "/workstations" },
-  { icon: Cog, labelKey: "machine", path: "/machines" },
-  { icon: Cpu, labelKey: "machineType", path: "/machine-types" },
-  { icon: Wrench, labelKey: "fixture", path: "/fixtures" },
-  { icon: GitBranch, labelKey: "process", path: "/processes" },
-  { icon: Clock, labelKey: "samplingMethod", path: "/sampling-methods" },
-  { icon: Calendar, labelKey: "nav.spcPlanManagement", path: "/spc-plans" },
-  { icon: Mail, labelKey: "emailNotification", path: "/email-notifications" },
-  { icon: Users, labelKey: "nav.userManagement", path: "/users" },
-  { icon: UserCog, labelKey: "nav.localUserManagement", path: "/local-users", adminOnly: true },
-  { icon: Shield, labelKey: "permission", path: "/permissions" },
-  { icon: Server, labelKey: "smtpConfig", path: "/smtp-settings" },
-  { icon: Database, labelKey: "seedData", path: "/seed-data" },
-  { icon: FileText, labelKey: "nav.auditLog", path: "/audit-logs" },
-  { icon: Settings, labelKey: "common.settings", path: "/settings" },
-  { icon: BookOpen, labelKey: "nav.rulesManagement", path: "/rules" },
-  { icon: Info, labelKey: "nav.about", path: "/about" },
-  { icon: Key, labelKey: "nav.licenseManagement", path: "/license-management", adminOnly: true },
-  { icon: Webhook, labelKey: "nav.webhookManagement", path: "/webhooks", adminOnly: true },
-  { icon: FileType, labelKey: "nav.reportTemplates", path: "/report-templates", adminOnly: true },
-  { icon: FolderClock, labelKey: "nav.exportHistory", path: "/export-history" },
+// Menu groups configuration
+interface MenuItem {
+  icon: React.ComponentType<{ className?: string }>;
+  labelKey: string;
+  path: string;
+  adminOnly?: boolean;
+}
+
+interface MenuGroup {
+  id: string;
+  labelKey: string;
+  icon: React.ComponentType<{ className?: string }>;
+  items: MenuItem[];
+  defaultOpen?: boolean;
+}
+
+const menuGroups: MenuGroup[] = [
+  {
+    id: "dashboard",
+    labelKey: "menuGroup.dashboard",
+    icon: Gauge,
+    defaultOpen: true,
+    items: [
+      { icon: LayoutDashboard, labelKey: "nav.dashboard", path: "/dashboard" },
+      { icon: Activity, labelKey: "nav.realtimeConveyor", path: "/production-lines" },
+      { icon: Layers, labelKey: "nav.spcPlanOverview", path: "/spc-visualization" },
+    ]
+  },
+  {
+    id: "analysis",
+    labelKey: "menuGroup.analysis",
+    icon: TrendingUp,
+    defaultOpen: true,
+    items: [
+      { icon: TrendingUp, labelKey: "nav.analyze", path: "/analyze" },
+      { icon: GitCompare, labelKey: "nav.multiObjectAnalysis", path: "/multi-analysis" },
+      { icon: ArrowUpDown, labelKey: "nav.lineComparison", path: "/line-comparison" },
+      { icon: History, labelKey: "nav.history", path: "/history" },
+      { icon: BarChart3, labelKey: "nav.spcReport", path: "/spc-report" },
+    ]
+  },
+  {
+    id: "quality",
+    labelKey: "menuGroup.quality",
+    icon: ClipboardList,
+    items: [
+      { icon: AlertTriangle, labelKey: "nav.errorManagement", path: "/defects" },
+      { icon: BarChart3, labelKey: "nav.paretoChart", path: "/defect-statistics" },
+      { icon: BookOpen, labelKey: "nav.rulesManagement", path: "/rules" },
+    ]
+  },
+  {
+    id: "production",
+    labelKey: "menuGroup.production",
+    icon: Building2,
+    items: [
+      { icon: Factory, labelKey: "productionLine", path: "/production-line-management" },
+      { icon: Wrench, labelKey: "workstation", path: "/workstations" },
+      { icon: Cog, labelKey: "machine", path: "/machines" },
+      { icon: Cpu, labelKey: "machineType", path: "/machine-types" },
+      { icon: Wrench, labelKey: "fixture", path: "/fixtures" },
+      { icon: GitBranch, labelKey: "process", path: "/processes" },
+    ]
+  },
+  {
+    id: "masterData",
+    labelKey: "menuGroup.masterData",
+    icon: Boxes,
+    items: [
+      { icon: Package, labelKey: "nav.productManagement", path: "/products" },
+      { icon: Ruler, labelKey: "nav.specificationManagement", path: "/specifications" },
+      { icon: FileSpreadsheet, labelKey: "nav.mappingManagement", path: "/mappings" },
+      { icon: Clock, labelKey: "samplingMethod", path: "/sampling-methods" },
+      { icon: Calendar, labelKey: "nav.spcPlanManagement", path: "/spc-plans" },
+    ]
+  },
+  {
+    id: "users",
+    labelKey: "menuGroup.users",
+    icon: Users,
+    items: [
+      { icon: Users, labelKey: "nav.userManagement", path: "/users" },
+      { icon: UserCog, labelKey: "nav.localUserManagement", path: "/local-users", adminOnly: true },
+      { icon: Shield, labelKey: "permission", path: "/permissions" },
+    ]
+  },
+  {
+    id: "system",
+    labelKey: "menuGroup.system",
+    icon: ShieldCheck,
+    items: [
+      { icon: Settings, labelKey: "common.settings", path: "/settings" },
+      { icon: Mail, labelKey: "emailNotification", path: "/email-notifications" },
+      { icon: Server, labelKey: "smtpConfig", path: "/smtp-settings" },
+      { icon: Webhook, labelKey: "nav.webhookManagement", path: "/webhooks", adminOnly: true },
+      { icon: Key, labelKey: "nav.licenseManagement", path: "/license-management", adminOnly: true },
+      { icon: FileText, labelKey: "nav.auditLog", path: "/audit-logs" },
+      { icon: Database, labelKey: "seedData", path: "/seed-data" },
+      { icon: FileType, labelKey: "nav.reportTemplates", path: "/report-templates", adminOnly: true },
+      { icon: FolderClock, labelKey: "nav.exportHistory", path: "/export-history" },
+      { icon: Info, labelKey: "nav.about", path: "/about" },
+    ]
+  },
 ];
 
 // Fallback labels for keys not in translation files (by language)
@@ -84,26 +162,41 @@ const fallbackLabelsVi: Record<string, string> = {
   "nav.reportTemplates": "Template Báo cáo",
   "nav.exportHistory": "Lịch sử Xuất",
   "nav.localUserManagement": "Người dùng Local",
+  "menuGroup.dashboard": "Tổng quan",
+  "menuGroup.analysis": "Phân tích",
+  "menuGroup.quality": "Chất lượng",
+  "menuGroup.production": "Sản xuất",
+  "menuGroup.masterData": "Dữ liệu chính",
+  "menuGroup.users": "Người dùng",
+  "menuGroup.system": "Hệ thống",
 };
 
 const fallbackLabelsEn: Record<string, string> = {
-  "productionLine": "Production Line Management",
-  "workstation": "Workstation Management",
-  "machine": "Machine Management",
+  "productionLine": "Production Line",
+  "workstation": "Workstation",
+  "machine": "Machine",
   "machineType": "Machine Type",
-  "fixture": "Fixture Management",
-  "process": "Process Management",
+  "fixture": "Fixture",
+  "process": "Process",
   "samplingMethod": "Sampling Method",
   "emailNotification": "Email Notification",
   "permission": "Permissions",
-  "smtpConfig": "SMTP Configuration",
+  "smtpConfig": "SMTP Config",
   "seedData": "Seed Data",
   "nav.reportTemplates": "Report Templates",
   "nav.exportHistory": "Export History",
   "nav.localUserManagement": "Local Users",
+  "menuGroup.dashboard": "Overview",
+  "menuGroup.analysis": "Analysis",
+  "menuGroup.quality": "Quality",
+  "menuGroup.production": "Production",
+  "menuGroup.masterData": "Master Data",
+  "menuGroup.users": "Users",
+  "menuGroup.system": "System",
 };
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
+const MENU_OPEN_STATE_KEY = "menu-open-state";
 const DEFAULT_WIDTH = 280;
 const MIN_WIDTH = 200;
 const MAX_WIDTH = 480;
@@ -185,6 +278,29 @@ function DashboardLayoutContent({
   const sidebarRef = useRef<HTMLDivElement>(null);
   const { translate, t, language } = useLanguage();
   
+  // Menu open state
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
+    const saved = localStorage.getItem(MENU_OPEN_STATE_KEY);
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {
+        return {};
+      }
+    }
+    // Default: open groups that have defaultOpen or contain active item
+    const defaults: Record<string, boolean> = {};
+    menuGroups.forEach(group => {
+      defaults[group.id] = group.defaultOpen || group.items.some(item => item.path === location);
+    });
+    return defaults;
+  });
+
+  // Save open state to localStorage
+  useEffect(() => {
+    localStorage.setItem(MENU_OPEN_STATE_KEY, JSON.stringify(openGroups));
+  }, [openGroups]);
+
   // Get label for menu item based on current language
   const getLabel = (labelKey: string) => {
     const translated = translate(labelKey);
@@ -193,7 +309,6 @@ function DashboardLayoutContent({
     return fallbackLabels[labelKey] || labelKey;
   };
   
-  const activeMenuItem = menuItemsConfig.find(item => item.path === location);
   const isMobile = useIsMobile();
 
   useEffect(() => {
@@ -232,6 +347,18 @@ function DashboardLayoutContent({
     };
   }, [isResizing, setSidebarWidth]);
 
+  const toggleGroup = (groupId: string) => {
+    setOpenGroups(prev => ({
+      ...prev,
+      [groupId]: !prev[groupId]
+    }));
+  };
+
+  // Filter items based on user role
+  const filterItems = (items: MenuItem[]) => {
+    return items.filter(item => !item.adminOnly || user?.role === "admin");
+  };
+
   return (
     <>
       <div className="relative" ref={sidebarRef}>
@@ -259,90 +386,151 @@ function DashboardLayoutContent({
             </div>
           </SidebarHeader>
 
-          <SidebarContent className="gap-0">
-            <SidebarMenu className="px-2 py-1">
-              {menuItemsConfig
-                .filter(item => !item.adminOnly || user?.role === "admin")
-                .map(item => {
-                const isActive = location === item.path;
-                const label = getLabel(item.labelKey);
+          <SidebarContent className="gap-0 overflow-y-auto">
+            {menuGroups.map(group => {
+              const filteredItems = filterItems(group.items);
+              if (filteredItems.length === 0) return null;
+              
+              const isGroupActive = filteredItems.some(item => item.path === location);
+              const isOpen = openGroups[group.id] ?? group.defaultOpen ?? false;
+
+              if (isCollapsed) {
+                // When collapsed, show only icons
                 return (
-                  <SidebarMenuItem key={item.path}>
-                    <SidebarMenuButton
-                      isActive={isActive}
-                      onClick={() => setLocation(item.path)}
-                      tooltip={label}
-                      className={`h-10 transition-all font-normal`}
-                    >
-                      <item.icon
-                        className={`h-4 w-4 ${isActive ? "text-primary" : ""}`}
-                      />
-                      <span>{label}</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
+                  <SidebarMenu key={group.id} className="px-2 py-1">
+                    {filteredItems.map(item => {
+                      const isActive = location === item.path;
+                      const label = getLabel(item.labelKey);
+                      return (
+                        <SidebarMenuItem key={item.path}>
+                          <SidebarMenuButton
+                            isActive={isActive}
+                            onClick={() => setLocation(item.path)}
+                            tooltip={label}
+                            className="h-10 transition-all font-normal"
+                          >
+                            <item.icon className={`h-4 w-4 ${isActive ? "text-primary" : ""}`} />
+                            <span>{label}</span>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      );
+                    })}
+                  </SidebarMenu>
                 );
-              })}
-            </SidebarMenu>
+              }
+
+              return (
+                <Collapsible
+                  key={group.id}
+                  open={isOpen}
+                  onOpenChange={() => toggleGroup(group.id)}
+                  className="group/collapsible"
+                >
+                  <div className="px-2 py-1">
+                    <CollapsibleTrigger asChild>
+                      <button
+                        className={`flex items-center gap-2 w-full px-3 py-2 text-sm font-medium rounded-md transition-colors hover:bg-accent ${
+                          isGroupActive ? "text-primary" : "text-muted-foreground"
+                        }`}
+                      >
+                        <group.icon className="h-4 w-4" />
+                        <span className="flex-1 text-left">{getLabel(group.labelKey)}</span>
+                        <ChevronRight className={`h-4 w-4 transition-transform duration-200 ${isOpen ? "rotate-90" : ""}`} />
+                      </button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="mt-1 space-y-1">
+                      <SidebarMenu>
+                        {filteredItems.map(item => {
+                          const isActive = location === item.path;
+                          const label = getLabel(item.labelKey);
+                          return (
+                            <SidebarMenuItem key={item.path}>
+                              <SidebarMenuButton
+                                isActive={isActive}
+                                onClick={() => setLocation(item.path)}
+                                tooltip={label}
+                                className="h-9 pl-9 transition-all font-normal"
+                              >
+                                <item.icon className={`h-4 w-4 ${isActive ? "text-primary" : ""}`} />
+                                <span className="truncate">{label}</span>
+                              </SidebarMenuButton>
+                            </SidebarMenuItem>
+                          );
+                        })}
+                      </SidebarMenu>
+                    </CollapsibleContent>
+                  </div>
+                </Collapsible>
+              );
+            })}
           </SidebarContent>
 
-          <SidebarFooter className="p-3">
+          <SidebarFooter className="p-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-3 rounded-lg px-1 py-1 hover:bg-accent/50 transition-colors w-full text-left group-data-[collapsible=icon]:justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                  <Avatar className="h-9 w-9 border shrink-0">
-                    <AvatarFallback className="text-xs font-medium">
-                      {user?.name?.charAt(0).toUpperCase()}
+                <button className="flex items-center gap-3 w-full p-2 rounded-lg hover:bg-accent transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                  <Avatar className="h-8 w-8 shrink-0">
+                    <AvatarFallback className="bg-primary/10 text-primary text-sm">
+                      {user?.name?.[0]?.toUpperCase() || "U"}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
-                    <p className="text-sm font-medium truncate leading-none">
-                      {user?.name || "-"}
-                    </p>
-                    <p className="text-xs text-muted-foreground truncate mt-1.5">
-                      {user?.email || "-"}
-                    </p>
-                  </div>
+                  {!isCollapsed && (
+                    <div className="flex flex-col items-start min-w-0">
+                      <span className="text-sm font-medium truncate w-full">
+                        {user?.name || "User"}
+                      </span>
+                      <span className="text-xs text-muted-foreground truncate w-full">
+                        {user?.email || ""}
+                      </span>
+                    </div>
+                  )}
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <LanguageSwitcher variant="inline" className="px-1 py-1" />
+              <DropdownMenuContent align="start" className="w-56">
+                <div className="px-2 py-1.5 text-sm font-medium">
+                  {user?.name}
+                </div>
+                <div className="px-2 pb-2 text-xs text-muted-foreground">
+                  {user?.email}
+                </div>
+                <div className="border-t my-1" />
+                <LanguageSwitcher />
+                <div className="border-t my-1" />
                 <DropdownMenuItem
-                  onClick={logout}
-                  className="cursor-pointer text-destructive focus:text-destructive"
+                  onClick={() => {
+                    logout();
+                    setLocation("/");
+                  }}
+                  className="text-destructive focus:text-destructive"
                 >
                   <LogOut className="mr-2 h-4 w-4" />
-                  <span>{t.common.logout}</span>
+                  {translate("common.logout")}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </SidebarFooter>
         </Sidebar>
-        <div
-          className={`absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-primary/20 transition-colors ${isCollapsed ? "hidden" : ""}`}
-          onMouseDown={() => {
-            if (isCollapsed) return;
-            setIsResizing(true);
-          }}
-          style={{ zIndex: 50 }}
-        />
+
+        {/* Resize handle */}
+        {!isCollapsed && !isMobile && (
+          <div
+            className="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-primary/20 transition-colors z-10"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              setIsResizing(true);
+            }}
+          />
+        )}
       </div>
 
-      <SidebarInset>
-        {isMobile && (
-          <div className="flex border-b h-14 items-center justify-between bg-background/95 px-2 backdrop-blur supports-[backdrop-filter]:backdrop-blur sticky top-0 z-40">
-            <div className="flex items-center gap-2">
-              <SidebarTrigger className="h-9 w-9 rounded-lg bg-background" />
-              <div className="flex items-center gap-3">
-                <div className="flex flex-col gap-1">
-                  <span className="tracking-tight text-foreground">
-                    {activeMenuItem ? getLabel(activeMenuItem.labelKey) : "Menu"}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-        <main className="flex-1 p-4">{children}</main>
+      <SidebarInset className="flex flex-col min-h-screen">
+        <header className="h-16 shrink-0 flex items-center gap-2 border-b px-4 lg:px-6">
+          <SidebarTrigger className="-ml-1 lg:hidden" />
+          <div className="flex-1" />
+        </header>
+        <main className="flex-1 overflow-auto">
+          {children}
+        </main>
       </SidebarInset>
     </>
   );
