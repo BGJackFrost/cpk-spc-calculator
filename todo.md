@@ -1144,3 +1144,10 @@
 ## Bug Fixes - Phase 43
 
 - [x] Fix lỗi "connections.map is not a function" trong DatabaseExplorer
+
+## Phase 44 - Cải tiến Database Explorer
+
+- [x] Gộp 2 tab "Database Connections" và "Khám phá dữ liệu" thành 1 tab
+- [ ] Thêm kết nối database mẫu để test
+- [x] Error state UI với thông báo lỗi rõ ràng
+- [x] Refresh button để làm mới danh sách kết nối

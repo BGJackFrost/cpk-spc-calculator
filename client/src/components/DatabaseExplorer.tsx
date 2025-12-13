@@ -115,6 +115,9 @@ export default function DatabaseExplorer() {
   const [testingConnection, setTestingConnection] = useState<number | null>(null);
   const [showSchemaDialog, setShowSchemaDialog] = useState(false);
   const [showDataDialog, setShowDataDialog] = useState(false);
+  
+  // Error state
+  const [connectionError, setConnectionError] = useState<string | null>(null);
 
   // Fetch connections
   useEffect(() => {
@@ -124,6 +127,7 @@ export default function DatabaseExplorer() {
   const fetchConnections = async () => {
     try {
       setLoadingConnections(true);
+      setConnectionError(null);
       const response = await fetch("/api/trpc/databaseConnection.list", {
         method: "GET",
         credentials: "include",
@@ -136,6 +140,8 @@ export default function DatabaseExplorer() {
       }
     } catch (error) {
       console.error("Error fetching connections:", error);
+      setConnectionError("Không thể tải danh sách kết nối. Vui lòng thử lại.");
+      setConnections([]);
     } finally {
       setLoadingConnections(false);
     }
@@ -267,14 +273,25 @@ export default function DatabaseExplorer() {
     <div className="space-y-6">
       {/* Connection Selection */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Database className="h-5 w-5" />
-            Chọn Kết nối Database
-          </CardTitle>
-          <CardDescription>
-            Chọn một kết nối để xem danh sách bảng và dữ liệu
-          </CardDescription>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Database className="h-5 w-5" />
+              Chọn Kết nối Database
+            </CardTitle>
+            <CardDescription>
+              Chọn một kết nối để xem danh sách bảng và dữ liệu
+            </CardDescription>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={fetchConnections}
+            disabled={loadingConnections}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${loadingConnections ? 'animate-spin' : ''}`} />
+            Làm mới
+          </Button>
         </CardHeader>
         <CardContent>
           {loadingConnections ? (
@@ -282,10 +299,19 @@ export default function DatabaseExplorer() {
               <Skeleton className="h-10 w-full" />
               <Skeleton className="h-10 w-full" />
             </div>
+          ) : connectionError ? (
+            <div className="text-center py-8">
+              <XCircle className="h-12 w-12 mx-auto mb-4 text-destructive" />
+              <p className="text-destructive font-medium mb-4">{connectionError}</p>
+              <Button variant="outline" onClick={fetchConnections}>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Thử lại
+              </Button>
+            </div>
           ) : connections.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <Database className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>Chưa có kết nối nào. Vui lòng thêm kết nối trong tab "Database Connections".</p>
+              <p>Chưa có kết nối nào. Vui lòng thêm kết nối trong phần "Kết nối & Dữ liệu" ở trên.</p>
             </div>
           ) : (
             <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">

@@ -243,11 +243,7 @@ export default function Settings() {
           <TabsList>
             <TabsTrigger value="connections" className="gap-2">
               <Database className="h-4 w-4" />
-              Database Connections
-            </TabsTrigger>
-            <TabsTrigger value="explorer" className="gap-2">
-              <Database className="h-4 w-4" />
-              Khám phá dữ liệu
+              Kết nối & Dữ liệu
             </TabsTrigger>
             <TabsTrigger value="alerts" className="gap-2">
               <Bell className="h-4 w-4" />
@@ -255,12 +251,12 @@ export default function Settings() {
             </TabsTrigger>
           </TabsList>
 
-          {/* Database Connections Tab */}
+          {/* Kết nối & Dữ liệu Tab */}
           <TabsContent value="connections">
             <Card className="bg-card rounded-xl border border-border/50 shadow-md hover:shadow-lg transition-all duration-300">
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
-                  <CardTitle>Database Connections</CardTitle>
+                  <CardTitle>Kết nối & Dữ liệu</CardTitle>
                   <CardDescription>
                     Quản lý các kết nối đến database bên ngoài
                   </CardDescription>
@@ -471,6 +467,11 @@ export default function Settings() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Database Explorer - Embedded */}
+            <div className="mt-6">
+              <DatabaseExplorer />
+            </div>
           </TabsContent>
 
           {/* Alerts Tab */}
@@ -540,10 +541,6 @@ export default function Settings() {
             </Card>
           </TabsContent>
 
-          {/* Explorer Tab - Embedded DatabaseExplorer */}
-          <TabsContent value="explorer">
-            <DatabaseExplorer />
-          </TabsContent>
         </Tabs>
       </div>
     </DashboardLayout>
