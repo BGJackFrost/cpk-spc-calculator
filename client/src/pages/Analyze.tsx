@@ -782,23 +782,65 @@ export default function Analyze() {
                     />
                     <p className="text-xs text-muted-foreground">Cần ít nhất 5 giá trị để phân tích</p>
                   </div>
-                  <Button 
-                    onClick={handleManualAnalyze}
-                    disabled={manualAnalyzeMutation.isPending}
-                    className="bg-primary hover:bg-primary/90"
-                  >
-                    {manualAnalyzeMutation.isPending ? (
+                  <div className="flex flex-wrap gap-3">
+                    <Button 
+                      onClick={handleManualAnalyze}
+                      disabled={manualAnalyzeMutation.isPending}
+                      className="bg-primary hover:bg-primary/90"
+                    >
+                      {manualAnalyzeMutation.isPending ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Đang phân tích...
+                        </>
+                      ) : (
+                        <>
+                          <TrendingUp className="mr-2 h-4 w-4" />
+                          Phân tích SPC/CPK
+                        </>
+                      )}
+                    </Button>
+
+                    {result && (
                       <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Đang phân tích...
-                      </>
-                    ) : (
-                      <>
-                        <TrendingUp className="mr-2 h-4 w-4" />
-                        Phân tích SPC/CPK
+                        <Button 
+                          variant="outline" 
+                          onClick={handleLlmAnalysis}
+                          disabled={llmMutation.isPending}
+                        >
+                          {llmMutation.isPending ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Đang phân tích AI...
+                            </>
+                          ) : (
+                            <>
+                              <Brain className="mr-2 h-4 w-4" />
+                              Phân tích AI
+                            </>
+                          )}
+                        </Button>
+
+                        <Button 
+                          variant="outline" 
+                          onClick={handleExportPdf}
+                          disabled={isExporting}
+                        >
+                          <FileText className="mr-2 h-4 w-4" />
+                          Xuất PDF
+                        </Button>
+
+                        <Button 
+                          variant="outline" 
+                          onClick={handleExportExcel}
+                          disabled={isExporting}
+                        >
+                          <FileSpreadsheet className="mr-2 h-4 w-4" />
+                          Xuất Excel
+                        </Button>
                       </>
                     )}
-                  </Button>
+                  </div>
                 </div>
               </TabsContent>
 
@@ -826,10 +868,52 @@ export default function Analyze() {
                       Hiện tại chưa có dữ liệu lấy mẫu thực tế - vui lòng sử dụng chế độ "Nhập thủ công" hoặc "Database Mapping".
                     </p>
                   </div>
-                  <Button disabled className="bg-muted">
-                    <TrendingUp className="mr-2 h-4 w-4" />
-                    Phân tích (Sắp ra mắt)
-                  </Button>
+                  <div className="flex flex-wrap gap-3">
+                    <Button disabled className="bg-muted">
+                      <TrendingUp className="mr-2 h-4 w-4" />
+                      Phân tích (Sắp ra mắt)
+                    </Button>
+
+                    {result && (
+                      <>
+                        <Button 
+                          variant="outline" 
+                          onClick={handleLlmAnalysis}
+                          disabled={llmMutation.isPending}
+                        >
+                          {llmMutation.isPending ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Đang phân tích AI...
+                            </>
+                          ) : (
+                            <>
+                              <Brain className="mr-2 h-4 w-4" />
+                              Phân tích AI
+                            </>
+                          )}
+                        </Button>
+
+                        <Button 
+                          variant="outline" 
+                          onClick={handleExportPdf}
+                          disabled={isExporting}
+                        >
+                          <FileText className="mr-2 h-4 w-4" />
+                          Xuất PDF
+                        </Button>
+
+                        <Button 
+                          variant="outline" 
+                          onClick={handleExportExcel}
+                          disabled={isExporting}
+                        >
+                          <FileSpreadsheet className="mr-2 h-4 w-4" />
+                          Xuất Excel
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 </div>
               </TabsContent>
             </Tabs>

@@ -737,3 +737,12 @@
 - [x] Cập nhật SpcReport.tsx để sử dụng translations
 - [x] Cập nhật History.tsx để sử dụng translations
 - [x] Cập nhật các trang quản lý để sử dụng translations (cơ bản)
+
+
+## Phase 24.3 - Xuất PDF/Excel cho Phân tích SPC/CPK
+
+### Yêu cầu
+- [x] Kiểm tra chức năng xuất PDF/Excel hiện tại trong Analyze.tsx
+- [x] Đảm bảo nút xuất PDF/Excel hiển thị cho cả chế độ nhập thủ công
+- [x] Đảm bảo nút xuất PDF/Excel hiển thị cho chế độ từ kế hoạch SPC
+- [x] Kiểm tra và sửa lỗi nếu có (71 tests pass)
