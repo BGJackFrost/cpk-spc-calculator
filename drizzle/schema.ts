@@ -57,13 +57,29 @@ export type InsertLoginHistory = typeof loginHistory.$inferInsert;
 
 /**
  * Database connections - stores external database connection strings
+ * Supports multiple database types: mysql, sqlserver, oracle, postgres, access, excel
  */
 export const databaseConnections = mysqlTable("database_connections", {
   id: int("id").autoincrement().primaryKey(),
   name: varchar("name", { length: 255 }).notNull(),
-  connectionString: text("connectionString").notNull(),
+  // Database type: mysql, sqlserver, oracle, postgres, access, excel
   databaseType: varchar("databaseType", { length: 50 }).notNull().default("mysql"),
+  // Connection details (encrypted)
+  host: varchar("host", { length: 255 }),
+  port: int("port"),
+  database: varchar("database", { length: 255 }),
+  username: varchar("username", { length: 255 }),
+  password: text("password"), // encrypted
+  // For file-based databases (Access, Excel)
+  filePath: text("filePath"),
+  // Additional connection options as JSON
+  connectionOptions: text("connectionOptions"),
+  // Legacy connection string (encrypted, for backward compatibility)
+  connectionString: text("connectionString"),
   description: text("description"),
+  // Connection status
+  lastTestedAt: timestamp("lastTestedAt"),
+  lastTestStatus: varchar("lastTestStatus", { length: 50 }),
   isActive: int("isActive").notNull().default(1),
   createdBy: int("createdBy").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),

@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE database_connections \nADD COLUMN IF NOT EXISTS host VARCHAR(255),\nADD COLUMN IF NOT EXISTS port INT,\nADD COLUMN IF NOT EXISTS `database` VARCHAR(255),\nADD COLUMN IF NOT EXISTS username VARCHAR(255),\nADD COLUMN IF NOT EXISTS password TEXT,\nADD COLUMN IF NOT EXISTS filePath TEXT,\nADD COLUMN IF NOT EXISTS connectionOptions TEXT,\nADD COLUMN IF NOT EXISTS lastTestedAt TIMESTAMP NULL,\nADD COLUMN IF NOT EXISTS lastTestStatus VARCHAR(50);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute ALTER TABLE database_connections \nADD COLUMN IF NOT EXISTS host VARCHAR(255),\nADD COLUMN IF NOT EXISTS port INT,\nADD COLUMN IF NOT EXISTS `database` VARCHAR(255),\nADD COLUMN IF NOT EXISTS username VARCHAR(255),\nADD COLUMN IF NOT EXISTS password TEXT,\nADD COLUMN IF NOT EXISTS filePath TEXT,\nADD COLUMN IF NOT EXISTS connectionOptions TEXT,\nADD COLUMN IF NOT EXISTS lastTestedAt TIMESTAMP NULL,\nADD COLUMN IF NOT EXISTS lastTestStatus VARCHAR(50);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 3928
+}

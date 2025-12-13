@@ -1100,3 +1100,27 @@
 - [x] Mã hóa thông tin kết nối database
 - [x] Mã hóa API keys và secrets
 - [x] Mã hóa thông tin nhạy cảm trong settings
+
+
+## Phase 42 - Quản lý Kết nối Database Bên ngoài
+
+### Schema và Service
+- [x] Cập nhật schema database_connections hỗ trợ đa loại DB
+- [x] Tạo externalDatabaseService với drivers cho các loại DB
+- [x] Hỗ trợ MySQL, SQL Server, Oracle, PostgreSQL
+- [x] Hỗ trợ Access (.mdb/.accdb) và Excel (.xlsx/.xls)
+- [x] Mã hóa thông tin kết nối nhạy cảm
+
+### API Endpoints
+- [x] API test kết nối database bên ngoài
+- [x] API lấy danh sách tables từ kết nối
+- [x] API lấy schema của table
+- [x] API lấy dữ liệu từ table với pagination và sort
+- [x] API CRUD cho quản lý kết nối
+
+### UI Quản lý Kết nối
+- [x] Form tạo/sửa kết nối với các loại DB khác nhau
+- [x] Danh sách kết nối đã lưu
+- [x] Chọn kết nối → Load tables
+- [x] Chọn table → Xem dữ liệu
+- [x] Select Top và Sort dữ liệu

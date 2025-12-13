@@ -293,211 +293,152 @@ const productSpecRouter = router({
     }),
 });
 
-// Database Connection Router
+// Database Connection Router - Hỗ trợ đa loại database
 const databaseConnectionRouter = router({
+  // Lấy danh sách kết nối
   list: adminProcedure.query(async () => {
-    return await getDatabaseConnections();
+    const { getConnections } = await import("./externalDatabaseService");
+    return await getConnections();
   }),
 
+  // Lấy kết nối theo ID (không trả về password)
   getById: adminProcedure
     .input(z.object({ id: z.number() }))
     .query(async ({ input }) => {
-      return await getDatabaseConnectionById(input.id);
+      const { getConnections } = await import("./externalDatabaseService");
+      const connections = await getConnections();
+      return connections.find(c => c.id === input.id) || null;
     }),
 
+  // Lấy danh sách loại database hỗ trợ
+  getSupportedTypes: adminProcedure.query(async () => {
+    const { getSupportedDatabaseTypes } = await import("./externalDatabaseService");
+    return getSupportedDatabaseTypes();
+  }),
+
+  // Tạo kết nối mới
   create: adminProcedure
     .input(z.object({
       name: z.string().min(1),
-      connectionString: z.string().min(1),
-      databaseType: z.string().default("mysql"),
+      databaseType: z.enum(["mysql", "sqlserver", "oracle", "postgres", "access", "excel"]),
+      host: z.string().optional(),
+      port: z.number().optional(),
+      database: z.string().optional(),
+      username: z.string().optional(),
+      password: z.string().optional(),
+      filePath: z.string().optional(),
+      connectionOptions: z.record(z.string(), z.unknown()).optional(),
       description: z.string().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
-      const id = await createDatabaseConnection({
-        ...input,
-        createdBy: ctx.user.id,
-      });
-      return { id };
+      const { createConnection } = await import("./externalDatabaseService");
+      return await createConnection(input, ctx.user.id);
     }),
 
+  // Cập nhật kết nối
   update: adminProcedure
     .input(z.object({
       id: z.number(),
       name: z.string().min(1).optional(),
-      connectionString: z.string().min(1).optional(),
-      databaseType: z.string().optional(),
+      databaseType: z.enum(["mysql", "sqlserver", "oracle", "postgres", "access", "excel"]).optional(),
+      host: z.string().optional(),
+      port: z.number().optional(),
+      database: z.string().optional(),
+      username: z.string().optional(),
+      password: z.string().optional(),
+      filePath: z.string().optional(),
+      connectionOptions: z.record(z.string(), z.unknown()).optional(),
       description: z.string().optional(),
     }))
     .mutation(async ({ input }) => {
       const { id, ...data } = input;
-      await updateDatabaseConnection(id, data);
-      return { success: true };
+      const { updateConnection } = await import("./externalDatabaseService");
+      return await updateConnection(id, data);
     }),
 
+  // Xóa kết nối
   delete: adminProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input }) => {
-      await deleteDatabaseConnection(input.id);
-      return { success: true };
+      const { deleteConnection } = await import("./externalDatabaseService");
+      return await deleteConnection(input.id);
     }),
 
+  // Test kết nối mới (chưa lưu)
   testConnection: adminProcedure
-    .input(z.object({ connectionString: z.string() }))
+    .input(z.object({
+      databaseType: z.enum(["mysql", "sqlserver", "oracle", "postgres", "access", "excel"]),
+      host: z.string().optional(),
+      port: z.number().optional(),
+      database: z.string().optional(),
+      username: z.string().optional(),
+      password: z.string().optional(),
+      filePath: z.string().optional(),
+    }))
     .mutation(async ({ input }) => {
-      try {
-        await queryExternalDatabase(input.connectionString, "SELECT 1");
-        return { success: true, message: "Connection successful" };
-      } catch (error) {
-        return { success: false, message: error instanceof Error ? error.message : "Connection failed" };
-      }
+      const { testConnection } = await import("./externalDatabaseService");
+      return await testConnection(input);
     }),
 
   // Lấy danh sách bảng từ database connection
   getTables: adminProcedure
     .input(z.object({ connectionId: z.number() }))
     .query(async ({ input }) => {
-      const connection = await getDatabaseConnectionById(input.connectionId);
-      if (!connection) {
-        throw new Error("Connection not found");
-      }
-      try {
-        // Query to get table names based on database type
-        let query = "";
-        if (connection.databaseType === "mysql" || connection.databaseType === "mariadb") {
-          query = "SHOW TABLES";
-        } else if (connection.databaseType === "postgresql") {
-          query = "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'";
-        } else if (connection.databaseType === "mssql") {
-          query = "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE'";
-        } else {
-          query = "SHOW TABLES"; // Default to MySQL syntax
-        }
-        
-        const result = await queryExternalDatabase(connection.connectionString, query);
-        // Extract table names from result
-        const tables = result.map((row: Record<string, unknown>) => {
-          const values = Object.values(row);
-          return values[0] as string;
-        });
-        return { tables };
-      } catch (error) {
-        throw new Error(`Failed to get tables: ${error instanceof Error ? error.message : "Unknown error"}`);
-      }
+      const { getTables } = await import("./externalDatabaseService");
+      const tables = await getTables(input.connectionId);
+      return { tables: tables.map(t => t.name), tableInfo: tables };
     }),
 
   // Lấy danh sách cột từ bảng
   getColumns: adminProcedure
     .input(z.object({ connectionId: z.number(), tableName: z.string() }))
     .query(async ({ input }) => {
-      const connection = await getDatabaseConnectionById(input.connectionId);
-      if (!connection) {
-        throw new Error("Connection not found");
-      }
-      try {
-        let query = "";
-        if (connection.databaseType === "mysql" || connection.databaseType === "mariadb") {
-          query = `DESCRIBE \`${input.tableName}\``;
-        } else if (connection.databaseType === "postgresql") {
-          query = `SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '${input.tableName}'`;
-        } else if (connection.databaseType === "mssql") {
-          query = `SELECT COLUMN_NAME, DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = '${input.tableName}'`;
-        } else {
-          query = `DESCRIBE \`${input.tableName}\``;
-        }
-        
-        const result = await queryExternalDatabase(connection.connectionString, query);
-        // Extract column info from result
-        const columns = result.map((row: Record<string, unknown>) => {
-          if (connection.databaseType === "mysql" || connection.databaseType === "mariadb") {
-            return {
-              name: row.Field as string,
-              type: row.Type as string,
-            };
-          } else {
-            return {
-              name: (row.column_name || row.COLUMN_NAME) as string,
-              type: (row.data_type || row.DATA_TYPE) as string,
-            };
-          }
-        });
-        return { columns };
-      } catch (error) {
-        throw new Error(`Failed to get columns: ${error instanceof Error ? error.message : "Unknown error"}`);
-      }
+      const { getTableSchema } = await import("./externalDatabaseService");
+      const columns = await getTableSchema(input.connectionId, input.tableName);
+      return { columns };
     }),
 
   // Test connection by ID
   testConnectionById: adminProcedure
     .input(z.object({ connectionId: z.number() }))
     .mutation(async ({ input }) => {
-      const connection = await getDatabaseConnectionById(input.connectionId);
+      const { getConnectionById, testConnection, updateConnectionTestStatus } = await import("./externalDatabaseService");
+      const connection = await getConnectionById(input.connectionId);
       if (!connection) {
         return { success: false, message: "Connection not found" };
       }
-      try {
-        await queryExternalDatabase(connection.connectionString, "SELECT 1");
-        return { success: true, message: "Kết nối thành công!", databaseType: connection.databaseType };
-      } catch (error) {
-        return { success: false, message: error instanceof Error ? error.message : "Kết nối thất bại" };
-      }
+      const result = await testConnection({
+        name: connection.name,
+        databaseType: connection.databaseType as "mysql" | "sqlserver" | "oracle" | "postgres" | "access" | "excel",
+        host: connection.host || undefined,
+        port: connection.port || undefined,
+        database: connection.database || undefined,
+        username: connection.username || undefined,
+        password: connection.password || undefined,
+        filePath: connection.filePath || undefined,
+      });
+      await updateConnectionTestStatus(input.connectionId, result.success ? "success" : "failed");
+      return { ...result, databaseType: connection.databaseType };
     }),
 
-  // Preview data from table with filter conditions
+  // Preview data from table with pagination and sorting
   previewData: adminProcedure
     .input(z.object({
       connectionId: z.number(),
       tableName: z.string(),
-      columns: z.array(z.string()).optional(),
-      filterConditions: z.array(z.object({
-        column: z.string(),
-        operator: z.enum(["=", "!=", ">", "<", ">=", "<=", "LIKE", "IN"]),
-        value: z.string(),
-      })).optional(),
-      limit: z.number().default(10),
+      page: z.number().default(1),
+      pageSize: z.number().default(50),
+      sortColumn: z.string().optional(),
+      sortDirection: z.enum(["asc", "desc"]).default("asc"),
     }))
     .query(async ({ input }) => {
-      const connection = await getDatabaseConnectionById(input.connectionId);
-      if (!connection) {
-        throw new Error("Connection not found");
-      }
-      try {
-        // Build SELECT columns
-        const selectColumns = input.columns && input.columns.length > 0
-          ? input.columns.map(c => `\`${c}\``).join(", ")
-          : "*";
-        
-        // Build WHERE clause from filter conditions
-        let whereClause = "";
-        if (input.filterConditions && input.filterConditions.length > 0) {
-          const conditions = input.filterConditions.map(fc => {
-            if (fc.operator === "IN") {
-              const values = fc.value.split(",").map(v => `'${v.trim()}'`).join(", ");
-              return `\`${fc.column}\` IN (${values})`;
-            } else if (fc.operator === "LIKE") {
-              return `\`${fc.column}\` LIKE '${fc.value}'`;
-            } else {
-              // Check if value is numeric
-              const numValue = parseFloat(fc.value);
-              if (!isNaN(numValue)) {
-                return `\`${fc.column}\` ${fc.operator} ${numValue}`;
-              }
-              return `\`${fc.column}\` ${fc.operator} '${fc.value}'`;
-            }
-          });
-          whereClause = " WHERE " + conditions.join(" AND ");
-        }
-        
-        const query = `SELECT ${selectColumns} FROM \`${input.tableName}\`${whereClause} LIMIT ${input.limit}`;
-        const result = await queryExternalDatabase(connection.connectionString, query);
-        
-        return {
-          data: result,
-          query: query,
-          rowCount: result.length,
-        };
-      } catch (error) {
-        throw new Error(`Failed to preview data: ${error instanceof Error ? error.message : "Unknown error"}`);
-      }
+      const { getTableData } = await import("./externalDatabaseService");
+      return await getTableData(input.connectionId, input.tableName, {
+        page: input.page,
+        pageSize: input.pageSize,
+        sortColumn: input.sortColumn,
+        sortDirection: input.sortDirection,
+      });
     }),
 });
 
@@ -790,7 +731,7 @@ const spcRouter = router({
       let rawData: { value: number; timestamp: Date }[];
       try {
         const rows = await queryExternalDatabase(
-          connection.connectionString,
+          connection.connectionString || '',
           query,
           [input.productCode, input.stationName, input.startDate, input.endDate]
         );
@@ -849,7 +790,7 @@ const spcRouter = router({
       const historyId = await createSpcAnalysisHistory({
         mappingId: mapping.id,
         productCode: input.productCode,
-        stationName: input.stationName,
+        stationName: input.stationName || '',
         startDate: input.startDate,
         endDate: input.endDate,
         sampleCount: spcResult.sampleCount,
@@ -926,7 +867,7 @@ const spcRouter = router({
       let rawData: { value: number; timestamp: Date }[];
       try {
         const rows = await queryExternalDatabase(
-          connection.connectionString,
+          connection.connectionString || '',
           query,
           [mapping.productCode, mapping.stationName, input.startDate, input.endDate]
         );
@@ -984,7 +925,7 @@ const spcRouter = router({
       const historyId = await createSpcAnalysisHistory({
         mappingId: mapping.id,
         productCode: mapping.productCode,
-        stationName: mapping.stationName,
+        stationName: mapping.stationName || '',
         startDate: input.startDate,
         endDate: input.endDate,
         sampleCount: spcResult.sampleCount,

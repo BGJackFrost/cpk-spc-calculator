@@ -126,9 +126,8 @@ export default function Mappings() {
     {
       connectionId: formData.connectionId,
       tableName: formData.tableName,
-      columns: [formData.productCodeColumn, formData.stationColumn, formData.valueColumn, formData.timestampColumn].filter(Boolean),
-      filterConditions: filterConditions.filter(fc => fc.column && fc.value),
-      limit: 10,
+      page: 1,
+      pageSize: 10,
     },
     {
       enabled: showPreviewDialog && formData.connectionId > 0 && formData.tableName.length > 0,
@@ -989,26 +988,26 @@ export default function Mappings() {
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                 <span className="ml-2 text-muted-foreground">Đang tải dữ liệu...</span>
               </div>
-            ) : previewData?.data && previewData.data.length > 0 ? (
+            ) : previewData?.rows && previewData.rows.length > 0 ? (
               <div className="space-y-4">
                 <div className="text-sm text-muted-foreground">
-                  <strong>Query:</strong> <code className="bg-muted px-2 py-1 rounded text-xs">{previewData.query}</code>
+                  <strong>Cột:</strong> <code className="bg-muted px-2 py-1 rounded text-xs">{previewData.columns?.join(', ')}</code>
                 </div>
                 <div className="rounded-lg border overflow-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        {Object.keys(previewData.data[0]).map((key) => (
+                        {previewData.columns?.map((key: string) => (
                           <TableHead key={key} className="whitespace-nowrap">{key}</TableHead>
                         ))}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {previewData.data.map((row: Record<string, unknown>, idx: number) => (
+                      {previewData.rows.map((row: Record<string, unknown>, idx: number) => (
                         <TableRow key={idx}>
-                          {Object.values(row).map((value, cellIdx) => (
+                          {previewData.columns?.map((col: string, cellIdx: number) => (
                             <TableCell key={cellIdx} className="font-mono text-sm">
-                              {value === null ? <span className="text-muted-foreground italic">NULL</span> : String(value)}
+                              {row[col] === null ? <span className="text-muted-foreground italic">NULL</span> : String(row[col])}
                             </TableCell>
                           ))}
                         </TableRow>
@@ -1017,7 +1016,7 @@ export default function Mappings() {
                   </Table>
                 </div>
                 <div className="text-sm text-muted-foreground">
-                  Hiển thị {previewData.rowCount} dòng
+                  Hiển thị {previewData.total} dòng
                 </div>
               </div>
             ) : (

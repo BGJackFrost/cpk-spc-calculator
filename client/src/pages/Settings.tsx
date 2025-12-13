@@ -41,15 +41,24 @@ import { useAuth } from "@/_core/hooks/useAuth";
 
 interface ConnectionFormData {
   name: string;
-  connectionString: string;
-  databaseType: string;
+  databaseType: "mysql" | "sqlserver" | "oracle" | "postgres" | "access" | "excel";
+  host?: string;
+  port?: number;
+  database?: string;
+  username?: string;
+  password?: string;
+  filePath?: string;
   description: string;
 }
 
 const defaultConnectionForm: ConnectionFormData = {
   name: "",
-  connectionString: "",
   databaseType: "mysql",
+  host: "",
+  port: 3306,
+  database: "",
+  username: "",
+  password: "",
   description: "",
 };
 
@@ -140,16 +149,20 @@ export default function Settings() {
     setEditingId(connection.id);
     setFormData({
       name: connection.name,
-      connectionString: connection.connectionString,
-      databaseType: connection.databaseType,
+      databaseType: connection.databaseType as ConnectionFormData['databaseType'],
+      host: connection.host || "",
+      port: connection.port || 3306,
+      database: connection.database || "",
+      username: connection.username || "",
+      password: "", // Don't show password
       description: connection.description || "",
     });
     setIsDialogOpen(true);
   };
 
   const handleSubmit = () => {
-    if (!formData.name || !formData.connectionString) {
-      toast.error("Vui lòng điền đầy đủ thông tin bắt buộc");
+    if (!formData.name) {
+      toast.error("Vui lòng nhập tên kết nối");
       return;
     }
 
@@ -170,12 +183,20 @@ export default function Settings() {
   };
 
   const handleTestConnection = () => {
-    if (!formData.connectionString) {
-      toast.error("Vui lòng nhập connection string");
+    if (!formData.host && formData.databaseType !== 'access' && formData.databaseType !== 'excel') {
+      toast.error("Vui lòng nhập thông tin kết nối");
       return;
     }
     setTestResult(null);
-    testConnectionMutation.mutate({ connectionString: formData.connectionString });
+    testConnectionMutation.mutate({
+      databaseType: formData.databaseType,
+      host: formData.host,
+      port: formData.port,
+      database: formData.database,
+      username: formData.username,
+      password: formData.password,
+      filePath: formData.filePath,
+    });
   };
 
   if (!isAdmin) {
@@ -258,22 +279,80 @@ export default function Settings() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label>Connection String *</Label>
-                        <Input
-                          value={formData.connectionString}
-                          onChange={(e) => setFormData({ ...formData, connectionString: e.target.value })}
-                          placeholder="mysql://user:password@host:port/database"
-                          type="password"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Loại Database</Label>
-                        <Input
+                        <Label>Loại Database *</Label>
+                        <select
                           value={formData.databaseType}
-                          onChange={(e) => setFormData({ ...formData, databaseType: e.target.value })}
-                          placeholder="mysql"
-                        />
+                          onChange={(e) => setFormData({ ...formData, databaseType: e.target.value as ConnectionFormData['databaseType'] })}
+                          className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
+                        >
+                          <option value="mysql">MySQL / MariaDB</option>
+                          <option value="postgres">PostgreSQL</option>
+                          <option value="sqlserver">SQL Server</option>
+                          <option value="oracle">Oracle</option>
+                          <option value="access">Microsoft Access</option>
+                          <option value="excel">Excel</option>
+                        </select>
                       </div>
+                      {formData.databaseType !== 'access' && formData.databaseType !== 'excel' && (
+                        <>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label>Host *</Label>
+                              <Input
+                                value={formData.host || ''}
+                                onChange={(e) => setFormData({ ...formData, host: e.target.value })}
+                                placeholder="localhost"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Port</Label>
+                              <Input
+                                type="number"
+                                value={formData.port || ''}
+                                onChange={(e) => setFormData({ ...formData, port: parseInt(e.target.value) || undefined })}
+                                placeholder="3306"
+                              />
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Database</Label>
+                            <Input
+                              value={formData.database || ''}
+                              onChange={(e) => setFormData({ ...formData, database: e.target.value })}
+                              placeholder="Tên database"
+                            />
+                          </div>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label>Username</Label>
+                              <Input
+                                value={formData.username || ''}
+                                onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                                placeholder="root"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Password</Label>
+                              <Input
+                                type="password"
+                                value={formData.password || ''}
+                                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                placeholder="••••••••"
+                              />
+                            </div>
+                          </div>
+                        </>
+                      )}
+                      {(formData.databaseType === 'access' || formData.databaseType === 'excel') && (
+                        <div className="space-y-2">
+                          <Label>Đường dẫn file *</Label>
+                          <Input
+                            value={formData.filePath || ''}
+                            onChange={(e) => setFormData({ ...formData, filePath: e.target.value })}
+                            placeholder="C:\\path\\to\\file.xlsx"
+                          />
+                        </div>
+                      )}
                       <div className="space-y-2">
                         <Label>Mô tả</Label>
                         <Input
