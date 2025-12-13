@@ -1071,3 +1071,8 @@
 - [x] API import settings từ JSON file
 - [x] UI download/upload settings file
 - [x] Validate settings trước khi import
+
+
+## Bug Fixes
+
+- [x] Fix lỗi "Cannot read properties of undefined (reading 'slice')" trong BackupHistory.tsx

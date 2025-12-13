@@ -661,7 +661,7 @@ export default function BackupHistory() {
                     Bao gồm: Cấu hình hệ thống, thông tin công ty, cài đặt cảnh báo, 
                     danh sách sản phẩm, dây chuyền, máy móc, và mapping.
                   </div>
-                  {exportPreview && (
+                  {exportPreview && exportPreview.sections && exportPreview.sections.length > 0 && (
                     <div className="space-y-2">
                       <p className="text-sm font-medium">Dữ liệu sẽ xuất:</p>
                       <div className="grid grid-cols-2 gap-2 text-sm">
