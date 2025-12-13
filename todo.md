@@ -764,3 +764,22 @@
 - [x] Tạo trang quản lý template báo cáo (ReportTemplateManagement.tsx)
 - [x] Cho phép tùy chỉnh logo, header, footer
 - [ ] Tích hợp template vào export PDF (cần cập nhật exportService.ts)
+
+
+## Phase 26 - Template PDF, Upload Logo và Preview
+
+### Tích hợp template vào export PDF
+- [x] Cập nhật exportService.ts để lấy template mặc định
+- [x] Áp dụng logo, header, footer từ template vào PDF
+- [x] Áp dụng màu sắc và font từ template
+
+### Upload logo
+- [x] Thêm chức năng upload logo trực tiếp trong ReportTemplateManagement
+- [x] Lưu logo lên S3 storage (/api/upload-logo endpoint)
+- [x] Hiển thị logo công ty trên trang chính (Dashboard)
+
+### Preview PDF
+- [x] Thêm nút xem trước PDF trong trang Analyze (cả 3 tabs)
+- [x] Tạo dialog preview PDF với iframe
+- [x] Cho phép tải PDF từ preview
+- [ ] Hiển thị PDF trong modal trước khi tải xuống

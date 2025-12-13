@@ -10,6 +10,7 @@ import { serveStatic, setupVite } from "./vite";
 import { addSseClient, startHeartbeat } from "../sse";
 import { initScheduledJobs } from "../scheduledJobs";
 import { apiRateLimiter, authRateLimiter } from "./rateLimiter";
+import { storagePut } from "../storage";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -50,6 +51,33 @@ async function startServer() {
     startHeartbeat(30000); // 30 second heartbeat
   });
   
+  // Upload logo endpoint
+  app.post("/api/upload-logo", async (req, res) => {
+    try {
+      const { filename, contentType, data } = req.body;
+      
+      if (!data || !filename) {
+        return res.status(400).json({ error: "Missing data or filename" });
+      }
+
+      // Extract base64 data (remove data:image/xxx;base64, prefix)
+      const base64Data = data.replace(/^data:image\/\w+;base64,/, '');
+      const buffer = Buffer.from(base64Data, 'base64');
+
+      // Generate unique filename
+      const ext = filename.split('.').pop() || 'png';
+      const uniqueFilename = `logos/${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${ext}`;
+
+      // Upload to S3
+      const result = await storagePut(uniqueFilename, buffer, contentType || 'image/png');
+      
+      res.json({ url: result.url, key: result.key });
+    } catch (error) {
+      console.error('Logo upload error:', error);
+      res.status(500).json({ error: "Upload failed" });
+    }
+  });
+
   // tRPC API
   app.use(
     "/api/trpc",

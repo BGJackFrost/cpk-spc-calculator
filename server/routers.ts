@@ -1408,7 +1408,7 @@ const exportRouter = router({
       return { content: generateCsvContent(exportData), filename: `spc_report_${input.productCode}_${Date.now()}.csv` };
     }),
 
-  // Enhanced PDF export with professional formatting
+  // Enhanced PDF export with professional formatting and template support
   pdfEnhanced: protectedProcedure
     .input(z.object({
       productCode: z.string(),
@@ -1420,6 +1420,7 @@ const exportRouter = router({
       usl: z.number().nullable().optional(),
       lsl: z.number().nullable().optional(),
       target: z.number().nullable().optional(),
+      useTemplate: z.boolean().optional(),
       spcResult: z.object({
         sampleCount: z.number(),
         mean: z.number(),
@@ -1451,6 +1452,12 @@ const exportRouter = router({
       }),
     }))
     .mutation(async ({ input }) => {
+      // Get default template if useTemplate is not explicitly false
+      let template = null;
+      if (input.useTemplate !== false) {
+        template = await getDefaultReportTemplate();
+      }
+      
       const exportData: EnhancedExportData = {
         productCode: input.productCode,
         stationName: input.stationName,
@@ -1461,6 +1468,7 @@ const exportRouter = router({
         usl: input.usl,
         lsl: input.lsl,
         target: input.target,
+        template: template,
         spcResult: {
           ...input.spcResult,
           xBarData: input.spcResult.xBarData || [],

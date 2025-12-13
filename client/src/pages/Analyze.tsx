@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -24,7 +25,8 @@ import {
   Brain,
   FileSpreadsheet,
   FileText,
-  Database
+  Database,
+  Eye
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -110,6 +112,8 @@ export default function Analyze() {
   const [llmAnalysis, setLlmAnalysis] = useState<string>("");
   const [isExporting, setIsExporting] = useState(false);
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
+  const [showPdfPreview, setShowPdfPreview] = useState(false);
+  const [pdfPreviewContent, setPdfPreviewContent] = useState<string>("");
 
   // Lấy danh sách products từ bảng products
   const { data: products } = trpc.product.list.useQuery();
@@ -400,6 +404,53 @@ export default function Analyze() {
       analysisType: "single",
     }, {
       onSettled: () => setIsExporting(false),
+    });
+  };
+
+  const handlePreviewPdf = () => {
+    if (!result) return;
+    setIsExporting(true);
+    const now = new Date();
+    const exportStartDate = startDate || now;
+    const exportEndDate = endDate || now;
+    exportPdfMutation.mutate({
+      productCode: selectedProduct || "Manual",
+      stationName: selectedStation || "Manual Input",
+      startDate: exportStartDate,
+      endDate: exportEndDate,
+      spcResult: {
+        sampleCount: result.sampleCount,
+        mean: result.mean,
+        stdDev: result.stdDev,
+        min: result.min,
+        max: result.max,
+        range: result.range,
+        cp: result.cp,
+        cpk: result.cpk,
+        cpu: result.cpu,
+        cpl: result.cpl,
+        ucl: result.ucl,
+        lcl: result.lcl,
+        uclR: result.uclR,
+        lclR: result.lclR,
+        xBarData: result.xBarData,
+        rangeData: result.rangeData,
+        rawData: result.rawData,
+      },
+      usl: result.usl,
+      lsl: result.lsl,
+      target: result.target,
+      analysisType: "single",
+      useTemplate: true,
+    }, {
+      onSuccess: (data) => {
+        setPdfPreviewContent(data.content);
+        setShowPdfPreview(true);
+        setIsExporting(false);
+      },
+      onError: () => {
+        setIsExporting(false);
+      },
     });
   };
 
@@ -709,11 +760,20 @@ export default function Analyze() {
 
                   <Button 
                     variant="outline" 
+                    onClick={handlePreviewPdf}
+                    disabled={isExporting}
+                  >
+                    <Eye className="mr-2 h-4 w-4" />
+                    {language === 'vi' ? 'Xem trước PDF' : 'Preview PDF'}
+                  </Button>
+
+                  <Button 
+                    variant="outline" 
                     onClick={handleExportPdf}
                     disabled={isExporting}
                   >
                     <FileText className="mr-2 h-4 w-4" />
-                    Xuất PDF
+                    {language === 'vi' ? 'Xuất PDF' : 'Export PDF'}
                   </Button>
 
                   <Button 
@@ -722,7 +782,7 @@ export default function Analyze() {
                     disabled={isExporting}
                   >
                     <FileSpreadsheet className="mr-2 h-4 w-4" />
-                    Xuất Excel
+                    {language === 'vi' ? 'Xuất Excel' : 'Export Excel'}
                   </Button>
                 </>
               )}
@@ -844,11 +904,20 @@ export default function Analyze() {
 
                         <Button 
                           variant="outline" 
+                          onClick={handlePreviewPdf}
+                          disabled={isExporting}
+                        >
+                          <Eye className="mr-2 h-4 w-4" />
+                          {language === 'vi' ? 'Xem trước PDF' : 'Preview PDF'}
+                        </Button>
+
+                        <Button 
+                          variant="outline" 
                           onClick={handleExportPdf}
                           disabled={isExporting}
                         >
                           <FileText className="mr-2 h-4 w-4" />
-                          Xuất PDF
+                          {language === 'vi' ? 'Xuất PDF' : 'Export PDF'}
                         </Button>
 
                         <Button 
@@ -857,7 +926,7 @@ export default function Analyze() {
                           disabled={isExporting}
                         >
                           <FileSpreadsheet className="mr-2 h-4 w-4" />
-                          Xuất Excel
+                          {language === 'vi' ? 'Xuất Excel' : 'Export Excel'}
                         </Button>
                       </>
                     )}
@@ -935,11 +1004,20 @@ export default function Analyze() {
 
                         <Button 
                           variant="outline" 
+                          onClick={handlePreviewPdf}
+                          disabled={isExporting}
+                        >
+                          <Eye className="mr-2 h-4 w-4" />
+                          {language === 'vi' ? 'Xem trước PDF' : 'Preview PDF'}
+                        </Button>
+
+                        <Button 
+                          variant="outline" 
                           onClick={handleExportPdf}
                           disabled={isExporting}
                         >
                           <FileText className="mr-2 h-4 w-4" />
-                          Xuất PDF
+                          {language === 'vi' ? 'Xuất PDF' : 'Export PDF'}
                         </Button>
 
                         <Button 
@@ -948,7 +1026,7 @@ export default function Analyze() {
                           disabled={isExporting}
                         >
                           <FileSpreadsheet className="mr-2 h-4 w-4" />
-                          Xuất Excel
+                          {language === 'vi' ? 'Xuất Excel' : 'Export Excel'}
                         </Button>
                       </>
                     )}
@@ -1175,6 +1253,43 @@ export default function Analyze() {
           { keys: "Ctrl + Enter", description: "Chạy phân tích" },
         ]}
       />
+
+      {/* PDF Preview Dialog */}
+      <Dialog open={showPdfPreview} onOpenChange={setShowPdfPreview}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle>
+              {language === 'vi' ? 'Xem trước báo cáo PDF' : 'PDF Report Preview'}
+            </DialogTitle>
+            <DialogDescription>
+              {language === 'vi' 
+                ? 'Xem trước báo cáo trước khi tải xuống. Bấm "Tải PDF" để lưu file.'
+                : 'Preview the report before downloading. Click "Download PDF" to save.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 overflow-auto border rounded-md bg-white">
+            <iframe
+              srcDoc={pdfPreviewContent}
+              className="w-full h-[60vh]"
+              title="PDF Preview"
+            />
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setShowPdfPreview(false)}>
+              {language === 'vi' ? 'Đóng' : 'Close'}
+            </Button>
+            <Button onClick={() => {
+              if (pdfPreviewContent) {
+                downloadFile(pdfPreviewContent, `spc_report_${selectedProduct || 'manual'}_${Date.now()}.html`, 'text/html');
+                toast.success(language === 'vi' ? 'Đã tải báo cáo' : 'Report downloaded');
+              }
+            }}>
+              <Download className="mr-2 h-4 w-4" />
+              {language === 'vi' ? 'Tải PDF' : 'Download PDF'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }

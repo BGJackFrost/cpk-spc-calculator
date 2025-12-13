@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Star, FileText, Loader2, Eye } from "lucide-react";
+import { Plus, Pencil, Trash2, Star, FileText, Loader2, Eye, Upload, ImageIcon } from "lucide-react";
 
 interface ReportTemplate {
   id: number;
@@ -39,6 +39,7 @@ export default function ReportTemplateManagement() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<ReportTemplate | null>(null);
   const [previewTemplate, setPreviewTemplate] = useState<ReportTemplate | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -175,6 +176,56 @@ export default function ReportTemplateManagement() {
     }
   };
 
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error(language === 'vi' ? 'Vui lòng chọn file hình ảnh' : 'Please select an image file');
+      return;
+    }
+
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error(language === 'vi' ? 'File quá lớn (tối đa 2MB)' : 'File too large (max 2MB)');
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      // Convert to base64 and upload via API
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const base64 = reader.result as string;
+        
+        // Call upload API
+        const response = await fetch('/api/upload-logo', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            filename: file.name,
+            contentType: file.type,
+            data: base64
+          }),
+        });
+
+        if (response.ok) {
+          const { url } = await response.json();
+          setFormData({ ...formData, companyLogo: url });
+          toast.success(language === 'vi' ? 'Đã tải logo lên thành công' : 'Logo uploaded successfully');
+        } else {
+          throw new Error('Upload failed');
+        }
+        setIsUploading(false);
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      toast.error(language === 'vi' ? 'Lỗi tải logo' : 'Error uploading logo');
+      setIsUploading(false);
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -241,12 +292,50 @@ export default function ReportTemplateManagement() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>{language === 'vi' ? 'URL Logo' : 'Logo URL'}</Label>
-                    <Input
-                      value={formData.companyLogo}
-                      onChange={(e) => setFormData({ ...formData, companyLogo: e.target.value })}
-                      placeholder="https://..."
-                    />
+                    <Label>{language === 'vi' ? 'Logo công ty' : 'Company Logo'}</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        value={formData.companyLogo}
+                        onChange={(e) => setFormData({ ...formData, companyLogo: e.target.value })}
+                        placeholder="https://... hoặc tải lên"
+                        className="flex-1"
+                      />
+                      <label className="cursor-pointer">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={handleLogoUpload}
+                          disabled={isUploading}
+                        />
+                        <Button type="button" variant="outline" size="icon" disabled={isUploading} asChild>
+                          <span>
+                            {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                          </span>
+                        </Button>
+                      </label>
+                    </div>
+                    {formData.companyLogo && (
+                      <div className="mt-2 flex items-center gap-2 p-2 bg-muted rounded-md">
+                        <img 
+                          src={formData.companyLogo} 
+                          alt="Logo preview" 
+                          className="h-10 w-auto object-contain"
+                          onError={(e) => (e.target as HTMLImageElement).style.display = 'none'}
+                        />
+                        <span className="text-sm text-muted-foreground truncate flex-1">
+                          {formData.companyLogo.substring(0, 50)}...
+                        </span>
+                        <Button 
+                          type="button" 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => setFormData({ ...formData, companyLogo: '' })}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </div>
 

@@ -39,6 +39,7 @@ export default function Dashboard() {
   const { data: mappings } = trpc.mapping.list.useQuery();
   const { data: history } = trpc.spc.history.useQuery({ limit: 10 });
   const { data: dashboardConfig, refetch: refetchConfig } = trpc.dashboardConfig.get.useQuery();
+  const { data: defaultTemplate } = trpc.reportTemplate.getDefault.useQuery();
   
   // Guided Tour
   const { run, stepIndex, steps, handleCallback, startTour, isCompleted } = useGuidedTour("dashboard", dashboardTourSteps);
@@ -131,13 +132,29 @@ export default function Dashboard() {
       <div className="space-y-8 animate-fade-in">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <div className="flex flex-col gap-2">
-            <h1 className="text-3xl font-bold tracking-tight">
-              {t.dashboard.welcome}, {user?.name || "User"}
-            </h1>
-            <p className="text-muted-foreground">
-              {t.dashboard.subtitle}
-            </p>
+          <div className="flex items-center gap-4">
+            {/* Company Logo */}
+            {defaultTemplate?.companyLogo && defaultTemplate?.showLogo === 1 && (
+              <img 
+                src={defaultTemplate.companyLogo} 
+                alt={defaultTemplate.companyName || 'Company Logo'}
+                className="h-14 w-auto object-contain"
+              />
+            )}
+            <div className="flex flex-col gap-2">
+              {/* Company Name */}
+              {defaultTemplate?.companyName && defaultTemplate?.showCompanyName === 1 && (
+                <span className="text-sm font-medium text-muted-foreground">
+                  {defaultTemplate.companyName}
+                </span>
+              )}
+              <h1 className="text-3xl font-bold tracking-tight">
+                {t.dashboard.welcome}, {user?.name || "User"}
+              </h1>
+              <p className="text-muted-foreground">
+                {t.dashboard.subtitle}
+              </p>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <DropdownMenu>
