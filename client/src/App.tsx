@@ -42,6 +42,7 @@ import WebhookManagement from "./pages/WebhookManagement";
 import ReportTemplateManagement from "./pages/ReportTemplateManagement";
 import ExportHistory from "./pages/ExportHistory";
 import LocalLogin from "./pages/LocalLogin";
+import LocalUserManagement from "./pages/LocalUserManagement";
 
 function Router() {
   return (
@@ -55,6 +56,7 @@ function Router() {
       <Route path="/mappings" component={Mappings} />
       <Route path="/settings" component={Settings} />
       <Route path="/users" component={UserManagement} />
+      <Route path="/local-users" component={LocalUserManagement} />
       <Route path="/products" component={ProductManagement} />
       <Route path="/specifications" component={SpecificationManagement} />
       <Route path="/production-line-management" component={ProductionLineManagement} />

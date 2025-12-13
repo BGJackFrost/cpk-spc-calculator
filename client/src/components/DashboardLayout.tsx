@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, LogOut, PanelLeft, TrendingUp, History, FileSpreadsheet, Settings, Activity, Users, Package, Ruler, Factory, Clock, Calendar, Mail, Shield, Server, Database, Wrench, Cog, GitBranch, FileText, BarChart3, AlertTriangle, Cpu, GitCompare, ArrowUpDown, Info, BookOpen, Layers, Key, Webhook, FileType, FolderClock } from "lucide-react";
+import { LayoutDashboard, LogOut, PanelLeft, TrendingUp, History, FileSpreadsheet, Settings, Activity, Users, Package, Ruler, Factory, Clock, Calendar, Mail, Shield, Server, Database, Wrench, Cog, GitBranch, FileText, BarChart3, AlertTriangle, Cpu, GitCompare, ArrowUpDown, Info, BookOpen, Layers, Key, Webhook, FileType, FolderClock, UserCog } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
@@ -54,6 +54,7 @@ const menuItemsConfig = [
   { icon: Calendar, labelKey: "nav.spcPlanManagement", path: "/spc-plans" },
   { icon: Mail, labelKey: "emailNotification", path: "/email-notifications" },
   { icon: Users, labelKey: "nav.userManagement", path: "/users" },
+  { icon: UserCog, labelKey: "nav.localUserManagement", path: "/local-users", adminOnly: true },
   { icon: Shield, labelKey: "permission", path: "/permissions" },
   { icon: Server, labelKey: "smtpConfig", path: "/smtp-settings" },
   { icon: Database, labelKey: "seedData", path: "/seed-data" },
@@ -82,6 +83,7 @@ const fallbackLabelsVi: Record<string, string> = {
   "seedData": "Khởi tạo Dữ liệu",
   "nav.reportTemplates": "Template Báo cáo",
   "nav.exportHistory": "Lịch sử Xuất",
+  "nav.localUserManagement": "Người dùng Local",
 };
 
 const fallbackLabelsEn: Record<string, string> = {
@@ -98,6 +100,7 @@ const fallbackLabelsEn: Record<string, string> = {
   "seedData": "Seed Data",
   "nav.reportTemplates": "Report Templates",
   "nav.exportHistory": "Export History",
+  "nav.localUserManagement": "Local Users",
 };
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";

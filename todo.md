@@ -853,3 +853,16 @@
 - [x] Thêm cron job retry webhooks mỗi phút
 - [x] Exponential backoff (1min, 5min, 15min, 1hour, 2hour)
 - [x] Giới hạn tối đa 5 lần retry
+
+
+## Phase 30 - Quản lý người dùng Local
+
+### Trang LocalUserManagement
+- [x] Tạo trang LocalUserManagement.tsx
+- [x] Hiển thị danh sách người dùng local với bảng
+- [x] Dialog thêm người dùng mới
+- [x] Dialog sửa thông tin người dùng (tên, email, mật khẩu, vai trò)
+- [x] Nút vô hiệu hóa tài khoản
+- [x] Thêm route /local-users và navigation trong sidebar
+- [x] Cards thống kê (tổng người dùng, admin, user)
+- [x] Nút khởi tạo Admin mặc định
