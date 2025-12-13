@@ -1134,3 +1134,9 @@
 
 - [x] Gộp trang /settings và /connection-manager thành một trang với tabs
 - [x] Sửa lỗi 404 khi truy cập /database-setting
+
+## Phase 43 - Cải tiến Settings & Navigation
+
+- [x] Nhúng trực tiếp nội dung ConnectionManager vào tab "Khám phá dữ liệu"
+- [x] Đổi tên menu thành "Cài đặt & Kết nối"
+- [x] Thêm breadcrumb navigation giữa các trang liên quan

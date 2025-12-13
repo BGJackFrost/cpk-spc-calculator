@@ -35,8 +35,11 @@ import {
   Loader2,
   CheckCircle2,
   XCircle,
-  TestTube
+  TestTube,
+  Search
 } from "lucide-react";
+import DatabaseExplorer from "@/components/DatabaseExplorer";
+import Breadcrumb from "@/components/Breadcrumb";
 import { useAuth } from "@/_core/hooks/useAuth";
 
 interface ConnectionFormData {
@@ -219,11 +222,17 @@ export default function Settings() {
   return (
     <DashboardLayout>
       <div className="space-y-6 animate-fade-in">
+        {/* Breadcrumb */}
+        <Breadcrumb items={[
+          { label: "Hệ thống", href: "/" },
+          { label: "Cài đặt & Kết nối" }
+        ]} />
+        
         {/* Header */}
         <div>
           <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
             <SettingsIcon className="h-8 w-8 text-primary" />
-            Cài đặt hệ thống
+            Cài đặt & Kết nối
           </h1>
           <p className="text-muted-foreground mt-1">
             Quản lý kết nối database và cài đặt cảnh báo
@@ -531,29 +540,9 @@ export default function Settings() {
             </Card>
           </TabsContent>
 
-          {/* Explorer Tab - Link to ConnectionManager */}
+          {/* Explorer Tab - Embedded DatabaseExplorer */}
           <TabsContent value="explorer">
-            <Card className="bg-card rounded-xl border border-border/50 shadow-md hover:shadow-lg transition-all duration-300">
-              <CardHeader>
-                <CardTitle>Khám phá dữ liệu Database</CardTitle>
-                <CardDescription>
-                  Xem cấu trúc và dữ liệu từ các kết nối database đã cấu hình
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="text-center py-8">
-                  <Database className="h-16 w-16 text-primary mx-auto mb-4" />
-                  <h3 className="text-lg font-medium mb-2">Quản lý Kết nối Database</h3>
-                  <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-                    Truy cập trang Quản lý kết nối để xem danh sách bảng, cấu trúc và dữ liệu từ các database đã kết nối.
-                  </p>
-                  <Button onClick={() => window.location.href = '/connection-manager'}>
-                    <Database className="mr-2 h-4 w-4" />
-                    Mở Quản lý Kết nối
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+            <DatabaseExplorer />
           </TabsContent>
         </Tabs>
       </div>
