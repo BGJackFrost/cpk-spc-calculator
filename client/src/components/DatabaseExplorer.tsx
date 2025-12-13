@@ -349,11 +349,28 @@ export default function DatabaseExplorer() {
                           testConnection(conn.id);
                         }}
                         disabled={testingConnection === conn.id}
+                        title="Test kết nối"
                       >
                         {testingConnection === conn.id ? (
                           <Loader2 className="h-3 w-3 animate-spin" />
                         ) : (
                           <Link className="h-3 w-3" />
+                        )}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={selectedConnection?.id === conn.id ? "default" : "secondary"}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          selectConnection(conn);
+                        }}
+                        disabled={loadingExternalTables && selectedConnection?.id === conn.id}
+                        title="Load danh sách bảng"
+                      >
+                        {loadingExternalTables && selectedConnection?.id === conn.id ? (
+                          <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Đang tải...</>
+                        ) : (
+                          <><Table2 className="h-3 w-3 mr-1" /> Load</>  
                         )}
                       </Button>
                     </div>

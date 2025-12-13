@@ -1155,3 +1155,8 @@
 ## Phase 45 - Kết nối Database Mẫu
 
 - [x] Tạo kết nối database mẫu (internal database) để người dùng thử nghiệm
+
+## Phase 46 - Dữ liệu Mẫu và UI Cải tiến
+
+- [x] Tạo bảng dữ liệu mẫu trong database (sample_measurements, sample_products)
+- [x] Cải thiện UI chọn kết nối với nút Load để hiển thị danh sách bảng và dữ liệu
