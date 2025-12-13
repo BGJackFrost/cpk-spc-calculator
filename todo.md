@@ -1045,3 +1045,29 @@
 - [x] Tạo API upload logo lên S3
 - [x] Cập nhật CompanyInfo.tsx với file upload
 - [x] Hiển thị preview logo sau khi upload
+
+
+## Phase 39 - Scheduled Backup, Restore Backup, Export/Import Settings
+
+### Scheduled Backup
+- [x] Tạo backup scheduler service với node-cron
+- [x] Cấu hình daily backup (mặc định 2:00 AM)
+- [x] Cấu hình weekly backup (mặc định Chủ nhật 3:00 AM)
+- [x] API để bật/tắt scheduled backup
+- [x] API để thay đổi lịch backup
+- [x] Lưu cấu hình schedule vào database
+
+### Restore Backup
+- [x] API khôi phục database từ backup file
+- [x] Validate backup file trước khi restore
+- [x] Tạo backup hiện tại trước khi restore (safety)
+- [x] UI xác nhận restore với warning
+- [x] Log restore history
+
+### Export/Import Settings
+- [x] API export tất cả system configs
+- [x] API export company info
+- [x] API export alert settings
+- [x] API import settings từ JSON file
+- [x] UI download/upload settings file
+- [x] Validate settings trước khi import

@@ -3742,6 +3742,148 @@ export const appRouter = router({
         const { deleteBackup } = await import("./backupService");
         return deleteBackup(input.id);
       }),
+    
+    // Restore backup
+    restore: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { restoreBackup } = await import("./backupService");
+        return restoreBackup(input.id, ctx.user.id);
+      }),
+    
+    // Validate backup
+    validate: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { validateBackup } = await import("./backupService");
+        return validateBackup(input.id);
+      }),
+    
+    // Get backup config
+    getConfig: protectedProcedure.query(async ({ ctx }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+      }
+      const { getBackupConfig } = await import("./backupService");
+      return getBackupConfig();
+    }),
+    
+    // Save backup config
+    saveConfig: protectedProcedure
+      .input(z.object({
+        dailyEnabled: z.boolean().optional(),
+        dailySchedule: z.string().optional(),
+        weeklyEnabled: z.boolean().optional(),
+        weeklySchedule: z.string().optional(),
+        maxBackupsToKeep: z.number().optional(),
+        retentionDays: z.number().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { saveBackupConfig } = await import("./backupService");
+        const success = await saveBackupConfig(input);
+        return { success };
+      }),
+    
+    // Toggle scheduled backup
+    toggleSchedule: protectedProcedure
+      .input(z.object({
+        type: z.enum(["daily", "weekly"]),
+        enabled: z.boolean(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { toggleScheduledBackup } = await import("./backupService");
+        const success = await toggleScheduledBackup(input.type, input.enabled);
+        return { success };
+      }),
+    
+    // Update backup schedule
+    updateSchedule: protectedProcedure
+      .input(z.object({
+        type: z.enum(["daily", "weekly"]),
+        schedule: z.string(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { updateBackupSchedule } = await import("./backupService");
+        return updateBackupSchedule(input.type, input.schedule);
+      }),
+  }),
+  
+  // Settings Export/Import router
+  settingsExport: router({
+    // Get export preview
+    preview: protectedProcedure.query(async ({ ctx }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+      }
+      const { getExportPreview } = await import("./settingsExportService");
+      return getExportPreview();
+    }),
+    
+    // Export settings
+    export: protectedProcedure
+      .input(z.object({
+        includeSystemConfig: z.boolean().optional(),
+        includeCompanyInfo: z.boolean().optional(),
+        includeAlertSettings: z.boolean().optional(),
+        includeEmailSettings: z.boolean().optional(),
+        includeRoles: z.boolean().optional(),
+        includeMasterData: z.boolean().optional(),
+        includeMappings: z.boolean().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { exportSettings } = await import("./settingsExportService");
+        return exportSettings({ ...input, exportedBy: ctx.user.id });
+      }),
+    
+    // Validate import data
+    validate: protectedProcedure
+      .input(z.object({
+        data: z.any(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { validateImportData } = await import("./settingsExportService");
+        return validateImportData(input.data);
+      }),
+    
+    // Import settings
+    import: protectedProcedure
+      .input(z.object({
+        data: z.any(),
+        overwrite: z.boolean().optional(),
+        sections: z.array(z.string()).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { importSettings } = await import("./settingsExportService");
+        return importSettings(input.data, {
+          overwrite: input.overwrite,
+          sections: input.sections,
+          importedBy: ctx.user.id,
+        });
+      }),
   }),
 });
 
