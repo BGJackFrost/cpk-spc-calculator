@@ -134,6 +134,11 @@ import {
   createReportTemplate,
   updateReportTemplate,
   deleteReportTemplate,
+  createExportHistory,
+  getExportHistoryByUser,
+  getExportHistoryById,
+  deleteExportHistory,
+  getExportHistoryStats,
 } from "./db";
 import { invokeLLM } from "./_core/llm";
 import { notifyOwner } from "./_core/notification";
@@ -1451,7 +1456,7 @@ const exportRouter = router({
         })).optional(),
       }),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       // Get default template if useTemplate is not explicitly false
       let template = null;
       if (input.useTemplate !== false) {
@@ -1478,7 +1483,25 @@ const exportRouter = router({
         analysisDate: new Date(),
       };
       const html = generatePdfHtml(exportData);
-      return { content: html, filename: `spc_report_${input.productCode}_${Date.now()}.html`, mimeType: "text/html" };
+      const filename = `spc_report_${input.productCode}_${Date.now()}.html`;
+      
+      // Save to export history
+      await createExportHistory({
+        userId: ctx.user.id,
+        exportType: 'pdf',
+        productCode: input.productCode,
+        stationName: input.stationName,
+        analysisType: input.analysisType || 'single',
+        startDate: input.startDate,
+        endDate: input.endDate,
+        sampleCount: input.spcResult.sampleCount,
+        mean: Math.round(input.spcResult.mean * 10000),
+        cpk: input.spcResult.cpk ? Math.round(input.spcResult.cpk * 10000) : null,
+        fileName: filename,
+        fileSize: html.length,
+      });
+      
+      return { content: html, filename, mimeType: "text/html" };
     }),
 
   // Enhanced Excel export with multiple sheets
@@ -1523,7 +1546,7 @@ const exportRouter = router({
         })).optional(),
       }),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const exportData: EnhancedExportData = {
         productCode: input.productCode,
         stationName: input.stationName,
@@ -1544,9 +1567,27 @@ const exportRouter = router({
       };
       const buffer = await generateExcelBuffer(exportData);
       const base64 = buffer.toString("base64");
+      const filename = `spc_report_${input.productCode}_${Date.now()}.xlsx`;
+      
+      // Save to export history
+      await createExportHistory({
+        userId: ctx.user.id,
+        exportType: 'excel',
+        productCode: input.productCode,
+        stationName: input.stationName,
+        analysisType: input.analysisType || 'single',
+        startDate: input.startDate,
+        endDate: input.endDate,
+        sampleCount: input.spcResult.sampleCount,
+        mean: Math.round(input.spcResult.mean * 10000),
+        cpk: input.spcResult.cpk ? Math.round(input.spcResult.cpk * 10000) : null,
+        fileName: filename,
+        fileSize: buffer.length,
+      });
+      
       return { 
         content: base64, 
-        filename: `spc_report_${input.productCode}_${Date.now()}.xlsx`, 
+        filename, 
         mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         isBase64: true
       };
@@ -2300,6 +2341,39 @@ export const appRouter = router({
         await deleteReportTemplate(input.id);
         return { success: true };
       }),
+  }),
+
+  // Export History router
+  exportHistory: router({
+    list: protectedProcedure
+      .input(z.object({ limit: z.number().optional() }).optional())
+      .query(async ({ ctx, input }) => {
+        return await getExportHistoryByUser(ctx.user.id, input?.limit || 50);
+      }),
+    getById: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input, ctx }) => {
+        const record = await getExportHistoryById(input.id);
+        if (!record) throw new TRPCError({ code: 'NOT_FOUND', message: 'Export record not found' });
+        if (record.userId !== ctx.user.id && ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Access denied' });
+        }
+        return record;
+      }),
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const record = await getExportHistoryById(input.id);
+        if (!record) throw new TRPCError({ code: 'NOT_FOUND', message: 'Export record not found' });
+        if (record.userId !== ctx.user.id && ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Access denied' });
+        }
+        await deleteExportHistory(input.id);
+        return { success: true };
+      }),
+    stats: protectedProcedure.query(async ({ ctx }) => {
+      return await getExportHistoryStats(ctx.user.id);
+    }),
   }),
 
   // Process Config router

@@ -56,7 +56,9 @@ import {
   licenses,
   InsertLicense,
   reportTemplates,
-  InsertReportTemplate
+  InsertReportTemplate,
+  exportHistory,
+  InsertExportHistory
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -2958,4 +2960,50 @@ export async function deleteReportTemplate(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await db.delete(reportTemplates).where(eq(reportTemplates.id, id));
+}
+
+
+// ==================== Export History ====================
+
+export async function createExportHistory(data: InsertExportHistory) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(exportHistory).values(data);
+  return result[0].insertId;
+}
+
+export async function getExportHistoryByUser(userId: number, limit = 50) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.select().from(exportHistory)
+    .where(eq(exportHistory.userId, userId))
+    .orderBy(desc(exportHistory.createdAt))
+    .limit(limit);
+}
+
+export async function getExportHistoryById(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const results = await db.select().from(exportHistory).where(eq(exportHistory.id, id));
+  return results[0] || null;
+}
+
+export async function deleteExportHistory(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(exportHistory).where(eq(exportHistory.id, id));
+}
+
+export async function getExportHistoryStats(userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const results = await db.select({
+    exportType: exportHistory.exportType,
+    count: sql<number>`COUNT(*)`,
+  }).from(exportHistory)
+    .where(eq(exportHistory.userId, userId))
+    .groupBy(exportHistory.exportType);
+  
+  return results;
 }

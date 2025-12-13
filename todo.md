@@ -783,3 +783,20 @@
 - [x] Tạo dialog preview PDF với iframe
 - [x] Cho phép tải PDF từ preview
 - [ ] Hiển thị PDF trong modal trước khi tải xuống
+
+
+## Phase 27 - Lịch sử Export
+
+### Database
+- [x] Tạo bảng export_history trong database
+
+### API
+- [x] Tạo router exportHistory với các endpoints: list, getById, delete, stats
+- [x] Cập nhật export mutations để lưu lịch sử vào database (pdfEnhanced, excelEnhanced)
+
+### Frontend
+- [x] Tạo trang ExportHistory.tsx với danh sách báo cáo đã xuất
+- [x] Thêm chức năng xem và tải lại báo cáo
+- [x] Thêm thống kê số lượng PDF/Excel đã xuất
+- [x] Thêm chức năng xóa bản ghi
+- [x] Thêm route và menu sidebar

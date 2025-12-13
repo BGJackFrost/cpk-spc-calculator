@@ -1021,3 +1021,31 @@ export const reportTemplates = mysqlTable("report_templates", {
 
 export type ReportTemplate = typeof reportTemplates.$inferSelect;
 export type InsertReportTemplate = typeof reportTemplates.$inferInsert;
+
+
+/**
+ * Export History - lịch sử xuất báo cáo
+ */
+export const exportHistory = mysqlTable("export_history", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  exportType: varchar("exportType", { length: 20 }).notNull(), // 'pdf' | 'excel'
+  productCode: varchar("productCode", { length: 100 }),
+  stationName: varchar("stationName", { length: 255 }),
+  analysisType: varchar("analysisType", { length: 50 }), // 'single' | 'batch' | 'spcplan'
+  startDate: timestamp("startDate"),
+  endDate: timestamp("endDate"),
+  // SPC Result summary
+  sampleCount: int("sampleCount"),
+  mean: int("mean"), // * 10000 for precision
+  cpk: int("cpk"), // * 10000 for precision
+  // File info
+  fileName: varchar("fileName", { length: 255 }).notNull(),
+  fileUrl: text("fileUrl"), // S3 URL if stored
+  fileSize: int("fileSize"), // bytes
+  // Metadata
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ExportHistory = typeof exportHistory.$inferSelect;
+export type InsertExportHistory = typeof exportHistory.$inferInsert;

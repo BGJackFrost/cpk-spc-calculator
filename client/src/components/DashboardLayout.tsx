@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, LogOut, PanelLeft, TrendingUp, History, FileSpreadsheet, Settings, Activity, Users, Package, Ruler, Factory, Clock, Calendar, Mail, Shield, Server, Database, Wrench, Cog, GitBranch, FileText, BarChart3, AlertTriangle, Cpu, GitCompare, ArrowUpDown, Info, BookOpen, Layers, Key, Webhook, FileType } from "lucide-react";
+import { LayoutDashboard, LogOut, PanelLeft, TrendingUp, History, FileSpreadsheet, Settings, Activity, Users, Package, Ruler, Factory, Clock, Calendar, Mail, Shield, Server, Database, Wrench, Cog, GitBranch, FileText, BarChart3, AlertTriangle, Cpu, GitCompare, ArrowUpDown, Info, BookOpen, Layers, Key, Webhook, FileType, FolderClock } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
@@ -64,6 +64,7 @@ const menuItemsConfig = [
   { icon: Key, labelKey: "nav.licenseManagement", path: "/license-management", adminOnly: true },
   { icon: Webhook, labelKey: "nav.webhookManagement", path: "/webhooks", adminOnly: true },
   { icon: FileType, labelKey: "nav.reportTemplates", path: "/report-templates", adminOnly: true },
+  { icon: FolderClock, labelKey: "nav.exportHistory", path: "/export-history" },
 ];
 
 // Fallback labels for keys not in translation files (by language)
@@ -80,6 +81,7 @@ const fallbackLabelsVi: Record<string, string> = {
   "smtpConfig": "Cấu hình SMTP",
   "seedData": "Khởi tạo Dữ liệu",
   "nav.reportTemplates": "Template Báo cáo",
+  "nav.exportHistory": "Lịch sử Xuất",
 };
 
 const fallbackLabelsEn: Record<string, string> = {
@@ -95,6 +97,7 @@ const fallbackLabelsEn: Record<string, string> = {
   "smtpConfig": "SMTP Configuration",
   "seedData": "Seed Data",
   "nav.reportTemplates": "Report Templates",
+  "nav.exportHistory": "Export History",
 };
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";

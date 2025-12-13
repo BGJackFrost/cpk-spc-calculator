@@ -40,6 +40,7 @@ import SseNotificationProvider from "./components/SseNotificationProvider";
 import LicenseManagement from "./pages/LicenseManagement";
 import WebhookManagement from "./pages/WebhookManagement";
 import ReportTemplateManagement from "./pages/ReportTemplateManagement";
+import ExportHistory from "./pages/ExportHistory";
 
 function Router() {
   return (
@@ -77,6 +78,7 @@ function Router() {
       <Route path="/rules" component={RulesManagement} />
       <Route path="/webhooks" component={WebhookManagement} />
       <Route path="/report-templates" component={ReportTemplateManagement} />
+      <Route path="/export-history" component={ExportHistory} />
       <Route path="/spc-visualization" component={SpcPlanVisualization} />
       <Route path="/spc-visualization/:type/:id" component={SpcVisualizationDetail} />
       <Route path="/404" component={NotFound} />
