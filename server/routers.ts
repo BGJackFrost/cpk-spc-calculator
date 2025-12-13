@@ -13,6 +13,8 @@ import {
   updateLocalUser,
   deactivateLocalUser,
   ensureDefaultAdmin,
+  changeLocalPassword,
+  adminResetPassword,
   type LocalAuthUser,
 } from "./localAuthService";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
@@ -151,6 +153,9 @@ import {
   getExportHistoryById,
   deleteExportHistory,
   getExportHistoryStats,
+  logLoginEvent,
+  getLoginHistory,
+  getLoginStats,
 } from "./db";
 import { invokeLLM } from "./_core/llm";
 import { notifyOwner } from "./_core/notification";
@@ -2474,15 +2479,91 @@ export const appRouter = router({
             maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
           });
         }
-        return { success: true, user: result.user };
+        return { 
+          success: true, 
+          user: result.user,
+          mustChangePassword: result.mustChangePassword || false,
+        };
+      }),
+
+    // Change password (for logged in user)
+    changePassword: protectedProcedure
+      .input(z.object({
+        currentPassword: z.string(),
+        newPassword: z.string().min(6),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const result = await changeLocalPassword(
+          ctx.user.id,
+          input.currentPassword,
+          input.newPassword
+        );
+        if (!result.success) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: result.error });
+        }
+        return { success: true, message: 'Password changed successfully' };
+      }),
+
+    // Admin reset password for user
+    resetPassword: protectedProcedure
+      .input(z.object({
+        userId: z.number(),
+        newPassword: z.string().min(6),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin access required' });
+        }
+        const result = await adminResetPassword(input.userId, input.newPassword);
+        if (!result.success) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: result.error });
+        }
+        return { success: true, message: 'Password reset successfully' };
       }),
 
     // Logout local user
-    logout: publicProcedure.mutation(({ ctx }) => {
+    logout: publicProcedure.mutation(async ({ ctx }) => {
+      // Get current user from token before clearing
+      const token = ctx.req.cookies?.['local_auth_token'];
+      if (token) {
+        const user = verifyLocalToken(token);
+        if (user) {
+          await logLoginEvent({
+            userId: user.id,
+            username: user.username,
+            authType: "local",
+            eventType: "logout",
+          });
+        }
+      }
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie('local_auth_token', { ...cookieOptions, maxAge: -1 });
       return { success: true };
     }),
+
+    // Get login history (admin only)
+    loginHistory: protectedProcedure
+      .input(z.object({
+        userId: z.number().optional(),
+        page: z.number().default(1),
+        pageSize: z.number().default(20),
+      }))
+      .query(async ({ input, ctx }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin access required' });
+        }
+        return getLoginHistory(input);
+      }),
+
+    // Get login stats
+    loginStats: protectedProcedure
+      .input(z.object({ userId: z.number().optional() }))
+      .query(async ({ input, ctx }) => {
+        if (ctx.user.role !== 'admin' && input.userId && input.userId !== ctx.user.id) {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Access denied' });
+        }
+        return getLoginStats(input.userId);
+      }),
 
     // Get current local user from token
     me: publicProcedure.query(({ ctx }) => {

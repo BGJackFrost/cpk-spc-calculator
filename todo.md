@@ -866,3 +866,32 @@
 - [x] Thêm route /local-users và navigation trong sidebar
 - [x] Cards thống kê (tổng người dùng, admin, user)
 - [x] Nút khởi tạo Admin mặc định
+
+
+## Phase 31 - Offline Package, Webhook Retry Dashboard, Password Change, Login History
+
+### Export Offline Package
+- [x] Tạo script build-offline.sh để đóng gói ứng dụng
+- [x] Tạo file README-OFFLINE.md hướng dẫn triển khai offline
+- [x] Tạo file docker-compose.yml và Dockerfile cho triển khai
+- [x] Tạo file .env.example với các biến môi trường
+
+### Dashboard Webhook Retry
+- [x] Thêm widget hiển thị số webhook pending retry
+- [x] Hiển thị số webhook exhausted và tổng retry
+- [x] Nút retry thủ công tất cả pending webhooks
+- [x] Link đến trang Quản lý Webhook để retry từng cái
+
+### Đổi mật khẩu bắt buộc
+- [x] Thêm cột mustChangePassword vào local_users
+- [x] Kiểm tra flag khi đăng nhập và trả về trong response
+- [x] Tạo trang ChangePassword.tsx cho đổi mật khẩu bắt buộc
+- [x] Redirect về /change-password nếu mustChangePassword = true
+- [x] Thêm API changePassword và adminResetPassword
+
+### Lịch sử đăng nhập
+- [x] Tạo bảng login_history với các cột: userId, username, authType, eventType, ipAddress, userAgent
+- [x] Ghi log khi đăng nhập thành công
+- [x] Ghi log khi đăng nhập thất bại
+- [x] Ghi log khi đăng xuất
+- [x] Thêm API loginHistory và loginStats cho admin

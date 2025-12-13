@@ -3,7 +3,7 @@
  * Provides offline authentication without requiring Manus OAuth
  */
 
-import { getDb } from "./db";
+import { getDb, logLoginEvent } from "./db";
 import { localUsers } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
@@ -19,6 +19,7 @@ export interface LocalAuthUser {
   name: string | null;
   email: string | null;
   role: "user" | "admin";
+  mustChangePassword?: boolean;
 }
 
 export interface RegisterInput {
@@ -134,7 +135,7 @@ export async function registerLocalUser(input: RegisterInput): Promise<{ success
 /**
  * Login with local credentials
  */
-export async function loginLocalUser(input: LoginInput): Promise<{ success: boolean; token?: string; user?: LocalAuthUser; error?: string }> {
+export async function loginLocalUser(input: LoginInput): Promise<{ success: boolean; token?: string; user?: LocalAuthUser; error?: string; mustChangePassword?: boolean }> {
   const db = await getDb();
   if (!db) {
     return { success: false, error: "Database not available" };
@@ -157,11 +158,26 @@ export async function loginLocalUser(input: LoginInput): Promise<{ success: bool
     // Verify password
     const isValid = await verifyPassword(input.password, user.passwordHash);
     if (!isValid) {
+      // Log failed login attempt
+      await logLoginEvent({
+        userId: user.id,
+        username: user.username,
+        authType: "local",
+        eventType: "login_failed",
+      });
       return { success: false, error: "Invalid username or password" };
     }
 
     // Update last signed in
     await db.update(localUsers).set({ lastSignedIn: new Date() }).where(eq(localUsers.id, user.id));
+
+    // Log successful login
+    await logLoginEvent({
+      userId: user.id,
+      username: user.username,
+      authType: "local",
+      eventType: "login",
+    });
 
     const authUser: LocalAuthUser = {
       id: user.id,
@@ -169,6 +185,7 @@ export async function loginLocalUser(input: LoginInput): Promise<{ success: bool
       name: user.name,
       email: user.email,
       role: user.role,
+      mustChangePassword: user.mustChangePassword === 1,
     };
 
     const token = generateLocalToken(authUser);
@@ -177,6 +194,7 @@ export async function loginLocalUser(input: LoginInput): Promise<{ success: bool
       success: true,
       token,
       user: authUser,
+      mustChangePassword: user.mustChangePassword === 1,
     };
   } catch (error) {
     console.error("[LocalAuth] Login error:", error);
@@ -277,6 +295,76 @@ export async function deactivateLocalUser(id: number): Promise<{ success: boolea
 }
 
 /**
+ * Change password for local user
+ */
+export async function changeLocalPassword(
+  userId: number,
+  currentPassword: string,
+  newPassword: string
+): Promise<{ success: boolean; error?: string }> {
+  const db = await getDb();
+  if (!db) {
+    return { success: false, error: "Database not available" };
+  }
+
+  try {
+    // Get user
+    const users = await db.select().from(localUsers).where(eq(localUsers.id, userId)).limit(1);
+    if (users.length === 0) {
+      return { success: false, error: "User not found" };
+    }
+
+    const user = users[0];
+
+    // Verify current password
+    const isValid = await verifyPassword(currentPassword, user.passwordHash);
+    if (!isValid) {
+      return { success: false, error: "Current password is incorrect" };
+    }
+
+    // Hash new password
+    const newPasswordHash = await hashPassword(newPassword);
+
+    // Update password and clear mustChangePassword flag
+    await db.update(localUsers).set({
+      passwordHash: newPasswordHash,
+      mustChangePassword: 0,
+    }).where(eq(localUsers.id, userId));
+
+    return { success: true };
+  } catch (error) {
+    console.error("[LocalAuth] Change password error:", error);
+    return { success: false, error: "Failed to change password" };
+  }
+}
+
+/**
+ * Admin reset password for user
+ */
+export async function adminResetPassword(
+  userId: number,
+  newPassword: string
+): Promise<{ success: boolean; error?: string }> {
+  const db = await getDb();
+  if (!db) {
+    return { success: false, error: "Database not available" };
+  }
+
+  try {
+    const newPasswordHash = await hashPassword(newPassword);
+    await db.update(localUsers).set({
+      passwordHash: newPasswordHash,
+      mustChangePassword: 1, // Force user to change on next login
+    }).where(eq(localUsers.id, userId));
+
+    return { success: true };
+  } catch (error) {
+    console.error("[LocalAuth] Admin reset password error:", error);
+    return { success: false, error: "Failed to reset password" };
+  }
+}
+
+/**
  * Create default admin user if not exists
  */
 export async function ensureDefaultAdmin(): Promise<void> {
@@ -295,6 +383,7 @@ export async function ensureDefaultAdmin(): Promise<void> {
         email: "admin@local.system",
         role: "admin",
         isActive: 1,
+        mustChangePassword: 1, // Force password change on first login
       });
       console.log("[LocalAuth] Default admin created: username=admin, password=admin123");
     }

@@ -29,6 +29,7 @@ export const localUsers = mysqlTable("local_users", {
   email: varchar("email", { length: 320 }),
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
   isActive: int("isActive").notNull().default(1),
+  mustChangePassword: int("mustChangePassword").notNull().default(1), // Force password change on first login
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn"),
@@ -36,6 +37,23 @@ export const localUsers = mysqlTable("local_users", {
 
 export type LocalUser = typeof localUsers.$inferSelect;
 export type InsertLocalUser = typeof localUsers.$inferInsert;
+
+/**
+ * Login history - tracks user login/logout events for audit
+ */
+export const loginHistory = mysqlTable("login_history", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  username: varchar("username", { length: 100 }).notNull(),
+  authType: mysqlEnum("authType", ["local", "manus"]).notNull().default("local"),
+  eventType: mysqlEnum("eventType", ["login", "logout", "login_failed"]).notNull(),
+  ipAddress: varchar("ipAddress", { length: 45 }),
+  userAgent: text("userAgent"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type LoginHistory = typeof loginHistory.$inferSelect;
+export type InsertLoginHistory = typeof loginHistory.$inferInsert;
 
 /**
  * Database connections - stores external database connection strings

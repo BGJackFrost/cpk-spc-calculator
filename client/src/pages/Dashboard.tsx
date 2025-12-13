@@ -32,6 +32,7 @@ import {
 import { toast } from "sonner";
 import { Link } from "wouter";
 import { LicenseStatusWidget } from "@/components/LicenseStatusWidget";
+import { WebhookRetryWidget } from "@/components/WebhookRetryWidget";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -264,8 +265,9 @@ export default function Dashboard() {
               </div>
             )}
           </div>
-          <div className="md:col-span-1" data-tour="license-status">
+          <div className="md:col-span-1 space-y-4" data-tour="license-status">
             <LicenseStatusWidget />
+            <WebhookRetryWidget />
           </div>
         </div>
 

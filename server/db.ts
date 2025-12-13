@@ -58,7 +58,9 @@ import {
   reportTemplates,
   InsertReportTemplate,
   exportHistory,
-  InsertExportHistory
+  InsertExportHistory,
+  loginHistory,
+  InsertLoginHistory
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -3006,4 +3008,95 @@ export async function getExportHistoryStats(userId: number) {
     .groupBy(exportHistory.exportType);
   
   return results;
+}
+
+
+// ============================================
+// Login History Functions
+// ============================================
+
+export async function logLoginEvent(data: {
+  userId: number;
+  username: string;
+  authType: "local" | "manus";
+  eventType: "login" | "logout" | "login_failed";
+  ipAddress?: string;
+  userAgent?: string;
+}) {
+  const db = await getDb();
+  if (!db) return;
+
+  try {
+    await db.insert(loginHistory).values({
+      userId: data.userId,
+      username: data.username,
+      authType: data.authType,
+      eventType: data.eventType,
+      ipAddress: data.ipAddress || null,
+      userAgent: data.userAgent || null,
+    });
+  } catch (error) {
+    console.error("[LoginHistory] Failed to log event:", error);
+  }
+}
+
+export async function getLoginHistory(params: {
+  userId?: number;
+  page: number;
+  pageSize: number;
+}) {
+  const db = await getDb();
+  if (!db) return { logs: [], total: 0, totalPages: 0 };
+
+  const { userId, page, pageSize } = params;
+  const offset = (page - 1) * pageSize;
+
+  let query = db.select().from(loginHistory).orderBy(desc(loginHistory.createdAt));
+
+  if (userId) {
+    query = query.where(eq(loginHistory.userId, userId)) as any;
+  }
+
+  const logs = await query.limit(pageSize).offset(offset);
+
+  // Get total count
+  let countQuery = db.select({ count: sql<number>`count(*)` }).from(loginHistory);
+  if (userId) {
+    countQuery = countQuery.where(eq(loginHistory.userId, userId)) as any;
+  }
+  const countResult = await countQuery;
+  const total = countResult[0]?.count || 0;
+
+  return {
+    logs,
+    total,
+    totalPages: Math.ceil(total / pageSize),
+  };
+}
+
+export async function getLoginStats(userId?: number) {
+  const db = await getDb();
+  if (!db) return { totalLogins: 0, lastLogin: null, failedAttempts: 0 };
+
+  let query = db.select({
+    eventType: loginHistory.eventType,
+    count: sql<number>`COUNT(*)`,
+    lastEvent: sql<Date>`MAX(createdAt)`,
+  }).from(loginHistory).groupBy(loginHistory.eventType);
+
+  if (userId) {
+    query = query.where(eq(loginHistory.userId, userId)) as any;
+  }
+
+  const results = await query;
+
+  const loginCount = results.find(r => r.eventType === "login")?.count || 0;
+  const failedCount = results.find(r => r.eventType === "login_failed")?.count || 0;
+  const lastLogin = results.find(r => r.eventType === "login")?.lastEvent || null;
+
+  return {
+    totalLogins: loginCount,
+    lastLogin,
+    failedAttempts: failedCount,
+  };
 }

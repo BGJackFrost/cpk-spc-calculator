@@ -169,6 +169,13 @@
       "when": 1765594071856,
       "tag": "0023_previous_glorian",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "5",
+      "when": 1765596114680,
+      "tag": "0024_common_diamondback",
+      "breakpoints": true
     }
   ]
 }

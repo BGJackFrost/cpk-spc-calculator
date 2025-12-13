@@ -25,11 +25,16 @@ export default function LocalLogin() {
   const [regEmail, setRegEmail] = useState("");
 
   const loginMutation = trpc.localAuth.login.useMutation({
-    onSuccess: () => {
+    onSuccess: (data) => {
       toast.success("Đăng nhập thành công!");
-      setLocation("/");
-      // Reload to update auth state
-      window.location.reload();
+      // Check if user must change password
+      if (data.mustChangePassword) {
+        setLocation("/change-password");
+        window.location.reload();
+      } else {
+        setLocation("/");
+        window.location.reload();
+      }
     },
     onError: (error) => {
       toast.error(error.message || "Đăng nhập thất bại");
