@@ -51,6 +51,34 @@ async function startServer() {
     startHeartbeat(30000); // 30 second heartbeat
   });
   
+  // Upload file endpoint (generic)
+  app.post("/api/upload", async (req, res) => {
+    try {
+      const { filename, contentType, data, folder } = req.body;
+      
+      if (!data || !filename) {
+        return res.status(400).json({ error: "Missing data or filename" });
+      }
+
+      // Extract base64 data (remove data:image/xxx;base64, prefix)
+      const base64Data = data.replace(/^data:[^;]+;base64,/, '');
+      const buffer = Buffer.from(base64Data, 'base64');
+
+      // Generate unique filename
+      const ext = filename.split('.').pop() || 'png';
+      const folderPath = folder || 'uploads';
+      const uniqueFilename = `${folderPath}/${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${ext}`;
+
+      // Upload to S3
+      const result = await storagePut(uniqueFilename, buffer, contentType || 'image/png');
+      
+      res.json({ url: result.url, key: result.key });
+    } catch (error) {
+      console.error('Upload error:', error);
+      res.status(500).json({ error: "Upload failed" });
+    }
+  });
+  
   // Upload logo endpoint
   app.post("/api/upload-logo", async (req, res) => {
     try {

@@ -1,5 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -507,6 +507,9 @@ function DashboardLayoutContent({
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-3 w-full p-2 rounded-lg hover:bg-accent transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                   <Avatar className="h-8 w-8 shrink-0">
+                    {(user as any)?.avatar ? (
+                      <AvatarImage src={(user as any).avatar} alt={user?.name || "User"} />
+                    ) : null}
                     <AvatarFallback className="bg-primary/10 text-primary text-sm">
                       {user?.name?.[0]?.toUpperCase() || "U"}
                     </AvatarFallback>

@@ -2473,6 +2473,31 @@ export const appRouter = router({
         return { success: true, message: 'Profile updated successfully' };
       }),
 
+    // Update avatar (for logged in user)
+    updateAvatar: protectedProcedure
+      .input(z.object({
+        avatarUrl: z.string().url().nullable(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const db = await getDb();
+        if (!db) {
+          throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+        }
+        // Update in local_users table
+        await db.execute(sql`
+          UPDATE local_users 
+          SET avatar = ${input.avatarUrl}, updatedAt = NOW()
+          WHERE id = ${ctx.user.id}
+        `);
+        // Also update in users table if exists
+        await db.execute(sql`
+          UPDATE users 
+          SET avatar = ${input.avatarUrl}, updatedAt = NOW()
+          WHERE id = ${ctx.user.id}
+        `);
+        return { success: true, message: 'Avatar updated successfully', avatarUrl: input.avatarUrl };
+      }),
+
     // Admin reset password for user
     resetPassword: protectedProcedure
       .input(z.object({

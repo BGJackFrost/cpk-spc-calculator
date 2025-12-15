@@ -6,9 +6,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { trpc } from "@/lib/trpc";
-import { useState } from "react";
+import { useState, useRef } from "react";
+import React from "react";
 import { toast } from "sonner";
-import { User, Mail, Lock, Save, Eye, EyeOff, Shield, Calendar } from "lucide-react";
+import { User, Mail, Lock, Save, Eye, EyeOff, Shield, Calendar, Camera, Loader2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 
@@ -28,7 +29,21 @@ export default function Profile() {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
+  // Avatar state
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  
   // Mutations
+  const updateAvatarMutation = trpc.localAuth.updateAvatar.useMutation({
+    onSuccess: () => {
+      toast.success("Đã cập nhật ảnh đại diện");
+      refresh?.();
+    },
+    onError: (error) => {
+      toast.error(error.message || "Không thể cập nhật ảnh đại diện");
+    },
+  });
+  
   const updateProfileMutation = trpc.localAuth.updateProfile.useMutation({
     onSuccess: () => {
       toast.success("Đã cập nhật thông tin cá nhân");
@@ -108,10 +123,83 @@ export default function Profile() {
         <Card>
           <CardHeader>
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-                <span className="text-2xl font-bold text-primary">
-                  {user?.name?.[0]?.toUpperCase() || "U"}
-                </span>
+              <div className="relative group">
+                <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden border-2 border-primary/20">
+                  {(user as any)?.avatar ? (
+                    <img 
+                      src={(user as any).avatar} 
+                      alt="Avatar" 
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-2xl font-bold text-primary">
+                      {user?.name?.[0]?.toUpperCase() || "U"}
+                    </span>
+                  )}
+                </div>
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={avatarUploading}
+                  className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg hover:bg-primary/90 transition-colors"
+                >
+                  {avatarUploading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Camera className="h-4 w-4" />
+                  )}
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    
+                    if (file.size > 2 * 1024 * 1024) {
+                      toast.error("Ảnh quá lớn. Vui lòng chọn ảnh nhỏ hơn 2MB");
+                      return;
+                    }
+                    
+                    setAvatarUploading(true);
+                    try {
+                      // Convert to base64 and upload via API
+                      const reader = new FileReader();
+                      reader.onload = async () => {
+                        try {
+                          const base64Data = reader.result as string;
+                          const response = await fetch('/api/upload', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              filename: file.name,
+                              contentType: file.type,
+                              data: base64Data,
+                              folder: 'avatars',
+                            }),
+                          });
+                          
+                          if (!response.ok) {
+                            throw new Error('Upload failed');
+                          }
+                          
+                          const { url } = await response.json();
+                          updateAvatarMutation.mutate({ avatarUrl: url });
+                        } catch (err) {
+                          toast.error("Không thể tải lên ảnh. Vui lòng thử lại.");
+                        } finally {
+                          setAvatarUploading(false);
+                        }
+                      };
+                      reader.readAsDataURL(file);
+                    } catch (error) {
+                      toast.error("Không thể tải lên ảnh. Vui lòng thử lại.");
+                      setAvatarUploading(false);
+                      e.target.value = '';
+                    }
+                  }}
+                />
               </div>
               <div>
                 <CardTitle className="text-xl">{user?.name || "User"}</CardTitle>

@@ -1289,3 +1289,12 @@
 - [x] Thêm cột authType vào bảng audit_logs - phân biệt local và online
 - [x] Cập nhật UI hiển thị cột Loại (Local/Online) trong bảng nhật ký
 - [x] Đã có sẵn hàm logLoginEvent ghi lịch sử đăng nhập với authType
+
+## Phase 55 - Ảnh đại diện (Avatar)
+
+### Thêm Avatar
+- [x] Thêm cột avatar vào bảng users và local_users
+- [x] Tạo API upload avatar lên S3 - sử dụng storagePut có sẵn
+- [x] Tạo API cập nhật avatar cho user - localAuth.updateAvatar
+- [x] Cập nhật trang Profile với chức năng upload avatar - nút camera trên avatar
+- [x] Hiển thị avatar trên sidebar/navigation - sử dụng AvatarImage trong SidebarFooter
