@@ -1456,3 +1456,28 @@
 - [x] Gộp các chức năng vào MeasurementStandards (USL/LSL, Sampling, SPC Rules)
 - [x] Tạo navigation breadcrumb giữa các trang liên quan
 - [x] Cập nhật sidebar menu - gỡ bỏ các trang trùng lặp
+
+
+## Phase 63: SPC Plan Logic, CPK Alert, Validation Integration, Trend Chart
+
+### Thay đổi logic tạo SPC Plan theo Tiêu chuẩn đo lường
+- [x] Cập nhật SpcPlanManagement.tsx để tạo SPC Plan từ Tiêu chuẩn đo
+- [x] Tự động điền đầy đủ thông tin: tên, sản phẩm, công trạm, máy, dây chuyền, mapping, rules
+- [x] Liên kết SPC Plan với measurementStandardId
+
+### Cảnh báo tự động khi CPK thấp
+- [x] Tích hợp notifyCpkWarning vào spc.analyze và spc.analyzeWithMapping
+- [x] Gửi email notification khi CPK dưới ngưỡng
+- [x] Gửi notification đến owner và trigger webhooks
+
+### Tích hợp Validation Rules vào phân tích SPC
+- [x] Thêm logic kiểm tra Validation Rules trong spc.analyze
+- [x] Hỗ trợ range_check, trend_check, formula_check
+- [x] Trả về validationResults trong kết quả phân tích
+
+### Biểu đồ trend CPK cho Tiêu chuẩn đo
+- [x] Thêm nút xem xu hướng CPK trong bảng tiêu chuẩn
+- [x] Hiển thị dialog với biểu đồ SVG trend CPK
+- [x] Hiển thị summary cards (CPK hiện tại, trung bình, xu hướng)
+- [x] Hiển thị bảng lịch sử phân tích chi tiết
+- [ ] Cho phép xem chi tiết trend khi click vào tiêu chuẩn

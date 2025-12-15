@@ -422,15 +422,37 @@ export default function SpcPlanManagement() {
                         const stdId = parseInt(v);
                         const standard = measurementStandards.find((s: any) => s.id === stdId);
                         if (standard) {
-                          // Tự động điền thông tin từ tiêu chuẩn đo
-                          const appliedRules = standard.appliedSpcRules ? JSON.parse(standard.appliedSpcRules) : [];
+                          // Tự động điền đầy đủ thông tin từ tiêu chuẩn đo
+                          const appliedSpcRules = standard.appliedSpcRules ? JSON.parse(standard.appliedSpcRules) : [];
+                          const appliedCpkRules = (standard as any).appliedCpkRules ? JSON.parse((standard as any).appliedCpkRules) : [];
+                          const appliedCaRules = (standard as any).appliedCaRules ? JSON.parse((standard as any).appliedCaRules) : [];
+                          
+                          // Tìm mapping phù hợp với sản phẩm và công trạm
+                          const product = products?.find((p: any) => p.id === standard.productId);
+                          const ws = workstations.find((w: any) => w.id === standard.workstationId);
+                          const matchingMapping = mappings?.find((m: any) => 
+                            m.productCode === product?.code && m.stationName === ws?.name
+                          );
+                          
+                          // Tìm dây chuyền từ công trạm
+                          const workstation = workstations.find((w: any) => w.id === standard.workstationId);
+                          const lineId = (workstation as any)?.productionLineId || formData.productionLineId;
+                          
+                          // Tự động tạo tên kế hoạch
+                          const autoName = `SPC Plan - ${standard.measurementName} (${product?.name || 'N/A'})`;
+                          
                           setFormData({ 
                             ...formData, 
                             measurementStandardId: stdId,
+                            name: formData.name || autoName,
                             productId: standard.productId || formData.productId,
                             workstationId: standard.workstationId || formData.workstationId,
                             machineId: standard.machineId || formData.machineId,
-                            enabledSpcRules: appliedRules.length > 0 ? appliedRules : formData.enabledSpcRules,
+                            productionLineId: lineId,
+                            mappingId: matchingMapping?.id || formData.mappingId,
+                            enabledSpcRules: appliedSpcRules.length > 0 ? appliedSpcRules : formData.enabledSpcRules,
+                            enabledCpkRules: appliedCpkRules.length > 0 ? appliedCpkRules : formData.enabledCpkRules,
+                            enabledCaRules: appliedCaRules.length > 0 ? appliedCaRules : formData.enabledCaRules,
                           });
                           toast.success(`Đã áp dụng tiêu chuẩn: ${standard.measurementName}`);
                         } else {

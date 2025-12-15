@@ -27,8 +27,12 @@ export interface CpkWarningEmailData {
   stationName: string;
   cpkValue: number;
   threshold: number;
-  recommendation: string;
-  timestamp: Date;
+  recommendation?: string;
+  timestamp?: Date;
+  mean?: number;
+  stdDev?: number;
+  sampleCount?: number;
+  analyzedAt?: Date;
 }
 
 export interface SmtpSettings {
@@ -196,7 +200,7 @@ function generateCpkWarningEmail(data: CpkWarningEmailData): { subject: string; 
     <div class="content">
       <p><strong>Sản phẩm:</strong> ${data.productCode}</p>
       <p><strong>Trạm:</strong> ${data.stationName}</p>
-      <p><strong>Thời gian:</strong> ${data.timestamp.toLocaleString('vi-VN')}</p>
+      <p><strong>Thời gian:</strong> ${(data.timestamp || data.analyzedAt || new Date()).toLocaleString('vi-VN')}</p>
       
       <div class="cpk-display">
         <div class="cpk-value" style="color: ${cpkColor};">${data.cpkValue.toFixed(2)}</div>

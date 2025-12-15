@@ -157,6 +157,7 @@ import {
   getLoginHistory,
   getLoginStats,
   getDb,
+  getCustomValidationRulesByProduct,
 } from "./db";
 import { sql } from "drizzle-orm";
 import { invokeLLM } from "./_core/llm";
@@ -780,6 +781,22 @@ const spcRouter = router({
               content: `CPK value (${spcResult.cpk.toFixed(3)}) is below threshold (${cpkThreshold}). Immediate attention required.`,
             });
           }
+          // Send email notification to configured users
+          try {
+            const { notifyCpkWarning } = await import("./emailService");
+            await notifyCpkWarning({
+              productCode: input.productCode,
+              stationName: input.stationName,
+              cpkValue: spcResult.cpk,
+              threshold: cpkThreshold,
+              mean: spcResult.mean,
+              stdDev: spcResult.stdDev,
+              sampleCount: spcResult.sampleCount,
+              analyzedAt: new Date(),
+            });
+          } catch (emailError) {
+            console.error("Email notification failed:", emailError);
+          }
           // Trigger webhooks for CPK alert
           try {
             await triggerWebhooks("cpk_alert", {
@@ -794,6 +811,66 @@ const spcRouter = router({
             console.error("Webhook trigger failed:", webhookError);
           }
         }
+      }
+
+      // Check custom validation rules
+      let validationResults: Array<{ ruleId: number; ruleName: string; passed: boolean; message: string }> = [];
+      try {
+        // Get custom validation rules for all products (or filter by workstation if available)
+        const customRules = await getCustomValidationRulesByProduct(0); // Get all active rules
+        for (const rule of customRules) {
+          if (!rule.isActive) continue;
+          let passed = true;
+          let message = '';
+          
+          switch (rule.ruleType) {
+            case 'range_check':
+              const config = JSON.parse(rule.ruleConfig || '{}');
+              if (config.min !== undefined && spcResult.mean < config.min) {
+                passed = false;
+                message = `Mean (${spcResult.mean.toFixed(3)}) is below minimum (${config.min})`;
+              }
+              if (config.max !== undefined && spcResult.mean > config.max) {
+                passed = false;
+                message = `Mean (${spcResult.mean.toFixed(3)}) is above maximum (${config.max})`;
+              }
+              break;
+            case 'trend_check':
+              // Check for trending patterns in data
+              const trendConfig = JSON.parse(rule.ruleConfig || '{}');
+              const consecutivePoints = trendConfig.consecutivePoints || 7;
+              // Simple trend detection - check if values are consistently increasing/decreasing
+              if (rawData.length >= consecutivePoints) {
+                const recentData = rawData.slice(-consecutivePoints);
+                let increasing = true, decreasing = true;
+                for (let i = 1; i < recentData.length; i++) {
+                  if (recentData[i].value <= recentData[i-1].value) increasing = false;
+                  if (recentData[i].value >= recentData[i-1].value) decreasing = false;
+                }
+                if (increasing || decreasing) {
+                  passed = false;
+                  message = `Detected ${increasing ? 'increasing' : 'decreasing'} trend in last ${consecutivePoints} points`;
+                }
+              }
+              break;
+            case 'formula_check':
+              const cpkConfig = JSON.parse(rule.ruleConfig || '{}');
+              if (spcResult.cpk !== null && cpkConfig.threshold && spcResult.cpk < cpkConfig.threshold) {
+                passed = false;
+                message = `CPK (${spcResult.cpk.toFixed(3)}) is below threshold (${cpkConfig.threshold})`;
+              }
+              break;
+          }
+          
+          validationResults.push({
+            ruleId: rule.id,
+            ruleName: rule.name,
+            passed,
+            message: passed ? 'Passed' : message,
+          });
+        }
+      } catch (validationError) {
+        console.error('Validation rules check failed:', validationError);
       }
 
       // Store analysis history
@@ -823,6 +900,7 @@ const spcRouter = router({
         lsl: mapping.lsl,
         target: mapping.target,
         alertTriggered: alertTriggered === 1,
+        validationResults,
       };
     }),
 
@@ -914,6 +992,22 @@ const spcRouter = router({
               title: `CPK Alert: ${mapping.productCode} - ${mapping.stationName}`,
               content: `CPK value (${spcResult.cpk.toFixed(3)}) is below threshold (${cpkThreshold}). Immediate attention required.`,
             });
+          }
+          // Send email notification to configured users
+          try {
+            const { notifyCpkWarning } = await import("./emailService");
+            await notifyCpkWarning({
+              productCode: mapping.productCode,
+              stationName: mapping.stationName,
+              cpkValue: spcResult.cpk,
+              threshold: cpkThreshold,
+              mean: spcResult.mean,
+              stdDev: spcResult.stdDev,
+              sampleCount: spcResult.sampleCount,
+              analyzedAt: new Date(),
+            });
+          } catch (emailError) {
+            console.error("Email notification failed:", emailError);
           }
           // Trigger webhooks for CPK alert
           try {

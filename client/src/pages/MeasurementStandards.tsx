@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import { 
   Loader2, Plus, Pencil, Trash2, Search, Filter, Settings2, 
   Target, Ruler, Clock, AlertTriangle, CheckCircle2, BarChart3,
-  Copy, FileUp, Zap, Download
+  Copy, FileUp, Zap, Download, TrendingUp, TrendingDown, Activity
 } from "lucide-react";
 
 interface MeasurementStandard {
@@ -146,6 +146,10 @@ export default function MeasurementStandards() {
   const [importPreview, setImportPreview] = useState<any[]>([]);
   const [isImporting, setIsImporting] = useState(false);
   
+  // Trend dialog state
+  const [isTrendDialogOpen, setIsTrendDialogOpen] = useState(false);
+  const [selectedStandardForTrend, setSelectedStandardForTrend] = useState<MeasurementStandard | null>(null);
+  
   const [formData, setFormData] = useState({
     measurementName: "",
     productId: "",
@@ -174,6 +178,7 @@ export default function MeasurementStandards() {
   const { data: spcRules } = trpc.rules.getSpcRules.useQuery();
   const { data: cpkRules } = trpc.rules.getCpkRules.useQuery();
   const { data: caRules } = trpc.rules.getCaRules.useQuery();
+  const { data: spcHistory } = trpc.spc.history.useQuery({ limit: 100 });
 
   // Mutations
   const createMutation = trpc.measurementStandard.create.useMutation({
@@ -893,6 +898,12 @@ export default function MeasurementStandards() {
                           )}
                         </TableCell>
                         <TableCell className="text-right">
+                          <Button variant="ghost" size="icon" onClick={() => {
+                              setSelectedStandardForTrend(s);
+                              setIsTrendDialogOpen(true);
+                            }} title="Xem xu hướng CPK">
+                            <Activity className="h-4 w-4 text-blue-500" />
+                          </Button>
                           <Button variant="ghost" size="icon" onClick={() => openCopyDialog(s)} title="Sao chép">
                             <Copy className="h-4 w-4" />
                           </Button>
@@ -1527,6 +1538,204 @@ export default function MeasurementStandards() {
               >
                 {isImporting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Import {importPreview.filter(r => r.valid).length} tiêu chuẩn
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* CPK Trend Dialog */}
+        <Dialog open={isTrendDialogOpen} onOpenChange={setIsTrendDialogOpen}>
+          <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Activity className="h-5 w-5 text-blue-500" />
+                Xu hướng CPK - {selectedStandardForTrend?.measurementName || 'Tiêu chuẩn đo'}
+              </DialogTitle>
+              <DialogDescription>
+                Lịch sử phân tích CPK theo thời gian cho tiêu chuẩn này
+              </DialogDescription>
+            </DialogHeader>
+
+            {selectedStandardForTrend && (() => {
+              const productName = getProductName(selectedStandardForTrend.productId);
+              const workstationName = getWorkstationName(selectedStandardForTrend.workstationId);
+              
+              // Filter SPC history for this standard
+              const relevantHistory = spcHistory?.filter((h: any) => {
+                // Match by product code and station name
+                const product = products?.find((p: Product) => p.id === selectedStandardForTrend.productId);
+                const workstation = workstations?.find((w: Workstation) => w.id === selectedStandardForTrend.workstationId);
+                return h.productCode === product?.code && h.stationName === workstation?.name;
+              }).slice(0, 20) || [];
+
+              // Calculate trend
+              const cpkValues = relevantHistory.map((h: any) => (h.cpk || 0) / 1000);
+              const avgCpk = cpkValues.length > 0 ? cpkValues.reduce((a: number, b: number) => a + b, 0) / cpkValues.length : 0;
+              const latestCpk = cpkValues.length > 0 ? cpkValues[0] : 0;
+              const trend = cpkValues.length >= 2 ? cpkValues[0] - cpkValues[cpkValues.length - 1] : 0;
+
+              return (
+                <div className="space-y-6">
+                  {/* Summary Cards */}
+                  <div className="grid grid-cols-4 gap-4">
+                    <Card>
+                      <CardContent className="pt-4">
+                        <div className="text-center">
+                          <div className="text-2xl font-bold text-blue-600">{latestCpk.toFixed(2)}</div>
+                          <div className="text-xs text-muted-foreground">CPK Hiện tại</div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="pt-4">
+                        <div className="text-center">
+                          <div className="text-2xl font-bold">{avgCpk.toFixed(2)}</div>
+                          <div className="text-xs text-muted-foreground">CPK Trung bình</div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="pt-4">
+                        <div className="text-center">
+                          <div className={`text-2xl font-bold flex items-center justify-center gap-1 ${trend >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {trend >= 0 ? <TrendingUp className="h-5 w-5" /> : <TrendingDown className="h-5 w-5" />}
+                            {Math.abs(trend).toFixed(2)}
+                          </div>
+                          <div className="text-xs text-muted-foreground">Xu hướng</div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="pt-4">
+                        <div className="text-center">
+                          <div className="text-2xl font-bold">{relevantHistory.length}</div>
+                          <div className="text-xs text-muted-foreground">Số lần phân tích</div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* CPK Chart */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-sm">Biểu đồ CPK theo thời gian</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {relevantHistory.length > 0 ? (
+                        <div className="h-[200px] relative">
+                          <svg viewBox="0 0 700 180" className="w-full h-full">
+                            {/* Grid lines */}
+                            <line x1="50" y1="20" x2="50" y2="160" stroke="#e5e7eb" strokeWidth="1" />
+                            <line x1="50" y1="160" x2="680" y2="160" stroke="#e5e7eb" strokeWidth="1" />
+                            
+                            {/* Warning threshold line */}
+                            <line x1="50" y1="90" x2="680" y2="90" stroke="#f59e0b" strokeWidth="1" strokeDasharray="5,5" />
+                            <text x="55" y="85" fontSize="10" fill="#f59e0b">Warning (1.33)</text>
+                            
+                            {/* Critical threshold line */}
+                            <line x1="50" y1="130" x2="680" y2="130" stroke="#ef4444" strokeWidth="1" strokeDasharray="5,5" />
+                            <text x="55" y="125" fontSize="10" fill="#ef4444">Critical (1.0)</text>
+                            
+                            {/* CPK line */}
+                            {relevantHistory.length > 1 && (
+                              <polyline
+                                points={relevantHistory.map((h: any, i: number) => {
+                                  const x = 680 - (i * (630 / Math.max(relevantHistory.length - 1, 1)));
+                                  const cpk = (h.cpk || 0) / 1000;
+                                  const y = 160 - Math.min(Math.max(cpk, 0), 2) * 70;
+                                  return `${x},${y}`;
+                                }).join(' ')}
+                                fill="none"
+                                stroke="#3b82f6"
+                                strokeWidth="2"
+                              />
+                            )}
+                            
+                            {/* Data points */}
+                            {relevantHistory.map((h: any, i: number) => {
+                              const x = 680 - (i * (630 / Math.max(relevantHistory.length - 1, 1)));
+                              const cpk = (h.cpk || 0) / 1000;
+                              const y = 160 - Math.min(Math.max(cpk, 0), 2) * 70;
+                              const color = cpk >= 1.33 ? '#22c55e' : cpk >= 1.0 ? '#f59e0b' : '#ef4444';
+                              return (
+                                <g key={i}>
+                                  <circle cx={x} cy={y} r="4" fill={color} />
+                                  <title>{`CPK: ${cpk.toFixed(2)} - ${new Date(h.analyzedAt).toLocaleDateString('vi-VN')}`}</title>
+                                </g>
+                              );
+                            })}
+                          </svg>
+                        </div>
+                      ) : (
+                        <div className="h-[200px] flex items-center justify-center text-muted-foreground">
+                          Chưa có dữ liệu phân tích cho tiêu chuẩn này
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* History Table */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-sm">Lịch sử phân tích</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Ngày phân tích</TableHead>
+                            <TableHead className="text-center">Số mẫu</TableHead>
+                            <TableHead className="text-center">Mean</TableHead>
+                            <TableHead className="text-center">StdDev</TableHead>
+                            <TableHead className="text-center">CPK</TableHead>
+                            <TableHead className="text-center">Trạng thái</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {relevantHistory.length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                                Chưa có lịch sử phân tích
+                              </TableCell>
+                            </TableRow>
+                          ) : (
+                            relevantHistory.map((h: any) => {
+                              const cpk = (h.cpk || 0) / 1000;
+                              return (
+                                <TableRow key={h.id}>
+                                  <TableCell>{new Date(h.analyzedAt).toLocaleString('vi-VN')}</TableCell>
+                                  <TableCell className="text-center">{h.sampleCount}</TableCell>
+                                  <TableCell className="text-center">{((h.mean || 0) / 1000).toFixed(3)}</TableCell>
+                                  <TableCell className="text-center">{((h.stdDev || 0) / 1000).toFixed(4)}</TableCell>
+                                  <TableCell className="text-center font-bold">
+                                    <span className={cpk >= 1.33 ? 'text-green-600' : cpk >= 1.0 ? 'text-yellow-600' : 'text-red-600'}>
+                                      {cpk.toFixed(2)}
+                                    </span>
+                                  </TableCell>
+                                  <TableCell className="text-center">
+                                    {cpk >= 1.33 ? (
+                                      <Badge className="bg-green-600">Tốt</Badge>
+                                    ) : cpk >= 1.0 ? (
+                                      <Badge className="bg-yellow-600">Cảnh báo</Badge>
+                                    ) : (
+                                      <Badge variant="destructive">Nguy hiểm</Badge>
+                                    )}
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })
+                          )}
+                        </TableBody>
+                      </Table>
+                    </CardContent>
+                  </Card>
+                </div>
+              );
+            })()}
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsTrendDialogOpen(false)}>
+                Đóng
               </Button>
             </DialogFooter>
           </DialogContent>
