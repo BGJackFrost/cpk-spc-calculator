@@ -1205,3 +1205,39 @@
 - [x] Cập nhật API machine.create và machine.update để hỗ trợ machineTypeId
 - [x] Hiển thị loại máy trong danh sách máy của dây chuyền (ProductionLineManagement.tsx)
 - [x] Thêm loại máy vào cấu hình dây chuyền sản xuất (hiển thị badge loại máy trong danh sách máy)
+
+## Phase 50 - Thêm Loại Máy và Test SPC
+
+### Thêm loại máy mới
+- [x] Tạo loại máy: Máy Gắn Chip (CHIP_MOUNTER)
+- [x] Tạo loại máy: Máy Kiểm Tra AOI (AOI)
+- [x] Tạo loại máy: Máy Reflow (REFLOW)
+- [x] Tạo loại máy: Máy Hàn Sóng (WAVE_SOLDER)
+- [x] Tạo loại máy: Máy Kiểm Tra SPI (SPI)
+
+### Test phân tích SPC
+- [x] Chọn mapping và chạy phân tích SPC - thành công với PCB-001 + Solder Paste Printing
+- [x] Kiểm tra kết quả CPK/SPC - CPK=-0.047, Cp=5.128, X̄=25.0045, σ=0.0304, 5 mẫu
+
+### Gán máy vào dây chuyền
+- [x] Tạo máy mới với loại máy - Máy Gắn Chip SMT (MC02) với loại CHIP_MOUNTER
+- [x] Gán máy vào dây chuyền sản xuất - LINE 01 có 2 máy (MC01, MC02)
+- [x] Kiểm tra badge loại máy hiển thị - Badge "Máy Hàn" và "Máy Gắn Chip" hiển thị đúng
+
+## Phase 50 - Thêm Loại Máy và Test SPC
+
+### Thêm loại máy mới
+- [x] Tạo loại máy: Máy Gắn Chip (CHIP_MOUNTER)
+- [x] Tạo loại máy: Máy Kiểm Tra AOI (AOI)
+- [x] Tạo loại máy: Máy Reflow (REFLOW)
+- [x] Tạo loại máy: Máy Hàn Sóng (WAVE_SOLDER)
+- [x] Tạo loại máy: Máy Kiểm Tra SPI (SPI)
+
+### Test phân tích SPC
+- [x] Chọn mapping và chạy phân tích SPC - thành công với PCB-001 + Solder Paste Printing
+- [x] Kiểm tra kết quả CPK/SPC - CPK=-0.047, Cp=5.128, X̄=25.0045, σ=0.0304, 5 mẫu
+
+### Gán máy vào dây chuyền
+- [x] Tạo máy mới với loại máy - Máy Gắn Chip SMT (MC02) với loại CHIP_MOUNTER
+- [x] Gán máy vào dây chuyền sản xuất - LINE 01 có 2 máy (MC01, MC02)
+- [x] Kiểm tra badge loại máy hiển thị - Badge "Máy Hàn" và "Máy Gắn Chip" hiển thị đúng
