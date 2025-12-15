@@ -106,6 +106,128 @@ async function startServer() {
     }
   });
 
+  // Public License API (no authentication required)
+  // These endpoints allow client applications to check license status without tRPC
+  app.get("/api/license-public/check/:key", async (req, res) => {
+    try {
+      const { key } = req.params;
+      if (!key) {
+        return res.status(400).json({ error: "License key is required" });
+      }
+      
+      const { getLicenseStatus, isLicenseDbConnected } = await import("../licenseServerDb");
+      if (!isLicenseDbConnected()) {
+        return res.status(503).json({ error: "License Server not available" });
+      }
+      
+      const result = await getLicenseStatus(key);
+      if (!result.found) {
+        return res.status(404).json({ error: result.error || "License not found" });
+      }
+      
+      // Return sanitized license info (no internal IDs)
+      const license = result.license;
+      res.json({
+        valid: license.isActive === 1 && license.isRevoked !== 1 && 
+               (!license.expiresAt || new Date(license.expiresAt) > new Date()),
+        status: license.isRevoked === 1 ? "revoked" : 
+                (license.expiresAt && new Date(license.expiresAt) <= new Date()) ? "expired" :
+                license.isActive === 1 ? "active" : "inactive",
+        type: license.licenseType,
+        expiresAt: license.expiresAt,
+        maxUsers: license.maxUsers,
+        maxDevices: license.maxDevices,
+        features: license.features ? JSON.parse(license.features) : null,
+        companyName: license.companyName
+      });
+    } catch (error) {
+      console.error("License check error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  app.get("/api/license-public/validate/:key/:deviceId", async (req, res) => {
+    try {
+      const { key, deviceId } = req.params;
+      if (!key || !deviceId) {
+        return res.status(400).json({ error: "License key and device ID are required" });
+      }
+      
+      const { validateLicense, isLicenseDbConnected } = await import("../licenseServerDb");
+      if (!isLicenseDbConnected()) {
+        return res.status(503).json({ error: "License Server not available" });
+      }
+      
+      const result = await validateLicense(key, deviceId);
+      res.json(result);
+    } catch (error) {
+      console.error("License validate error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  app.post("/api/license-public/activate", async (req, res) => {
+    try {
+      const { licenseKey, deviceId, deviceName, deviceInfo } = req.body;
+      if (!licenseKey || !deviceId) {
+        return res.status(400).json({ error: "License key and device ID are required" });
+      }
+      
+      const { activateLicense, isLicenseDbConnected } = await import("../licenseServerDb");
+      if (!isLicenseDbConnected()) {
+        return res.status(503).json({ error: "License Server not available" });
+      }
+      
+      const ipAddress = req.ip || req.socket.remoteAddress;
+      const result = await activateLicense(licenseKey, deviceId, deviceName, deviceInfo, ipAddress);
+      res.json(result);
+    } catch (error) {
+      console.error("License activate error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  app.post("/api/license-public/heartbeat", async (req, res) => {
+    try {
+      const { licenseKey, deviceId, metadata } = req.body;
+      if (!licenseKey || !deviceId) {
+        return res.status(400).json({ error: "License key and device ID are required" });
+      }
+      
+      const { recordHeartbeat, isLicenseDbConnected } = await import("../licenseServerDb");
+      if (!isLicenseDbConnected()) {
+        return res.status(503).json({ error: "License Server not available" });
+      }
+      
+      const ipAddress = req.ip || req.socket.remoteAddress;
+      const result = await recordHeartbeat(licenseKey, deviceId, ipAddress, metadata);
+      res.json(result);
+    } catch (error) {
+      console.error("License heartbeat error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  app.get("/api/license-public/revoked/:key", async (req, res) => {
+    try {
+      const { key } = req.params;
+      if (!key) {
+        return res.status(400).json({ error: "License key is required" });
+      }
+      
+      const { checkLicenseRevoked, isLicenseDbConnected } = await import("../licenseServerDb");
+      if (!isLicenseDbConnected()) {
+        return res.status(503).json({ error: "License Server not available" });
+      }
+      
+      const result = await checkLicenseRevoked(key);
+      res.json(result);
+    } catch (error) {
+      console.error("License revoked check error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // tRPC API
   app.use(
     "/api/trpc",

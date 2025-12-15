@@ -1640,3 +1640,32 @@
 - [x] Xác thực license online với License Server khi kích hoạt
 - [x] Gửi heartbeat định kỳ mỗi giờ khi đã kết nối
 - [x] Hiển thị trạng thái kết nối (connected/disconnected/checking)
+
+
+## Phase 71: License Server Dashboard, Revoke và Public API
+
+### Dashboard License Server
+- [x] Tạo trang LicenseServerDashboard.tsx với thống kê đầy đủ
+- [x] Hiển thị số license đang online (có heartbeat trong 2 giờ)
+- [x] Hiển thị license sắp hết hạn (7, 30 ngày) với badge cảnh báo
+- [x] Biểu đồ xu hướng activation (AreaChart)
+- [x] Biểu đồ phân bố theo loại license (PieChart)
+- [x] Danh sách license online realtime với thời gian heartbeat
+- [x] Thêm menu Dashboard Server vào nhóm License Server
+
+### Revoke License từ xa
+- [x] Thêm API revokeLicense vào licenseServer router
+- [x] Thêm API bulkRevokeLicenses cho revoke hàng loạt
+- [x] Thêm API checkRevoked cho Client kiểm tra
+- [x] Thêm hàm revokeLicense, checkLicenseRevoked, restoreLicense vào licenseServerDb
+- [x] Gửi webhook thông báo khi license bị revoke (triggerWebhooks)
+- [x] Log revoke vào audit_logs
+
+### API Public cho Client
+- [x] GET /api/license-public/check/:key - Kiểm tra trạng thái license
+- [x] GET /api/license-public/validate/:key/:deviceId - Validate license với device
+- [x] POST /api/license-public/activate - Kích hoạt license
+- [x] POST /api/license-public/heartbeat - Gửi heartbeat
+- [x] GET /api/license-public/revoked/:key - Kiểm tra license bị revoke
+- [x] Không yêu cầu authentication
+- [x] Trả về thông tin sanitized (không lộ internal IDs)

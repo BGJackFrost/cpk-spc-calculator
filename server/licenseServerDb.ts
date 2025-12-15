@@ -83,6 +83,7 @@ export const licenseServerAuditLogs = mysqlTable("audit_logs", {
   details: text("details"),
   ipAddress: varchar("ip_address", { length: 45 }),
   userAgent: text("user_agent"),
+  performedBy: varchar("performed_by", { length: 255 }),
   timestamp: timestamp("timestamp").defaultNow().notNull(),
 });
 
@@ -717,5 +718,154 @@ export async function getLicenseServerStats(): Promise<{
       activeActivations: 0,
       totalCustomers: 0
     };
+  }
+}
+
+
+/**
+ * Revoke a license
+ */
+export async function revokeLicense(
+  licenseKey: string,
+  reason?: string,
+  revokedBy?: string
+): Promise<{ success: boolean; error?: string }> {
+  const db = getLicenseDb();
+  if (!db) {
+    return { success: false, error: "License Server not connected" };
+  }
+
+  try {
+    const [license] = await db
+      .select()
+      .from(licenseServerLicenses)
+      .where(eq(licenseServerLicenses.licenseKey, licenseKey));
+
+    if (!license) {
+      return { success: false, error: "License not found" };
+    }
+
+    if (license.isRevoked === 1) {
+      return { success: false, error: "License is already revoked" };
+    }
+
+    // Revoke the license
+    await db
+      .update(licenseServerLicenses)
+      .set({ 
+        isRevoked: 1, 
+        isActive: 0,
+        revokeReason: reason || "Revoked by administrator"
+      })
+      .where(eq(licenseServerLicenses.id, license.id));
+
+    // Deactivate all activations
+    await db
+      .update(licenseServerActivations)
+      .set({ 
+        isActive: 0, 
+        deactivatedAt: new Date(),
+        deactivateReason: "License revoked"
+      })
+      .where(eq(licenseServerActivations.licenseId, license.id));
+
+    // Log the revocation
+    await db.insert(licenseServerAuditLogs).values({
+      licenseId: license.id,
+      action: "revoke",
+      details: JSON.stringify({ reason, revokedBy }),
+      performedBy: revokedBy
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error("[LicenseServerDb] Revoke error:", error);
+    return { success: false, error: "Revocation failed" };
+  }
+}
+
+/**
+ * Check if a license is revoked
+ */
+export async function checkLicenseRevoked(licenseKey: string): Promise<{
+  revoked: boolean;
+  reason?: string;
+  revokedAt?: Date;
+  error?: string;
+}> {
+  const db = getLicenseDb();
+  if (!db) {
+    return { revoked: false, error: "License Server not connected" };
+  }
+
+  try {
+    const [license] = await db
+      .select()
+      .from(licenseServerLicenses)
+      .where(eq(licenseServerLicenses.licenseKey, licenseKey));
+
+    if (!license) {
+      return { revoked: false, error: "License not found" };
+    }
+
+    return {
+      revoked: license.isRevoked === 1,
+      reason: license.revokeReason || undefined,
+      revokedAt: license.isRevoked === 1 ? license.updatedAt : undefined
+    };
+  } catch (error) {
+    console.error("[LicenseServerDb] Check revoked error:", error);
+    return { revoked: false, error: "Check failed" };
+  }
+}
+
+/**
+ * Restore a revoked license
+ */
+export async function restoreLicense(
+  licenseKey: string,
+  restoredBy?: string
+): Promise<{ success: boolean; error?: string }> {
+  const db = getLicenseDb();
+  if (!db) {
+    return { success: false, error: "License Server not connected" };
+  }
+
+  try {
+    const [license] = await db
+      .select()
+      .from(licenseServerLicenses)
+      .where(eq(licenseServerLicenses.licenseKey, licenseKey));
+
+    if (!license) {
+      return { success: false, error: "License not found" };
+    }
+
+    if (license.isRevoked !== 1) {
+      return { success: false, error: "License is not revoked" };
+    }
+
+    // Restore the license
+    await db
+      .update(licenseServerLicenses)
+      .set({ 
+        isRevoked: 0, 
+        isActive: 1,
+        revokeReason: null
+      })
+      .where(eq(licenseServerLicenses.id, license.id));
+
+    // Log the restoration
+    await db.insert(licenseServerAuditLogs).values({
+      licenseId: license.id,
+      action: "restore",
+      details: JSON.stringify({ restoredBy }),
+      performedBy: restoredBy
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error("[LicenseServerDb] Restore error:", error);
+    return { success: false, error: "Restoration failed" };
   }
 }

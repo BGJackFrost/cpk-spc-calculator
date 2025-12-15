@@ -62,6 +62,7 @@ import LicenseManagement from "./pages/LicenseManagement";
 import LicenseCustomers from "./pages/LicenseCustomers";
 import LicenseRevenue from "./pages/LicenseRevenue";
 import LicenseServerSettings from "./pages/LicenseServerSettings";
+import LicenseServerDashboard from "./pages/LicenseServerDashboard";
 
 function Router() {
   return (
@@ -118,6 +119,7 @@ function Router() {
       <Route path="/license-customers" component={LicenseCustomers} />
       <Route path="/license-revenue" component={LicenseRevenue} />
       <Route path="/license-server-settings" component={LicenseServerSettings} />
+      <Route path="/license-server-dashboard" component={LicenseServerDashboard} />
       <Route path="/login-history" component={LoginHistoryPage} />
       <Route path="/backup-history" component={BackupHistory} />
       <Route path="/measurement-standards" component={MeasurementStandards} />

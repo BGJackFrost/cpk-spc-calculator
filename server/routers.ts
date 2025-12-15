@@ -4842,6 +4842,71 @@ export const appRouter = router({
         }
         return await getLicenseStatus(input.licenseKey);
       }),
+
+    // Revoke license from admin
+    revokeLicense: adminProcedure
+      .input(z.object({
+        licenseKey: z.string().min(1),
+        reason: z.string().optional(),
+        notifyClient: z.boolean().default(true)
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const { revokeLicense, isLicenseDbConnected } = await import("./licenseServerDb");
+        if (!isLicenseDbConnected()) {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "License Server not connected" });
+        }
+        const result = await revokeLicense(input.licenseKey, input.reason, ctx.user?.name || undefined);
+        
+        // Send webhook notification if enabled
+        if (input.notifyClient && result.success) {
+          try {
+            const { triggerWebhooks } = await import("./webhookService");
+            await triggerWebhooks("license_revoked", {
+              licenseKey: input.licenseKey,
+              reason: input.reason || "No reason provided",
+              revokedBy: ctx.user?.name || "Admin",
+              revokedAt: new Date().toISOString()
+            });
+          } catch (e) {
+            console.error("Failed to send revoke notification:", e);
+          }
+        }
+        
+        return result;
+      }),
+
+    // Bulk revoke licenses
+    bulkRevokeLicenses: adminProcedure
+      .input(z.object({
+        licenseKeys: z.array(z.string().min(1)),
+        reason: z.string().optional()
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const { revokeLicense, isLicenseDbConnected } = await import("./licenseServerDb");
+        if (!isLicenseDbConnected()) {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "License Server not connected" });
+        }
+        
+        const results = await Promise.all(
+          input.licenseKeys.map(key => revokeLicense(key, input.reason, ctx.user?.name || undefined))
+        );
+        
+        const succeeded = results.filter(r => r.success).length;
+        const failed = results.filter(r => !r.success).length;
+        
+        return { succeeded, failed, total: input.licenseKeys.length };
+      }),
+
+    // Check if license is revoked (public API for clients)
+    checkRevoked: publicProcedure
+      .input(z.object({ licenseKey: z.string().min(1) }))
+      .query(async ({ input }) => {
+        const { checkLicenseRevoked, isLicenseDbConnected } = await import("./licenseServerDb");
+        if (!isLicenseDbConnected()) {
+          return { revoked: false, error: "License Server not available" };
+        }
+        return await checkLicenseRevoked(input.licenseKey);
+      }),
   }),
 });
 
