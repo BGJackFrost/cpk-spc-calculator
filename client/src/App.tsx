@@ -72,6 +72,8 @@ import MachineAreaManagement from "./pages/MachineAreaManagement";
 import MachineStatusReport from "./pages/MachineStatusReport";
 import OEEDashboard from "./pages/OEEDashboard";
 import MaintenanceDashboard from "./pages/MaintenanceDashboard";
+import SparePartsManagement from "./pages/SparePartsManagement";
+import PredictiveMaintenance from "./pages/PredictiveMaintenance";
 
 function Router() {
   return (
@@ -110,6 +112,8 @@ function Router() {
       <Route path="/machine-status-report" component={MachineStatusReport} />
       <Route path="/oee-dashboard" component={OEEDashboard} />
       <Route path="/maintenance-dashboard" component={MaintenanceDashboard} />
+      <Route path="/spare-parts" component={SparePartsManagement} />
+      <Route path="/predictive-maintenance" component={PredictiveMaintenance} />
       <Route path="/email-notifications" component={EmailNotificationSettings} />
       <Route path="/permissions" component={RolePermissionManagement} />
       <Route path="/smtp-settings" component={SmtpSettings} />

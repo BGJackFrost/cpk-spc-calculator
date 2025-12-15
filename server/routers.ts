@@ -1,5 +1,9 @@
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
+import { oeeRouter } from "./routers/oeeRouter";
+import { maintenanceRouter } from "./routers/maintenanceRouter";
+import { sparePartsRouter } from "./routers/sparePartsRouter";
+import { predictiveRouter } from "./routers/predictiveRouter";
 import { systemRouter } from "./_core/systemRouter";
 import { triggerLicenseExpiryCheck } from "./scheduledJobs";
 import { triggerWebhooks, testWebhook } from "./webhookService";
@@ -5299,6 +5303,12 @@ export const appRouter = router({
   }),
 
   // Machine Area router
+  // MMS Module routers
+  oee: oeeRouter,
+  maintenance: maintenanceRouter,
+  spareParts: sparePartsRouter,
+  predictive: predictiveRouter,
+
   machineArea: router({
     list: protectedProcedure.query(async () => {
       const { machineAreas } = await import("../drizzle/schema");

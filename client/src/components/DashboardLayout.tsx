@@ -33,7 +33,7 @@ import {
   BarChart3, AlertTriangle, Cpu, GitCompare, ArrowUpDown, Info, BookOpen, 
   Layers, Key, Webhook, FileType, FolderClock, UserCog, ChevronRight,
   Gauge, ClipboardList, Building2, ShieldCheck, Boxes, Moon, Sun, Zap,
-  Target, HardHat, Hammer, Truck
+  Target, HardHat, Hammer, Truck, Brain
 } from "lucide-react";
 import { useTheme } from "../contexts/ThemeContext";
 import { CSSProperties, useEffect, useRef, useState } from "react";
@@ -93,6 +93,8 @@ const menuGroups: MenuGroup[] = [
     icon: HardHat,
     items: [
       { icon: ClipboardList, labelKey: "nav.maintenanceDashboard", path: "/maintenance-dashboard" },
+      { icon: Boxes, labelKey: "nav.spareParts", path: "/spare-parts" },
+      { icon: Brain, labelKey: "nav.predictiveMaintenance", path: "/predictive-maintenance" },
     ]
   },
   {

@@ -1987,3 +1987,48 @@
 - [ ] Tạo API endpoints cho Maintenance CRUD
 - [ ] Tạo trang Spare Parts Management
 - [ ] Tạo trang Predictive Maintenance
+
+
+## Phase 79: MMS Module - API CRUD và Các trang quản lý
+
+### API CRUD cho OEE
+- [ ] Tạo oeeRouter với các endpoints CRUD
+- [ ] API list/get/create/update/delete OEE records
+- [ ] API quản lý OEE targets
+- [ ] API quản lý loss categories và loss records
+- [ ] API tính toán OEE tự động từ dữ liệu máy
+
+### API CRUD cho Maintenance
+- [ ] Tạo maintenanceRouter với các endpoints CRUD
+- [ ] API quản lý Work Orders (list, create, update, delete, assign)
+- [ ] API quản lý Maintenance Schedules
+- [ ] API quản lý Technicians
+- [ ] API quản lý Maintenance Types
+- [ ] API thống kê MTTR/MTBF
+
+### Spare Parts Management
+- [ ] Tạo sparePartsRouter với các endpoints CRUD
+- [ ] Trang quản lý kho phụ tùng với min/max levels
+- [ ] Trang quản lý nhà cung cấp
+- [ ] Trang quản lý đơn đặt hàng
+- [ ] Cảnh báo khi tồn kho dưới mức tối thiểu
+- [ ] Tự động tạo đề xuất đặt hàng
+
+### Predictive Maintenance
+- [ ] Tạo predictiveRouter với các endpoints
+- [ ] Trang quản lý sensor types và machine sensors
+- [ ] Dashboard sensor data realtime
+- [ ] Trang quản lý prediction models
+- [ ] Hiển thị dự báo hỏng hóc với confidence score
+- [ ] Anomaly detection dashboard
+
+## Phase 79: MMS Module - API CRUD & UI Pages
+- [x] OEE Router - API CRUD cho OEE records, loss records, machine comparison
+- [x] Maintenance Router - API CRUD cho work orders, schedules, technicians
+- [x] Spare Parts Router - API CRUD cho parts, suppliers, purchase orders, transactions
+- [x] Predictive Router - API CRUD cho sensor data, models, predictions
+- [x] Spare Parts Management Page - UI quản lý kho phụ tùng, NCC, đơn hàng
+- [x] Predictive Maintenance Page - UI dự đoán hỏng hóc, sensor data, models AI
+- [x] OEE Dashboard - Cập nhật sử dụng dữ liệu thực từ API
+- [x] Navigation - Thêm menu Spare Parts và Predictive Maintenance
+- [x] Unit tests cho MMS routers (39 tests passed)

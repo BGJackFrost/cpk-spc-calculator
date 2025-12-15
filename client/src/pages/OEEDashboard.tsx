@@ -7,11 +7,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { trpc } from "@/lib/trpc";
+import { toast } from "sonner";
 import { 
   Activity, TrendingUp, TrendingDown, Target, Clock, Package, 
   AlertTriangle, CheckCircle, XCircle, RefreshCw, Download,
-  BarChart3, PieChart, Calendar
+  BarChart3, PieChart, Calendar, Plus
 } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart as RechartsPieChart, Pie, Cell, Legend, BarChart, Bar, ComposedChart, Line
@@ -62,19 +66,113 @@ const COLORS = ['#ef4444', '#f97316', '#eab308', '#84cc16', '#22c55e', '#06b6d4'
 export default function OEEDashboard() {
   const [selectedPeriod, setSelectedPeriod] = useState("30d");
   const [selectedMachine, setSelectedMachine] = useState("all");
+  const [isAddRecordOpen, setIsAddRecordOpen] = useState(false);
   
   const { data: machines } = trpc.machine.listAll.useQuery();
   
-  const oeeData = useMemo(() => generateDemoOEEData(), []);
+  // Fetch real OEE data from API
+  const days = selectedPeriod === "7d" ? 7 : selectedPeriod === "30d" ? 30 : selectedPeriod === "90d" ? 90 : 365;
+  const [startDateStr] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    return d.toISOString().split('T')[0];
+  });
   
-  const currentOEE = oeeData[oeeData.length - 1];
-  const previousOEE = oeeData[oeeData.length - 2];
+  const { data: oeeRecords, refetch: refetchOEE } = trpc.oee.listRecords.useQuery({
+    machineId: selectedMachine !== "all" ? Number(selectedMachine) : undefined,
+    startDate: startDateStr,
+  });
+  
+  const { data: lossRecords } = trpc.oee.listLossRecords.useQuery({});
+  
+  const { data: machineOEEData } = trpc.oee.getMachineComparison.useQuery({
+    days: selectedPeriod === "7d" ? 7 : selectedPeriod === "30d" ? 30 : selectedPeriod === "90d" ? 90 : 365,
+  });
+  
+  const createOEEMutation = trpc.oee.createRecord.useMutation({
+    onSuccess: () => {
+      toast.success("Đã thêm bản ghi OEE");
+      refetchOEE();
+      setIsAddRecordOpen(false);
+    },
+    onError: (err) => toast.error(err.message),
+  });
+  
+  // Use API data or fallback to demo data
+  const oeeData = useMemo(() => {
+    if (oeeRecords && oeeRecords.length > 0) {
+      return oeeRecords.map(r => ({
+        date: r.recordDate ? new Date(r.recordDate).toISOString().split('T')[0] : '',
+        availability: Number(r.availability) || 0,
+        performance: Number(r.performance) || 0,
+        quality: Number(r.quality) || 0,
+        oee: Number(r.oee) || 0,
+      }));
+    }
+    return generateDemoOEEData();
+  }, [oeeRecords]);
+  
+  const currentOEE = oeeData[oeeData.length - 1] || { oee: 0, availability: 0, performance: 0, quality: 0 };
+  const previousOEE = oeeData[oeeData.length - 2] || currentOEE;
   const oeeChange = currentOEE.oee - previousOEE.oee;
   
-  const avgOEE = oeeData.reduce((sum, d) => sum + d.oee, 0) / oeeData.length;
-  const avgAvailability = oeeData.reduce((sum, d) => sum + d.availability, 0) / oeeData.length;
-  const avgPerformance = oeeData.reduce((sum, d) => sum + d.performance, 0) / oeeData.length;
-  const avgQuality = oeeData.reduce((sum, d) => sum + d.quality, 0) / oeeData.length;
+  const avgOEE = oeeData.length > 0 ? oeeData.reduce((sum, d) => sum + d.oee, 0) / oeeData.length : 0;
+  const avgAvailability = oeeData.length > 0 ? oeeData.reduce((sum, d) => sum + d.availability, 0) / oeeData.length : 0;
+  const avgPerformance = oeeData.length > 0 ? oeeData.reduce((sum, d) => sum + d.performance, 0) / oeeData.length : 0;
+  const avgQuality = oeeData.length > 0 ? oeeData.reduce((sum, d) => sum + d.quality, 0) / oeeData.length : 0;
+  
+  // Process loss data from API
+  const processedLossData = useMemo(() => {
+    if (lossRecords && lossRecords.length > 0) {
+      const grouped: Record<string, { value: number; type: string; color: string }> = {};
+      lossRecords.forEach(r => {
+        const name = r.categoryName || 'Khác';
+        if (!grouped[name]) {
+          const colorMap: Record<string, string> = {
+            'breakdown': '#ef4444',
+            'setup': '#f97316',
+            'minor_stops': '#eab308',
+            'speed_loss': '#84cc16',
+            'defects': '#22c55e',
+            'rework': '#06b6d4',
+          };
+          grouped[name] = { value: 0, type: r.categoryType || '', color: colorMap[r.categoryType || ''] || '#94a3b8' };
+        }
+        grouped[name].value += Number(r.duration) || 0;
+      });
+      return Object.entries(grouped).map(([name, data]) => ({ name, ...data }));
+    }
+    return demoLossData;
+  }, [lossRecords]);
+  
+  // Process machine comparison data
+  const processedMachineOEE = useMemo(() => {
+    if (machineOEEData && machineOEEData.length > 0) {
+      return machineOEEData.map(m => ({
+        machine: m.machineName || `Machine ${m.machineId}`,
+        oee: Number(m.avgOee) || 0,
+        availability: Number(m.avgAvailability) || 0,
+        performance: Number(m.avgPerformance) || 0,
+        quality: Number(m.avgQuality) || 0,
+        status: Number(m.avgOee) >= 85 ? 'excellent' : Number(m.avgOee) >= 75 ? 'good' : Number(m.avgOee) >= 65 ? 'warning' : 'critical',
+      }));
+    }
+    return demoMachineOEE;
+  }, [machineOEEData]);
+  
+  const handleAddRecord = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    createOEEMutation.mutate({
+      machineId: Number(formData.get("machineId")),
+      recordDate: formData.get("recordDate") as string,
+      plannedProductionTime: Number(formData.get("plannedTime")),
+      actualRunTime: Number(formData.get("runTime")),
+      idealCycleTime: Number(formData.get("cycleTime")),
+      totalCount: Number(formData.get("totalCount")),
+      goodCount: Number(formData.get("goodCount")),
+    });
+  };
 
   const getOEEStatus = (oee: number) => {
     if (oee >= 85) return { label: "Xuất sắc", color: "bg-green-500", icon: CheckCircle };
@@ -120,7 +218,68 @@ export default function OEEDashboard() {
                 ))}
               </SelectContent>
             </Select>
-            <Button variant="outline" size="icon">
+            <Dialog open={isAddRecordOpen} onOpenChange={setIsAddRecordOpen}>
+              <DialogTrigger asChild>
+                <Button><Plus className="h-4 w-4 mr-2" />Thêm bản ghi</Button>
+              </DialogTrigger>
+              <DialogContent>
+                <form onSubmit={handleAddRecord}>
+                  <DialogHeader>
+                    <DialogTitle>Thêm bản ghi OEE</DialogTitle>
+                    <DialogDescription>Nhập dữ liệu OEE cho máy</DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="machineId">Máy *</Label>
+                        <Select name="machineId" required>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Chọn máy" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {machines?.map((m) => (
+                              <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="recordDate">Ngày *</Label>
+                        <Input id="recordDate" name="recordDate" type="date" required />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="plannedTime">Thời gian kế hoạch (phút)</Label>
+                        <Input id="plannedTime" name="plannedTime" type="number" defaultValue="480" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="runTime">Thời gian chạy (phút)</Label>
+                        <Input id="runTime" name="runTime" type="number" />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="cycleTime">Cycle time (giây)</Label>
+                        <Input id="cycleTime" name="cycleTime" type="number" step="0.1" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="totalCount">Tổng sản phẩm</Label>
+                        <Input id="totalCount" name="totalCount" type="number" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="goodCount">Sản phẩm tốt</Label>
+                        <Input id="goodCount" name="goodCount" type="number" />
+                      </div>
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button type="submit" disabled={createOEEMutation.isPending}>Thêm</Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+            <Button variant="outline" size="icon" onClick={() => refetchOEE()}>
               <RefreshCw className="h-4 w-4" />
             </Button>
             <Button variant="outline" size="icon">
@@ -311,16 +470,16 @@ export default function OEEDashboard() {
                     <ResponsiveContainer width="100%" height="100%">
                       <RechartsPieChart>
                         <Pie
-                          data={demoLossData}
+                          data={processedLossData}
                           cx="50%"
                           cy="50%"
                           innerRadius={60}
                           outerRadius={100}
                           paddingAngle={2}
                           dataKey="value"
-                          label={({ name, value }) => `${name}: ${value}%`}
+                          label={({ name, value }) => `${name}: ${value}`}
                         >
-                          {demoLossData.map((entry, index) => (
+                          {processedLossData.map((entry, index) => (
                             <Cell key={`cell-${index}`} fill={entry.color} />
                           ))}
                         </Pie>
@@ -398,7 +557,7 @@ export default function OEEDashboard() {
               <CardContent>
                 <div className="h-[400px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={demoMachineOEE} layout="vertical">
+                    <BarChart data={processedMachineOEE} layout="vertical">
                       <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                       <XAxis type="number" domain={[0, 100]} />
                       <YAxis type="category" dataKey="machine" width={80} />
@@ -411,7 +570,7 @@ export default function OEEDashboard() {
                   </ResponsiveContainer>
                 </div>
                 <div className="mt-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
-                  {demoMachineOEE.map((m) => (
+                  {processedMachineOEE.map((m) => (
                     <div 
                       key={m.machine} 
                       className={`p-3 rounded-lg border ${
