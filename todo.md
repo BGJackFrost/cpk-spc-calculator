@@ -1555,3 +1555,11 @@
 - [x] Sửa ChangePassword.tsx - thêm DashboardLayout
 - [x] Sửa ComponentShowcase.tsx - thêm DashboardLayout
 - [x] Các page khác (Home, LocalLogin, NotFound, SystemSetup) không cần sidebar (là trang public)
+
+
+## Phase 67: Hướng dẫn sử dụng hệ thống
+
+### Tài liệu Hướng dẫn sử dụng
+- [x] Phân tích cấu trúc hệ thống và thu thập thông tin các chức năng
+- [x] Viết nội dung Hướng dẫn sử dụng chi tiết (Markdown)
+- [x] Xuất file PDF để training người dùng (docs/USER_GUIDE.pdf)
