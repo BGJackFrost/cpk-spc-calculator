@@ -1,11 +1,12 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef, useCallback } from "react";
 import { format, addDays, startOfWeek, endOfWeek, eachDayOfInterval, isWithinInterval, differenceInDays, isSameDay } from "date-fns";
 import { vi } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Calendar } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar, GripVertical, Move } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 export interface GanttTask {
   id: number;
@@ -23,7 +24,9 @@ export interface GanttTask {
 interface GanttChartProps {
   tasks: GanttTask[];
   onTaskClick?: (task: GanttTask) => void;
+  onTaskUpdate?: (taskId: number, newStartDate: Date, newEndDate: Date) => void;
   viewMode?: "week" | "month";
+  enableDragDrop?: boolean;
 }
 
 const statusColors: Record<string, string> = {
@@ -46,8 +49,18 @@ const priorityBadges: Record<string, { label: string; variant: "default" | "seco
   critical: { label: "Khẩn", variant: "destructive" },
 };
 
-export function GanttChart({ tasks, onTaskClick, viewMode = "week" }: GanttChartProps) {
+export function GanttChart({ 
+  tasks, 
+  onTaskClick, 
+  onTaskUpdate,
+  viewMode = "week",
+  enableDragDrop = true 
+}: GanttChartProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [draggedTask, setDraggedTask] = useState<GanttTask | null>(null);
+  const [dragOffset, setDragOffset] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
   
   const { startDate, endDate, days } = useMemo(() => {
     if (viewMode === "week") {
@@ -117,57 +130,160 @@ export function GanttChart({ tasks, onTaskClick, viewMode = "week" }: GanttChart
            (task.startDate <= startDate && task.endDate >= endDate);
   };
 
+  // Drag and drop handlers
+  const handleDragStart = useCallback((e: React.DragEvent | React.TouchEvent, task: GanttTask) => {
+    if (!enableDragDrop) return;
+    
+    setDraggedTask(task);
+    setIsDragging(true);
+    
+    if ('dataTransfer' in e) {
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', String(task.id));
+    }
+    
+    // Calculate offset from task start
+    const rect = (e.target as HTMLElement).getBoundingClientRect();
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    setDragOffset(clientX - rect.left);
+  }, [enableDragDrop]);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent, targetDate: Date) => {
+    e.preventDefault();
+    
+    if (!draggedTask || !onTaskUpdate) return;
+    
+    const duration = differenceInDays(draggedTask.endDate, draggedTask.startDate);
+    const newStartDate = targetDate;
+    const newEndDate = addDays(targetDate, duration);
+    
+    onTaskUpdate(draggedTask.id, newStartDate, newEndDate);
+    toast.success(`Đã cập nhật lịch trình: ${draggedTask.title}`);
+    
+    setDraggedTask(null);
+    setIsDragging(false);
+  }, [draggedTask, onTaskUpdate]);
+
+  const handleDragEnd = useCallback(() => {
+    setDraggedTask(null);
+    setIsDragging(false);
+  }, []);
+
+  // Touch handlers for mobile
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!draggedTask || !containerRef.current) return;
+    
+    const touch = e.touches[0];
+    const container = containerRef.current;
+    const rect = container.getBoundingClientRect();
+    const timelineStart = 192; // Width of assignee column
+    
+    const x = touch.clientX - rect.left - timelineStart;
+    const timelineWidth = rect.width - timelineStart;
+    const dayIndex = Math.floor((x / timelineWidth) * days.length);
+    
+    if (dayIndex >= 0 && dayIndex < days.length) {
+      // Visual feedback could be added here
+    }
+  }, [draggedTask, days.length]);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (!draggedTask || !containerRef.current || !onTaskUpdate) return;
+    
+    const touch = e.changedTouches[0];
+    const container = containerRef.current;
+    const rect = container.getBoundingClientRect();
+    const timelineStart = 192;
+    
+    const x = touch.clientX - rect.left - timelineStart;
+    const timelineWidth = rect.width - timelineStart;
+    const dayIndex = Math.floor((x / timelineWidth) * days.length);
+    
+    if (dayIndex >= 0 && dayIndex < days.length) {
+      const targetDate = days[dayIndex];
+      const duration = differenceInDays(draggedTask.endDate, draggedTask.startDate);
+      const newStartDate = targetDate;
+      const newEndDate = addDays(targetDate, duration);
+      
+      onTaskUpdate(draggedTask.id, newStartDate, newEndDate);
+      toast.success(`Đã cập nhật lịch trình: ${draggedTask.title}`);
+    }
+    
+    setDraggedTask(null);
+    setIsDragging(false);
+  }, [draggedTask, days, onTaskUpdate]);
+
   return (
-    <div className="border rounded-lg overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b bg-muted/50">
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={navigatePrev}>
+    <div 
+      ref={containerRef}
+      className="border rounded-lg overflow-hidden"
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
+      {/* Header - Mobile responsive */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-2 sm:p-4 border-b bg-muted/50 gap-2">
+        <div className="flex items-center gap-1 sm:gap-2">
+          <Button variant="outline" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={navigatePrev}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <Button variant="outline" size="sm" onClick={goToToday}>
-            <Calendar className="h-4 w-4 mr-2" />
-            Hôm nay
+          <Button variant="outline" size="sm" className="h-8 sm:h-9 text-xs sm:text-sm" onClick={goToToday}>
+            <Calendar className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+            <span className="hidden xs:inline">Hôm nay</span>
           </Button>
-          <Button variant="outline" size="icon" onClick={navigateNext}>
+          <Button variant="outline" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={navigateNext}>
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
-        <div className="font-semibold">
+        <div className="font-semibold text-sm sm:text-base">
           {viewMode === "week" 
             ? `${format(startDate, "dd/MM")} - ${format(endDate, "dd/MM/yyyy")}`
             : format(currentDate, "MMMM yyyy", { locale: vi })}
         </div>
-        <div className="flex items-center gap-2 text-sm">
+        <div className="flex items-center gap-2 text-xs sm:text-sm flex-wrap">
           <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded bg-blue-500" />
+            <div className="w-2 h-2 sm:w-3 sm:h-3 rounded bg-blue-500" />
             <span>Định kỳ</span>
           </div>
           <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded bg-orange-500" />
+            <div className="w-2 h-2 sm:w-3 sm:h-3 rounded bg-orange-500" />
             <span>Sửa chữa</span>
           </div>
           <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded bg-purple-500" />
+            <div className="w-2 h-2 sm:w-3 sm:h-3 rounded bg-purple-500" />
             <span>Dự đoán</span>
           </div>
         </div>
       </div>
 
-      {/* Timeline header */}
-      <div className="flex border-b">
-        <div className="w-48 flex-shrink-0 p-2 font-medium border-r bg-muted/30">
+      {/* Drag instruction */}
+      {enableDragDrop && (
+        <div className="px-4 py-1 bg-blue-50 dark:bg-blue-950 text-xs text-blue-600 dark:text-blue-400 flex items-center gap-1">
+          <Move className="h-3 w-3" />
+          <span>Kéo thả để điều chỉnh lịch trình</span>
+        </div>
+      )}
+
+      {/* Timeline header - Scrollable on mobile */}
+      <div className="flex border-b overflow-x-auto">
+        <div className="w-32 sm:w-48 flex-shrink-0 p-2 font-medium border-r bg-muted/30 text-xs sm:text-sm">
           Kỹ thuật viên
         </div>
-        <div className="flex-1 flex">
+        <div className="flex min-w-[400px] sm:min-w-0 flex-1">
           {days.map((day, idx) => (
             <div
               key={idx}
               className={cn(
-                "flex-1 text-center text-xs py-2 border-r last:border-r-0",
+                "flex-1 min-w-[40px] sm:min-w-0 text-center text-[10px] sm:text-xs py-1 sm:py-2 border-r last:border-r-0",
                 isSameDay(day, new Date()) && "bg-blue-50 dark:bg-blue-950",
                 (day.getDay() === 0 || day.getDay() === 6) && "bg-muted/30"
               )}
+              onDragOver={handleDragOver}
+              onDrop={(e) => handleDrop(e, day)}
             >
               <div className="font-medium">{format(day, "EEE", { locale: vi })}</div>
               <div className="text-muted-foreground">{format(day, "dd")}</div>
@@ -177,23 +293,26 @@ export function GanttChart({ tasks, onTaskClick, viewMode = "week" }: GanttChart
       </div>
 
       {/* Task rows */}
-      <div className="max-h-[500px] overflow-y-auto">
+      <div className="max-h-[400px] sm:max-h-[500px] overflow-y-auto overflow-x-auto">
         {Object.entries(groupedTasks).map(([assignee, assigneeTasks]) => (
           <div key={assignee} className="flex border-b last:border-b-0">
-            <div className="w-48 flex-shrink-0 p-2 border-r bg-muted/10 font-medium truncate">
+            <div className="w-32 sm:w-48 flex-shrink-0 p-2 border-r bg-muted/10 font-medium truncate text-xs sm:text-sm">
               {assignee}
             </div>
-            <div className="flex-1 relative min-h-[60px]">
+            <div className="flex-1 relative min-h-[50px] sm:min-h-[60px] min-w-[400px] sm:min-w-0">
               {/* Grid lines */}
               <div className="absolute inset-0 flex">
                 {days.map((day, idx) => (
                   <div
                     key={idx}
                     className={cn(
-                      "flex-1 border-r last:border-r-0",
+                      "flex-1 min-w-[40px] sm:min-w-0 border-r last:border-r-0",
                       isSameDay(day, new Date()) && "bg-blue-50/50 dark:bg-blue-950/50",
-                      (day.getDay() === 0 || day.getDay() === 6) && "bg-muted/20"
+                      (day.getDay() === 0 || day.getDay() === 6) && "bg-muted/20",
+                      isDragging && "hover:bg-blue-100 dark:hover:bg-blue-900"
                     )}
+                    onDragOver={handleDragOver}
+                    onDrop={(e) => handleDrop(e, day)}
                   />
                 ))}
               </div>
@@ -203,25 +322,37 @@ export function GanttChart({ tasks, onTaskClick, viewMode = "week" }: GanttChart
                 {assigneeTasks.filter(isTaskVisible).map((task, idx) => {
                   const position = getTaskPosition(task);
                   const priority = priorityBadges[task.priority || "medium"];
+                  const isBeingDragged = draggedTask?.id === task.id;
                   
                   return (
                     <Tooltip key={task.id}>
                       <TooltipTrigger asChild>
                         <div
+                          draggable={enableDragDrop}
+                          onDragStart={(e) => handleDragStart(e, task)}
+                          onDragEnd={handleDragEnd}
+                          onTouchStart={(e) => handleDragStart(e, task)}
                           className={cn(
-                            "absolute h-8 rounded cursor-pointer transition-all hover:opacity-80 hover:shadow-md",
+                            "absolute h-6 sm:h-8 rounded cursor-pointer transition-all",
+                            "hover:opacity-80 hover:shadow-md",
+                            "active:scale-105 active:shadow-lg",
                             statusColors[task.status],
-                            typeColors[task.type]
+                            typeColors[task.type],
+                            enableDragDrop && "cursor-grab active:cursor-grabbing",
+                            isBeingDragged && "opacity-50 scale-95"
                           )}
                           style={{
                             left: position.left,
                             width: position.width,
-                            top: `${idx * 36 + 4}px`,
+                            top: `${idx * 30 + 4}px`,
                           }}
-                          onClick={() => onTaskClick?.(task)}
+                          onClick={() => !isDragging && onTaskClick?.(task)}
                         >
-                          <div className="px-2 py-1 text-xs text-white truncate">
-                            {task.title}
+                          <div className="px-1 sm:px-2 py-0.5 sm:py-1 text-[10px] sm:text-xs text-white truncate flex items-center gap-1">
+                            {enableDragDrop && (
+                              <GripVertical className="h-3 w-3 flex-shrink-0 opacity-70" />
+                            )}
+                            <span className="truncate">{task.title}</span>
                           </div>
                         </div>
                       </TooltipTrigger>
@@ -244,6 +375,11 @@ export function GanttChart({ tasks, onTaskClick, viewMode = "week" }: GanttChart
                                task.status === "completed" ? "Hoàn thành" : "Quá hạn"}
                             </Badge>
                           </div>
+                          {enableDragDrop && (
+                            <div className="text-xs text-muted-foreground italic">
+                              Kéo để thay đổi lịch
+                            </div>
+                          )}
                         </div>
                       </TooltipContent>
                     </Tooltip>

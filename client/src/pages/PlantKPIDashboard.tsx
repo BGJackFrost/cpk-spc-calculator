@@ -1,4 +1,10 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
+import { Input } from "@/components/ui/input";
+import { Search, Filter, X, Settings, LayoutGrid, Eye, EyeOff, RotateCcw } from "lucide-react";
+import { DraggableWidget, useWidgetManager, WidgetConfig } from "@/components/DraggableWidget";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -41,15 +47,69 @@ const generateKPIData = () => {
 
 const COLORS = ['#22c55e', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6'];
 
+// Default widget configuration
+const defaultWidgets: WidgetConfig[] = [
+  { id: "oee-gauge", title: "OEE Gauge", type: "oee", size: "small", position: { x: 0, y: 0 }, visible: true },
+  { id: "availability", title: "Availability", type: "availability", size: "small", position: { x: 1, y: 0 }, visible: true },
+  { id: "performance", title: "Performance", type: "performance", size: "small", position: { x: 2, y: 0 }, visible: true },
+  { id: "quality", title: "Quality", type: "quality", size: "small", position: { x: 3, y: 0 }, visible: true },
+  { id: "mtbf", title: "MTBF", type: "mtbf", size: "small", position: { x: 4, y: 0 }, visible: true },
+  { id: "mttr", title: "MTTR", type: "mttr", size: "small", position: { x: 5, y: 0 }, visible: true },
+  { id: "oee-trend", title: "Xu hướng OEE", type: "oee-trend", size: "large", position: { x: 0, y: 1 }, visible: true },
+  { id: "maintenance-stats", title: "Thống kê Bảo trì", type: "maintenance", size: "medium", position: { x: 0, y: 2 }, visible: true },
+  { id: "maintenance-types", title: "Loại Bảo trì", type: "maintenance-pie", size: "small", position: { x: 2, y: 2 }, visible: true },
+];
+
 export default function PlantKPIDashboard() {
   const [selectedPeriod, setSelectedPeriod] = useState("30d");
   const [selectedArea, setSelectedArea] = useState("all");
+  const [selectedLine, setSelectedLine] = useState("all");
+  const [selectedMachine, setSelectedMachine] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  
+  // Widget manager
+  const {
+    widgets,
+    visibleWidgets,
+    hiddenWidgets,
+    removeWidget,
+    showWidget,
+    resizeWidget,
+    reorderWidgets,
+    resetWidgets,
+  } = useWidgetManager(defaultWidgets);
 
   // Queries
   const { data: machines } = trpc.machine.listAll.useQuery();
-  const { data: oeeRecords } = trpc.oee.listRecords.useQuery({});
+  const { data: productionLines } = trpc.productionLine.list.useQuery();
+  const { data: oeeRecords } = trpc.oee.listRecords.useQuery({
+    machineId: selectedMachine !== "all" ? Number(selectedMachine) : undefined,
+  });
   const { data: workOrders } = trpc.maintenance.listWorkOrders.useQuery({});
   const { data: maintenanceStats } = trpc.maintenance.getStats.useQuery({});
+
+  // Filter machines based on search and filters
+  const filteredMachines = useMemo(() => {
+    if (!machines) return [];
+    return machines.filter(m => {
+      const matchesSearch = !searchQuery || 
+        m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        m.code?.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesLine = selectedLine === "all" || m.workstationId === Number(selectedLine);
+      return matchesSearch && matchesLine;
+    });
+  }, [machines, searchQuery, selectedLine]);
+
+  // Calculate filtered KPIs
+  const filteredOEEData = useMemo(() => {
+    if (!oeeRecords) return [];
+    return oeeRecords.filter(r => {
+      if (selectedMachine !== "all" && r.machineId !== Number(selectedMachine)) return false;
+      return true;
+    });
+  }, [oeeRecords, selectedMachine]);
 
   const kpiData = useMemo(() => generateKPIData(), []);
   
@@ -176,8 +236,181 @@ export default function PlantKPIDashboard() {
             <Button variant="outline" size="icon">
               <Download className="h-4 w-4" />
             </Button>
+            
+            {/* Widget Settings */}
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="icon">
+                  <LayoutGrid className="h-4 w-4" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent>
+                <SheetHeader>
+                  <SheetTitle>Tùy chỉnh Dashboard</SheetTitle>
+                  <SheetDescription>
+                    Bật/tắt các widget và thay đổi bố cục
+                  </SheetDescription>
+                </SheetHeader>
+                <div className="mt-6 space-y-4">
+                  {/* Edit Mode Toggle */}
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="edit-mode">Chế độ chỉnh sửa</Label>
+                    <Switch
+                      id="edit-mode"
+                      checked={editMode}
+                      onCheckedChange={setEditMode}
+                    />
+                  </div>
+                  
+                  <div className="border-t pt-4">
+                    <p className="text-sm font-medium mb-3">Widgets hiển thị</p>
+                    <div className="space-y-2">
+                      {widgets.map((widget) => (
+                        <div key={widget.id} className="flex items-center justify-between">
+                          <span className="text-sm">{widget.title}</span>
+                          <Switch
+                            checked={widget.visible}
+                            onCheckedChange={(checked) => {
+                              if (checked) showWidget(widget.id);
+                              else removeWidget(widget.id);
+                            }}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  <div className="border-t pt-4">
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={resetWidgets}
+                    >
+                      <RotateCcw className="h-4 w-4 mr-2" />
+                      Khôi phục mặc định
+                    </Button>
+                  </div>
+                </div>
+              </SheetContent>
+            </Sheet>
           </div>
         </div>
+
+        {/* Search and Filters */}
+        <Card>
+          <CardContent className="pt-4">
+            <div className="flex flex-col sm:flex-row gap-4">
+              {/* Search */}
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Tìm kiếm thiết bị theo tên hoặc mã..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10"
+                />
+                {searchQuery && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6"
+                    onClick={() => setSearchQuery("")}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                )}
+              </div>
+              
+              {/* Filter Toggle */}
+              <Button
+                variant={showFilters ? "default" : "outline"}
+                onClick={() => setShowFilters(!showFilters)}
+                className="flex items-center gap-2"
+              >
+                <Filter className="h-4 w-4" />
+                Bộ lọc
+                {(selectedLine !== "all" || selectedMachine !== "all") && (
+                  <Badge variant="secondary" className="ml-1">
+                    {[selectedLine !== "all", selectedMachine !== "all"].filter(Boolean).length}
+                  </Badge>
+                )}
+              </Button>
+            </div>
+            
+            {/* Filter Options */}
+            {showFilters && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4 pt-4 border-t">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Dây chuyền sản xuất</label>
+                  <Select value={selectedLine} onValueChange={setSelectedLine}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Tất cả dây chuyền" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tất cả dây chuyền</SelectItem>
+                      {productionLines?.map((line) => (
+                        <SelectItem key={line.id} value={String(line.id)}>{line.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Thiết bị</label>
+                  <Select value={selectedMachine} onValueChange={setSelectedMachine}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Tất cả thiết bị" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tất cả thiết bị</SelectItem>
+                      {filteredMachines?.map((m) => (
+                        <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="flex items-end">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setSelectedLine("all");
+                      setSelectedMachine("all");
+                      setSearchQuery("");
+                    }}
+                    className="w-full"
+                  >
+                    Xóa bộ lọc
+                  </Button>
+                </div>
+              </div>
+            )}
+            
+            {/* Active Filters Display */}
+            {(selectedLine !== "all" || selectedMachine !== "all" || searchQuery) && (
+              <div className="flex flex-wrap gap-2 mt-4">
+                {searchQuery && (
+                  <Badge variant="secondary" className="flex items-center gap-1">
+                    Tìm: "{searchQuery}"
+                    <X className="h-3 w-3 cursor-pointer" onClick={() => setSearchQuery("")} />
+                  </Badge>
+                )}
+                {selectedLine !== "all" && (
+                  <Badge variant="secondary" className="flex items-center gap-1">
+                    Dây chuyền: {productionLines?.find(l => l.id === Number(selectedLine))?.name}
+                    <X className="h-3 w-3 cursor-pointer" onClick={() => setSelectedLine("all")} />
+                  </Badge>
+                )}
+                {selectedMachine !== "all" && (
+                  <Badge variant="secondary" className="flex items-center gap-1">
+                    Thiết bị: {machines?.find(m => m.id === Number(selectedMachine))?.name}
+                    <X className="h-3 w-3 cursor-pointer" onClick={() => setSelectedMachine("all")} />
+                  </Badge>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Main KPI Cards */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">

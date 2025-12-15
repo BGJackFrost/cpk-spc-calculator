@@ -9,7 +9,7 @@ import { eq } from "drizzle-orm";
 import nodemailer from "nodemailer";
 
 // Email template types
-export type EmailType = "spc_violation" | "cpk_warning" | "ca_violation" | "daily_report";
+export type EmailType = "spc_violation" | "cpk_warning" | "ca_violation" | "daily_report" | "oee_alert" | "maintenance_alert" | "predictive_alert";
 
 export interface SpcViolationEmailData {
   productCode: string;
@@ -351,4 +351,255 @@ export async function notifyCpkWarning(data: CpkWarningEmailData): Promise<void>
   }
 
   console.log(`[Email] Sent CPK warning notification`);
+}
+
+/**
+ * OEE Alert Email Data
+ */
+export interface OeeAlertEmailData {
+  machineName: string;
+  machineCode: string;
+  oeeValue: number;
+  threshold: number;
+  availability: number;
+  performance: number;
+  quality: number;
+  timestamp: Date;
+}
+
+/**
+ * Maintenance Alert Email Data
+ */
+export interface MaintenanceAlertEmailData {
+  workOrderTitle: string;
+  machineName: string;
+  alertType: "overdue" | "upcoming" | "critical";
+  scheduledDate: Date;
+  priority: string;
+  technicianName?: string;
+}
+
+/**
+ * Predictive Maintenance Alert Email Data
+ */
+export interface PredictiveAlertEmailData {
+  machineName: string;
+  machineCode: string;
+  predictionType: string;
+  probability: number;
+  estimatedFailureDate: Date;
+  recommendation: string;
+}
+
+/**
+ * Generate HTML email for OEE Alert
+ */
+function generateOeeAlertEmail(data: OeeAlertEmailData): { subject: string; html: string } {
+  const subject = `[⚠️ OEE Alert] ${data.machineName} - OEE ${data.oeeValue.toFixed(1)}% (dưới ngưỡng ${data.threshold}%)`;
+  
+  const oeeColor = data.oeeValue < 60 ? '#dc2626' : data.oeeValue < 75 ? '#f59e0b' : '#10b981';
+  
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 20px; border-radius: 8px 8px 0 0; }
+    .content { background: #f9fafb; padding: 20px; border: 1px solid #e5e7eb; }
+    .footer { background: #1f2937; color: #9ca3af; padding: 15px; text-align: center; border-radius: 0 0 8px 8px; font-size: 12px; }
+    .oee-display { text-align: center; padding: 30px; background: white; border-radius: 8px; margin: 20px 0; }
+    .oee-value { font-size: 48px; font-weight: bold; }
+    .metrics { display: flex; justify-content: space-around; margin: 20px 0; }
+    .metric { text-align: center; padding: 15px; background: white; border-radius: 8px; flex: 1; margin: 0 5px; }
+    .metric-value { font-size: 24px; font-weight: bold; color: #3b82f6; }
+    .metric-label { font-size: 12px; color: #6b7280; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1 style="margin: 0;">📊 Cảnh báo OEE</h1>
+      <p style="margin: 5px 0 0 0; opacity: 0.9;">Hiệu suất thiết bị dưới ngưỡng cho phép</p>
+    </div>
+    <div class="content">
+      <p><strong>Thiết bị:</strong> ${data.machineName} (${data.machineCode})</p>
+      <p><strong>Thời gian:</strong> ${data.timestamp.toLocaleString('vi-VN')}</p>
+      
+      <div class="oee-display">
+        <div class="oee-value" style="color: ${oeeColor};">${data.oeeValue.toFixed(1)}%</div>
+        <div style="color: #6b7280; margin-top: 5px;">OEE (Ngưỡng: ${data.threshold}%)</div>
+      </div>
+      
+      <div class="metrics">
+        <div class="metric">
+          <div class="metric-value">${data.availability.toFixed(1)}%</div>
+          <div class="metric-label">Availability</div>
+        </div>
+        <div class="metric">
+          <div class="metric-value">${data.performance.toFixed(1)}%</div>
+          <div class="metric-label">Performance</div>
+        </div>
+        <div class="metric">
+          <div class="metric-value">${data.quality.toFixed(1)}%</div>
+          <div class="metric-label">Quality</div>
+        </div>
+      </div>
+      
+      <p style="background: #fef3c7; padding: 15px; border-radius: 8px;">
+        <strong>💡 Khuyến nghị:</strong> Kiểm tra thiết bị và quy trình sản xuất để xác định nguyên nhân và cải thiện hiệu suất.
+      </p>
+    </div>
+    <div class="footer">
+      <p>Email này được gửi tự động từ Hệ thống MMS</p>
+    </div>
+  </div>
+</body>
+</html>
+  `;
+
+  return { subject, html };
+}
+
+/**
+ * Generate HTML email for Maintenance Alert
+ */
+function generateMaintenanceAlertEmail(data: MaintenanceAlertEmailData): { subject: string; html: string } {
+  const alertTypeText = data.alertType === "overdue" ? "Quá hạn" : 
+                        data.alertType === "upcoming" ? "Sắp đến" : "Khẩn cấp";
+  const alertColor = data.alertType === "overdue" ? '#dc2626' : 
+                     data.alertType === "critical" ? '#dc2626' : '#f59e0b';
+  
+  const subject = `[🔧 Bảo trì ${alertTypeText}] ${data.workOrderTitle} - ${data.machineName}`;
+  
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: linear-gradient(135deg, ${alertColor} 0%, ${alertColor}dd 100%); color: white; padding: 20px; border-radius: 8px 8px 0 0; }
+    .content { background: #f9fafb; padding: 20px; border: 1px solid #e5e7eb; }
+    .footer { background: #1f2937; color: #9ca3af; padding: 15px; text-align: center; border-radius: 0 0 8px 8px; font-size: 12px; }
+    .info-box { background: white; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid ${alertColor}; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1 style="margin: 0;">🔧 Cảnh báo Bảo trì</h1>
+      <p style="margin: 5px 0 0 0; opacity: 0.9;">Công việc bảo trì ${alertTypeText.toLowerCase()}</p>
+    </div>
+    <div class="content">
+      <div class="info-box">
+        <h3 style="margin: 0 0 10px 0;">${data.workOrderTitle}</h3>
+        <p style="margin: 5px 0;"><strong>Thiết bị:</strong> ${data.machineName}</p>
+        <p style="margin: 5px 0;"><strong>Ngày dự kiến:</strong> ${data.scheduledDate.toLocaleDateString('vi-VN')}</p>
+        <p style="margin: 5px 0;"><strong>Độ ưu tiên:</strong> ${data.priority}</p>
+        ${data.technicianName ? `<p style="margin: 5px 0;"><strong>Kỹ thuật viên:</strong> ${data.technicianName}</p>` : ''}
+      </div>
+      
+      <p style="background: #fef3c7; padding: 15px; border-radius: 8px;">
+        <strong>⚠️ Lưu ý:</strong> Vui lòng kiểm tra và thực hiện công việc bảo trì đúng hạn để đảm bảo thiết bị hoạt động ổn định.
+      </p>
+    </div>
+    <div class="footer">
+      <p>Email này được gửi tự động từ Hệ thống MMS</p>
+    </div>
+  </div>
+</body>
+</html>
+  `;
+
+  return { subject, html };
+}
+
+/**
+ * Generate HTML email for Predictive Maintenance Alert
+ */
+function generatePredictiveAlertEmail(data: PredictiveAlertEmailData): { subject: string; html: string } {
+  const subject = `[🔮 Dự đoán] ${data.machineName} - ${data.predictionType} (${data.probability.toFixed(0)}% xác suất)`;
+  
+  const probColor = data.probability > 80 ? '#dc2626' : data.probability > 50 ? '#f59e0b' : '#10b981';
+  
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white; padding: 20px; border-radius: 8px 8px 0 0; }
+    .content { background: #f9fafb; padding: 20px; border: 1px solid #e5e7eb; }
+    .footer { background: #1f2937; color: #9ca3af; padding: 15px; text-align: center; border-radius: 0 0 8px 8px; font-size: 12px; }
+    .prob-display { text-align: center; padding: 30px; background: white; border-radius: 8px; margin: 20px 0; }
+    .prob-value { font-size: 48px; font-weight: bold; }
+    .recommendation { background: #f3e8ff; border: 1px solid #c4b5fd; border-radius: 8px; padding: 15px; margin: 15px 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1 style="margin: 0;">🔮 Dự đoán Bảo trì</h1>
+      <p style="margin: 5px 0 0 0; opacity: 0.9;">Phát hiện nguy cơ hỏng hóc tiềm ẩn</p>
+    </div>
+    <div class="content">
+      <p><strong>Thiết bị:</strong> ${data.machineName} (${data.machineCode})</p>
+      <p><strong>Loại dự đoán:</strong> ${data.predictionType}</p>
+      <p><strong>Ngày dự kiến hỏng:</strong> ${data.estimatedFailureDate.toLocaleDateString('vi-VN')}</p>
+      
+      <div class="prob-display">
+        <div class="prob-value" style="color: ${probColor};">${data.probability.toFixed(0)}%</div>
+        <div style="color: #6b7280; margin-top: 5px;">Xác suất hỏng hóc</div>
+      </div>
+      
+      <div class="recommendation">
+        <strong>💡 Khuyến nghị:</strong>
+        <p style="margin: 5px 0 0 0;">${data.recommendation}</p>
+      </div>
+    </div>
+    <div class="footer">
+      <p>Email này được gửi tự động từ Hệ thống MMS</p>
+    </div>
+  </div>
+</body>
+</html>
+  `;
+
+  return { subject, html };
+}
+
+/**
+ * Send OEE alert notification
+ */
+export async function notifyOeeAlert(data: OeeAlertEmailData, recipients: string[]): Promise<{ success: boolean; sentCount: number }> {
+  const { subject, html } = generateOeeAlertEmail(data);
+  const result = await sendEmail(recipients, subject, html);
+  console.log(`[Email] Sent OEE alert notification to ${result.sentCount || 0} recipients`);
+  return { success: result.success, sentCount: result.sentCount || 0 };
+}
+
+/**
+ * Send Maintenance alert notification
+ */
+export async function notifyMaintenanceAlert(data: MaintenanceAlertEmailData, recipients: string[]): Promise<{ success: boolean; sentCount: number }> {
+  const { subject, html } = generateMaintenanceAlertEmail(data);
+  const result = await sendEmail(recipients, subject, html);
+  console.log(`[Email] Sent Maintenance alert notification to ${result.sentCount || 0} recipients`);
+  return { success: result.success, sentCount: result.sentCount || 0 };
+}
+
+/**
+ * Send Predictive Maintenance alert notification
+ */
+export async function notifyPredictiveAlert(data: PredictiveAlertEmailData, recipients: string[]): Promise<{ success: boolean; sentCount: number }> {
+  const { subject, html } = generatePredictiveAlertEmail(data);
+  const result = await sendEmail(recipients, subject, html);
+  console.log(`[Email] Sent Predictive alert notification to ${result.sentCount || 0} recipients`);
+  return { success: result.success, sentCount: result.sentCount || 0 };
 }

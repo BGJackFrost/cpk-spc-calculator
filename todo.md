@@ -2050,3 +2050,21 @@
 - [x] Cảnh báo tự động email/SMS (AlertConfiguration.tsx, alertRouter.ts)
 - [x] Thêm routes và menu navigation cho các trang mới
 - [x] Viết tests cho MMS advanced features (mms-advanced.test.ts)
+
+## Phase 81: MMS Module - Enhanced Features
+- [ ] Kéo thả trên Gantt chart để điều chỉnh lịch trình
+- [ ] Tìm kiếm/lọc trên KPI Dashboard theo dây chuyền/thiết bị
+- [ ] Biểu đồ lịch sử bảo trì và OEE trong QR lookup
+- [ ] Dashboard widgets tùy chỉnh (drag & drop)
+- [ ] Tích hợp email SMTP cho cảnh báo
+- [ ] Mobile responsive cho QR scanner và Gantt
+- [ ] Fix lỗi tên menu navigation
+
+## Phase 81: MMS Module - Advanced UX Improvements
+- [x] Gantt chart với kéo thả để điều chỉnh lịch trình
+- [x] Tìm kiếm và lọc trên KPI Dashboard
+- [x] Biểu đồ lịch sử bảo trì và OEE trong QR lookup
+- [x] Dashboard widgets tùy chỉnh với drag-and-drop
+- [x] Email SMTP cho OEE/Maintenance/Predictive alerts
+- [x] Mobile responsive cho Gantt và QR scanner
+- [x] Fix và cập nhật translations cho menu MMS

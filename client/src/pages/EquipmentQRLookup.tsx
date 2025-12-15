@@ -1,4 +1,8 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
+import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  BarChart, Bar, PieChart, Pie, Cell, Legend
+} from "recharts";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,7 +15,7 @@ import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { 
   QrCode, Search, Camera, X, Wrench, Clock, AlertTriangle, 
-  CheckCircle, History, FileText, Download, Printer
+  CheckCircle, History, FileText, Download, Printer, TrendingUp, Gauge, Activity
 } from "lucide-react";
 import { format } from "date-fns";
 import QRCode from "qrcode";
@@ -43,6 +47,66 @@ export default function EquipmentQRLookup() {
     { machineId: selectedEquipment?.id },
     { enabled: !!selectedEquipment }
   );
+  const { data: oeeRecords } = trpc.oee.listRecords.useQuery(
+    { machineId: selectedEquipment?.id },
+    { enabled: !!selectedEquipment }
+  );
+
+  // Process maintenance history for chart
+  const maintenanceChartData = useMemo(() => {
+    if (!workOrders) return [];
+    const monthlyData: Record<string, { month: string; preventive: number; corrective: number; predictive: number }> = {};
+    
+    workOrders.forEach(wo => {
+      if (!wo.scheduledStartAt) return;
+      const date = new Date(wo.scheduledStartAt);
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      
+      if (!monthlyData[monthKey]) {
+        monthlyData[monthKey] = { month: monthKey, preventive: 0, corrective: 0, predictive: 0 };
+      }
+      
+      if (wo.typeCategory === "preventive") monthlyData[monthKey].preventive++;
+      else if (wo.typeCategory === "corrective") monthlyData[monthKey].corrective++;
+      else monthlyData[monthKey].predictive++;
+    });
+    
+    return Object.values(monthlyData).sort((a, b) => a.month.localeCompare(b.month)).slice(-6);
+  }, [workOrders]);
+
+  // Process OEE data for chart
+  const oeeChartData = useMemo(() => {
+    if (!oeeRecords) return [];
+    return oeeRecords.slice(-30).map(r => ({
+      date: r.recordDate ? new Date(r.recordDate).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }) : '',
+      oee: r.oee ? Number(r.oee) : 0,
+      availability: r.availability ? Number(r.availability) : 0,
+      performance: r.performance ? Number(r.performance) : 0,
+      quality: r.quality ? Number(r.quality) : 0,
+    }));
+  }, [oeeRecords]);
+
+  // Maintenance type distribution
+  const maintenanceDistribution = useMemo(() => {
+    if (!workOrders) return [];
+    const counts = { preventive: 0, corrective: 0, predictive: 0 };
+    workOrders.forEach(wo => {
+      if (wo.typeCategory === "preventive") counts.preventive++;
+      else if (wo.typeCategory === "corrective") counts.corrective++;
+      else counts.predictive++;
+    });
+    return [
+      { name: 'Định kỳ', value: counts.preventive, color: '#3b82f6' },
+      { name: 'Sửa chữa', value: counts.corrective, color: '#f59e0b' },
+      { name: 'Dự đoán', value: counts.predictive, color: '#8b5cf6' },
+    ].filter(d => d.value > 0);
+  }, [workOrders]);
+
+  // Calculate average OEE
+  const avgOEE = useMemo(() => {
+    if (!oeeChartData.length) return 0;
+    return oeeChartData.reduce((sum, d) => sum + d.oee, 0) / oeeChartData.length;
+  }, [oeeChartData]);
 
   // Search machine by code
   const searchMachine = (code: string) => {
@@ -262,9 +326,11 @@ export default function EquipmentQRLookup() {
               </CardHeader>
               <CardContent>
                 <Tabs defaultValue="info">
-                  <TabsList>
+                  <TabsList className="grid w-full grid-cols-4">
                     <TabsTrigger value="info">Thông tin</TabsTrigger>
-                    <TabsTrigger value="history">Lịch sử bảo trì</TabsTrigger>
+                    <TabsTrigger value="oee">OEE</TabsTrigger>
+                    <TabsTrigger value="charts">Biểu đồ</TabsTrigger>
+                    <TabsTrigger value="history">Lịch sử</TabsTrigger>
                   </TabsList>
                   
                   <TabsContent value="info" className="space-y-4">
@@ -300,6 +366,140 @@ export default function EquipmentQRLookup() {
                             ? format(new Date(selectedEquipment.lastMaintenanceDate), "dd/MM/yyyy")
                             : "Chưa có"}
                         </p>
+                      </div>
+                    </div>
+                  </TabsContent>
+                  
+                  {/* OEE Tab */}
+                  <TabsContent value="oee" className="space-y-4">
+                    {/* OEE Summary */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="p-4 bg-muted/50 rounded-lg text-center">
+                        <Gauge className="h-6 w-6 mx-auto mb-2 text-blue-500" />
+                        <div className="text-2xl font-bold">{avgOEE.toFixed(1)}%</div>
+                        <p className="text-xs text-muted-foreground">OEE Trung bình</p>
+                      </div>
+                      <div className="p-4 bg-muted/50 rounded-lg text-center">
+                        <Activity className="h-6 w-6 mx-auto mb-2 text-green-500" />
+                        <div className="text-2xl font-bold">
+                          {oeeChartData.length > 0 ? oeeChartData[oeeChartData.length - 1].availability.toFixed(1) : 0}%
+                        </div>
+                        <p className="text-xs text-muted-foreground">Availability</p>
+                      </div>
+                      <div className="p-4 bg-muted/50 rounded-lg text-center">
+                        <TrendingUp className="h-6 w-6 mx-auto mb-2 text-yellow-500" />
+                        <div className="text-2xl font-bold">
+                          {oeeChartData.length > 0 ? oeeChartData[oeeChartData.length - 1].performance.toFixed(1) : 0}%
+                        </div>
+                        <p className="text-xs text-muted-foreground">Performance</p>
+                      </div>
+                      <div className="p-4 bg-muted/50 rounded-lg text-center">
+                        <CheckCircle className="h-6 w-6 mx-auto mb-2 text-purple-500" />
+                        <div className="text-2xl font-bold">
+                          {oeeChartData.length > 0 ? oeeChartData[oeeChartData.length - 1].quality.toFixed(1) : 0}%
+                        </div>
+                        <p className="text-xs text-muted-foreground">Quality</p>
+                      </div>
+                    </div>
+                    
+                    {/* OEE Trend Chart */}
+                    <div className="h-[250px]">
+                      <p className="text-sm font-medium mb-2">Xu hướng OEE (30 ngày gần nhất)</p>
+                      {oeeChartData.length > 0 ? (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={oeeChartData}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="date" tick={{ fontSize: 10 }} />
+                            <YAxis domain={[0, 100]} tick={{ fontSize: 10 }} />
+                            <Tooltip />
+                            <Area type="monotone" dataKey="oee" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.3} name="OEE" />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <div className="h-full flex items-center justify-center text-muted-foreground">
+                          Chưa có dữ liệu OEE
+                        </div>
+                      )}
+                    </div>
+                  </TabsContent>
+                  
+                  {/* Charts Tab */}
+                  <TabsContent value="charts" className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Maintenance History Chart */}
+                      <div>
+                        <p className="text-sm font-medium mb-2">Lịch sử bảo trì theo tháng</p>
+                        <div className="h-[200px]">
+                          {maintenanceChartData.length > 0 ? (
+                            <ResponsiveContainer width="100%" height="100%">
+                              <BarChart data={maintenanceChartData}>
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis dataKey="month" tick={{ fontSize: 10 }} />
+                                <YAxis tick={{ fontSize: 10 }} />
+                                <Tooltip />
+                                <Legend />
+                                <Bar dataKey="preventive" name="Định kỳ" fill="#3b82f6" />
+                                <Bar dataKey="corrective" name="Sửa chữa" fill="#f59e0b" />
+                                <Bar dataKey="predictive" name="Dự đoán" fill="#8b5cf6" />
+                              </BarChart>
+                            </ResponsiveContainer>
+                          ) : (
+                            <div className="h-full flex items-center justify-center text-muted-foreground">
+                              Chưa có dữ liệu bảo trì
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {/* Maintenance Type Distribution */}
+                      <div>
+                        <p className="text-sm font-medium mb-2">Phân bổ loại bảo trì</p>
+                        <div className="h-[200px]">
+                          {maintenanceDistribution.length > 0 ? (
+                            <ResponsiveContainer width="100%" height="100%">
+                              <PieChart>
+                                <Pie
+                                  data={maintenanceDistribution}
+                                  cx="50%"
+                                  cy="50%"
+                                  innerRadius={40}
+                                  outerRadius={70}
+                                  dataKey="value"
+                                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                                >
+                                  {maintenanceDistribution.map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={entry.color} />
+                                  ))}
+                                </Pie>
+                                <Tooltip />
+                              </PieChart>
+                            </ResponsiveContainer>
+                          ) : (
+                            <div className="h-full flex items-center justify-center text-muted-foreground">
+                              Chưa có dữ liệu
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Stats Summary */}
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="p-3 bg-blue-50 dark:bg-blue-950 rounded-lg text-center">
+                        <div className="text-xl font-bold text-blue-600">{workOrders?.length || 0}</div>
+                        <p className="text-xs text-muted-foreground">Tổng số lần bảo trì</p>
+                      </div>
+                      <div className="p-3 bg-green-50 dark:bg-green-950 rounded-lg text-center">
+                        <div className="text-xl font-bold text-green-600">
+                          {workOrders?.filter(w => w.status === "completed").length || 0}
+                        </div>
+                        <p className="text-xs text-muted-foreground">Hoàn thành</p>
+                      </div>
+                      <div className="p-3 bg-yellow-50 dark:bg-yellow-950 rounded-lg text-center">
+                        <div className="text-xl font-bold text-yellow-600">
+                          {workOrders?.filter(w => w.status === "pending" || w.status === "in_progress").length || 0}
+                        </div>
+                        <p className="text-xs text-muted-foreground">Đang chờ</p>
                       </div>
                     </div>
                   </TabsContent>

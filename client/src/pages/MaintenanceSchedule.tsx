@@ -36,6 +36,13 @@ export default function MaintenanceSchedule() {
     onError: (err) => toast.error(err.message),
   });
 
+  const updateWorkOrderMutation = trpc.maintenance.updateWorkOrder.useMutation({
+    onSuccess: () => {
+      refetchWorkOrders();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
   // Convert work orders to Gantt tasks
   const ganttTasks: GanttTask[] = useMemo(() => {
     if (!workOrders) return [];
@@ -89,6 +96,13 @@ export default function MaintenanceSchedule() {
 
   const handleTaskClick = (task: GanttTask) => {
     setSelectedTask(task);
+  };
+
+  const handleTaskUpdate = (taskId: number, newStartDate: Date, newEndDate: Date) => {
+    updateWorkOrderMutation.mutate({
+      id: taskId,
+      scheduledStartAt: newStartDate.toISOString().split('T')[0],
+    });
   };
 
   return (
@@ -282,6 +296,8 @@ export default function MaintenanceSchedule() {
               tasks={filteredTasks} 
               viewMode={viewMode}
               onTaskClick={handleTaskClick}
+              onTaskUpdate={handleTaskUpdate}
+              enableDragDrop={true}
             />
           </CardContent>
         </Card>
