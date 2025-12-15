@@ -156,7 +156,9 @@ import {
   logLoginEvent,
   getLoginHistory,
   getLoginStats,
+  getDb,
 } from "./db";
+import { sql } from "drizzle-orm";
 import { invokeLLM } from "./_core/llm";
 import { notifyOwner } from "./_core/notification";
 import { generateCsvContent, generateHtmlReport, ExportData } from "./exportUtils";
@@ -2443,6 +2445,32 @@ export const appRouter = router({
           throw new TRPCError({ code: 'BAD_REQUEST', message: result.error });
         }
         return { success: true, message: 'Password changed successfully' };
+      }),
+
+    // Update profile (for logged in user)
+    updateProfile: protectedProcedure
+      .input(z.object({
+        name: z.string().min(1).max(100),
+        email: z.string().email(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const db = await getDb();
+        if (!db) {
+          throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+        }
+        // Update in local_users table
+        await db.execute(sql`
+          UPDATE local_users 
+          SET name = ${input.name}, email = ${input.email}, updatedAt = NOW()
+          WHERE id = ${ctx.user.id}
+        `);
+        // Also update in users table if exists
+        await db.execute(sql`
+          UPDATE users 
+          SET name = ${input.name}, email = ${input.email}, updatedAt = NOW()
+          WHERE id = ${ctx.user.id}
+        `);
+        return { success: true, message: 'Profile updated successfully' };
       }),
 
     // Admin reset password for user

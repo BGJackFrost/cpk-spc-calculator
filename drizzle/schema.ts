@@ -677,6 +677,7 @@ export const auditLogs = mysqlTable("audit_logs", {
   description: text("description"),
   ipAddress: varchar("ipAddress", { length: 45 }),
   userAgent: text("userAgent"),
+  authType: mysqlEnum("authType", ["local", "online"]).default("online"), // Loại xác thực: local hoặc online
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 

@@ -33,6 +33,7 @@ import FixtureManagement from "./pages/FixtureManagement";
 import MultiAnalysis from "./pages/MultiAnalysis";
 import ProductionLineComparison from "./pages/ProductionLineComparison";
 import About from "./pages/About";
+import Profile from "./pages/Profile";
 import RulesManagement from "./pages/RulesManagement";
 import SpcPlanVisualization from "./pages/SpcPlanVisualization";
 import SpcVisualizationDetail from "./pages/SpcVisualizationDetail";
@@ -92,6 +93,7 @@ function Router() {
       <Route path="/multi-analysis" component={MultiAnalysis} />
       <Route path="/line-comparison" component={ProductionLineComparison} />
       <Route path="/about" component={About} />
+      <Route path="/profile" component={Profile} />
       <Route path="/rules" component={RulesManagement} />
       <Route path="/webhooks" component={WebhookManagement} />
       <Route path="/report-templates" component={ReportTemplateManagement} />

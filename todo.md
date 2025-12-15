@@ -1272,3 +1272,20 @@
 - [x] Tách License card ra khỏi nhóm Quick Actions - thành nhóm "System Status" riêng
 - [x] Tách Webhook card ra khỏi nhóm - nằm cạnh License trong 2 cột
 - [x] Tạo layout cân xứng cho Dashboard - Quick Actions full width, System Status 2 cột
+
+## Phase 54 - Phân quyền, Profile và Audit Logs
+
+### Phân quyền chi tiết
+- [x] Sử dụng cơ chế adminOnly đã có sẵn trong DashboardLayout
+- [x] Giới hạn operator chỉ xem được phân tích, không thay đổi cấu hình
+- [x] Ẩn menu Production, Master Data, Settings với user role "user"
+
+### Trang Profile
+- [x] Tạo trang /profile cho user - với 2 tab: Thông tin cá nhân và Bảo mật
+- [x] Cho phép user tự đổi mật khẩu - sử dụng API localAuth.changePassword
+- [x] Cho phép user cập nhật thông tin cá nhân (tên, email) - API localAuth.updateProfile
+
+### Nâng cấp Audit Logs
+- [x] Thêm cột authType vào bảng audit_logs - phân biệt local và online
+- [x] Cập nhật UI hiển thị cột Loại (Local/Online) trong bảng nhật ký
+- [x] Đã có sẵn hàm logLoginEvent ghi lịch sử đăng nhập với authType

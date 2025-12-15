@@ -25,6 +25,7 @@ interface AuditLog {
   description: string | null;
   ipAddress: string | null;
   userAgent: string | null;
+  authType: "local" | "online" | null;
   createdAt: Date;
 }
 
@@ -202,6 +203,7 @@ export default function AuditLogs() {
                     <TableRow>
                       <TableHead className="w-[180px]">Thời gian</TableHead>
                       <TableHead>Người dùng</TableHead>
+                      <TableHead>Loại</TableHead>
                       <TableHead>Hành động</TableHead>
                       <TableHead>Module</TableHead>
                       <TableHead>Mô tả</TableHead>
@@ -215,6 +217,11 @@ export default function AuditLogs() {
                           {format(new Date(log.createdAt), "dd/MM/yyyy HH:mm:ss", { locale: vi })}
                         </TableCell>
                         <TableCell>{log.userName || `User #${log.userId}`}</TableCell>
+                        <TableCell>
+                          <Badge variant={log.authType === "local" ? "secondary" : "outline"} className="text-xs">
+                            {log.authType === "local" ? "Local" : "Online"}
+                          </Badge>
+                        </TableCell>
                         <TableCell>
                           <Badge className={actionColors[log.action]}>
                             {actionLabels[log.action]}
