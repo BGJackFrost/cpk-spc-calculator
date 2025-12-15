@@ -1513,3 +1513,21 @@
 - [ ] Thêm shiftId vào SPC analysis
 - [ ] Tạo trang so sánh CPK theo ca
 - [ ] Biểu đồ so sánh CPK giữa các ca
+
+
+## Phase 65: Dashboard Validation Rules, Menu Chất lượng
+
+### Tích hợp Validation Rules vào dashboard
+- [x] Thêm card hiển thị số lượng rules đang hoạt động
+- [x] Card có link đến trang /validation-rules
+- [x] Thêm vào dropdown tùy chỉnh widget
+
+### Sửa tên menu nhóm Chất lượng
+- [x] Rà soát các menu trong nhóm Quality
+- [x] Đổi tên cho phù hợp với chức năng thực tế:
+  - errorManagement → defectTracking (Theo dõi Lỗi)
+  - paretoChart → defectAnalysis (Phân tích Lỗi Pareto)
+  - rulesManagement → spcRulesConfig (Cấu hình SPC Rules)
+  - validationRules → customValidation (Kiểm tra Tùy chỉnh)
+  - cpkComparison → cpkBenchmark (So sánh CPK)
+  - shiftCpkComparison → shiftAnalysis (Phân tích theo Ca)

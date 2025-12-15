@@ -18,7 +18,8 @@ import {
   LayoutGrid,
   Eye,
   EyeOff,
-  HelpCircle
+  HelpCircle,
+  ShieldCheck
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -41,6 +42,7 @@ export default function Dashboard() {
   const { data: history } = trpc.spc.history.useQuery({ limit: 10 });
   const { data: dashboardConfig, refetch: refetchConfig } = trpc.dashboardConfig.get.useQuery();
   const { data: defaultTemplate } = trpc.reportTemplate.getDefault.useQuery();
+  const { data: validationRules } = trpc.validationRule.list.useQuery();
   
   // Guided Tour
   const { run, stepIndex, steps, handleCallback, startTour, isCompleted } = useGuidedTour("dashboard", dashboardTourSteps);
@@ -65,6 +67,9 @@ export default function Dashboard() {
 
   const recentAlerts = history?.filter(h => h.alertTriggered === 1) || [];
   const totalAnalyses = history?.length || 0;
+  
+  // Validation Rules stats
+  const activeValidationRules = validationRules?.filter(r => r.isActive === 1) || [];
 
   const stats = [
     {
@@ -94,6 +99,14 @@ export default function Dashboard() {
       icon: recentAlerts.length === 0 ? CheckCircle2 : AlertTriangle,
       description: t.dashboard.productionSystem,
       color: recentAlerts.length === 0 ? "text-chart-3" : "text-warning",
+    },
+    {
+      title: "Validation Rules",
+      value: activeValidationRules.length,
+      icon: ShieldCheck,
+      description: "Quy tắc kiểm tra đang hoạt động",
+      color: "text-chart-4",
+      href: "/validation-rules",
     },
   ];
 
@@ -198,6 +211,12 @@ export default function Dashboard() {
                 >
                   {t.dashboard.quickActions}
                 </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem
+                  checked={isWidgetVisible("validation_rules")}
+                  onCheckedChange={() => handleToggleWidget("validation_rules")}
+                >
+                  Validation Rules
+                </DropdownMenuCheckboxItem>
               </DropdownMenuContent>
             </DropdownMenu>
             {isCompleted && (
@@ -211,12 +230,12 @@ export default function Dashboard() {
         {/* Stats Grid */}
         <div data-tour="dashboard-stats" className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {stats.map((stat, index) => {
-            const widgetKeys = ["mapping_count", "recent_analysis", "cpk_alerts", "system_status"];
+            const widgetKeys = ["mapping_count", "recent_analysis", "cpk_alerts", "system_status", "validation_rules"];
             const widgetKey = widgetKeys[index];
             if (!isWidgetVisible(widgetKey)) return null;
             const IconComponent = stat.icon;
-            return (
-              <Card key={index} className="bg-card rounded-xl border border-border/50 shadow-md hover:shadow-lg transition-all duration-300">
+            const cardContent = (
+              <Card className="bg-card rounded-xl border border-border/50 shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer">
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
                     {stat.title}
@@ -230,6 +249,13 @@ export default function Dashboard() {
                   </p>
                 </CardContent>
               </Card>
+            );
+            return (stat as any).href ? (
+              <Link key={index} href={(stat as any).href}>
+                {cardContent}
+              </Link>
+            ) : (
+              <div key={index}>{cardContent}</div>
             );
           })}
         </div>

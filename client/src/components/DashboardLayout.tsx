@@ -89,12 +89,12 @@ const menuGroups: MenuGroup[] = [
     labelKey: "menuGroup.quality",
     icon: ClipboardList,
     items: [
-      { icon: AlertTriangle, labelKey: "nav.errorManagement", path: "/defects" },
-      { icon: BarChart3, labelKey: "nav.paretoChart", path: "/defect-statistics" },
-      { icon: BookOpen, labelKey: "nav.rulesManagement", path: "/rules" },
-      { icon: ShieldCheck, labelKey: "nav.validationRules", path: "/validation-rules", adminOnly: true },
-      { icon: BarChart3, labelKey: "nav.cpkComparison", path: "/cpk-comparison" },
-      { icon: Clock, labelKey: "nav.shiftCpkComparison", path: "/shift-cpk-comparison" },
+      { icon: AlertTriangle, labelKey: "nav.defectTracking", path: "/defects" },
+      { icon: BarChart3, labelKey: "nav.defectAnalysis", path: "/defect-statistics" },
+      { icon: BookOpen, labelKey: "nav.spcRulesConfig", path: "/rules" },
+      { icon: ShieldCheck, labelKey: "nav.customValidation", path: "/validation-rules", adminOnly: true },
+      { icon: BarChart3, labelKey: "nav.cpkBenchmark", path: "/cpk-comparison" },
+      { icon: Clock, labelKey: "nav.shiftAnalysis", path: "/shift-cpk-comparison" },
     ]
   },
   {
@@ -189,6 +189,12 @@ const fallbackLabelsVi: Record<string, string> = {
   "nav.measurementStandardsDashboard": "Dashboard Tiêu chuẩn",
   "nav.quickSpcPlan": "Tạo nhanh SPC Plan",
   "nav.shiftCpkComparison": "So sánh CPK theo Ca",
+  "nav.defectTracking": "Theo dõi Lỗi",
+  "nav.defectAnalysis": "Phân tích Lỗi (Pareto)",
+  "nav.spcRulesConfig": "Cấu hình SPC Rules",
+  "nav.customValidation": "Kiểm tra Tùy chỉnh",
+  "nav.cpkBenchmark": "So sánh CPK",
+  "nav.shiftAnalysis": "Phân tích theo Ca",
 };
 
 const fallbackLabelsEn: Record<string, string> = {
@@ -222,6 +228,12 @@ const fallbackLabelsEn: Record<string, string> = {
   "nav.measurementStandardsDashboard": "Standards Dashboard",
   "nav.quickSpcPlan": "Quick SPC Plan",
   "nav.shiftCpkComparison": "Shift CPK Comparison",
+  "nav.defectTracking": "Defect Tracking",
+  "nav.defectAnalysis": "Defect Analysis (Pareto)",
+  "nav.spcRulesConfig": "SPC Rules Config",
+  "nav.customValidation": "Custom Validation",
+  "nav.cpkBenchmark": "CPK Benchmark",
+  "nav.shiftAnalysis": "Shift Analysis",
 };
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
