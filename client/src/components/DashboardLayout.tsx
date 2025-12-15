@@ -546,6 +546,19 @@ function DashboardLayoutContent({
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            
+            {/* Nút Đăng xuất riêng biệt */}
+            <Button
+              variant="ghost"
+              className="w-full justify-start gap-2 text-destructive hover:text-destructive hover:bg-destructive/10 mt-2"
+              onClick={() => {
+                logout();
+                setLocation("/");
+              }}
+            >
+              <LogOut className="h-4 w-4" />
+              {!isCollapsed && translate("common.logout")}
+            </Button>
           </SidebarFooter>
         </Sidebar>
 

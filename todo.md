@@ -1257,3 +1257,18 @@
 - [x] Kiểm tra tài khoản admin trong database - không có user admin
 - [x] Tạo/cập nhật tài khoản admin mặc định với password đúng - đã tạo admin/admin123
 - [x] Test đăng nhập thành công - đăng nhập với admin/admin123 thành công, redirect về dashboard
+
+## Phase 53 - Cải tiến User và Dashboard
+
+### Quản lý User
+- [x] Đổi mật khẩu admin sang mật khẩu mạnh hơn - Admin@2024!
+- [x] Tạo tài khoản operator với role "user" - operator / Operator@2024
+- [x] Tạo tài khoản viewer với role "user" - viewer / Viewer@2024
+
+### Thêm nút Đăng xuất
+- [x] Thêm nút Đăng xuất vào sidebar - nút riêng biệt bên dưới user dropdown
+
+### Bố trí lại Dashboard
+- [x] Tách License card ra khỏi nhóm Quick Actions - thành nhóm "System Status" riêng
+- [x] Tách Webhook card ra khỏi nhóm - nằm cạnh License trong 2 cột
+- [x] Tạo layout cân xứng cho Dashboard - Quick Actions full width, System Status 2 cột
