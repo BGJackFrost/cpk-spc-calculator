@@ -57,7 +57,11 @@ export default function QuickSpcPlan() {
   const [, navigate] = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStandardId, setSelectedStandardId] = useState<number | null>(null);
+  const [selectedStandardIds, setSelectedStandardIds] = useState<number[]>([]);
+  const [isBatchMode, setIsBatchMode] = useState(false);
   const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0, success: 0, failed: 0 });
+  const [isCreatingBatch, setIsCreatingBatch] = useState(false);
   
   // Form state for additional options
   const [formData, setFormData] = useState({
@@ -155,6 +159,24 @@ export default function QuickSpcPlan() {
     }
   };
 
+  // Toggle selection for batch mode
+  const toggleStandardSelection = (id: number) => {
+    setSelectedStandardIds(prev => 
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
+  // Select all filtered standards
+  const selectAllFiltered = () => {
+    const filteredIds = filteredStandards.map((s: MeasurementStandard) => s.id);
+    setSelectedStandardIds(filteredIds);
+  };
+
+  // Clear all selections
+  const clearSelection = () => {
+    setSelectedStandardIds([]);
+  };
+
   // Handle create SPC Plan
   const handleCreate = () => {
     if (!selectedStandard || !formData.productionLineId) {
@@ -183,6 +205,72 @@ export default function QuickSpcPlan() {
       enabledCpkRules: selectedStandard.appliedCpkRules || "[]",
       enabledCaRules: selectedStandard.appliedCaRules || "[]",
     });
+  };
+
+  // Handle batch create SPC Plans
+  const handleBatchCreate = async () => {
+    if (selectedStandardIds.length === 0 || !formData.productionLineId) {
+      toast.error("Vui lòng chọn ít nhất một tiêu chuẩn đo và dây chuyền");
+      return;
+    }
+
+    const defaultSampling = samplingConfigs.find((s: any) => s.name.toLowerCase().includes("default")) || samplingConfigs[0];
+    if (!defaultSampling) {
+      toast.error("Chưa có phương pháp lấy mẫu. Vui lòng tạo phương pháp lấy mẫu trước.");
+      return;
+    }
+
+    setIsCreatingBatch(true);
+    setBatchProgress({ current: 0, total: selectedStandardIds.length, success: 0, failed: 0 });
+
+    let successCount = 0;
+    let failedCount = 0;
+
+    for (let i = 0; i < selectedStandardIds.length; i++) {
+      const standardId = selectedStandardIds[i];
+      const standard = standards.find((s: MeasurementStandard) => s.id === standardId);
+      
+      if (!standard) {
+        failedCount++;
+        setBatchProgress(prev => ({ ...prev, current: i + 1, failed: failedCount }));
+        continue;
+      }
+
+      try {
+        await createMutation.mutateAsync({
+          name: `SPC Plan - ${standard.measurementName}`,
+          productionLineId: formData.productionLineId,
+          productId: standard.productId || undefined,
+          workstationId: standard.workstationId || undefined,
+          machineId: standard.machineId || undefined,
+          samplingConfigId: defaultSampling.id,
+          isRecurring: formData.isRecurring,
+          notifyOnViolation: formData.notifyOnViolation,
+          notifyEmail: formData.notifyEmail || undefined,
+          enabledSpcRules: standard.appliedSpcRules || "[]",
+          enabledCpkRules: standard.appliedCpkRules || "[]",
+          enabledCaRules: standard.appliedCaRules || "[]",
+        });
+        successCount++;
+      } catch (error) {
+        failedCount++;
+      }
+      
+      setBatchProgress({ current: i + 1, total: selectedStandardIds.length, success: successCount, failed: failedCount });
+    }
+
+    setIsCreatingBatch(false);
+    
+    if (successCount > 0) {
+      toast.success(`Đã tạo thành công ${successCount} kế hoạch SPC`);
+    }
+    if (failedCount > 0) {
+      toast.error(`${failedCount} kế hoạch tạo thất bại`);
+    }
+    
+    if (successCount > 0) {
+      navigate("/spc-plans");
+    }
   };
 
   if (user?.role !== "admin") {
@@ -244,24 +332,57 @@ export default function QuickSpcPlan() {
         {step === 1 && (
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Target className="h-5 w-5" />
-                Bước 1: Chọn Tiêu chuẩn Đo lường
-              </CardTitle>
-              <CardDescription>
-                Chọn một tiêu chuẩn đo lường đã được cấu hình sẵn. Tất cả thông tin sẽ được tự động áp dụng.
-              </CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Target className="h-5 w-5" />
+                    Bước 1: Chọn Tiêu chuẩn Đo lường
+                  </CardTitle>
+                  <CardDescription>
+                    {isBatchMode 
+                      ? `Chọn nhiều tiêu chuẩn để tạo SPC Plan hàng loạt (đã chọn ${selectedStandardIds.length})`
+                      : "Chọn một tiêu chuẩn đo lường đã được cấu hình sẵn"}
+                  </CardDescription>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="batch-mode" className="text-sm">Tạo hàng loạt</Label>
+                  <Switch
+                    id="batch-mode"
+                    checked={isBatchMode}
+                    onCheckedChange={(checked) => {
+                      setIsBatchMode(checked);
+                      if (!checked) {
+                        setSelectedStandardIds([]);
+                      } else {
+                        setSelectedStandardId(null);
+                      }
+                    }}
+                  />
+                </div>
+              </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Search */}
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Tìm kiếm theo tên, sản phẩm, công trạm..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9"
-                />
+              {/* Search and batch actions */}
+              <div className="flex gap-4">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Tìm kiếm theo tên, sản phẩm, công trạm..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+                {isBatchMode && (
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={selectAllFiltered}>
+                      Chọn tất cả ({filteredStandards.length})
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={clearSelection}>
+                      Bỏ chọn
+                    </Button>
+                  </div>
+                )}
               </div>
 
               {/* Standards List */}
@@ -283,9 +404,11 @@ export default function QuickSpcPlan() {
                     <Card
                       key={std.id}
                       className={`cursor-pointer transition-all hover:shadow-md ${
-                        selectedStandardId === std.id ? "ring-2 ring-primary" : ""
+                        isBatchMode 
+                          ? selectedStandardIds.includes(std.id) ? "ring-2 ring-primary bg-primary/5" : ""
+                          : selectedStandardId === std.id ? "ring-2 ring-primary" : ""
                       }`}
-                      onClick={() => setSelectedStandardId(std.id)}
+                      onClick={() => isBatchMode ? toggleStandardSelection(std.id) : setSelectedStandardId(std.id)}
                     >
                       <CardContent className="p-4">
                         <div className="flex items-start justify-between mb-2">
@@ -293,7 +416,7 @@ export default function QuickSpcPlan() {
                             <Target className="h-4 w-4 text-primary" />
                             <span className="font-medium">{std.measurementName}</span>
                           </div>
-                          {selectedStandardId === std.id && (
+                          {(isBatchMode ? selectedStandardIds.includes(std.id) : selectedStandardId === std.id) && (
                             <CheckCircle className="h-5 w-5 text-primary" />
                           )}
                         </div>
@@ -334,10 +457,10 @@ export default function QuickSpcPlan() {
 
               <div className="flex justify-end">
                 <Button
-                  onClick={() => setStep(2)}
-                  disabled={!selectedStandardId}
+                  onClick={() => setStep(isBatchMode ? 3 : 2)}
+                  disabled={isBatchMode ? selectedStandardIds.length === 0 : !selectedStandardId}
                 >
-                  Tiếp tục
+                  {isBatchMode ? `Tiếp tục với ${selectedStandardIds.length} tiêu chuẩn` : "Tiếp tục"}
                   <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>
               </div>
@@ -442,7 +565,7 @@ export default function QuickSpcPlan() {
         )}
 
         {/* Step 3: Final Configuration */}
-        {step === 3 && selectedStandard && (
+        {step === 3 && (selectedStandard || (isBatchMode && selectedStandardIds.length > 0)) && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -460,7 +583,7 @@ export default function QuickSpcPlan() {
                   <Input
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder={`SPC Plan - ${selectedStandard.measurementName}`}
+                    placeholder={isBatchMode ? "SPC Plan hàng loạt" : `SPC Plan - ${selectedStandard?.measurementName || ''}`}
                   />
                 </div>
                 <div className="space-y-2">
@@ -526,24 +649,52 @@ export default function QuickSpcPlan() {
               {/* Summary */}
               <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
                 <h4 className="font-medium text-green-800 dark:text-green-200 mb-2">Tóm tắt kế hoạch SPC</h4>
-                <ul className="text-sm text-green-700 dark:text-green-300 space-y-1">
-                  <li>• Tiêu chuẩn: {selectedStandard.measurementName}</li>
-                  <li>• Sản phẩm: {getProductName(selectedStandard.productId)}</li>
-                  <li>• Công trạm: {getWorkstationName(selectedStandard.workstationId)}</li>
-                  <li>• Dây chuyền: {productionLines.find((l: any) => l.id === formData.productionLineId)?.name || "Chưa chọn"}</li>
-                  <li>• SPC Rules: {getRulesCount(selectedStandard.appliedSpcRules)} rules</li>
-                </ul>
+                {isBatchMode ? (
+                  <ul className="text-sm text-green-700 dark:text-green-300 space-y-1">
+                    <li>• Số lượng tiêu chuẩn: {selectedStandardIds.length}</li>
+                    <li>• Dây chuyền: {productionLines.find((l: any) => l.id === formData.productionLineId)?.name || "Chưa chọn"}</li>
+                    <li>• Sẽ tạo {selectedStandardIds.length} kế hoạch SPC riêng biệt</li>
+                  </ul>
+                ) : selectedStandard && (
+                  <ul className="text-sm text-green-700 dark:text-green-300 space-y-1">
+                    <li>• Tiêu chuẩn: {selectedStandard.measurementName}</li>
+                    <li>• Sản phẩm: {getProductName(selectedStandard.productId)}</li>
+                    <li>• Công trạm: {getWorkstationName(selectedStandard.workstationId)}</li>
+                    <li>• Dây chuyền: {productionLines.find((l: any) => l.id === formData.productionLineId)?.name || "Chưa chọn"}</li>
+                    <li>• SPC Rules: {getRulesCount(selectedStandard.appliedSpcRules)} rules</li>
+                  </ul>
+                )}
               </div>
 
+              {/* Batch progress */}
+              {isCreatingBatch && (
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span>Đang tạo kế hoạch SPC...</span>
+                    <span>{batchProgress.current}/{batchProgress.total}</span>
+                  </div>
+                  <div className="w-full bg-muted rounded-full h-2">
+                    <div 
+                      className="bg-primary h-2 rounded-full transition-all" 
+                      style={{ width: `${(batchProgress.current / batchProgress.total) * 100}%` }}
+                    />
+                  </div>
+                  <div className="flex gap-4 text-sm">
+                    <span className="text-green-600">Thành công: {batchProgress.success}</span>
+                    <span className="text-red-600">Thất bại: {batchProgress.failed}</span>
+                  </div>
+                </div>
+              )}
+
               <div className="flex justify-between">
-                <Button variant="outline" onClick={() => setStep(2)}>
+                <Button variant="outline" onClick={() => setStep(isBatchMode ? 1 : 2)} disabled={isCreatingBatch}>
                   Quay lại
                 </Button>
                 <Button
-                  onClick={handleCreate}
-                  disabled={!formData.productionLineId || createMutation.isPending}
+                  onClick={isBatchMode ? handleBatchCreate : handleCreate}
+                  disabled={!formData.productionLineId || createMutation.isPending || isCreatingBatch}
                 >
-                  {createMutation.isPending ? (
+                  {(createMutation.isPending || isCreatingBatch) ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                       Đang tạo...
@@ -551,7 +702,7 @@ export default function QuickSpcPlan() {
                   ) : (
                     <>
                       <CheckCircle className="h-4 w-4 mr-2" />
-                      Tạo kế hoạch SPC
+                      {isBatchMode ? `Tạo ${selectedStandardIds.length} kế hoạch SPC` : "Tạo kế hoạch SPC"}
                     </>
                   )}
                 </Button>

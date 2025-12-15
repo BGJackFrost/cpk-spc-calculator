@@ -14,7 +14,8 @@ import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { 
   Loader2, Plus, Pencil, Trash2, Search, Filter, Settings2, 
-  Target, Ruler, Clock, AlertTriangle, CheckCircle2, BarChart3
+  Target, Ruler, Clock, AlertTriangle, CheckCircle2, BarChart3,
+  Copy, FileUp, Zap
 } from "lucide-react";
 
 interface MeasurementStandard {
@@ -66,12 +67,61 @@ interface SpcRule {
   category: string;
 }
 
+// Đơn vị thời gian cho tần suất lấy mẫu
+const TIME_UNITS = [
+  { value: "second", label: "Giây", multiplier: 1 },
+  { value: "minute", label: "Phút", multiplier: 60 },
+  { value: "hour", label: "Giờ", multiplier: 3600 },
+  { value: "day", label: "Ngày", multiplier: 86400 },
+  { value: "week", label: "Tuần", multiplier: 604800 },
+  { value: "month", label: "Tháng", multiplier: 2592000 },
+  { value: "year", label: "Năm", multiplier: 31536000 },
+];
+
+// Phương pháp lấy mẫu với chú thích chi tiết
 const SAMPLING_METHODS = [
-  { value: "random", label: "Lấy mẫu ngẫu nhiên" },
-  { value: "systematic", label: "Lấy mẫu hệ thống" },
-  { value: "stratified", label: "Lấy mẫu phân tầng" },
-  { value: "cluster", label: "Lấy mẫu cụm" },
-  { value: "consecutive", label: "Lấy mẫu liên tiếp" },
+  { 
+    value: "random", 
+    label: "Lấy mẫu ngẫu nhiên",
+    description: "Mỗi mẫu được chọn ngẫu nhiên từ tổng thể, mỗi đơn vị có cơ hội được chọn như nhau. Phù hợp khi tổng thể đồng nhất.",
+    useCase: "Sản xuất hàng loạt, kiểm tra chất lượng ngẫu nhiên"
+  },
+  { 
+    value: "systematic", 
+    label: "Lấy mẫu hệ thống",
+    description: "Lấy mẫu theo khoảng cách cố định (VD: mỗi 10 sản phẩm lấy 1). Đơn giản và dễ thực hiện.",
+    useCase: "Dây chuyền sản xuất liên tục, kiểm tra định kỳ"
+  },
+  { 
+    value: "stratified", 
+    label: "Lấy mẫu phân tầng",
+    description: "Chia tổng thể thành các nhóm (tầng) rồi lấy mẫu từ mỗi nhóm. Đảm bảo đại diện cho tất cả các nhóm.",
+    useCase: "Sản phẩm có nhiều biến thể, nhiều ca sản xuất"
+  },
+  { 
+    value: "cluster", 
+    label: "Lấy mẫu cụm",
+    description: "Chia tổng thể thành các cụm, chọn ngẫu nhiên một số cụm và lấy toàn bộ mẫu trong cụm đó.",
+    useCase: "Kiểm tra theo lô, theo pallet hoặc container"
+  },
+  { 
+    value: "consecutive", 
+    label: "Lấy mẫu liên tiếp",
+    description: "Lấy các mẫu liên tiếp nhau theo thứ tự sản xuất. Phù hợp để phát hiện xu hướng.",
+    useCase: "Theo dõi quy trình, phát hiện biến đổi theo thời gian"
+  },
+  { 
+    value: "acceptance", 
+    label: "Lấy mẫu chấp nhận (AQL)",
+    description: "Lấy mẫu theo tiêu chuẩn AQL để quyết định chấp nhận/từ chối lô hàng.",
+    useCase: "Kiểm tra nghiệm thu, kiểm tra đầu vào"
+  },
+  { 
+    value: "skip_lot", 
+    label: "Lấy mẫu bỏ qua lô",
+    description: "Bỏ qua kiểm tra một số lô khi nhà cung cấp có lịch sử chất lượng tốt.",
+    useCase: "Nhà cung cấp đã được chứng nhận, giảm chi phí kiểm tra"
+  },
 ];
 
 export default function MeasurementStandards() {
@@ -81,6 +131,20 @@ export default function MeasurementStandards() {
   const [filterWorkstationId, setFilterWorkstationId] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedRules, setSelectedRules] = useState<string[]>([]);
+  
+  // Copy dialog state
+  const [isCopyDialogOpen, setIsCopyDialogOpen] = useState(false);
+  const [copyingStandard, setCopyingStandard] = useState<MeasurementStandard | null>(null);
+  const [copyTargetProductId, setCopyTargetProductId] = useState<string>("");
+  const [copyTargetWorkstationId, setCopyTargetWorkstationId] = useState<string>("");
+  const [copyTargetMachineId, setCopyTargetMachineId] = useState<string>("");
+  const [copyNewName, setCopyNewName] = useState<string>("");
+  
+  // Import dialog state
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importPreview, setImportPreview] = useState<any[]>([]);
+  const [isImporting, setIsImporting] = useState(false);
   
   const [formData, setFormData] = useState({
     measurementName: "",
@@ -92,7 +156,8 @@ export default function MeasurementStandards() {
     target: "",
     unit: "",
     sampleSize: "5",
-    sampleFrequency: "60",
+    sampleFrequency: "1",
+    frequencyUnit: "hour",
     samplingMethod: "random",
     cpkWarningThreshold: "133",
     cpkCriticalThreshold: "100",
@@ -150,7 +215,8 @@ export default function MeasurementStandards() {
       target: "",
       unit: "",
       sampleSize: "5",
-      sampleFrequency: "60",
+      sampleFrequency: "1",
+      frequencyUnit: "hour",
       samplingMethod: "random",
       cpkWarningThreshold: "133",
       cpkCriticalThreshold: "100",
@@ -167,8 +233,20 @@ export default function MeasurementStandards() {
     setIsDialogOpen(true);
   };
 
+  // Helper function to parse frequency from seconds to value and unit
+  const parseFrequencyFromSeconds = (seconds: number): { value: string; unit: string } => {
+    if (seconds >= 31536000 && seconds % 31536000 === 0) return { value: (seconds / 31536000).toString(), unit: "year" };
+    if (seconds >= 2592000 && seconds % 2592000 === 0) return { value: (seconds / 2592000).toString(), unit: "month" };
+    if (seconds >= 604800 && seconds % 604800 === 0) return { value: (seconds / 604800).toString(), unit: "week" };
+    if (seconds >= 86400 && seconds % 86400 === 0) return { value: (seconds / 86400).toString(), unit: "day" };
+    if (seconds >= 3600 && seconds % 3600 === 0) return { value: (seconds / 3600).toString(), unit: "hour" };
+    if (seconds >= 60 && seconds % 60 === 0) return { value: (seconds / 60).toString(), unit: "minute" };
+    return { value: seconds.toString(), unit: "second" };
+  };
+
   const openEditDialog = (standard: MeasurementStandard) => {
     setEditingStandard(standard);
+    const freq = parseFrequencyFromSeconds(standard.sampleFrequency);
     setFormData({
       measurementName: standard.measurementName || "",
       productId: standard.productId.toString(),
@@ -179,7 +257,8 @@ export default function MeasurementStandards() {
       target: standard.target ? (standard.target / 10000).toString() : "",
       unit: (standard as any).unit || "",
       sampleSize: standard.sampleSize.toString(),
-      sampleFrequency: standard.sampleFrequency.toString(),
+      sampleFrequency: freq.value,
+      frequencyUnit: freq.unit,
       samplingMethod: standard.samplingMethod || "random",
       cpkWarningThreshold: standard.cpkWarningThreshold?.toString() || "133",
       cpkCriticalThreshold: standard.cpkCriticalThreshold?.toString() || "100",
@@ -236,6 +315,10 @@ export default function MeasurementStandards() {
       return;
     }
 
+    // Calculate frequency in seconds based on unit
+    const timeUnit = TIME_UNITS.find(u => u.value === formData.frequencyUnit);
+    const frequencyInSeconds = (parseInt(formData.sampleFrequency) || 1) * (timeUnit?.multiplier || 3600);
+
     const data = {
       measurementName: formData.measurementName,
       productId: parseInt(formData.productId),
@@ -246,7 +329,7 @@ export default function MeasurementStandards() {
       target: formData.target ? parseFloat(formData.target) : undefined,
       unit: formData.unit || undefined,
       sampleSize: parseInt(formData.sampleSize) || 5,
-      sampleFrequency: parseInt(formData.sampleFrequency) || 60,
+      sampleFrequency: frequencyInSeconds,
       samplingMethod: formData.samplingMethod,
       appliedSpcRules: selectedRules.length > 0 ? JSON.stringify(selectedRules) : undefined,
       appliedCpkRules: selectedCpkRules.length > 0 ? JSON.stringify(selectedCpkRules) : undefined,
@@ -269,6 +352,51 @@ export default function MeasurementStandards() {
     }
   };
 
+  // Copy functions
+  const openCopyDialog = (standard: MeasurementStandard) => {
+    setCopyingStandard(standard);
+    setCopyTargetProductId("");
+    setCopyTargetWorkstationId("");
+    setCopyTargetMachineId("");
+    setCopyNewName(`${standard.measurementName} (Copy)`);
+    setIsCopyDialogOpen(true);
+  };
+
+  const handleCopy = () => {
+    if (!copyingStandard || !copyTargetProductId || !copyTargetWorkstationId || !copyNewName) {
+      toast.error("Vui lòng điền đầy đủ thông tin");
+      return;
+    }
+
+    const data = {
+      measurementName: copyNewName,
+      productId: parseInt(copyTargetProductId),
+      workstationId: parseInt(copyTargetWorkstationId),
+      machineId: copyTargetMachineId ? parseInt(copyTargetMachineId) : undefined,
+      usl: copyingStandard.usl ? copyingStandard.usl / 10000 : 0,
+      lsl: copyingStandard.lsl ? copyingStandard.lsl / 10000 : 0,
+      target: copyingStandard.target ? copyingStandard.target / 10000 : undefined,
+      unit: (copyingStandard as any).unit || undefined,
+      sampleSize: copyingStandard.sampleSize,
+      sampleFrequency: copyingStandard.sampleFrequency,
+      samplingMethod: copyingStandard.samplingMethod || "random",
+      appliedSpcRules: copyingStandard.appliedSpcRules || undefined,
+      appliedCpkRules: (copyingStandard as any).appliedCpkRules || undefined,
+      appliedCaRules: (copyingStandard as any).appliedCaRules || undefined,
+      cpkWarningThreshold: copyingStandard.cpkWarningThreshold || 133,
+      cpkCriticalThreshold: copyingStandard.cpkCriticalThreshold || 100,
+      notes: copyingStandard.notes || undefined,
+    };
+
+    createMutation.mutate(data, {
+      onSuccess: () => {
+        toast.success("Đã sao chép tiêu chuẩn đo thành công");
+        setIsCopyDialogOpen(false);
+        setCopyingStandard(null);
+      }
+    });
+  };
+
   const toggleRule = (ruleCode: string) => {
     setSelectedRules(prev => 
       prev.includes(ruleCode) 
@@ -286,6 +414,194 @@ export default function MeasurementStandards() {
   };
   const getSamplingMethodLabel = (value: string) => 
     SAMPLING_METHODS.find(m => m.value === value)?.label || value;
+
+  // Download Excel template
+  const downloadExcelTemplate = () => {
+    // Create CSV template (can be opened in Excel)
+    const headers = [
+      "Tên tiêu chuẩn",
+      "Mã sản phẩm",
+      "Mã công trạm",
+      "Mã máy (tùy chọn)",
+      "USL",
+      "LSL",
+      "Target (tùy chọn)",
+      "Đơn vị (tùy chọn)",
+      "Kích thước mẫu",
+      "Tần suất (giây)",
+      "Phương pháp lấy mẫu",
+      "Ngưỡng CPK cảnh báo",
+      "Ngưỡng CPK nguy hiểm",
+      "Ghi chú"
+    ];
+    
+    const exampleRow = [
+      "Đo chiều dài sản phẩm A",
+      "SP001",
+      "WS001",
+      "MC001",
+      "10.5",
+      "9.5",
+      "10.0",
+      "mm",
+      "5",
+      "3600",
+      "random",
+      "133",
+      "100",
+      "Ghi chú mẫu"
+    ];
+
+    const instructions = [
+      "# Hướng dẫn:",
+      "# - Mã sản phẩm: Phải khớp với mã sản phẩm trong hệ thống",
+      "# - Mã công trạm: Phải khớp với mã công trạm trong hệ thống",
+      "# - Mã máy: Để trống nếu áp dụng cho tất cả máy",
+      "# - Phương pháp lấy mẫu: random, systematic, stratified, cluster, consecutive, acceptance, skip_lot",
+      "# - Tần suất: Tính bằng giây (VD: 3600 = 1 giờ)",
+      ""
+    ];
+
+    const csvContent = [
+      ...instructions,
+      headers.join(","),
+      exampleRow.join(",")
+    ].join("\n");
+
+    const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "measurement_standards_template.csv";
+    link.click();
+    toast.success("Đã tải mẫu Excel (CSV)");
+  };
+
+  // Handle file import
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    setImportFile(file);
+    
+    // Parse CSV
+    const text = await file.text();
+    const lines = text.split("\n").filter(line => !line.startsWith("#") && line.trim());
+    
+    if (lines.length < 2) {
+      toast.error("File không hợp lệ hoặc không có dữ liệu");
+      return;
+    }
+
+    const headers = lines[0].split(",");
+    const dataRows = lines.slice(1).map(line => {
+      const values = line.split(",");
+      return {
+        measurementName: values[0]?.trim() || "",
+        productCode: values[1]?.trim() || "",
+        workstationCode: values[2]?.trim() || "",
+        machineCode: values[3]?.trim() || "",
+        usl: parseFloat(values[4]) || 0,
+        lsl: parseFloat(values[5]) || 0,
+        target: values[6] ? parseFloat(values[6]) : null,
+        unit: values[7]?.trim() || "",
+        sampleSize: parseInt(values[8]) || 5,
+        sampleFrequency: parseInt(values[9]) || 3600,
+        samplingMethod: values[10]?.trim() || "random",
+        cpkWarningThreshold: parseInt(values[11]) || 133,
+        cpkCriticalThreshold: parseInt(values[12]) || 100,
+        notes: values[13]?.trim() || "",
+        // Validation status
+        valid: true,
+        errors: [] as string[]
+      };
+    });
+
+    // Validate each row
+    dataRows.forEach(row => {
+      row.errors = [];
+      if (!row.measurementName) row.errors.push("Thiếu tên tiêu chuẩn");
+      if (!row.productCode) row.errors.push("Thiếu mã sản phẩm");
+      if (!row.workstationCode) row.errors.push("Thiếu mã công trạm");
+      if (row.usl <= row.lsl) row.errors.push("USL phải lớn hơn LSL");
+      
+      // Check if product exists
+      const product = products?.find((p: Product) => p.code === row.productCode);
+      if (!product) row.errors.push(`Không tìm thấy sản phẩm: ${row.productCode}`);
+      
+      // Check if workstation exists
+      const workstation = workstations?.find((w: Workstation) => w.code === row.workstationCode);
+      if (!workstation) row.errors.push(`Không tìm thấy công trạm: ${row.workstationCode}`);
+      
+      // Check if machine exists (if provided)
+      if (row.machineCode) {
+        const machine = machines?.find((m: Machine) => m.code === row.machineCode);
+        if (!machine) row.errors.push(`Không tìm thấy máy: ${row.machineCode}`);
+      }
+      
+      row.valid = row.errors.length === 0;
+    });
+
+    setImportPreview(dataRows);
+  };
+
+  // Execute import
+  const executeImport = async () => {
+    const validRows = importPreview.filter(row => row.valid);
+    if (validRows.length === 0) {
+      toast.error("Không có dữ liệu hợp lệ để import");
+      return;
+    }
+
+    setIsImporting(true);
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const row of validRows) {
+      try {
+        const product = products?.find((p: Product) => p.code === row.productCode);
+        const workstation = workstations?.find((w: Workstation) => w.code === row.workstationCode);
+        const machine = row.machineCode ? machines?.find((m: Machine) => m.code === row.machineCode) : null;
+
+        if (!product || !workstation) {
+          errorCount++;
+          continue;
+        }
+
+        await createMutation.mutateAsync({
+          measurementName: row.measurementName,
+          productId: product.id,
+          workstationId: workstation.id,
+          machineId: machine?.id,
+          usl: row.usl,
+          lsl: row.lsl,
+          target: row.target || undefined,
+          unit: row.unit || undefined,
+          sampleSize: row.sampleSize,
+          sampleFrequency: row.sampleFrequency,
+          samplingMethod: row.samplingMethod,
+          cpkWarningThreshold: row.cpkWarningThreshold,
+          cpkCriticalThreshold: row.cpkCriticalThreshold,
+          notes: row.notes || undefined,
+        });
+        successCount++;
+      } catch (error) {
+        errorCount++;
+      }
+    }
+
+    setIsImporting(false);
+    setIsImportDialogOpen(false);
+    setImportFile(null);
+    setImportPreview([]);
+    refetch();
+
+    if (successCount > 0) {
+      toast.success(`Đã import thành công ${successCount} tiêu chuẩn`);
+    }
+    if (errorCount > 0) {
+      toast.error(`${errorCount} tiêu chuẩn import thất bại`);
+    }
+  };
 
   // Filter standards
   const filteredStandards = useMemo(() => {
@@ -331,10 +647,20 @@ export default function MeasurementStandards() {
               Quản lý USL/LSL, Target và cấu hình SPC Rules cho từng Sản phẩm - Công trạm - Máy
             </p>
           </div>
-          <Button onClick={openCreateDialog}>
-            <Plus className="mr-2 h-4 w-4" />
-            Thêm tiêu chuẩn
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={downloadExcelTemplate}>
+              <FileUp className="mr-2 h-4 w-4" />
+              Tải mẫu Excel
+            </Button>
+            <Button variant="outline" onClick={() => setIsImportDialogOpen(true)}>
+              <FileUp className="mr-2 h-4 w-4" />
+              Import Excel
+            </Button>
+            <Button onClick={openCreateDialog}>
+              <Plus className="mr-2 h-4 w-4" />
+              Thêm tiêu chuẩn
+            </Button>
+          </div>
         </div>
 
         {/* Stats Cards */}
@@ -478,10 +804,13 @@ export default function MeasurementStandards() {
                           )}
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button variant="ghost" size="icon" onClick={() => openEditDialog(s)}>
+                          <Button variant="ghost" size="icon" onClick={() => openCopyDialog(s)} title="Sao chép">
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => openEditDialog(s)} title="Chỉnh sửa">
                             <Pencil className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" onClick={() => handleDelete(s.id)}>
+                          <Button variant="ghost" size="icon" onClick={() => handleDelete(s.id)} title="Xóa">
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
                         </TableCell>
@@ -637,7 +966,7 @@ export default function MeasurementStandards() {
               </TabsContent>
 
               <TabsContent value="sampling" className="space-y-4 mt-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label className="flex items-center gap-2">
                       <Ruler className="h-4 w-4" />
@@ -655,16 +984,33 @@ export default function MeasurementStandards() {
                   <div className="space-y-2">
                     <Label className="flex items-center gap-2">
                       <Clock className="h-4 w-4" />
-                      Tần suất (giờ)
+                      Tần suất lấy mẫu
                     </Label>
                     <Input
                       type="number"
                       min="1"
-                      max="24"
                       value={formData.sampleFrequency}
                       onChange={(e) => setFormData({ ...formData, sampleFrequency: e.target.value })}
                     />
-                    <p className="text-xs text-muted-foreground">Lấy mẫu mỗi X giờ</p>
+                    <p className="text-xs text-muted-foreground">Lấy mẫu mỗi X {TIME_UNITS.find(u => u.value === formData.frequencyUnit)?.label.toLowerCase()}</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Đơn vị thời gian</Label>
+                    <Select
+                      value={formData.frequencyUnit}
+                      onValueChange={(value) => setFormData({ ...formData, frequencyUnit: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {TIME_UNITS.map((unit) => (
+                          <SelectItem key={unit.value} value={unit.value}>
+                            {unit.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 
@@ -677,15 +1023,37 @@ export default function MeasurementStandards() {
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="max-h-[300px]">
                       {SAMPLING_METHODS.map((method) => (
                         <SelectItem key={method.value} value={method.value}>
-                          {method.label}
+                          <div className="flex flex-col">
+                            <span className="font-medium">{method.label}</span>
+                          </div>
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
+
+                {/* Hiển thị chú thích phương pháp đang chọn */}
+                {formData.samplingMethod && (
+                  <div className="p-4 bg-muted/50 rounded-lg border">
+                    <div className="flex items-start gap-3">
+                      <Settings2 className="h-5 w-5 text-primary mt-0.5" />
+                      <div>
+                        <h4 className="font-medium text-sm">
+                          {SAMPLING_METHODS.find(m => m.value === formData.samplingMethod)?.label}
+                        </h4>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {SAMPLING_METHODS.find(m => m.value === formData.samplingMethod)?.description}
+                        </p>
+                        <p className="text-xs text-primary mt-2">
+                          <strong>Ứng dụng:</strong> {SAMPLING_METHODS.find(m => m.value === formData.samplingMethod)?.useCase}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </TabsContent>
 
               <TabsContent value="rules" className="space-y-4 mt-4">
@@ -856,6 +1224,220 @@ export default function MeasurementStandards() {
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 )}
                 {editingStandard ? "Cập nhật" : "Tạo mới"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Copy Dialog */}
+        <Dialog open={isCopyDialogOpen} onOpenChange={setIsCopyDialogOpen}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Copy className="h-5 w-5" />
+                Sao chép Tiêu chuẩn đo
+              </DialogTitle>
+              <DialogDescription>
+                Sao chép tiêu chuẩn đo sang sản phẩm/công trạm khác
+              </DialogDescription>
+            </DialogHeader>
+
+            {copyingStandard && (
+              <div className="space-y-4">
+                {/* Source info */}
+                <div className="p-4 bg-muted/50 rounded-lg">
+                  <h4 className="font-medium text-sm mb-2">Nguồn sao chép:</h4>
+                  <div className="text-sm space-y-1">
+                    <p><strong>Tên:</strong> {copyingStandard.measurementName}</p>
+                    <p><strong>Sản phẩm:</strong> {getProductName(copyingStandard.productId)}</p>
+                    <p><strong>Công trạm:</strong> {getWorkstationName(copyingStandard.workstationId)}</p>
+                    <p><strong>USL/LSL:</strong> {copyingStandard.usl} / {copyingStandard.lsl}</p>
+                  </div>
+                </div>
+
+                {/* Target selection */}
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Tên tiêu chuẩn mới *</Label>
+                    <Input
+                      value={copyNewName}
+                      onChange={(e) => setCopyNewName(e.target.value)}
+                      placeholder="Nhập tên tiêu chuẩn mới"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Sản phẩm đích *</Label>
+                    <Select value={copyTargetProductId} onValueChange={setCopyTargetProductId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Chọn sản phẩm" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {products?.map((p: Product) => (
+                          <SelectItem key={p.id} value={p.id.toString()}>
+                            {p.code} - {p.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Công trạm đích *</Label>
+                    <Select value={copyTargetWorkstationId} onValueChange={setCopyTargetWorkstationId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Chọn công trạm" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {workstations?.map((w: Workstation) => (
+                          <SelectItem key={w.id} value={w.id.toString()}>
+                            {w.code} - {w.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Máy (tùy chọn)</Label>
+                    <Select value={copyTargetMachineId || "all"} onValueChange={(v) => setCopyTargetMachineId(v === "all" ? "" : v)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Tất cả máy" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tất cả máy</SelectItem>
+                        {machines?.map((m: Machine) => (
+                          <SelectItem key={m.id} value={m.id.toString()}>
+                            {m.code} - {m.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <p className="text-xs text-muted-foreground">
+                  Tất cả các thông số khác (USL/LSL, Target, Sampling, Rules) sẽ được sao chép nguyên vẹn.
+                </p>
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsCopyDialogOpen(false)}>
+                Hủy
+              </Button>
+              <Button onClick={handleCopy} disabled={createMutation.isPending}>
+                {createMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Sao chép
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Import Dialog */}
+        <Dialog open={isImportDialogOpen} onOpenChange={(open) => {
+          setIsImportDialogOpen(open);
+          if (!open) {
+            setImportFile(null);
+            setImportPreview([]);
+          }
+        }}>
+          <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <FileUp className="h-5 w-5" />
+                Import Tiêu chuẩn đo từ Excel
+              </DialogTitle>
+              <DialogDescription>
+                Tải lên file CSV/Excel để import hàng loạt tiêu chuẩn đo
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              {/* File upload */}
+              <div className="space-y-2">
+                <Label>Chọn file CSV</Label>
+                <Input
+                  type="file"
+                  accept=".csv,.txt"
+                  onChange={handleFileSelect}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Tải mẫu Excel trước để biết định dạng cần thiết
+                </p>
+              </div>
+
+              {/* Preview */}
+              {importPreview.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label>Xem trước dữ liệu ({importPreview.length} dòng)</Label>
+                    <div className="flex gap-2 text-sm">
+                      <Badge variant="default" className="bg-green-600">
+                        {importPreview.filter(r => r.valid).length} hợp lệ
+                      </Badge>
+                      <Badge variant="destructive">
+                        {importPreview.filter(r => !r.valid).length} lỗi
+                      </Badge>
+                    </div>
+                  </div>
+                  <div className="border rounded-lg max-h-[300px] overflow-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-[50px]">TT</TableHead>
+                          <TableHead>Tên tiêu chuẩn</TableHead>
+                          <TableHead>Sản phẩm</TableHead>
+                          <TableHead>Công trạm</TableHead>
+                          <TableHead>USL/LSL</TableHead>
+                          <TableHead>Trạng thái</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {importPreview.map((row, idx) => (
+                          <TableRow key={idx} className={!row.valid ? "bg-destructive/10" : ""}>
+                            <TableCell>{idx + 1}</TableCell>
+                            <TableCell className="font-medium">{row.measurementName}</TableCell>
+                            <TableCell>{row.productCode}</TableCell>
+                            <TableCell>{row.workstationCode}</TableCell>
+                            <TableCell>{row.usl} / {row.lsl}</TableCell>
+                            <TableCell>
+                              {row.valid ? (
+                                <Badge variant="default" className="bg-green-600">
+                                  <CheckCircle2 className="h-3 w-3 mr-1" />
+                                  OK
+                                </Badge>
+                              ) : (
+                                <div className="space-y-1">
+                                  <Badge variant="destructive">
+                                    <AlertTriangle className="h-3 w-3 mr-1" />
+                                    Lỗi
+                                  </Badge>
+                                  <div className="text-xs text-destructive">
+                                    {row.errors.join(", ")}
+                                  </div>
+                                </div>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsImportDialogOpen(false)}>
+                Hủy
+              </Button>
+              <Button 
+                onClick={executeImport} 
+                disabled={isImporting || importPreview.filter(r => r.valid).length === 0}
+              >
+                {isImporting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Import {importPreview.filter(r => r.valid).length} tiêu chuẩn
               </Button>
             </DialogFooter>
           </DialogContent>

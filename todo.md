@@ -1404,3 +1404,29 @@
 - [x] Thêm tab CPK/CA để cấu hình ngưỡng và rules
 - [x] Cập nhật API create/update với các trường mới
 - [ ] Hiển thị đầy đủ thông tin trong danh sách
+
+
+## Phase 61: Cải thiện lấy mẫu, Template, Import Excel, Tạo SPC Plan hàng loạt
+
+### Cải thiện mục lấy mẫu
+- [x] Thêm nhiều đơn vị thời gian cho tần suất lấy mẫu (năm, tháng, tuần, ngày, giờ, phút, giây)
+- [x] Thêm chú thích chi tiết cho từng phương pháp lấy mẫu (description + useCase)
+- [x] Thêm 2 phương pháp mới: AQL và Skip-lot
+- [x] Cập nhật UI form Tiêu chuẩn đo với đơn vị thời gian và hiển thị chú thích
+
+### Template Tiêu chuẩn đo
+- [x] Tạo chức năng sao chép tiêu chuẩn đo (nút Copy trong bảng)
+- [x] Cho phép chọn sản phẩm/công trạm/máy đích để sao chép
+- [x] Giữ nguyên các thông số và rules khi sao chép
+
+### Import Tiêu chuẩn đo từ Excel
+- [x] Tạo template CSV mẫu để download (với hướng dẫn chi tiết)
+- [x] Tạo chức năng upload và parse file CSV
+- [x] Validate dữ liệu trước khi import (kiểm tra sản phẩm, công trạm, máy)
+- [x] Hiển thị preview và xác nhận trước khi lưu
+
+### Tạo SPC Plan hàng loạt
+- [x] Cho phép chọn nhiều Tiêu chuẩn đo cùng lúc (toggle batch mode)
+- [x] Tạo wizard tạo SPC Plan hàng loạt (3 bước)
+- [x] Hiển thị progress khi tạo nhiều kế hoạch
+- [x] Báo cáo kết quả tạo hàng loạt (success/failed)
