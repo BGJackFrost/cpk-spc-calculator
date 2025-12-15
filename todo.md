@@ -1902,3 +1902,17 @@
 - [x] Xuất CSV báo cáo
 - [x] Thêm API getHistory vào machineStatus router
 - [x] Thêm menu Báo cáo Trạng thái vào sidebar
+
+
+## Phase 77: Kế hoạch Nâng cấp MMS và SPC/CPK Chuyên nghiệp
+
+### Phân tích hệ thống hiện tại
+- [x] Tổng hợp các module đã triển khai (67 bảng, 69 trang, 5394 dòng router)
+- [x] Đánh giá mức độ hoàn thiện từng module (8 nhóm chức năng)
+- [x] Xác định gaps và cơ hội cải tiến (OEE, Maintenance, Spare Parts, Predictive)
+
+### Lập kế hoạch nâng cấp
+- [x] Thiết kế kiến trúc MMS chuyên nghiệp (4 module mới)
+- [x] Roadmap phát triển theo giai đoạn (Phase A-D, 14-22 tuần)
+- [x] Ước tính nguồn lực và timeline (5 vai trò, 3.5-5.5 tháng)
+- [x] Tạo tài liệu kế hoạch chi tiết (MMS_SPC_UPGRADE_PLAN.md)
