@@ -197,6 +197,20 @@
       "when": 1765819199401,
       "tag": "0027_foamy_jack_flag",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "5",
+      "when": 1765822690535,
+      "tag": "0028_dark_red_skull",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "5",
+      "when": 1765822887508,
+      "tag": "0029_greedy_steve_rogers",
+      "breakpoints": true
     }
   ]
 }

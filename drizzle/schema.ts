@@ -673,7 +673,7 @@ export const auditLogs = mysqlTable("audit_logs", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
   userName: varchar("userName", { length: 255 }),
-  action: mysqlEnum("action", ["create", "update", "delete", "login", "logout", "export", "analyze"]).notNull(),
+  action: mysqlEnum("action", ["create", "update", "delete", "login", "logout", "export", "analyze", "import", "backup", "restore", "config_change", "permission_change", "license_activate", "license_revoke", "api_access"]).notNull(),
   module: varchar("module", { length: 100 }).notNull(), // product, mapping, spc, etc.
   tableName: varchar("tableName", { length: 100 }),
   recordId: int("recordId"),
@@ -1355,3 +1355,71 @@ export const validationRuleLogs = mysqlTable("validation_rule_logs", {
 
 export type ValidationRuleLog = typeof validationRuleLogs.$inferSelect;
 export type InsertValidationRuleLog = typeof validationRuleLogs.$inferInsert;
+
+/**
+ * Realtime Machine Connections - cấu hình kết nối máy realtime
+ */
+export const realtimeMachineConnections = mysqlTable("realtime_machine_connections", {
+  id: int("id").autoincrement().primaryKey(),
+  machineId: int("machineId").notNull(),
+  connectionType: mysqlEnum("connectionType", ["database", "opcua", "api", "file", "mqtt"]).notNull(),
+  connectionConfig: text("connectionConfig"), // JSON config
+  pollingIntervalMs: int("pollingIntervalMs").notNull().default(1000),
+  dataQuery: text("dataQuery"), // SQL query hoặc config để lấy dữ liệu
+  measurementColumn: varchar("measurementColumn", { length: 100 }),
+  timestampColumn: varchar("timestampColumn", { length: 100 }),
+  lastDataAt: timestamp("lastDataAt"),
+  lastError: text("lastError"),
+  isActive: int("isActive").notNull().default(1),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type RealtimeMachineConnection = typeof realtimeMachineConnections.$inferSelect;
+export type InsertRealtimeMachineConnection = typeof realtimeMachineConnections.$inferInsert;
+
+/**
+ * Realtime Data Buffer - buffer dữ liệu realtime
+ */
+export const realtimeDataBuffer = mysqlTable("realtime_data_buffer", {
+  id: int("id").autoincrement().primaryKey(),
+  connectionId: int("connectionId").notNull(),
+  machineId: int("machineId").notNull(),
+  measurementName: varchar("measurementName", { length: 100 }).notNull(),
+  value: int("value").notNull(), // * 10000
+  sampledAt: timestamp("sampledAt").notNull(),
+  processedAt: timestamp("processedAt").defaultNow().notNull(),
+  // SPC calculations
+  subgroupIndex: int("subgroupIndex"),
+  subgroupMean: int("subgroupMean"), // * 10000
+  subgroupRange: int("subgroupRange"), // * 10000
+  ucl: int("ucl"), // * 10000
+  lcl: int("lcl"), // * 10000
+  isOutOfSpec: int("isOutOfSpec").notNull().default(0),
+  isOutOfControl: int("isOutOfControl").notNull().default(0),
+  violatedRules: varchar("violatedRules", { length: 50 }),
+});
+
+export type RealtimeDataBuffer = typeof realtimeDataBuffer.$inferSelect;
+export type InsertRealtimeDataBuffer = typeof realtimeDataBuffer.$inferInsert;
+
+/**
+ * Realtime Alerts - cảnh báo realtime
+ */
+export const realtimeAlerts = mysqlTable("realtime_alerts", {
+  id: int("id").autoincrement().primaryKey(),
+  connectionId: int("connectionId").notNull(),
+  machineId: int("machineId").notNull(),
+  alertType: mysqlEnum("alertType", ["out_of_spec", "out_of_control", "rule_violation", "connection_lost"]).notNull(),
+  severity: mysqlEnum("severity", ["warning", "critical"]).notNull(),
+  message: text("message"),
+  ruleNumber: int("ruleNumber"),
+  value: int("value"), // * 10000
+  threshold: int("threshold"), // * 10000
+  acknowledgedAt: timestamp("acknowledgedAt"),
+  acknowledgedBy: int("acknowledgedBy"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type RealtimeAlert = typeof realtimeAlerts.$inferSelect;
+export type InsertRealtimeAlert = typeof realtimeAlerts.$inferInsert;

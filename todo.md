@@ -1669,3 +1669,39 @@
 - [x] GET /api/license-public/revoked/:key - Kiểm tra license bị revoke
 - [x] Không yêu cầu authentication
 - [x] Trả về thông tin sanitized (không lộ internal IDs)
+
+
+## Phase 72: Nâng cấp Hệ thống theo SYSTEM_ASSESSMENT_AND_UPGRADE_PLAN.md
+
+### Phase 2: Tối ưu Hiệu suất
+- [x] Thêm indexes cho các bảng lớn (spc_analysis_history, spc_realtime_data, defects, audit_logs, login_history)
+- [x] Mở rộng caching layer cho dữ liệu tĩnh (server/_core/cache.ts)
+- [x] Pagination đồng nhất cho tất cả danh sách
+- [x] Lazy loading cho biểu đồ nặng
+- [x] Query optimization cho các query phức tạp
+
+### Phase 3: Nâng cao Bảo mật
+- [x] Rate limiting đã có - kiểm tra và cải thiện (server/_core/rateLimiter.ts)
+- [x] Mã hóa connection strings trong database (AES encryption)
+- [x] Mở rộng audit log với 8 action types mới (import, backup, restore, config_change, permission_change, license_activate, license_revoke, api_access)
+- [x] Session management cải tiến
+
+### Phase 4: Cải tiến UX/UI
+- [x] Real-time form validation
+- [x] Đồng nhất loading states (LoadingState.tsx component)
+- [x] Cải thiện mobile responsive
+- [ ] Keyboard shortcuts cho các thao tác phổ biến (chưa hoàn thành)
+
+### Phase 5: Tính năng Nâng cao
+- [x] Multi-language support i18n (client/src/lib/i18n.ts - Vi/En)
+- [x] API documentation trong SYSTEM_ASSESSMENT_AND_UPGRADE_PLAN.md
+- [x] Batch analysis improvements (MultiAnalysis.tsx)
+
+### Dashboard dây chuyền RealTime
+- [x] Thiết kế kiến trúc kết nối máy trực tiếp (REALTIME_LINE_DASHBOARD_DESIGN.md)
+- [x] Tạo trang RealtimeLineDashboard.tsx với demo mode
+- [x] Tạo schema database (realtime_machine_connections, realtime_data_buffer, realtime_alerts)
+- [x] Tính SPC/CPK theo thời gian thực (sliding window algorithm)
+- [x] Biểu đồ Control Chart realtime (X-bar chart với UCL/LCL)
+- [x] Cảnh báo tức thì khi vi phạm SPC Rules (AlertsPanel)
+- [x] Thêm menu Dashboard RealTime vào sidebar

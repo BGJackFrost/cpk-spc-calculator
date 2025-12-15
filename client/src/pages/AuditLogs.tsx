@@ -16,7 +16,7 @@ interface AuditLog {
   id: number;
   userId: number;
   userName: string | null;
-  action: "create" | "update" | "delete" | "login" | "logout" | "export" | "analyze";
+  action: "create" | "update" | "delete" | "login" | "logout" | "export" | "analyze" | "import" | "backup" | "restore" | "config_change" | "permission_change" | "license_activate" | "license_revoke" | "api_access";
   module: string;
   tableName: string | null;
   recordId: number | null;
@@ -37,6 +37,14 @@ const actionColors: Record<string, string> = {
   logout: "bg-gray-100 text-gray-800",
   export: "bg-orange-100 text-orange-800",
   analyze: "bg-cyan-100 text-cyan-800",
+  import: "bg-teal-100 text-teal-800",
+  backup: "bg-indigo-100 text-indigo-800",
+  restore: "bg-amber-100 text-amber-800",
+  config_change: "bg-yellow-100 text-yellow-800",
+  permission_change: "bg-pink-100 text-pink-800",
+  license_activate: "bg-emerald-100 text-emerald-800",
+  license_revoke: "bg-rose-100 text-rose-800",
+  api_access: "bg-slate-100 text-slate-800",
 };
 
 const actionLabels: Record<string, string> = {
@@ -47,6 +55,14 @@ const actionLabels: Record<string, string> = {
   logout: "Đăng xuất",
   export: "Xuất báo cáo",
   analyze: "Phân tích",
+  import: "Nhập dữ liệu",
+  backup: "Sao lưu",
+  restore: "Khôi phục",
+  config_change: "Thay đổi cấu hình",
+  permission_change: "Thay đổi quyền",
+  license_activate: "Kích hoạt license",
+  license_revoke: "Thu hồi license",
+  api_access: "Truy cập API",
 };
 
 export default function AuditLogs() {

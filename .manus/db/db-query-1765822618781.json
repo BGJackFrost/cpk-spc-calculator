@@ -1,0 +1,9 @@
+{
+  "query": "-- Indexes for audit_logs\nCREATE INDEX IF NOT EXISTS idx_audit_user ON audit_logs(userId);\nCREATE INDEX IF NOT EXISTS idx_audit_action ON audit_logs(action);\nCREATE INDEX IF NOT EXISTS idx_audit_date ON audit_logs(createdAt);\n\n-- Indexes for login_history\nCREATE INDEX IF NOT EXISTS idx_login_user ON login_history(userId);\nCREATE INDEX IF NOT EXISTS idx_login_event ON login_history(eventType);\nCREATE INDEX IF NOT EXISTS idx_login_date ON login_history(createdAt);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute -- Indexes for audit_logs\nCREATE INDEX IF NOT EXISTS idx_audit_user ON audit_logs(userId);\nCREATE INDEX IF NOT EXISTS idx_audit_action ON audit_logs(action);\nCREATE INDEX IF NOT EXISTS idx_audit_date ON audit_logs(createdAt);\n\n-- Indexes for login_history\nCREATE INDEX IF NOT EXISTS idx_login_user ON login_history(userId);\nCREATE INDEX IF NOT EXISTS idx_login_event ON login_history(eventType);\nCREATE INDEX IF NOT EXISTS idx_login_date ON login_history(createdAt);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 5236
+}
