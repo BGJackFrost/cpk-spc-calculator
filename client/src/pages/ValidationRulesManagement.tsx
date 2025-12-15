@@ -188,8 +188,8 @@ export default function ValidationRulesManagement() {
     const data = {
       name: formData.name,
       description: formData.description || undefined,
-      productId: formData.productId ? parseInt(formData.productId) : undefined,
-      workstationId: formData.workstationId ? parseInt(formData.workstationId) : undefined,
+      productId: formData.productId && formData.productId !== "_all" ? parseInt(formData.productId) : undefined,
+      workstationId: formData.workstationId && formData.workstationId !== "_all" ? parseInt(formData.workstationId) : undefined,
       ruleType: formData.ruleType,
       ruleConfig: formData.ruleConfig,
       actionOnViolation: formData.actionOnViolation,
@@ -511,7 +511,7 @@ export default function ValidationRulesManagement() {
                       <SelectValue placeholder="Tất cả sản phẩm" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Tất cả sản phẩm</SelectItem>
+                      <SelectItem value="_all">Tất cả sản phẩm</SelectItem>
                       {products?.map((p: Product) => (
                         <SelectItem key={p.id} value={p.id.toString()}>{p.name}</SelectItem>
                       ))}
@@ -528,7 +528,7 @@ export default function ValidationRulesManagement() {
                       <SelectValue placeholder="Tất cả công trạm" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Tất cả công trạm</SelectItem>
+                      <SelectItem value="_all">Tất cả công trạm</SelectItem>
                       {workstations?.map((w: Workstation) => (
                         <SelectItem key={w.id} value={w.id.toString()}>{w.name}</SelectItem>
                       ))}
