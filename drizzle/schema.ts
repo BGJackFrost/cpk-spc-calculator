@@ -1251,3 +1251,70 @@ export const productStationMachineStandards = mysqlTable("product_station_machin
 
 export type ProductStationMachineStandard = typeof productStationMachineStandards.$inferSelect;
 export type InsertProductStationMachineStandard = typeof productStationMachineStandards.$inferInsert;
+
+
+/**
+ * Custom Validation Rules - Quy tắc kiểm tra tùy chỉnh cho từng sản phẩm
+ */
+export const customValidationRules = mysqlTable("custom_validation_rules", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 200 }).notNull(),
+  description: text("description"),
+  productId: int("productId"), // Null = áp dụng cho tất cả sản phẩm
+  workstationId: int("workstationId"), // Null = áp dụng cho tất cả công trạm
+  ruleType: mysqlEnum("ruleType", [
+    "range_check",      // Kiểm tra giá trị trong khoảng
+    "trend_check",      // Kiểm tra xu hướng
+    "pattern_check",    // Kiểm tra mẫu
+    "comparison_check", // So sánh với giá trị khác
+    "formula_check",    // Kiểm tra theo công thức
+    "custom_script"     // Script tùy chỉnh
+  ]).notNull().default("range_check"),
+  // Cấu hình quy tắc (JSON)
+  ruleConfig: text("ruleConfig"), // JSON: { minValue, maxValue, formula, script, etc. }
+  // Hành động khi vi phạm
+  actionOnViolation: mysqlEnum("actionOnViolation", [
+    "warning",    // Cảnh báo
+    "alert",      // Gửi thông báo
+    "reject",     // Từ chối dữ liệu
+    "log_only"    // Chỉ ghi log
+  ]).notNull().default("warning"),
+  // Mức độ nghiêm trọng
+  severity: mysqlEnum("severity", ["low", "medium", "high", "critical"]).notNull().default("medium"),
+  // Thông báo khi vi phạm
+  violationMessage: text("violationMessage"),
+  // Trạng thái
+  isActive: int("isActive").notNull().default(1),
+  // Thứ tự ưu tiên (số nhỏ = ưu tiên cao)
+  priority: int("priority").notNull().default(100),
+  // Metadata
+  createdBy: int("createdBy").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type CustomValidationRule = typeof customValidationRules.$inferSelect;
+export type InsertCustomValidationRule = typeof customValidationRules.$inferInsert;
+
+/**
+ * Validation Rule Execution Log - Lịch sử thực thi quy tắc kiểm tra
+ */
+export const validationRuleLogs = mysqlTable("validation_rule_logs", {
+  id: int("id").autoincrement().primaryKey(),
+  ruleId: int("ruleId").notNull(),
+  productId: int("productId"),
+  workstationId: int("workstationId"),
+  machineId: int("machineId"),
+  // Dữ liệu được kiểm tra
+  inputValue: varchar("inputValue", { length: 500 }),
+  // Kết quả
+  passed: int("passed").notNull().default(1), // 1 = pass, 0 = fail
+  violationDetails: text("violationDetails"), // Chi tiết vi phạm nếu có
+  actionTaken: varchar("actionTaken", { length: 100 }),
+  // Metadata
+  executedAt: timestamp("executedAt").defaultNow().notNull(),
+  executedBy: int("executedBy"),
+});
+
+export type ValidationRuleLog = typeof validationRuleLogs.$inferSelect;
+export type InsertValidationRuleLog = typeof validationRuleLogs.$inferInsert;

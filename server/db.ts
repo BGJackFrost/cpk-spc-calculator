@@ -1,4 +1,4 @@
-import { eq, and, desc, sql, gte, lte, asc } from "drizzle-orm";
+import { eq, and, desc, sql, gte, lte, asc, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import mysql from "mysql2/promise";
 import { 
@@ -62,7 +62,11 @@ import {
   loginHistory,
   InsertLoginHistory,
   productStationMachineStandards,
-  InsertProductStationMachineStandard
+  InsertProductStationMachineStandard,
+  customValidationRules,
+  InsertCustomValidationRule,
+  validationRuleLogs,
+  InsertValidationRuleLog
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -3285,4 +3289,96 @@ export async function deleteMeasurementStandard(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await db.delete(productStationMachineStandards).where(eq(productStationMachineStandards.id, id));
+}
+
+
+// ==================== Custom Validation Rules ====================
+
+export async function getCustomValidationRules() {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(customValidationRules).orderBy(asc(customValidationRules.priority));
+}
+
+export async function getCustomValidationRuleById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(customValidationRules).where(eq(customValidationRules.id, id)).limit(1);
+  return result[0] || null;
+}
+
+export async function getCustomValidationRulesByProduct(productId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(customValidationRules)
+    .where(
+      or(
+        eq(customValidationRules.productId, productId),
+        sql`${customValidationRules.productId} IS NULL`
+      )
+    )
+    .orderBy(asc(customValidationRules.priority));
+}
+
+export async function getActiveCustomValidationRules() {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(customValidationRules)
+    .where(eq(customValidationRules.isActive, 1))
+    .orderBy(asc(customValidationRules.priority));
+}
+
+export async function createCustomValidationRule(data: Omit<InsertCustomValidationRule, "id" | "createdAt" | "updatedAt">) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(customValidationRules).values(data);
+  return result[0].insertId;
+}
+
+export async function updateCustomValidationRule(id: number, data: Partial<InsertCustomValidationRule>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(customValidationRules).set(data).where(eq(customValidationRules.id, id));
+}
+
+export async function deleteCustomValidationRule(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(customValidationRules).where(eq(customValidationRules.id, id));
+}
+
+export async function toggleCustomValidationRule(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const rule = await getCustomValidationRuleById(id);
+  if (rule) {
+    await db.update(customValidationRules)
+      .set({ isActive: rule.isActive === 1 ? 0 : 1 })
+      .where(eq(customValidationRules.id, id));
+  }
+}
+
+// ==================== Validation Rule Logs ====================
+
+export async function createValidationRuleLog(data: Omit<InsertValidationRuleLog, "id" | "executedAt">) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(validationRuleLogs).values(data);
+  return result[0].insertId;
+}
+
+export async function getValidationRuleLogs(ruleId?: number, limit: number = 100) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  if (ruleId) {
+    return await db.select().from(validationRuleLogs)
+      .where(eq(validationRuleLogs.ruleId, ruleId))
+      .orderBy(desc(validationRuleLogs.executedAt))
+      .limit(limit);
+  }
+  
+  return await db.select().from(validationRuleLogs)
+    .orderBy(desc(validationRuleLogs.executedAt))
+    .limit(limit);
 }

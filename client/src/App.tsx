@@ -55,6 +55,8 @@ import ConnectionManager from "./pages/ConnectionManager";
 import MeasurementStandards from "./pages/MeasurementStandards";
 import MeasurementStandardsDashboard from "./pages/MeasurementStandardsDashboard";
 import QuickSpcPlan from "./pages/QuickSpcPlan";
+import ValidationRulesManagement from "./pages/ValidationRulesManagement";
+import CpkComparisonDashboard from "./pages/CpkComparisonDashboard";
 
 function Router() {
   return (
@@ -81,6 +83,8 @@ function Router() {
       <Route path="/sampling-methods" component={SamplingMethodManagement} />
       <Route path="/spc-plans" component={SpcPlanManagement} />
       <Route path="/quick-spc-plan" component={QuickSpcPlan} />
+      <Route path="/validation-rules" component={ValidationRulesManagement} />
+      <Route path="/cpk-comparison" component={CpkComparisonDashboard} />
       <Route path="/email-notifications" component={EmailNotificationSettings} />
       <Route path="/permissions" component={RolePermissionManagement} />
       <Route path="/smtp-settings" component={SmtpSettings} />

@@ -173,6 +173,14 @@ import {
   reportRouter,
   dashboardConfigRouter,
 } from "./routers-extended";
+import {
+  getCustomValidationRules,
+  getCustomValidationRuleById,
+  createCustomValidationRule,
+  updateCustomValidationRule,
+  deleteCustomValidationRule,
+  toggleCustomValidationRule,
+} from "./db";
 
 // Admin procedure - only admins can access
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -4033,6 +4041,76 @@ export const appRouter = router({
         }
         const { deleteMeasurementStandard } = await import("./db");
         await deleteMeasurementStandard(input.id);
+        return { success: true };
+      }),
+  }),
+
+  validationRule: router({
+    list: protectedProcedure.query(async () => {
+      return await getCustomValidationRules();
+    }),
+
+    getById: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        return await getCustomValidationRuleById(input.id);
+      }),
+
+    create: adminProcedure
+      .input(z.object({
+        name: z.string().min(1),
+        description: z.string().optional(),
+        productId: z.number().optional(),
+        workstationId: z.number().optional(),
+        ruleType: z.string().default("range_check"),
+        ruleConfig: z.string().optional(),
+        actionOnViolation: z.string().default("warning"),
+        severity: z.string().default("medium"),
+        violationMessage: z.string().optional(),
+        priority: z.number().default(100),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const id = await createCustomValidationRule({
+          ...input,
+          ruleType: input.ruleType as "range_check" | "trend_check" | "pattern_check" | "comparison_check" | "formula_check" | "custom_script",
+          actionOnViolation: input.actionOnViolation as "warning" | "alert" | "reject" | "log_only",
+          severity: input.severity as "low" | "medium" | "high" | "critical",
+          createdBy: ctx.user.id,
+        });
+        return { id };
+      }),
+
+    update: adminProcedure
+      .input(z.object({
+        id: z.number(),
+        name: z.string().min(1).optional(),
+        description: z.string().optional(),
+        productId: z.number().optional(),
+        workstationId: z.number().optional(),
+        ruleType: z.string().optional(),
+        ruleConfig: z.string().optional(),
+        actionOnViolation: z.string().optional(),
+        severity: z.string().optional(),
+        violationMessage: z.string().optional(),
+        priority: z.number().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { id, ...data } = input;
+        await updateCustomValidationRule(id, data as any);
+        return { success: true };
+      }),
+
+    delete: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await deleteCustomValidationRule(input.id);
+        return { success: true };
+      }),
+
+    toggleActive: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await toggleCustomValidationRule(input.id);
         return { success: true };
       }),
   }),

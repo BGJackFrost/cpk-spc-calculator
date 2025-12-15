@@ -1430,3 +1430,29 @@
 - [x] Tạo wizard tạo SPC Plan hàng loạt (3 bước)
 - [x] Hiển thị progress khi tạo nhiều kế hoạch
 - [x] Báo cáo kết quả tạo hàng loạt (success/failed)
+
+## Phase 62: Export, Validation Rules, Dashboard CPK, Đồng nhất trang
+
+### Export Tiêu chuẩn đo ra Excel
+- [x] Thêm nút Export Excel vào trang MeasurementStandards
+- [x] Tạo file CSV/Excel với tất cả dữ liệu tiêu chuẩn
+- [x] Bao gồm tên sản phẩm, công trạm, máy thay vì chỉ ID
+
+### Validation Rules tùy chỉnh
+- [x] Tạo bảng custom_validation_rules trong schema
+- [x] Tạo trang quản lý Validation Rules (ValidationRulesManagement.tsx)
+- [x] Cho phép định nghĩa quy tắc kiểm tra riêng cho từng sản phẩm
+- [x] Hỗ trợ 6 loại quy tắc: range_check, trend_check, pattern_check, comparison_check, formula_check, custom_script
+
+### Dashboard so sánh hiệu suất CPK
+- [x] Tạo trang CpkComparisonDashboard.tsx
+- [x] Biểu đồ so sánh CPK giữa các dây chuyền
+- [x] Biểu đồ so sánh CPK giữa các công trạm
+- [x] Biểu đồ xu hướng CPK theo thời gian
+- [x] Bảng xếp hạng CPK với đánh giá
+
+### Đồng nhất các trang Tiêu chuẩn
+- [x] Phân tích các trang: MeasurementStandards, ProductSpecifications, SamplingConfig
+- [x] Gộp các chức năng vào MeasurementStandards (USL/LSL, Sampling, SPC Rules)
+- [x] Tạo navigation breadcrumb giữa các trang liên quan
+- [x] Cập nhật sidebar menu - gỡ bỏ các trang trùng lặp

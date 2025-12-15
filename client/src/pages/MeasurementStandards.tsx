@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import { 
   Loader2, Plus, Pencil, Trash2, Search, Filter, Settings2, 
   Target, Ruler, Clock, AlertTriangle, CheckCircle2, BarChart3,
-  Copy, FileUp, Zap
+  Copy, FileUp, Zap, Download
 } from "lucide-react";
 
 interface MeasurementStandard {
@@ -476,6 +476,80 @@ export default function MeasurementStandards() {
     toast.success("Đã tải mẫu Excel (CSV)");
   };
 
+  // Export data to Excel
+  const exportToExcel = () => {
+    if (!standards || standards.length === 0) {
+      toast.error("Không có dữ liệu để xuất");
+      return;
+    }
+
+    const headers = [
+      "ID",
+      "Tên tiêu chuẩn",
+      "Sản phẩm",
+      "Mã sản phẩm",
+      "Công trạm",
+      "Mã công trạm",
+      "Máy",
+      "Mã máy",
+      "USL",
+      "LSL",
+      "Target",
+      "Đơn vị",
+      "Kích thước mẫu",
+      "Tần suất (giây)",
+      "Phương pháp lấy mẫu",
+      "Ngưỡng CPK cảnh báo",
+      "Ngưỡng CPK nguy hiểm",
+      "SPC Rules",
+      "Trạng thái",
+      "Ghi chú"
+    ];
+
+    const rows = standards.map((s: MeasurementStandard) => {
+      const product = products?.find((p: Product) => p.id === s.productId);
+      const workstation = workstations?.find((w: Workstation) => w.id === s.workstationId);
+      const machine = s.machineId ? machines?.find((m: Machine) => m.id === s.machineId) : null;
+      
+      let spcRulesStr = "";
+      try {
+        const rules = s.appliedSpcRules ? JSON.parse(s.appliedSpcRules) : [];
+        spcRulesStr = Array.isArray(rules) ? rules.join(", ") : "";
+      } catch { spcRulesStr = ""; }
+
+      return [
+        s.id,
+        s.measurementName,
+        product?.name || "",
+        product?.code || "",
+        workstation?.name || "",
+        workstation?.code || "",
+        machine?.name || "Tất cả máy",
+        machine?.code || "",
+        s.usl !== null ? (s.usl / 100).toFixed(2) : "",
+        s.lsl !== null ? (s.lsl / 100).toFixed(2) : "",
+        s.target !== null ? (s.target / 100).toFixed(2) : "",
+        s.unit || "",
+        s.sampleSize,
+        s.sampleFrequency,
+        getSamplingMethodLabel(s.samplingMethod || "random"),
+        s.cpkWarningThreshold !== null ? (s.cpkWarningThreshold / 100).toFixed(2) : "",
+        s.cpkCriticalThreshold !== null ? (s.cpkCriticalThreshold / 100).toFixed(2) : "",
+        spcRulesStr,
+        s.isActive === 1 ? "Hoạt động" : "Ngừng",
+        s.notes || ""
+      ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(",");
+    });
+
+    const csvContent = [headers.join(","), ...rows].join("\n");
+    const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `measurement_standards_export_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    toast.success(`Đã xuất ${standards.length} tiêu chuẩn ra file Excel`);
+  };
+
   // Handle file import
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -639,6 +713,17 @@ export default function MeasurementStandards() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
+        {/* Navigation Breadcrumb */}
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <a href="/measurement-standards" className="font-medium text-primary">Tiêu chuẩn Đo lường</a>
+          <span>•</span>
+          <a href="/measurement-standards-dashboard" className="hover:text-primary">Dashboard</a>
+          <span>•</span>
+          <a href="/quick-spc-plan" className="hover:text-primary">Tạo nhanh SPC Plan</a>
+          <span>•</span>
+          <a href="/cpk-comparison" className="hover:text-primary">So sánh CPK</a>
+        </div>
+
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
@@ -648,6 +733,10 @@ export default function MeasurementStandards() {
             </p>
           </div>
           <div className="flex gap-2">
+            <Button variant="outline" onClick={exportToExcel}>
+              <Download className="mr-2 h-4 w-4" />
+              Export Excel
+            </Button>
             <Button variant="outline" onClick={downloadExcelTemplate}>
               <FileUp className="mr-2 h-4 w-4" />
               Tải mẫu Excel

@@ -91,6 +91,8 @@ const menuGroups: MenuGroup[] = [
       { icon: AlertTriangle, labelKey: "nav.errorManagement", path: "/defects" },
       { icon: BarChart3, labelKey: "nav.paretoChart", path: "/defect-statistics" },
       { icon: BookOpen, labelKey: "nav.rulesManagement", path: "/rules" },
+      { icon: ShieldCheck, labelKey: "nav.validationRules", path: "/validation-rules", adminOnly: true },
+      { icon: BarChart3, labelKey: "nav.cpkComparison", path: "/cpk-comparison" },
     ]
   },
   {
@@ -112,11 +114,9 @@ const menuGroups: MenuGroup[] = [
     icon: Boxes,
     items: [
       { icon: Package, labelKey: "nav.productManagement", path: "/products", adminOnly: true },
-      { icon: Ruler, labelKey: "nav.specificationManagement", path: "/specifications", adminOnly: true },
       { icon: Ruler, labelKey: "nav.measurementStandards", path: "/measurement-standards", adminOnly: true },
       { icon: BarChart3, labelKey: "nav.measurementStandardsDashboard", path: "/measurement-standards-dashboard", adminOnly: true },
       { icon: FileSpreadsheet, labelKey: "nav.mappingManagement", path: "/mappings", adminOnly: true },
-      { icon: Clock, labelKey: "samplingMethod", path: "/sampling-methods", adminOnly: true },
       { icon: Calendar, labelKey: "nav.spcPlanManagement", path: "/spc-plans", adminOnly: true },
       { icon: Zap, labelKey: "nav.quickSpcPlan", path: "/quick-spc-plan", adminOnly: true },
     ]

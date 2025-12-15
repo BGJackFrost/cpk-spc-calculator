@@ -183,6 +183,13 @@
       "when": 1765781860832,
       "tag": "0025_pale_overlord",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "5",
+      "when": 1765786006201,
+      "tag": "0026_keen_absorbing_man",
+      "breakpoints": true
     }
   ]
 }
