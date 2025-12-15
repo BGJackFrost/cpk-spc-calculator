@@ -74,6 +74,7 @@ import OEEDashboard from "./pages/OEEDashboard";
 import MaintenanceDashboard from "./pages/MaintenanceDashboard";
 import SparePartsManagement from "./pages/SparePartsManagement";
 import PredictiveMaintenance from "./pages/PredictiveMaintenance";
+import MMSDataInit from "./pages/MMSDataInit";
 import MaintenanceSchedule from "./pages/MaintenanceSchedule";
 import EquipmentQRLookup from "./pages/EquipmentQRLookup";
 import PlantKPIDashboard from "./pages/PlantKPIDashboard";
@@ -128,6 +129,7 @@ function Router() {
       <Route path="/reports-export" component={ReportsExport} />
       <Route path="/alert-config" component={AlertConfiguration} />
       <Route path="/scheduled-reports" component={ScheduledReports} />
+      <Route path="/mms-data-init" component={MMSDataInit} />
       <Route path="/email-notifications" component={EmailNotificationSettings} />
       <Route path="/permissions" component={RolePermissionManagement} />
       <Route path="/smtp-settings" component={SmtpSettings} />

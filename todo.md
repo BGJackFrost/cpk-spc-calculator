@@ -2113,3 +2113,21 @@
 - [x] Tạo seed data cho technicians (5 kỹ thuật viên)
 - [x] Tạo seed data cho maintenance_types (6 loại bảo trì)
 - [x] Thêm indexes cho các bảng MMS
+
+## Phase 84: Pages Review, Menu Optimization & MMS Seed Data
+- [ ] Rà soát và fix lỗi các pages hiện có
+- [ ] Tối ưu menu sidebar cho gọn gàng hơn
+- [ ] Nâng cấp Dashboard SPC Realtime với chế độ xem SPC Plan hoặc Machine/Fixture
+- [ ] Tạo seed data cho work_orders
+- [ ] Tạo seed data cho maintenance_schedules
+- [ ] Tạo seed data cho oee_records
+- [ ] Tạo trang khởi tạo dữ liệu MMS
+
+## Phase 84: Menu Optimization, SPC Realtime Upgrade & MMS Data Init
+- [x] Tối ưu menu - gộp các nhóm liên quan (Dashboard, Dashboard Config, MMS, MMS Config)
+- [x] Nâng cấp Dashboard SPC Realtime với chế độ xem SPC Plan hoặc Machine/Fixture
+- [x] Tạo seed data cho work_orders (8 records)
+- [x] Tạo seed data cho maintenance_schedules (8 records)
+- [x] Tạo seed data cho oee_records (12 records)
+- [x] Tạo trang MMS Data Init (/mms-data-init) cho admin khởi tạo dữ liệu
+- [x] Thêm translations cho menu groups mới (vi/en)

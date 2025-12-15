@@ -238,7 +238,10 @@ function AlertsPanel({ alerts }: { alerts: RealtimeAlert[] }) {
 }
 
 export default function RealtimeLineDashboard() {
+  const [viewMode, setViewMode] = useState<'spc-plan' | 'machine'>('spc-plan');
+  const [selectedPlan, setSelectedPlan] = useState<string>("");
   const [selectedMachine, setSelectedMachine] = useState<string>("");
+  const [selectedFixture, setSelectedFixture] = useState<string>("");
   const [isRunning, setIsRunning] = useState(false);
   const [data, setData] = useState<RealtimeDataPoint[]>([]);
   const [alerts, setAlerts] = useState<RealtimeAlert[]>([]);
@@ -263,9 +266,19 @@ export default function RealtimeLineDashboard() {
   // Fetch machines
   const { data: machines } = trpc.machine.listAll.useQuery();
   
+  // Fetch SPC Plans
+  const { data: spcPlans } = trpc.spcPlan.list.useQuery();
+  
+  // Fetch Fixtures for selected machine
+  const { data: fixtures } = trpc.fixture.list.useQuery(
+    { machineId: selectedMachine ? parseInt(selectedMachine) : undefined },
+    { enabled: viewMode === 'machine' && !!selectedMachine }
+  );
+  
   // Simulated realtime data
   useEffect(() => {
-    if (isRunning && selectedMachine) {
+    const isReady = viewMode === 'spc-plan' ? !!selectedPlan : !!selectedMachine;
+    if (isRunning && isReady) {
       // Initial data
       setData(generateSimulatedData(50));
       
@@ -319,7 +332,7 @@ export default function RealtimeLineDashboard() {
         clearInterval(intervalRef.current);
       }
     };
-  }, [isRunning, selectedMachine]);
+  }, [isRunning, selectedMachine, selectedPlan, viewMode]);
   
   const metrics = useMemo(() => calculateMetrics(data), [data]);
   
@@ -353,24 +366,66 @@ export default function RealtimeLineDashboard() {
             <p className="text-muted-foreground">Giám sát SPC/CPK theo thời gian thực</p>
           </div>
           <div className="flex items-center gap-4">
-            <Select value={selectedMachine} onValueChange={setSelectedMachine}>
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="Chọn máy" />
-              </SelectTrigger>
-              <SelectContent>
-                {machines?.map((m: { id: number; name: string }) => (
-                  <SelectItem key={m.id} value={m.id.toString()}>
-                    {m.name}
-                  </SelectItem>
-                ))}
-                <SelectItem value="demo">Demo Mode</SelectItem>
-              </SelectContent>
-            </Select>
+            {/* View Mode Tabs */}
+            <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as 'spc-plan' | 'machine')} className="w-auto">
+              <TabsList>
+                <TabsTrigger value="spc-plan">SPC Plan</TabsTrigger>
+                <TabsTrigger value="machine">Máy/Fixture</TabsTrigger>
+              </TabsList>
+            </Tabs>
+            
+            {viewMode === 'spc-plan' ? (
+              <Select value={selectedPlan} onValueChange={(v) => { setSelectedPlan(v); setSelectedMachine(""); }}>
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="Chọn Kế hoạch SPC" />
+                </SelectTrigger>
+                <SelectContent>
+                  {spcPlans?.map((p: { id: number; name: string }) => (
+                    <SelectItem key={p.id} value={p.id.toString()}>
+                      {p.name}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="demo">Demo Mode</SelectItem>
+                </SelectContent>
+              </Select>
+            ) : (
+              <>
+                <Select value={selectedMachine} onValueChange={(v) => { setSelectedMachine(v); setSelectedFixture(""); }}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Chọn máy" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {machines?.map((m: { id: number; name: string }) => (
+                      <SelectItem key={m.id} value={m.id.toString()}>
+                        {m.name}
+                      </SelectItem>
+                    ))}
+                    <SelectItem value="demo">Demo Mode</SelectItem>
+                  </SelectContent>
+                </Select>
+                
+                {selectedMachine && selectedMachine !== 'demo' && (
+                  <Select value={selectedFixture} onValueChange={setSelectedFixture}>
+                    <SelectTrigger className="w-[150px]">
+                      <SelectValue placeholder="Tất cả Fixture" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tất cả Fixture</SelectItem>
+                      {fixtures?.map((f: { id: number; name: string }) => (
+                        <SelectItem key={f.id} value={f.id.toString()}>
+                          {f.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </>
+            )}
             
             <Button 
               variant={isRunning ? "destructive" : "default"}
               onClick={() => setIsRunning(!isRunning)}
-              disabled={!selectedMachine}
+              disabled={viewMode === 'spc-plan' ? !selectedPlan : !selectedMachine}
             >
               {isRunning ? (
                 <>
