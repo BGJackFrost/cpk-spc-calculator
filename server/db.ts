@@ -3382,3 +3382,68 @@ export async function getValidationRuleLogs(ruleId?: number, limit: number = 100
     .orderBy(desc(validationRuleLogs.executedAt))
     .limit(limit);
 }
+
+
+// ==================== Validation Rule Stats for Dashboard ====================
+
+export async function getValidationViolationsByDay(days: number = 7) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
+  
+  const logs = await db.select({
+    executedAt: validationRuleLogs.executedAt,
+    passed: validationRuleLogs.passed,
+  }).from(validationRuleLogs)
+    .where(gte(validationRuleLogs.executedAt, startDate))
+    .orderBy(asc(validationRuleLogs.executedAt));
+  
+  // Group by day
+  const dailyStats: { date: string; violations: number; total: number }[] = [];
+  const dateMap = new Map<string, { violations: number; total: number }>();
+  
+  for (const log of logs) {
+    const dateStr = new Date(log.executedAt).toISOString().split('T')[0];
+    const existing = dateMap.get(dateStr) || { violations: 0, total: 0 };
+    existing.total++;
+    if (log.passed === 0) {
+      existing.violations++;
+    }
+    dateMap.set(dateStr, existing);
+  }
+  
+  // Fill in missing days with 0
+  for (let i = days - 1; i >= 0; i--) {
+    const date = new Date();
+    date.setDate(date.getDate() - i);
+    const dateStr = date.toISOString().split('T')[0];
+    const stats = dateMap.get(dateStr) || { violations: 0, total: 0 };
+    dailyStats.push({
+      date: dateStr,
+      violations: stats.violations,
+      total: stats.total,
+    });
+  }
+  
+  return dailyStats;
+}
+
+export async function getRecentViolations(limit: number = 5) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return await db.select({
+    id: validationRuleLogs.id,
+    ruleId: validationRuleLogs.ruleId,
+    violationDetails: validationRuleLogs.violationDetails,
+    executedAt: validationRuleLogs.executedAt,
+    ruleName: customValidationRules.name,
+    severity: customValidationRules.severity,
+  }).from(validationRuleLogs)
+    .leftJoin(customValidationRules, eq(validationRuleLogs.ruleId, customValidationRules.id))
+    .where(eq(validationRuleLogs.passed, 0))
+    .orderBy(desc(validationRuleLogs.executedAt))
+    .limit(limit);
+}

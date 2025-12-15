@@ -4207,6 +4207,22 @@ export const appRouter = router({
         await toggleCustomValidationRule(input.id);
         return { success: true };
       }),
+
+    // Dashboard stats - violations by day for sparkline
+    getViolationsByDay: protectedProcedure
+      .input(z.object({ days: z.number().default(7) }).optional())
+      .query(async ({ input }) => {
+        const { getValidationViolationsByDay } = await import("./db");
+        return await getValidationViolationsByDay(input?.days || 7);
+      }),
+
+    // Recent violations for dashboard
+    getRecentViolations: protectedProcedure
+      .input(z.object({ limit: z.number().default(5) }).optional())
+      .query(async ({ input }) => {
+        const { getRecentViolations } = await import("./db");
+        return await getRecentViolations(input?.limit || 5);
+      }),
   }),
 });
 

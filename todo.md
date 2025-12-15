@@ -1531,3 +1531,27 @@
   - validationRules → customValidation (Kiểm tra Tùy chỉnh)
   - cpkComparison → cpkBenchmark (So sánh CPK)
   - shiftCpkComparison → shiftAnalysis (Phân tích theo Ca)
+
+
+## Phase 66: Sparkline, Wizard, Menu Fix
+
+### Biểu đồ mini sparkline cho Validation Rules
+- [x] Tạo API lấy số vi phạm gần đây theo ngày (getValidationViolationsByDay, getRecentViolations)
+- [x] Tạo component Sparkline SVG đơn giản (Sparkline.tsx)
+- [x] Tạo component ValidationRulesCard với sparkline
+- [x] Tích hợp vào Dashboard trong phần System Status
+
+### Wizard hướng dẫn cấu hình Validation Rules
+- [x] Tạo component ValidationRulesWizard (4 bước)
+- [x] Bước 1: Chọn sản phẩm và công trạm
+- [x] Bước 2: Chọn loại rule (range, trend, pattern, comparison, formula, custom)
+- [x] Bước 3: Cấu hình thông số rule và đặt tên
+- [x] Bước 4: Xác nhận và lưu
+- [x] Thêm nút "Hướng dẫn tạo" vào trang ValidationRulesManagement
+
+### Rà soát và sửa các page đang ẩn menu trái
+- [x] Tìm các page không có DashboardLayout
+- [x] Sửa WebhookManagement.tsx - thêm DashboardLayout
+- [x] Sửa ChangePassword.tsx - thêm DashboardLayout
+- [x] Sửa ComponentShowcase.tsx - thêm DashboardLayout
+- [x] Các page khác (Home, LocalLogin, NotFound, SystemSetup) không cần sidebar (là trang public)

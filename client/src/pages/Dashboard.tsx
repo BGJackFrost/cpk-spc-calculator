@@ -34,6 +34,7 @@ import { toast } from "sonner";
 import { Link } from "wouter";
 import { LicenseStatusWidget } from "@/components/LicenseStatusWidget";
 import { WebhookRetryWidget } from "@/components/WebhookRetryWidget";
+import { ValidationRulesCard } from "@/components/ValidationRulesCard";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -99,14 +100,6 @@ export default function Dashboard() {
       icon: recentAlerts.length === 0 ? CheckCircle2 : AlertTriangle,
       description: t.dashboard.productionSystem,
       color: recentAlerts.length === 0 ? "text-chart-3" : "text-warning",
-    },
-    {
-      title: "Validation Rules",
-      value: activeValidationRules.length,
-      icon: ShieldCheck,
-      description: "Quy tắc kiểm tra đang hoạt động",
-      color: "text-chart-4",
-      href: "/validation-rules",
     },
   ];
 
@@ -230,7 +223,7 @@ export default function Dashboard() {
         {/* Stats Grid */}
         <div data-tour="dashboard-stats" className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {stats.map((stat, index) => {
-            const widgetKeys = ["mapping_count", "recent_analysis", "cpk_alerts", "system_status", "validation_rules"];
+            const widgetKeys = ["mapping_count", "recent_analysis", "cpk_alerts", "system_status"];
             const widgetKey = widgetKeys[index];
             if (!isWidgetVisible(widgetKey)) return null;
             const IconComponent = stat.icon;
@@ -288,12 +281,13 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* System Status - License & Webhook in 2 columns */}
+        {/* System Status - License, Webhook & Validation Rules */}
         <div data-tour="license-status">
           <h2 className="text-xl font-semibold mb-4">{t.dashboard.systemStatus}</h2>
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             <LicenseStatusWidget />
             <WebhookRetryWidget />
+            {isWidgetVisible("validation_rules") && <ValidationRulesCard />}
           </div>
         </div>
 

@@ -1,3 +1,4 @@
+import DashboardLayout from "@/components/DashboardLayout";
 import {
   Accordion,
   AccordionContent,
@@ -227,7 +228,8 @@ export default function ComponentsShowcase() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <DashboardLayout>
+    <div className="bg-background text-foreground">
       <main className="container max-w-6xl mx-auto">
         <div className="space-y-2 justify-between flex">
           <h2 className="text-3xl font-bold tracking-tight mb-6">
@@ -1433,5 +1435,6 @@ export default function ComponentsShowcase() {
         </div>
       </footer>
     </div>
+    </DashboardLayout>
   );
 }

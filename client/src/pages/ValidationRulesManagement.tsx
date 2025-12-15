@@ -15,8 +15,9 @@ import { toast } from "sonner";
 import { 
   Loader2, Plus, Pencil, Trash2, Search, Filter, 
   ShieldCheck, AlertTriangle, CheckCircle2, XCircle,
-  Play, History
+  Play, History, Wand2
 } from "lucide-react";
+import { ValidationRulesWizard } from "@/components/ValidationRulesWizard";
 
 interface ValidationRule {
   id: number;
@@ -72,6 +73,7 @@ const SEVERITIES = [
 
 export default function ValidationRulesManagement() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<ValidationRule | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterProduct, setFilterProduct] = useState("all");
@@ -301,10 +303,16 @@ export default function ValidationRulesManagement() {
               Định nghĩa các quy tắc kiểm tra riêng cho từng sản phẩm và công trạm
             </p>
           </div>
-          <Button onClick={openCreateDialog}>
-            <Plus className="mr-2 h-4 w-4" />
-            Thêm quy tắc
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setIsWizardOpen(true)}>
+              <Wand2 className="mr-2 h-4 w-4" />
+              Hướng dẫn tạo
+            </Button>
+            <Button onClick={openCreateDialog}>
+              <Plus className="mr-2 h-4 w-4" />
+              Thêm quy tắc
+            </Button>
+          </div>
         </div>
 
         {/* Stats Cards */}
@@ -632,6 +640,13 @@ export default function ValidationRulesManagement() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Wizard Dialog */}
+        <ValidationRulesWizard
+          open={isWizardOpen}
+          onOpenChange={setIsWizardOpen}
+          onSuccess={() => refetch()}
+        />
       </div>
     </DashboardLayout>
   );
