@@ -1250,3 +1250,10 @@
 - [x] Tạo API đăng nhập local với xác thực password - đã có sẵn localAuth.login và localAuth.register
 - [x] Tích hợp session/JWT cho đăng nhập local - đã có sẵn trong localAuthService.ts
 - [x] Test chức năng đăng nhập không cần internet - form đăng nhập hiển thị trên trang chủ, API hoạt động đúng
+
+## Phase 52 - Sửa lỗi Đăng nhập Local
+
+### Sửa lỗi Invalid username or password
+- [x] Kiểm tra tài khoản admin trong database - không có user admin
+- [x] Tạo/cập nhật tài khoản admin mặc định với password đúng - đã tạo admin/admin123
+- [x] Test đăng nhập thành công - đăng nhập với admin/admin123 thành công, redirect về dashboard
