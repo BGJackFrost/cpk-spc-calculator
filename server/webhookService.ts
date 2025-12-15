@@ -2,7 +2,7 @@ import { getDb } from "./db";
 import { webhooks, webhookLogs, type Webhook } from "../drizzle/schema";
 import { eq, and, like, lte, isNotNull } from "drizzle-orm";
 
-export type WebhookEventType = "cpk_alert" | "rule_violation" | "analysis_complete";
+export type WebhookEventType = "cpk_alert" | "rule_violation" | "analysis_complete" | "license_expiring" | "license_expired" | "license_revoked";
 
 // Retry configuration
 const RETRY_DELAYS = [60, 300, 900, 3600, 7200]; // 1min, 5min, 15min, 1hr, 2hr
@@ -53,6 +53,18 @@ function formatSlackPayload(payload: WebhookPayload): object {
       title = "✅ Analysis Complete";
       text = `*Product:* ${payload.data.productCode}\n*Station:* ${payload.data.stationName}\n*CPK:* ${payload.data.cpk?.toFixed(3)}`;
       break;
+    case "license_expiring":
+      title = "⏰ License Sắp Hết Hạn";
+      text = `*Công ty:* ${payload.data.companyName}\n*License:* ${payload.data.licenseType}\n*Hết hạn:* ${payload.data.expiresAt}\n*Còn lại:* ${payload.data.daysLeft} ngày`;
+      break;
+    case "license_expired":
+      title = "🚨 License Đã Hết Hạn";
+      text = `*Công ty:* ${payload.data.companyName}\n*License:* ${payload.data.licenseType}\n*Hết hạn:* ${payload.data.expiresAt}`;
+      break;
+    case "license_revoked":
+      title = "⛔ License Bị Thu Hồi";
+      text = `*Công ty:* ${payload.data.companyName}\n*License:* ${payload.data.licenseKey}\n*Lý do:* ${payload.data.reason || 'Không xác định'}`;
+      break;
   }
   
   return {
@@ -100,6 +112,31 @@ function formatTeamsPayload(payload: WebhookPayload): object {
         { name: "Product", value: payload.data.productCode || "N/A" },
         { name: "Station", value: payload.data.stationName || "N/A" },
         { name: "CPK", value: payload.data.cpk?.toFixed(3) || "N/A" },
+      ];
+      break;
+    case "license_expiring":
+      title = "⏰ License Sắp Hết Hạn";
+      facts = [
+        { name: "Công ty", value: String(payload.data.companyName) || "N/A" },
+        { name: "Loại", value: String(payload.data.licenseType) || "N/A" },
+        { name: "Hết hạn", value: String(payload.data.expiresAt) || "N/A" },
+        { name: "Còn lại", value: `${payload.data.daysLeft} ngày` },
+      ];
+      break;
+    case "license_expired":
+      title = "🚨 License Đã Hết Hạn";
+      facts = [
+        { name: "Công ty", value: String(payload.data.companyName) || "N/A" },
+        { name: "Loại", value: String(payload.data.licenseType) || "N/A" },
+        { name: "Hết hạn", value: String(payload.data.expiresAt) || "N/A" },
+      ];
+      break;
+    case "license_revoked":
+      title = "⛔ License Bị Thu Hồi";
+      facts = [
+        { name: "Công ty", value: String(payload.data.companyName) || "N/A" },
+        { name: "License Key", value: String(payload.data.licenseKey) || "N/A" },
+        { name: "Lý do", value: String(payload.data.reason) || "Không xác định" },
       ];
       break;
   }

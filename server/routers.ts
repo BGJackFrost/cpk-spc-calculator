@@ -4556,6 +4556,83 @@ export const appRouter = router({
         return await getRecentViolations(input?.limit || 5);
       }),
   }),
+
+  // License Customer Management
+  licenseCustomer: router({
+    list: adminProcedure.query(async () => {
+      const { getDb } = await import("./db");
+      const { licenseCustomers } = await import("../drizzle/schema");
+      const db = await getDb();
+      if (!db) return [];
+      return await db.select().from(licenseCustomers).orderBy(licenseCustomers.companyName);
+    }),
+
+    getById: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        const { getDb } = await import("./db");
+        const { licenseCustomers } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        const db = await getDb();
+        if (!db) return null;
+        const [customer] = await db.select().from(licenseCustomers).where(eq(licenseCustomers.id, input.id));
+        return customer;
+      }),
+
+    create: adminProcedure
+      .input(z.object({
+        companyName: z.string().min(1),
+        contactName: z.string().optional(),
+        contactEmail: z.string().email().optional(),
+        contactPhone: z.string().optional(),
+        address: z.string().optional(),
+        industry: z.string().optional(),
+        notes: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { getDb } = await import("./db");
+        const { licenseCustomers } = await import("../drizzle/schema");
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not connected" });
+        const [result] = await db.insert(licenseCustomers).values(input);
+        return { id: result.insertId };
+      }),
+
+    update: adminProcedure
+      .input(z.object({
+        id: z.number(),
+        companyName: z.string().min(1).optional(),
+        contactName: z.string().optional(),
+        contactEmail: z.string().email().optional(),
+        contactPhone: z.string().optional(),
+        address: z.string().optional(),
+        industry: z.string().optional(),
+        notes: z.string().optional(),
+        isActive: z.number().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { getDb } = await import("./db");
+        const { licenseCustomers } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not connected" });
+        const { id, ...data } = input;
+        await db.update(licenseCustomers).set(data).where(eq(licenseCustomers.id, id));
+        return { success: true };
+      }),
+
+    delete: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const { getDb } = await import("./db");
+        const { licenseCustomers } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not connected" });
+        await db.delete(licenseCustomers).where(eq(licenseCustomers.id, input.id));
+        return { success: true };
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

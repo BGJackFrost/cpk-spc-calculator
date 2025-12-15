@@ -58,8 +58,9 @@ import QuickSpcPlan from "./pages/QuickSpcPlan";
 import ValidationRulesManagement from "./pages/ValidationRulesManagement";
 import CpkComparisonDashboard from "./pages/CpkComparisonDashboard";
 import ShiftCpkComparison from "./pages/ShiftCpkComparison";
-import LicenseServerPortal from "./pages/LicenseServerPortal";
 import LicenseManagement from "./pages/LicenseManagement";
+import LicenseCustomers from "./pages/LicenseCustomers";
+import LicenseRevenue from "./pages/LicenseRevenue";
 
 function Router() {
   return (
@@ -112,8 +113,9 @@ function Router() {
       <Route path="/export-history" component={ExportHistory} />
       <Route path="/license-activation" component={LicenseActivation} />
       <Route path="/license-admin" component={LicenseAdmin} />
-      <Route path="/license-server" component={LicenseServerPortal} />
       <Route path="/license-management" component={LicenseManagement} />
+      <Route path="/license-customers" component={LicenseCustomers} />
+      <Route path="/license-revenue" component={LicenseRevenue} />
       <Route path="/login-history" component={LoginHistoryPage} />
       <Route path="/backup-history" component={BackupHistory} />
       <Route path="/measurement-standards" component={MeasurementStandards} />

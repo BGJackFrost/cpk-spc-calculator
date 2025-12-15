@@ -5,6 +5,7 @@
 
 import cron from 'node-cron';
 import { getLicensesExpiringSoon, getExpiredLicenses } from './db';
+import { triggerWebhooks } from './webhookService';
 import { notifyOwner } from './_core/notification';
 import { processWebhookRetries, getRetryStats } from './webhookService';
 import { sendEmail } from './emailService';
@@ -120,6 +121,16 @@ async function checkLicenseExpiry(): Promise<void> {
           content: `License ${license.licenseType?.toUpperCase()} cho ${license.companyName || 'N/A'} sẽ hết hạn vào ${new Date(license.expiresAt!).toLocaleDateString('vi-VN')}. Vui lòng gia hạn để tránh gián đoạn dịch vụ.`
         });
         
+        // Send webhook notification
+        await triggerWebhooks('license_expiring', {
+          companyName: license.companyName || 'N/A',
+          licenseType: license.licenseType?.toUpperCase() || 'N/A',
+          licenseKey: license.licenseKey,
+          expiresAt: new Date(license.expiresAt!).toLocaleDateString('vi-VN'),
+          daysLeft,
+          severity: 'warning'
+        });
+        
         if (success) notificationsSent++;
       }
     }
@@ -144,6 +155,15 @@ async function checkLicenseExpiry(): Promise<void> {
       const success = await notifyOwner({
         title: `🚨 License đã hết hạn`,
         content: `License ${license.licenseType?.toUpperCase()} cho ${license.companyName || 'N/A'} đã hết hạn vào ${new Date(license.expiresAt!).toLocaleDateString('vi-VN')}. Vui lòng gia hạn ngay để tiếp tục sử dụng dịch vụ.`
+      });
+      
+      // Send webhook notification
+      await triggerWebhooks('license_expired', {
+        companyName: license.companyName || 'N/A',
+        licenseType: license.licenseType?.toUpperCase() || 'N/A',
+        licenseKey: license.licenseKey,
+        expiresAt: new Date(license.expiresAt!).toLocaleDateString('vi-VN'),
+        severity: 'critical'
       });
       
       if (success) notificationsSent++;

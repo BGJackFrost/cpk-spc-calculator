@@ -1581,3 +1581,32 @@
 - [x] Thêm bảng license_heartbeats và license_customers
 - [x] Thêm các API: bulkCreate, exportToCsv, updateLicense, extendExpiration, transferLicense
 - [x] Cập nhật LicenseActivation với trạng thái validation và nút xác thực online
+
+
+## Phase 69: Nhóm License Server và Quản lý Khách hàng
+
+### Gộp trang License và tạo nhóm mới
+- [x] Gộp LicenseManagement với các chức năng Server Portal (tabs: Danh sách, Tạo mới, Thống kê)
+- [x] Tạo nhóm menu mới "License Server" (Admin only) trong DashboardLayout
+- [x] Di chuyển các trang license vào nhóm mới (Quản lý License, Khách hàng, Doanh thu)
+- [x] Xóa route và import LicenseServerPortal không cần thiết
+
+### Trang Customer Management
+- [x] Tạo API CRUD cho license_customers (licenseCustomer router)
+- [x] Tạo trang LicenseCustomers.tsx với đầy đủ chức năng CRUD
+- [x] Liên kết khách hàng với license (hiển thị số license theo công ty)
+- [x] Thêm vào nhóm License Server
+
+### Báo cáo doanh thu License
+- [x] Tạo trang LicenseRevenue.tsx với thống kê doanh thu
+- [x] Biểu đồ doanh thu theo tháng/quý/năm (AreaChart, PieChart, BarChart)
+- [x] Thống kê theo loại license và top 10 khách hàng
+- [x] Xuất CSV báo cáo doanh thu
+- [x] Thêm vào nhóm License Server
+
+### Webhook thông báo License
+- [x] Thêm event types: license_expiring, license_expired, license_revoked
+- [x] Tích hợp webhook vào scheduled job checkLicenseExpiry
+- [x] Gửi webhook khi license sắp hết hạn (7 ngày)
+- [x] Gửi webhook khi license đã hết hạn
+- [x] Format payload cho Slack và Teams (formatSlackPayload, formatTeamsPayload)

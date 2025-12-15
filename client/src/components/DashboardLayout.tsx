@@ -147,13 +147,21 @@ const menuGroups: MenuGroup[] = [
       { icon: Server, labelKey: "smtpConfig", path: "/smtp-settings", adminOnly: true },
       { icon: Webhook, labelKey: "nav.webhookManagement", path: "/webhooks", adminOnly: true },
       { icon: Key, labelKey: "nav.licensePortal", path: "/license-activation" },
-      { icon: Shield, labelKey: "nav.licenseAdmin", path: "/license-admin", adminOnly: true },
-      { icon: Server, labelKey: "nav.licenseServer", path: "/license-server", adminOnly: true },
       { icon: FileText, labelKey: "nav.auditLog", path: "/audit-logs" },
       { icon: Database, labelKey: "seedData", path: "/seed-data", adminOnly: true },
       { icon: FileType, labelKey: "nav.reportTemplates", path: "/report-templates", adminOnly: true },
       { icon: FolderClock, labelKey: "nav.exportHistory", path: "/export-history" },
       { icon: Info, labelKey: "nav.about", path: "/about" },
+    ]
+  },
+  {
+    id: "licenseServer",
+    labelKey: "menuGroup.licenseServer",
+    icon: Shield,
+    items: [
+      { icon: Key, labelKey: "nav.licenseManagement", path: "/license-management", adminOnly: true },
+      { icon: Building2, labelKey: "nav.licenseCustomers", path: "/license-customers", adminOnly: true },
+      { icon: BarChart3, labelKey: "nav.licenseRevenue", path: "/license-revenue", adminOnly: true },
     ]
   },
 ];
@@ -197,6 +205,10 @@ const fallbackLabelsVi: Record<string, string> = {
   "nav.customValidation": "Kiểm tra Tùy chỉnh",
   "nav.cpkBenchmark": "So sánh CPK",
   "nav.shiftAnalysis": "Phân tích theo Ca",
+  "menuGroup.licenseServer": "License Server",
+  "nav.licenseManagement": "Quản lý License",
+  "nav.licenseCustomers": "Quản lý Khách hàng",
+  "nav.licenseRevenue": "Báo cáo Doanh thu",
 };
 
 const fallbackLabelsEn: Record<string, string> = {
@@ -230,6 +242,10 @@ const fallbackLabelsEn: Record<string, string> = {
   "nav.measurementStandards": "Measurement Standards",
   "nav.measurementStandardsDashboard": "Standards Dashboard",
   "nav.quickSpcPlan": "Quick SPC Plan",
+  "menuGroup.licenseServer": "License Server",
+  "nav.licenseManagement": "License Management",
+  "nav.licenseCustomers": "Customer Management",
+  "nav.licenseRevenue": "Revenue Report",
   "nav.shiftCpkComparison": "Shift CPK Comparison",
   "nav.defectTracking": "Defect Tracking",
   "nav.defectAnalysis": "Defect Analysis (Pareto)",
