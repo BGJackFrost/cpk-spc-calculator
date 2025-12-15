@@ -2086,3 +2086,10 @@
 - [x] UI cấu hình báo cáo tự động (/scheduled-reports)
 - [x] Translations cho menu mới (vi.json, en.json)
 - [x] Tests cho dashboard config và scheduled reports (425 tests passed)
+
+## Fix: MMS Database Tables
+- [x] Tạo bảng suppliers
+- [x] Tạo bảng spare_parts
+- [x] Tạo bảng spare_parts_inventory
+- [x] Tạo bảng spare_parts_transactions
+- [x] Tạo bảng purchase_orders

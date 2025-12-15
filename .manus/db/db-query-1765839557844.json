@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `spare_parts_inventory` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `sparePartId` int NOT NULL,\n  `warehouseId` int,\n  `quantity` int NOT NULL DEFAULT 0,\n  `reservedQuantity` int NOT NULL DEFAULT 0,\n  `lastUpdated` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  CONSTRAINT `spare_parts_inventory_id` PRIMARY KEY(`id`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute CREATE TABLE IF NOT EXISTS `spare_parts_inventory` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `sparePartId` int NOT NULL,\n  `warehouseId` int,\n  `quantity` int NOT NULL DEFAULT 0,\n  `reservedQuantity` int NOT NULL DEFAULT 0,\n  `lastUpdated` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  CONSTRAINT `spare_parts_inventory_id` PRIMARY KEY(`id`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1646
+}
