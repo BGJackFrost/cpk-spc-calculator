@@ -80,6 +80,7 @@ import PlantKPIDashboard from "./pages/PlantKPIDashboard";
 import IoTGatewayConfig from "./pages/IoTGatewayConfig";
 import ReportsExport from "./pages/ReportsExport";
 import AlertConfiguration from "./pages/AlertConfiguration";
+import ScheduledReports from "./pages/ScheduledReports";
 
 function Router() {
   return (
@@ -126,6 +127,7 @@ function Router() {
       <Route path="/iot-gateway" component={IoTGatewayConfig} />
       <Route path="/reports-export" component={ReportsExport} />
       <Route path="/alert-config" component={AlertConfiguration} />
+      <Route path="/scheduled-reports" component={ScheduledReports} />
       <Route path="/email-notifications" component={EmailNotificationSettings} />
       <Route path="/permissions" component={RolePermissionManagement} />
       <Route path="/smtp-settings" component={SmtpSettings} />

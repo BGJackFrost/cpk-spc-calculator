@@ -1,8 +1,19 @@
-import { useState, useRef, useCallback, ReactNode } from "react";
+import { useState, useRef, useCallback, ReactNode, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { GripVertical, X, Maximize2, Minimize2, Settings } from "lucide-react";
+import { GripVertical, X, Maximize2, Minimize2, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { trpc } from "@/lib/trpc";
+// Toast notification helper
+const useToast = () => ({
+  toast: ({ title, description, variant }: { title: string; description?: string; variant?: string }) => {
+    if (variant === 'destructive') {
+      console.error(`[Toast] ${title}: ${description}`);
+    } else {
+      console.log(`[Toast] ${title}: ${description}`);
+    }
+  }
+});
 
 export interface WidgetConfig {
   id: string;
@@ -124,9 +135,54 @@ export function DraggableWidget({
   );
 }
 
-// Widget Manager for handling widget state
-export function useWidgetManager(initialWidgets: WidgetConfig[]) {
+// Widget Manager for handling widget state with optional DB persistence
+export function useWidgetManager(initialWidgets: WidgetConfig[], options?: { persistToDb?: boolean }) {
   const [widgets, setWidgets] = useState<WidgetConfig[]>(initialWidgets);
+  const [isLoading, setIsLoading] = useState(options?.persistToDb ?? false);
+  const [isSaving, setIsSaving] = useState(false);
+  const { toast } = useToast();
+  
+  // tRPC queries/mutations for DB persistence
+  const { data: savedWidgets, isLoading: isLoadingFromDb } = trpc.mmsDashboardConfig.getWidgets.useQuery(
+    undefined,
+    { enabled: options?.persistToDb ?? false }
+  );
+  
+  const saveWidgetsMutation = trpc.mmsDashboardConfig.saveWidgets.useMutation({
+    onSuccess: () => {
+      setIsSaving(false);
+      toast({ title: "Đã lưu cấu hình Dashboard", description: "Cấu hình widgets đã được lưu thành công" });
+    },
+    onError: () => {
+      setIsSaving(false);
+      toast({ title: "Lỗi", description: "Không thể lưu cấu hình Dashboard", variant: "destructive" });
+    },
+  });
+  
+  const resetWidgetsMutation = trpc.mmsDashboardConfig.resetWidgets.useMutation({
+    onSuccess: () => {
+      setWidgets(initialWidgets);
+      toast({ title: "Đã đặt lại Dashboard", description: "Dashboard đã được đặt về mặc định" });
+    },
+  });
+
+  // Load widgets from DB on mount
+  useEffect(() => {
+    if (options?.persistToDb && savedWidgets && savedWidgets.length > 0) {
+      const loadedWidgets: WidgetConfig[] = savedWidgets.map((w, index) => ({
+        id: w.widgetType,
+        title: w.title || w.widgetType,
+        type: w.widgetType,
+        size: (["small", "medium", "large"][Math.min(w.width || 1, 3) - 1] || "small") as "small" | "medium" | "large",
+        position: { x: w.position || index, y: 0 },
+        visible: w.isVisible === 1,
+      }));
+      setWidgets(loadedWidgets);
+      setIsLoading(false);
+    } else if (!isLoadingFromDb) {
+      setIsLoading(false);
+    }
+  }, [savedWidgets, isLoadingFromDb, options?.persistToDb, initialWidgets]);
 
   const updateWidget = useCallback((id: string, updates: Partial<WidgetConfig>) => {
     setWidgets(prev => prev.map(w => w.id === id ? { ...w, ...updates } : w));
@@ -157,8 +213,30 @@ export function useWidgetManager(initialWidgets: WidgetConfig[]) {
   }, []);
 
   const resetWidgets = useCallback(() => {
-    setWidgets(initialWidgets);
-  }, [initialWidgets]);
+    if (options?.persistToDb) {
+      resetWidgetsMutation.mutate();
+    } else {
+      setWidgets(initialWidgets);
+    }
+  }, [initialWidgets, options?.persistToDb, resetWidgetsMutation]);
+
+  // Save widgets to DB
+  const saveWidgets = useCallback(() => {
+    if (!options?.persistToDb) return;
+    
+    setIsSaving(true);
+    const widgetsToSave = widgets.map((w, index) => ({
+      widgetType: w.type,
+      title: w.title,
+      config: {},
+      position: index,
+      width: w.size === "small" ? 1 : w.size === "medium" ? 2 : 3,
+      height: 1,
+      isVisible: w.visible,
+    }));
+    
+    saveWidgetsMutation.mutate(widgetsToSave);
+  }, [widgets, options?.persistToDb, saveWidgetsMutation]);
 
   return {
     widgets,
@@ -168,6 +246,9 @@ export function useWidgetManager(initialWidgets: WidgetConfig[]) {
     resizeWidget,
     reorderWidgets,
     resetWidgets,
+    saveWidgets,
+    isLoading,
+    isSaving,
     visibleWidgets: widgets.filter(w => w.visible),
     hiddenWidgets: widgets.filter(w => !w.visible),
   };

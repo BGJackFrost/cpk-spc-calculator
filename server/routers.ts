@@ -6,6 +6,7 @@ import { sparePartsRouter } from "./routers/sparePartsRouter";
 import { predictiveRouter } from "./routers/predictiveRouter";
 import { reportRouter as mmsReportRouter } from "./routers/reportRouter";
 import { alertRouter as mmsAlertRouter } from "./routers/alertRouter";
+import { mmsDashboardConfigRouter } from "./routers/dashboardConfigRouter";
 import { systemRouter } from "./_core/systemRouter";
 import { triggerLicenseExpiryCheck } from "./scheduledJobs";
 import { triggerWebhooks, testWebhook } from "./webhookService";
@@ -2834,6 +2835,7 @@ export const appRouter = router({
   dashboard: dashboardRouter,
   report: reportRouter,
   dashboardConfig: dashboardConfigRouter,
+  mmsDashboardConfig: mmsDashboardConfigRouter,
   spcPlan: spcPlanRouter,
   userLine: userLineRouter,
   emailNotification: emailNotificationRouter,
@@ -5312,7 +5314,6 @@ export const appRouter = router({
   predictive: predictiveRouter,
   mmsReport: mmsReportRouter,
   mmsAlert: mmsAlertRouter,
-
   machineArea: router({
     list: protectedProcedure.query(async () => {
       const { machineAreas } = await import("../drizzle/schema");

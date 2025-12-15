@@ -2068,3 +2068,21 @@
 - [x] Email SMTP cho OEE/Maintenance/Predictive alerts
 - [x] Mobile responsive cho Gantt và QR scanner
 - [x] Fix và cập nhật translations cho menu MMS
+
+## Phase 82: Dashboard Config & Auto Reports
+- [ ] Schema DB cho user dashboard config
+- [ ] API endpoints lưu/load cấu hình widgets
+- [ ] PlantKPIDashboard lưu cấu hình vào DB
+- [ ] Service tạo báo cáo PDF OEE/Maintenance
+- [ ] Scheduled job gửi báo cáo hàng tuần
+- [ ] UI cấu hình báo cáo tự động
+
+## Phase 82: Dashboard Persistence & Scheduled Reports
+- [x] Schema DB cho user dashboard config (mmsDashboardWidgets, scheduledReports, scheduledReportLogs)
+- [x] API endpoints lưu/load cấu hình widgets (mmsDashboardConfig router)
+- [x] Cập nhật PlantKPIDashboard để lưu cấu hình vào DB
+- [x] Service tạo báo cáo PDF (pdfReportService.ts)
+- [x] Scheduled job gửi báo cáo hàng tuần (scheduledReportJob.ts)
+- [x] UI cấu hình báo cáo tự động (/scheduled-reports)
+- [x] Translations cho menu mới (vi.json, en.json)
+- [x] Tests cho dashboard config và scheduled reports (425 tests passed)

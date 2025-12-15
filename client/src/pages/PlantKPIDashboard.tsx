@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
 import { Input } from "@/components/ui/input";
-import { Search, Filter, X, Settings, LayoutGrid, Eye, EyeOff, RotateCcw } from "lucide-react";
+import { Search, Filter, X, Settings, LayoutGrid, Eye, EyeOff, RotateCcw, Save, Loader2 } from "lucide-react";
 import { DraggableWidget, useWidgetManager, WidgetConfig } from "@/components/DraggableWidget";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
@@ -69,7 +69,7 @@ export default function PlantKPIDashboard() {
   const [showFilters, setShowFilters] = useState(false);
   const [editMode, setEditMode] = useState(false);
   
-  // Widget manager
+  // Widget manager with DB persistence
   const {
     widgets,
     visibleWidgets,
@@ -79,7 +79,10 @@ export default function PlantKPIDashboard() {
     resizeWidget,
     reorderWidgets,
     resetWidgets,
-  } = useWidgetManager(defaultWidgets);
+    saveWidgets,
+    isLoading: isLoadingWidgets,
+    isSaving: isSavingWidgets,
+  } = useWidgetManager(defaultWidgets, { persistToDb: true });
 
   // Queries
   const { data: machines } = trpc.machine.listAll.useQuery();
@@ -280,7 +283,20 @@ export default function PlantKPIDashboard() {
                     </div>
                   </div>
                   
-                  <div className="border-t pt-4">
+                  <div className="border-t pt-4 space-y-2">
+                    <Button
+                      variant="default"
+                      className="w-full"
+                      onClick={saveWidgets}
+                      disabled={isSavingWidgets}
+                    >
+                      {isSavingWidgets ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Save className="h-4 w-4 mr-2" />
+                      )}
+                      Lưu cấu hình
+                    </Button>
                     <Button
                       variant="outline"
                       className="w-full"

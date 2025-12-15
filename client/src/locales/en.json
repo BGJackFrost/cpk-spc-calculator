@@ -372,6 +372,7 @@
     "iotGateway": "IoT Gateway",
     "reportsExport": "Export Reports",
     "alertConfig": "Alert Configuration",
+    "scheduledReports": "Scheduled Reports",
     "equipmentQr": "Equipment QR Lookup",
     "analyze": "SPC/CPK Analysis",
     "multiObjectAnalysis": "Multi-Object Analysis",

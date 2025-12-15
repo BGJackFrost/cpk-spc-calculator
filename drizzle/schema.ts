@@ -2052,3 +2052,53 @@ export const mmsDashboardWidgets = mysqlTable("mms_dashboard_widgets", {
 
 export type MmsDashboardWidget = typeof mmsDashboardWidgets.$inferSelect;
 export type InsertMmsDashboardWidget = typeof mmsDashboardWidgets.$inferInsert;
+
+/**
+ * Scheduled Reports Configuration
+ * Cấu hình báo cáo tự động gửi định kỳ
+ */
+export const scheduledReports = mysqlTable("scheduled_reports", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  reportType: mysqlEnum("reportType", ["oee_daily", "oee_weekly", "oee_monthly", "maintenance_daily", "maintenance_weekly", "maintenance_monthly", "combined_weekly", "combined_monthly"]).notNull(),
+  schedule: mysqlEnum("schedule", ["daily", "weekly", "monthly"]).notNull().default("weekly"),
+  dayOfWeek: int("dayOfWeek").default(1), // 0-6 for weekly (0=Sunday)
+  dayOfMonth: int("dayOfMonth").default(1), // 1-31 for monthly
+  hour: int("hour").notNull().default(8), // Hour to send (0-23)
+  recipients: text("recipients").notNull(), // Comma-separated emails
+  includeCharts: int("includeCharts").notNull().default(1),
+  includeTables: int("includeTables").notNull().default(1),
+  includeRecommendations: int("includeRecommendations").notNull().default(1),
+  machineIds: json("machineIds"), // Array of machine IDs to include, null = all
+  productionLineIds: json("productionLineIds"), // Array of line IDs, null = all
+  isActive: int("isActive").notNull().default(1),
+  lastSentAt: timestamp("lastSentAt"),
+  nextScheduledAt: timestamp("nextScheduledAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ScheduledReport = typeof scheduledReports.$inferSelect;
+export type InsertScheduledReport = typeof scheduledReports.$inferInsert;
+
+/**
+ * Scheduled Report Logs
+ * Lịch sử gửi báo cáo tự động
+ */
+export const scheduledReportLogs = mysqlTable("scheduled_report_logs", {
+  id: int("id").autoincrement().primaryKey(),
+  reportId: int("reportId").notNull(),
+  sentAt: timestamp("sentAt").defaultNow().notNull(),
+  status: mysqlEnum("status", ["success", "failed", "partial"]).notNull(),
+  recipientCount: int("recipientCount").notNull().default(0),
+  successCount: int("successCount").notNull().default(0),
+  failedCount: int("failedCount").notNull().default(0),
+  errorMessage: text("errorMessage"),
+  reportFileUrl: varchar("reportFileUrl", { length: 500 }),
+  reportFileSizeKb: int("reportFileSizeKb"),
+  generationTimeMs: int("generationTimeMs"),
+});
+
+export type ScheduledReportLog = typeof scheduledReportLogs.$inferSelect;
+export type InsertScheduledReportLog = typeof scheduledReportLogs.$inferInsert;

@@ -372,6 +372,7 @@
     "iotGateway": "IoT Gateway",
     "reportsExport": "Xuất Báo cáo",
     "alertConfig": "Cấu hình Cảnh báo",
+    "scheduledReports": "Báo cáo Tự động",
     "equipmentQr": "Tra cứu QR Thiết bị",
     "analyze": "Phân tích SPC/CPK",
     "multiObjectAnalysis": "Phân tích Đa Đối tượng",
