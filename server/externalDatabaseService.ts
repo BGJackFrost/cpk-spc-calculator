@@ -96,12 +96,22 @@ export async function getConnectionById(id: number) {
   const [connection] = await db.select().from(databaseConnections).where(eq(databaseConnections.id, id));
   if (!connection) return null;
   
-  // Decrypt password if encrypted
+  // Decrypt password if encrypted - with error handling
   if (connection.password && isEncrypted(connection.password)) {
-    connection.password = decrypt(connection.password);
+    try {
+      connection.password = decrypt(connection.password);
+    } catch (error) {
+      console.warn(`Failed to decrypt password for connection ${id}, keeping original value`);
+      // Keep original value if decryption fails (might be plain text or corrupted)
+    }
   }
   if (connection.connectionString && isEncrypted(connection.connectionString)) {
-    connection.connectionString = decrypt(connection.connectionString);
+    try {
+      connection.connectionString = decrypt(connection.connectionString);
+    } catch (error) {
+      console.warn(`Failed to decrypt connectionString for connection ${id}, keeping original value`);
+      // Keep original value if decryption fails
+    }
   }
   
   return connection;
