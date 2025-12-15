@@ -176,6 +176,13 @@
       "when": 1765774593178,
       "tag": "0024_tiresome_smiling_tiger",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "5",
+      "when": 1765781860832,
+      "tag": "0025_pale_overlord",
+      "breakpoints": true
     }
   ]
 }

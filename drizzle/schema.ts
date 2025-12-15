@@ -1234,6 +1234,8 @@ export const productStationMachineStandards = mysqlTable("product_station_machin
   
   // SPC Rules được áp dụng (JSON array of rule IDs)
   appliedSpcRules: text("appliedSpcRules"), // ["RULE1", "RULE2", ...]
+  appliedCpkRules: text("appliedCpkRules"), // ["CPK1", "CPK2", ...] - CPK Rules
+  appliedCaRules: text("appliedCaRules"), // ["CA1", "CA2", ...] - CA Rules
   
   // CPK thresholds
   cpkWarningThreshold: int("cpkWarningThreshold").default(133), // 1.33 * 100

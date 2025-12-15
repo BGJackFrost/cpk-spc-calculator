@@ -83,16 +83,23 @@ export default function MeasurementStandards() {
   const [selectedRules, setSelectedRules] = useState<string[]>([]);
   
   const [formData, setFormData] = useState({
+    measurementName: "",
     productId: "",
     workstationId: "",
     machineId: "",
     usl: "",
     lsl: "",
     target: "",
+    unit: "",
     sampleSize: "5",
-    sampleFrequency: "1",
+    sampleFrequency: "60",
     samplingMethod: "random",
+    cpkWarningThreshold: "133",
+    cpkCriticalThreshold: "100",
+    notes: "",
   });
+  const [selectedCpkRules, setSelectedCpkRules] = useState<string[]>([]);
+  const [selectedCaRules, setSelectedCaRules] = useState<string[]>([]);
 
   // Queries
   const { data: standards, isLoading, refetch } = trpc.measurementStandard.list.useQuery();
@@ -100,6 +107,8 @@ export default function MeasurementStandards() {
   const { data: workstations } = trpc.workstation.listAll.useQuery();
   const { data: machines } = trpc.machine.listAll.useQuery();
   const { data: spcRules } = trpc.rules.getSpcRules.useQuery();
+  const { data: cpkRules } = trpc.rules.getCpkRules.useQuery();
+  const { data: caRules } = trpc.rules.getCaRules.useQuery();
 
   // Mutations
   const createMutation = trpc.measurementStandard.create.useMutation({
@@ -132,17 +141,24 @@ export default function MeasurementStandards() {
 
   const resetForm = () => {
     setFormData({
+      measurementName: "",
       productId: "",
       workstationId: "",
       machineId: "",
       usl: "",
       lsl: "",
       target: "",
+      unit: "",
       sampleSize: "5",
-      sampleFrequency: "1",
+      sampleFrequency: "60",
       samplingMethod: "random",
+      cpkWarningThreshold: "133",
+      cpkCriticalThreshold: "100",
+      notes: "",
     });
     setSelectedRules([]);
+    setSelectedCpkRules([]);
+    setSelectedCaRules([]);
     setEditingStandard(null);
   };
 
@@ -154,15 +170,20 @@ export default function MeasurementStandards() {
   const openEditDialog = (standard: MeasurementStandard) => {
     setEditingStandard(standard);
     setFormData({
+      measurementName: standard.measurementName || "",
       productId: standard.productId.toString(),
       workstationId: standard.workstationId.toString(),
       machineId: standard.machineId?.toString() || "",
       usl: standard.usl ? (standard.usl / 10000).toString() : "",
       lsl: standard.lsl ? (standard.lsl / 10000).toString() : "",
       target: standard.target ? (standard.target / 10000).toString() : "",
+      unit: (standard as any).unit || "",
       sampleSize: standard.sampleSize.toString(),
       sampleFrequency: standard.sampleFrequency.toString(),
       samplingMethod: standard.samplingMethod || "random",
+      cpkWarningThreshold: standard.cpkWarningThreshold?.toString() || "133",
+      cpkCriticalThreshold: standard.cpkCriticalThreshold?.toString() || "100",
+      notes: standard.notes || "",
     });
     // Parse applied rules
     if (standard.appliedSpcRules) {
@@ -175,11 +196,34 @@ export default function MeasurementStandards() {
     } else {
       setSelectedRules([]);
     }
+    // Parse CPK rules
+    const stdAny = standard as any;
+    if (stdAny.appliedCpkRules) {
+      try {
+        const rules = JSON.parse(stdAny.appliedCpkRules);
+        setSelectedCpkRules(Array.isArray(rules) ? rules : []);
+      } catch {
+        setSelectedCpkRules([]);
+      }
+    } else {
+      setSelectedCpkRules([]);
+    }
+    // Parse CA rules
+    if (stdAny.appliedCaRules) {
+      try {
+        const rules = JSON.parse(stdAny.appliedCaRules);
+        setSelectedCaRules(Array.isArray(rules) ? rules : []);
+      } catch {
+        setSelectedCaRules([]);
+      }
+    } else {
+      setSelectedCaRules([]);
+    }
     setIsDialogOpen(true);
   };
 
   const handleSubmit = () => {
-    if (!formData.productId || !formData.workstationId || !formData.usl || !formData.lsl) {
+    if (!formData.measurementName || !formData.productId || !formData.workstationId || !formData.usl || !formData.lsl) {
       toast.error("Vui lòng điền đầy đủ thông tin bắt buộc");
       return;
     }
@@ -193,16 +237,23 @@ export default function MeasurementStandards() {
     }
 
     const data = {
+      measurementName: formData.measurementName,
       productId: parseInt(formData.productId),
       workstationId: parseInt(formData.workstationId),
       machineId: formData.machineId ? parseInt(formData.machineId) : undefined,
       usl,
       lsl,
       target: formData.target ? parseFloat(formData.target) : undefined,
+      unit: formData.unit || undefined,
       sampleSize: parseInt(formData.sampleSize) || 5,
-      sampleFrequency: parseInt(formData.sampleFrequency) || 1,
+      sampleFrequency: parseInt(formData.sampleFrequency) || 60,
       samplingMethod: formData.samplingMethod,
       appliedSpcRules: selectedRules.length > 0 ? JSON.stringify(selectedRules) : undefined,
+      appliedCpkRules: selectedCpkRules.length > 0 ? JSON.stringify(selectedCpkRules) : undefined,
+      appliedCaRules: selectedCaRules.length > 0 ? JSON.stringify(selectedCaRules) : undefined,
+      cpkWarningThreshold: parseInt(formData.cpkWarningThreshold) || 133,
+      cpkCriticalThreshold: parseInt(formData.cpkCriticalThreshold) || 100,
+      notes: formData.notes || undefined,
     };
 
     if (editingStandard) {
@@ -456,13 +507,22 @@ export default function MeasurementStandards() {
             </DialogHeader>
 
             <Tabs defaultValue="basic" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="basic">Cơ bản</TabsTrigger>
                 <TabsTrigger value="sampling">Lấy mẫu</TabsTrigger>
                 <TabsTrigger value="rules">SPC Rules</TabsTrigger>
+                <TabsTrigger value="cpk">CPK/CA</TabsTrigger>
               </TabsList>
 
               <TabsContent value="basic" className="space-y-4 mt-4">
+                <div className="space-y-2">
+                  <Label>Tên tiêu chuẩn đo *</Label>
+                  <Input
+                    placeholder="VD: Đo chiều dài sản phẩm A tại trạm 1"
+                    value={formData.measurementName}
+                    onChange={(e) => setFormData({ ...formData, measurementName: e.target.value })}
+                  />
+                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Sản phẩm *</Label>
@@ -525,7 +585,7 @@ export default function MeasurementStandards() {
                   </p>
                 </div>
 
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-4 gap-4">
                   <div className="space-y-2">
                     <Label className="flex items-center gap-2">
                       <AlertTriangle className="h-4 w-4 text-red-500" />
@@ -563,6 +623,14 @@ export default function MeasurementStandards() {
                       placeholder="VD: 10.0"
                       value={formData.target}
                       onChange={(e) => setFormData({ ...formData, target: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Đơn vị</Label>
+                    <Input
+                      placeholder="VD: mm, kg, °C"
+                      value={formData.unit}
+                      onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
                     />
                   </div>
                 </div>
@@ -671,6 +739,108 @@ export default function MeasurementStandards() {
                     </Button>
                   </div>
                 )}
+              </TabsContent>
+
+              <TabsContent value="cpk" className="space-y-4 mt-4">
+                {/* CPK Thresholds */}
+                <div className="space-y-2">
+                  <Label className="text-base font-medium">Ngưỡng cảnh báo CPK</Label>
+                  <p className="text-sm text-muted-foreground">Cấu hình ngưỡng CPK để cảnh báo khi chất lượng giảm</p>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                      Ngưỡng cảnh báo (x100)
+                    </Label>
+                    <Input
+                      type="number"
+                      placeholder="133 = 1.33"
+                      value={formData.cpkWarningThreshold}
+                      onChange={(e) => setFormData({ ...formData, cpkWarningThreshold: e.target.value })}
+                    />
+                    <p className="text-xs text-muted-foreground">Nhập 133 cho CPK = 1.33</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <AlertTriangle className="h-4 w-4 text-red-500" />
+                      Ngưỡng nguy hiểm (x100)
+                    </Label>
+                    <Input
+                      type="number"
+                      placeholder="100 = 1.00"
+                      value={formData.cpkCriticalThreshold}
+                      onChange={(e) => setFormData({ ...formData, cpkCriticalThreshold: e.target.value })}
+                    />
+                    <p className="text-xs text-muted-foreground">Nhập 100 cho CPK = 1.00</p>
+                  </div>
+                </div>
+
+                {/* CPK Rules */}
+                <div className="space-y-2 pt-4 border-t">
+                  <Label className="text-base font-medium">CPK Rules</Label>
+                  <p className="text-sm text-muted-foreground">Chọn các rules CPK sẽ được kiểm tra</p>
+                </div>
+                <div className="grid grid-cols-1 gap-2 max-h-[150px] overflow-y-auto border rounded-lg p-4">
+                  {cpkRules?.map((rule: any) => (
+                    <div
+                      key={rule.id}
+                      className={`flex items-start gap-3 p-2 rounded-lg border cursor-pointer transition-colors ${
+                        selectedCpkRules.includes(rule.code) ? "bg-primary/10 border-primary" : "hover:bg-muted"
+                      }`}
+                      onClick={() => setSelectedCpkRules(prev => 
+                        prev.includes(rule.code) ? prev.filter(r => r !== rule.code) : [...prev, rule.code]
+                      )}
+                    >
+                      <Checkbox checked={selectedCpkRules.includes(rule.code)} />
+                      <div className="flex-1">
+                        <span className="font-medium">{rule.code}: {rule.name}</span>
+                        {rule.description && <p className="text-xs text-muted-foreground">{rule.description}</p>}
+                      </div>
+                    </div>
+                  ))}
+                  {(!cpkRules || cpkRules.length === 0) && (
+                    <p className="text-center text-muted-foreground py-2">Chưa có CPK Rules</p>
+                  )}
+                </div>
+
+                {/* CA Rules */}
+                <div className="space-y-2 pt-4 border-t">
+                  <Label className="text-base font-medium">CA Rules (Process Capability)</Label>
+                  <p className="text-sm text-muted-foreground">Chọn các rules CA sẽ được kiểm tra</p>
+                </div>
+                <div className="grid grid-cols-1 gap-2 max-h-[150px] overflow-y-auto border rounded-lg p-4">
+                  {caRules?.map((rule: any) => (
+                    <div
+                      key={rule.id}
+                      className={`flex items-start gap-3 p-2 rounded-lg border cursor-pointer transition-colors ${
+                        selectedCaRules.includes(rule.code) ? "bg-primary/10 border-primary" : "hover:bg-muted"
+                      }`}
+                      onClick={() => setSelectedCaRules(prev => 
+                        prev.includes(rule.code) ? prev.filter(r => r !== rule.code) : [...prev, rule.code]
+                      )}
+                    >
+                      <Checkbox checked={selectedCaRules.includes(rule.code)} />
+                      <div className="flex-1">
+                        <span className="font-medium">{rule.code}: {rule.name}</span>
+                        {rule.description && <p className="text-xs text-muted-foreground">{rule.description}</p>}
+                      </div>
+                    </div>
+                  ))}
+                  {(!caRules || caRules.length === 0) && (
+                    <p className="text-center text-muted-foreground py-2">Chưa có CA Rules</p>
+                  )}
+                </div>
+
+                {/* Notes */}
+                <div className="space-y-2 pt-4 border-t">
+                  <Label>Ghi chú</Label>
+                  <Input
+                    placeholder="Ghi chú thêm về tiêu chuẩn đo..."
+                    value={formData.notes}
+                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  />
+                </div>
               </TabsContent>
             </Tabs>
 

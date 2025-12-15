@@ -3967,16 +3967,23 @@ export const appRouter = router({
     
     create: protectedProcedure
       .input(z.object({
+        measurementName: z.string(),
         productId: z.number(),
         workstationId: z.number(),
         machineId: z.number().optional(),
         usl: z.number(),
         lsl: z.number(),
         target: z.number().optional(),
+        unit: z.string().optional(),
         sampleSize: z.number().default(5),
-        sampleFrequency: z.number().default(1),
+        sampleFrequency: z.number().default(60),
         samplingMethod: z.string().default("random"),
         appliedSpcRules: z.string().optional(),
+        appliedCpkRules: z.string().optional(),
+        appliedCaRules: z.string().optional(),
+        cpkWarningThreshold: z.number().optional(),
+        cpkCriticalThreshold: z.number().optional(),
+        notes: z.string().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
         if (ctx.user?.role !== "admin") {
@@ -3990,16 +3997,23 @@ export const appRouter = router({
     update: protectedProcedure
       .input(z.object({
         id: z.number(),
+        measurementName: z.string().optional(),
         productId: z.number().optional(),
         workstationId: z.number().optional(),
         machineId: z.number().optional(),
         usl: z.number().optional(),
         lsl: z.number().optional(),
         target: z.number().optional(),
+        unit: z.string().optional(),
         sampleSize: z.number().optional(),
         sampleFrequency: z.number().optional(),
         samplingMethod: z.string().optional(),
         appliedSpcRules: z.string().optional(),
+        appliedCpkRules: z.string().optional(),
+        appliedCaRules: z.string().optional(),
+        cpkWarningThreshold: z.number().optional(),
+        cpkCriticalThreshold: z.number().optional(),
+        notes: z.string().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
         if (ctx.user?.role !== "admin") {

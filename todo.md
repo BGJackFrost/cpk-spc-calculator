@@ -1381,3 +1381,26 @@
 - [x] Biểu đồ phân bố tiêu chuẩn theo Sản phẩm/Công trạm
 - [x] Danh sách tiêu chuẩn cần xem xét (filter incomplete)
 - [x] Thêm route và menu vào sidebar
+
+
+## Phase 60: Tối ưu cấu trúc dữ liệu và quy trình tạo SPC Plan
+
+### Phân tích và thiết kế
+- [x] Phân tích các bảng hiện tại: product_station_machine_standards, product_specifications, sampling_configs, spc_rules, cpk_rules, ca_rules
+- [x] Thiết kế: Sử dụng bảng product_station_machine_standards làm bảng chính, thêm các trường appliedCpkRules, appliedCaRules
+
+### Cập nhật bảng Tiêu chuẩn đo lường
+- [x] Đảm bảo bảng product_station_machine_standards chứa đầy đủ: USL/LSL/Target, sampleSize, sampleFrequency, samplingMethod, appliedSpcRules, appliedCpkRules, appliedCaRules
+- [x] Thêm các trường appliedCpkRules, appliedCaRules vào schema và database
+
+### Tối ưu form tạo SPC Plan
+- [x] Đơn giản hóa form SPC Plan - tạo trang QuickSpcPlan.tsx
+- [x] Tự động điền tất cả thông tin từ Tiêu chuẩn đo: Sản phẩm, Công trạm, Máy, Rules
+- [x] Thêm trang "Tạo nhanh SPC Plan" với 3 bước đơn giản
+- [x] Hiển thị preview thông tin trước khi tạo
+
+### Cập nhật giao diện quản lý Tiêu chuẩn đo
+- [x] Cải thiện form Tiêu chuẩn đo - thêm measurementName, unit, CPK/CA Rules
+- [x] Thêm tab CPK/CA để cấu hình ngưỡng và rules
+- [x] Cập nhật API create/update với các trường mới
+- [ ] Hiển thị đầy đủ thông tin trong danh sách

@@ -32,7 +32,7 @@ import {
   Mail, Shield, Server, Database, Wrench, Cog, GitBranch, FileText, 
   BarChart3, AlertTriangle, Cpu, GitCompare, ArrowUpDown, Info, BookOpen, 
   Layers, Key, Webhook, FileType, FolderClock, UserCog, ChevronRight,
-  Gauge, ClipboardList, Building2, ShieldCheck, Boxes, Moon, Sun
+  Gauge, ClipboardList, Building2, ShieldCheck, Boxes, Moon, Sun, Zap
 } from "lucide-react";
 import { useTheme } from "../contexts/ThemeContext";
 import { CSSProperties, useEffect, useRef, useState } from "react";
@@ -118,6 +118,7 @@ const menuGroups: MenuGroup[] = [
       { icon: FileSpreadsheet, labelKey: "nav.mappingManagement", path: "/mappings", adminOnly: true },
       { icon: Clock, labelKey: "samplingMethod", path: "/sampling-methods", adminOnly: true },
       { icon: Calendar, labelKey: "nav.spcPlanManagement", path: "/spc-plans", adminOnly: true },
+      { icon: Zap, labelKey: "nav.quickSpcPlan", path: "/quick-spc-plan", adminOnly: true },
     ]
   },
   {
@@ -184,6 +185,7 @@ const fallbackLabelsVi: Record<string, string> = {
   "menuGroup.system": "Hệ thống",
   "nav.measurementStandards": "Tiêu chuẩn Đo",
   "nav.measurementStandardsDashboard": "Dashboard Tiêu chuẩn",
+  "nav.quickSpcPlan": "Tạo nhanh SPC Plan",
 };
 
 const fallbackLabelsEn: Record<string, string> = {
@@ -215,6 +217,7 @@ const fallbackLabelsEn: Record<string, string> = {
   "menuGroup.system": "System",
   "nav.measurementStandards": "Measurement Standards",
   "nav.measurementStandardsDashboard": "Standards Dashboard",
+  "nav.quickSpcPlan": "Quick SPC Plan",
 };
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";

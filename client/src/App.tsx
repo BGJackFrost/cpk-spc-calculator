@@ -54,6 +54,7 @@ import BackupHistory from "./pages/BackupHistory";
 import ConnectionManager from "./pages/ConnectionManager";
 import MeasurementStandards from "./pages/MeasurementStandards";
 import MeasurementStandardsDashboard from "./pages/MeasurementStandardsDashboard";
+import QuickSpcPlan from "./pages/QuickSpcPlan";
 
 function Router() {
   return (
@@ -79,6 +80,7 @@ function Router() {
       <Route path="/production-line-management" component={ProductionLineManagement} />
       <Route path="/sampling-methods" component={SamplingMethodManagement} />
       <Route path="/spc-plans" component={SpcPlanManagement} />
+      <Route path="/quick-spc-plan" component={QuickSpcPlan} />
       <Route path="/email-notifications" component={EmailNotificationSettings} />
       <Route path="/permissions" component={RolePermissionManagement} />
       <Route path="/smtp-settings" component={SmtpSettings} />
