@@ -5024,6 +5024,200 @@ export const appRouter = router({
       return dataCollectorManager.getAllStatuses();
     })
   }),
+
+  // Alarm Threshold router
+  alarmThreshold: router({
+    list: protectedProcedure.query(async () => {
+      const { alarmThresholds } = await import("../drizzle/schema");
+      const db = await getDb();
+      if (!db) return [];
+      return await db.select().from(alarmThresholds);
+    }),
+
+    getByMachine: protectedProcedure
+      .input(z.object({ machineId: z.number().nullable() }))
+      .query(async ({ input }) => {
+        const { alarmThresholds } = await import("../drizzle/schema");
+        const { eq, isNull, or } = await import("drizzle-orm");
+        const db = await getDb();
+        if (!db) return [];
+        return await db.select().from(alarmThresholds)
+          .where(or(
+            isNull(alarmThresholds.machineId),
+            input.machineId ? eq(alarmThresholds.machineId, input.machineId) : undefined
+          ));
+      }),
+
+    create: adminProcedure
+      .input(z.object({
+        machineId: z.number().nullable(),
+        fixtureId: z.number().nullable(),
+        measurementName: z.string().nullable(),
+        warningUsl: z.number().nullable(),
+        warningLsl: z.number().nullable(),
+        warningCpkMin: z.number().nullable(),
+        criticalUsl: z.number().nullable(),
+        criticalLsl: z.number().nullable(),
+        criticalCpkMin: z.number().nullable(),
+        enableSpcRules: z.number(),
+        spcRuleSeverity: z.enum(["warning", "critical"]),
+        enableSound: z.number(),
+        enableEmail: z.number(),
+        emailRecipients: z.string().nullable(),
+        escalationDelayMinutes: z.number(),
+        escalationEmails: z.string().nullable(),
+        isActive: z.number()
+      }))
+      .mutation(async ({ input }) => {
+        const { alarmThresholds } = await import("../drizzle/schema");
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not connected" });
+        const result = await db.insert(alarmThresholds).values(input);
+        return { id: Number((result as any).insertId || 0) };
+      }),
+
+    update: adminProcedure
+      .input(z.object({
+        id: z.number(),
+        machineId: z.number().nullable().optional(),
+        fixtureId: z.number().nullable().optional(),
+        measurementName: z.string().nullable().optional(),
+        warningUsl: z.number().nullable().optional(),
+        warningLsl: z.number().nullable().optional(),
+        warningCpkMin: z.number().nullable().optional(),
+        criticalUsl: z.number().nullable().optional(),
+        criticalLsl: z.number().nullable().optional(),
+        criticalCpkMin: z.number().nullable().optional(),
+        enableSpcRules: z.number().optional(),
+        spcRuleSeverity: z.enum(["warning", "critical"]).optional(),
+        enableSound: z.number().optional(),
+        enableEmail: z.number().optional(),
+        emailRecipients: z.string().nullable().optional(),
+        escalationDelayMinutes: z.number().optional(),
+        escalationEmails: z.string().nullable().optional(),
+        isActive: z.number().optional()
+      }))
+      .mutation(async ({ input }) => {
+        const { alarmThresholds } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not connected" });
+        const { id, ...data } = input;
+        await db.update(alarmThresholds).set(data).where(eq(alarmThresholds.id, id));
+        return { success: true };
+      }),
+
+    delete: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const { alarmThresholds } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not connected" });
+        await db.delete(alarmThresholds).where(eq(alarmThresholds.id, input.id));
+        return { success: true };
+      })
+  }),
+
+  // Machine Online Status router
+  machineStatus: router({
+    list: protectedProcedure.query(async () => {
+      const { machineOnlineStatus, machines } = await import("../drizzle/schema");
+      const { eq } = await import("drizzle-orm");
+      const db = await getDb();
+      if (!db) return [];
+      const statuses = await db.select().from(machineOnlineStatus);
+      const machineList = await db.select().from(machines);
+      return statuses.map(s => ({
+        ...s,
+        machine: machineList.find(m => m.id === s.machineId)
+      }));
+    }),
+
+    getByMachine: protectedProcedure
+      .input(z.object({ machineId: z.number() }))
+      .query(async ({ input }) => {
+        const { machineOnlineStatus } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        const db = await getDb();
+        if (!db) return null;
+        const [status] = await db.select().from(machineOnlineStatus)
+          .where(eq(machineOnlineStatus.machineId, input.machineId));
+        return status || null;
+      }),
+
+    updateStatus: protectedProcedure
+      .input(z.object({
+        machineId: z.number(),
+        isOnline: z.number(),
+        status: z.enum(["idle", "running", "warning", "critical", "offline"]),
+        currentCpk: z.number().nullable().optional(),
+        currentMean: z.number().nullable().optional(),
+        activeAlarmCount: z.number().optional(),
+        warningCount: z.number().optional(),
+        criticalCount: z.number().optional(),
+        statusMessage: z.string().nullable().optional()
+      }))
+      .mutation(async ({ input }) => {
+        const { machineOnlineStatus } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not connected" });
+        
+        const [existing] = await db.select().from(machineOnlineStatus)
+          .where(eq(machineOnlineStatus.machineId, input.machineId));
+        
+        if (existing) {
+          await db.update(machineOnlineStatus)
+            .set({ ...input, lastHeartbeat: new Date() })
+            .where(eq(machineOnlineStatus.machineId, input.machineId));
+        } else {
+          await db.insert(machineOnlineStatus).values({
+            ...input,
+            lastHeartbeat: new Date()
+          });
+        }
+        return { success: true };
+      }),
+
+    getOverview: protectedProcedure.query(async () => {
+      const { machineOnlineStatus, machines, realtimeAlerts } = await import("../drizzle/schema");
+      const { eq, isNull, desc, and, gte } = await import("drizzle-orm");
+      const db = await getDb();
+      if (!db) return { machines: [], summary: { total: 0, online: 0, offline: 0, warning: 0, critical: 0 } };
+      
+      const machineList = await db.select().from(machines);
+      const statuses = await db.select().from(machineOnlineStatus);
+      
+      // Get recent unacknowledged alerts
+      const recentAlerts = await db.select().from(realtimeAlerts)
+        .where(isNull(realtimeAlerts.acknowledgedAt))
+        .orderBy(desc(realtimeAlerts.createdAt))
+        .limit(100);
+      
+      const machinesWithStatus = machineList.map(m => {
+        const status = statuses.find(s => s.machineId === m.id);
+        const alerts = recentAlerts.filter(a => a.machineId === m.id);
+        return {
+          ...m,
+          status: status || null,
+          activeAlerts: alerts,
+          warningCount: alerts.filter(a => a.severity === "warning").length,
+          criticalCount: alerts.filter(a => a.severity === "critical").length
+        };
+      });
+      
+      const summary = {
+        total: machineList.length,
+        online: statuses.filter(s => s.isOnline === 1).length,
+        offline: machineList.length - statuses.filter(s => s.isOnline === 1).length,
+        warning: statuses.filter(s => s.status === "warning").length,
+        critical: statuses.filter(s => s.status === "critical").length
+      };
+      
+      return { machines: machinesWithStatus, summary };
+    })
+  })
 });
 
 export type AppRouter = typeof appRouter;

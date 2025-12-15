@@ -1423,3 +1423,62 @@ export const realtimeAlerts = mysqlTable("realtime_alerts", {
 
 export type RealtimeAlert = typeof realtimeAlerts.$inferSelect;
 export type InsertRealtimeAlert = typeof realtimeAlerts.$inferInsert;
+
+
+/**
+ * Alarm Thresholds - cấu hình ngưỡng alarm cho từng máy/fixture
+ */
+export const alarmThresholds = mysqlTable("alarm_thresholds", {
+  id: int("id").autoincrement().primaryKey(),
+  machineId: int("machineId"),
+  fixtureId: int("fixtureId"),
+  measurementName: varchar("measurementName", { length: 100 }),
+  // Ngưỡng cảnh báo (warning)
+  warningUsl: int("warningUsl"), // * 10000
+  warningLsl: int("warningLsl"), // * 10000
+  warningCpkMin: int("warningCpkMin"), // * 10000 (e.g., 1.33 = 13300)
+  // Ngưỡng nghiêm trọng (critical)
+  criticalUsl: int("criticalUsl"), // * 10000
+  criticalLsl: int("criticalLsl"), // * 10000
+  criticalCpkMin: int("criticalCpkMin"), // * 10000 (e.g., 1.0 = 10000)
+  // SPC Rules
+  enableSpcRules: int("enableSpcRules").notNull().default(1),
+  spcRuleSeverity: mysqlEnum("spcRuleSeverity", ["warning", "critical"]).default("warning"),
+  // Thông báo
+  enableSound: int("enableSound").notNull().default(1),
+  enableEmail: int("enableEmail").notNull().default(0),
+  emailRecipients: text("emailRecipients"), // JSON array of emails
+  // Escalation
+  escalationDelayMinutes: int("escalationDelayMinutes").default(5),
+  escalationEmails: text("escalationEmails"), // JSON array of emails for escalation
+  // Metadata
+  isActive: int("isActive").notNull().default(1),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type AlarmThreshold = typeof alarmThresholds.$inferSelect;
+export type InsertAlarmThreshold = typeof alarmThresholds.$inferInsert;
+
+/**
+ * Machine Online Status - trạng thái online của máy
+ */
+export const machineOnlineStatus = mysqlTable("machine_online_status", {
+  id: int("id").autoincrement().primaryKey(),
+  machineId: int("machineId").notNull().unique(),
+  connectionId: int("connectionId"),
+  isOnline: int("isOnline").notNull().default(0),
+  lastHeartbeat: timestamp("lastHeartbeat"),
+  lastDataReceived: timestamp("lastDataReceived"),
+  currentCpk: int("currentCpk"), // * 10000
+  currentMean: int("currentMean"), // * 10000
+  activeAlarmCount: int("activeAlarmCount").notNull().default(0),
+  warningCount: int("warningCount").notNull().default(0),
+  criticalCount: int("criticalCount").notNull().default(0),
+  status: mysqlEnum("status", ["idle", "running", "warning", "critical", "offline"]).default("offline"),
+  statusMessage: text("statusMessage"),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type MachineOnlineStatus = typeof machineOnlineStatus.$inferSelect;
+export type InsertMachineOnlineStatus = typeof machineOnlineStatus.$inferInsert;

@@ -1811,3 +1811,42 @@
 - [x] Tab phân tích với CP/CPK và thống kê
 - [x] Xuất CSV
 - [x] Thêm vào menu Dashboard (nav.realtimeHistory)
+
+
+## Phase 75: Cấu hình Ngưỡng Alarm và Dashboard Máy Online
+
+### Trang cấu hình ngưỡng Alarm
+- [ ] Tạo bảng alarm_thresholds trong database
+- [ ] Tạo API CRUD cho alarm thresholds
+- [ ] Tạo trang AlarmThresholdConfig.tsx
+- [ ] Form cấu hình ngưỡng cho từng máy/fixture
+- [ ] Cấu hình các loại alarm (warning, critical)
+- [ ] Thêm vào menu Dashboard
+
+### Dashboard máy Online với Alarm
+- [ ] Tạo trang MachineOverviewDashboard.tsx
+- [ ] Hiển thị grid tất cả máy đang online
+- [ ] Trạng thái alarm realtime cho mỗi máy
+- [ ] Màu sắc theo severity (green/yellow/red)
+- [ ] Click vào máy để xem chi tiết
+- [ ] Thêm vào menu Dashboard
+
+
+## Phase 75: Cấu hình Ngưỡng Alarm và Tổng quan Máy
+
+### Trang cấu hình ngưỡng alarm
+- [x] Tạo bảng alarm_thresholds trong schema
+- [x] Tạo trang AlarmThresholdConfig.tsx với 3 tabs (Ngưỡng, SPC Rules, Thông báo)
+- [x] Form cấu hình ngưỡng warning và critical (USL/LSL/CPK)
+- [x] Cấu hình SPC Rules severity (warning/critical)
+- [x] Cấu hình thông báo (âm thanh, email, escalation)
+- [x] Thêm API CRUD cho alarm thresholds (alarmThreshold router)
+
+### Dashboard tổng hợp máy online
+- [x] Tạo trang MachineOverviewDashboard.tsx
+- [x] Hiển thị grid các máy với trạng thái realtime (color-coded cards)
+- [x] Summary cards (total, online, offline, warning, critical)
+- [x] Lọc và tìm kiếm máy
+- [x] Dialog chi tiết máy với 3 tabs (Trạng thái, Cảnh báo, Thao tác)
+- [x] Auto refresh mỗi 5 giây
+- [x] Thêm menu vào sidebar (nav.alarmThreshold, nav.machineOverview)
