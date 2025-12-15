@@ -4908,6 +4908,122 @@ export const appRouter = router({
         return await checkLicenseRevoked(input.licenseKey);
       }),
   }),
+
+  // Realtime Machine Connection Router
+  realtimeConnection: router({
+    list: protectedProcedure.query(async () => {
+      const { realtimeMachineConnections, machines } = await import("../drizzle/schema");
+      const { eq, desc } = await import("drizzle-orm");
+      const db = await getDb();
+      if (!db) return [];
+      const connections = await db.select()
+        .from(realtimeMachineConnections)
+        .leftJoin(machines, eq(realtimeMachineConnections.machineId, machines.id))
+        .orderBy(desc(realtimeMachineConnections.createdAt));
+      return connections.map(c => ({
+        ...c.realtime_machine_connections,
+        machineName: c.machines?.name
+      }));
+    }),
+
+    create: adminProcedure
+      .input(z.object({
+        machineId: z.number(),
+        connectionType: z.enum(['database', 'file', 'api', 'opcua', 'mqtt']),
+        connectionConfig: z.string(),
+        dataQuery: z.string().optional(),
+        timestampColumn: z.string().optional(),
+        measurementColumn: z.string().optional(),
+        pollingIntervalMs: z.number().min(1000).default(5000),
+        isActive: z.number().default(0)
+      }))
+      .mutation(async ({ input }) => {
+        const { realtimeMachineConnections } = await import("../drizzle/schema");
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not connected" });
+        const result = await db.insert(realtimeMachineConnections).values({
+          machineId: input.machineId,
+          connectionType: input.connectionType,
+          connectionConfig: input.connectionConfig,
+          dataQuery: input.dataQuery || null,
+          timestampColumn: input.timestampColumn || 'timestamp',
+          measurementColumn: input.measurementColumn || 'value',
+          pollingIntervalMs: input.pollingIntervalMs,
+          isActive: input.isActive
+        });
+        return { id: Number((result as any).insertId || 0) };
+      }),
+
+    update: adminProcedure
+      .input(z.object({
+        id: z.number(),
+        machineId: z.number().optional(),
+        connectionType: z.enum(['database', 'file', 'api', 'opcua', 'mqtt']).optional(),
+        connectionConfig: z.string().optional(),
+        dataQuery: z.string().optional(),
+        timestampColumn: z.string().optional(),
+        measurementColumn: z.string().optional(),
+        pollingIntervalMs: z.number().min(1000).optional(),
+        isActive: z.number().optional()
+      }))
+      .mutation(async ({ input }) => {
+        const { realtimeMachineConnections } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not connected" });
+        const { id, ...data } = input;
+        await db.update(realtimeMachineConnections)
+          .set(data)
+          .where(eq(realtimeMachineConnections.id, id));
+        return { success: true };
+      }),
+
+    delete: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const { realtimeMachineConnections } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not connected" });
+        await db.delete(realtimeMachineConnections)
+          .where(eq(realtimeMachineConnections.id, input.id));
+        return { success: true };
+      }),
+
+    testConnection: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const { dataCollectorManager } = await import("./dataCollector");
+        return await dataCollectorManager.testConnection(input.id);
+      }),
+
+    toggle: adminProcedure
+      .input(z.object({ id: z.number(), isActive: z.boolean() }))
+      .mutation(async ({ input }) => {
+        const { realtimeMachineConnections } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not connected" });
+        await db.update(realtimeMachineConnections)
+          .set({ isActive: input.isActive ? 1 : 0 })
+          .where(eq(realtimeMachineConnections.id, input.id));
+        
+        // Start or stop collector
+        const { dataCollectorManager } = await import("./dataCollector");
+        if (input.isActive) {
+          await dataCollectorManager.startCollector(input.id);
+        } else {
+          await dataCollectorManager.stopCollector(input.id);
+        }
+        
+        return { success: true };
+      }),
+
+    getStatuses: protectedProcedure.query(async () => {
+      const { dataCollectorManager } = await import("./dataCollector");
+      return dataCollectorManager.getAllStatuses();
+    })
+  }),
 });
 
 export type AppRouter = typeof appRouter;

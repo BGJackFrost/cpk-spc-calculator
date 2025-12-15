@@ -68,7 +68,8 @@ const menuGroups: MenuGroup[] = [
     items: [
       { icon: LayoutDashboard, labelKey: "nav.dashboard", path: "/dashboard" },
       { icon: Activity, labelKey: "nav.realtimeConveyor", path: "/production-lines" },
-      { icon: Zap, labelKey: "nav.realtimeLine", path: "/realtime-dashboard" },
+      { icon: Zap, labelKey: "nav.realtimeLine", path: "/realtime-line" },
+      { icon: Settings, labelKey: "nav.realtimeMachineConfig", path: "/realtime-machine-config", adminOnly: true },
       { icon: Layers, labelKey: "nav.spcPlanOverview", path: "/spc-visualization" },
     ]
   },
@@ -202,6 +203,7 @@ const fallbackLabelsVi: Record<string, string> = {
   "nav.measurementStandardsDashboard": "Dashboard Tiêu chuẩn",
   "nav.quickSpcPlan": "Tạo nhanh SPC Plan",
   "nav.realtimeLine": "Dashboard RealTime",
+  "nav.realtimeMachineConfig": "Cấu hình Máy Realtime",
   "nav.shiftCpkComparison": "So sánh CPK theo Ca",
   "nav.defectTracking": "Theo dõi Lỗi",
   "nav.defectAnalysis": "Phân tích Lỗi (Pareto)",
@@ -249,6 +251,7 @@ const fallbackLabelsEn: Record<string, string> = {
   "nav.measurementStandardsDashboard": "Standards Dashboard",
   "nav.quickSpcPlan": "Quick SPC Plan",
   "nav.realtimeLine": "Realtime Dashboard",
+  "nav.realtimeMachineConfig": "Realtime Machine Config",
   "menuGroup.licenseServer": "License Server",
   "nav.licenseManagement": "License Management",
   "nav.licenseCustomers": "Customer Management",

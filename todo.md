@@ -1705,3 +1705,53 @@
 - [x] Biểu đồ Control Chart realtime (X-bar chart với UCL/LCL)
 - [x] Cảnh báo tức thì khi vi phạm SPC Rules (AlertsPanel)
 - [x] Thêm menu Dashboard RealTime vào sidebar
+
+
+## Phase 73: Data Collector, Cấu hình Kết nối và WebSocket
+
+### Data Collector Service
+- [ ] Tạo module dataCollector.ts với các adapter cho database/file/API
+- [ ] Implement DatabaseAdapter để đọc dữ liệu từ external database
+- [ ] Implement FileAdapter để đọc dữ liệu từ CSV/Excel
+- [ ] Implement ApiAdapter để gọi REST API
+- [ ] Tạo CollectorManager quản lý nhiều collectors
+- [ ] Tự động polling theo interval đã cấu hình
+
+### Trang cấu hình kết nối máy Realtime
+- [ ] Tạo trang RealtimeMachineConfig.tsx
+- [ ] Form thêm/sửa kết nối máy (connection type, config, polling interval)
+- [ ] Nút test connection
+- [ ] Danh sách kết nối với trạng thái (connected/error/inactive)
+- [ ] Thêm vào menu Settings
+
+### WebSocket cho Realtime
+- [ ] Tạo WebSocket server endpoint
+- [ ] Tạo hook useWebSocket cho client
+- [ ] Broadcast dữ liệu mới khi collector nhận được
+- [ ] Cập nhật RealtimeLineDashboard sử dụng WebSocket
+- [ ] Fallback về polling nếu WebSocket không khả dụng
+
+
+## Phase 73: Data Collector, Cấu hình Máy và WebSocket
+
+### Data Collector Service
+- [x] Tạo module dataCollector.ts với các adapter (EventEmitter)
+- [x] DatabaseAdapter cho kết nối MySQL/SQL Server
+- [x] FileAdapter cho đọc file CSV/Excel
+- [x] ApiAdapter cho REST API
+- [x] DataCollectorManager quản lý các collector với SPC metrics calculation
+
+### Trang cấu hình kết nối máy
+- [x] Tạo trang RealtimeMachineConfig.tsx với 3 tabs (Cơ bản, Kết nối, Dữ liệu)
+- [x] Form cấu hình kết nối (database/file/api)
+- [x] Test connection trước khi lưu
+- [x] Bật/tắt collector (toggle mutation)
+- [x] Thêm vào menu Dashboard (nav.realtimeMachineConfig)
+- [x] Thêm realtimeConnection router với CRUD đầy đủ
+
+### WebSocket cho Realtime
+- [x] Tạo WebSocket server (websocketServer.ts) trên /ws/realtime
+- [x] Hook useRealtimeWebSocket cho client (auto reconnect, ping/pong)
+- [x] Subscribe/unsubscribe channels
+- [x] Broadcast data và alerts từ DataCollectorManager
+- [x] Auto reconnect khi mất kết nối (5s interval)
