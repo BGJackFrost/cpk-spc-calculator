@@ -23,6 +23,7 @@ import {
   RefreshCw
 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine, Area, ComposedChart } from "recharts";
+import { RealtimeAlarmPanel, Alarm } from "@/components/RealtimeAlarmPanel";
 
 interface RealtimeDataPoint {
   id: number;
@@ -241,7 +242,23 @@ export default function RealtimeLineDashboard() {
   const [isRunning, setIsRunning] = useState(false);
   const [data, setData] = useState<RealtimeDataPoint[]>([]);
   const [alerts, setAlerts] = useState<RealtimeAlert[]>([]);
+  const [alarms, setAlarms] = useState<Alarm[]>([]);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Alarm handlers
+  const handleAcknowledge = (alarmId: string) => {
+    setAlarms(prev => prev.map(a => 
+      a.id === alarmId ? { ...a, acknowledged: true, acknowledgedAt: new Date(), acknowledgedBy: 'Current User' } : a
+    ));
+  };
+  
+  const handleAcknowledgeAll = () => {
+    setAlarms(prev => prev.map(a => ({ ...a, acknowledged: true, acknowledgedAt: new Date(), acknowledgedBy: 'Current User' })));
+  };
+  
+  const handleClearAlarm = (alarmId: string) => {
+    setAlarms(prev => prev.filter(a => a.id !== alarmId));
+  };
   
   // Fetch machines
   const { data: machines } = trpc.machine.listAll.useQuery();
@@ -261,14 +278,30 @@ export default function RealtimeLineDashboard() {
           
           // Check for violations and add alert
           if (newPoint.isOutOfControl) {
+            const alertId = Date.now();
             setAlerts(prevAlerts => [{
-              id: Date.now(),
+              id: alertId,
               alertType: 'rule_violation',
               severity: 'warning',
               message: `Giá trị ${newPoint.value} vượt giới hạn kiểm soát`,
               ruleNumber: 1,
               createdAt: new Date().toISOString()
             }, ...prevAlerts.slice(0, 9)]);
+            
+            // Add to alarms panel
+            setAlarms(prevAlarms => [{
+              id: alertId.toString(),
+              timestamp: new Date(),
+              machineId: parseInt(selectedMachine) || 0,
+              machineName: machines?.find((m: any) => m.id.toString() === selectedMachine)?.name || 'Demo Machine',
+              severity: newPoint.value > 57 || newPoint.value < 43 ? 'critical' : 'warning',
+              type: 'spc_violation',
+              rule: 'Rule 1',
+              message: `Giá trị ${newPoint.value.toFixed(2)} vượt giới hạn kiểm soát (UCL: 55, LCL: 45)`,
+              value: newPoint.value,
+              limit: newPoint.value > 55 ? 55 : 45,
+              acknowledged: false
+            }, ...prevAlarms.slice(0, 49)]);
           }
           
           return [...prev.slice(-99), newPoint];
@@ -443,6 +476,14 @@ export default function RealtimeLineDashboard() {
             <AlertsPanel alerts={alerts} />
           </div>
         </div>
+        
+        {/* Alarm Panel */}
+        <RealtimeAlarmPanel
+          alarms={alarms}
+          onAcknowledge={handleAcknowledge}
+          onAcknowledgeAll={handleAcknowledgeAll}
+          onClear={handleClearAlarm}
+        />
         
         {/* Statistics */}
         <Card>

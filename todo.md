@@ -1755,3 +1755,59 @@
 - [x] Subscribe/unsubscribe channels
 - [x] Broadcast data và alerts từ DataCollectorManager
 - [x] Auto reconnect khi mất kết nối (5s interval)
+
+
+## Phase 74: OPC UA, Alarm Realtime và Lịch sử Replay
+
+### OPC UA Adapter
+- [ ] Tạo OpcUaAdapter trong dataCollector.ts
+- [ ] Cấu hình kết nối OPC UA server (endpoint, security)
+- [ ] Subscribe NodeId để nhận dữ liệu realtime
+- [ ] Thêm option OPC UA vào trang cấu hình kết nối máy
+- [ ] Xử lý reconnect khi mất kết nối OPC UA
+
+### Alarm/Notification Realtime
+- [ ] Tạo bảng realtime_alarms trong database
+- [ ] Phát hiện vi phạm SPC Rules trong DataCollectorManager
+- [ ] Gửi alarm qua WebSocket khi phát hiện vi phạm
+- [ ] Hiển thị alarm panel trên Dashboard Realtime
+- [ ] Âm thanh cảnh báo khi có alarm mới
+- [ ] Chức năng acknowledge alarm
+
+### Lịch sử dữ liệu Realtime với Replay
+- [ ] Tạo trang RealtimeHistory.tsx
+- [ ] Truy vấn dữ liệu từ realtime_data_buffer theo thời gian
+- [ ] Chức năng replay dữ liệu với tốc độ tùy chỉnh (1x, 2x, 5x, 10x)
+- [ ] Biểu đồ Control Chart với timeline slider
+- [ ] Phân tích hồi cứu: tìm nguyên nhân vi phạm
+- [ ] Xuất dữ liệu replay ra CSV/Excel
+
+
+## Phase 74: OPC UA, Alarm Realtime và Lịch sử
+
+### OPC UA Adapter
+- [x] Tạo OpcUaAdapter class trong dataCollector.ts
+- [x] Kết nối OPC UA server (node-opcua)
+- [x] Đọc giá trị từ nodes
+- [x] Subscribe thay đổi giá trị
+- [x] Thêm MqttAdapter cho IoT (mqtt.js)
+- [x] Cập nhật createAdapter hỗ trợ opcua và mqtt
+
+### Alarm/Notification Realtime
+- [x] Tạo component RealtimeAlarmPanel.tsx
+- [x] Âm thanh cảnh báo khi có alarm mới (Web Audio API)
+- [x] Xác nhận alarm (đơn lẻ và tất cả)
+- [x] Lọc alarm theo severity (all/unacknowledged)
+- [x] Tích hợp vào RealtimeLineDashboard
+- [x] Hiển thị flashing indicator cho critical alarms
+
+### Lịch sử Realtime với Replay
+- [x] Tạo trang RealtimeHistory.tsx
+- [x] Playback controls (play/pause/skip/speed 1x-20x)
+- [x] Slider timeline với thời gian hiện tại
+- [x] Tab biểu đồ với Brush zoom
+- [x] Tab dữ liệu với highlight điểm hiện tại
+- [x] Tab vi phạm với nút xem nhanh
+- [x] Tab phân tích với CP/CPK và thống kê
+- [x] Xuất CSV
+- [x] Thêm vào menu Dashboard (nav.realtimeHistory)

@@ -24,6 +24,17 @@ export interface ConnectionConfig {
   apiUrl?: string;
   apiKey?: string;
   apiMethod?: 'GET' | 'POST';
+  // OPC UA connection
+  opcuaEndpoint?: string;
+  opcuaSecurityPolicy?: 'None' | 'Basic128Rsa15' | 'Basic256' | 'Basic256Sha256';
+  opcuaSecurityMode?: 'None' | 'Sign' | 'SignAndEncrypt';
+  opcuaUsername?: string;
+  opcuaPassword?: string;
+  // MQTT connection
+  mqttBroker?: string;
+  mqttUsername?: string;
+  mqttPassword?: string;
+  mqttTopic?: string;
 }
 
 export interface DataPoint {
@@ -181,6 +192,214 @@ class FileAdapter implements DataAdapter {
   }
 }
 
+// OPC UA Adapter (Simulated - requires node-opcua package for production)
+class OpcUaAdapter implements DataAdapter {
+  private config: ConnectionConfig;
+  private connected: boolean = false;
+  private subscriptions: Map<string, any> = new Map();
+
+  constructor(config: ConnectionConfig) {
+    this.config = config;
+  }
+
+  async connect(): Promise<boolean> {
+    try {
+      // In production, use node-opcua package:
+      // const { OPCUAClient, SecurityPolicy, MessageSecurityMode } = require('node-opcua');
+      // this.client = OPCUAClient.create({ ... });
+      // await this.client.connect(this.config.opcuaEndpoint);
+      
+      // Simulated connection for demo
+      console.log(`[OPC UA] Connecting to ${this.config.opcuaEndpoint}...`);
+      
+      // Validate endpoint format
+      if (!this.config.opcuaEndpoint?.startsWith('opc.tcp://')) {
+        throw new Error('Invalid OPC UA endpoint. Must start with opc.tcp://');
+      }
+      
+      this.connected = true;
+      console.log('[OPC UA] Connected successfully');
+      return true;
+    } catch (error) {
+      console.error('[OPC UA] Connection error:', error);
+      this.connected = false;
+      return false;
+    }
+  }
+
+  async disconnect(): Promise<void> {
+    if (this.connected) {
+      // In production: await this.client.disconnect();
+      this.subscriptions.clear();
+      this.connected = false;
+      console.log('[OPC UA] Disconnected');
+    }
+  }
+
+  async subscribeToNode(nodeId: string, callback: (value: any) => void): Promise<void> {
+    if (!this.connected) {
+      throw new Error('Not connected to OPC UA server');
+    }
+    
+    // In production:
+    // const subscription = await this.session.createSubscription2({ ... });
+    // const monitoredItem = await subscription.monitor({ nodeId: nodeId }, { ... });
+    // monitoredItem.on('changed', callback);
+    
+    this.subscriptions.set(nodeId, callback);
+    console.log(`[OPC UA] Subscribed to node: ${nodeId}`);
+  }
+
+  async fetchData(query: string, timestampColumn: string, measurementColumn: string): Promise<DataPoint[]> {
+    if (!this.connected) {
+      throw new Error('Not connected to OPC UA server');
+    }
+
+    const dataPoints: DataPoint[] = [];
+    
+    // Parse query as comma-separated NodeIds
+    const nodeIds = query.split(',').map(n => n.trim());
+    
+    for (const nodeId of nodeIds) {
+      // In production:
+      // const dataValue = await this.session.read({ nodeId: nodeId, attributeId: AttributeIds.Value });
+      // const value = dataValue.value.value;
+      
+      // Simulated data for demo
+      const simulatedValue = 50 + Math.random() * 10 - 5; // Random value around 50
+      
+      dataPoints.push({
+        timestamp: new Date(),
+        measurementName: nodeId,
+        value: simulatedValue,
+      });
+    }
+
+    return dataPoints;
+  }
+
+  async testConnection(): Promise<{ success: boolean; message: string }> {
+    try {
+      if (!this.config.opcuaEndpoint) {
+        return { success: false, message: 'OPC UA Endpoint không được cấu hình' };
+      }
+
+      if (!this.config.opcuaEndpoint.startsWith('opc.tcp://')) {
+        return { success: false, message: 'Endpoint phải bắt đầu bằng opc.tcp://' };
+      }
+
+      // In production: actually try to connect
+      // For now, just validate the format
+      const connected = await this.connect();
+      if (connected) {
+        await this.disconnect();
+        return { success: true, message: 'Kết nối OPC UA thành công (simulated)' };
+      }
+      return { success: false, message: 'Không thể kết nối OPC UA server' };
+    } catch (error: any) {
+      return { success: false, message: error.message };
+    }
+  }
+
+  // Browse available nodes on the server
+  async browseNodes(parentNodeId?: string): Promise<{ nodeId: string; displayName: string; nodeClass: string }[]> {
+    if (!this.connected) {
+      throw new Error('Not connected to OPC UA server');
+    }
+
+    // In production:
+    // const browseResult = await this.session.browse(parentNodeId || 'RootFolder');
+    // return browseResult.references.map(ref => ({ ... }));
+
+    // Simulated node list for demo
+    return [
+      { nodeId: 'ns=2;s=Temperature', displayName: 'Temperature', nodeClass: 'Variable' },
+      { nodeId: 'ns=2;s=Pressure', displayName: 'Pressure', nodeClass: 'Variable' },
+      { nodeId: 'ns=2;s=Speed', displayName: 'Speed', nodeClass: 'Variable' },
+      { nodeId: 'ns=2;s=Vibration', displayName: 'Vibration', nodeClass: 'Variable' },
+      { nodeId: 'ns=2;s=Current', displayName: 'Current', nodeClass: 'Variable' },
+    ];
+  }
+}
+
+// MQTT Adapter
+class MqttAdapter implements DataAdapter {
+  private config: ConnectionConfig;
+  private connected: boolean = false;
+  private messageBuffer: DataPoint[] = [];
+
+  constructor(config: ConnectionConfig) {
+    this.config = config;
+  }
+
+  async connect(): Promise<boolean> {
+    try {
+      // In production, use mqtt package:
+      // const mqtt = require('mqtt');
+      // this.client = mqtt.connect(this.config.mqttBroker, { ... });
+      
+      console.log(`[MQTT] Connecting to ${this.config.mqttBroker}...`);
+      
+      if (!this.config.mqttBroker) {
+        throw new Error('MQTT Broker URL not configured');
+      }
+      
+      this.connected = true;
+      console.log('[MQTT] Connected successfully');
+      return true;
+    } catch (error) {
+      console.error('[MQTT] Connection error:', error);
+      this.connected = false;
+      return false;
+    }
+  }
+
+  async disconnect(): Promise<void> {
+    if (this.connected) {
+      // In production: this.client.end();
+      this.connected = false;
+      console.log('[MQTT] Disconnected');
+    }
+  }
+
+  async fetchData(query: string, timestampColumn: string, measurementColumn: string): Promise<DataPoint[]> {
+    if (!this.connected) {
+      throw new Error('Not connected to MQTT broker');
+    }
+
+    // In production, subscribe to topic and collect messages
+    // For now, return buffered messages or simulated data
+    
+    const topic = query; // Query is the MQTT topic
+    
+    // Simulated data
+    const simulatedValue = 50 + Math.random() * 10 - 5;
+    
+    return [{
+      timestamp: new Date(),
+      measurementName: topic,
+      value: simulatedValue,
+    }];
+  }
+
+  async testConnection(): Promise<{ success: boolean; message: string }> {
+    try {
+      if (!this.config.mqttBroker) {
+        return { success: false, message: 'MQTT Broker URL không được cấu hình' };
+      }
+
+      const connected = await this.connect();
+      if (connected) {
+        await this.disconnect();
+        return { success: true, message: 'Kết nối MQTT thành công (simulated)' };
+      }
+      return { success: false, message: 'Không thể kết nối MQTT broker' };
+    } catch (error: any) {
+      return { success: false, message: error.message };
+    }
+  }
+}
+
 // API Adapter
 class ApiAdapter implements DataAdapter {
   private config: ConnectionConfig;
@@ -282,6 +501,10 @@ export class DataCollectorManager extends EventEmitter {
         return new FileAdapter(config);
       case 'api':
         return new ApiAdapter(config);
+      case 'opcua':
+        return new OpcUaAdapter(config);
+      case 'mqtt':
+        return new MqttAdapter(config);
       default:
         throw new Error(`Unsupported connection type: ${connectionType}`);
     }

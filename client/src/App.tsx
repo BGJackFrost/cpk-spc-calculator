@@ -65,6 +65,7 @@ import LicenseServerSettings from "./pages/LicenseServerSettings";
 import LicenseServerDashboard from "./pages/LicenseServerDashboard";
 import RealtimeLineDashboard from "./pages/RealtimeLineDashboard";
 import RealtimeMachineConfig from "./pages/RealtimeMachineConfig";
+import RealtimeHistory from "./pages/RealtimeHistory";
 
 function Router() {
   return (
@@ -96,6 +97,7 @@ function Router() {
       <Route path="/shift-cpk-comparison" component={ShiftCpkComparison} />
       <Route path="/realtime-line" component={RealtimeLineDashboard} />
       <Route path="/realtime-machine-config" component={RealtimeMachineConfig} />
+      <Route path="/realtime-history" component={RealtimeHistory} />
       <Route path="/email-notifications" component={EmailNotificationSettings} />
       <Route path="/permissions" component={RolePermissionManagement} />
       <Route path="/smtp-settings" component={SmtpSettings} />
