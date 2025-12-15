@@ -2895,6 +2895,7 @@ export const appRouter = router({
         code: z.string().min(1),
         description: z.string().optional(),
         version: z.string().optional(),
+        imageUrl: z.string().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
         if (ctx.user?.role !== "admin") throw new Error("Admin access required");
@@ -2909,6 +2910,7 @@ export const appRouter = router({
         code: z.string().optional(),
         description: z.string().optional(),
         version: z.string().optional(),
+        imageUrl: z.string().optional(),
         isActive: z.number().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
@@ -3936,6 +3938,89 @@ export const appRouter = router({
       const { getDatabaseStats } = await import("./databaseExplorerService");
       return getDatabaseStats();
     }),
+  }),
+  
+  // Measurement Standards router
+  measurementStandard: router({
+    list: protectedProcedure.query(async () => {
+      const { getMeasurementStandards } = await import("./db");
+      return await getMeasurementStandards();
+    }),
+    
+    getById: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        const { getMeasurementStandardById } = await import("./db");
+        return await getMeasurementStandardById(input.id);
+      }),
+    
+    getByProductWorkstation: protectedProcedure
+      .input(z.object({
+        productId: z.number(),
+        workstationId: z.number(),
+        machineId: z.number().optional(),
+      }))
+      .query(async ({ input }) => {
+        const { getMeasurementStandardByProductWorkstation } = await import("./db");
+        return await getMeasurementStandardByProductWorkstation(input.productId, input.workstationId, input.machineId);
+      }),
+    
+    create: protectedProcedure
+      .input(z.object({
+        productId: z.number(),
+        workstationId: z.number(),
+        machineId: z.number().optional(),
+        usl: z.number(),
+        lsl: z.number(),
+        target: z.number().optional(),
+        sampleSize: z.number().default(5),
+        sampleFrequency: z.number().default(1),
+        samplingMethod: z.string().default("random"),
+        appliedSpcRules: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        if (ctx.user?.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { createMeasurementStandard } = await import("./db");
+        const id = await createMeasurementStandard(input);
+        return { success: true, id };
+      }),
+    
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        productId: z.number().optional(),
+        workstationId: z.number().optional(),
+        machineId: z.number().optional(),
+        usl: z.number().optional(),
+        lsl: z.number().optional(),
+        target: z.number().optional(),
+        sampleSize: z.number().optional(),
+        sampleFrequency: z.number().optional(),
+        samplingMethod: z.string().optional(),
+        appliedSpcRules: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        if (ctx.user?.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { id, ...data } = input;
+        const { updateMeasurementStandard } = await import("./db");
+        await updateMeasurementStandard(id, data);
+        return { success: true };
+      }),
+    
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        if (ctx.user?.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { deleteMeasurementStandard } = await import("./db");
+        await deleteMeasurementStandard(input.id);
+        return { success: true };
+      }),
   }),
 });
 

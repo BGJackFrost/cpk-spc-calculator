@@ -113,6 +113,7 @@ const menuGroups: MenuGroup[] = [
     items: [
       { icon: Package, labelKey: "nav.productManagement", path: "/products", adminOnly: true },
       { icon: Ruler, labelKey: "nav.specificationManagement", path: "/specifications", adminOnly: true },
+      { icon: Ruler, labelKey: "nav.measurementStandards", path: "/measurement-standards", adminOnly: true },
       { icon: FileSpreadsheet, labelKey: "nav.mappingManagement", path: "/mappings", adminOnly: true },
       { icon: Clock, labelKey: "samplingMethod", path: "/sampling-methods", adminOnly: true },
       { icon: Calendar, labelKey: "nav.spcPlanManagement", path: "/spc-plans", adminOnly: true },

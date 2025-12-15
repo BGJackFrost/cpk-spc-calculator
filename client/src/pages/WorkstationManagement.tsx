@@ -11,7 +11,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { Loader2, Plus, Pencil, Trash2, Monitor, Search, Filter } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, Monitor, Search, Filter, Camera, X } from "lucide-react";
+import { useRef } from "react";
 
 interface Workstation {
   id: number;
@@ -21,6 +22,7 @@ interface Workstation {
   description: string | null;
   sequenceOrder: number;
   cycleTime: number | null;
+  imageUrl: string | null;
   isActive: number;
   createdAt: Date;
   updatedAt: Date;
@@ -37,8 +39,11 @@ export default function WorkstationManagement() {
     productionLineId: "",
     description: "",
     sequence: 1,
+    imageUrl: "",
     isActive: true,
   });
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: workstations, isLoading, refetch } = trpc.workstation.listAll.useQuery();
   const { data: productionLines } = trpc.productionLine.list.useQuery();
@@ -78,6 +83,7 @@ export default function WorkstationManagement() {
       productionLineId: "",
       description: "",
       sequence: 1,
+      imageUrl: "",
       isActive: true,
     });
     setEditingWorkstation(null);
@@ -96,9 +102,45 @@ export default function WorkstationManagement() {
       productionLineId: workstation.productionLineId.toString(),
       description: workstation.description || "",
       sequence: workstation.sequenceOrder,
+      imageUrl: workstation.imageUrl || "",
       isActive: workstation.isActive === 1,
     });
     setIsDialogOpen(true);
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Ảnh không được vượt quá 2MB");
+      return;
+    }
+    
+    setUploading(true);
+    try {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const base64 = reader.result as string;
+        const response = await fetch("/api/upload", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ image: base64, type: "workstation" }),
+        });
+        const result = await response.json();
+        if (result.url) {
+          setFormData(prev => ({ ...prev, imageUrl: result.url }));
+          toast.success("Đã tải ảnh lên");
+        } else {
+          toast.error("Lỗi tải ảnh");
+        }
+        setUploading(false);
+      };
+      reader.readAsDataURL(file);
+    } catch {
+      toast.error("Lỗi tải ảnh");
+      setUploading(false);
+    }
   };
 
   const handleSubmit = () => {
@@ -113,6 +155,7 @@ export default function WorkstationManagement() {
       productionLineId: parseInt(formData.productionLineId),
       description: formData.description || undefined,
       sequenceOrder: formData.sequence,
+      imageUrl: formData.imageUrl || undefined,
     };
 
     if (editingWorkstation) {
@@ -329,6 +372,51 @@ export default function WorkstationManagement() {
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Ảnh công trạm</Label>
+                <div className="flex items-center gap-4">
+                  <div className="relative w-24 h-24 rounded-lg border-2 border-dashed border-muted-foreground/25 flex items-center justify-center overflow-hidden bg-muted">
+                    {formData.imageUrl ? (
+                      <>
+                        <img src={formData.imageUrl} alt="Công trạm" className="w-full h-full object-cover" />
+                        <Button
+                          variant="destructive"
+                          size="icon"
+                          className="absolute top-1 right-1 h-6 w-6"
+                          onClick={() => setFormData(prev => ({ ...prev, imageUrl: "" }))}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </>
+                    ) : (
+                      <Camera className="h-8 w-8 text-muted-foreground" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleImageUpload}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploading}
+                    >
+                      {uploading ? (
+                        <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Đang tải...</>
+                      ) : (
+                        <><Camera className="mr-2 h-4 w-4" /> Chọn ảnh</>
+                      )}
+                    </Button>
+                    <p className="text-xs text-muted-foreground mt-1">Tối đa 2MB, định dạng JPG/PNG</p>
+                  </div>
+                </div>
               </div>
 
               <div className="flex items-center justify-between rounded-lg border p-4">

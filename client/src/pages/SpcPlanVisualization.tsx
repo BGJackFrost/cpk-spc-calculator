@@ -55,6 +55,7 @@ interface ProductionLine {
   name: string;
   code: string;
   description?: string | null;
+  imageUrl?: string | null;
 }
 
 interface Workstation {
@@ -62,6 +63,7 @@ interface Workstation {
   name: string;
   code: string;
   productionLineId: number;
+  imageUrl?: string | null;
 }
 
 interface Machine {
@@ -69,6 +71,7 @@ interface Machine {
   name: string;
   code: string;
   workstationId?: number | null;
+  imageUrl?: string | null;
 }
 
 interface Fixture {
@@ -264,9 +267,26 @@ export default function SpcPlanVisualization() {
         <CardHeader className="bg-gradient-to-r from-blue-500/10 to-blue-600/5 border-b">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-500/20 rounded-lg">
-                <Factory className="h-6 w-6 text-blue-600" />
-              </div>
+              {line.imageUrl ? (
+                <div className="w-12 h-12 rounded-lg overflow-hidden border-2 border-blue-200 shadow-sm">
+                  <img 
+                    src={line.imageUrl} 
+                    alt={line.name} 
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                      e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                    }}
+                  />
+                  <div className="hidden p-2 bg-blue-500/20 rounded-lg">
+                    <Factory className="h-6 w-6 text-blue-600" />
+                  </div>
+                </div>
+              ) : (
+                <div className="p-2 bg-blue-500/20 rounded-lg">
+                  <Factory className="h-6 w-6 text-blue-600" />
+                </div>
+              )}
               <div>
                 <CardTitle className="text-lg">{line.name}</CardTitle>
                 <CardDescription>{line.code} • {lineWorkstations.length} công trạm</CardDescription>
@@ -314,9 +334,26 @@ export default function SpcPlanVisualization() {
                         {/* Status indicator */}
                         <div className={`absolute -top-1 -right-1 w-3 h-3 rounded-full ${hasActivePlan ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`} />
                         
-                        <div className={`p-2 rounded-lg ${hasActivePlan ? 'bg-green-100' : 'bg-gray-100'}`}>
-                          <Wrench className={`h-5 w-5 ${hasActivePlan ? 'text-green-600' : 'text-gray-500'}`} />
-                        </div>
+                        {ws.imageUrl ? (
+                          <div className="w-12 h-12 rounded-lg overflow-hidden border-2 border-white shadow-sm">
+                            <img 
+                              src={ws.imageUrl} 
+                              alt={ws.name} 
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                                e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                              }}
+                            />
+                            <div className={`hidden p-2 rounded-lg ${hasActivePlan ? 'bg-green-100' : 'bg-gray-100'}`}>
+                              <Wrench className={`h-5 w-5 ${hasActivePlan ? 'text-green-600' : 'text-gray-500'}`} />
+                            </div>
+                          </div>
+                        ) : (
+                          <div className={`p-2 rounded-lg ${hasActivePlan ? 'bg-green-100' : 'bg-gray-100'}`}>
+                            <Wrench className={`h-5 w-5 ${hasActivePlan ? 'text-green-600' : 'text-gray-500'}`} />
+                          </div>
+                        )}
                         <span className="mt-2 text-xs font-medium text-center max-w-[80px] truncate">{ws.name}</span>
                         <span className="text-[10px] text-muted-foreground">{wsMachines.length} máy</span>
                         
@@ -419,9 +456,15 @@ export default function SpcPlanVisualization() {
                 >
                   <CardHeader className="pb-2">
                     <div className="flex items-center gap-3">
-                      <div className="p-2 bg-blue-100 rounded-lg">
-                        <Factory className="h-5 w-5 text-blue-600" />
-                      </div>
+                      {line.imageUrl ? (
+                        <div className="w-10 h-10 rounded-lg overflow-hidden border border-blue-200">
+                          <img src={line.imageUrl} alt={line.name} className="w-full h-full object-cover" />
+                        </div>
+                      ) : (
+                        <div className="p-2 bg-blue-100 rounded-lg">
+                          <Factory className="h-5 w-5 text-blue-600" />
+                        </div>
+                      )}
                       <div>
                         <CardTitle className="text-base">{line.name}</CardTitle>
                         <CardDescription>{line.code}</CardDescription>
@@ -458,9 +501,15 @@ export default function SpcPlanVisualization() {
                 >
                   <CardHeader className="pb-2">
                     <div className="flex items-center gap-3">
-                      <div className="p-2 bg-green-100 rounded-lg">
-                        <Wrench className="h-5 w-5 text-green-600" />
-                      </div>
+                      {ws.imageUrl ? (
+                        <div className="w-10 h-10 rounded-lg overflow-hidden border border-green-200">
+                          <img src={ws.imageUrl} alt={ws.name} className="w-full h-full object-cover" />
+                        </div>
+                      ) : (
+                        <div className="p-2 bg-green-100 rounded-lg">
+                          <Wrench className="h-5 w-5 text-green-600" />
+                        </div>
+                      )}
                       <div>
                         <CardTitle className="text-base">{ws.name}</CardTitle>
                         <CardDescription>{ws.code} • {line?.name}</CardDescription>
@@ -497,9 +546,15 @@ export default function SpcPlanVisualization() {
                 >
                   <CardHeader className="pb-2">
                     <div className="flex items-center gap-3">
-                      <div className="p-2 bg-purple-100 rounded-lg">
-                        <Cpu className="h-5 w-5 text-purple-600" />
-                      </div>
+                      {machine.imageUrl ? (
+                        <div className="w-10 h-10 rounded-lg overflow-hidden border border-purple-200">
+                          <img src={machine.imageUrl} alt={machine.name} className="w-full h-full object-cover" />
+                        </div>
+                      ) : (
+                        <div className="p-2 bg-purple-100 rounded-lg">
+                          <Cpu className="h-5 w-5 text-purple-600" />
+                        </div>
+                      )}
                       <div>
                         <CardTitle className="text-base">{machine.name}</CardTitle>
                         <CardDescription>{machine.code} • {ws?.name}</CardDescription>

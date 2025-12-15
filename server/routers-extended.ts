@@ -143,6 +143,7 @@ export const workstationRouter = router({
       description: z.string().optional(),
       sequenceOrder: z.number().optional(),
       cycleTime: z.number().optional(),
+      imageUrl: z.string().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
       if (ctx.user?.role !== "admin") {
@@ -159,6 +160,7 @@ export const workstationRouter = router({
       description: z.string().optional(),
       sequenceOrder: z.number().optional(),
       cycleTime: z.number().optional(),
+      imageUrl: z.string().optional(),
       isActive: z.number().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
@@ -205,6 +207,7 @@ export const machineRouter = router({
       model: z.string().optional(),
       serialNumber: z.string().optional(),
       installDate: z.date().optional(),
+      imageUrl: z.string().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
       if (ctx.user?.role !== "admin") {
@@ -224,6 +227,7 @@ export const machineRouter = router({
       model: z.string().optional(),
       serialNumber: z.string().optional(),
       status: z.enum(["active", "maintenance", "inactive"]).optional(),
+      imageUrl: z.string().optional(),
       isActive: z.number().optional(),
     }))
     .mutation(async ({ input, ctx }) => {

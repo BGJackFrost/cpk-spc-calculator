@@ -12,7 +12,8 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
-import { Plus, Edit, Trash2, Settings, ArrowUp, ArrowDown, Cog } from "lucide-react";
+import { Plus, Edit, Trash2, Settings, ArrowUp, ArrowDown, Cog, Camera, X, Loader2 } from "lucide-react";
+import { useRef } from "react";
 
 interface ProcessTemplate {
   id: number;
@@ -20,6 +21,7 @@ interface ProcessTemplate {
   code: string;
   description: string | null;
   version: string | null;
+  imageUrl: string | null;
   isActive: number;
   createdAt: Date;
 }
@@ -57,7 +59,10 @@ export default function ProcessTemplateManagement() {
     code: "",
     description: "",
     version: "1.0",
+    imageUrl: "",
   });
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Step dialog
   const [stepDialogOpen, setStepDialogOpen] = useState(false);
@@ -177,7 +182,7 @@ export default function ProcessTemplateManagement() {
 
   // Form handlers
   const resetTemplateForm = () => {
-    setTemplateForm({ name: "", code: "", description: "", version: "1.0" });
+    setTemplateForm({ name: "", code: "", description: "", version: "1.0", imageUrl: "" });
     setEditingTemplate(null);
   };
 
@@ -198,8 +203,46 @@ export default function ProcessTemplateManagement() {
       code: template.code,
       description: template.description || "",
       version: template.version || "1.0",
+      imageUrl: template.imageUrl || "",
     });
     setTemplateDialogOpen(true);
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Ảnh không được vượt quá 2MB");
+      return;
+    }
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Vui lòng chọn file ảnh");
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) throw new Error("Upload failed");
+
+      const data = await response.json();
+      setTemplateForm(prev => ({ ...prev, imageUrl: data.url }));
+      toast.success("Đã tải ảnh lên thành công");
+    } catch (error) {
+      toast.error("Lỗi khi tải ảnh lên");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   };
 
   const openEditStep = (step: ProcessStep) => {
@@ -495,6 +538,50 @@ export default function ProcessTemplateManagement() {
                   onChange={(e) => setTemplateForm({ ...templateForm, description: e.target.value })}
                   placeholder="Mô tả quy trình..."
                 />
+              </div>
+              <div className="space-y-2">
+                <Label>Ảnh quy trình</Label>
+                <div className="flex items-center gap-4">
+                  <div className="relative w-24 h-24 rounded-lg border-2 border-dashed border-muted-foreground/25 flex items-center justify-center overflow-hidden bg-muted">
+                    {templateForm.imageUrl ? (
+                      <>
+                        <img src={templateForm.imageUrl} alt="Quy trình" className="w-full h-full object-cover" />
+                        <Button
+                          variant="destructive"
+                          size="icon"
+                          className="absolute top-1 right-1 h-6 w-6"
+                          onClick={() => setTemplateForm(prev => ({ ...prev, imageUrl: "" }))}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </>
+                    ) : (
+                      <Camera className="h-8 w-8 text-muted-foreground" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleImageUpload}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploading}
+                    >
+                      {uploading ? (
+                        <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Đang tải...</>
+                      ) : (
+                        <><Camera className="mr-2 h-4 w-4" /> Chọn ảnh</>
+                      )}
+                    </Button>
+                    <p className="text-xs text-muted-foreground mt-1">Tối đa 2MB, định dạng JPG/PNG</p>
+                  </div>
+                </div>
               </div>
             </div>
             <DialogFooter>

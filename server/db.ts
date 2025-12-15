@@ -60,7 +60,9 @@ import {
   exportHistory,
   InsertExportHistory,
   loginHistory,
-  InsertLoginHistory
+  InsertLoginHistory,
+  productStationMachineStandards,
+  InsertProductStationMachineStandard
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -3171,4 +3173,116 @@ export async function getLoginStats(userId?: number) {
     lastLogin,
     failedAttempts: failedCount,
   };
+}
+
+
+// ============================================
+// Measurement Standards Functions
+// ============================================
+
+export async function getMeasurementStandards() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(productStationMachineStandards).orderBy(desc(productStationMachineStandards.createdAt));
+}
+
+export async function getMeasurementStandardById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const results = await db.select().from(productStationMachineStandards).where(eq(productStationMachineStandards.id, id));
+  return results[0] || null;
+}
+
+export async function getMeasurementStandardByProductWorkstation(
+  productId: number, 
+  workstationId: number, 
+  machineId?: number
+) {
+  const db = await getDb();
+  if (!db) return null;
+  
+  const conditions = [
+    eq(productStationMachineStandards.productId, productId),
+    eq(productStationMachineStandards.workstationId, workstationId)
+  ];
+  
+  if (machineId) {
+    conditions.push(eq(productStationMachineStandards.machineId, machineId));
+  }
+  
+  const results = await db.select().from(productStationMachineStandards)
+    .where(and(...conditions));
+  return results[0] || null;
+}
+
+export async function createMeasurementStandard(data: {
+  productId: number;
+  workstationId: number;
+  machineId?: number;
+  usl: number;
+  lsl: number;
+  target?: number;
+  sampleSize?: number;
+  sampleFrequency?: number;
+  samplingMethod?: string;
+  appliedSpcRules?: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  // Convert decimal values to integers (multiply by 10000 for precision)
+  const insertData: InsertProductStationMachineStandard = {
+    productId: data.productId,
+    workstationId: data.workstationId,
+    machineId: data.machineId || null,
+    measurementName: "Default Measurement", // Default name
+    usl: Math.round(data.usl * 10000),
+    lsl: Math.round(data.lsl * 10000),
+    target: data.target ? Math.round(data.target * 10000) : null,
+    sampleSize: data.sampleSize || 5,
+    sampleFrequency: data.sampleFrequency || 60, // minutes
+    samplingMethod: data.samplingMethod || "random",
+    appliedSpcRules: data.appliedSpcRules || null,
+    createdBy: 1, // Default to admin
+  };
+  
+  const result = await db.insert(productStationMachineStandards).values(insertData);
+  return Number(result[0].insertId);
+}
+
+export async function updateMeasurementStandard(id: number, data: Partial<{
+  productId: number;
+  workstationId: number;
+  machineId: number;
+  usl: number;
+  lsl: number;
+  target: number;
+  sampleSize: number;
+  sampleFrequency: number;
+  samplingMethod: string;
+  appliedSpcRules: string;
+}>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const updateData: Record<string, unknown> = {};
+  
+  if (data.productId !== undefined) updateData.productId = data.productId;
+  if (data.workstationId !== undefined) updateData.workstationId = data.workstationId;
+  if (data.machineId !== undefined) updateData.machineId = data.machineId;
+  if (data.usl !== undefined) updateData.usl = Math.round(data.usl * 10000);
+  if (data.lsl !== undefined) updateData.lsl = Math.round(data.lsl * 10000);
+  if (data.target !== undefined) updateData.target = Math.round(data.target * 10000);
+  if (data.sampleSize !== undefined) updateData.sampleSize = data.sampleSize;
+  if (data.sampleFrequency !== undefined) updateData.sampleFrequency = data.sampleFrequency;
+  if (data.samplingMethod !== undefined) updateData.samplingMethod = data.samplingMethod;
+  if (data.appliedSpcRules !== undefined) updateData.appliedSpcRules = data.appliedSpcRules;
+  
+  await db.update(productStationMachineStandards).set(updateData).where(eq(productStationMachineStandards.id, id));
+}
+
+export async function deleteMeasurementStandard(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(productStationMachineStandards).where(eq(productStationMachineStandards.id, id));
 }

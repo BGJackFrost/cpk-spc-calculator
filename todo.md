@@ -1336,3 +1336,27 @@
 ### Trực quan hóa SPC Plan
 - [ ] Hiển thị ảnh thay cho icon mặc định
 - [ ] Cải thiện giao diện SPC Plan Overview
+
+## Phase 58 - Upload Ảnh, Tiêu chuẩn đo và Trực quan hóa SPC Plan
+
+### Upload ảnh cho các thực thể
+- [x] Thêm upload ảnh cho Máy (MachineManagement.tsx)
+- [x] Thêm upload ảnh cho Công trạm (WorkstationManagement.tsx)
+- [x] Thêm upload ảnh cho Quy trình (ProcessTemplateManagement.tsx)
+- [x] Cập nhật API machine.create/update với imageUrl
+- [x] Cập nhật API workstation.create/update với imageUrl
+- [x] Cập nhật API processTemplate.create/update với imageUrl
+
+### Trang quản lý Tiêu chuẩn đo
+- [x] Tạo trang MeasurementStandards.tsx
+- [x] Hiển thị danh sách tiêu chuẩn theo Sản phẩm-Công trạm-Máy
+- [x] Form thêm/sửa tiêu chuẩn (USL, LSL, Target)
+- [x] Cấu hình phương pháp lấy mẫu (sampleSize, sampleFrequency)
+- [x] Cấu hình SPC Rules áp dụng (checkboxes)
+- [x] Thêm route và menu vào sidebar
+
+### Trực quan hóa SPC Plan
+- [x] Hiển thị ảnh Dây chuyền trong SPC Plan
+- [x] Hiển thị ảnh Máy trong SPC Plan
+- [x] Hiển thị ảnh Công trạm trong SPC Plan
+- [x] Cải thiện giao diện card SPC Plan với ảnh
