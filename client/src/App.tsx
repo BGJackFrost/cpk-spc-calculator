@@ -53,6 +53,7 @@ import CompanyInfo from "./pages/CompanyInfo";
 import BackupHistory from "./pages/BackupHistory";
 import ConnectionManager from "./pages/ConnectionManager";
 import MeasurementStandards from "./pages/MeasurementStandards";
+import MeasurementStandardsDashboard from "./pages/MeasurementStandardsDashboard";
 
 function Router() {
   return (
@@ -104,6 +105,7 @@ function Router() {
       <Route path="/login-history" component={LoginHistoryPage} />
       <Route path="/backup-history" component={BackupHistory} />
       <Route path="/measurement-standards" component={MeasurementStandards} />
+      <Route path="/measurement-standards-dashboard" component={MeasurementStandardsDashboard} />
       <Route path="/spc-visualization" component={SpcPlanVisualization} />
       <Route path="/spc-visualization/:type/:id" component={SpcVisualizationDetail} />
       <Route path="/404" component={NotFound} />

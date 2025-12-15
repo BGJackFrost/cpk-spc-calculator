@@ -100,6 +100,7 @@ export default function SpcPlanManagement() {
     enabledSpcRules: [] as number[],
     enabledCaRules: [] as number[],
     enabledCpkRules: [] as number[],
+    measurementStandardId: 0,
   });
 
   // Fetch data
@@ -114,6 +115,8 @@ export default function SpcPlanManagement() {
   const { data: spcRules = [] } = trpc.rules.getSpcRules.useQuery();
   const { data: caRules = [] } = trpc.rules.getCaRules.useQuery();
   const { data: cpkRules = [] } = trpc.rules.getCpkRules.useQuery();
+  const { data: measurementStandards = [] } = trpc.measurementStandard.list.useQuery();
+  const { data: workstations = [] } = trpc.workstation.listAll.useQuery();
 
   // Mutations
   const createMutation = trpc.spcPlan.create.useMutation({
@@ -172,6 +175,7 @@ export default function SpcPlanManagement() {
       enabledSpcRules: [],
       enabledCaRules: [],
       enabledCpkRules: [],
+      measurementStandardId: 0,
     });
   };
 
@@ -279,6 +283,7 @@ export default function SpcPlanManagement() {
       enabledSpcRules: plan.enabledSpcRules ? JSON.parse(plan.enabledSpcRules) : [],
       enabledCaRules: plan.enabledCaRules ? JSON.parse(plan.enabledCaRules) : [],
       enabledCpkRules: plan.enabledCpkRules ? JSON.parse(plan.enabledCpkRules) : [],
+      measurementStandardId: (plan as any).measurementStandardId || 0,
     });
   };
 
@@ -403,6 +408,55 @@ export default function SpcPlanManagement() {
                         ))}
                       </SelectContent>
                     </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <Target className="h-4 w-4 text-primary" />
+                      Tiêu chuẩn Đo lường (tự động áp dụng cấu hình)
+                    </Label>
+                    <Select 
+                      value={formData.measurementStandardId.toString()} 
+                      onValueChange={(v) => {
+                        const stdId = parseInt(v);
+                        const standard = measurementStandards.find((s: any) => s.id === stdId);
+                        if (standard) {
+                          // Tự động điền thông tin từ tiêu chuẩn đo
+                          const appliedRules = standard.appliedSpcRules ? JSON.parse(standard.appliedSpcRules) : [];
+                          setFormData({ 
+                            ...formData, 
+                            measurementStandardId: stdId,
+                            productId: standard.productId || formData.productId,
+                            workstationId: standard.workstationId || formData.workstationId,
+                            machineId: standard.machineId || formData.machineId,
+                            enabledSpcRules: appliedRules.length > 0 ? appliedRules : formData.enabledSpcRules,
+                          });
+                          toast.success(`Đã áp dụng tiêu chuẩn: ${standard.measurementName}`);
+                        } else {
+                          setFormData({ ...formData, measurementStandardId: stdId });
+                        }
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Chọn tiêu chuẩn đo lường" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="0">-- Không chọn --</SelectItem>
+                        {measurementStandards.map((std: any) => {
+                          const product = products?.find((p: any) => p.id === std.productId);
+                          const ws = workstations.find((w: any) => w.id === std.workstationId);
+                          return (
+                            <SelectItem key={std.id} value={std.id.toString()}>
+                              {std.measurementName} - {product?.name || 'N/A'} / {ws?.name || 'N/A'}
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Chọn tiêu chuẩn đo để tự động áp dụng Sản phẩm, Công trạm, Máy và SPC Rules
+                    </p>
                   </div>
                 </div>
                 <div className="space-y-2">

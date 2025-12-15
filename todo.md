@@ -1360,3 +1360,24 @@
 - [x] Hiển thị ảnh Máy trong SPC Plan
 - [x] Hiển thị ảnh Công trạm trong SPC Plan
 - [x] Cải thiện giao diện card SPC Plan với ảnh
+
+
+## Phase 59: Upload ảnh Dây chuyền, Tích hợp Tiêu chuẩn đo, Dashboard thống kê
+
+### Upload ảnh cho Dây chuyền sản xuất
+- [x] Thêm upload ảnh vào ProductionLineManagement.tsx (đã có sẵn)
+- [x] Cập nhật API productionLine.create/update với imageUrl (đã có sẵn)
+- [x] Hiển thị ảnh trong danh sách và form (đã có sẵn)
+
+### Tích hợp Tiêu chuẩn đo với SPC Plan
+- [x] Thêm dropdown chọn Tiêu chuẩn đo trong SpcPlanManagement
+- [x] Tự động điền Sản phẩm, Công trạm, Máy từ Tiêu chuẩn đo
+- [x] Tự động áp dụng SPC Rules từ Tiêu chuẩn đo
+- [x] Cập nhật form SPC Plan với measurementStandardId
+
+### Dashboard thống kê Tiêu chuẩn đo
+- [x] Tạo trang MeasurementStandardsDashboard.tsx
+- [x] Hiển thị tổng quan số lượng tiêu chuẩn theo trạng thái
+- [x] Biểu đồ phân bố tiêu chuẩn theo Sản phẩm/Công trạm
+- [x] Danh sách tiêu chuẩn cần xem xét (filter incomplete)
+- [x] Thêm route và menu vào sidebar

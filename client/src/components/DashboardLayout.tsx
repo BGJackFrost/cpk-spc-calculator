@@ -114,6 +114,7 @@ const menuGroups: MenuGroup[] = [
       { icon: Package, labelKey: "nav.productManagement", path: "/products", adminOnly: true },
       { icon: Ruler, labelKey: "nav.specificationManagement", path: "/specifications", adminOnly: true },
       { icon: Ruler, labelKey: "nav.measurementStandards", path: "/measurement-standards", adminOnly: true },
+      { icon: BarChart3, labelKey: "nav.measurementStandardsDashboard", path: "/measurement-standards-dashboard", adminOnly: true },
       { icon: FileSpreadsheet, labelKey: "nav.mappingManagement", path: "/mappings", adminOnly: true },
       { icon: Clock, labelKey: "samplingMethod", path: "/sampling-methods", adminOnly: true },
       { icon: Calendar, labelKey: "nav.spcPlanManagement", path: "/spc-plans", adminOnly: true },
@@ -181,6 +182,8 @@ const fallbackLabelsVi: Record<string, string> = {
   "menuGroup.masterData": "Dữ liệu chính",
   "menuGroup.users": "Người dùng",
   "menuGroup.system": "Hệ thống",
+  "nav.measurementStandards": "Tiêu chuẩn Đo",
+  "nav.measurementStandardsDashboard": "Dashboard Tiêu chuẩn",
 };
 
 const fallbackLabelsEn: Record<string, string> = {
@@ -210,6 +213,8 @@ const fallbackLabelsEn: Record<string, string> = {
   "menuGroup.masterData": "Master Data",
   "menuGroup.users": "Users",
   "menuGroup.system": "System",
+  "nav.measurementStandards": "Measurement Standards",
+  "nav.measurementStandardsDashboard": "Standards Dashboard",
 };
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
