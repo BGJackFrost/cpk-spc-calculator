@@ -12,6 +12,8 @@ import { toast } from "sonner";
 import { User, Mail, Lock, Save, Eye, EyeOff, Shield, Calendar, Camera, Loader2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import ReactCrop, { type Crop, centerCrop, makeAspectCrop } from 'react-image-crop';
+import 'react-image-crop/dist/ReactCrop.css';
 
 export default function Profile() {
   const { user, refresh } = useAuth();
@@ -31,7 +33,104 @@ export default function Profile() {
   
   // Avatar state
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
+  const [showCropDialog, setShowCropDialog] = useState(false);
+  const [imageToCrop, setImageToCrop] = useState<string | null>(null);
+  const [crop, setCrop] = useState<Crop>();
+  const imgRef = React.useRef<HTMLImageElement>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  
+  // Helper function to crop image
+  const getCroppedImg = (image: HTMLImageElement, crop: Crop): Promise<string> => {
+    const canvas = document.createElement('canvas');
+    const scaleX = image.naturalWidth / image.width;
+    const scaleY = image.naturalHeight / image.height;
+    canvas.width = 200;
+    canvas.height = 200;
+    const ctx = canvas.getContext('2d');
+    
+    if (!ctx) throw new Error('No 2d context');
+    
+    ctx.drawImage(
+      image,
+      crop.x * scaleX,
+      crop.y * scaleY,
+      crop.width * scaleX,
+      crop.height * scaleY,
+      0,
+      0,
+      200,
+      200
+    );
+    
+    return new Promise((resolve) => {
+      canvas.toBlob((blob) => {
+        if (!blob) throw new Error('Canvas is empty');
+        const reader = new FileReader();
+        reader.readAsDataURL(blob);
+        reader.onloadend = () => {
+          resolve(reader.result as string);
+        };
+      }, 'image/jpeg', 0.9);
+    });
+  };
+  
+  const onImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const { width, height } = e.currentTarget;
+    const crop = centerCrop(
+      makeAspectCrop({ unit: '%', width: 80 }, 1, width, height),
+      width,
+      height
+    );
+    setCrop(crop);
+  };
+  
+  const handleCropComplete = async () => {
+    if (!imgRef.current || !crop) return;
+    
+    setAvatarUploading(true);
+    try {
+      const croppedImageData = await getCroppedImg(imgRef.current, crop);
+      
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          filename: 'avatar.jpg',
+          contentType: 'image/jpeg',
+          data: croppedImageData,
+          folder: 'avatars',
+        }),
+      });
+      
+      if (!response.ok) throw new Error('Upload failed');
+      
+      const { url } = await response.json();
+      updateAvatarMutation.mutate({ avatarUrl: url });
+      setShowCropDialog(false);
+      setImageToCrop(null);
+    } catch (error) {
+      toast.error("Không thể tải lên ảnh. Vui lòng thử lại.");
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
+  
+  // Default avatars - using DiceBear API for consistent, unique avatars
+  const defaultAvatars = [
+    { id: 'initials', url: null, label: 'Chữ cái' },
+    { id: 'avatar1', url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix&backgroundColor=b6e3f4', label: 'Avatar 1' },
+    { id: 'avatar2', url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka&backgroundColor=c0aede', label: 'Avatar 2' },
+    { id: 'avatar3', url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Milo&backgroundColor=d1d4f9', label: 'Avatar 3' },
+    { id: 'avatar4', url: 'https://api.dicebear.com/7.x/bottts/svg?seed=Dusty&backgroundColor=ffdfbf', label: 'Robot 1' },
+    { id: 'avatar5', url: 'https://api.dicebear.com/7.x/bottts/svg?seed=Pepper&backgroundColor=ffd5dc', label: 'Robot 2' },
+    { id: 'avatar6', url: 'https://api.dicebear.com/7.x/fun-emoji/svg?seed=Happy&backgroundColor=b6e3f4', label: 'Emoji 1' },
+    { id: 'avatar7', url: 'https://api.dicebear.com/7.x/fun-emoji/svg?seed=Cool&backgroundColor=c0aede', label: 'Emoji 2' },
+    { id: 'avatar8', url: 'https://api.dicebear.com/7.x/lorelei/svg?seed=Luna&backgroundColor=d1d4f9', label: 'Lorelei 1' },
+    { id: 'avatar9', url: 'https://api.dicebear.com/7.x/lorelei/svg?seed=Star&backgroundColor=ffdfbf', label: 'Lorelei 2' },
+    { id: 'avatar10', url: 'https://api.dicebear.com/7.x/notionists/svg?seed=Alex&backgroundColor=ffd5dc', label: 'Notionist 1' },
+    { id: 'avatar11', url: 'https://api.dicebear.com/7.x/notionists/svg?seed=Sam&backgroundColor=b6e3f4', label: 'Notionist 2' },
+  ];
   
   // Mutations
   const updateAvatarMutation = trpc.localAuth.updateAvatar.useMutation({
@@ -138,7 +237,7 @@ export default function Profile() {
                   )}
                 </div>
                 <button
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={() => setShowAvatarPicker(true)}
                   disabled={avatarUploading}
                   className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg hover:bg-primary/90 transition-colors"
                 >
@@ -148,58 +247,135 @@ export default function Profile() {
                     <Camera className="h-4 w-4" />
                   )}
                 </button>
+                
+                {/* Avatar Picker Dialog */}
+                {showAvatarPicker && (
+                  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowAvatarPicker(false)}>
+                    <div className="bg-background rounded-lg p-6 max-w-md w-full mx-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
+                      <h3 className="text-lg font-semibold mb-4">Chọn ảnh đại diện</h3>
+                      
+                      {/* Default Avatars Grid */}
+                      <div className="grid grid-cols-4 gap-3 mb-4">
+                        {defaultAvatars.map((avatar) => (
+                          <button
+                            key={avatar.id}
+                            onClick={() => {
+                              updateAvatarMutation.mutate({ avatarUrl: avatar.url });
+                              setShowAvatarPicker(false);
+                            }}
+                            className={`w-16 h-16 rounded-full overflow-hidden border-2 transition-all hover:scale-110 ${
+                              (user as any)?.avatar === avatar.url ? 'border-primary ring-2 ring-primary' : 'border-border hover:border-primary/50'
+                            }`}
+                          >
+                            {avatar.url ? (
+                              <img src={avatar.url} alt={avatar.label} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full bg-primary/10 flex items-center justify-center">
+                                <span className="text-lg font-bold text-primary">
+                                  {user?.name?.[0]?.toUpperCase() || "U"}
+                                </span>
+                              </div>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                      
+                      <div className="border-t pt-4">
+                        <p className="text-sm text-muted-foreground mb-3">Hoặc tải lên ảnh của bạn:</p>
+                        <Button
+                          variant="outline"
+                          className="w-full"
+                          onClick={() => {
+                            setShowAvatarPicker(false);
+                            fileInputRef.current?.click();
+                          }}
+                        >
+                          <Camera className="h-4 w-4 mr-2" />
+                          Tải ảnh lên
+                        </Button>
+                      </div>
+                      
+                      <div className="flex justify-end mt-4">
+                        <Button variant="ghost" onClick={() => setShowAvatarPicker(false)}>
+                          Đóng
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 <input
                   ref={fileInputRef}
                   type="file"
                   accept="image/*"
                   className="hidden"
-                  onChange={async (e) => {
+                  onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (!file) return;
                     
-                    if (file.size > 2 * 1024 * 1024) {
-                      toast.error("Ảnh quá lớn. Vui lòng chọn ảnh nhỏ hơn 2MB");
+                    if (file.size > 5 * 1024 * 1024) {
+                      toast.error("Ảnh quá lớn. Vui lòng chọn ảnh nhỏ hơn 5MB");
                       return;
                     }
                     
-                    setAvatarUploading(true);
-                    try {
-                      // Convert to base64 and upload via API
-                      const reader = new FileReader();
-                      reader.onload = async () => {
-                        try {
-                          const base64Data = reader.result as string;
-                          const response = await fetch('/api/upload', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                              filename: file.name,
-                              contentType: file.type,
-                              data: base64Data,
-                              folder: 'avatars',
-                            }),
-                          });
-                          
-                          if (!response.ok) {
-                            throw new Error('Upload failed');
-                          }
-                          
-                          const { url } = await response.json();
-                          updateAvatarMutation.mutate({ avatarUrl: url });
-                        } catch (err) {
-                          toast.error("Không thể tải lên ảnh. Vui lòng thử lại.");
-                        } finally {
-                          setAvatarUploading(false);
-                        }
-                      };
-                      reader.readAsDataURL(file);
-                    } catch (error) {
-                      toast.error("Không thể tải lên ảnh. Vui lòng thử lại.");
-                      setAvatarUploading(false);
-                      e.target.value = '';
-                    }
+                    // Read file and open crop dialog
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                      setImageToCrop(reader.result as string);
+                      setShowCropDialog(true);
+                    };
+                    reader.readAsDataURL(file);
+                    e.target.value = '';
                   }}
                 />
+                
+                {/* Crop Dialog */}
+                {showCropDialog && imageToCrop && (
+                  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <div className="bg-background rounded-lg p-6 max-w-lg w-full mx-4 shadow-xl">
+                      <h3 className="text-lg font-semibold mb-4">Cắt ảnh đại diện</h3>
+                      <p className="text-sm text-muted-foreground mb-4">Kéo để chọn vùng ảnh hình vuông</p>
+                      
+                      <div className="flex justify-center mb-4">
+                        <ReactCrop
+                          crop={crop}
+                          onChange={(c) => setCrop(c)}
+                          aspect={1}
+                          circularCrop
+                        >
+                          <img
+                            ref={imgRef}
+                            src={imageToCrop}
+                            alt="Crop"
+                            onLoad={onImageLoad}
+                            style={{ maxHeight: '400px' }}
+                          />
+                        </ReactCrop>
+                      </div>
+                      
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          onClick={() => {
+                            setShowCropDialog(false);
+                            setImageToCrop(null);
+                          }}
+                        >
+                          Hủy
+                        </Button>
+                        <Button
+                          onClick={handleCropComplete}
+                          disabled={avatarUploading}
+                        >
+                          {avatarUploading ? (
+                            <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Đang tải...</>
+                          ) : (
+                            'Xác nhận'
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
               <div>
                 <CardTitle className="text-xl">{user?.name || "User"}</CardTitle>

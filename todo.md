@@ -1298,3 +1298,10 @@
 - [x] Tạo API cập nhật avatar cho user - localAuth.updateAvatar
 - [x] Cập nhật trang Profile với chức năng upload avatar - nút camera trên avatar
 - [x] Hiển thị avatar trên sidebar/navigation - sử dụng AvatarImage trong SidebarFooter
+
+## Phase 56 - Cải tiến Avatar
+
+### Test và Cải tiến Avatar
+- [x] Test upload avatar qua browser - trang Profile hiển thị đúng với nút camera
+- [x] Thêm bộ avatar mặc định để user chọn - 12 avatar từ DiceBear API
+- [x] Thêm chức năng crop ảnh thành hình vuông trước khi upload - sử dụng react-image-crop
