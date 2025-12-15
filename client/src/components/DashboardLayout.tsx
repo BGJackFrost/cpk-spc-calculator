@@ -162,6 +162,7 @@ const menuGroups: MenuGroup[] = [
       { icon: Key, labelKey: "nav.licenseManagement", path: "/license-management", adminOnly: true },
       { icon: Building2, labelKey: "nav.licenseCustomers", path: "/license-customers", adminOnly: true },
       { icon: BarChart3, labelKey: "nav.licenseRevenue", path: "/license-revenue", adminOnly: true },
+      { icon: Server, labelKey: "nav.licenseServerSettings", path: "/license-server-settings", adminOnly: true },
     ]
   },
 ];
@@ -209,6 +210,7 @@ const fallbackLabelsVi: Record<string, string> = {
   "nav.licenseManagement": "Quản lý License",
   "nav.licenseCustomers": "Quản lý Khách hàng",
   "nav.licenseRevenue": "Báo cáo Doanh thu",
+  "nav.licenseServerSettings": "Cài đặt Server",
 };
 
 const fallbackLabelsEn: Record<string, string> = {
@@ -246,6 +248,7 @@ const fallbackLabelsEn: Record<string, string> = {
   "nav.licenseManagement": "License Management",
   "nav.licenseCustomers": "Customer Management",
   "nav.licenseRevenue": "Revenue Report",
+  "nav.licenseServerSettings": "Server Settings",
   "nav.shiftCpkComparison": "Shift CPK Comparison",
   "nav.defectTracking": "Defect Tracking",
   "nav.defectAnalysis": "Defect Analysis (Pareto)",

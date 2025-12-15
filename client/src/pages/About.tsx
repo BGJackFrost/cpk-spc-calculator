@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,7 +24,11 @@ import {
   Settings,
   Loader2,
   Copy,
-  Check
+  Check,
+  Wifi,
+  WifiOff,
+  RefreshCw,
+  Globe
 } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
@@ -56,9 +60,55 @@ export default function About() {
   const [licenseKey, setLicenseKey] = useState("");
   const [isActivating, setIsActivating] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [licenseServerUrl, setLicenseServerUrl] = useState("");
+  const [isValidating, setIsValidating] = useState(false);
+  const [serverStatus, setServerStatus] = useState<'connected' | 'disconnected' | 'checking'>('checking');
+  const [deviceId] = useState(() => {
+    // Generate or get device ID
+    let id = localStorage.getItem('device_id');
+    if (!id) {
+      id = 'DEV-' + Math.random().toString(36).substring(2, 15);
+      localStorage.setItem('device_id', id);
+    }
+    return id;
+  });
   
   // Fetch active license from database
   const { data: activeLicense, refetch: refetchLicense } = trpc.license.getActive.useQuery();
+  
+  // License Server status
+  const licenseServerStatus = trpc.licenseServer.getStatus.useQuery(undefined, {
+    refetchInterval: 30000
+  });
+  
+  // Update server status when query data changes
+  useEffect(() => {
+    if (licenseServerStatus.data) {
+      setServerStatus(licenseServerStatus.data.connected ? 'connected' : 'disconnected');
+    } else if (licenseServerStatus.error) {
+      setServerStatus('disconnected');
+    }
+  }, [licenseServerStatus.data, licenseServerStatus.error]);
+  
+  // Validate license with License Server
+  const validateMutation = trpc.licenseServer.validateLicense.useMutation();
+  const activateServerMutation = trpc.licenseServer.activateLicense.useMutation();
+  const heartbeatMutation = trpc.licenseServer.heartbeat.useMutation();
+  
+  // Send heartbeat periodically
+  useEffect(() => {
+    if (activeLicense?.licenseKey && serverStatus === 'connected') {
+      const sendHeartbeat = () => {
+        heartbeatMutation.mutate({
+          licenseKey: activeLicense.licenseKey,
+          deviceId
+        });
+      };
+      sendHeartbeat();
+      const interval = setInterval(sendHeartbeat, 60 * 60 * 1000); // Every hour
+      return () => clearInterval(interval);
+    }
+  }, [activeLicense?.licenseKey, serverStatus, deviceId]);
   
   const licenseStatus = {
     isActive: activeLicense?.isActive === 1,
@@ -303,6 +353,52 @@ export default function About() {
 
           {/* License Tab */}
           <TabsContent value="license" className="space-y-4">
+            {/* License Server Connection Status */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Globe className="h-5 w-5" />
+                  Kết nối License Server
+                </CardTitle>
+                <CardDescription>
+                  Xác thực license online với License Server
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                  <div className="flex items-center gap-2">
+                    {serverStatus === 'connected' ? (
+                      <><Wifi className="h-5 w-5 text-green-500" /><span className="text-green-600 font-medium">Đã kết nối License Server</span></>
+                    ) : serverStatus === 'checking' ? (
+                      <><RefreshCw className="h-5 w-5 animate-spin text-blue-500" /><span className="text-blue-600">Đang kiểm tra...</span></>
+                    ) : (
+                      <><WifiOff className="h-5 w-5 text-red-500" /><span className="text-red-600">Chưa kết nối License Server</span></>
+                    )}
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => licenseServerStatus.refetch()}
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                  </Button>
+                </div>
+                
+                {serverStatus === 'disconnected' && (
+                  <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm">
+                    <p className="text-yellow-800">
+                      <AlertCircle className="h-4 w-4 inline mr-1" />
+                      License Server chưa được cấu hình. Vui lòng liên hệ Admin để cấu hình kết nối.
+                    </p>
+                  </div>
+                )}
+                
+                <div className="text-xs text-muted-foreground">
+                  <p>Device ID: <code className="bg-muted px-1 rounded">{deviceId}</code></p>
+                </div>
+              </CardContent>
+            </Card>
+            
             <div className="grid gap-4 md:grid-cols-2">
               <Card>
                 <CardHeader>
@@ -311,7 +407,7 @@ export default function About() {
                     Kích hoạt License
                   </CardTitle>
                   <CardDescription>
-                    Nhập mã license để kích hoạt các tính năng cao cấp
+                    Nhập mã license để kích hoạt và xác thực online
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -325,23 +421,62 @@ export default function About() {
                       className="font-mono"
                     />
                   </div>
-                  <Button 
-                    onClick={handleActivateLicense} 
-                    disabled={isActivating || !licenseKey.trim()}
-                    className="w-full"
-                  >
-                    {isActivating ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Đang kích hoạt...
-                      </>
-                    ) : (
-                      <>
-                        <Key className="h-4 w-4 mr-2" />
-                        Kích hoạt License
-                      </>
-                    )}
-                  </Button>
+                  
+                  <div className="flex gap-2">
+                    <Button 
+                      onClick={async () => {
+                        if (!licenseKey.trim()) {
+                          toast.error("Vui lòng nhập mã license");
+                          return;
+                        }
+                        setIsValidating(true);
+                        try {
+                          // Validate with License Server first
+                          if (serverStatus === 'connected') {
+                            const validation = await validateMutation.mutateAsync({
+                              licenseKey: licenseKey.trim(),
+                              deviceId
+                            });
+                            if (!validation.valid) {
+                              toast.error(validation.error || "License không hợp lệ");
+                              return;
+                            }
+                            // Activate on server
+                            const activation = await activateServerMutation.mutateAsync({
+                              licenseKey: licenseKey.trim(),
+                              deviceId,
+                              deviceName: navigator.userAgent.substring(0, 50)
+                            });
+                            if (!activation.success) {
+                              toast.error(activation.error || "Kích hoạt thất bại");
+                              return;
+                            }
+                          }
+                          // Activate locally
+                          await activateMutation.mutateAsync({ licenseKey: licenseKey.trim() });
+                        } catch (error: any) {
+                          toast.error(error.message || "Kích hoạt thất bại");
+                        } finally {
+                          setIsValidating(false);
+                        }
+                      }}
+                      disabled={isActivating || isValidating || !licenseKey.trim()}
+                      className="flex-1"
+                    >
+                      {(isActivating || isValidating) ? (
+                        <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Đang xác thực...</>
+                      ) : (
+                        <><Key className="h-4 w-4 mr-2" />Kích hoạt License</>
+                      )}
+                    </Button>
+                  </div>
+                  
+                  {serverStatus === 'connected' && (
+                    <p className="text-xs text-green-600 flex items-center gap-1">
+                      <CheckCircle className="h-3 w-3" />
+                      License sẽ được xác thực online với License Server
+                    </p>
+                  )}
                   
                   <Separator />
                   

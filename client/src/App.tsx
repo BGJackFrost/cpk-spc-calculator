@@ -61,6 +61,7 @@ import ShiftCpkComparison from "./pages/ShiftCpkComparison";
 import LicenseManagement from "./pages/LicenseManagement";
 import LicenseCustomers from "./pages/LicenseCustomers";
 import LicenseRevenue from "./pages/LicenseRevenue";
+import LicenseServerSettings from "./pages/LicenseServerSettings";
 
 function Router() {
   return (
@@ -116,6 +117,7 @@ function Router() {
       <Route path="/license-management" component={LicenseManagement} />
       <Route path="/license-customers" component={LicenseCustomers} />
       <Route path="/license-revenue" component={LicenseRevenue} />
+      <Route path="/license-server-settings" component={LicenseServerSettings} />
       <Route path="/login-history" component={LoginHistoryPage} />
       <Route path="/backup-history" component={BackupHistory} />
       <Route path="/measurement-standards" component={MeasurementStandards} />

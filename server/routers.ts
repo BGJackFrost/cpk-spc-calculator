@@ -4633,6 +4633,216 @@ export const appRouter = router({
         return { success: true };
       }),
   }),
+
+  // License Server Management (separate database)
+  licenseServer: router({
+    getConfig: adminProcedure.query(async () => {
+      const { getDb } = await import("./db");
+      const { systemSettings } = await import("../drizzle/schema");
+      const { eq } = await import("drizzle-orm");
+      const db = await getDb();
+      if (!db) return null;
+      
+      const [setting] = await db.select().from(systemSettings).where(eq(systemSettings.key, "license_server_config"));
+      if (!setting) return null;
+      
+      try {
+        return setting.value ? JSON.parse(setting.value) : null;
+      } catch {
+        return null;
+      }
+    }),
+
+    saveConfig: adminProcedure
+      .input(z.object({
+        host: z.string().min(1),
+        port: z.number(),
+        user: z.string().min(1),
+        password: z.string(),
+        database: z.string().min(1)
+      }))
+      .mutation(async ({ input }) => {
+        const { getDb } = await import("./db");
+        const { systemSettings } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not connected" });
+        
+        const configJson = JSON.stringify(input);
+        
+        const [existing] = await db.select().from(systemSettings).where(eq(systemSettings.key, "license_server_config"));
+        if (existing) {
+          await db.update(systemSettings).set({ value: configJson }).where(eq(systemSettings.key, "license_server_config"));
+        } else {
+          await db.insert(systemSettings).values({ key: "license_server_config", value: configJson });
+        }
+        
+        return { success: true };
+      }),
+
+    testConnection: adminProcedure
+      .input(z.object({
+        host: z.string().min(1),
+        port: z.number(),
+        user: z.string().min(1),
+        password: z.string(),
+        database: z.string().min(1)
+      }))
+      .mutation(async ({ input }) => {
+        const { initLicenseServerDb } = await import("./licenseServerDb");
+        const success = await initLicenseServerDb(input);
+        return { success, error: success ? undefined : "Connection failed" };
+      }),
+
+    connect: adminProcedure.mutation(async () => {
+      const { getDb } = await import("./db");
+      const { systemSettings } = await import("../drizzle/schema");
+      const { eq } = await import("drizzle-orm");
+      const { initLicenseServerDb } = await import("./licenseServerDb");
+      
+      const db = await getDb();
+      if (!db) return { success: false, error: "Main database not connected" };
+      
+      const [setting] = await db.select().from(systemSettings).where(eq(systemSettings.key, "license_server_config"));
+      if (!setting) return { success: false, error: "No config found" };
+      
+      try {
+        if (!setting.value) return { success: false, error: "No config value" };
+        const config = JSON.parse(setting.value);
+        const success = await initLicenseServerDb(config);
+        return { success, error: success ? undefined : "Connection failed" };
+      } catch {
+        return { success: false, error: "Invalid config" };
+      }
+    }),
+
+    initSchema: adminProcedure.mutation(async () => {
+      const { initLicenseServerSchema, isLicenseDbConnected } = await import("./licenseServerDb");
+      if (!isLicenseDbConnected()) {
+        return { success: false, error: "Not connected to License Server database" };
+      }
+      const success = await initLicenseServerSchema();
+      return { success, error: success ? undefined : "Schema initialization failed" };
+    }),
+
+    getStatus: adminProcedure.query(async () => {
+      const { isLicenseDbConnected } = await import("./licenseServerDb");
+      return { connected: isLicenseDbConnected() };
+    }),
+
+    getStats: adminProcedure.query(async () => {
+      const { getLicenseServerStats, isLicenseDbConnected } = await import("./licenseServerDb");
+      if (!isLicenseDbConnected()) {
+        return {
+          totalLicenses: 0,
+          activeLicenses: 0,
+          expiredLicenses: 0,
+          totalActivations: 0,
+          activeActivations: 0,
+          totalCustomers: 0
+        };
+      }
+      return await getLicenseServerStats();
+    }),
+
+    // License CRUD in License Server DB
+    listLicenses: adminProcedure.query(async () => {
+      const { listLicensesInServer, isLicenseDbConnected } = await import("./licenseServerDb");
+      if (!isLicenseDbConnected()) return [];
+      return await listLicensesInServer();
+    }),
+
+    createLicense: adminProcedure
+      .input(z.object({
+        licenseKey: z.string().min(1),
+        licenseType: z.enum(["trial", "standard", "professional", "enterprise"]),
+        companyName: z.string().optional(),
+        contactEmail: z.string().email().optional(),
+        contactPhone: z.string().optional(),
+        maxUsers: z.number().optional(),
+        maxDevices: z.number().optional(),
+        features: z.string().optional(),
+        expiresAt: z.date().optional(),
+        notes: z.string().optional()
+      }))
+      .mutation(async ({ input }) => {
+        const { createLicenseInServer, isLicenseDbConnected } = await import("./licenseServerDb");
+        if (!isLicenseDbConnected()) {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "License Server not connected" });
+        }
+        return await createLicenseInServer(input);
+      }),
+
+    // Client API endpoints
+    validateLicense: publicProcedure
+      .input(z.object({
+        licenseKey: z.string().min(1),
+        deviceId: z.string().min(1)
+      }))
+      .mutation(async ({ input }) => {
+        const { validateLicense, isLicenseDbConnected } = await import("./licenseServerDb");
+        if (!isLicenseDbConnected()) {
+          return { valid: false, error: "License Server not available" };
+        }
+        return await validateLicense(input.licenseKey, input.deviceId);
+      }),
+
+    activateLicense: publicProcedure
+      .input(z.object({
+        licenseKey: z.string().min(1),
+        deviceId: z.string().min(1),
+        deviceName: z.string().optional(),
+        deviceInfo: z.string().optional()
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const { activateLicense, isLicenseDbConnected } = await import("./licenseServerDb");
+        if (!isLicenseDbConnected()) {
+          return { success: false, error: "License Server not available" };
+        }
+        const ipAddress = ctx.req?.ip || ctx.req?.socket?.remoteAddress;
+        return await activateLicense(input.licenseKey, input.deviceId, input.deviceName, input.deviceInfo, ipAddress);
+      }),
+
+    heartbeat: publicProcedure
+      .input(z.object({
+        licenseKey: z.string().min(1),
+        deviceId: z.string().min(1),
+        metadata: z.string().optional()
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const { recordHeartbeat, isLicenseDbConnected } = await import("./licenseServerDb");
+        if (!isLicenseDbConnected()) {
+          return { success: false, error: "License Server not available" };
+        }
+        const ipAddress = ctx.req?.ip || ctx.req?.socket?.remoteAddress;
+        return await recordHeartbeat(input.licenseKey, input.deviceId, ipAddress, input.metadata);
+      }),
+
+    deactivateLicense: publicProcedure
+      .input(z.object({
+        licenseKey: z.string().min(1),
+        deviceId: z.string().min(1),
+        reason: z.string().optional()
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const { deactivateLicense, isLicenseDbConnected } = await import("./licenseServerDb");
+        if (!isLicenseDbConnected()) {
+          return { success: false, error: "License Server not available" };
+        }
+        const ipAddress = ctx.req?.ip || ctx.req?.socket?.remoteAddress;
+        return await deactivateLicense(input.licenseKey, input.deviceId, input.reason, ipAddress);
+      }),
+
+    getLicenseStatus: publicProcedure
+      .input(z.object({ licenseKey: z.string().min(1) }))
+      .query(async ({ input }) => {
+        const { getLicenseStatus, isLicenseDbConnected } = await import("./licenseServerDb");
+        if (!isLicenseDbConnected()) {
+          return { found: false, error: "License Server not available" };
+        }
+        return await getLicenseStatus(input.licenseKey);
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

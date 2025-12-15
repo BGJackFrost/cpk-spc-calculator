@@ -1610,3 +1610,33 @@
 - [x] Gửi webhook khi license sắp hết hạn (7 ngày)
 - [x] Gửi webhook khi license đã hết hạn
 - [x] Format payload cho Slack và Teams (formatSlackPayload, formatTeamsPayload)
+
+
+## Phase 70: License Server Database Riêng và API
+
+### Thiết kế License Database riêng
+- [x] Tạo schema cho License Server Database (licenses, customers, heartbeats, activations, audit_logs)
+- [x] Tạo module licenseServerDb.ts để quản lý kết nối database riêng
+- [x] Lưu cấu hình kết nối License DB vào system_settings
+
+### Trang cài đặt License Server
+- [x] Tạo trang LicenseServerSettings.tsx với 3 tabs (Connection, Status, API)
+- [x] Form cấu hình connection string cho License Database
+- [x] Nút test connection và khởi tạo schema
+- [x] Thêm vào nhóm License Server trong menu
+
+### API License Server cho Client
+- [x] API validate license (licenseServer.validateLicense)
+- [x] API activate license (licenseServer.activateLicense)
+- [x] API heartbeat (licenseServer.heartbeat)
+- [x] API check license status (licenseServer.getLicenseStatus)
+- [x] API deactivate license (licenseServer.deactivateLicense)
+- [x] API create license (licenseServer.createLicense)
+- [x] API list licenses (licenseServer.listLicenses)
+
+### Cập nhật tab License trong Thông Tin Hệ Thống
+- [x] Thêm card hiển thị trạng thái kết nối License Server
+- [x] Tự động tạo Device ID cho thiết bị
+- [x] Xác thực license online với License Server khi kích hoạt
+- [x] Gửi heartbeat định kỳ mỗi giờ khi đã kết nối
+- [x] Hiển thị trạng thái kết nối (connected/disconnected/checking)
