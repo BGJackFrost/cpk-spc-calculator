@@ -172,6 +172,7 @@ export const productionLines = mysqlTable("production_lines", {
   code: varchar("code", { length: 100 }).notNull().unique(),
   description: text("description"),
   location: varchar("location", { length: 255 }),
+  imageUrl: varchar("imageUrl", { length: 500 }), // Ảnh dây chuyền
   // New fields for improved production line management
   productId: int("productId"), // Sản phẩm sản xuất trên dây chuyền
   processTemplateId: int("processTemplateId"), // Quy trình sản xuất
@@ -194,6 +195,7 @@ export const workstations = mysqlTable("workstations", {
   name: varchar("name", { length: 255 }).notNull(),
   code: varchar("code", { length: 100 }).notNull(),
   description: text("description"),
+  imageUrl: varchar("imageUrl", { length: 500 }), // Ảnh công trạm
   sequenceOrder: int("sequenceOrder").notNull().default(0),
   cycleTime: int("cycleTime"), // in seconds
   isActive: int("isActive").notNull().default(1),
@@ -217,6 +219,7 @@ export const machines = mysqlTable("machines", {
   manufacturer: varchar("manufacturer", { length: 255 }),
   model: varchar("model", { length: 255 }),
   serialNumber: varchar("serialNumber", { length: 255 }),
+  imageUrl: varchar("imageUrl", { length: 500 }), // Ảnh máy
   installDate: timestamp("installDate"),
   status: mysqlEnum("status", ["active", "maintenance", "inactive"]).default("active").notNull(),
   isActive: int("isActive").notNull().default(1),
@@ -711,6 +714,7 @@ export const processTemplates = mysqlTable("process_templates", {
   name: varchar("name", { length: 255 }).notNull(),
   code: varchar("code", { length: 100 }).notNull().unique(),
   description: text("description"),
+  imageUrl: varchar("imageUrl", { length: 500 }), // Ảnh quy trình
   version: varchar("version", { length: 50 }).default("1.0"),
   isActive: int("isActive").notNull().default(1),
   createdBy: int("createdBy").notNull(),
@@ -1181,3 +1185,67 @@ export const databaseBackups = mysqlTable("database_backups", {
 
 export type DatabaseBackup = typeof databaseBackups.$inferSelect;
 export type InsertDatabaseBackup = typeof databaseBackups.$inferInsert;
+
+
+/**
+ * Jigs - Đồ gá thuộc máy
+ */
+export const jigs = mysqlTable("jigs", {
+  id: int("id").autoincrement().primaryKey(),
+  machineId: int("machineId").notNull(), // FK to machines
+  code: varchar("code", { length: 50 }).notNull(), // Mã jig: JIG001, JIG002...
+  name: varchar("name", { length: 200 }).notNull(), // Tên jig
+  description: text("description"), // Mô tả
+  imageUrl: varchar("imageUrl", { length: 500 }), // Ảnh jig
+  position: int("position").notNull().default(1), // Vị trí trên máy
+  status: mysqlEnum("status", ["active", "maintenance", "inactive"]).default("active").notNull(),
+  installDate: timestamp("installDate"),
+  lastMaintenanceDate: timestamp("lastMaintenanceDate"),
+  isActive: int("isActive").notNull().default(1),
+  createdBy: int("createdBy").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Jig = typeof jigs.$inferSelect;
+export type InsertJig = typeof jigs.$inferInsert;
+
+/**
+ * Product Station Machine Standards - Tiêu chuẩn đo theo Sản phẩm-Công trạm-Máy
+ * Mỗi sản phẩm tại các công trạm và máy khác nhau có tiêu chuẩn đo, phương pháp lấy mẫu, SPC Rule khác nhau
+ */
+export const productStationMachineStandards = mysqlTable("product_station_machine_standards", {
+  id: int("id").autoincrement().primaryKey(),
+  productId: int("productId").notNull(), // FK to products
+  workstationId: int("workstationId").notNull(), // FK to workstations
+  machineId: int("machineId"), // FK to machines (optional, null = all machines)
+  
+  // Tiêu chuẩn đo
+  measurementName: varchar("measurementName", { length: 255 }).notNull(), // Tên phép đo
+  usl: int("usl"), // Upper Specification Limit * 10000
+  lsl: int("lsl"), // Lower Specification Limit * 10000
+  target: int("target"), // Target value * 10000
+  unit: varchar("unit", { length: 50 }).default("mm"), // Đơn vị đo
+  
+  // Phương pháp lấy mẫu
+  sampleSize: int("sampleSize").notNull().default(5), // Số mẫu mỗi lần lấy
+  sampleFrequency: int("sampleFrequency").notNull().default(60), // Tần suất lấy mẫu (phút)
+  samplingMethod: varchar("samplingMethod", { length: 100 }).default("random"), // random, systematic, stratified
+  
+  // SPC Rules được áp dụng (JSON array of rule IDs)
+  appliedSpcRules: text("appliedSpcRules"), // ["RULE1", "RULE2", ...]
+  
+  // CPK thresholds
+  cpkWarningThreshold: int("cpkWarningThreshold").default(133), // 1.33 * 100
+  cpkCriticalThreshold: int("cpkCriticalThreshold").default(100), // 1.00 * 100
+  
+  // Metadata
+  notes: text("notes"),
+  isActive: int("isActive").notNull().default(1),
+  createdBy: int("createdBy").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ProductStationMachineStandard = typeof productStationMachineStandards.$inferSelect;
+export type InsertProductStationMachineStandard = typeof productStationMachineStandards.$inferInsert;

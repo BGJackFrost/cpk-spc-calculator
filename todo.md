@@ -1305,3 +1305,34 @@
 - [x] Test upload avatar qua browser - trang Profile hiển thị đúng với nút camera
 - [x] Thêm bộ avatar mặc định để user chọn - 12 avatar từ DiceBear API
 - [x] Thêm chức năng crop ảnh thành hình vuông trước khi upload - sử dụng react-image-crop
+
+## Phase 57 - Quan hệ Dữ liệu và Ảnh Thực thể
+
+### Cập nhật quan hệ dữ liệu
+- [x] Thêm cột processId và productId vào bảng production_lines - đã có sẵn
+- [x] Tạo ràng buộc: 1 dây chuyền = 1 quy trình + 1 sản phẩm - logic trong schema
+- [ ] Cập nhật UI ProductionLine để chọn quy trình và sản phẩm
+
+### Tiêu chuẩn đo theo Sản phẩm-Công trạm-Máy
+- [x] Tạo bảng product_station_machine_standards
+- [x] Lưu tiêu chuẩn đo (USL, LSL, Target) - cột usl, lsl, target
+- [x] Lưu phương pháp lấy mẫu (sample size, frequency) - cột sampleSize, sampleFrequency, samplingMethod
+- [x] Lưu cài đặt SPC Rule (Western Electric rules) - cột appliedSpcRules (JSON array)
+
+### Thêm ảnh cho các thực thể
+- [x] Thêm cột imageUrl vào bảng production_lines
+- [x] Thêm cột imageUrl vào bảng machines
+- [x] Thêm cột imageUrl vào bảng jigs (bảng mới)
+- [x] Thêm cột imageUrl vào bảng workstations
+- [x] Thêm cột imageUrl vào bảng process_templates
+
+### Cập nhật UI với upload ảnh
+- [x] Thêm chức năng upload ảnh cho Dây chuyền (ProductionLineManagement.tsx)
+- [ ] Thêm chức năng upload ảnh cho Máy
+- [ ] Thêm chức năng upload ảnh cho Jig
+- [ ] Thêm chức năng upload ảnh cho Công trạm
+- [ ] Thêm chức năng upload ảnh cho Quy trình
+
+### Trực quan hóa SPC Plan
+- [ ] Hiển thị ảnh thay cho icon mặc định
+- [ ] Cải thiện giao diện SPC Plan Overview

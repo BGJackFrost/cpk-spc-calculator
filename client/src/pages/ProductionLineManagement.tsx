@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,8 +23,11 @@ import {
   Users,
   Cog,
   Package,
-  GitBranch
+  GitBranch,
+  Camera,
+  Image
 } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface ProductionLine {
   id: number;
@@ -32,6 +35,7 @@ interface ProductionLine {
   name: string;
   description?: string | null;
   location?: string | null;
+  imageUrl?: string | null;
   productId?: number | null;
   processTemplateId?: number | null;
   supervisorId?: number | null;
@@ -81,10 +85,13 @@ export default function ProductionLineManagement() {
     name: "",
     description: "",
     location: "",
+    imageUrl: "",
     productId: "",
     processTemplateId: "",
     supervisorId: "",
   });
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch data
   const { data: productionLines, isLoading, refetch } = trpc.productionLine.list.useQuery();
@@ -151,6 +158,7 @@ export default function ProductionLineManagement() {
       name: "",
       description: "",
       location: "",
+      imageUrl: "",
       productId: "",
       processTemplateId: "",
       supervisorId: "",
@@ -164,6 +172,7 @@ export default function ProductionLineManagement() {
       name: line.name,
       description: line.description || "",
       location: line.location || "",
+      imageUrl: line.imageUrl || "",
       productId: line.productId?.toString() || "",
       processTemplateId: line.processTemplateId?.toString() || "",
       supervisorId: line.supervisorId?.toString() || "",
@@ -456,6 +465,77 @@ export default function ProductionLineManagement() {
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   placeholder="Mô tả dây chuyền..."
                 />
+              </div>
+              <div className="col-span-2 space-y-2">
+                <Label>Ảnh dây chuyền</Label>
+                <div className="flex items-center gap-4">
+                  <Avatar className="h-20 w-20 rounded-lg">
+                    {formData.imageUrl ? (
+                      <AvatarImage src={formData.imageUrl} alt="Ảnh dây chuyền" className="object-cover" />
+                    ) : null}
+                    <AvatarFallback className="rounded-lg bg-muted">
+                      <Factory className="h-8 w-8 text-muted-foreground" />
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex flex-col gap-2">
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      accept="image/*"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        if (file.size > 2 * 1024 * 1024) {
+                          toast.error("Ảnh phải nhỏ hơn 2MB");
+                          return;
+                        }
+                        setUploadingImage(true);
+                        try {
+                          const reader = new FileReader();
+                          reader.onload = async () => {
+                            const base64 = reader.result as string;
+                            const res = await fetch("/api/upload", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ data: base64, filename: file.name }),
+                            });
+                            const json = await res.json();
+                            if (json.url) {
+                              setFormData({ ...formData, imageUrl: json.url });
+                              toast.success("Upload ảnh thành công");
+                            }
+                            setUploadingImage(false);
+                          };
+                          reader.readAsDataURL(file);
+                        } catch (err) {
+                          toast.error("Lỗi upload ảnh");
+                          setUploadingImage(false);
+                        }
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploadingImage}
+                    >
+                      {uploadingImage ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Camera className="h-4 w-4 mr-2" />}
+                      {uploadingImage ? "Đang tải..." : "Chọn ảnh"}
+                    </Button>
+                    {formData.imageUrl && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setFormData({ ...formData, imageUrl: "" })}
+                      >
+                        Xóa ảnh
+                      </Button>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
             <DialogFooter>
