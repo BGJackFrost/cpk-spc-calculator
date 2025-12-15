@@ -85,6 +85,7 @@ const menuGroups: MenuGroup[] = [
     icon: Target,
     items: [
       { icon: Gauge, labelKey: "nav.oeeDashboard", path: "/oee-dashboard" },
+      { icon: BarChart3, labelKey: "nav.plantKpi", path: "/plant-kpi" },
     ]
   },
   {
@@ -93,8 +94,20 @@ const menuGroups: MenuGroup[] = [
     icon: HardHat,
     items: [
       { icon: ClipboardList, labelKey: "nav.maintenanceDashboard", path: "/maintenance-dashboard" },
+      { icon: Calendar, labelKey: "nav.maintenanceSchedule", path: "/maintenance-schedule" },
       { icon: Boxes, labelKey: "nav.spareParts", path: "/spare-parts" },
       { icon: Brain, labelKey: "nav.predictiveMaintenance", path: "/predictive-maintenance" },
+      { icon: Cpu, labelKey: "nav.iotGateway", path: "/iot-gateway", adminOnly: true },
+      { icon: FileText, labelKey: "nav.reportsExport", path: "/reports-export" },
+      { icon: AlertTriangle, labelKey: "nav.alertConfig", path: "/alert-config", adminOnly: true },
+    ]
+  },
+  {
+    id: "equipment",
+    labelKey: "menuGroup.equipment",
+    icon: Wrench,
+    items: [
+      { icon: Cpu, labelKey: "nav.equipmentQr", path: "/equipment-qr" },
     ]
   },
   {

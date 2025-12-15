@@ -2032,3 +2032,21 @@
 - [x] OEE Dashboard - Cập nhật sử dụng dữ liệu thực từ API
 - [x] Navigation - Thêm menu Spare Parts và Predictive Maintenance
 - [x] Unit tests cho MMS routers (39 tests passed)
+
+## Phase 80: MMS Advanced Features
+- [ ] Biểu đồ Gantt cho lịch trình bảo trì và phân công kỹ thuật viên
+- [ ] Quét mã QR tra cứu thông tin và lịch sử bảo trì thiết bị
+- [ ] Dashboard KPI tổng hợp hiệu suất nhà máy
+- [ ] Tích hợp IoT Gateway kết nối PLC/SCADA
+- [ ] Xuất báo cáo OEE/Maintenance PDF/Excel
+- [ ] Cảnh báo tự động email/SMS khi OEE thấp hoặc predictive alerts
+
+## Phase 80: MMS Module - Advanced Features
+- [x] Biểu đồ Gantt cho lịch trình bảo trì (MaintenanceSchedule.tsx, GanttChart.tsx)
+- [x] Quét mã QR tra cứu thiết bị (EquipmentQRLookup.tsx)
+- [x] Dashboard KPI tổng hợp nhà máy (PlantKPIDashboard.tsx)
+- [x] Tích hợp IoT Gateway (IoTGatewayConfig.tsx)
+- [x] Báo cáo và Export PDF/Excel (ReportsExport.tsx, reportRouter.ts)
+- [x] Cảnh báo tự động email/SMS (AlertConfiguration.tsx, alertRouter.ts)
+- [x] Thêm routes và menu navigation cho các trang mới
+- [x] Viết tests cho MMS advanced features (mms-advanced.test.ts)

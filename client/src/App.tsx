@@ -74,6 +74,12 @@ import OEEDashboard from "./pages/OEEDashboard";
 import MaintenanceDashboard from "./pages/MaintenanceDashboard";
 import SparePartsManagement from "./pages/SparePartsManagement";
 import PredictiveMaintenance from "./pages/PredictiveMaintenance";
+import MaintenanceSchedule from "./pages/MaintenanceSchedule";
+import EquipmentQRLookup from "./pages/EquipmentQRLookup";
+import PlantKPIDashboard from "./pages/PlantKPIDashboard";
+import IoTGatewayConfig from "./pages/IoTGatewayConfig";
+import ReportsExport from "./pages/ReportsExport";
+import AlertConfiguration from "./pages/AlertConfiguration";
 
 function Router() {
   return (
@@ -114,6 +120,12 @@ function Router() {
       <Route path="/maintenance-dashboard" component={MaintenanceDashboard} />
       <Route path="/spare-parts" component={SparePartsManagement} />
       <Route path="/predictive-maintenance" component={PredictiveMaintenance} />
+      <Route path="/maintenance-schedule" component={MaintenanceSchedule} />
+      <Route path="/equipment-qr" component={EquipmentQRLookup} />
+      <Route path="/plant-kpi" component={PlantKPIDashboard} />
+      <Route path="/iot-gateway" component={IoTGatewayConfig} />
+      <Route path="/reports-export" component={ReportsExport} />
+      <Route path="/alert-config" component={AlertConfiguration} />
       <Route path="/email-notifications" component={EmailNotificationSettings} />
       <Route path="/permissions" component={RolePermissionManagement} />
       <Route path="/smtp-settings" component={SmtpSettings} />
