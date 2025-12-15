@@ -2093,3 +2093,23 @@
 - [x] Tạo bảng spare_parts_inventory
 - [x] Tạo bảng spare_parts_transactions
 - [x] Tạo bảng purchase_orders
+
+## Phase 83: MMS Seed Data & Constraints
+- [ ] Kiểm tra và tạo các bảng MMS còn thiếu (technicians, work_orders, etc.)
+- [ ] Tạo seed data cho suppliers
+- [ ] Tạo seed data cho spare_parts
+- [ ] Thêm foreign key constraints giữa các bảng MMS
+
+## Phase 83 Completed: MMS Seed Data & Database Tables
+- [x] Tạo bảng technicians
+- [x] Tạo bảng work_orders
+- [x] Tạo bảng maintenance_types
+- [x] Tạo bảng maintenance_schedules
+- [x] Tạo bảng oee_records
+- [x] Tạo bảng oee_loss_records
+- [x] Tạo seed data cho suppliers (5 nhà cung cấp)
+- [x] Tạo seed data cho spare_parts (10 phụ tùng)
+- [x] Tạo seed data cho spare_parts_inventory (10 records)
+- [x] Tạo seed data cho technicians (5 kỹ thuật viên)
+- [x] Tạo seed data cho maintenance_types (6 loại bảo trì)
+- [x] Thêm indexes cho các bảng MMS
