@@ -1482,3 +1482,54 @@ export const machineOnlineStatus = mysqlTable("machine_online_status", {
 
 export type MachineOnlineStatus = typeof machineOnlineStatus.$inferSelect;
 export type InsertMachineOnlineStatus = typeof machineOnlineStatus.$inferInsert;
+
+
+/**
+ * Machine Areas - khu vực/dây chuyền máy
+ */
+export const machineAreas = mysqlTable("machine_areas", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  code: varchar("code", { length: 100 }).notNull(),
+  description: text("description"),
+  parentId: int("parentId"), // For hierarchical structure (e.g., Factory > Line > Zone)
+  type: mysqlEnum("type", ["factory", "line", "zone", "area"]).default("area"),
+  sortOrder: int("sortOrder").default(0),
+  isActive: int("isActive").notNull().default(1),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type MachineArea = typeof machineAreas.$inferSelect;
+export type InsertMachineArea = typeof machineAreas.$inferInsert;
+
+/**
+ * Machine Area Assignments - gán máy vào khu vực
+ */
+export const machineAreaAssignments = mysqlTable("machine_area_assignments", {
+  id: int("id").autoincrement().primaryKey(),
+  machineId: int("machineId").notNull(),
+  areaId: int("areaId").notNull(),
+  sortOrder: int("sortOrder").default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type MachineAreaAssignment = typeof machineAreaAssignments.$inferSelect;
+export type InsertMachineAreaAssignment = typeof machineAreaAssignments.$inferInsert;
+
+/**
+ * Machine Status History - lịch sử trạng thái máy (cho báo cáo uptime/downtime)
+ */
+export const machineStatusHistory = mysqlTable("machine_status_history", {
+  id: int("id").autoincrement().primaryKey(),
+  machineId: int("machineId").notNull(),
+  status: mysqlEnum("status", ["online", "offline", "idle", "running", "warning", "critical", "maintenance"]).notNull(),
+  startTime: timestamp("startTime").notNull(),
+  endTime: timestamp("endTime"),
+  durationMinutes: int("durationMinutes"),
+  reason: text("reason"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type MachineStatusHistory = typeof machineStatusHistory.$inferSelect;
+export type InsertMachineStatusHistory = typeof machineStatusHistory.$inferInsert;

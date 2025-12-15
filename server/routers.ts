@@ -5216,7 +5216,178 @@ export const appRouter = router({
       };
       
       return { machines: machinesWithStatus, summary };
-    })
+    }),
+
+    getHistory: protectedProcedure
+      .input(z.object({
+        startDate: z.string(),
+        endDate: z.string(),
+        machineId: z.number().optional()
+      }))
+      .query(async ({ input }) => {
+        const { machineStatusHistory } = await import("../drizzle/schema");
+        const { gte, lte, eq, and } = await import("drizzle-orm");
+        const db = await getDb();
+        if (!db) return [];
+        
+        const conditions = [
+          gte(machineStatusHistory.startTime, new Date(input.startDate)),
+          lte(machineStatusHistory.startTime, new Date(input.endDate + "T23:59:59"))
+        ];
+        
+        if (input.machineId) {
+          conditions.push(eq(machineStatusHistory.machineId, input.machineId));
+        }
+        
+        return await db.select().from(machineStatusHistory)
+          .where(and(...conditions))
+          .orderBy(machineStatusHistory.startTime);
+      }),
+
+    getAlarmHeatmap: protectedProcedure
+      .input(z.object({ days: z.number().min(1).max(30).default(7) }))
+      .query(async ({ input }) => {
+        const { machines, realtimeAlerts } = await import("../drizzle/schema");
+        const { gte, sql } = await import("drizzle-orm");
+        const db = await getDb();
+        if (!db) return [];
+        
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - input.days);
+        
+        const machineList = await db.select().from(machines);
+        const alerts = await db.select().from(realtimeAlerts)
+          .where(gte(realtimeAlerts.createdAt, startDate));
+        
+        // Group alerts by machine, date, and hour
+        const heatmapData = machineList.map(machine => {
+          const machineAlerts = alerts.filter(a => a.machineId === machine.id);
+          const hourlyData: { hour: number; date: string; count: number; severity: "none" | "low" | "medium" | "high" | "critical" }[] = [];
+          
+          // Generate all hours for the past N days
+          for (let d = 0; d < input.days; d++) {
+            const date = new Date();
+            date.setDate(date.getDate() - d);
+            const dateStr = date.toISOString().split("T")[0];
+            
+            for (let h = 0; h < 24; h++) {
+              const count = machineAlerts.filter(a => {
+                const alertDate = new Date(a.createdAt);
+                return alertDate.toISOString().split("T")[0] === dateStr && alertDate.getHours() === h;
+              }).length;
+              
+              let severity: "none" | "low" | "medium" | "high" | "critical" = "none";
+              if (count > 10) severity = "critical";
+              else if (count > 5) severity = "high";
+              else if (count > 2) severity = "medium";
+              else if (count > 0) severity = "low";
+              
+              hourlyData.push({ hour: h, date: dateStr, count, severity });
+            }
+          }
+          
+          return {
+            machineId: machine.id,
+            machineName: machine.name,
+            machineCode: machine.code,
+            hourlyData
+          };
+        });
+        
+        return heatmapData;
+      })
+  }),
+
+  // Machine Area router
+  machineArea: router({
+    list: protectedProcedure.query(async () => {
+      const { machineAreas } = await import("../drizzle/schema");
+      const db = await getDb();
+      if (!db) return [];
+      return await db.select().from(machineAreas);
+    }),
+
+    create: protectedProcedure
+      .input(z.object({
+        name: z.string().min(1),
+        code: z.string().min(1),
+        description: z.string().optional(),
+        parentId: z.number().nullable().optional(),
+        type: z.enum(["factory", "line", "zone", "area"]).default("area"),
+        sortOrder: z.number().default(0)
+      }))
+      .mutation(async ({ input }) => {
+        const { machineAreas } = await import("../drizzle/schema");
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not connected" });
+        const [result] = await db.insert(machineAreas).values(input);
+        return { id: result.insertId };
+      }),
+
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        name: z.string().min(1),
+        code: z.string().min(1),
+        description: z.string().optional(),
+        parentId: z.number().nullable().optional(),
+        type: z.enum(["factory", "line", "zone", "area"]).default("area"),
+        sortOrder: z.number().default(0)
+      }))
+      .mutation(async ({ input }) => {
+        const { machineAreas } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not connected" });
+        const { id, ...data } = input;
+        await db.update(machineAreas).set(data).where(eq(machineAreas.id, id));
+        return { success: true };
+      }),
+
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const { machineAreas, machineAreaAssignments } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not connected" });
+        await db.delete(machineAreaAssignments).where(eq(machineAreaAssignments.areaId, input.id));
+        await db.delete(machineAreas).where(eq(machineAreas.id, input.id));
+        return { success: true };
+      }),
+
+    getAssignments: protectedProcedure.query(async () => {
+      const { machineAreaAssignments } = await import("../drizzle/schema");
+      const db = await getDb();
+      if (!db) return [];
+      return await db.select().from(machineAreaAssignments);
+    }),
+
+    assignMachines: protectedProcedure
+      .input(z.object({
+        areaId: z.number(),
+        machineIds: z.array(z.number())
+      }))
+      .mutation(async ({ input }) => {
+        const { machineAreaAssignments } = await import("../drizzle/schema");
+        const { eq, inArray } = await import("drizzle-orm");
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not connected" });
+        
+        // Remove existing assignments for these machines
+        if (input.machineIds.length > 0) {
+          await db.delete(machineAreaAssignments).where(inArray(machineAreaAssignments.machineId, input.machineIds));
+        }
+        
+        // Add new assignments
+        if (input.machineIds.length > 0) {
+          await db.insert(machineAreaAssignments).values(
+            input.machineIds.map(machineId => ({ machineId, areaId: input.areaId }))
+          );
+        }
+        
+        return { success: true };
+      })
   })
 });
 

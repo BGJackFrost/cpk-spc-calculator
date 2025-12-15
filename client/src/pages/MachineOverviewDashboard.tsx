@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLocation } from "wouter";
+import AlarmHeatmap from "@/components/AlarmHeatmap";
 
 interface MachineStatus {
   isOnline: number;
@@ -63,6 +64,10 @@ export default function MachineOverviewDashboard() {
 
   const { data: overview, refetch, isLoading } = trpc.machineStatus.getOverview.useQuery(undefined, {
     refetchInterval: 5000, // Refresh every 5 seconds
+  });
+
+  const { data: alarmHeatmapData } = trpc.machineStatus.getAlarmHeatmap.useQuery({ days: 7 }, {
+    refetchInterval: 60000, // Refresh every minute
   });
 
   const filteredMachines = overview?.machines.filter((m: MachineWithStatus) => {
@@ -195,6 +200,11 @@ export default function MachineOverviewDashboard() {
             </SelectContent>
           </Select>
         </div>
+
+        {/* Alarm Heatmap */}
+        {alarmHeatmapData && alarmHeatmapData.length > 0 && (
+          <AlarmHeatmap data={alarmHeatmapData} days={7} />
+        )}
 
         {/* Machine Grid */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">

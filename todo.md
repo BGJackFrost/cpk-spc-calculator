@@ -1850,3 +1850,55 @@
 - [x] Dialog chi tiết máy với 3 tabs (Trạng thái, Cảnh báo, Thao tác)
 - [x] Auto refresh mỗi 5 giây
 - [x] Thêm menu vào sidebar (nav.alarmThreshold, nav.machineOverview)
+
+
+## Phase 76: Heatmap Alarm, Group Máy và Báo cáo Uptime
+
+### Biểu đồ Heatmap Alarm
+- [ ] Tạo component AlarmHeatmap.tsx
+- [ ] Hiển thị mức độ alarm theo giờ/ngày cho từng máy
+- [ ] Color scale từ xanh (ít alarm) đến đỏ (nhiều alarm)
+- [ ] Tooltip hiển thị chi tiết khi hover
+- [ ] Tích hợp vào MachineOverviewDashboard
+
+### Group máy theo dây chuyền/khu vực
+- [ ] Thêm trường areaId/zoneId vào bảng machines
+- [ ] Tạo bảng machine_areas (khu vực máy)
+- [ ] Cập nhật MachineOverviewDashboard với filter theo area
+- [ ] Hiển thị máy theo nhóm dây chuyền/khu vực
+
+### Báo cáo trạng thái máy với Uptime/Downtime
+- [ ] Tạo API tính toán uptime/downtime từ machine_online_status history
+- [ ] Tạo trang MachineStatusReport.tsx
+- [ ] Biểu đồ uptime theo ngày/tuần
+- [ ] Bảng thống kê chi tiết từng máy
+- [ ] Export CSV/Excel báo cáo
+
+
+## Phase 76: Heatmap Alarm, Group Máy và Báo cáo Uptime
+
+### Biểu đồ Heatmap Alarm
+- [x] Tạo component AlarmHeatmap.tsx với grid máy x thời gian
+- [x] Hiển thị màu sắc theo mức độ alarm (green/yellow/orange/red)
+- [x] Tooltip hiển thị chi tiết số alarm
+- [x] Tích hợp vào MachineOverviewDashboard
+- [x] Thêm API getAlarmHeatmap vào machineStatus router
+
+### Group Máy theo Khu vực
+- [x] Tạo bảng machine_areas và machine_area_assignments
+- [x] Tạo trang MachineAreaManagement.tsx với tree view
+- [x] Form thêm/sửa khu vực (factory/line/zone/area)
+- [x] Hiển thị số máy trong mỗi khu vực
+- [x] Thêm machineArea router với CRUD đầy đủ
+- [x] Thêm menu Khu vực Máy vào sidebar
+
+### Báo cáo Uptime/Downtime
+- [x] Tạo bảng machine_status_history
+- [x] Tạo trang MachineStatusReport.tsx với 4 tabs
+- [x] Biểu đồ xu hướng uptime/downtime (AreaChart)
+- [x] So sánh hiệu suất giữa các máy (xếp hạng)
+- [x] Phân bố trạng thái (PieChart)
+- [x] Lịch sử chi tiết thay đổi trạng thái
+- [x] Xuất CSV báo cáo
+- [x] Thêm API getHistory vào machineStatus router
+- [x] Thêm menu Báo cáo Trạng thái vào sidebar
