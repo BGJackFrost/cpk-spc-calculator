@@ -1241,3 +1241,12 @@
 - [x] Tạo máy mới với loại máy - Máy Gắn Chip SMT (MC02) với loại CHIP_MOUNTER
 - [x] Gán máy vào dây chuyền sản xuất - LINE 01 có 2 máy (MC01, MC02)
 - [x] Kiểm tra badge loại máy hiển thị - Badge "Máy Hàn" và "Máy Gắn Chip" hiển thị đúng
+
+## Phase 51 - Đăng nhập Local từ trang Home
+
+### Nâng cấp đăng nhập local
+- [x] Phân tích hệ thống đăng nhập hiện tại - đã có LocalLogin.tsx và API localAuth.login
+- [x] Cập nhật trang Home với form đăng nhập local (username/password) - thêm form login/register trực tiếp trên trang chủ
+- [x] Tạo API đăng nhập local với xác thực password - đã có sẵn localAuth.login và localAuth.register
+- [x] Tích hợp session/JWT cho đăng nhập local - đã có sẵn trong localAuthService.ts
+- [x] Test chức năng đăng nhập không cần internet - form đăng nhập hiển thị trên trang chủ, API hoạt động đúng
