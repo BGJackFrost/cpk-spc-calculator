@@ -1916,3 +1916,74 @@
 - [x] Roadmap phát triển theo giai đoạn (Phase A-D, 14-22 tuần)
 - [x] Ước tính nguồn lực và timeline (5 vai trò, 3.5-5.5 tháng)
 - [x] Tạo tài liệu kế hoạch chi tiết (MMS_SPC_UPGRADE_PLAN.md)
+
+
+## Phase 78: Triển khai Hệ thống MMS Chuyên nghiệp
+
+### Module 1: OEE (Overall Equipment Effectiveness)
+- [ ] Tạo bảng oee_records, oee_targets, oee_loss_categories
+- [ ] Tạo API tính toán OEE tự động từ uptime/downtime
+- [ ] Tạo trang OEE Dashboard với biểu đồ realtime
+- [ ] Tạo trang OEE Analysis với xu hướng và so sánh
+- [ ] Tạo báo cáo OEE theo ca/ngày/tuần/tháng
+
+### Module 2: Maintenance Management
+- [ ] Tạo bảng maintenance_schedules, work_orders, maintenance_types
+- [ ] Tạo bảng maintenance_history, technicians
+- [ ] Tạo trang Maintenance Dashboard
+- [ ] Tạo trang Work Order Management
+- [ ] Tạo trang Maintenance Schedule (lịch bảo trì)
+- [ ] Tích hợp alarm tự động tạo work order
+
+### Module 3: Spare Parts Management
+- [ ] Tạo bảng spare_parts, spare_parts_inventory, spare_parts_usage
+- [ ] Tạo bảng spare_parts_orders, suppliers
+- [ ] Tạo trang Spare Parts Catalog
+- [ ] Tạo trang Inventory Management
+- [ ] Tạo trang Purchase Orders
+- [ ] Cảnh báo tồn kho thấp
+
+### Module 4: Predictive Maintenance
+- [ ] Tạo bảng sensor_data, prediction_models, predictions
+- [ ] Tạo trang Sensor Monitoring
+- [ ] Tạo trang Prediction Dashboard
+- [ ] Tạo trang Model Configuration
+- [ ] Tích hợp cảnh báo dự đoán
+
+### Sắp xếp lại Menu
+- [ ] Tạo nhóm menu MMS mới
+- [ ] Di chuyển các trang liên quan vào nhóm phù hợp
+- [ ] Tạo Dashboard MMS tổng hợp với KPI chính
+
+
+## Phase 78: MMS Module - OEE & Maintenance Dashboard
+
+### Database Schema MMS
+- [x] Tạo schema cho OEE (oee_records, oee_targets, oee_loss_categories, oee_loss_records)
+- [x] Tạo schema cho Maintenance (maintenance_schedules, maintenance_types, work_orders, work_order_parts, technicians, maintenance_history)
+- [x] Tạo schema cho Spare Parts (spare_parts, spare_parts_inventory, spare_parts_transactions, suppliers, purchase_orders, purchase_order_items)
+- [x] Tạo schema cho Predictive Maintenance (sensor_types, machine_sensors, sensor_data, prediction_models, predictions)
+- [x] Tạo schema cho MMS Dashboard (mms_dashboard_widgets)
+
+### OEE Dashboard
+- [x] Tạo trang OEE Dashboard với biểu đồ xu hướng
+- [x] Phân tích tổn thất OEE (6 Big Losses)
+- [x] So sánh OEE theo máy
+- [x] Mục tiêu vs Thực tế
+
+### Maintenance Dashboard
+- [x] Tạo trang Maintenance Dashboard
+- [x] Quản lý Work Orders (danh sách, tạo mới)
+- [x] Lịch bảo trì định kỳ
+- [x] Quản lý kỹ thuật viên
+- [x] Phân tích xu hướng bảo trì
+
+### Routes & Navigation
+- [x] Thêm routes cho OEE và Maintenance Dashboard
+- [x] Cập nhật sidebar menu với nhóm OEE và Maintenance
+
+### Còn lại
+- [ ] Tạo API endpoints cho OEE CRUD
+- [ ] Tạo API endpoints cho Maintenance CRUD
+- [ ] Tạo trang Spare Parts Management
+- [ ] Tạo trang Predictive Maintenance

@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, decimal, json } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -1533,3 +1533,522 @@ export const machineStatusHistory = mysqlTable("machine_status_history", {
 
 export type MachineStatusHistory = typeof machineStatusHistory.$inferSelect;
 export type InsertMachineStatusHistory = typeof machineStatusHistory.$inferInsert;
+
+
+// ============================================
+// MMS - MACHINE MANAGEMENT SYSTEM
+// ============================================
+
+/**
+ * OEE Loss Categories - danh mục tổn thất OEE
+ */
+export const oeeLossCategories = mysqlTable("oee_loss_categories", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  code: varchar("code", { length: 50 }).notNull(),
+  type: mysqlEnum("type", ["availability", "performance", "quality"]).notNull(),
+  description: text("description"),
+  color: varchar("color", { length: 20 }).default("#6b7280"),
+  sortOrder: int("sortOrder").default(0),
+  isActive: int("isActive").notNull().default(1),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type OeeLossCategory = typeof oeeLossCategories.$inferSelect;
+export type InsertOeeLossCategory = typeof oeeLossCategories.$inferInsert;
+
+/**
+ * OEE Targets - mục tiêu OEE theo máy/dây chuyền
+ */
+export const oeeTargets = mysqlTable("oee_targets", {
+  id: int("id").autoincrement().primaryKey(),
+  machineId: int("machineId"),
+  productionLineId: int("productionLineId"),
+  targetOee: decimal("targetOee", { precision: 5, scale: 2 }).default("85.00"),
+  targetAvailability: decimal("targetAvailability", { precision: 5, scale: 2 }).default("90.00"),
+  targetPerformance: decimal("targetPerformance", { precision: 5, scale: 2 }).default("95.00"),
+  targetQuality: decimal("targetQuality", { precision: 5, scale: 2 }).default("99.00"),
+  effectiveFrom: timestamp("effectiveFrom").notNull(),
+  effectiveTo: timestamp("effectiveTo"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type OeeTarget = typeof oeeTargets.$inferSelect;
+export type InsertOeeTarget = typeof oeeTargets.$inferInsert;
+
+/**
+ * OEE Records - bản ghi OEE theo ca/ngày
+ */
+export const oeeRecords = mysqlTable("oee_records", {
+  id: int("id").autoincrement().primaryKey(),
+  machineId: int("machineId").notNull(),
+  productionLineId: int("productionLineId"),
+  shiftId: int("shiftId"),
+  recordDate: timestamp("recordDate").notNull(),
+  
+  // Thời gian
+  plannedProductionTime: int("plannedProductionTime").notNull(), // phút
+  actualRunTime: int("actualRunTime").notNull(), // phút
+  downtime: int("downtime").default(0), // phút
+  
+  // Sản lượng
+  idealCycleTime: decimal("idealCycleTime", { precision: 10, scale: 4 }), // giây/sản phẩm
+  totalCount: int("totalCount").default(0),
+  goodCount: int("goodCount").default(0),
+  defectCount: int("defectCount").default(0),
+  
+  // Chỉ số OEE
+  availability: decimal("availability", { precision: 5, scale: 2 }),
+  performance: decimal("performance", { precision: 5, scale: 2 }),
+  quality: decimal("quality", { precision: 5, scale: 2 }),
+  oee: decimal("oee", { precision: 5, scale: 2 }),
+  
+  notes: text("notes"),
+  createdBy: int("createdBy"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type OeeRecord = typeof oeeRecords.$inferSelect;
+export type InsertOeeRecord = typeof oeeRecords.$inferInsert;
+
+/**
+ * OEE Loss Records - chi tiết tổn thất OEE
+ */
+export const oeeLossRecords = mysqlTable("oee_loss_records", {
+  id: int("id").autoincrement().primaryKey(),
+  oeeRecordId: int("oeeRecordId").notNull(),
+  lossCategoryId: int("lossCategoryId").notNull(),
+  durationMinutes: int("durationMinutes").notNull(),
+  quantity: int("quantity").default(0),
+  description: text("description"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type OeeLossRecord = typeof oeeLossRecords.$inferSelect;
+export type InsertOeeLossRecord = typeof oeeLossRecords.$inferInsert;
+
+/**
+ * Maintenance Types - loại bảo trì
+ */
+export const maintenanceTypes = mysqlTable("maintenance_types", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  code: varchar("code", { length: 50 }).notNull(),
+  category: mysqlEnum("category", ["corrective", "preventive", "predictive", "condition_based"]).notNull(),
+  description: text("description"),
+  defaultPriority: mysqlEnum("defaultPriority", ["low", "medium", "high", "critical"]).default("medium"),
+  estimatedDuration: int("estimatedDuration"), // phút
+  color: varchar("color", { length: 20 }).default("#3b82f6"),
+  isActive: int("isActive").notNull().default(1),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type MaintenanceType = typeof maintenanceTypes.$inferSelect;
+export type InsertMaintenanceType = typeof maintenanceTypes.$inferInsert;
+
+/**
+ * Technicians - kỹ thuật viên bảo trì
+ */
+export const technicians = mysqlTable("technicians", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId"),
+  employeeCode: varchar("employeeCode", { length: 50 }).notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  email: varchar("email", { length: 255 }),
+  phone: varchar("phone", { length: 50 }),
+  specialization: varchar("specialization", { length: 255 }),
+  skillLevel: mysqlEnum("skillLevel", ["junior", "intermediate", "senior", "expert"]).default("intermediate"),
+  isAvailable: int("isAvailable").notNull().default(1),
+  isActive: int("isActive").notNull().default(1),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Technician = typeof technicians.$inferSelect;
+export type InsertTechnician = typeof technicians.$inferInsert;
+
+/**
+ * Maintenance Schedules - lịch bảo trì định kỳ
+ */
+export const maintenanceSchedules = mysqlTable("maintenance_schedules", {
+  id: int("id").autoincrement().primaryKey(),
+  machineId: int("machineId").notNull(),
+  maintenanceTypeId: int("maintenanceTypeId").notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  
+  // Lịch trình
+  frequency: mysqlEnum("frequency", ["daily", "weekly", "biweekly", "monthly", "quarterly", "biannually", "annually", "custom"]).notNull(),
+  customIntervalDays: int("customIntervalDays"),
+  lastPerformedAt: timestamp("lastPerformedAt"),
+  nextDueAt: timestamp("nextDueAt"),
+  
+  // Thông tin bổ sung
+  estimatedDuration: int("estimatedDuration"), // phút
+  assignedTechnicianId: int("assignedTechnicianId"),
+  checklist: json("checklist"), // JSON array of checklist items
+  
+  priority: mysqlEnum("priority", ["low", "medium", "high", "critical"]).default("medium"),
+  isActive: int("isActive").notNull().default(1),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type MaintenanceSchedule = typeof maintenanceSchedules.$inferSelect;
+export type InsertMaintenanceSchedule = typeof maintenanceSchedules.$inferInsert;
+
+/**
+ * Work Orders - phiếu công việc bảo trì
+ */
+export const workOrders = mysqlTable("work_orders", {
+  id: int("id").autoincrement().primaryKey(),
+  workOrderNumber: varchar("workOrderNumber", { length: 50 }).notNull(),
+  machineId: int("machineId").notNull(),
+  maintenanceTypeId: int("maintenanceTypeId").notNull(),
+  scheduleId: int("scheduleId"), // null nếu là corrective
+  
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  priority: mysqlEnum("priority", ["low", "medium", "high", "critical"]).default("medium"),
+  status: mysqlEnum("status", ["pending", "assigned", "in_progress", "on_hold", "completed", "cancelled"]).default("pending"),
+  
+  // Thời gian
+  reportedAt: timestamp("reportedAt").defaultNow().notNull(),
+  scheduledStartAt: timestamp("scheduledStartAt"),
+  actualStartAt: timestamp("actualStartAt"),
+  completedAt: timestamp("completedAt"),
+  
+  // Người thực hiện
+  reportedBy: int("reportedBy"),
+  assignedTo: int("assignedTo"),
+  completedBy: int("completedBy"),
+  
+  // Chi phí
+  laborHours: decimal("laborHours", { precision: 6, scale: 2 }),
+  laborCost: decimal("laborCost", { precision: 12, scale: 2 }),
+  partsCost: decimal("partsCost", { precision: 12, scale: 2 }),
+  totalCost: decimal("totalCost", { precision: 12, scale: 2 }),
+  
+  // Kết quả
+  rootCause: text("rootCause"),
+  actionTaken: text("actionTaken"),
+  notes: text("notes"),
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type WorkOrder = typeof workOrders.$inferSelect;
+export type InsertWorkOrder = typeof workOrders.$inferInsert;
+
+/**
+ * Work Order Parts - phụ tùng sử dụng trong work order
+ */
+export const workOrderParts = mysqlTable("work_order_parts", {
+  id: int("id").autoincrement().primaryKey(),
+  workOrderId: int("workOrderId").notNull(),
+  sparePartId: int("sparePartId").notNull(),
+  quantity: int("quantity").notNull(),
+  unitCost: decimal("unitCost", { precision: 12, scale: 2 }),
+  totalCost: decimal("totalCost", { precision: 12, scale: 2 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type WorkOrderPart = typeof workOrderParts.$inferSelect;
+export type InsertWorkOrderPart = typeof workOrderParts.$inferInsert;
+
+/**
+ * Maintenance History - lịch sử bảo trì
+ */
+export const maintenanceHistory = mysqlTable("maintenance_history", {
+  id: int("id").autoincrement().primaryKey(),
+  workOrderId: int("workOrderId").notNull(),
+  machineId: int("machineId").notNull(),
+  action: varchar("action", { length: 255 }).notNull(),
+  performedBy: int("performedBy"),
+  performedAt: timestamp("performedAt").defaultNow().notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type MaintenanceHistoryRecord = typeof maintenanceHistory.$inferSelect;
+export type InsertMaintenanceHistory = typeof maintenanceHistory.$inferInsert;
+
+/**
+ * Suppliers - nhà cung cấp phụ tùng
+ */
+export const suppliers = mysqlTable("suppliers", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  code: varchar("code", { length: 50 }).notNull(),
+  contactPerson: varchar("contactPerson", { length: 255 }),
+  email: varchar("email", { length: 255 }),
+  phone: varchar("phone", { length: 50 }),
+  address: text("address"),
+  website: varchar("website", { length: 255 }),
+  paymentTerms: varchar("paymentTerms", { length: 100 }),
+  leadTimeDays: int("leadTimeDays"),
+  rating: int("rating").default(3), // 1-5
+  notes: text("notes"),
+  isActive: int("isActive").notNull().default(1),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Supplier = typeof suppliers.$inferSelect;
+export type InsertSupplier = typeof suppliers.$inferInsert;
+
+/**
+ * Spare Parts - danh mục phụ tùng
+ */
+export const spareParts = mysqlTable("spare_parts", {
+  id: int("id").autoincrement().primaryKey(),
+  partNumber: varchar("partNumber", { length: 100 }).notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  category: varchar("category", { length: 100 }),
+  
+  // Liên kết
+  machineTypeId: int("machineTypeId"),
+  supplierId: int("supplierId"),
+  
+  // Thông tin kỹ thuật
+  specifications: text("specifications"),
+  unit: varchar("unit", { length: 50 }).default("pcs"),
+  
+  // Giá và chi phí
+  unitPrice: decimal("unitPrice", { precision: 12, scale: 2 }),
+  currency: varchar("currency", { length: 10 }).default("VND"),
+  
+  // Tồn kho
+  minStock: int("minStock").default(0),
+  maxStock: int("maxStock"),
+  reorderPoint: int("reorderPoint"),
+  reorderQuantity: int("reorderQuantity"),
+  
+  // Vị trí
+  warehouseLocation: varchar("warehouseLocation", { length: 100 }),
+  
+  isActive: int("isActive").notNull().default(1),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type SparePart = typeof spareParts.$inferSelect;
+export type InsertSparePart = typeof spareParts.$inferInsert;
+
+/**
+ * Spare Parts Inventory - tồn kho phụ tùng
+ */
+export const sparePartsInventory = mysqlTable("spare_parts_inventory", {
+  id: int("id").autoincrement().primaryKey(),
+  sparePartId: int("sparePartId").notNull(),
+  quantity: int("quantity").notNull().default(0),
+  reservedQuantity: int("reservedQuantity").default(0),
+  availableQuantity: int("availableQuantity").default(0),
+  lastStockCheck: timestamp("lastStockCheck"),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type SparePartInventory = typeof sparePartsInventory.$inferSelect;
+export type InsertSparePartInventory = typeof sparePartsInventory.$inferInsert;
+
+/**
+ * Spare Parts Transactions - giao dịch phụ tùng
+ */
+export const sparePartsTransactions = mysqlTable("spare_parts_transactions", {
+  id: int("id").autoincrement().primaryKey(),
+  sparePartId: int("sparePartId").notNull(),
+  transactionType: mysqlEnum("transactionType", ["in", "out", "adjustment", "return"]).notNull(),
+  quantity: int("quantity").notNull(),
+  workOrderId: int("workOrderId"),
+  purchaseOrderId: int("purchaseOrderId"),
+  unitCost: decimal("unitCost", { precision: 12, scale: 2 }),
+  totalCost: decimal("totalCost", { precision: 12, scale: 2 }),
+  reason: text("reason"),
+  performedBy: int("performedBy"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type SparePartTransaction = typeof sparePartsTransactions.$inferSelect;
+export type InsertSparePartTransaction = typeof sparePartsTransactions.$inferInsert;
+
+/**
+ * Purchase Orders - đơn đặt hàng phụ tùng
+ */
+export const purchaseOrders = mysqlTable("purchase_orders", {
+  id: int("id").autoincrement().primaryKey(),
+  poNumber: varchar("poNumber", { length: 50 }).notNull(),
+  supplierId: int("supplierId").notNull(),
+  status: mysqlEnum("status", ["draft", "pending", "approved", "ordered", "partial_received", "received", "cancelled"]).default("draft"),
+  
+  orderDate: timestamp("orderDate"),
+  expectedDeliveryDate: timestamp("expectedDeliveryDate"),
+  actualDeliveryDate: timestamp("actualDeliveryDate"),
+  
+  subtotal: decimal("subtotal", { precision: 14, scale: 2 }),
+  tax: decimal("tax", { precision: 14, scale: 2 }),
+  shipping: decimal("shipping", { precision: 14, scale: 2 }),
+  total: decimal("total", { precision: 14, scale: 2 }),
+  
+  notes: text("notes"),
+  createdBy: int("createdBy"),
+  approvedBy: int("approvedBy"),
+  approvedAt: timestamp("approvedAt"),
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type PurchaseOrder = typeof purchaseOrders.$inferSelect;
+export type InsertPurchaseOrder = typeof purchaseOrders.$inferInsert;
+
+/**
+ * Purchase Order Items - chi tiết đơn đặt hàng
+ */
+export const purchaseOrderItems = mysqlTable("purchase_order_items", {
+  id: int("id").autoincrement().primaryKey(),
+  purchaseOrderId: int("purchaseOrderId").notNull(),
+  sparePartId: int("sparePartId").notNull(),
+  quantity: int("quantity").notNull(),
+  unitPrice: decimal("unitPrice", { precision: 12, scale: 2 }),
+  totalPrice: decimal("totalPrice", { precision: 12, scale: 2 }),
+  receivedQuantity: int("receivedQuantity").default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type PurchaseOrderItem = typeof purchaseOrderItems.$inferSelect;
+export type InsertPurchaseOrderItem = typeof purchaseOrderItems.$inferInsert;
+
+/**
+ * Sensor Types - loại sensor
+ */
+export const sensorTypes = mysqlTable("sensor_types", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  code: varchar("code", { length: 50 }).notNull(),
+  unit: varchar("unit", { length: 50 }),
+  description: text("description"),
+  minValue: decimal("minValue", { precision: 12, scale: 4 }),
+  maxValue: decimal("maxValue", { precision: 12, scale: 4 }),
+  warningThreshold: decimal("warningThreshold", { precision: 12, scale: 4 }),
+  criticalThreshold: decimal("criticalThreshold", { precision: 12, scale: 4 }),
+  isActive: int("isActive").notNull().default(1),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type SensorType = typeof sensorTypes.$inferSelect;
+export type InsertSensorType = typeof sensorTypes.$inferInsert;
+
+/**
+ * Machine Sensors - sensor gắn trên máy
+ */
+export const machineSensors = mysqlTable("machine_sensors", {
+  id: int("id").autoincrement().primaryKey(),
+  machineId: int("machineId").notNull(),
+  sensorTypeId: int("sensorTypeId").notNull(),
+  sensorCode: varchar("sensorCode", { length: 100 }).notNull(),
+  location: varchar("location", { length: 255 }),
+  installDate: timestamp("installDate"),
+  calibrationDate: timestamp("calibrationDate"),
+  nextCalibrationDate: timestamp("nextCalibrationDate"),
+  isActive: int("isActive").notNull().default(1),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type MachineSensor = typeof machineSensors.$inferSelect;
+export type InsertMachineSensor = typeof machineSensors.$inferInsert;
+
+/**
+ * Sensor Data - dữ liệu sensor realtime
+ */
+export const sensorData = mysqlTable("sensor_data", {
+  id: int("id").autoincrement().primaryKey(),
+  sensorId: int("sensorId").notNull(),
+  machineId: int("machineId").notNull(),
+  value: decimal("value", { precision: 12, scale: 4 }).notNull(),
+  status: mysqlEnum("status", ["normal", "warning", "critical"]).default("normal"),
+  recordedAt: timestamp("recordedAt").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type SensorDataRecord = typeof sensorData.$inferSelect;
+export type InsertSensorData = typeof sensorData.$inferInsert;
+
+/**
+ * Prediction Models - mô hình dự đoán
+ */
+export const predictionModels = mysqlTable("prediction_models", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  machineTypeId: int("machineTypeId"),
+  modelType: mysqlEnum("modelType", ["rul", "anomaly", "failure", "degradation"]).notNull(),
+  description: text("description"),
+  
+  // Cấu hình model
+  inputFeatures: json("inputFeatures"), // JSON array of sensor types
+  modelParameters: json("modelParameters"),
+  
+  // Hiệu suất
+  accuracy: decimal("accuracy", { precision: 5, scale: 2 }),
+  lastTrainedAt: timestamp("lastTrainedAt"),
+  trainingDataCount: int("trainingDataCount"),
+  
+  isActive: int("isActive").notNull().default(1),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type PredictionModel = typeof predictionModels.$inferSelect;
+export type InsertPredictionModel = typeof predictionModels.$inferInsert;
+
+/**
+ * Predictions - kết quả dự đoán
+ */
+export const predictions = mysqlTable("predictions", {
+  id: int("id").autoincrement().primaryKey(),
+  machineId: int("machineId").notNull(),
+  modelId: int("modelId").notNull(),
+  
+  predictionType: mysqlEnum("predictionType", ["rul", "failure_probability", "anomaly_score", "health_index"]).notNull(),
+  predictedValue: decimal("predictedValue", { precision: 12, scale: 4 }),
+  confidence: decimal("confidence", { precision: 5, scale: 2 }),
+  
+  // RUL specific
+  estimatedFailureDate: timestamp("estimatedFailureDate"),
+  remainingUsefulLife: int("remainingUsefulLife"), // hours
+  
+  // Status
+  severity: mysqlEnum("severity", ["low", "medium", "high", "critical"]).default("low"),
+  isAcknowledged: int("isAcknowledged").default(0),
+  acknowledgedBy: int("acknowledgedBy"),
+  acknowledgedAt: timestamp("acknowledgedAt"),
+  
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Prediction = typeof predictions.$inferSelect;
+export type InsertPrediction = typeof predictions.$inferInsert;
+
+/**
+ * MMS Dashboard Widgets - cấu hình widget dashboard MMS
+ */
+export const mmsDashboardWidgets = mysqlTable("mms_dashboard_widgets", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  widgetType: varchar("widgetType", { length: 100 }).notNull(),
+  title: varchar("title", { length: 255 }),
+  config: json("config"),
+  position: int("position").default(0),
+  width: int("width").default(1), // 1-4 columns
+  height: int("height").default(1), // 1-3 rows
+  isVisible: int("isVisible").notNull().default(1),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type MmsDashboardWidget = typeof mmsDashboardWidgets.$inferSelect;
+export type InsertMmsDashboardWidget = typeof mmsDashboardWidgets.$inferInsert;

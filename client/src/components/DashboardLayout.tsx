@@ -32,7 +32,8 @@ import {
   Mail, Shield, Server, Database, Wrench, Cog, GitBranch, FileText, 
   BarChart3, AlertTriangle, Cpu, GitCompare, ArrowUpDown, Info, BookOpen, 
   Layers, Key, Webhook, FileType, FolderClock, UserCog, ChevronRight,
-  Gauge, ClipboardList, Building2, ShieldCheck, Boxes, Moon, Sun, Zap
+  Gauge, ClipboardList, Building2, ShieldCheck, Boxes, Moon, Sun, Zap,
+  Target, HardHat, Hammer, Truck
 } from "lucide-react";
 import { useTheme } from "../contexts/ThemeContext";
 import { CSSProperties, useEffect, useRef, useState } from "react";
@@ -76,6 +77,22 @@ const menuGroups: MenuGroup[] = [
       { icon: Layers, labelKey: "nav.machineAreas", path: "/machine-areas", adminOnly: true },
       { icon: BarChart3, labelKey: "nav.machineStatusReport", path: "/machine-status-report" },
       { icon: Layers, labelKey: "nav.spcPlanOverview", path: "/spc-visualization" },
+    ]
+  },
+  {
+    id: "oee",
+    labelKey: "menuGroup.oee",
+    icon: Target,
+    items: [
+      { icon: Gauge, labelKey: "nav.oeeDashboard", path: "/oee-dashboard" },
+    ]
+  },
+  {
+    id: "maintenance",
+    labelKey: "menuGroup.maintenance",
+    icon: HardHat,
+    items: [
+      { icon: ClipboardList, labelKey: "nav.maintenanceDashboard", path: "/maintenance-dashboard" },
     ]
   },
   {
@@ -214,6 +231,10 @@ const fallbackLabelsVi: Record<string, string> = {
   "nav.machineOverview": "Tổng quan Máy móc",
   "nav.machineAreas": "Khu vực Máy",
   "nav.machineStatusReport": "Báo cáo Trạng thái",
+  "menuGroup.oee": "OEE",
+  "nav.oeeDashboard": "Dashboard OEE",
+  "menuGroup.maintenance": "Bảo trì",
+  "nav.maintenanceDashboard": "Dashboard Bảo trì",
   "nav.shiftCpkComparison": "So sánh CPK theo Ca",
   "nav.defectTracking": "Theo dõi Lỗi",
   "nav.defectAnalysis": "Phân tích Lỗi (Pareto)",

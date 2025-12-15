@@ -70,6 +70,8 @@ import AlarmThresholdConfig from "./pages/AlarmThresholdConfig";
 import MachineOverviewDashboard from "./pages/MachineOverviewDashboard";
 import MachineAreaManagement from "./pages/MachineAreaManagement";
 import MachineStatusReport from "./pages/MachineStatusReport";
+import OEEDashboard from "./pages/OEEDashboard";
+import MaintenanceDashboard from "./pages/MaintenanceDashboard";
 
 function Router() {
   return (
@@ -106,6 +108,8 @@ function Router() {
       <Route path="/machine-overview" component={MachineOverviewDashboard} />
       <Route path="/machine-areas" component={MachineAreaManagement} />
       <Route path="/machine-status-report" component={MachineStatusReport} />
+      <Route path="/oee-dashboard" component={OEEDashboard} />
+      <Route path="/maintenance-dashboard" component={MaintenanceDashboard} />
       <Route path="/email-notifications" component={EmailNotificationSettings} />
       <Route path="/permissions" component={RolePermissionManagement} />
       <Route path="/smtp-settings" component={SmtpSettings} />
