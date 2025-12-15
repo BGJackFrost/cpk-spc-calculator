@@ -3602,6 +3602,338 @@ export const appRouter = router({
         const success = await licenseServer.revokeLicense(input.licenseKey);
         return { success };
       }),
+
+    // ============ LICENSE SERVER API (For Vendors) ============
+    
+    // Validate license with retry mechanism
+    validateWithRetry: publicProcedure
+      .input(z.object({
+        licenseKey: z.string(),
+        hardwareFingerprint: z.string().optional(),
+        maxRetries: z.number().default(3)
+      }))
+      .mutation(async ({ input }) => {
+        const { licenseServer } = await import("./licenseServer");
+        let lastError = "";
+        
+        for (let attempt = 1; attempt <= input.maxRetries; attempt++) {
+          try {
+            const result = await licenseServer.validateLicense(input.licenseKey, input.hardwareFingerprint);
+            if (result.valid) {
+              // Update last validated timestamp
+              const { getDb } = await import("./db");
+              const db = await getDb();
+              if (db) {
+                const { licenses } = await import("../drizzle/schema");
+                const { eq } = await import("drizzle-orm");
+                await db.update(licenses)
+                  .set({ lastValidatedAt: new Date() })
+                  .where(eq(licenses.licenseKey, input.licenseKey));
+              }
+              return { valid: true, license: result.license, attempt };
+            }
+            lastError = result.error || "Validation failed";
+          } catch (error: any) {
+            lastError = error.message || "Connection error";
+            // Exponential backoff
+            if (attempt < input.maxRetries) {
+              await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+            }
+          }
+        }
+        
+        return { valid: false, error: lastError, attempts: input.maxRetries };
+      }),
+
+    // Heartbeat - periodic license check
+    heartbeat: publicProcedure
+      .input(z.object({
+        licenseKey: z.string(),
+        hardwareFingerprint: z.string(),
+        systemInfo: z.object({
+          hostname: z.string().optional(),
+          platform: z.string().optional(),
+          uptime: z.number().optional(),
+          activeUsers: z.number().optional()
+        }).optional()
+      }))
+      .mutation(async ({ input }) => {
+        const { licenseServer } = await import("./licenseServer");
+        const result = await licenseServer.validateLicense(input.licenseKey, input.hardwareFingerprint);
+        
+        if (!result.valid) {
+          return { valid: false, error: result.error };
+        }
+        
+        // Log heartbeat
+        const { getDb } = await import("./db");
+        const db = await getDb();
+        if (db) {
+          const { licenses, licenseHeartbeats } = await import("../drizzle/schema");
+          const { eq } = await import("drizzle-orm");
+          
+          // Update last validated
+          await db.update(licenses)
+            .set({ lastValidatedAt: new Date() })
+            .where(eq(licenses.licenseKey, input.licenseKey));
+          
+          // Insert heartbeat log if table exists
+          try {
+            await db.insert(licenseHeartbeats).values({
+              licenseKey: input.licenseKey,
+              hardwareFingerprint: input.hardwareFingerprint,
+              hostname: input.systemInfo?.hostname,
+              platform: input.systemInfo?.platform,
+              activeUsers: input.systemInfo?.activeUsers,
+            });
+          } catch (e) {
+            // Table might not exist yet
+          }
+        }
+        
+        return {
+          valid: true,
+          license: result.license,
+          serverTime: new Date().toISOString(),
+          nextHeartbeat: 24 * 60 * 60 * 1000 // 24 hours
+        };
+      }),
+
+    // Get license usage analytics (for vendor dashboard)
+    getUsageAnalytics: protectedProcedure
+      .input(z.object({
+        startDate: z.date().optional(),
+        endDate: z.date().optional(),
+        licenseType: z.enum(["trial", "standard", "professional", "enterprise"]).optional()
+      }).optional())
+      .query(async ({ ctx }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        
+        const { getDb } = await import("./db");
+        const db = await getDb();
+        if (!db) return { activations: [], revenue: [], byType: {}, byStatus: {} };
+        
+        const { licenses } = await import("../drizzle/schema");
+        const { sql } = await import("drizzle-orm");
+        
+        // Get all licenses
+        const allLicenses = await db.select().from(licenses);
+        
+        // Calculate analytics
+        const byType = { trial: 0, standard: 0, professional: 0, enterprise: 0 };
+        const byStatus = { active: 0, pending: 0, expired: 0, revoked: 0 };
+        const monthlyActivations: Record<string, number> = {};
+        
+        for (const lic of allLicenses) {
+          byType[lic.licenseType as keyof typeof byType]++;
+          byStatus[lic.licenseStatus as keyof typeof byStatus]++;
+          
+          if (lic.activatedAt) {
+            const month = new Date(lic.activatedAt).toISOString().substring(0, 7);
+            monthlyActivations[month] = (monthlyActivations[month] || 0) + 1;
+          }
+        }
+        
+        return {
+          total: allLicenses.length,
+          byType,
+          byStatus,
+          monthlyActivations: Object.entries(monthlyActivations)
+            .map(([month, count]) => ({ month, count }))
+            .sort((a, b) => a.month.localeCompare(b.month)),
+          recentActivations: allLicenses
+            .filter(l => l.activatedAt)
+            .sort((a, b) => new Date(b.activatedAt!).getTime() - new Date(a.activatedAt!).getTime())
+            .slice(0, 10)
+            .map(l => ({
+              licenseKey: l.licenseKey,
+              companyName: l.companyName,
+              licenseType: l.licenseType,
+              activatedAt: l.activatedAt
+            }))
+        };
+      }),
+
+    // Bulk create licenses (for vendor)
+    bulkCreate: protectedProcedure
+      .input(z.object({
+        count: z.number().min(1).max(100),
+        licenseType: z.enum(["trial", "standard", "professional", "enterprise"]),
+        durationDays: z.number().optional(),
+        prefix: z.string().optional()
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        
+        const { licenseServer, LICENSE_FEATURES } = await import("./licenseServer");
+        const { getDb } = await import("./db");
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+        
+        const { licenses } = await import("../drizzle/schema");
+        const features = LICENSE_FEATURES[input.licenseType];
+        const expiresAt = input.durationDays 
+          ? new Date(Date.now() + input.durationDays * 24 * 60 * 60 * 1000)
+          : null;
+        
+        const createdKeys: string[] = [];
+        
+        for (let i = 0; i < input.count; i++) {
+          const { generateLicenseKey } = await import("./licenseServer");
+          const licenseKey = generateLicenseKey(input.licenseType);
+          
+          await db.insert(licenses).values({
+            licenseKey,
+            licenseType: input.licenseType,
+            licenseStatus: "pending",
+            maxUsers: features.maxUsers,
+            maxProductionLines: features.maxLines,
+            maxSpcPlans: features.maxPlans,
+            features: JSON.stringify(features.features),
+            issuedAt: new Date(),
+            expiresAt,
+          });
+          
+          createdKeys.push(licenseKey);
+        }
+        
+        return { success: true, count: createdKeys.length, licenseKeys: createdKeys };
+      }),
+
+    // Export licenses to CSV
+    exportToCsv: protectedProcedure
+      .input(z.object({
+        status: z.enum(["all", "active", "pending", "expired", "revoked"]).optional()
+      }).optional())
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        
+        const { licenseServer } = await import("./licenseServer");
+        const allLicenses = await licenseServer.listLicenses(
+          input?.status && input.status !== "all" ? { status: input.status as any } : undefined
+        );
+        
+        const headers = ["License Key", "Type", "Status", "Company", "Email", "Max Users", "Max Lines", "Max Plans", "Issued At", "Expires At", "Activated At"];
+        const rows = allLicenses.map(l => [
+          l.licenseKey,
+          l.type,
+          l.status,
+          l.companyName,
+          l.contactEmail,
+          l.maxUsers === -1 ? "Unlimited" : l.maxUsers,
+          l.maxLines === -1 ? "Unlimited" : l.maxLines,
+          l.maxPlans === -1 ? "Unlimited" : l.maxPlans,
+          l.issuedAt.toISOString(),
+          l.expiresAt?.toISOString() || "Never",
+          l.activatedAt?.toISOString() || "Not activated"
+        ]);
+        
+        const csv = [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
+        return { csv, count: allLicenses.length };
+      }),
+
+    // Update license details
+    updateLicense: protectedProcedure
+      .input(z.object({
+        licenseKey: z.string(),
+        companyName: z.string().optional(),
+        contactEmail: z.string().email().optional(),
+        maxUsers: z.number().optional(),
+        maxProductionLines: z.number().optional(),
+        maxSpcPlans: z.number().optional(),
+        expiresAt: z.date().optional()
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        
+        const { getDb } = await import("./db");
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+        
+        const { licenses } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        
+        const { licenseKey, ...updateData } = input;
+        await db.update(licenses)
+          .set(updateData)
+          .where(eq(licenses.licenseKey, licenseKey));
+        
+        return { success: true };
+      }),
+
+    // Extend license expiration
+    extendExpiration: protectedProcedure
+      .input(z.object({
+        licenseKey: z.string(),
+        additionalDays: z.number().min(1)
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        
+        const { licenseServer } = await import("./licenseServer");
+        const license = await licenseServer.getLicenseByKey(input.licenseKey);
+        if (!license) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "License not found" });
+        }
+        
+        const { getDb } = await import("./db");
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+        
+        const { licenses } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        
+        const currentExpiry = license.expiresAt || new Date();
+        const newExpiry = new Date(currentExpiry.getTime() + input.additionalDays * 24 * 60 * 60 * 1000);
+        
+        await db.update(licenses)
+          .set({ 
+            expiresAt: newExpiry,
+            licenseStatus: "active" // Reactivate if was expired
+          })
+          .where(eq(licenses.licenseKey, input.licenseKey));
+        
+        return { success: true, newExpiresAt: newExpiry };
+      }),
+
+    // Transfer license to new hardware
+    transferLicense: protectedProcedure
+      .input(z.object({
+        licenseKey: z.string(),
+        newHardwareFingerprint: z.string(),
+        reason: z.string().optional()
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        
+        const { getDb } = await import("./db");
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+        
+        const { licenses } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        
+        await db.update(licenses)
+          .set({ 
+            hardwareFingerprint: input.newHardwareFingerprint,
+            offlineLicenseFile: null // Invalidate old offline file
+          })
+          .where(eq(licenses.licenseKey, input.licenseKey));
+        
+        return { success: true };
+      }),
   }),
   
   // Webhook router

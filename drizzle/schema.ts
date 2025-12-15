@@ -1011,6 +1011,43 @@ export const licenses = mysqlTable("licenses", {
 export type License = typeof licenses.$inferSelect;
 export type InsertLicense = typeof licenses.$inferInsert;
 
+/**
+ * License Heartbeats - logs periodic license validation checks
+ */
+export const licenseHeartbeats = mysqlTable("license_heartbeats", {
+  id: int("id").autoincrement().primaryKey(),
+  licenseKey: varchar("licenseKey", { length: 255 }).notNull(),
+  hardwareFingerprint: varchar("hardwareFingerprint", { length: 64 }),
+  hostname: varchar("hostname", { length: 255 }),
+  platform: varchar("platform", { length: 100 }),
+  activeUsers: int("activeUsers"),
+  ipAddress: varchar("ipAddress", { length: 45 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type LicenseHeartbeat = typeof licenseHeartbeats.$inferSelect;
+export type InsertLicenseHeartbeat = typeof licenseHeartbeats.$inferInsert;
+
+/**
+ * License Customers - stores customer information for vendor management
+ */
+export const licenseCustomers = mysqlTable("license_customers", {
+  id: int("id").autoincrement().primaryKey(),
+  companyName: varchar("companyName", { length: 255 }).notNull(),
+  contactName: varchar("contactName", { length: 255 }),
+  contactEmail: varchar("contactEmail", { length: 320 }),
+  contactPhone: varchar("contactPhone", { length: 50 }),
+  address: text("address"),
+  industry: varchar("industry", { length: 100 }),
+  notes: text("notes"),
+  isActive: int("isActive").notNull().default(1),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type LicenseCustomer = typeof licenseCustomers.$inferSelect;
+export type InsertLicenseCustomer = typeof licenseCustomers.$inferInsert;
+
 
 /**
  * Webhooks - stores webhook configurations for notifications

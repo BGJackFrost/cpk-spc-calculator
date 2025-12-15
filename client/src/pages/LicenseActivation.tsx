@@ -64,9 +64,14 @@ export default function LicenseActivation() {
   const [licenseFile, setLicenseFile] = useState<File | null>(null);
   const [hardwareFingerprint, setHardwareFingerprint] = useState("");
   
+  const [validationStatus, setValidationStatus] = useState<'idle' | 'validating' | 'valid' | 'invalid'>('idle');
+  const [lastValidated, setLastValidated] = useState<Date | null>(null);
+  
   const activeLicenseQuery = trpc.license.getActive.useQuery();
   const activateOnlineMutation = trpc.license.activateOnline.useMutation();
   const activateOfflineMutation = trpc.license.activateOffline.useMutation();
+  const validateWithRetryMutation = trpc.license.validateWithRetry.useMutation();
+  const heartbeatMutation = trpc.license.heartbeat.useMutation();
   const validateQuery = trpc.license.validate.useQuery(
     { licenseKey: activeLicenseQuery.data?.licenseKey || "", hardwareFingerprint },
     { enabled: !!activeLicenseQuery.data?.licenseKey && !!hardwareFingerprint }
@@ -75,6 +80,65 @@ export default function LicenseActivation() {
   useEffect(() => {
     setHardwareFingerprint(generateBrowserFingerprint());
   }, []);
+  
+  // Periodic heartbeat check
+  useEffect(() => {
+    if (!activeLicenseQuery.data?.licenseKey || !hardwareFingerprint) return;
+    
+    const sendHeartbeat = async () => {
+      try {
+        const result = await heartbeatMutation.mutateAsync({
+          licenseKey: activeLicenseQuery.data!.licenseKey,
+          hardwareFingerprint,
+          systemInfo: {
+            hostname: window.location.hostname,
+            platform: navigator.platform,
+            uptime: performance.now() / 1000
+          }
+        });
+        if (result.valid) {
+          setValidationStatus('valid');
+          setLastValidated(new Date());
+        } else {
+          setValidationStatus('invalid');
+        }
+      } catch (error) {
+        console.error('Heartbeat failed:', error);
+      }
+    };
+    
+    // Initial heartbeat
+    sendHeartbeat();
+    
+    // Periodic heartbeat every 24 hours
+    const interval = setInterval(sendHeartbeat, 24 * 60 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [activeLicenseQuery.data?.licenseKey, hardwareFingerprint]);
+  
+  const handleValidateWithRetry = async () => {
+    if (!activeLicenseQuery.data?.licenseKey) return;
+    
+    setValidationStatus('validating');
+    try {
+      const result = await validateWithRetryMutation.mutateAsync({
+        licenseKey: activeLicenseQuery.data.licenseKey,
+        hardwareFingerprint,
+        maxRetries: 3
+      });
+      
+      if (result.valid) {
+        setValidationStatus('valid');
+        setLastValidated(new Date());
+        toast.success(`Xác thực thành công (lần thử ${result.attempt})`);
+      } else {
+        setValidationStatus('invalid');
+        toast.error(result.error || 'Xác thực thất bại');
+      }
+    } catch (error: any) {
+      setValidationStatus('invalid');
+      toast.error(error.message || 'Lỗi kết nối');
+    }
+  };
   
   const handleOnlineActivation = async () => {
     if (!licenseKey.trim()) {
@@ -90,6 +154,8 @@ export default function LicenseActivation() {
       toast.success("Kích hoạt license thành công!");
       activeLicenseQuery.refetch();
       setLicenseKey("");
+      // Trigger validation after activation
+      setTimeout(handleValidateWithRetry, 1000);
     } catch (error: any) {
       toast.error(error.message || "Kích hoạt thất bại");
     }
@@ -212,7 +278,49 @@ export default function LicenseActivation() {
             
             {activeLicense && (
               <>
+                {/* Online Validation Status */}
                 <Separator className="my-4" />
+                <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-full ${
+                      validationStatus === 'valid' ? 'bg-green-100' :
+                      validationStatus === 'invalid' ? 'bg-red-100' :
+                      validationStatus === 'validating' ? 'bg-blue-100' : 'bg-gray-100'
+                    }`}>
+                      {validationStatus === 'valid' && <CheckCircle2 className="h-5 w-5 text-green-600" />}
+                      {validationStatus === 'invalid' && <XCircle className="h-5 w-5 text-red-600" />}
+                      {validationStatus === 'validating' && <RefreshCw className="h-5 w-5 text-blue-600 animate-spin" />}
+                      {validationStatus === 'idle' && <Shield className="h-5 w-5 text-gray-600" />}
+                    </div>
+                    <div>
+                      <p className="font-medium">
+                        {validationStatus === 'valid' && 'License hợp lệ'}
+                        {validationStatus === 'invalid' && 'License không hợp lệ'}
+                        {validationStatus === 'validating' && 'Đang xác thực...'}
+                        {validationStatus === 'idle' && 'Chưa xác thực'}
+                      </p>
+                      {lastValidated && (
+                        <p className="text-sm text-muted-foreground">
+                          Xác thực lần cuối: {lastValidated.toLocaleString('vi-VN')}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={handleValidateWithRetry}
+                    disabled={validateWithRetryMutation.isPending}
+                  >
+                    {validateWithRetryMutation.isPending ? (
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Shield className="h-4 w-4 mr-2" />
+                    )}
+                    Xác thực Online
+                  </Button>
+                </div>
+                
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="flex items-center gap-3 p-3 border rounded-lg">
                     <Users className="h-5 w-5 text-blue-500" />

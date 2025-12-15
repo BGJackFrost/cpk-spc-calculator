@@ -190,6 +190,13 @@
       "when": 1765786006201,
       "tag": "0026_keen_absorbing_man",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "5",
+      "when": 1765819199401,
+      "tag": "0027_foamy_jack_flag",
+      "breakpoints": true
     }
   ]
 }

@@ -1563,3 +1563,21 @@
 - [x] Phân tích cấu trúc hệ thống và thu thập thông tin các chức năng
 - [x] Viết nội dung Hướng dẫn sử dụng chi tiết (Markdown)
 - [x] Xuất file PDF để training người dùng (docs/USER_GUIDE.pdf)
+
+
+## Phase 68: Rà soát Hệ thống và Nâng cấp License Server
+
+### Rà soát và Đánh giá Hệ thống
+- [x] Rà soát toàn diện logic hệ thống (40+ trang, 30+ bảng, 4200+ dòng router)
+- [x] Đánh giá mức độ hoàn thiện từng module (85% - Production Ready)
+- [x] Xây dựng kế hoạch nâng cấp chuyên nghiệp (SYSTEM_ASSESSMENT_AND_UPGRADE_PLAN.md)
+
+### Nâng cấp License Hybrid
+- [x] Kiểm tra logic License Hybrid hiện tại (online/offline activation)
+- [x] Thiết kế License Server cho nhà cung cấp
+- [x] Tạo trang quản trị License Server Portal (LicenseServerPortal.tsx)
+- [x] Triển khai xác thực license online với retry (validateWithRetry API)
+- [x] Tích hợp heartbeat định kỳ 24h
+- [x] Thêm bảng license_heartbeats và license_customers
+- [x] Thêm các API: bulkCreate, exportToCsv, updateLicense, extendExpiration, transferLicense
+- [x] Cập nhật LicenseActivation với trạng thái validation và nút xác thực online
