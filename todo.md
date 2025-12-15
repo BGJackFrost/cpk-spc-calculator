@@ -2131,3 +2131,11 @@
 - [x] Tạo seed data cho oee_records (12 records)
 - [x] Tạo trang MMS Data Init (/mms-data-init) cho admin khởi tạo dữ liệu
 - [x] Thêm translations cho menu groups mới (vi/en)
+
+## Phase 85: Fix Realtime Line Dashboard Errors
+- [ ] Tạo bảng machine_online_status trong database
+- [ ] Sửa lỗi React key trong RealtimeLineDashboard
+
+## Phase 85 - Completed
+- [x] Tạo bảng machine_online_status trong database
+- [x] Sửa lỗi React key trong RealtimeLineDashboard

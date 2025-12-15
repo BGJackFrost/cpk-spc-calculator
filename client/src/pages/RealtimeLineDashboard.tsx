@@ -510,11 +510,11 @@ export default function RealtimeLineDashboard() {
                         stroke="#3b82f6" 
                         strokeWidth={2}
                         dot={(props: any) => {
-                          const { cx, cy, payload } = props;
+                          const { cx, cy, payload, index } = props;
                           if (payload.isViolation) {
-                            return <circle cx={cx} cy={cy} r={5} fill="#ef4444" stroke="#ef4444" />;
+                            return <circle key={`dot-${index}`} cx={cx} cy={cy} r={5} fill="#ef4444" stroke="#ef4444" />;
                           }
-                          return <circle cx={cx} cy={cy} r={3} fill="#3b82f6" stroke="#3b82f6" />;
+                          return <circle key={`dot-${index}`} cx={cx} cy={cy} r={3} fill="#3b82f6" stroke="#3b82f6" />;
                         }}
                         name="Giá trị"
                       />
