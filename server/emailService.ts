@@ -227,11 +227,28 @@ function generateCpkWarningEmail(data: CpkWarningEmailData): { subject: string; 
 /**
  * Send email using configured SMTP with nodemailer
  */
+/**
+ * Parse email list from comma-separated string
+ */
+export function parseEmailList(emailString: string): string[] {
+  return emailString
+    .split(',')
+    .map(e => e.trim())
+    .filter(e => e && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
+}
+
 export async function sendEmail(
-  to: string,
+  to: string | string[],
   subject: string,
   html: string
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; sentCount?: number }> {
+  // Support both single email and array of emails
+  const recipients = Array.isArray(to) ? to : parseEmailList(to);
+  
+  if (recipients.length === 0) {
+    console.warn("[Email] No valid recipients provided");
+    return { success: false, error: "No valid recipients", sentCount: 0 };
+  }
   const smtpSettings = await getSmtpConfig();
   
   if (!smtpSettings) {
@@ -240,7 +257,7 @@ export async function sendEmail(
   }
 
   try {
-    console.log(`[Email] Sending email to: ${to}`);
+    console.log(`[Email] Sending email to: ${recipients.join(', ')}`);
     console.log(`[Email] Subject: ${subject}`);
     console.log(`[Email] Using SMTP: ${smtpSettings.host}:${smtpSettings.port}`);
     
@@ -259,20 +276,37 @@ export async function sendEmail(
       }
     });
 
-    // Send email
-    const info = await transporter.sendMail({
-      from: `"${smtpSettings.fromName}" <${smtpSettings.fromEmail}>`,
-      to,
-      subject,
-      html,
-    });
+    // Send email to all recipients
+    let sentCount = 0;
+    const errors: string[] = [];
+    
+    for (const recipient of recipients) {
+      try {
+        const info = await transporter.sendMail({
+          from: `"${smtpSettings.fromName}" <${smtpSettings.fromEmail}>`,
+          to: recipient,
+          subject,
+          html,
+        });
+        console.log(`[Email] Email sent to ${recipient}. Message ID: ${info.messageId}`);
+        sentCount++;
+      } catch (err) {
+        const errMsg = err instanceof Error ? err.message : "Unknown error";
+        console.error(`[Email] Failed to send to ${recipient}: ${errMsg}`);
+        errors.push(`${recipient}: ${errMsg}`);
+      }
+    }
 
-    console.log(`[Email] Email sent successfully. Message ID: ${info.messageId}`);
-    return { success: true };
+    console.log(`[Email] Sent ${sentCount}/${recipients.length} emails successfully`);
+    return { 
+      success: sentCount > 0, 
+      sentCount,
+      error: errors.length > 0 ? errors.join('; ') : undefined 
+    };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     console.error(`[Email] Failed to send email: ${errorMessage}`);
-    return { success: false, error: errorMessage };
+    return { success: false, error: errorMessage, sentCount: 0 };
   }
 }
 

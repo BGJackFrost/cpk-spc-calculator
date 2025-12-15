@@ -597,13 +597,34 @@ export default function SpcPlanManagement() {
                 </div>
                 {formData.notifyOnViolation && (
                   <div className="space-y-2">
-                    <Label>Email nhận thông báo</Label>
-                    <Input
-                      type="email"
+                    <Label className="flex items-center gap-2">
+                      <Mail className="h-4 w-4" />
+                      Danh sách Email nhận thông báo
+                    </Label>
+                    <Textarea
                       value={formData.notifyEmail}
                       onChange={(e) => setFormData({ ...formData, notifyEmail: e.target.value })}
-                      placeholder="email@example.com"
+                      placeholder="email1@example.com, email2@example.com, email3@example.com"
+                      rows={2}
                     />
+                    <p className="text-xs text-muted-foreground">
+                      Nhập nhiều email cách nhau bằng dấu phẩy (,). Tất cả sẽ nhận thông báo khi có vi phạm.
+                    </p>
+                    {formData.notifyEmail && (
+                      <div className="flex flex-wrap gap-1">
+                        {formData.notifyEmail.split(',').map((email, idx) => {
+                          const trimmed = email.trim();
+                          if (!trimmed) return null;
+                          const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
+                          return (
+                            <Badge key={idx} variant={isValid ? "secondary" : "destructive"} className="text-xs">
+                              {trimmed}
+                              {!isValid && <span className="ml-1">(không hợp lệ)</span>}
+                            </Badge>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 )}
 

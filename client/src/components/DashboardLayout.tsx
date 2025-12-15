@@ -41,6 +41,7 @@ import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { useLanguage } from "../contexts/LanguageContext";
+import { NotificationBell } from "./NotificationBell";
 
 // Menu groups configuration
 interface MenuItem {
@@ -93,6 +94,7 @@ const menuGroups: MenuGroup[] = [
       { icon: BookOpen, labelKey: "nav.rulesManagement", path: "/rules" },
       { icon: ShieldCheck, labelKey: "nav.validationRules", path: "/validation-rules", adminOnly: true },
       { icon: BarChart3, labelKey: "nav.cpkComparison", path: "/cpk-comparison" },
+      { icon: Clock, labelKey: "nav.shiftCpkComparison", path: "/shift-cpk-comparison" },
     ]
   },
   {
@@ -186,6 +188,7 @@ const fallbackLabelsVi: Record<string, string> = {
   "nav.measurementStandards": "Tiêu chuẩn Đo",
   "nav.measurementStandardsDashboard": "Dashboard Tiêu chuẩn",
   "nav.quickSpcPlan": "Tạo nhanh SPC Plan",
+  "nav.shiftCpkComparison": "So sánh CPK theo Ca",
 };
 
 const fallbackLabelsEn: Record<string, string> = {
@@ -218,6 +221,7 @@ const fallbackLabelsEn: Record<string, string> = {
   "nav.measurementStandards": "Measurement Standards",
   "nav.measurementStandardsDashboard": "Standards Dashboard",
   "nav.quickSpcPlan": "Quick SPC Plan",
+  "nav.shiftCpkComparison": "Shift CPK Comparison",
 };
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
@@ -590,6 +594,7 @@ function DashboardLayoutContent({
         <header className="h-16 shrink-0 flex items-center gap-2 border-b px-4 lg:px-6">
           <SidebarTrigger className="-ml-1 lg:hidden" />
           <div className="flex-1" />
+          <NotificationBell />
         </header>
         <main className="flex-1 overflow-auto">
           {children}

@@ -57,6 +57,7 @@ import MeasurementStandardsDashboard from "./pages/MeasurementStandardsDashboard
 import QuickSpcPlan from "./pages/QuickSpcPlan";
 import ValidationRulesManagement from "./pages/ValidationRulesManagement";
 import CpkComparisonDashboard from "./pages/CpkComparisonDashboard";
+import ShiftCpkComparison from "./pages/ShiftCpkComparison";
 
 function Router() {
   return (
@@ -85,6 +86,7 @@ function Router() {
       <Route path="/quick-spc-plan" component={QuickSpcPlan} />
       <Route path="/validation-rules" component={ValidationRulesManagement} />
       <Route path="/cpk-comparison" component={CpkComparisonDashboard} />
+      <Route path="/shift-cpk-comparison" component={ShiftCpkComparison} />
       <Route path="/email-notifications" component={EmailNotificationSettings} />
       <Route path="/permissions" component={RolePermissionManagement} />
       <Route path="/smtp-settings" component={SmtpSettings} />

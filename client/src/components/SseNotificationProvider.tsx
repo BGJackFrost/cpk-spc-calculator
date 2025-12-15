@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { toast } from "sonner";
 import { useSSE } from "@/hooks/useSSE";
 import { AlertTriangle, CheckCircle2, TrendingUp, Bell } from "lucide-react";
+import { addNotification } from "./NotificationBell";
 
 interface SseNotificationProviderProps {
   children: React.ReactNode;
@@ -10,6 +11,18 @@ interface SseNotificationProviderProps {
 export function SseNotificationProvider({ children }: SseNotificationProviderProps) {
   const { isConnected } = useSSE({
     onSpcAnalysisComplete: (data) => {
+      // Add to notification store
+      addNotification({
+        type: data.alertTriggered ? "cpk_warning" : "info",
+        title: data.alertTriggered ? "Phân tích SPC - Cảnh báo!" : "Phân tích SPC hoàn thành",
+        message: `${data.productCode} - ${data.stationName}`,
+        data: {
+          cpk: data.cpk,
+          productCode: data.productCode,
+          stationName: data.stationName,
+        },
+      });
+      
       if (data.alertTriggered) {
         toast.warning(
           <div className="flex items-start gap-3">
@@ -45,6 +58,19 @@ export function SseNotificationProvider({ children }: SseNotificationProviderPro
       }
     },
     onCpkAlert: (data) => {
+      // Add to notification store
+      addNotification({
+        type: data.severity === "critical" ? "cpk_critical" : "cpk_warning",
+        title: data.severity === "critical" ? "Cảnh báo CPK nghiêm trọng!" : "Cảnh báo CPK",
+        message: `${data.productCode} - ${data.stationName}`,
+        data: {
+          cpk: data.cpk,
+          threshold: data.threshold,
+          productCode: data.productCode,
+          stationName: data.stationName,
+        },
+      });
+      
       const severity = data.severity === "critical" ? "error" : "warning";
       const Icon = data.severity === "critical" ? AlertTriangle : Bell;
       const color = data.severity === "critical" ? "text-red-500" : "text-yellow-500";
@@ -71,6 +97,16 @@ export function SseNotificationProvider({ children }: SseNotificationProviderPro
       );
     },
     onPlanStatusChange: (data) => {
+      // Add to notification store
+      addNotification({
+        type: "plan_status",
+        title: "Trạng thái kế hoạch thay đổi",
+        message: `${data.planName}: ${data.oldStatus} → ${data.newStatus}`,
+        data: {
+          planName: data.planName,
+        },
+      });
+      
       toast.info(
         <div className="flex items-start gap-3">
           <TrendingUp className="h-5 w-5 text-blue-500 mt-0.5" />

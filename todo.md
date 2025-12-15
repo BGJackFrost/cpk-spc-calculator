@@ -1481,3 +1481,35 @@
 - [x] Hiển thị summary cards (CPK hiện tại, trung bình, xu hướng)
 - [x] Hiển thị bảng lịch sử phân tích chi tiết
 - [ ] Cho phép xem chi tiết trend khi click vào tiêu chuẩn
+
+
+## Phase 64: Tối ưu SPC Plan, Notification Realtime, So sánh CPK theo ca
+
+### Tối ưu Tạo kế hoạch SPC
+- [x] Giảm thông tin trùng lặp - tự động điền từ Tiêu chuẩn đo (đã có sẵn)
+- [x] Cập nhật form để tự động điền từ Tiêu chuẩn đo đã chọn (đã có sẵn)
+- [x] Hỗ trợ gửi email thông báo cho nhiều người (danh sách email cách nhau bằng dấu phẩy)
+
+### Kiểm tra Trực quan SPC Plan
+- [x] Kiểm tra hiển thị CPK trong SPC Plan Overview - đã có (CPK: N/A khi chưa có dữ liệu)
+- [x] Kiểm tra hiển thị ảnh trạm trong SPC Plan Overview - code đã có, cần upload ảnh
+- [x] Kiểm tra hiển thị ảnh máy trong SPC Plan Overview - code đã có, cần upload ảnh
+
+### Notification Realtime
+- [x] Tạo NotificationBell component với store global
+- [x] Hiển thị notification bell trên header của DashboardLayout
+- [x] Tích hợp với SseNotificationProvider để nhận thông báo realtime
+- [x] Hiển thị badge số thông báo chưa đọc
+- [ ] Hiển thị cảnh báo CPK realtime khi có vi phạm
+
+### So sánh CPK theo ca làm việc
+- [x] Tạo trang ShiftCpkComparison.tsx
+- [x] Định nghĩa 3 ca làm việc mặc định (sáng, chiều, đêm)
+- [x] Phân tích CPK theo ca từ lịch sử phân tích
+- [x] Hiển thị summary cards cho từng ca
+- [x] Bảng chi tiết CPK theo ngày và ca
+- [x] Phân tích & khuyến nghị (ca tốt nhất, ca cần cải thiện)
+- [x] Thêm route và menu vào sidebar
+- [ ] Thêm shiftId vào SPC analysis
+- [ ] Tạo trang so sánh CPK theo ca
+- [ ] Biểu đồ so sánh CPK giữa các ca
