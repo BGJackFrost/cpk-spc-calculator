@@ -88,6 +88,10 @@ import ScheduledReports from "./pages/ScheduledReports";
 import SupervisorDashboard from "./pages/SupervisorDashboard";
 import ShiftReportHistory from "./pages/ShiftReportHistory";
 import MachineComparison from "./pages/MachineComparison";
+import NotificationCenter from "./pages/NotificationCenter";
+import ScheduledJobsManagement from "./pages/ScheduledJobsManagement";
+import AdvancedAnalytics from "./pages/AdvancedAnalytics";
+import ExportReports from "./pages/ExportReports";
 
 function Router() {
   return (
@@ -140,6 +144,10 @@ function Router() {
       <Route path="/supervisor-dashboard" component={SupervisorDashboard} />
       <Route path="/shift-reports" component={ShiftReportHistory} />
       <Route path="/machine-comparison" component={MachineComparison} />
+      <Route path="/notification-center" component={NotificationCenter} />
+      <Route path="/scheduled-jobs" component={ScheduledJobsManagement} />
+      <Route path="/advanced-analytics" component={AdvancedAnalytics} />
+      <Route path="/export-reports" component={ExportReports} />
       <Route path="/mms-data-init" component={MMSDataInit} />
       <Route path="/alert-threshold-config" component={AlertThresholdConfig} />
       <Route path="/email-notifications" component={EmailNotificationSettings} />

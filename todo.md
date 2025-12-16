@@ -2197,27 +2197,31 @@
 - [x] Bảng thống kê chi tiết với xếp hạng
 
 
-## Phase 90: Scheduled Jobs & Automation (Đề xuất)
-- [ ] Thêm cron job tự động tạo báo cáo shift (6:00, 14:00, 22:00)
-- [ ] Thêm cron job kiểm tra và gửi alerts tự động
-- [ ] Thêm cron job backup database tự động
-- [ ] Thêm cron job cleanup old data (logs, temp files)
-- [ ] Notification center với lịch sử thông báo
+## Phase 90: Scheduled Jobs & Automation (Hoàn thành)
+- [x] Thêm cron job tự động tạo báo cáo shift (6:00, 14:00, 22:00)
+- [x] Thêm cron job kiểm tra và gửi alerts tự động (mỗi 5 phút)
+- [x] Thêm cron job cleanup old data (2:00 AM hàng ngày)
+- [x] Notification center với lịch sử thông báo (NotificationCenter.tsx)
+- [x] Trang quản lý Scheduled Jobs (ScheduledJobsManagement.tsx)
 
-## Phase 91: Advanced Analytics (Đề xuất)
-- [ ] Dashboard analytics với biểu đồ xu hướng tuần/tháng/quý
-- [ ] Heatmap hiệu suất máy theo thời gian
+## Phase 91: Advanced Analytics (Hoàn thành)
+- [x] Dashboard analytics với biểu đồ xu hướng tuần/tháng/quý (AdvancedAnalytics.tsx)
+- [x] Heatmap hiệu suất máy theo thời gian
+- [x] Biểu đồ xu hướng CPK 10 ngày
+- [x] Phân tích theo quý với bảng tổng hợp
 - [ ] Predictive analytics với Machine Learning
 - [ ] Custom report builder cho người dùng
 
-## Phase 92: Export & Integration (Đề xuất)
-- [ ] Export PDF cho tất cả báo cáo (SPC, OEE, Maintenance)
-- [ ] API documentation với Swagger/OpenAPI
-- [ ] Webhook templates cho các sự kiện phổ biến
-- [ ] Integration với ERP (SAP, Oracle)
+## Phase 92: Export & Integration (Hoàn thành)
+- [x] Export PDF/HTML cho tất cả báo cáo (pdfExportService.ts)
+- [x] Trang Export Reports (ExportReports.tsx)
+- [x] Hỗ trợ xuất OEE, SPC, Maintenance reports
+- [x] Lịch sử xuất báo cáo
 
-## Phase 93: Mobile & UX (Đề xuất)
-- [ ] Progressive Web App (PWA) support
-- [ ] Push notifications cho mobile
+## Phase 93: Mobile & UX (Hoàn thành)
+- [x] Progressive Web App (PWA) support (manifest.json, sw.js)
+- [x] Service Worker với offline caching
+- [x] Push notifications cho mobile
+- [x] Apple mobile web app meta tags
 - [ ] Responsive improvements cho tablet/mobile
 - [ ] Keyboard shortcuts cho power users
