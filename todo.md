@@ -2415,3 +2415,18 @@
 - [x] Tự động xuất kho khi hoàn thành lệnh bảo trì (completeWorkOrder)
 - [x] Ghi nhận stock movement với reference WO-xxx
 - [x] API autoExportForWorkOrder cho xuất kho thủ công
+
+
+## Phase 114: UI Báo cáo Xuất nhập tồn & Dashboard Cảnh báo tồn kho
+
+### UI Báo cáo xuất nhập tồn
+- [x] Trang StockReport.tsx với chọn khoảng thời gian (tháng/quý/tùy chọn)
+- [x] Xuất Excel (CSV) với summary
+- [x] Hiển thị preview báo cáo với bảng chi tiết giao dịch
+- [x] Summary cards: Tổng nhập, Tổng xuất, Chênh lệch, Số giao dịch
+
+### Dashboard cảnh báo tồn kho
+- [x] Widget LowStockWidget hiển thị số lượng cảnh báo
+- [x] Phân loại critical (đỏ) và warning (vàng)
+- [x] Link đến trang chi tiết phụ tùng cần đặt hàng
+- [x] Thêm vào Dashboard trong phần System Status

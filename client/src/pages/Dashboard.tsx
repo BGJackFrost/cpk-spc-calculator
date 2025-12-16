@@ -34,6 +34,7 @@ import { toast } from "sonner";
 import { Link } from "wouter";
 import { LicenseStatusWidget } from "@/components/LicenseStatusWidget";
 import { WebhookRetryWidget } from "@/components/WebhookRetryWidget";
+import { LowStockWidget } from "@/components/LowStockWidget";
 import { ValidationRulesCard } from "@/components/ValidationRulesCard";
 import { OnboardingWizard } from "@/components/OnboardingWizard";
 
@@ -291,6 +292,7 @@ export default function Dashboard() {
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             <LicenseStatusWidget />
             <WebhookRetryWidget />
+            <LowStockWidget />
             {isWidgetVisible("validation_rules") && <ValidationRulesCard />}
           </div>
         </div>
