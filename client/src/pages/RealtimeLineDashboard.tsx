@@ -24,6 +24,8 @@ import {
 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine, Area, ComposedChart } from "recharts";
 import { RealtimeAlarmPanel, Alarm } from "@/components/RealtimeAlarmPanel";
+import { OEETrendChart } from "@/components/OEETrendChart";
+import { useWebSocket } from "@/hooks/useWebSocket";
 
 interface RealtimeDataPoint {
   id: number;
@@ -246,6 +248,13 @@ export default function RealtimeLineDashboard() {
   const [data, setData] = useState<RealtimeDataPoint[]>([]);
   const [alerts, setAlerts] = useState<RealtimeAlert[]>([]);
   const [alarms, setAlarms] = useState<Alarm[]>([]);
+  const [oeeData, setOeeData] = useState<Array<{
+    timestamp: Date;
+    oee: number;
+    availability: number;
+    performance: number;
+    quality: number;
+  }>>([]);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   
   // Alarm handlers
@@ -281,6 +290,21 @@ export default function RealtimeLineDashboard() {
     if (isRunning && isReady) {
       // Initial data
       setData(generateSimulatedData(50));
+      
+      // Initial OEE data
+      const initialOeeData = Array.from({ length: 20 }, (_, i) => {
+        const availability = 85 + Math.random() * 10;
+        const performance = 80 + Math.random() * 15;
+        const quality = 95 + Math.random() * 4;
+        return {
+          timestamp: new Date(Date.now() - (20 - i) * 5 * 60 * 1000),
+          oee: (availability * performance * quality) / 10000,
+          availability,
+          performance,
+          quality
+        };
+      });
+      setOeeData(initialOeeData);
       
       // Add new data every 2 seconds
       intervalRef.current = setInterval(() => {
@@ -318,6 +342,21 @@ export default function RealtimeLineDashboard() {
           }
           
           return [...prev.slice(-99), newPoint];
+        });
+        
+        // Update OEE data
+        setOeeData(prev => {
+          const availability = 85 + Math.random() * 10;
+          const performance = 80 + Math.random() * 15;
+          const quality = 95 + Math.random() * 4;
+          const newOeePoint = {
+            timestamp: new Date(),
+            oee: (availability * performance * quality) / 10000,
+            availability,
+            performance,
+            quality
+          };
+          return [...prev.slice(-29), newOeePoint];
         });
       }, 2000);
     } else {
@@ -538,6 +577,15 @@ export default function RealtimeLineDashboard() {
           onAcknowledge={handleAcknowledge}
           onAcknowledgeAll={handleAcknowledgeAll}
           onClear={handleClearAlarm}
+        />
+        
+        {/* OEE Trend Chart */}
+        <OEETrendChart
+          data={oeeData}
+          title="Xu hướng OEE Realtime"
+          description="Theo dõi hiệu suất thiết bị tổng thể theo thời gian thực"
+          targetOEE={85}
+          height={250}
         />
         
         {/* Statistics */}

@@ -1,0 +1,9 @@
+{
+  "query": "INSERT INTO machine_online_status (machineId, connectionId, isOnline, lastHeartbeat, lastDataReceived, currentCpk, currentMean, activeAlarmCount, warningCount, criticalCount, status, statusMessage)\nVALUES \n(1, 1001, 1, NOW(), NOW(), 14500, 500000, 0, 0, 0, 'running', 'Đang hoạt động bình thường'),\n(2, 1002, 1, NOW(), NOW(), 12800, 485000, 1, 1, 0, 'warning', 'CPK đang ở mức cảnh báo')\nON DUPLICATE KEY UPDATE \nisOnline = VALUES(isOnline),\nlastHeartbeat = VALUES(lastHeartbeat),\ncurrentCpk = VALUES(currentCpk),\nstatus = VALUES(status);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute INSERT INTO machine_online_status (machineId, connectionId, isOnline, lastHeartbeat, lastDataReceived, currentCpk, currentMean, activeAlarmCount, warningCount, criticalCount, status, statusMessage)\nVALUES \n(1, 1001, 1, NOW(), NOW(), 14500, 500000, 0, 0, 0, 'running', 'Đang hoạt động bình thường'),\n(2, 1002, 1, NOW(), NOW(), 12800, 485000, 1, 1, 0, 'warning', 'CPK đang ở mức cảnh báo')\nON DUPLICATE KEY UPDATE \nisOnline = VALUES(isOnline),\nlastHeartbeat = VALUES(lastHeartbeat),\ncurrentCpk = VALUES(currentCpk),\nstatus = VALUES(status);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1608
+}

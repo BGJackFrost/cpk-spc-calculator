@@ -2139,3 +2139,8 @@
 ## Phase 85 - Completed
 - [x] Tạo bảng machine_online_status trong database
 - [x] Sửa lỗi React key trong RealtimeLineDashboard
+
+## Phase 86: Realtime Dashboard Enhancements
+- [x] Tạo seed data cho machine_online_status (2 máy với trạng thái running và warning)
+- [x] Tích hợp WebSocket cho realtime updates (server/websocket.ts, hooks/useWebSocket.ts)
+- [x] Thêm biểu đồ xu hướng OEE trên Realtime Dashboard (OEETrendChart component)
