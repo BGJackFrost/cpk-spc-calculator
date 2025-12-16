@@ -2310,3 +2310,8 @@
 - [x] SSE event history - Thêm trang SseEventLog.tsx xem lịch sử events SSE
 - [x] SSE notification preferences - Thêm tùy chọn trong Settings/SSE tab cho phép user chọn loại thông báo
 - [x] SSE server-side toggle - Admin có thể bật/tắt SSE server trong Settings/SSE tab
+
+
+## Phase 107: Bug Fix & System Review
+- [ ] Rà soát và sửa lỗi không tải được bản xem trước
+- [ ] Tổng hợp hệ thống và đưa ra cải tiến chuyên nghiệp
