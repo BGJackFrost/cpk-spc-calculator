@@ -33,7 +33,7 @@ import {
   BarChart3, AlertTriangle, Cpu, GitCompare, ArrowUpDown, Info, BookOpen, 
   Layers, Key, Webhook, FileType, FolderClock, UserCog, ChevronRight,
   Gauge, ClipboardList, Building2, ShieldCheck, Boxes, Moon, Sun, Zap,
-  Target, HardHat, Hammer, Truck, Brain
+  Target, HardHat, Hammer, Truck, Brain, Bell, Download
 } from "lucide-react";
 import { useTheme } from "../contexts/ThemeContext";
 import { CSSProperties, useEffect, useRef, useState } from "react";
@@ -95,6 +95,7 @@ const menuGroups: MenuGroup[] = [
     items: [
       { icon: Target, labelKey: "nav.oeeDashboard", path: "/oee-dashboard" },
       { icon: BarChart3, labelKey: "nav.plantKpi", path: "/plant-kpi" },
+      { icon: TrendingUp, labelKey: "nav.advancedAnalytics", path: "/advanced-analytics" },
       { icon: ClipboardList, labelKey: "nav.maintenanceDashboard", path: "/maintenance-dashboard" },
       { icon: Calendar, labelKey: "nav.maintenanceSchedule", path: "/maintenance-schedule" },
       { icon: Boxes, labelKey: "nav.spareParts", path: "/spare-parts" },
@@ -110,6 +111,8 @@ const menuGroups: MenuGroup[] = [
     items: [
       { icon: Cpu, labelKey: "nav.iotGateway", path: "/iot-gateway", adminOnly: true },
       { icon: FileText, labelKey: "nav.reportsExport", path: "/reports-export" },
+      { icon: Download, labelKey: "nav.exportReports", path: "/export-reports" },
+      { icon: FileText, labelKey: "nav.customReportBuilder", path: "/custom-report-builder" },
       { icon: AlertTriangle, labelKey: "nav.alertConfig", path: "/alert-config", adminOnly: true },
       { icon: Target, labelKey: "nav.alertThresholdConfig", path: "/alert-threshold-config", adminOnly: true },
       { icon: Mail, labelKey: "nav.scheduledReports", path: "/scheduled-reports" },
@@ -198,6 +201,9 @@ const menuGroups: MenuGroup[] = [
       { icon: FileType, labelKey: "nav.reportTemplates", path: "/report-templates", adminOnly: true },
       { icon: FolderClock, labelKey: "nav.exportHistory", path: "/export-history" },
       { icon: Info, labelKey: "nav.about", path: "/about" },
+      { icon: Bell, labelKey: "nav.notificationCenter", path: "/notification-center" },
+      { icon: Clock, labelKey: "nav.scheduledJobs", path: "/scheduled-jobs", adminOnly: true },
+      { icon: Shield, labelKey: "nav.rateLimitDashboard", path: "/rate-limit-dashboard", adminOnly: true },
     ]
   },
   {
@@ -277,6 +283,12 @@ const fallbackLabelsVi: Record<string, string> = {
   "nav.supervisorDashboard": "Dashboard Supervisor",
   "nav.machineComparison": "So sánh Máy",
   "nav.shiftReports": "Báo cáo theo Ca",
+  "nav.notificationCenter": "Trung tâm Thông báo",
+  "nav.scheduledJobs": "Quản lý Scheduled Jobs",
+  "nav.rateLimitDashboard": "Giám sát Rate Limit",
+  "nav.advancedAnalytics": "Phân tích Nâng cao",
+  "nav.exportReports": "Xuất Báo cáo",
+  "nav.customReportBuilder": "Tạo Báo cáo Tùy chỉnh",
 };
 
 const fallbackLabelsEn: Record<string, string> = {
@@ -337,6 +349,12 @@ const fallbackLabelsEn: Record<string, string> = {
   "nav.supervisorDashboard": "Supervisor Dashboard",
   "nav.machineComparison": "Machine Comparison",
   "nav.shiftReports": "Shift Reports",
+  "nav.notificationCenter": "Notification Center",
+  "nav.scheduledJobs": "Scheduled Jobs",
+  "nav.rateLimitDashboard": "Rate Limit Dashboard",
+  "nav.advancedAnalytics": "Advanced Analytics",
+  "nav.exportReports": "Export Reports",
+  "nav.customReportBuilder": "Custom Report Builder",
 };
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";

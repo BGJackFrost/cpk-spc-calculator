@@ -8,7 +8,11 @@ export type SseEventType =
   | "spc_analysis_complete"
   | "cpk_alert"
   | "plan_status_change"
-  | "heartbeat";
+  | "heartbeat"
+  | "oee_update"
+  | "machine_status_change"
+  | "maintenance_alert"
+  | "realtime_alert";
 
 export interface SseEvent {
   type: SseEventType;
@@ -154,4 +158,68 @@ export function stopHeartbeat() {
 // Get connected clients count
 export function getConnectedClientsCount(): number {
   return clients.size;
+}
+
+// Send OEE update event
+export function notifyOeeUpdate(data: {
+  machineId: number;
+  machineName: string;
+  oee: number;
+  availability: number;
+  performance: number;
+  quality: number;
+  shift?: string;
+}) {
+  broadcastEvent({
+    type: "oee_update",
+    data,
+    timestamp: new Date(),
+  });
+}
+
+// Send machine status change event
+export function notifyMachineStatusChange(data: {
+  machineId: number;
+  machineName: string;
+  oldStatus: string;
+  newStatus: string;
+  reason?: string;
+}) {
+  broadcastEvent({
+    type: "machine_status_change",
+    data,
+    timestamp: new Date(),
+  });
+}
+
+// Send maintenance alert event
+export function notifyMaintenanceAlert(data: {
+  machineId: number;
+  machineName: string;
+  alertType: "scheduled" | "overdue" | "predictive";
+  message: string;
+  priority: "low" | "medium" | "high" | "critical";
+}) {
+  broadcastEvent({
+    type: "maintenance_alert",
+    data,
+    timestamp: new Date(),
+  });
+}
+
+// Send realtime alert event
+export function notifyRealtimeAlert(data: {
+  alertId: number;
+  machineId?: number;
+  machineName?: string;
+  alertType: string;
+  severity: "info" | "warning" | "critical";
+  message: string;
+  acknowledged: boolean;
+}) {
+  broadcastEvent({
+    type: "realtime_alert",
+    data,
+    timestamp: new Date(),
+  });
 }

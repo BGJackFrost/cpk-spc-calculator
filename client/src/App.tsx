@@ -88,6 +88,13 @@ import ScheduledReports from "./pages/ScheduledReports";
 import SupervisorDashboard from "./pages/SupervisorDashboard";
 import ShiftReportHistory from "./pages/ShiftReportHistory";
 import MachineComparison from "./pages/MachineComparison";
+import NotificationCenter from "./pages/NotificationCenter";
+import ScheduledJobsManagement from "./pages/ScheduledJobsManagement";
+import AdvancedAnalytics from "./pages/AdvancedAnalytics";
+import ExportReports from "./pages/ExportReports";
+import CustomReportBuilder from "./pages/CustomReportBuilder";
+import { GlobalKeyboardShortcuts } from "./components/GlobalKeyboardShortcuts";
+import RateLimitDashboard from "./pages/RateLimitDashboard";
 
 function Router() {
   return (
@@ -140,6 +147,10 @@ function Router() {
       <Route path="/supervisor-dashboard" component={SupervisorDashboard} />
       <Route path="/shift-reports" component={ShiftReportHistory} />
       <Route path="/machine-comparison" component={MachineComparison} />
+      <Route path="/notification-center" component={NotificationCenter} />
+      <Route path="/scheduled-jobs" component={ScheduledJobsManagement} />
+      <Route path="/advanced-analytics" component={AdvancedAnalytics} />
+      <Route path="/export-reports" component={ExportReports} />
       <Route path="/mms-data-init" component={MMSDataInit} />
       <Route path="/alert-threshold-config" component={AlertThresholdConfig} />
       <Route path="/email-notifications" component={EmailNotificationSettings} />
@@ -176,6 +187,8 @@ function Router() {
       <Route path="/measurement-standards-dashboard" component={MeasurementStandardsDashboard} />
       <Route path="/spc-visualization" component={SpcPlanVisualization} />
       <Route path="/spc-visualization/:type/:id" component={SpcVisualizationDetail} />
+      <Route path="/custom-report-builder" component={CustomReportBuilder} />
+      <Route path="/rate-limit-dashboard" component={RateLimitDashboard} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
@@ -187,10 +200,12 @@ function App() {
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light" switchable={true}>
         <TooltipProvider>
-          <SseNotificationProvider>
-            <Toaster />
-            <Router />
-          </SseNotificationProvider>
+          <GlobalKeyboardShortcuts>
+            <SseNotificationProvider>
+              <Toaster />
+              <Router />
+            </SseNotificationProvider>
+          </GlobalKeyboardShortcuts>
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>
