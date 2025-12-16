@@ -2394,3 +2394,24 @@
 - [x] API hoàn thành kiểm kê và điều chỉnh tồn kho (completeInventoryCheck)
 - [x] UI trang Xuất nhập tồn (/stock-movements)
 - [x] UI trang Kiểm kê kho (/inventory-check)
+
+
+## Phase 113: Báo cáo Xuất nhập tồn, Cảnh báo tồn kho, Work Order
+
+### Đồng bộ cấu hình port
+- [x] Kiểm tra và đồng bộ port server - Server luôn chạy trên port 3000
+
+### Báo cáo xuất nhập tồn
+- [x] API xuất báo cáo Excel theo tháng/quý (exportStockReportExcel)
+- [x] API trả về dữ liệu báo cáo với summary (totalIn, totalOut, netChange)
+
+### Cảnh báo tồn kho thấp
+- [x] API kiểm tra tồn kho thấp (getLowStockAlerts)
+- [x] Phân loại critical (dưới minStock) và warning (dưới reorderPoint)
+- [x] Scheduled job kiểm tra tồn kho hàng ngày 7:00 AM
+- [x] Gửi thông báo cho owner khi có cảnh báo
+
+### Tích hợp Work Order
+- [x] Tự động xuất kho khi hoàn thành lệnh bảo trì (completeWorkOrder)
+- [x] Ghi nhận stock movement với reference WO-xxx
+- [x] API autoExportForWorkOrder cho xuất kho thủ công

@@ -12,6 +12,7 @@ import { triggerWebhooks } from './webhookService';
 import { notifyOwner } from './_core/notification';
 import { processWebhookRetries, getRetryStats } from './webhookService';
 import { sendEmail } from './emailService';
+import { spareParts, sparePartsInventory, suppliers } from '../drizzle/schema';
 
 // Track if jobs are already initialized
 let jobsInitialized = false;
@@ -270,6 +271,16 @@ export function initScheduledJobs(): void {
   
   console.log('[ScheduledJob] Scheduled: Data cleanup at 2:00 AM daily (Asia/Ho_Chi_Minh)');
   
+  // Low stock check - runs daily at 7:00 AM
+  cron.schedule('0 0 7 * * *', async () => {
+    console.log('[ScheduledJob] Triggered: Low stock check');
+    await checkLowStock();
+  }, {
+    timezone: 'Asia/Ho_Chi_Minh'
+  });
+  
+  console.log('[ScheduledJob] Scheduled: Low stock check at 7:00 AM daily (Asia/Ho_Chi_Minh)');
+  
   jobsInitialized = true;
   console.log('[ScheduledJob] All scheduled jobs initialized successfully');
 }
@@ -444,4 +455,95 @@ export async function triggerAlertCheck(): Promise<void> {
  */
 export async function triggerDataCleanup(): Promise<void> {
   await cleanupOldData();
+}
+
+/**
+ * Check low stock and send notifications
+ */
+async function checkLowStock(): Promise<void> {
+  console.log('[ScheduledJob] Checking low stock levels...');
+  
+  try {
+    const db = await getDb();
+    if (!db) {
+      console.log('[ScheduledJob] Database not available');
+      return;
+    }
+
+    // Get all active parts with inventory
+    const parts = await db
+      .select({
+        id: spareParts.id,
+        partNumber: spareParts.partNumber,
+        name: spareParts.name,
+        category: spareParts.category,
+        unit: spareParts.unit,
+        minStock: spareParts.minStock,
+        reorderPoint: spareParts.reorderPoint,
+        currentStock: sparePartsInventory.quantity,
+        supplierName: suppliers.name,
+      })
+      .from(spareParts)
+      .leftJoin(sparePartsInventory, eq(spareParts.id, sparePartsInventory.sparePartId))
+      .leftJoin(suppliers, eq(spareParts.supplierId, suppliers.id))
+      .where(eq(spareParts.isActive, 1));
+
+    // Filter low stock items
+    const lowStockItems = parts.filter(item => {
+      const current = Number(item.currentStock) || 0;
+      const min = Number(item.minStock) || 0;
+      const reorder = Number(item.reorderPoint) || 0;
+      return current <= min || current <= reorder;
+    });
+
+    if (lowStockItems.length === 0) {
+      console.log('[ScheduledJob] No low stock items found');
+      return;
+    }
+
+    // Categorize by severity
+    const critical = lowStockItems.filter(item => 
+      Number(item.currentStock || 0) <= Number(item.minStock || 0)
+    );
+    const warning = lowStockItems.filter(item => 
+      Number(item.currentStock || 0) > Number(item.minStock || 0) &&
+      Number(item.currentStock || 0) <= Number(item.reorderPoint || 0)
+    );
+
+    // Build notification content
+    let content = `**Báo cáo tồn kho thấp - ${new Date().toLocaleDateString('vi-VN')}**\n\n`;
+    
+    if (critical.length > 0) {
+      content += `🔴 **NGHIÊM TRỌNG (${critical.length} mục):**\n`;
+      critical.forEach(item => {
+        content += `- ${item.partNumber}: ${item.name} - Tồn: ${item.currentStock || 0} ${item.unit} (Min: ${item.minStock})\n`;
+      });
+      content += '\n';
+    }
+
+    if (warning.length > 0) {
+      content += `🟡 **CẢNH BÁO (${warning.length} mục):**\n`;
+      warning.forEach(item => {
+        content += `- ${item.partNumber}: ${item.name} - Tồn: ${item.currentStock || 0} ${item.unit} (Reorder: ${item.reorderPoint})\n`;
+      });
+    }
+
+    // Send notification to owner
+    await notifyOwner({
+      title: `⚠️ Cảnh báo tồn kho thấp: ${critical.length} nghiêm trọng, ${warning.length} cảnh báo`,
+      content,
+    });
+
+    console.log(`[ScheduledJob] Low stock notification sent: ${critical.length} critical, ${warning.length} warning`);
+    
+  } catch (error) {
+    console.error('[ScheduledJob] Error checking low stock:', error);
+  }
+}
+
+/**
+ * Manually trigger low stock check (for testing)
+ */
+export async function triggerLowStockCheck(): Promise<void> {
+  await checkLowStock();
 }

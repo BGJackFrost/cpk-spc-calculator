@@ -1110,4 +1110,181 @@ export const sparePartsRouter = router({
 
       return { success: true };
     }),
+
+  // Export stock report to Excel
+  exportStockReportExcel: protectedProcedure
+    .input(z.object({
+      startDate: z.string(),
+      endDate: z.string(),
+      reportType: z.enum(["monthly", "quarterly", "custom"]),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const start = new Date(input.startDate);
+      const end = new Date(input.endDate);
+
+      // Get stock movements in date range
+      const movements = await db
+        .select({
+          id: sparePartsStockMovements.id,
+          partNumber: spareParts.partNumber,
+          partName: spareParts.name,
+          movementType: sparePartsStockMovements.movementType,
+          quantity: sparePartsStockMovements.quantity,
+          unitPrice: sparePartsStockMovements.unitPrice,
+          totalValue: sparePartsStockMovements.totalValue,
+          reference: sparePartsStockMovements.reference,
+          notes: sparePartsStockMovements.notes,
+          createdAt: sparePartsStockMovements.createdAt,
+        })
+        .from(sparePartsStockMovements)
+        .leftJoin(spareParts, eq(sparePartsStockMovements.sparePartId, spareParts.id))
+        .where(and(
+          gte(sparePartsStockMovements.createdAt, start),
+          lte(sparePartsStockMovements.createdAt, end)
+        ))
+        .orderBy(desc(sparePartsStockMovements.createdAt));
+
+      // Calculate summary
+      let totalIn = 0;
+      let totalOut = 0;
+      let totalInValue = 0;
+      let totalOutValue = 0;
+
+      movements.forEach(m => {
+        const qty = Number(m.quantity) || 0;
+        const val = Number(m.totalValue) || 0;
+        if (m.movementType?.includes("in")) {
+          totalIn += qty;
+          totalInValue += val;
+        } else {
+          totalOut += qty;
+          totalOutValue += val;
+        }
+      });
+
+      return {
+        reportType: input.reportType,
+        startDate: input.startDate,
+        endDate: input.endDate,
+        movements,
+        summary: {
+          totalIn,
+          totalOut,
+          totalInValue,
+          totalOutValue,
+          netChange: totalIn - totalOut,
+          netValue: totalInValue - totalOutValue,
+        },
+      };
+    }),
+
+  // Get low stock alerts
+  getLowStockAlerts: publicProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) return [];
+
+    const alerts = await db
+      .select({
+        id: spareParts.id,
+        partNumber: spareParts.partNumber,
+        name: spareParts.name,
+        category: spareParts.category,
+        unit: spareParts.unit,
+        minStock: spareParts.minStock,
+        reorderPoint: spareParts.reorderPoint,
+        currentStock: sparePartsInventory.quantity,
+        supplierName: suppliers.name,
+      })
+      .from(spareParts)
+      .leftJoin(sparePartsInventory, eq(spareParts.id, sparePartsInventory.sparePartId))
+      .leftJoin(suppliers, eq(spareParts.supplierId, suppliers.id))
+      .where(eq(spareParts.isActive, 1));
+
+    // Filter items where current stock is below minStock or reorderPoint
+    return alerts.filter(item => {
+      const current = Number(item.currentStock) || 0;
+      const min = Number(item.minStock) || 0;
+      const reorder = Number(item.reorderPoint) || 0;
+      return current <= min || current <= reorder;
+    }).map(item => ({
+      ...item,
+      currentStock: Number(item.currentStock) || 0,
+      minStock: Number(item.minStock) || 0,
+      reorderPoint: Number(item.reorderPoint) || 0,
+      alertLevel: Number(item.currentStock || 0) <= Number(item.minStock || 0) ? "critical" : "warning",
+    }));
+  }),
+
+  // Auto export stock for work order completion
+  autoExportForWorkOrder: protectedProcedure
+    .input(z.object({
+      workOrderId: z.number(),
+      items: z.array(z.object({
+        sparePartId: z.number(),
+        quantity: z.number().positive(),
+      })),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const results = [];
+
+      for (const item of input.items) {
+        // Get current inventory
+        const [inventory] = await db
+          .select()
+          .from(sparePartsInventory)
+          .where(eq(sparePartsInventory.sparePartId, item.sparePartId))
+          .limit(1);
+
+        if (!inventory) {
+          results.push({ sparePartId: item.sparePartId, success: false, error: "No inventory record" });
+          continue;
+        }
+
+        const currentQty = Number(inventory.quantity) || 0;
+        if (currentQty < item.quantity) {
+          results.push({ sparePartId: item.sparePartId, success: false, error: "Insufficient stock" });
+          continue;
+        }
+
+        // Get part info for price
+        const [part] = await db
+          .select()
+          .from(spareParts)
+          .where(eq(spareParts.id, item.sparePartId))
+          .limit(1);
+
+        const unitPrice = Number(part?.unitPrice) || 0;
+
+        // Update inventory
+        await db.update(sparePartsInventory).set({
+          quantity: String(currentQty - item.quantity),
+          updatedAt: new Date(),
+        }).where(eq(sparePartsInventory.id, inventory.id));
+
+        // Record movement
+        await db.insert(sparePartsStockMovements).values({
+          sparePartId: item.sparePartId,
+          movementType: "work_order_out",
+          quantity: String(item.quantity),
+          unitPrice: String(unitPrice),
+          totalValue: String(item.quantity * unitPrice),
+          previousStock: String(currentQty),
+          newStock: String(currentQty - item.quantity),
+          reference: `WO-${input.workOrderId}`,
+          notes: `Auto export for work order #${input.workOrderId}`,
+          createdBy: ctx.user?.id,
+          createdAt: new Date(),
+        });
+
+        results.push({ sparePartId: item.sparePartId, success: true });
+      }
+
+      return { results };
+    }),
 });

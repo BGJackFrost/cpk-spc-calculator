@@ -3,7 +3,8 @@ import { router, publicProcedure, protectedProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { 
   maintenanceTypes, maintenanceSchedules, workOrders, workOrderParts,
-  technicians, maintenanceHistory, machines
+  technicians, maintenanceHistory, machines,
+  spareParts, sparePartsInventory, sparePartsStockMovements
 } from "../../drizzle/schema";
 import { eq, desc, and, gte, lte, sql, asc, or } from "drizzle-orm";
 
@@ -341,6 +342,53 @@ export const maintenanceRouter = router({
         performedBy: ctx.user?.id,
         notes: input.notes,
       });
+
+      // Auto export spare parts used in work order
+      const usedParts = await db.select().from(workOrderParts).where(eq(workOrderParts.workOrderId, input.id));
+      for (const part of usedParts) {
+        // Get current inventory
+        const [inventory] = await db
+          .select()
+          .from(sparePartsInventory)
+          .where(eq(sparePartsInventory.sparePartId, part.sparePartId))
+          .limit(1);
+
+        if (inventory) {
+          const currentQty = Number(inventory.quantity) || 0;
+          const usedQty = Number(part.quantity) || 0;
+          const newQty = Math.max(0, currentQty - usedQty);
+
+          // Get part info for price
+          const [partInfo] = await db
+            .select()
+            .from(spareParts)
+            .where(eq(spareParts.id, part.sparePartId))
+            .limit(1);
+
+          const unitPrice = Number(partInfo?.unitPrice) || 0;
+
+          // Update inventory
+          await db.update(sparePartsInventory).set({
+            quantity: String(newQty),
+            updatedAt: now,
+          }).where(eq(sparePartsInventory.id, inventory.id));
+
+          // Record stock movement
+          await db.insert(sparePartsStockMovements).values({
+            sparePartId: part.sparePartId,
+            movementType: "work_order_out",
+            quantity: String(usedQty),
+            unitPrice: String(unitPrice),
+            totalValue: String(usedQty * unitPrice),
+            previousStock: String(currentQty),
+            newStock: String(newQty),
+            reference: `WO-${order.workOrderNumber}`,
+            notes: `Auto export for completed work order #${order.workOrderNumber}`,
+            createdBy: ctx.user?.id,
+            createdAt: now,
+          });
+        }
+      }
 
       // Update schedule if this was a scheduled maintenance
       if (order.scheduleId) {

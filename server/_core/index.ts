@@ -279,11 +279,15 @@ async function startServer() {
     serveStatic(app);
   }
 
-  const preferredPort = parseInt(process.env.PORT || "3000");
-  const port = await findAvailablePort(preferredPort);
-
-  if (port !== preferredPort) {
-    console.log(`Port ${preferredPort} is busy, using port ${port} instead`);
+  const port = parseInt(process.env.PORT || "3000");
+  
+  // Kill any process using the port before starting
+  try {
+    const { execSync } = await import('child_process');
+    execSync(`fuser -k ${port}/tcp 2>/dev/null || true`, { stdio: 'ignore' });
+    await new Promise(resolve => setTimeout(resolve, 1000));
+  } catch (e) {
+    // Ignore errors
   }
 
   server.listen(port, () => {
