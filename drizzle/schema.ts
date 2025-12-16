@@ -2211,3 +2211,5 @@ export const rateLimitRoleConfig = mysqlTable("rate_limit_role_config", {
 });
 export type RateLimitRoleConfig = typeof rateLimitRoleConfig.$inferSelect;
 export type InsertRateLimitRoleConfig = typeof rateLimitRoleConfig.$inferInsert;
+
+

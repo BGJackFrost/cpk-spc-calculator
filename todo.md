@@ -2322,3 +2322,21 @@
   - Tạo SYSTEM_REVIEW.md với thống kê và đề xuất cải tiến
   - 301 files, 104,310 dòng code, 95 trang
   - 1,181 features hoàn thành (84.5%)
+
+
+## Phase 108: System Improvements (từ SYSTEM_REVIEW.md)
+
+### Database Indexing & Query Optimization
+- [x] Thêm indexes cho các bảng lớn - Tạo drizzle/add-indexes.sql và scripts/apply-indexes.mjs
+- [x] Tối ưu queries phức tạp - Định nghĩa indexes cho 15+ bảng high-traffic
+
+### Security Enhancements
+- [x] Thêm security headers với Helmet.js - CSP, CORS, XSS protection
+- [x] Rate limiting đã có sẵn từ trước
+
+### Monitoring & Error Tracking
+- [x] Thêm structured logging - server/_core/logger.ts với log levels, buffer, stats
+- [x] APIs: getLogs, getLogStats, clearLogs trong systemRouter
+
+### UX Improvements
+- [x] Onboarding wizard cho người dùng mới - OnboardingWizard.tsx với 7 bước thiết lập

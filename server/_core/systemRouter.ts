@@ -7,6 +7,7 @@ import { eq } from "drizzle-orm";
 import { storagePut } from "../storage";
 import { isWebSocketEnabled, setWebSocketEnabled, realtimeWebSocketServer, loadWebSocketConfig, getEventLog, clearEventLog } from "../websocketServer";
 import { getConnectedClientsCount as getSseClientCount, isSseServerEnabled, setSseServerEnabled as setSseEnabled, getSseEventLog, clearSseEventLog } from "../sse";
+import { getRecentLogs, clearLogBuffer, getLogStats, type LogLevel } from "./logger";
 
 export const systemRouter = router({
   health: publicProcedure
@@ -311,6 +312,29 @@ export const systemRouter = router({
       clearEventLog();
       return { success: true };
     }),
+
+  // Get application logs
+  getLogs: adminProcedure
+    .input(
+      z.object({
+        count: z.number().optional().default(100),
+        level: z.enum(['debug', 'info', 'warn', 'error']).optional(),
+      })
+    )
+    .query(({ input }) => {
+      return getRecentLogs(input.count, input.level as LogLevel | undefined);
+    }),
+
+  // Get log statistics
+  getLogStats: adminProcedure.query(() => {
+    return getLogStats();
+  }),
+
+  // Clear log buffer
+  clearLogs: adminProcedure.mutation(() => {
+    clearLogBuffer();
+    return { success: true };
+  }),
 
   // Upload company logo to S3
   uploadLogo: protectedProcedure

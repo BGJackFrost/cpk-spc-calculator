@@ -35,6 +35,7 @@ import { Link } from "wouter";
 import { LicenseStatusWidget } from "@/components/LicenseStatusWidget";
 import { WebhookRetryWidget } from "@/components/WebhookRetryWidget";
 import { ValidationRulesCard } from "@/components/ValidationRulesCard";
+import { OnboardingWizard } from "@/components/OnboardingWizard";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -137,6 +138,9 @@ export default function Dashboard() {
       <GuidedTour run={run} stepIndex={stepIndex} steps={steps} onCallback={handleCallback} />
       
       <div className="space-y-8 animate-fade-in">
+        {/* Onboarding Wizard */}
+        <OnboardingWizard />
+        
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
