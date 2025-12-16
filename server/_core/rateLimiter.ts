@@ -10,6 +10,20 @@ const RATE_LIMIT_MAX_AUTH_REQUESTS = 200; // Max auth requests per window
 const RATE_LIMIT_MAX_EXPORT_REQUESTS = 100; // Max export requests per window
 const RATE_LIMIT_MAX_USER_REQUESTS = 3000; // Max requests per user per window
 
+// Global rate limit enabled flag - DEFAULT IS DISABLED
+let rateLimitEnabled = process.env.RATE_LIMIT_ENABLED === 'true'; // Default: disabled
+
+// Enable/disable rate limiting
+export function setRateLimitEnabled(enabled: boolean) {
+  rateLimitEnabled = enabled;
+  console.log(`[RateLimiter] Rate limiting ${enabled ? 'ENABLED' : 'DISABLED'}`);
+}
+
+// Check if rate limiting is enabled
+export function isRateLimitEnabled(): boolean {
+  return rateLimitEnabled;
+}
+
 // Alert configuration
 const BLOCK_RATE_ALERT_THRESHOLD = 5; // Alert when block rate > 5%
 const ALERT_CHECK_INTERVAL = 5 * 60 * 1000; // Check every 5 minutes
@@ -237,6 +251,7 @@ export function getRateLimitStats() {
     hourlyBlocked: stats.hourlyBlocked,
     uptime: Date.now() - stats.lastReset,
     recentAlerts: stats.alerts.slice(-10),
+    enabled: rateLimitEnabled,
     config: {
       windowMs: RATE_LIMIT_WINDOW_MS,
       maxRequests: RATE_LIMIT_MAX_REQUESTS,
@@ -356,9 +371,14 @@ const validateOptions = {
   trustProxy: false,
 };
 
-// Skip function with whitelist check
+// Skip function with whitelist check and enabled check
 const createSkipFunction = (additionalSkips?: (req: Request) => boolean) => {
   return (req: Request) => {
+    // Skip all rate limiting if disabled
+    if (!rateLimitEnabled) {
+      return true;
+    }
+    
     const ip = req.ip || req.socket.remoteAddress;
     
     if (isWhitelisted(ip)) {
@@ -476,6 +496,7 @@ setInterval(() => {
 }, 60 * 1000);
 
 console.log("[RateLimiter] Rate limiting configured:");
+console.log(`  - Status: ${rateLimitEnabled ? 'ENABLED' : 'DISABLED (default)'}`);
 console.log(`  - General API: ${RATE_LIMIT_MAX_REQUESTS} requests per ${RATE_LIMIT_WINDOW_MS / 60000} minutes`);
 console.log(`  - Auth endpoints: ${RATE_LIMIT_MAX_AUTH_REQUESTS} requests per ${RATE_LIMIT_WINDOW_MS / 60000} minutes`);
 console.log(`  - Export endpoints: ${RATE_LIMIT_MAX_EXPORT_REQUESTS} requests per ${RATE_LIMIT_WINDOW_MS / 60000} minutes`);
@@ -483,3 +504,4 @@ console.log(`  - Per-user limit: ${RATE_LIMIT_MAX_USER_REQUESTS} requests per ${
 console.log(`  - Alert threshold: ${BLOCK_RATE_ALERT_THRESHOLD}% block rate`);
 console.log(`  - Store: ${redisStore ? 'Redis' : 'Memory'}`);
 console.log(`  - Whitelisted IPs: ${IP_WHITELIST.size}`);
+console.log(`  - To enable rate limiting, set RATE_LIMIT_ENABLED=true in environment`);

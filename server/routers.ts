@@ -34,7 +34,9 @@ import {
   getUserRateLimitInfo,
   clearAlerts,
   getRedisStatus,
-  setAlertCallback
+  setAlertCallback,
+  setRateLimitEnabled,
+  isRateLimitEnabled
 } from "./_core/rateLimiter";
 import { notifyOwner } from "./_core/notification";
 import { z } from "zod";
@@ -5484,6 +5486,24 @@ export const appRouter = router({
     getUserRateLimit: protectedProcedure
       .query(async ({ ctx }) => {
         return getUserRateLimitInfo(String(ctx.user.id));
+      }),
+    
+    getEnabled: protectedProcedure
+      .query(async ({ ctx }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
+        }
+        return { enabled: isRateLimitEnabled() };
+      }),
+    
+    setEnabled: protectedProcedure
+      .input(z.object({ enabled: z.boolean() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
+        }
+        setRateLimitEnabled(input.enabled);
+        return { success: true, enabled: input.enabled };
       }),
   }),
 

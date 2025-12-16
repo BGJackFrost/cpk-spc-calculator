@@ -2245,3 +2245,8 @@
 - [x] Cấu hình REDIS_URL với hướng dẫn setup (tự động fallback về memory)
 - [x] Alert khi block rate cao (> 5%) - gửi notification cho owner
 - [x] Rate limit theo user ID (3000 req/15min per user)
+
+## Phase 98: Rate Limit Configuration Management
+- [x] Thêm cấu hình bật/tắt Rate Limit (mặc định tắt)
+- [x] Cập nhật UI quản lý cấu hình Rate Limit (toggle switch)
+- [x] Lưu checkpoint để deploy staging

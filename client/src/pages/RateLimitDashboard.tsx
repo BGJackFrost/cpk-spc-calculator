@@ -52,6 +52,18 @@ export default function RateLimitDashboard() {
   
   const { data: userRateLimit } = trpc.rateLimit.getUserRateLimit.useQuery();
   
+  const { data: enabledStatus, refetch: refetchEnabled } = trpc.rateLimit.getEnabled.useQuery();
+  
+  const setEnabledMutation = trpc.rateLimit.setEnabled.useMutation({
+    onSuccess: (data) => {
+      toast.success(language === "vi" 
+        ? `Rate limiting đã ${data.enabled ? 'BẬt' : 'Tắt'}` 
+        : `Rate limiting ${data.enabled ? 'enabled' : 'disabled'}`);
+      refetchEnabled();
+      refetch();
+    },
+  });
+  
   const clearAlertsMutation = trpc.rateLimit.clearAlerts.useMutation({
     onSuccess: () => {
       toast.success(language === "vi" ? "Đã xóa cảnh báo" : "Alerts cleared");
@@ -129,6 +141,47 @@ export default function RateLimitDashboard() {
             </Button>
           </div>
         </div>
+
+        {/* Rate Limit Toggle Card */}
+        <Card className={enabledStatus?.enabled ? "border-green-500" : "border-yellow-500"}>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className={`p-3 rounded-full ${enabledStatus?.enabled ? 'bg-green-100 text-green-600' : 'bg-yellow-100 text-yellow-600'}`}>
+                  <Shield className="h-6 w-6" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-lg">
+                    {language === "vi" ? "Trạng thái Rate Limiting" : "Rate Limiting Status"}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    {enabledStatus?.enabled 
+                      ? (language === "vi" ? "Đang bật - Các request sẽ bị giới hạn" : "Enabled - Requests will be rate limited")
+                      : (language === "vi" ? "Đang tắt - Không giới hạn request" : "Disabled - No request limits")}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-4">
+                <Badge variant={enabledStatus?.enabled ? "default" : "secondary"} className="text-sm px-3 py-1">
+                  {enabledStatus?.enabled 
+                    ? (language === "vi" ? "BẬt" : "ON") 
+                    : (language === "vi" ? "Tắt" : "OFF")}
+                </Badge>
+                <Button
+                  variant={enabledStatus?.enabled ? "destructive" : "default"}
+                  onClick={() => setEnabledMutation.mutate({ enabled: !enabledStatus?.enabled })}
+                  disabled={setEnabledMutation.isPending}
+                >
+                  {setEnabledMutation.isPending 
+                    ? (language === "vi" ? "Đang xử lý..." : "Processing...") 
+                    : enabledStatus?.enabled 
+                      ? (language === "vi" ? "Tắt Rate Limit" : "Disable Rate Limit")
+                      : (language === "vi" ? "Bật Rate Limit" : "Enable Rate Limit")}
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Overview Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
