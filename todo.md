@@ -2231,3 +2231,6 @@
 - [x] Thêm WebSocket/SSE realtime cho Dashboard Supervisor (useRealtimeUpdates hook)
 - [x] Tạo Custom Report Builder (CustomReportBuilder.tsx)
 - [x] Thêm Keyboard Shortcuts (Ctrl+S, Ctrl+E, Ctrl+D, Ctrl+/, etc.)
+
+## Phase 95: Rate Limiter Fix
+- [x] Sửa lỗi "Too many requests" - tăng rate limit (5000 requests/15 min) và tắt validation warnings

@@ -3,9 +3,9 @@ import { Request, Response } from "express";
 
 // Rate limit configuration
 const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
-const RATE_LIMIT_MAX_REQUESTS = 1000; // Max requests per window
-const RATE_LIMIT_MAX_AUTH_REQUESTS = 50; // Max auth requests per window
-const RATE_LIMIT_MAX_EXPORT_REQUESTS = 30; // Max export requests per window
+const RATE_LIMIT_MAX_REQUESTS = 5000; // Max requests per window (increased for development)
+const RATE_LIMIT_MAX_AUTH_REQUESTS = 200; // Max auth requests per window (increased)
+const RATE_LIMIT_MAX_EXPORT_REQUESTS = 100; // Max export requests per window (increased)
 
 // Custom handler for rate limit exceeded
 const rateLimitHandler = (req: Request, res: Response) => {
@@ -18,6 +18,12 @@ const rateLimitHandler = (req: Request, res: Response) => {
   });
 };
 
+// Disable all validation warnings for proxy environments
+const validateOptions = { 
+  xForwardedForHeader: false,
+  trustProxy: false,
+};
+
 // General API rate limiter
 export const apiRateLimiter = rateLimit({
   windowMs: RATE_LIMIT_WINDOW_MS,
@@ -27,9 +33,14 @@ export const apiRateLimiter = rateLimit({
   legacyHeaders: false,
   message: "Quá nhiều yêu cầu từ IP này, vui lòng thử lại sau 15 phút.",
   skip: (req: Request) => {
-    // Skip rate limiting for health checks
-    return req.path === "/api/health" || req.path === "/api/sse";
+    // Skip rate limiting for health checks, SSE, and static assets
+    return req.path === "/api/health" || 
+           req.path === "/api/sse" ||
+           req.path.startsWith("/@") ||
+           req.path.startsWith("/src/") ||
+           req.path.startsWith("/node_modules/");
   },
+  validate: validateOptions, // Disable validation warnings for proxy environments
 });
 
 // Stricter rate limiter for authentication endpoints
@@ -40,6 +51,7 @@ export const authRateLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: "Quá nhiều yêu cầu đăng nhập, vui lòng thử lại sau 15 phút.",
+  validate: validateOptions,
 });
 
 // Rate limiter for export endpoints (PDF, Excel)
@@ -50,6 +62,7 @@ export const exportRateLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: "Quá nhiều yêu cầu xuất file, vui lòng thử lại sau 15 phút.",
+  validate: validateOptions,
 });
 
 // In-memory store for tracking request counts (for logging/monitoring)
