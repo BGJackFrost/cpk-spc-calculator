@@ -1,0 +1,19 @@
+{
+  "query": "SELECT id, username, name, email, role, isActive, mustChangePassword FROM local_users WHERE username = 'admin' OR role = 'admin' LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute SELECT id, username, name, email, role, isActive, mustChangePassword FROM local_users WHERE username = 'admin' OR role = 'admin' LIMIT 5;",
+  "rows": [
+    {
+      "id": "30002",
+      "username": "admin",
+      "name": "Administrator",
+      "email": "admin@local.system",
+      "role": "admin",
+      "isActive": "1",
+      "mustChangePassword": "0"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tusername\tname\temail\trole\tisActive\tmustChangePassword\n30002\tadmin\tAdministrator\tadmin@local.system\tadmin\t1\t0\n",
+  "stderr": "",
+  "execution_time_ms": 1567
+}

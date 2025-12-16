@@ -2347,3 +2347,15 @@
 - [x] E2E tests cho luồng đăng nhập - e2e/auth.spec.ts (15 tests)
 - [x] E2E tests cho luồng phân tích SPC - e2e/spc-analysis.spec.ts (20 tests)
 - [x] E2E tests cho dashboard và navigation - e2e/dashboard.spec.ts (25 tests)
+
+
+## Phase 110: Đổi mật khẩu Admin và kiểm tra Local Auth
+- [x] Đổi mật khẩu admin thành "Admin@123" - Đã cập nhật trong database
+- [x] Kiểm tra luồng đăng nhập Local User
+  - Login với "Admin@123" thành công
+  - Login với mật khẩu cũ "admin123" bị từ chối
+
+
+## Phase 111: Sửa lỗi SSE exports và tắt SSE
+- [x] Sửa lỗi SSE exports thiếu - Các exports đã có trong sse.ts, lỗi là do TypeScript watcher cũ bị cache
+- [x] Tắt SSE để chạy thử - Đặt sseServerEnabled = false mặc định

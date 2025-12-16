@@ -261,7 +261,7 @@ export const systemRouter = router({
   }),
 
   // Toggle SSE server
-  setSseServerEnabled: adminProcedure
+  setSseServerEnabled: protectedProcedure
     .input(z.object({ enabled: z.boolean() }))
     .mutation(async ({ input }) => {
       setSseEnabled(input.enabled);

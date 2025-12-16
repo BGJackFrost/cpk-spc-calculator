@@ -3,8 +3,8 @@ import { Response } from "express";
 // Store connected SSE clients
 const clients: Map<string, Response> = new Map();
 
-// SSE Server enabled state
-let sseServerEnabled = true;
+// SSE Server enabled state - disabled by default to prevent loop issues
+let sseServerEnabled = false;
 
 // Event types
 export type SseEventType = 
