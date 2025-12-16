@@ -14,8 +14,9 @@ import { toast } from "sonner";
 import { 
   Package, Search, Plus, AlertTriangle, TrendingDown, 
   ShoppingCart, Truck, Building2, ArrowUpDown, FileText,
-  CheckCircle2, Clock, XCircle, RefreshCw
+  CheckCircle2, Clock, XCircle, RefreshCw, Download, Bell
 } from "lucide-react";
+import * as XLSX from "xlsx";
 
 export default function SparePartsManagement() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -24,6 +25,11 @@ export default function SparePartsManagement() {
   const [isAddPartOpen, setIsAddPartOpen] = useState(false);
   const [isAddSupplierOpen, setIsAddSupplierOpen] = useState(false);
   const [isCreatePOOpen, setIsCreatePOOpen] = useState(false);
+  
+  // Filter states for transactions
+  const [txDateFrom, setTxDateFrom] = useState<string>("");
+  const [txDateTo, setTxDateTo] = useState<string>("");
+  const [txType, setTxType] = useState<string>("");
 
   // Queries
   const { data: parts, refetch: refetchParts } = trpc.spareParts.listParts.useQuery({
@@ -34,7 +40,12 @@ export default function SparePartsManagement() {
 
   const { data: suppliers } = trpc.spareParts.listSuppliers.useQuery();
   const { data: purchaseOrders } = trpc.spareParts.listPurchaseOrders.useQuery({ limit: 50 });
-  const { data: transactions } = trpc.spareParts.listTransactions.useQuery({ limit: 50 });
+  const { data: transactions, refetch: refetchTransactions } = trpc.spareParts.listTransactions.useQuery({ 
+    limit: 100,
+    dateFrom: txDateFrom || undefined,
+    dateTo: txDateTo || undefined,
+    type: txType || undefined,
+  });
   const { data: stats } = trpc.spareParts.getStats.useQuery();
   const { data: reorderSuggestions } = trpc.spareParts.getReorderSuggestions.useQuery();
 
@@ -350,10 +361,37 @@ export default function SparePartsManagement() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className={(stats?.lowStockCount || 0) > 0 ? "border-orange-500 bg-orange-50 dark:bg-orange-950/20" : ""}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Cần đặt hàng</CardTitle>
-              <AlertTriangle className="h-4 w-4 text-orange-500" />
+              <div className="flex items-center gap-2">
+                {(stats?.lowStockCount || 0) > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    onClick={() => {
+                      const lowStockParts = parts?.filter(p => (p.currentStock || 0) < (p.minStock || 0)) || [];
+                      if (lowStockParts.length === 0) {
+                        toast.info("Không có phụ tùng nào cần đặt hàng");
+                        return;
+                      }
+                      const message = lowStockParts.map(p => `- ${p.name}: ${p.currentStock}/${p.minStock}`).join("\n");
+                      toast.warning(
+                        <div>
+                          <div className="font-bold mb-2">Cảnh báo tồn kho thấp!</div>
+                          <div className="text-sm whitespace-pre-line">{message}</div>
+                        </div>,
+                        { duration: 10000 }
+                      );
+                    }}
+                    title="Xem chi tiết cảnh báo"
+                  >
+                    <Bell className="h-4 w-4 text-orange-500 animate-pulse" />
+                  </Button>
+                )}
+                <AlertTriangle className="h-4 w-4 text-orange-500" />
+              </div>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-orange-500">{stats?.lowStockCount || 0}</div>
@@ -419,6 +457,37 @@ export default function SparePartsManagement() {
                     >
                       <AlertTriangle className="w-4 h-4 mr-1" />
                       Tồn thấp
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        if (!parts || parts.length === 0) {
+                          toast.error("Không có dữ liệu để xuất");
+                          return;
+                        }
+                        const exportData = parts.map(part => ({
+                          "Mã PT": part.partNumber,
+                          "Tên phụ tùng": part.name,
+                          "Danh mục": part.category || "-",
+                          "Tồn kho": part.currentStock || 0,
+                          "Min": part.minStock || 0,
+                          "Max": part.maxStock || 0,
+                          "Đơn giá": part.unitPrice ? Number(part.unitPrice) : 0,
+                          "Giá trị tồn": (part.currentStock || 0) * (part.unitPrice ? Number(part.unitPrice) : 0),
+                          "Nhà cung cấp": part.supplierName || "-",
+                          "Đơn vị": part.unit || "pcs",
+                        }));
+                        const ws = XLSX.utils.json_to_sheet(exportData);
+                        const wb = XLSX.utils.book_new();
+                        XLSX.utils.book_append_sheet(wb, ws, "Tồn kho phụ tùng");
+                        const fileName = `ton-kho-phu-tung-${new Date().toISOString().split('T')[0]}.xlsx`;
+                        XLSX.writeFile(wb, fileName);
+                        toast.success(`Đã xuất file ${fileName}`);
+                      }}
+                    >
+                      <Download className="h-4 w-4 mr-1" />
+                      Xuất Excel
                     </Button>
                   </div>
                 </div>
@@ -637,8 +706,84 @@ export default function SparePartsManagement() {
           <TabsContent value="transactions" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Lịch sử giao dịch</CardTitle>
-                <CardDescription>Theo dõi các giao dịch nhập/xuất kho</CardDescription>
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                  <div>
+                    <CardTitle>Lịch sử giao dịch</CardTitle>
+                    <CardDescription>Theo dõi các giao dịch nhập/xuất kho</CardDescription>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex items-center gap-2">
+                      <Label className="text-sm whitespace-nowrap">Từ ngày:</Label>
+                      <Input
+                        type="date"
+                        value={txDateFrom}
+                        onChange={(e) => setTxDateFrom(e.target.value)}
+                        className="w-40"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Label className="text-sm whitespace-nowrap">Đến ngày:</Label>
+                      <Input
+                        type="date"
+                        value={txDateTo}
+                        onChange={(e) => setTxDateTo(e.target.value)}
+                        className="w-40"
+                      />
+                    </div>
+                    <Select value={txType} onValueChange={setTxType}>
+                      <SelectTrigger className="w-32">
+                        <SelectValue placeholder="Loại GD" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tất cả</SelectItem>
+                        <SelectItem value="in">Nhập kho</SelectItem>
+                        <SelectItem value="out">Xuất kho</SelectItem>
+                        <SelectItem value="adjustment">Điều chỉnh</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setTxDateFrom("");
+                        setTxDateTo("");
+                        setTxType("");
+                      }}
+                    >
+                      <RefreshCw className="h-4 w-4 mr-1" />
+                      Xóa lọc
+                    </Button>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => {
+                        if (!transactions || transactions.length === 0) {
+                          toast.error("Không có dữ liệu để xuất");
+                          return;
+                        }
+                        const exportData = transactions.map(tx => ({
+                          "Thời gian": tx.createdAt ? new Date(tx.createdAt).toLocaleString('vi-VN') : "-",
+                          "Mã phụ tùng": tx.partNumber || "-",
+                          "Tên phụ tùng": tx.partName || "-",
+                          "Loại GD": tx.transactionType === "in" ? "Nhập" : tx.transactionType === "out" ? "Xuất" : tx.transactionType === "return" ? "Trả lại" : "Điều chỉnh",
+                          "Số lượng": tx.quantity,
+                          "Đơn giá": tx.unitCost ? Number(tx.unitCost) : 0,
+                          "Thành tiền": tx.totalCost ? Number(tx.totalCost) : 0,
+                          "Ghi chú": tx.reason || "-",
+                        }));
+                        const ws = XLSX.utils.json_to_sheet(exportData);
+                        const wb = XLSX.utils.book_new();
+                        XLSX.utils.book_append_sheet(wb, ws, "Lịch sử giao dịch");
+                        const fileName = `lich-su-giao-dich-${new Date().toISOString().split('T')[0]}.xlsx`;
+                        XLSX.writeFile(wb, fileName);
+                        toast.success(`Đã xuất file ${fileName}`);
+                      }}
+                    >
+                      <Download className="h-4 w-4 mr-1" />
+                      Xuất Excel
+                    </Button>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
                 <Table>

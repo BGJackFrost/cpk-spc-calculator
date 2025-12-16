@@ -236,9 +236,11 @@ export const sparePartsRouter = router({
   listTransactions: publicProcedure
     .input(z.object({
       sparePartId: z.number().optional(),
-      type: z.enum(["in", "out", "adjustment", "return"]).optional(),
+      type: z.string().optional(),
       startDate: z.string().optional(),
       endDate: z.string().optional(),
+      dateFrom: z.string().optional(),
+      dateTo: z.string().optional(),
       limit: z.number().default(100),
     }))
     .query(async ({ input }) => {
@@ -247,9 +249,17 @@ export const sparePartsRouter = router({
 
       const conditions = [];
       if (input.sparePartId) conditions.push(eq(sparePartsTransactions.sparePartId, input.sparePartId));
-      if (input.type) conditions.push(eq(sparePartsTransactions.transactionType, input.type));
-      if (input.startDate) conditions.push(gte(sparePartsTransactions.createdAt, new Date(input.startDate)));
-      if (input.endDate) conditions.push(lte(sparePartsTransactions.createdAt, new Date(input.endDate)));
+      if (input.type && input.type !== "all") conditions.push(eq(sparePartsTransactions.transactionType, input.type as any));
+      
+      // Support both old (startDate/endDate) and new (dateFrom/dateTo) params
+      const fromDate = input.dateFrom || input.startDate;
+      const toDate = input.dateTo || input.endDate;
+      if (fromDate) conditions.push(gte(sparePartsTransactions.createdAt, new Date(fromDate)));
+      if (toDate) {
+        const endOfDay = new Date(toDate);
+        endOfDay.setHours(23, 59, 59, 999);
+        conditions.push(lte(sparePartsTransactions.createdAt, endOfDay));
+      }
 
       return db
         .select({

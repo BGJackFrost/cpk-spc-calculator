@@ -2529,3 +2529,9 @@
 - [x] Hoàn thiện chức năng kiểm kê định kỳ
 - [ ] Test và xác nhận các chức năng hoạt động
 
+
+## Phase 121: Nâng cấp Spare Parts - Tính năng mới
+- [x] Thêm filter theo ngày cho Lịch sử giao dịch
+- [x] Thêm Export Excel báo cáo xuất/nhập/tồn kho theo tháng
+- [x] Thêm cảnh báo tồn kho thấp với notification
+
