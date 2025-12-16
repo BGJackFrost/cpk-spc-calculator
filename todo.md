@@ -2144,3 +2144,15 @@
 - [x] Tạo seed data cho machine_online_status (2 máy với trạng thái running và warning)
 - [x] Tích hợp WebSocket cho realtime updates (server/websocket.ts, hooks/useWebSocket.ts)
 - [x] Thêm biểu đồ xu hướng OEE trên Realtime Dashboard (OEETrendChart component)
+
+## Phase 87: WebSocket Activation & Machine Dashboard
+- [ ] Kích hoạt WebSocket trong Express server
+- [ ] Tạo trang chi tiết OEE/SPC cho từng máy
+- [ ] Thêm chức năng export dữ liệu realtime ra CSV/Excel
+
+## Phase 87: WebSocket Integration & Export Features
+- [x] Kích hoạt WebSocket trong Express server (server/_core/index.ts)
+- [x] Tạo trang chi tiết OEE/SPC cho từng máy (MachineDetail.tsx)
+- [x] Thêm chức năng export dữ liệu realtime (ExportRealtimeData.tsx)
+- [x] Thêm menu Export Realtime Data vào sidebar
+- [x] Thêm translations cho menu mới (vi.json, en.json)

@@ -373,6 +373,7 @@
     "reportsExport": "Export Reports",
     "alertConfig": "Alert Configuration",
     "scheduledReports": "Scheduled Reports",
+    "exportRealtime": "Export Realtime Data",
     "equipmentQr": "Equipment QR Lookup",
     "analyze": "SPC/CPK Analysis",
     "multiObjectAnalysis": "Multi-Object Analysis",

@@ -110,6 +110,7 @@ const menuGroups: MenuGroup[] = [
       { icon: FileText, labelKey: "nav.reportsExport", path: "/reports-export" },
       { icon: AlertTriangle, labelKey: "nav.alertConfig", path: "/alert-config", adminOnly: true },
       { icon: Mail, labelKey: "nav.scheduledReports", path: "/scheduled-reports" },
+      { icon: FileSpreadsheet, labelKey: "nav.exportRealtime", path: "/export-realtime" },
     ]
   },
   {

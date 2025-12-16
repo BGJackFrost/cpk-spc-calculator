@@ -373,6 +373,7 @@
     "reportsExport": "Xuất Báo cáo",
     "alertConfig": "Cấu hình Cảnh báo",
     "scheduledReports": "Báo cáo Tự động",
+    "exportRealtime": "Xuất dữ liệu Realtime",
     "equipmentQr": "Tra cứu QR Thiết bị",
     "analyze": "Phân tích SPC/CPK",
     "multiObjectAnalysis": "Phân tích Đa Đối tượng",

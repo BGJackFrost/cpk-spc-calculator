@@ -11,6 +11,7 @@ import { addSseClient, startHeartbeat } from "../sse";
 import { initScheduledJobs } from "../scheduledJobs";
 import { apiRateLimiter, authRateLimiter } from "./rateLimiter";
 import { storagePut } from "../storage";
+import { wsServer } from "../websocket";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -252,6 +253,10 @@ async function startServer() {
 
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
+    
+    // Initialize WebSocket server
+    wsServer.initialize(server);
+    console.log(`WebSocket server initialized on ws://localhost:${port}/ws`);
     
     // Initialize scheduled jobs after server starts
     initScheduledJobs();

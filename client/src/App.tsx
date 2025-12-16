@@ -72,6 +72,8 @@ import MachineAreaManagement from "./pages/MachineAreaManagement";
 import MachineStatusReport from "./pages/MachineStatusReport";
 import OEEDashboard from "./pages/OEEDashboard";
 import MaintenanceDashboard from "./pages/MaintenanceDashboard";
+import MachineDetail from "./pages/MachineDetail";
+import ExportRealtimeData from "./pages/ExportRealtimeData";
 import SparePartsManagement from "./pages/SparePartsManagement";
 import PredictiveMaintenance from "./pages/PredictiveMaintenance";
 import MMSDataInit from "./pages/MMSDataInit";
@@ -120,6 +122,8 @@ function Router() {
       <Route path="/machine-status-report" component={MachineStatusReport} />
       <Route path="/oee-dashboard" component={OEEDashboard} />
       <Route path="/maintenance-dashboard" component={MaintenanceDashboard} />
+      <Route path="/machine/:id" component={MachineDetail} />
+      <Route path="/export-realtime" component={ExportRealtimeData} />
       <Route path="/spare-parts" component={SparePartsManagement} />
       <Route path="/predictive-maintenance" component={PredictiveMaintenance} />
       <Route path="/maintenance-schedule" component={MaintenanceSchedule} />
