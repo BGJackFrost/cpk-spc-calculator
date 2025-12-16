@@ -2546,4 +2546,12 @@
 ### Cải tiến UX
 - [ ] Thêm Dashboard thống kê biểu đồ xuất/nhập theo thời gian
 - [x] Tích hợp barcode/QR code cho nhập/xuất kho nhanh
+- [x] Thêm Dashboard thống kê với biểu đồ
+
+
+## Phase 123: Nâng cấp Spare Parts - QR Scanner, In nhãn, Email, Hướng dẫn
+- [x] Quét QR để tra cứu phụ tùng (camera scanner) - QRScanner component với html5-qrcode
+- [x] In nhãn QR hàng loạt (chọn nhiều phụ tùng) - Checkbox chọn và in nhiều nhãn
+- [x] Cảnh báo email tự động khi tồn kho thấp - sendLowStockEmailAlert API
+- [x] Hướng dẫn sử dụng xuất/nhập/kiểm kê kho - Trang SparePartsGuide.tsx
 

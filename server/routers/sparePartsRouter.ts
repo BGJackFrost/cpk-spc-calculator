@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { router, publicProcedure, protectedProcedure } from "../_core/trpc";
+import { notifyOwner } from "../_core/notification";
 import { getDb } from "../db";
 import { 
   spareParts, sparePartsInventory, sparePartsTransactions,
@@ -1360,4 +1361,115 @@ export const sparePartsRouter = router({
 
       return { results };
     }),
+
+  // Send low stock email alert
+  sendLowStockEmailAlert: protectedProcedure
+    .input(z.object({
+      recipientEmail: z.string().email().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      // Get low stock items
+      const alerts = await db
+        .select({
+          id: spareParts.id,
+          partNumber: spareParts.partNumber,
+          name: spareParts.name,
+          category: spareParts.category,
+          unit: spareParts.unit,
+          minStock: spareParts.minStock,
+          reorderPoint: spareParts.reorderPoint,
+          currentStock: sparePartsInventory.quantity,
+          supplierName: suppliers.name,
+        })
+        .from(spareParts)
+        .leftJoin(sparePartsInventory, eq(spareParts.id, sparePartsInventory.sparePartId))
+        .leftJoin(suppliers, eq(spareParts.supplierId, suppliers.id))
+        .where(eq(spareParts.isActive, 1));
+
+      // Filter low stock items
+      const lowStockItems = alerts.filter(item => {
+        const current = Number(item.currentStock) || 0;
+        const min = Number(item.minStock) || 0;
+        const reorder = Number(item.reorderPoint) || 0;
+        return current <= min || current <= reorder;
+      });
+
+      if (lowStockItems.length === 0) {
+        return { success: true, message: "Không có phụ tùng nào cần cảnh báo" };
+      }
+
+      // Build email content
+      const itemsList = lowStockItems.map(item => {
+        const current = Number(item.currentStock) || 0;
+        const min = Number(item.minStock) || 0;
+        const level = current <= min ? "🔴 NGUY HIỂM" : "🟡 CẢNH BÁO";
+        return `${level} - ${item.partNumber}: ${item.name} | Tồn: ${current} ${item.unit || 'pcs'} (Min: ${min})`;
+      }).join("\n");
+
+      const title = `⚠️ Cảnh báo tồn kho thấp - ${lowStockItems.length} phụ tùng`;
+      const content = `Có ${lowStockItems.length} phụ tùng cần đặt hàng bổ sung:\n\n${itemsList}\n\nVui lòng kiểm tra và tạo đơn đặt hàng.`;
+
+      // Send notification to owner
+      const sent = await notifyOwner({ title, content });
+
+      return { 
+        success: sent, 
+        message: sent ? `Đã gửi cảnh báo cho ${lowStockItems.length} phụ tùng` : "Không thể gửi thông báo",
+        itemCount: lowStockItems.length,
+      };
+    }),
+
+  // Check and auto-send low stock alerts (for scheduled job)
+  checkAndSendLowStockAlerts: publicProcedure.mutation(async () => {
+    const db = await getDb();
+    if (!db) return { success: false, message: "Database not available" };
+
+    // Get low stock items
+    const alerts = await db
+      .select({
+        id: spareParts.id,
+        partNumber: spareParts.partNumber,
+        name: spareParts.name,
+        category: spareParts.category,
+        unit: spareParts.unit,
+        minStock: spareParts.minStock,
+        reorderPoint: spareParts.reorderPoint,
+        currentStock: sparePartsInventory.quantity,
+      })
+      .from(spareParts)
+      .leftJoin(sparePartsInventory, eq(spareParts.id, sparePartsInventory.sparePartId))
+      .where(eq(spareParts.isActive, 1));
+
+    // Filter critical items (below minStock)
+    const criticalItems = alerts.filter(item => {
+      const current = Number(item.currentStock) || 0;
+      const min = Number(item.minStock) || 0;
+      return current <= min && min > 0;
+    });
+
+    if (criticalItems.length === 0) {
+      return { success: true, message: "No critical items", itemCount: 0 };
+    }
+
+    // Build notification
+    const itemsList = criticalItems.slice(0, 10).map(item => {
+      const current = Number(item.currentStock) || 0;
+      const min = Number(item.minStock) || 0;
+      return `- ${item.partNumber}: ${item.name} (Tồn: ${current}/${min})`;
+    }).join("\n");
+
+    const title = `🚨 Cảnh báo tồn kho nguy hiểm - ${criticalItems.length} phụ tùng`;
+    const content = `Có ${criticalItems.length} phụ tùng dưới mức tồn tối thiểu:\n\n${itemsList}${criticalItems.length > 10 ? `\n... và ${criticalItems.length - 10} phụ tùng khác` : ''}\n\nVui lòng đặt hàng ngay!`;
+
+    const sent = await notifyOwner({ title, content });
+
+    return { 
+      success: sent, 
+      message: sent ? "Alert sent" : "Failed to send alert",
+      itemCount: criticalItems.length,
+    };
+  }),
 });

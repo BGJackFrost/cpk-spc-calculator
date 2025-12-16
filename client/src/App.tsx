@@ -75,6 +75,7 @@ import MaintenanceDashboard from "./pages/MaintenanceDashboard";
 import MachineDetail from "./pages/MachineDetail";
 import ExportRealtimeData from "./pages/ExportRealtimeData";
 import SparePartsManagement from "./pages/SparePartsManagement";
+import SparePartsGuide from "./pages/SparePartsGuide";
 import StockMovements from "./pages/StockMovements";
 import InventoryCheck from "./pages/InventoryCheck";
 import StockReport from "./pages/StockReport";
@@ -141,6 +142,7 @@ function Router() {
       <Route path="/machine/:id" component={MachineDetail} />
       <Route path="/export-realtime" component={ExportRealtimeData} />
       <Route path="/spare-parts" component={SparePartsManagement} />
+      <Route path="/spare-parts-guide" component={SparePartsGuide} />
       <Route path="/stock-movements" component={StockMovements} />
       <Route path="/inventory-check" component={InventoryCheck} />
       <Route path="/stock-report" component={StockReport} />

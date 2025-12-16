@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "wouter";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,10 +19,11 @@ import {
   Package, Search, Plus, AlertTriangle, TrendingDown, 
   ShoppingCart, Truck, Building2, ArrowUpDown, FileText,
   CheckCircle2, Clock, XCircle, RefreshCw, Download, Bell,
-  MoreHorizontal, Pencil, Trash2, QrCode, BarChart3
+  MoreHorizontal, Pencil, Trash2, QrCode, BarChart3, Camera, Printer, ScanLine, Mail, BookOpen, HelpCircle
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import QRCode from "qrcode";
+import QRScanner from "@/components/QRScanner";
 
 export default function SparePartsManagement() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -64,6 +66,15 @@ export default function SparePartsManagement() {
   const [isQROpen, setIsQROpen] = useState(false);
   const [qrPart, setQRPart] = useState<any>(null);
   const [qrDataUrl, setQRDataUrl] = useState<string>("");
+  
+  // QR Scanner states
+  const [isQRScannerOpen, setIsQRScannerOpen] = useState(false);
+  const [scannedPartInfo, setScannedPartInfo] = useState<any>(null);
+  
+  // Bulk QR Print states
+  const [isBulkQROpen, setIsBulkQROpen] = useState(false);
+  const [selectedPartsForQR, setSelectedPartsForQR] = useState<number[]>([]);
+  const [bulkQRDataUrls, setBulkQRDataUrls] = useState<Map<number, string>>(new Map());
 
   // Queries
   const { data: parts, refetch: refetchParts } = trpc.spareParts.listParts.useQuery({
@@ -159,6 +170,17 @@ export default function SparePartsManagement() {
       toast.success("Đã tạo đơn hàng mới");
       refetchPurchaseOrders();
       setIsCreatePOOpen(false);
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const sendEmailAlertMutation = trpc.spareParts.sendLowStockEmailAlert.useMutation({
+    onSuccess: (data) => {
+      if (data.success) {
+        toast.success(data.message);
+      } else {
+        toast.error(data.message);
+      }
     },
     onError: (err) => toast.error(err.message),
   });
@@ -361,6 +383,120 @@ export default function SparePartsManagement() {
     }
   };
 
+  // QR Scanner handler
+  const handleQRScanSuccess = (data: any) => {
+    if (data.id) {
+      // Find part by ID from scanned QR
+      const foundPart = parts?.find(p => p.id === data.id);
+      if (foundPart) {
+        setScannedPartInfo(foundPart);
+        toast.success(`Tìm thấy: ${foundPart.name}`);
+      } else {
+        toast.error("Không tìm thấy phụ tùng trong hệ thống");
+      }
+    } else if (data.partNumber) {
+      // Find part by partNumber
+      const foundPart = parts?.find(p => p.partNumber === data.partNumber);
+      if (foundPart) {
+        setScannedPartInfo(foundPart);
+        toast.success(`Tìm thấy: ${foundPart.name}`);
+      } else {
+        toast.error("Không tìm thấy phụ tùng trong hệ thống");
+      }
+    }
+  };
+
+  // Bulk QR handlers
+  const togglePartForQR = (partId: number) => {
+    setSelectedPartsForQR(prev => 
+      prev.includes(partId) 
+        ? prev.filter(id => id !== partId)
+        : [...prev, partId]
+    );
+  };
+
+  const selectAllPartsForQR = () => {
+    if (selectedPartsForQR.length === (parts?.length || 0)) {
+      setSelectedPartsForQR([]);
+    } else {
+      setSelectedPartsForQR(parts?.map(p => p.id) || []);
+    }
+  };
+
+  const generateBulkQRCodes = async () => {
+    const selectedParts = parts?.filter(p => selectedPartsForQR.includes(p.id)) || [];
+    const newQRDataUrls = new Map<number, string>();
+    
+    for (const part of selectedParts) {
+      try {
+        const qrData = JSON.stringify({
+          id: part.id,
+          partNumber: part.partNumber,
+          name: part.name,
+          category: part.category,
+          stock: part.currentStock
+        });
+        const dataUrl = await QRCode.toDataURL(qrData, { width: 150, margin: 1 });
+        newQRDataUrls.set(part.id, dataUrl);
+      } catch (err) {
+        console.error(`Error generating QR for ${part.partNumber}:`, err);
+      }
+    }
+    
+    setBulkQRDataUrls(newQRDataUrls);
+    setIsBulkQROpen(true);
+  };
+
+  const printBulkQRCodes = () => {
+    const selectedParts = parts?.filter(p => selectedPartsForQR.includes(p.id)) || [];
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      toast.error("Không thể mở cửa sổ in. Vui lòng cho phép popup.");
+      return;
+    }
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>In nhãn QR - Phụ tùng</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+          .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+          .label { border: 1px solid #ccc; padding: 10px; text-align: center; page-break-inside: avoid; }
+          .label img { width: 120px; height: 120px; }
+          .label .part-number { font-family: monospace; font-weight: bold; font-size: 14px; margin-top: 5px; }
+          .label .part-name { font-size: 12px; color: #666; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; }
+          .label .stock { font-size: 11px; color: #999; margin-top: 3px; }
+          @media print {
+            .no-print { display: none; }
+            .grid { grid-template-columns: repeat(3, 1fr); }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="no-print" style="margin-bottom: 20px;">
+          <button onclick="window.print()" style="padding: 10px 20px; font-size: 16px; cursor: pointer;">In nhãn</button>
+          <span style="margin-left: 10px;">Tổng: ${selectedParts.length} nhãn</span>
+        </div>
+        <div class="grid">
+          ${selectedParts.map(part => `
+            <div class="label">
+              <img src="${bulkQRDataUrls.get(part.id) || ''}" alt="QR" />
+              <div class="part-number">${part.partNumber}</div>
+              <div class="part-name">${part.name}</div>
+              <div class="stock">Tồn: ${part.currentStock || 0} ${part.unit || 'pcs'}</div>
+            </div>
+          `).join('')}
+        </div>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(html);
+    printWindow.document.close();
+  };
+
   const getStockStatus = (current: number | null, min: number | null, reorder: number | null) => {
     const stock = current || 0;
     const threshold = reorder || min || 0;
@@ -392,6 +528,14 @@ export default function SparePartsManagement() {
             <p className="text-muted-foreground">Quản lý kho phụ tùng, nhà cung cấp và đơn đặt hàng</p>
           </div>
           <div className="flex gap-2">
+            <Link href="/spare-parts-guide">
+              <Button variant="outline">
+                <BookOpen className="w-4 h-4 mr-2" />Hướng dẫn
+              </Button>
+            </Link>
+            <Button variant="outline" onClick={() => setIsQRScannerOpen(true)}>
+              <Camera className="w-4 h-4 mr-2" />Quét QR
+            </Button>
             <Dialog open={isAddSupplierOpen} onOpenChange={setIsAddSupplierOpen}>
               <DialogTrigger asChild>
                 <Button variant="outline"><Building2 className="w-4 h-4 mr-2" />Thêm NCC</Button>
@@ -537,29 +681,41 @@ export default function SparePartsManagement() {
               <CardTitle className="text-sm font-medium">Cần đặt hàng</CardTitle>
               <div className="flex items-center gap-2">
                 {(stats?.lowStockCount || 0) > 0 && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6"
-                    onClick={() => {
-                      const lowStockParts = parts?.filter(p => (p.currentStock || 0) < (p.minStock || 0)) || [];
-                      if (lowStockParts.length === 0) {
-                        toast.info("Không có phụ tùng nào cần đặt hàng");
-                        return;
-                      }
-                      const message = lowStockParts.map(p => `- ${p.name}: ${p.currentStock}/${p.minStock}`).join("\n");
-                      toast.warning(
-                        <div>
-                          <div className="font-bold mb-2">Cảnh báo tồn kho thấp!</div>
-                          <div className="text-sm whitespace-pre-line">{message}</div>
-                        </div>,
-                        { duration: 10000 }
-                      );
-                    }}
-                    title="Xem chi tiết cảnh báo"
-                  >
-                    <Bell className="h-4 w-4 text-orange-500 animate-pulse" />
-                  </Button>
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6"
+                      onClick={() => sendEmailAlertMutation.mutate({})}
+                      title="Gửi email cảnh báo"
+                      disabled={sendEmailAlertMutation.isPending}
+                    >
+                      <Mail className="h-4 w-4 text-orange-500" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6"
+                      onClick={() => {
+                        const lowStockParts = parts?.filter(p => (p.currentStock || 0) < (p.minStock || 0)) || [];
+                        if (lowStockParts.length === 0) {
+                          toast.info("Không có phụ tùng nào cần đặt hàng");
+                          return;
+                        }
+                        const message = lowStockParts.map(p => `- ${p.name}: ${p.currentStock}/${p.minStock}`).join("\n");
+                        toast.warning(
+                          <div>
+                            <div className="font-bold mb-2">Cảnh báo tồn kho thấp!</div>
+                            <div className="text-sm whitespace-pre-line">{message}</div>
+                          </div>,
+                          { duration: 10000 }
+                        );
+                      }}
+                      title="Xem chi tiết cảnh báo"
+                    >
+                      <Bell className="h-4 w-4 text-orange-500 animate-pulse" />
+                    </Button>
+                  </>
                 )}
                 <AlertTriangle className="h-4 w-4 text-orange-500" />
               </div>
@@ -723,7 +879,7 @@ export default function SparePartsManagement() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {parts?.sort((a, b) => ((b.currentStock || 0) * (b.unitPrice || 0)) - ((a.currentStock || 0) * (a.unitPrice || 0)))
+                    {parts?.sort((a, b) => ((b.currentStock || 0) * Number(b.unitPrice || 0)) - ((a.currentStock || 0) * Number(a.unitPrice || 0)))
                       .slice(0, 5)
                       .map((p, i) => (
                         <div key={p.id} className="flex items-center justify-between">
@@ -732,7 +888,7 @@ export default function SparePartsManagement() {
                             <span className="truncate max-w-[150px]">{p.name}</span>
                           </div>
                           <span className="font-medium text-sm">
-                            {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', notation: 'compact' }).format((p.currentStock || 0) * (p.unitPrice || 0))}
+                            {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', notation: 'compact' }).format((p.currentStock || 0) * Number(p.unitPrice || 0))}
                           </span>
                         </div>
                       ))}
@@ -816,6 +972,16 @@ export default function SparePartsManagement() {
                       <AlertTriangle className="w-4 h-4 mr-1" />
                       Tồn thấp
                     </Button>
+                    {selectedPartsForQR.length > 0 && (
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={generateBulkQRCodes}
+                      >
+                        <Printer className="h-4 w-4 mr-1" />
+                        In {selectedPartsForQR.length} nhãn QR
+                      </Button>
+                    )}
                     <Button
                       variant="outline"
                       size="sm"
@@ -854,6 +1020,14 @@ export default function SparePartsManagement() {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-10">
+                        <input
+                          type="checkbox"
+                          checked={selectedPartsForQR.length === (parts?.length || 0) && (parts?.length || 0) > 0}
+                          onChange={selectAllPartsForQR}
+                          className="w-4 h-4 rounded border-gray-300"
+                        />
+                      </TableHead>
                       <TableHead>Mã PT</TableHead>
                       <TableHead>Tên phụ tùng</TableHead>
                       <TableHead>Danh mục</TableHead>
@@ -869,6 +1043,14 @@ export default function SparePartsManagement() {
                       const status = getStockStatus(part.currentStock, part.minStock, part.reorderPoint);
                       return (
                         <TableRow key={part.id}>
+                          <TableCell>
+                            <input
+                              type="checkbox"
+                              checked={selectedPartsForQR.includes(part.id)}
+                              onChange={() => togglePartForQR(part.id)}
+                              className="w-4 h-4 rounded border-gray-300"
+                            />
+                          </TableCell>
                           <TableCell className="font-mono">{part.partNumber}</TableCell>
                           <TableCell>
                             <div>
@@ -1699,6 +1881,125 @@ export default function SparePartsManagement() {
                 Tải mã QR
               </Button>
             </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* QR Scanner Dialog */}
+        <QRScanner
+          open={isQRScannerOpen}
+          onOpenChange={(open) => {
+            setIsQRScannerOpen(open);
+            if (!open) setScannedPartInfo(null);
+          }}
+          onScanSuccess={handleQRScanSuccess}
+          title="Quét mã QR Phụ tùng"
+          description="Đưa mã QR vào vùng quét để tra cứu thông tin phụ tùng"
+        />
+
+        {/* Scanned Part Info Dialog */}
+        {scannedPartInfo && (
+          <Dialog open={!!scannedPartInfo} onOpenChange={() => setScannedPartInfo(null)}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Package className="w-5 h-5" />
+                  Thông tin Phụ tùng
+                </DialogTitle>
+                <DialogDescription>Kết quả tra cứu từ mã QR</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-muted-foreground">Mã PT</Label>
+                    <p className="font-mono font-bold">{scannedPartInfo.partNumber}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Danh mục</Label>
+                    <p>{scannedPartInfo.category || "Không phân loại"}</p>
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Tên phụ tùng</Label>
+                  <p className="font-medium text-lg">{scannedPartInfo.name}</p>
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <Label className="text-muted-foreground">Tồn kho</Label>
+                    <p className="text-2xl font-bold">{scannedPartInfo.currentStock || 0}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Tối thiểu</Label>
+                    <p className="text-lg">{scannedPartInfo.minStock || 0}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Đơn vị</Label>
+                    <p>{scannedPartInfo.unit || "pcs"}</p>
+                  </div>
+                </div>
+                {scannedPartInfo.unitPrice && (
+                  <div>
+                    <Label className="text-muted-foreground">Đơn giá</Label>
+                    <p className="font-medium">
+                      {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(Number(scannedPartInfo.unitPrice))}
+                    </p>
+                  </div>
+                )}
+                <div className="flex gap-2 pt-4">
+                  <Button 
+                    variant="outline" 
+                    className="flex-1"
+                    onClick={() => handleQuickTransaction(scannedPartInfo.id, "in", 1)}
+                  >
+                    +1 Nhập
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    className="flex-1"
+                    onClick={() => handleQuickTransaction(scannedPartInfo.id, "out", 1)}
+                    disabled={(scannedPartInfo.currentStock || 0) <= 0}
+                  >
+                    -1 Xuất
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
+
+        {/* Bulk QR Print Dialog */}
+        <Dialog open={isBulkQROpen} onOpenChange={setIsBulkQROpen}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Printer className="w-5 h-5" />
+                In nhãn QR hàng loạt
+              </DialogTitle>
+              <DialogDescription>
+                Đã chọn {selectedPartsForQR.length} phụ tùng để in nhãn
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid grid-cols-4 gap-4 py-4">
+              {parts?.filter(p => selectedPartsForQR.includes(p.id)).map(part => (
+                <div key={part.id} className="border rounded-lg p-3 text-center">
+                  {bulkQRDataUrls.get(part.id) && (
+                    <img 
+                      src={bulkQRDataUrls.get(part.id)} 
+                      alt="QR" 
+                      className="w-24 h-24 mx-auto"
+                    />
+                  )}
+                  <p className="font-mono text-xs font-bold mt-2">{part.partNumber}</p>
+                  <p className="text-xs text-muted-foreground truncate">{part.name}</p>
+                </div>
+              ))}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsBulkQROpen(false)}>Hủy</Button>
+              <Button onClick={printBulkQRCodes}>
+                <Printer className="w-4 h-4 mr-2" />
+                In nhãn
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
