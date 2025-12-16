@@ -342,6 +342,9 @@
   },
   "menuGroup": {
     "dashboard": "Tổng quan",
+    "dashboardConfig": "Cấu hình Realtime",
+    "mms": "Quản lý Bảo trì (MMS)",
+    "mmsConfig": "Cấu hình MMS",
     "oee": "OEE & Hiệu suất",
     "maintenance": "Bảo trì",
     "equipment": "Thiết bị",
@@ -396,6 +399,21 @@
     "userManagement": "Quản lý Người dùng",
     "localUserManagement": "Quản lý User Local",
     "permission": "Phân quyền",
-    "loginHistory": "Lịch sử Đăng nhập"
+    "loginHistory": "Lịch sử Đăng nhập",
+    "advancedAnalytics": "Phân tích Nâng cao",
+    "customReportBuilder": "Tạo Báo cáo Tùy chỉnh",
+    "exportReports": "Xuất Báo cáo",
+    "licenseCustomers": "Khách hàng License",
+    "licenseRevenue": "Doanh thu License",
+    "licenseServerDashboard": "Dashboard License Server",
+    "licenseServerSettings": "Cài đặt License Server",
+    "machineComparison": "So sánh Máy",
+    "mmsDataInit": "Khởi tạo Dữ liệu MMS",
+    "notificationCenter": "Trung tâm Thông báo",
+    "rateLimitDashboard": "Dashboard Rate Limit",
+    "scheduledJobs": "Công việc Định kỳ",
+    "shiftReports": "Báo cáo Ca",
+    "supervisorDashboard": "Dashboard Giám sát",
+    "websocketEventLog": "Log Sự kiện WebSocket"
   }
 }

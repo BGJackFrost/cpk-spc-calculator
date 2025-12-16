@@ -434,6 +434,41 @@ export const maintenanceRouter = router({
       return { success: true };
     }),
 
+  // Delete work order (only for pending/cancelled orders)
+  deleteWorkOrder: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      force: z.boolean().optional(), // Admin only: force delete even if in_progress/completed
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      // Get the work order
+      const [order] = await db.select().from(workOrders).where(eq(workOrders.id, input.id));
+      if (!order) throw new Error("Work order not found");
+
+      // Check if can delete
+      const allowedStatuses = ["pending", "cancelled"];
+      if (!allowedStatuses.includes(order.status) && !input.force) {
+        throw new Error(`Cannot delete work order with status '${order.status}'. Only pending or cancelled orders can be deleted. Use force=true for admin override.`);
+      }
+
+      // Only admin can force delete
+      if (input.force && ctx.user?.role !== "admin") {
+        throw new Error("Only admin can force delete work orders");
+      }
+
+      // Delete related records first
+      await db.delete(workOrderParts).where(eq(workOrderParts.workOrderId, input.id));
+      await db.delete(maintenanceHistory).where(eq(maintenanceHistory.workOrderId, input.id));
+      
+      // Delete the work order
+      await db.delete(workOrders).where(eq(workOrders.id, input.id));
+
+      return { success: true, deletedId: input.id };
+    }),
+
   // Technicians
   listTechnicians: publicProcedure
     .input(z.object({ isActive: z.boolean().optional() }))

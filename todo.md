@@ -2444,3 +2444,37 @@
 - [x] Thêm dropdown lọc theo category và loại giao dịch (nhập/xuất)
 - [x] Filter kết quả báo cáo theo điều kiện với useMemo
 - [x] Tự động tính lại summary theo dữ liệu đã lọc
+
+
+## Phase 116: Sửa Menu, WorkOrder và Supervisor Dashboard
+
+### Sửa tên menu bên trái
+- [ ] Kiểm tra và sửa tên các menu cho đúng
+
+### Nâng cấp xóa/sửa WorkOrder
+- [ ] Thêm API xóa workorder
+- [ ] Thêm API sửa workorder
+- [ ] Cập nhật UI cho phép xóa/sửa workorder
+
+### Sửa lỗi Supervisor Dashboard
+- [ ] Sửa lỗi Maximum update depth exceeded (infinite loop)
+- [ ] Kiểm tra useRealtimeUpdates hook
+
+### Cập nhật link
+- [ ] Cập nhật link chạy hệ thống mới nhất
+
+
+## Phase 116: Sửa Menu, WorkOrder, Supervisor Dashboard
+
+### Sửa tên menu
+- [x] Cập nhật menuGroup trong vi.json - Thêm dashboardConfig, mms, mmsConfig
+- [x] Thêm các nav items còn thiếu - 15 items mới
+
+### Nâng cấp WorkOrder
+- [x] Thêm API xóa workorder (deleteWorkOrder)
+- [x] Chỉ cho phép xóa pending/cancelled orders
+- [x] Admin có thể force delete với force=true
+
+### Sửa lỗi Supervisor Dashboard
+- [x] Tìm và sửa lỗi infinite loop - Callbacks trong useRealtimeUpdates gây re-render
+- [x] Sửa useRealtimeUpdates hook - Dùng refs để lưu callbacks, tránh dependency loop

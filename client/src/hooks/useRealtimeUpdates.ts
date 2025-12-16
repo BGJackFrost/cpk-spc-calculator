@@ -81,6 +81,24 @@ export function useRealtimeUpdates(options: UseRealtimeUpdatesOptions = {}) {
   const reconnectAttempts = useRef(0);
   const maxReconnectAttempts = 5;
 
+  // Store callbacks in refs to avoid infinite loop from dependency changes
+  const onOeeUpdateRef = useRef(onOeeUpdate);
+  const onMachineStatusChangeRef = useRef(onMachineStatusChange);
+  const onMaintenanceAlertRef = useRef(onMaintenanceAlert);
+  const onRealtimeAlertRef = useRef(onRealtimeAlert);
+  const onCpkAlertRef = useRef(onCpkAlert);
+  const onSpcAnalysisCompleteRef = useRef(onSpcAnalysisComplete);
+
+  // Update refs when callbacks change
+  useEffect(() => {
+    onOeeUpdateRef.current = onOeeUpdate;
+    onMachineStatusChangeRef.current = onMachineStatusChange;
+    onMaintenanceAlertRef.current = onMaintenanceAlert;
+    onRealtimeAlertRef.current = onRealtimeAlert;
+    onCpkAlertRef.current = onCpkAlert;
+    onSpcAnalysisCompleteRef.current = onSpcAnalysisComplete;
+  }, [onOeeUpdate, onMachineStatusChange, onMaintenanceAlert, onRealtimeAlert, onCpkAlert, onSpcAnalysisComplete]);
+
   const connect = useCallback(() => {
     if (eventSourceRef.current) {
       eventSourceRef.current.close();
@@ -127,7 +145,7 @@ export function useRealtimeUpdates(options: UseRealtimeUpdatesOptions = {}) {
     eventSource.addEventListener("oee_update", (event) => {
       try {
         const data = JSON.parse(event.data);
-        onOeeUpdate?.(data.data);
+        onOeeUpdateRef.current?.(data.data);
       } catch (e) {
         console.error("[SSE] Error parsing oee_update:", e);
       }
@@ -136,7 +154,7 @@ export function useRealtimeUpdates(options: UseRealtimeUpdatesOptions = {}) {
     eventSource.addEventListener("machine_status_change", (event) => {
       try {
         const data = JSON.parse(event.data);
-        onMachineStatusChange?.(data.data);
+        onMachineStatusChangeRef.current?.(data.data);
       } catch (e) {
         console.error("[SSE] Error parsing machine_status_change:", e);
       }
@@ -145,7 +163,7 @@ export function useRealtimeUpdates(options: UseRealtimeUpdatesOptions = {}) {
     eventSource.addEventListener("maintenance_alert", (event) => {
       try {
         const data = JSON.parse(event.data);
-        onMaintenanceAlert?.(data.data);
+        onMaintenanceAlertRef.current?.(data.data);
       } catch (e) {
         console.error("[SSE] Error parsing maintenance_alert:", e);
       }
@@ -154,7 +172,7 @@ export function useRealtimeUpdates(options: UseRealtimeUpdatesOptions = {}) {
     eventSource.addEventListener("realtime_alert", (event) => {
       try {
         const data = JSON.parse(event.data);
-        onRealtimeAlert?.(data.data);
+        onRealtimeAlertRef.current?.(data.data);
       } catch (e) {
         console.error("[SSE] Error parsing realtime_alert:", e);
       }
@@ -163,7 +181,7 @@ export function useRealtimeUpdates(options: UseRealtimeUpdatesOptions = {}) {
     eventSource.addEventListener("cpk_alert", (event) => {
       try {
         const data = JSON.parse(event.data);
-        onCpkAlert?.(data.data);
+        onCpkAlertRef.current?.(data.data);
       } catch (e) {
         console.error("[SSE] Error parsing cpk_alert:", e);
       }
@@ -172,12 +190,12 @@ export function useRealtimeUpdates(options: UseRealtimeUpdatesOptions = {}) {
     eventSource.addEventListener("spc_analysis_complete", (event) => {
       try {
         const data = JSON.parse(event.data);
-        onSpcAnalysisComplete?.(data.data);
+        onSpcAnalysisCompleteRef.current?.(data.data);
       } catch (e) {
         console.error("[SSE] Error parsing spc_analysis_complete:", e);
       }
     });
-  }, [onOeeUpdate, onMachineStatusChange, onMaintenanceAlert, onRealtimeAlert, onCpkAlert, onSpcAnalysisComplete]);
+  }, []); // Empty deps - connect only depends on refs which are stable
 
   const disconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {
