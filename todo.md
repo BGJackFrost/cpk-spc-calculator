@@ -2478,3 +2478,10 @@
 ### Sửa lỗi Supervisor Dashboard
 - [x] Tìm và sửa lỗi infinite loop - Callbacks trong useRealtimeUpdates gây re-render
 - [x] Sửa useRealtimeUpdates hook - Dùng refs để lưu callbacks, tránh dependency loop
+
+## Phase 117: Hướng dẫn triển khai Offline
+- [x] Tạo hướng dẫn triển khai chi tiết (Web + Database)
+- [x] Tạo scripts cài đặt tự động
+- [x] Tạo file cấu hình mẫu
+- [x] Tạo Docker Compose cho triển khai dễ dàng
+
