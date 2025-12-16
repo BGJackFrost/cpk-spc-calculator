@@ -5403,6 +5403,54 @@ export const appRouter = router({
         
         return { success: true };
       })
+  }),
+
+  // Shift Report router
+  shiftReport: router({
+    list: protectedProcedure
+      .input(z.object({
+        limit: z.number().default(20),
+        offset: z.number().default(0),
+        shiftType: z.enum(["morning", "afternoon", "night"]).optional(),
+        productionLineId: z.number().optional()
+      }))
+      .query(async ({ input }) => {
+        const { getShiftReports } = await import("./services/shiftReportService");
+        return await getShiftReports(input);
+      }),
+    getById: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        const { getShiftReportById } = await import("./services/shiftReportService");
+        return await getShiftReportById(input.id);
+      }),
+    generate: protectedProcedure
+      .input(z.object({
+        shiftDate: z.string(),
+        shiftType: z.enum(["morning", "afternoon", "night"]),
+        productionLineId: z.number().optional(),
+        machineId: z.number().optional()
+      }))
+      .mutation(async ({ input }) => {
+        const { generateShiftReport } = await import("./services/shiftReportService");
+        const reportId = await generateShiftReport(
+          new Date(input.shiftDate),
+          input.shiftType,
+          input.productionLineId,
+          input.machineId
+        );
+        return { success: true, reportId };
+      }),
+    sendEmail: protectedProcedure
+      .input(z.object({
+        reportId: z.number(),
+        recipients: z.array(z.string().email())
+      }))
+      .mutation(async ({ input }) => {
+        const { sendShiftReportEmail } = await import("./services/shiftReportService");
+        const success = await sendShiftReportEmail(input.reportId, input.recipients);
+        return { success };
+      })
   })
 });
 

@@ -72,6 +72,8 @@ const menuGroups: MenuGroup[] = [
       { icon: Cpu, labelKey: "nav.machineOverview", path: "/machine-overview" },
       { icon: BarChart3, labelKey: "nav.machineStatusReport", path: "/machine-status-report" },
       { icon: Layers, labelKey: "nav.spcPlanOverview", path: "/spc-visualization" },
+      { icon: Users, labelKey: "nav.supervisorDashboard", path: "/supervisor-dashboard" },
+      { icon: GitCompare, labelKey: "nav.machineComparison", path: "/machine-comparison" },
     ]
   },
   {
@@ -111,6 +113,7 @@ const menuGroups: MenuGroup[] = [
       { icon: AlertTriangle, labelKey: "nav.alertConfig", path: "/alert-config", adminOnly: true },
       { icon: Target, labelKey: "nav.alertThresholdConfig", path: "/alert-threshold-config", adminOnly: true },
       { icon: Mail, labelKey: "nav.scheduledReports", path: "/scheduled-reports" },
+      { icon: Clock, labelKey: "nav.shiftReports", path: "/shift-reports" },
       { icon: FileSpreadsheet, labelKey: "nav.exportRealtime", path: "/export-realtime" },
     ]
   },
@@ -271,6 +274,9 @@ const fallbackLabelsVi: Record<string, string> = {
   "nav.licenseRevenue": "Báo cáo Doanh thu",
   "nav.licenseServerSettings": "Cài đặt Server",
   "nav.licenseServerDashboard": "Dashboard Server",
+  "nav.supervisorDashboard": "Dashboard Supervisor",
+  "nav.machineComparison": "So sánh Máy",
+  "nav.shiftReports": "Báo cáo theo Ca",
 };
 
 const fallbackLabelsEn: Record<string, string> = {
@@ -328,6 +334,9 @@ const fallbackLabelsEn: Record<string, string> = {
   "nav.customValidation": "Custom Validation",
   "nav.cpkBenchmark": "CPK Benchmark",
   "nav.shiftAnalysis": "Shift Analysis",
+  "nav.supervisorDashboard": "Supervisor Dashboard",
+  "nav.machineComparison": "Machine Comparison",
+  "nav.shiftReports": "Shift Reports",
 };
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";

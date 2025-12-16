@@ -2169,3 +2169,30 @@
 - [x] Cập nhật OEETrendChart với WebSocket realtime support
 - [x] Thêm menu Alert Threshold Config vào sidebar
 - [x] Thêm translations cho alertThresholdConfig (vi/en)
+
+
+## Phase 89: Dashboard Supervisor, Báo cáo Shift, So sánh máy
+
+### Dashboard tổng hợp cho Supervisor
+- [x] Tạo trang SupervisorDashboard.tsx với grid hiển thị tất cả máy
+- [x] Hiển thị trạng thái realtime cho từng máy (running/idle/error/maintenance)
+- [x] Hiển thị OEE hiện tại và alerts cho từng máy
+- [x] Tích hợp WebSocket để cập nhật realtime
+- [x] Thêm bộ lọc theo dây chuyền, trạng thái, alerts
+
+### Báo cáo Shift tự động
+- [x] Tạo bảng shift_reports trong database
+- [x] Tạo API tạo báo cáo shift (generateShiftReport)
+- [x] Tạo service shiftReportService.ts
+- [x] Tự động gửi email báo cáo cho supervisor
+- [x] Tạo trang xem lịch sử báo cáo shift (ShiftReportHistory.tsx)
+
+### So sánh máy OEE/CPK
+- [x] Tạo trang MachineComparison.tsx
+- [x] Cho phép chọn 2-5 máy để so sánh
+- [x] Biểu đồ so sánh OEE (bar chart horizontal)
+- [x] Biểu đồ so sánh CPK (bar chart với reference lines)
+- [x] Biểu đồ Radar tổng hợp các chỉ số
+- [x] Biểu đồ xu hướng OEE theo thời gian
+- [x] Bảng thống kê chi tiết với xếp hạng
+

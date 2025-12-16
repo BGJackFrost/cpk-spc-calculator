@@ -2102,3 +2102,60 @@ export const scheduledReportLogs = mysqlTable("scheduled_report_logs", {
 
 export type ScheduledReportLog = typeof scheduledReportLogs.$inferSelect;
 export type InsertScheduledReportLog = typeof scheduledReportLogs.$inferInsert;
+
+/**
+ * Shift Reports - báo cáo ca làm việc tự động
+ */
+export const shiftReports = mysqlTable("shift_reports", {
+  id: int("id").autoincrement().primaryKey(),
+  
+  // Shift info
+  shiftDate: timestamp("shiftDate").notNull(),
+  shiftType: mysqlEnum("shiftType", ["morning", "afternoon", "night"]).notNull(),
+  shiftStart: timestamp("shiftStart").notNull(),
+  shiftEnd: timestamp("shiftEnd").notNull(),
+  
+  // Production line/machine info
+  productionLineId: int("productionLineId"),
+  machineId: int("machineId"),
+  
+  // OEE metrics
+  oee: decimal("oee", { precision: 5, scale: 2 }),
+  availability: decimal("availability", { precision: 5, scale: 2 }),
+  performance: decimal("performance", { precision: 5, scale: 2 }),
+  quality: decimal("quality", { precision: 5, scale: 2 }),
+  
+  // SPC metrics
+  cpk: decimal("cpk", { precision: 6, scale: 4 }),
+  cp: decimal("cp", { precision: 6, scale: 4 }),
+  ppk: decimal("ppk", { precision: 6, scale: 4 }),
+  
+  // Production stats
+  totalProduced: int("totalProduced").default(0),
+  goodCount: int("goodCount").default(0),
+  defectCount: int("defectCount").default(0),
+  
+  // Time stats
+  plannedTime: int("plannedTime").default(0), // minutes
+  actualRunTime: int("actualRunTime").default(0),
+  downtime: int("downtime").default(0),
+  
+  // Alerts and issues
+  alertCount: int("alertCount").default(0),
+  spcViolationCount: int("spcViolationCount").default(0),
+  
+  // Report status
+  status: mysqlEnum("status", ["generated", "sent", "failed"]).default("generated"),
+  sentAt: timestamp("sentAt"),
+  sentTo: text("sentTo"), // JSON array of emails
+  
+  // Report content
+  reportContent: text("reportContent"), // HTML content
+  reportFileUrl: varchar("reportFileUrl", { length: 500 }),
+  
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type ShiftReport = typeof shiftReports.$inferSelect;
+export type InsertShiftReport = typeof shiftReports.$inferInsert;

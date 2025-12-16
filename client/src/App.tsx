@@ -85,6 +85,9 @@ import IoTGatewayConfig from "./pages/IoTGatewayConfig";
 import ReportsExport from "./pages/ReportsExport";
 import AlertConfiguration from "./pages/AlertConfiguration";
 import ScheduledReports from "./pages/ScheduledReports";
+import SupervisorDashboard from "./pages/SupervisorDashboard";
+import ShiftReportHistory from "./pages/ShiftReportHistory";
+import MachineComparison from "./pages/MachineComparison";
 
 function Router() {
   return (
@@ -134,6 +137,9 @@ function Router() {
       <Route path="/reports-export" component={ReportsExport} />
       <Route path="/alert-config" component={AlertConfiguration} />
       <Route path="/scheduled-reports" component={ScheduledReports} />
+      <Route path="/supervisor-dashboard" component={SupervisorDashboard} />
+      <Route path="/shift-reports" component={ShiftReportHistory} />
+      <Route path="/machine-comparison" component={MachineComparison} />
       <Route path="/mms-data-init" component={MMSDataInit} />
       <Route path="/alert-threshold-config" component={AlertThresholdConfig} />
       <Route path="/email-notifications" component={EmailNotificationSettings} />
