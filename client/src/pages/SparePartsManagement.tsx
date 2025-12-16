@@ -78,6 +78,26 @@ export default function SparePartsManagement() {
   
   // Stock status filter
   const [stockStatusFilter, setStockStatusFilter] = useState<string>("all");
+  
+  // Xuất kho hàng loạt states
+  const [isBulkExportOpen, setIsBulkExportOpen] = useState(false);
+  const [selectedPartsForExport, setSelectedPartsForExport] = useState<Array<{id: number; name: string; quantity: number; maxQty: number}>>([]);
+  const [exportPurpose, setExportPurpose] = useState<string>("normal");
+  const [exportReason, setExportReason] = useState("");
+  const [borrowerName, setBorrowerName] = useState("");
+  const [borrowerDepartment, setBorrowerDepartment] = useState("");
+  const [expectedReturnDate, setExpectedReturnDate] = useState("");
+  
+  // Nhập kho lại states
+  const [isReturnStockOpen, setIsReturnStockOpen] = useState(false);
+  const [selectedReturnTx, setSelectedReturnTx] = useState<any>(null);
+  const [returnQuantity, setReturnQuantity] = useState(0);
+  const [returnReason, setReturnReason] = useState("");
+  
+  // Từ chối đơn hàng states
+  const [isRejectPOOpen, setIsRejectPOOpen] = useState(false);
+  const [rejectPOId, setRejectPOId] = useState<number | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
 
   // Queries
   const { data: parts, refetch: refetchParts } = trpc.spareParts.listParts.useQuery({
@@ -187,6 +207,67 @@ export default function SparePartsManagement() {
     },
     onError: (err) => toast.error(err.message),
   });
+
+  // Mutations cho quy trình đơn hàng
+  const submitPOForApprovalMutation = trpc.spareParts.submitPurchaseOrderForApproval.useMutation({
+    onSuccess: () => {
+      toast.success("Đã gửi đơn chờ duyệt");
+      refetchPurchaseOrders();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const approvePOMutation = trpc.spareParts.approvePurchaseOrder.useMutation({
+    onSuccess: () => {
+      toast.success("Đã duyệt đơn hàng");
+      refetchPurchaseOrders();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const rejectPOMutation = trpc.spareParts.rejectPurchaseOrder.useMutation({
+    onSuccess: () => {
+      toast.success("Đã từ chối đơn hàng");
+      refetchPurchaseOrders();
+      setIsRejectPOOpen(false);
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const sendPOMutation = trpc.spareParts.sendPurchaseOrder.useMutation({
+    onSuccess: () => {
+      toast.success("Đã gửi đơn đặt hàng");
+      refetchPurchaseOrders();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  // Mutations cho xuất kho hàng loạt
+  const bulkExportMutation = trpc.spareParts.bulkExportStock.useMutation({
+    onSuccess: (data) => {
+      toast.success(data.message);
+      refetchParts();
+      refetchTransactions();
+      setIsBulkExportOpen(false);
+      setSelectedPartsForExport([]);
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  // Mutations cho nhập kho lại
+  const returnStockMutation = trpc.spareParts.returnStock.useMutation({
+    onSuccess: (data) => {
+      toast.success(data.message);
+      refetchParts();
+      refetchTransactions();
+      refetchPendingReturns();
+      setIsReturnStockOpen(false);
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  // Query cho danh sách cần trả
+  const { data: pendingReturns, refetch: refetchPendingReturns } = trpc.spareParts.getPendingReturns.useQuery();
 
   // State for PO form
   const [poSupplierId, setPOSupplierId] = useState<string>("");
@@ -870,11 +951,12 @@ export default function SparePartsManagement() {
 
         {/* Main Content */}
         <Tabs defaultValue="inventory" className="space-y-4">
-          <TabsList>
+          <TabsList className="flex-wrap">
             <TabsTrigger value="dashboard"><BarChart3 className="w-4 h-4 mr-1" />Dashboard</TabsTrigger>
             <TabsTrigger value="inventory">Kho phụ tùng</TabsTrigger>
             <TabsTrigger value="reorder">Đề xuất đặt hàng</TabsTrigger>
             <TabsTrigger value="orders">Đơn đặt hàng</TabsTrigger>
+            <TabsTrigger value="returns"><RefreshCw className="w-4 h-4 mr-1" />Nhập kho lại</TabsTrigger>
             <TabsTrigger value="transactions">Lịch sử giao dịch</TabsTrigger>
             <TabsTrigger value="suppliers">Nhà cung cấp</TabsTrigger>
           </TabsList>
@@ -1110,6 +1192,28 @@ export default function SparePartsManagement() {
                         >
                           <ScanLine className="h-4 w-4 mr-1" />
                           Thermal
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => {
+                            const selectedItems = parts?.filter(p => selectedPartsForQR.includes(p.id)).map(p => ({
+                              id: p.id,
+                              name: p.name,
+                              quantity: 1,
+                              maxQty: p.currentStock || 0
+                            })) || [];
+                            setSelectedPartsForExport(selectedItems);
+                            setExportPurpose("normal");
+                            setExportReason("");
+                            setBorrowerName("");
+                            setBorrowerDepartment("");
+                            setExpectedReturnDate("");
+                            setIsBulkExportOpen(true);
+                          }}
+                        >
+                          <TrendingDown className="h-4 w-4 mr-1" />
+                          Xuất kho
                         </Button>
                         <Button
                           variant="outline"
@@ -1389,33 +1493,64 @@ export default function SparePartsManagement() {
                           {po.expectedDeliveryDate ? new Date(po.expectedDeliveryDate).toLocaleDateString('vi-VN') : "-"}
                         </TableCell>
                         <TableCell>
-                          {po.status === "draft" && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => updatePOStatusMutation.mutate({ id: po.id, status: "pending" })}
-                            >
-                              Gửi duyệt
-                            </Button>
-                          )}
-                          {po.status === "pending" && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => updatePOStatusMutation.mutate({ id: po.id, status: "approved" })}
-                            >
-                              Duyệt
-                            </Button>
-                          )}
-                          {po.status === "approved" && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => updatePOStatusMutation.mutate({ id: po.id, status: "ordered" })}
-                            >
-                              Đã đặt
-                            </Button>
-                          )}
+                          <div className="flex gap-1 flex-wrap">
+                            {/* Nhân viên: Gửi duyệt */}
+                            {po.status === "draft" && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => submitPOForApprovalMutation.mutate({ id: po.id })}
+                              >
+                                Gửi duyệt
+                              </Button>
+                            )}
+                            {/* Quản lý: Duyệt/Từ chối */}
+                            {po.status === "pending" && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="default"
+                                  onClick={() => approvePOMutation.mutate({ id: po.id })}
+                                >
+                                  <CheckCircle2 className="w-3 h-3 mr-1" />Duyệt
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() => {
+                                    setRejectPOId(po.id);
+                                    setRejectReason("");
+                                    setIsRejectPOOpen(true);
+                                  }}
+                                >
+                                  <XCircle className="w-3 h-3 mr-1" />Từ chối
+                                </Button>
+                              </>
+                            )}
+                            {/* Nhân viên: Gửi đơn đặt hàng */}
+                            {po.status === "approved" && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => sendPOMutation.mutate({ id: po.id })}
+                              >
+                                <Truck className="w-3 h-3 mr-1" />Gửi đặt hàng
+                              </Button>
+                            )}
+                            {/* Trạng thái đã đặt - chờ nhận hàng */}
+                            {po.status === "ordered" && (
+                              <Badge variant="outline" className="text-blue-600">
+                                <Clock className="w-3 h-3 mr-1" />Đang chờ hàng
+                              </Badge>
+                            )}
+                            {/* Trạng thái đã nhận */}
+                            {(po.status === "received" || po.status === "partial_received") && (
+                              <Badge variant="outline" className="text-green-600">
+                                <CheckCircle2 className="w-3 h-3 mr-1" />
+                                {po.status === "received" ? "Đã nhận đủ" : "Nhận một phần"}
+                              </Badge>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -1428,6 +1563,99 @@ export default function SparePartsManagement() {
                     )}
                   </TableBody>
                 </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Returns Tab - Nhập kho lại */}
+          <TabsContent value="returns" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <RefreshCw className="w-5 h-5" />
+                      Nhập kho lại (Trả hàng)
+                    </CardTitle>
+                    <CardDescription>Quản lý các phụ tùng đã cho mượn hoặc xuất tạm thời cần trả lại</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {(!pendingReturns || pendingReturns.length === 0) ? (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <RefreshCw className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p>Không có phụ tùng nào cần trả lại</p>
+                    <p className="text-sm mt-2">Các phụ tùng xuất kho với mục đích "Cho mượn" sẽ xuất hiện ở đây</p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Mã PT</TableHead>
+                        <TableHead>Tên phụ tùng</TableHead>
+                        <TableHead>Người mượn</TableHead>
+                        <TableHead>Phòng ban</TableHead>
+                        <TableHead className="text-center">SL xuất</TableHead>
+                        <TableHead className="text-center">SL đã trả</TableHead>
+                        <TableHead>Ngày dự kiến trả</TableHead>
+                        <TableHead>Trạng thái</TableHead>
+                        <TableHead>Thao tác</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {pendingReturns.map((tx: any) => {
+                        const remaining = tx.quantity - (tx.returnedQuantity || 0);
+                        const isOverdue = tx.expectedReturnDate && new Date(tx.expectedReturnDate) < new Date();
+                        return (
+                          <TableRow key={tx.id} className={isOverdue ? "bg-red-50" : ""}>
+                            <TableCell className="font-mono">{tx.partNumber}</TableCell>
+                            <TableCell>{tx.partName}</TableCell>
+                            <TableCell>{tx.borrowerName || "-"}</TableCell>
+                            <TableCell>{tx.borrowerDepartment || "-"}</TableCell>
+                            <TableCell className="text-center">{tx.quantity}</TableCell>
+                            <TableCell className="text-center">
+                              <span className="font-medium">{tx.returnedQuantity || 0}</span>
+                              <span className="text-muted-foreground">/{tx.quantity}</span>
+                            </TableCell>
+                            <TableCell>
+                              {tx.expectedReturnDate ? (
+                                <span className={isOverdue ? "text-red-600 font-medium" : ""}>
+                                  {new Date(tx.expectedReturnDate).toLocaleDateString('vi-VN')}
+                                  {isOverdue && " (Quá hạn)"}
+                                </span>
+                              ) : "-"}
+                            </TableCell>
+                            <TableCell>
+                              {tx.returnStatus === "pending" && (
+                                <Badge variant="outline" className="text-orange-600">Chưa trả</Badge>
+                              )}
+                              {tx.returnStatus === "partial" && (
+                                <Badge variant="outline" className="text-blue-600">Trả một phần</Badge>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <Button
+                                size="sm"
+                                variant="default"
+                                onClick={() => {
+                                  setSelectedReturnTx(tx);
+                                  setReturnQuantity(remaining);
+                                  setReturnReason("");
+                                  setIsReturnStockOpen(true);
+                                }}
+                                disabled={remaining <= 0}
+                              >
+                                <RefreshCw className="w-3 h-3 mr-1" />
+                                Trả hàng
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -2115,6 +2343,210 @@ export default function SparePartsManagement() {
             </DialogContent>
           </Dialog>
         )}
+
+        {/* Từ chối đơn hàng Dialog */}
+        <AlertDialog open={isRejectPOOpen} onOpenChange={setIsRejectPOOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Từ chối đơn hàng</AlertDialogTitle>
+              <AlertDialogDescription>
+                Vui lòng nhập lý do từ chối đơn hàng này.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="py-4">
+              <Textarea
+                placeholder="Lý do từ chối..."
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                rows={3}
+              />
+            </div>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Hủy</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  if (rejectPOId && rejectReason.trim()) {
+                    rejectPOMutation.mutate({ id: rejectPOId, reason: rejectReason });
+                  } else {
+                    toast.error("Vui lòng nhập lý do từ chối");
+                  }
+                }}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Xác nhận từ chối
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Xuất kho hàng loạt Dialog */}
+        <Dialog open={isBulkExportOpen} onOpenChange={setIsBulkExportOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Xuất kho hàng loạt</DialogTitle>
+              <DialogDescription>
+                Xuất {selectedPartsForExport.length} phụ tùng cùng lúc
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Mục đích xuất kho *</Label>
+                <Select value={exportPurpose} onValueChange={setExportPurpose}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Chọn mục đích" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="normal">Xuất kho bình thường</SelectItem>
+                    <SelectItem value="repair">Sửa chữa</SelectItem>
+                    <SelectItem value="borrow">Cho mượn tạm thời</SelectItem>
+                    <SelectItem value="destroy">Tiêu hủy</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              {exportPurpose === "borrow" && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Người mượn</Label>
+                    <Input
+                      value={borrowerName}
+                      onChange={(e) => setBorrowerName(e.target.value)}
+                      placeholder="Tên người mượn"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Phòng ban</Label>
+                    <Input
+                      value={borrowerDepartment}
+                      onChange={(e) => setBorrowerDepartment(e.target.value)}
+                      placeholder="Phòng ban"
+                    />
+                  </div>
+                  <div className="space-y-2 col-span-2">
+                    <Label>Ngày dự kiến trả</Label>
+                    <Input
+                      type="date"
+                      value={expectedReturnDate}
+                      onChange={(e) => setExpectedReturnDate(e.target.value)}
+                    />
+                  </div>
+                </div>
+              )}
+              
+              <div className="space-y-2">
+                <Label>Lý do xuất kho</Label>
+                <Textarea
+                  value={exportReason}
+                  onChange={(e) => setExportReason(e.target.value)}
+                  placeholder="Nhập lý do xuất kho..."
+                  rows={2}
+                />
+              </div>
+              
+              <div className="border rounded-lg p-3">
+                <Label className="mb-2 block">Danh sách phụ tùng xuất kho:</Label>
+                <div className="space-y-2 max-h-40 overflow-y-auto">
+                  {selectedPartsForExport.map(item => (
+                    <div key={item.id} className="flex items-center justify-between text-sm">
+                      <span>{item.name}</span>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          min={1}
+                          max={item.maxQty}
+                          value={item.quantity}
+                          onChange={(e) => {
+                            const qty = Math.min(Number(e.target.value), item.maxQty);
+                            setSelectedPartsForExport(prev => 
+                              prev.map(p => p.id === item.id ? {...p, quantity: qty} : p)
+                            );
+                          }}
+                          className="w-20 h-8"
+                        />
+                        <span className="text-muted-foreground">/ {item.maxQty}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsBulkExportOpen(false)}>Hủy</Button>
+              <Button
+                onClick={() => {
+                  bulkExportMutation.mutate({
+                    items: selectedPartsForExport.map(p => ({ sparePartId: p.id, quantity: p.quantity })),
+                    exportPurpose: exportPurpose as any,
+                    reason: exportReason,
+                    borrowerName: borrowerName || undefined,
+                    borrowerDepartment: borrowerDepartment || undefined,
+                    expectedReturnDate: expectedReturnDate || undefined,
+                  });
+                }}
+              >
+                Xác nhận xuất kho
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Nhập kho lại Dialog */}
+        <Dialog open={isReturnStockOpen} onOpenChange={setIsReturnStockOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Nhập kho lại (Trả hàng)</DialogTitle>
+              <DialogDescription>
+                Trả lại phụ tùng đã mượn hoặc xuất tạm thời
+              </DialogDescription>
+            </DialogHeader>
+            {selectedReturnTx && (
+              <div className="space-y-4 py-4">
+                <div className="bg-muted p-3 rounded-lg space-y-2">
+                  <p><strong>Phụ tùng:</strong> {selectedReturnTx.partName}</p>
+                  <p><strong>Người mượn:</strong> {selectedReturnTx.borrowerName || "-"}</p>
+                  <p><strong>Số lượng đã xuất:</strong> {selectedReturnTx.quantity}</p>
+                  <p><strong>Đã trả:</strong> {selectedReturnTx.returnedQuantity || 0}</p>
+                  <p><strong>Còn lại:</strong> {selectedReturnTx.quantity - (selectedReturnTx.returnedQuantity || 0)}</p>
+                </div>
+                <div className="space-y-2">
+                  <Label>Số lượng trả</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={selectedReturnTx.quantity - (selectedReturnTx.returnedQuantity || 0)}
+                    value={returnQuantity}
+                    onChange={(e) => setReturnQuantity(Number(e.target.value))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Ghi chú</Label>
+                  <Textarea
+                    value={returnReason}
+                    onChange={(e) => setReturnReason(e.target.value)}
+                    placeholder="Ghi chú khi trả hàng..."
+                    rows={2}
+                  />
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsReturnStockOpen(false)}>Hủy</Button>
+              <Button
+                onClick={() => {
+                  if (selectedReturnTx && returnQuantity > 0) {
+                    returnStockMutation.mutate({
+                      originalTransactionId: selectedReturnTx.id,
+                      quantity: returnQuantity,
+                      reason: returnReason,
+                    });
+                  }
+                }}
+              >
+                Xác nhận trả hàng
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Bulk QR Print Dialog */}
         <Dialog open={isBulkQROpen} onOpenChange={setIsBulkQROpen}>

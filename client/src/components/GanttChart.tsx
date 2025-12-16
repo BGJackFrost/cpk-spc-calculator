@@ -1,7 +1,7 @@
 import { useMemo, useState, useRef, useCallback } from "react";
 import { format, addDays, startOfWeek, endOfWeek, eachDayOfInterval, isWithinInterval, differenceInDays, isSameDay } from "date-fns";
 import { vi } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Calendar, GripVertical, Move } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar, GripVertical, Move, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -25,6 +25,7 @@ interface GanttChartProps {
   tasks: GanttTask[];
   onTaskClick?: (task: GanttTask) => void;
   onTaskUpdate?: (taskId: number, newStartDate: Date, newEndDate: Date) => void;
+  onTaskDelete?: (taskId: number) => void;
   viewMode?: "week" | "month";
   enableDragDrop?: boolean;
 }
@@ -53,6 +54,7 @@ export function GanttChart({
   tasks, 
   onTaskClick, 
   onTaskUpdate,
+  onTaskDelete,
   viewMode = "week",
   enableDragDrop = true 
 }: GanttChartProps) {
@@ -378,6 +380,22 @@ export function GanttChart({
                           {enableDragDrop && (
                             <div className="text-xs text-muted-foreground italic">
                               Kéo để thay đổi lịch
+                            </div>
+                          )}
+                          {onTaskDelete && (
+                            <div className="pt-2 border-t mt-2">
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                className="w-full h-7 text-xs"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onTaskDelete(task.id);
+                                }}
+                              >
+                                <Trash2 className="w-3 h-3 mr-1" />
+                                Xóa lịch bảo trì
+                              </Button>
                             </div>
                           )}
                         </div>

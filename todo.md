@@ -2563,3 +2563,26 @@
 - [x] Bộ lọc trạng thái trong bảng danh sách Phụ tùng - stockStatusFilter (Tất cả/Đủ hàng/Cần đặt/Hết hàng)
 - [x] Tùy chỉnh mức tồn kho tối thiểu cho cảnh báo Email - emailAlertThreshold field
 - [x] Xuất file Excel cho danh sách phụ tùng đã chọn - exportSelectedToExcel()
+
+
+## Phase 125: Cải tiến Quy trình Đơn hàng và Xuất/Nhập kho
+### Quy trình đơn hàng với phân quyền
+- [x] Phân quyền: Nhân viên tạo đơn, Quản lý duyệt đơn - submitPOForApproval, approvePO, rejectPO
+- [x] Logic trạng thái: Nháp → Chờ duyệt → Đã duyệt → Đã đặt → Đã nhận
+- [x] Chặn nhập kho khi đơn ở trạng thái "Đã đặt" (chưa nhận hàng)
+- [x] Thêm nút Duyệt/Từ chối cho quản lý
+
+### Xuất kho hàng loạt với mục đích
+- [x] Chọn nhiều phụ tùng để xuất kho cùng lúc - bulkExportStock mutation
+- [x] Ghi nhận mục đích: Sửa chữa (repair), Cho mượn (borrow), Tiêu hủy (destroy)
+- [x] Lưu thông tin người mượn/lý do tiêu hủy - borrowerName, borrowerDepartment, expectedReturnDate
+
+### Nhập kho lại (trả hàng)
+- [x] Chức năng trả hàng khi mượn hoặc xuất tạm thời - returnStock mutation
+- [x] Liên kết với giao dịch xuất kho gốc - originalTransactionId
+- [x] Cập nhật trạng thái giao dịch xuất kho - returnStatus (pending/partial/completed)
+- [x] Tab "Nhập kho lại" hiển thị danh sách cần trả
+
+### Gantt Chart - Lịch bảo trì
+- [x] Thêm nút Xóa vào popup chi tiết lịch bảo trì - onTaskDelete callback
+- [x] Xác nhận trước khi xóa - confirm dialog

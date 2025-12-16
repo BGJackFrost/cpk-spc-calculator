@@ -43,6 +43,15 @@ export default function MaintenanceSchedule() {
     onError: (err) => toast.error(err.message),
   });
 
+  const deleteWorkOrderMutation = trpc.maintenance.deleteWorkOrder.useMutation({
+    onSuccess: () => {
+      toast.success("Đã xóa lịch bảo trì");
+      refetchWorkOrders();
+      setSelectedTask(null);
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
   // Convert work orders to Gantt tasks
   const ganttTasks: GanttTask[] = useMemo(() => {
     if (!workOrders) return [];
@@ -103,6 +112,12 @@ export default function MaintenanceSchedule() {
       id: taskId,
       scheduledStartAt: newStartDate.toISOString().split('T')[0],
     });
+  };
+
+  const handleTaskDelete = (taskId: number) => {
+    if (confirm('Bạn có chắc chắn muốn xóa lịch bảo trì này?')) {
+      deleteWorkOrderMutation.mutate({ id: taskId });
+    }
   };
 
   return (
@@ -297,6 +312,7 @@ export default function MaintenanceSchedule() {
               viewMode={viewMode}
               onTaskClick={handleTaskClick}
               onTaskUpdate={handleTaskUpdate}
+              onTaskDelete={handleTaskDelete}
               enableDragDrop={true}
             />
           </CardContent>

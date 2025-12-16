@@ -1870,6 +1870,17 @@ export const sparePartsTransactions = mysqlTable("spare_parts_transactions", {
   totalCost: decimal("totalCost", { precision: 12, scale: 2 }),
   reason: text("reason"),
   performedBy: int("performedBy"),
+  
+  // Mục đích xuất kho
+  exportPurpose: mysqlEnum("exportPurpose", ["repair", "borrow", "destroy", "normal"]).default("normal"),
+  borrowerName: varchar("borrowerName", { length: 255 }), // Người mượn
+  borrowerDepartment: varchar("borrowerDepartment", { length: 255 }), // Phòng ban
+  expectedReturnDate: timestamp("expectedReturnDate"), // Ngày dự kiến trả
+  actualReturnDate: timestamp("actualReturnDate"), // Ngày trả thực tế
+  returnedQuantity: int("returnedQuantity").default(0), // Số lượng đã trả
+  returnStatus: mysqlEnum("returnStatus", ["pending", "partial", "completed"]).default("pending"), // Trạng thái trả
+  relatedTransactionId: int("relatedTransactionId"), // Liên kết với giao dịch xuất kho gốc
+  
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
@@ -1898,6 +1909,9 @@ export const purchaseOrders = mysqlTable("purchase_orders", {
   createdBy: int("createdBy"),
   approvedBy: int("approvedBy"),
   approvedAt: timestamp("approvedAt"),
+  rejectedBy: int("rejectedBy"),
+  rejectedAt: timestamp("rejectedAt"),
+  rejectionReason: text("rejectionReason"),
   
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),

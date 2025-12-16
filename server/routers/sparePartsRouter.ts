@@ -1422,6 +1422,269 @@ export const sparePartsRouter = router({
       };
     }),
 
+  // ============ QUY TRÌNH ĐƠN HÀNG VỚI PHÂN QUYỀN ============
+
+  // Gửi đơn chờ duyệt (Nhân viên)
+  submitPurchaseOrderForApproval: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const [po] = await db.select().from(purchaseOrders).where(eq(purchaseOrders.id, input.id));
+      if (!po) throw new Error("Đơn hàng không tồn tại");
+      if (po.status !== "draft") throw new Error("Đơn hàng không ở trạng thái nháp");
+
+      await db.update(purchaseOrders).set({ status: "pending" }).where(eq(purchaseOrders.id, input.id));
+      return { success: true, message: "Đã gửi đơn chờ duyệt" };
+    }),
+
+  // Duyệt đơn hàng (Quản lý)
+  approvePurchaseOrder: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      // TODO: Kiểm tra quyền quản lý
+      // if (ctx.user?.role !== 'admin' && ctx.user?.role !== 'manager') {
+      //   throw new Error("Bạn không có quyền duyệt đơn hàng");
+      // }
+
+      const [po] = await db.select().from(purchaseOrders).where(eq(purchaseOrders.id, input.id));
+      if (!po) throw new Error("Đơn hàng không tồn tại");
+      if (po.status !== "pending") throw new Error("Đơn hàng không ở trạng thái chờ duyệt");
+
+      await db.update(purchaseOrders).set({
+        status: "approved",
+        approvedBy: ctx.user?.id,
+        approvedAt: new Date(),
+      }).where(eq(purchaseOrders.id, input.id));
+
+      return { success: true, message: "Đã duyệt đơn hàng" };
+    }),
+
+  // Từ chối đơn hàng (Quản lý)
+  rejectPurchaseOrder: protectedProcedure
+    .input(z.object({ 
+      id: z.number(),
+      reason: z.string().min(1, "Vui lòng nhập lý do từ chối"),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const [po] = await db.select().from(purchaseOrders).where(eq(purchaseOrders.id, input.id));
+      if (!po) throw new Error("Đơn hàng không tồn tại");
+      if (po.status !== "pending") throw new Error("Đơn hàng không ở trạng thái chờ duyệt");
+
+      await db.update(purchaseOrders).set({
+        status: "cancelled",
+        rejectedBy: ctx.user?.id,
+        rejectedAt: new Date(),
+        rejectionReason: input.reason,
+      }).where(eq(purchaseOrders.id, input.id));
+
+      return { success: true, message: "Đã từ chối đơn hàng" };
+    }),
+
+  // Gửi đơn đặt hàng (sau khi được duyệt)
+  sendPurchaseOrder: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const [po] = await db.select().from(purchaseOrders).where(eq(purchaseOrders.id, input.id));
+      if (!po) throw new Error("Đơn hàng không tồn tại");
+      if (po.status !== "approved") throw new Error("Đơn hàng chưa được duyệt");
+
+      await db.update(purchaseOrders).set({
+        status: "ordered",
+        orderDate: new Date(),
+      }).where(eq(purchaseOrders.id, input.id));
+
+      return { success: true, message: "Đã gửi đơn đặt hàng" };
+    }),
+
+  // ============ XUẤT KHO HÀNG LOẠT ============
+
+  // Xuất kho nhiều phụ tùng cùng lúc với mục đích
+  bulkExportStock: protectedProcedure
+    .input(z.object({
+      items: z.array(z.object({
+        sparePartId: z.number(),
+        quantity: z.number().min(1),
+      })),
+      exportPurpose: z.enum(["repair", "borrow", "destroy", "normal"]),
+      reason: z.string().optional(),
+      borrowerName: z.string().optional(),
+      borrowerDepartment: z.string().optional(),
+      expectedReturnDate: z.string().optional(),
+      workOrderId: z.number().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const results = [];
+      for (const item of input.items) {
+        // Kiểm tra tồn kho
+        const [inv] = await db.select().from(sparePartsInventory)
+          .where(eq(sparePartsInventory.sparePartId, item.sparePartId));
+        
+        if (!inv || (inv.quantity || 0) < item.quantity) {
+          const [part] = await db.select().from(spareParts).where(eq(spareParts.id, item.sparePartId));
+          results.push({
+            sparePartId: item.sparePartId,
+            success: false,
+            error: `Không đủ tồn kho cho ${part?.name || 'phụ tùng'} (có: ${inv?.quantity || 0}, cần: ${item.quantity})`,
+          });
+          continue;
+        }
+
+        // Lấy giá phụ tùng
+        const [part] = await db.select().from(spareParts).where(eq(spareParts.id, item.sparePartId));
+        const unitCost = Number(part?.unitPrice || 0);
+
+        // Tạo giao dịch xuất kho
+        const [tx] = await db.insert(sparePartsTransactions).values({
+          sparePartId: item.sparePartId,
+          transactionType: "out",
+          quantity: item.quantity,
+          unitCost: String(unitCost),
+          totalCost: String(item.quantity * unitCost),
+          reason: input.reason,
+          performedBy: ctx.user?.id,
+          workOrderId: input.workOrderId,
+          exportPurpose: input.exportPurpose,
+          borrowerName: input.borrowerName,
+          borrowerDepartment: input.borrowerDepartment,
+          expectedReturnDate: input.expectedReturnDate ? new Date(input.expectedReturnDate) : null,
+          returnStatus: input.exportPurpose === "borrow" ? "pending" : null,
+        }).$returningId();
+
+        // Cập nhật tồn kho
+        await db.update(sparePartsInventory).set({
+          quantity: (inv.quantity || 0) - item.quantity,
+          updatedAt: new Date(),
+        }).where(eq(sparePartsInventory.sparePartId, item.sparePartId));
+
+        results.push({
+          sparePartId: item.sparePartId,
+          success: true,
+          transactionId: tx.id,
+        });
+      }
+
+      const successCount = results.filter(r => r.success).length;
+      return { 
+        success: successCount > 0, 
+        message: `Xuất kho thành công ${successCount}/${input.items.length} phụ tùng`,
+        results,
+      };
+    }),
+
+  // ============ NHẬP KHO LẠI (TRẢ HÀNG) ============
+
+  // Lấy danh sách giao dịch cần trả
+  getPendingReturns: publicProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) return [];
+
+    const returns = await db
+      .select({
+        id: sparePartsTransactions.id,
+        sparePartId: sparePartsTransactions.sparePartId,
+        partNumber: spareParts.partNumber,
+        partName: spareParts.name,
+        quantity: sparePartsTransactions.quantity,
+        returnedQuantity: sparePartsTransactions.returnedQuantity,
+        exportPurpose: sparePartsTransactions.exportPurpose,
+        borrowerName: sparePartsTransactions.borrowerName,
+        borrowerDepartment: sparePartsTransactions.borrowerDepartment,
+        expectedReturnDate: sparePartsTransactions.expectedReturnDate,
+        returnStatus: sparePartsTransactions.returnStatus,
+        createdAt: sparePartsTransactions.createdAt,
+      })
+      .from(sparePartsTransactions)
+      .leftJoin(spareParts, eq(sparePartsTransactions.sparePartId, spareParts.id))
+      .where(and(
+        eq(sparePartsTransactions.transactionType, "out"),
+        eq(sparePartsTransactions.exportPurpose, "borrow"),
+        or(
+          eq(sparePartsTransactions.returnStatus, "pending"),
+          eq(sparePartsTransactions.returnStatus, "partial")
+        )
+      ))
+      .orderBy(desc(sparePartsTransactions.createdAt));
+
+    return returns;
+  }),
+
+  // Nhập kho lại (trả hàng)
+  returnStock: protectedProcedure
+    .input(z.object({
+      originalTransactionId: z.number(),
+      quantity: z.number().min(1),
+      reason: z.string().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      // Lấy giao dịch gốc
+      const [originalTx] = await db.select().from(sparePartsTransactions)
+        .where(eq(sparePartsTransactions.id, input.originalTransactionId));
+      
+      if (!originalTx) throw new Error("Giao dịch không tồn tại");
+      if (originalTx.transactionType !== "out") throw new Error("Giao dịch không phải xuất kho");
+
+      // Kiểm tra số lượng có thể trả
+      const alreadyReturned = originalTx.returnedQuantity || 0;
+      const maxReturn = originalTx.quantity - alreadyReturned;
+      if (input.quantity > maxReturn) {
+        throw new Error(`Chỉ có thể trả tối đa ${maxReturn} (\u0111ã trả ${alreadyReturned}/${originalTx.quantity})`);
+      }
+
+      // Tạo giao dịch nhập kho lại
+      await db.insert(sparePartsTransactions).values({
+        sparePartId: originalTx.sparePartId,
+        transactionType: "return",
+        quantity: input.quantity,
+        unitCost: originalTx.unitCost,
+        totalCost: String(input.quantity * Number(originalTx.unitCost || 0)),
+        reason: input.reason || `Trả hàng từ giao dịch #${originalTx.id}`,
+        performedBy: ctx.user?.id,
+        relatedTransactionId: originalTx.id,
+      });
+
+      // Cập nhật giao dịch gốc
+      const newReturnedQty = alreadyReturned + input.quantity;
+      const newStatus = newReturnedQty >= originalTx.quantity ? "completed" : "partial";
+      await db.update(sparePartsTransactions).set({
+        returnedQuantity: newReturnedQty,
+        returnStatus: newStatus,
+        actualReturnDate: newStatus === "completed" ? new Date() : null,
+      }).where(eq(sparePartsTransactions.id, input.originalTransactionId));
+
+      // Cập nhật tồn kho
+      const [inv] = await db.select().from(sparePartsInventory)
+        .where(eq(sparePartsInventory.sparePartId, originalTx.sparePartId));
+      if (inv) {
+        await db.update(sparePartsInventory).set({
+          quantity: (inv.quantity || 0) + input.quantity,
+          updatedAt: new Date(),
+        }).where(eq(sparePartsInventory.sparePartId, originalTx.sparePartId));
+      }
+
+      return { 
+        success: true, 
+        message: `\u0110ã nhập kho lại ${input.quantity} phụ tùng`,
+        newReturnStatus: newStatus,
+      };
+    }),
+
   // Check and auto-send low stock alerts (for scheduled job)
   checkAndSendLowStockAlerts: publicProcedure.mutation(async () => {
     const db = await getDb();
