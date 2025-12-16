@@ -264,9 +264,10 @@ export default function ExportRealtimeData() {
               </CardHeader>
               <CardContent className="space-y-4">
                 {/* Export Type */}
-                <Tabs value={exportType} onValueChange={(v: "spc" | "oee" | "maintenance") => {
-                  setExportType(v);
-                  setSelectedFields(fieldDefinitions[v].filter((f) => f.default).map((f) => f.id));
+                <Tabs value={exportType} onValueChange={(v) => {
+                  const exportVal = v as "spc" | "oee" | "maintenance";
+                  setExportType(exportVal);
+                  setSelectedFields(fieldDefinitions[exportVal].filter((f) => f.default).map((f) => f.id));
                 }}>
                   <TabsList className="grid w-full grid-cols-3">
                     <TabsTrigger value="spc">SPC Data</TabsTrigger>
