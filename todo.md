@@ -2340,3 +2340,10 @@
 
 ### UX Improvements
 - [x] Onboarding wizard cho người dùng mới - OnboardingWizard.tsx với 7 bước thiết lập
+
+
+## Phase 109: E2E Tests với Playwright
+- [x] Cài đặt và cấu hình Playwright - playwright.config.ts
+- [x] E2E tests cho luồng đăng nhập - e2e/auth.spec.ts (15 tests)
+- [x] E2E tests cho luồng phân tích SPC - e2e/spc-analysis.spec.ts (20 tests)
+- [x] E2E tests cho dashboard và navigation - e2e/dashboard.spec.ts (25 tests)
