@@ -161,7 +161,15 @@ export const sparePartsRouter = router({
       if (!db) return null;
 
       const [inv] = await db
-        .select()
+        .select({
+          id: sparePartsInventory.id,
+          sparePartId: sparePartsInventory.sparePartId,
+          quantity: sparePartsInventory.quantity,
+          reservedQuantity: sparePartsInventory.reservedQuantity,
+          availableQuantity: sparePartsInventory.availableQuantity,
+          lastStockCheck: sparePartsInventory.lastStockCheck,
+          updatedAt: sparePartsInventory.updatedAt,
+        })
         .from(sparePartsInventory)
         .where(eq(sparePartsInventory.sparePartId, input.sparePartId));
       return inv || null;
@@ -171,17 +179,57 @@ export const sparePartsRouter = router({
     .input(z.object({
       sparePartId: z.number(),
       quantity: z.number(),
+      reason: z.string().optional(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
-      await db.update(sparePartsInventory).set({
-        quantity: input.quantity,
-        updatedAt: new Date(),
-      }).where(eq(sparePartsInventory.sparePartId, input.sparePartId));
+      // Get current inventory
+      const [currentInv] = await db.select({
+        quantity: sparePartsInventory.quantity,
+      }).from(sparePartsInventory)
+        .where(eq(sparePartsInventory.sparePartId, input.sparePartId));
 
-      return { success: true };
+      const oldQty = currentInv?.quantity || 0;
+      const newQty = input.quantity;
+      const diff = newQty - oldQty;
+
+      // Validation: prevent negative inventory
+      if (newQty < 0) {
+        throw new Error("Số lượng tồn kho không thể âm");
+      }
+
+      // Update inventory
+      if (currentInv) {
+        await db.update(sparePartsInventory).set({
+          quantity: newQty,
+          updatedAt: new Date(),
+        }).where(eq(sparePartsInventory.sparePartId, input.sparePartId));
+      } else {
+        await db.insert(sparePartsInventory).values({
+          sparePartId: input.sparePartId,
+          quantity: newQty,
+        });
+      }
+
+      // Create transaction record for history
+      if (diff !== 0) {
+        const transactionData: any = {
+          sparePartId: input.sparePartId,
+          transactionType: diff > 0 ? "in" as const : "out" as const,
+          quantity: Math.abs(diff),
+          performedBy: ctx.user?.id || 0,
+        };
+        if (input.reason) {
+          transactionData.reason = input.reason;
+        } else {
+          transactionData.reason = diff > 0 ? "Điều chỉnh tăng nhanh" : "Điều chỉnh giảm nhanh";
+        }
+        await db.insert(sparePartsTransactions).values(transactionData);
+      }
+
+      return { success: true, oldQuantity: oldQty, newQuantity: newQty };
     }),
 
   // Transactions
@@ -255,7 +303,11 @@ export const sparePartsRouter = router({
       }).$returningId();
 
       // Update inventory
-      const [inv] = await db.select().from(sparePartsInventory)
+      const [inv] = await db.select({
+        id: sparePartsInventory.id,
+        sparePartId: sparePartsInventory.sparePartId,
+        quantity: sparePartsInventory.quantity,
+      }).from(sparePartsInventory)
         .where(eq(sparePartsInventory.sparePartId, input.sparePartId));
 
       if (inv) {

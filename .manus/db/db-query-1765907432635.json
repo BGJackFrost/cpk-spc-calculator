@@ -1,0 +1,26 @@
+{
+  "query": "SHOW CREATE TABLE spare_parts_inventory;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute SHOW CREATE TABLE spare_parts_inventory;",
+  "rows": [
+    {
+      "Table": "spare_parts_inventory",
+      "Create Table": "CREATE TABLE `spare_parts_inventory` ("
+    }
+  ],
+  "messages": [
+    "  `id` int(11) NOT NULL AUTO_INCREMENT,",
+    "  `sparePartId` int(11) NOT NULL,",
+    "  `warehouseId` int(11) DEFAULT NULL,",
+    "  `quantity` int(11) NOT NULL DEFAULT '0',",
+    "  `reservedQuantity` int(11) NOT NULL DEFAULT '0',",
+    "  `lastUpdated` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,",
+    "  `availableQuantity` int(11) DEFAULT '0',",
+    "  `lastStockCheck` timestamp NULL DEFAULT NULL,",
+    "  PRIMARY KEY (`id`) /*T![clustered_index] CLUSTERED */,",
+    "  KEY `idx_spare_parts_inventory_sparePartId` (`sparePartId`)",
+    ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin AUTO_INCREMENT=30001"
+  ],
+  "stdout": "Table\tCreate Table\nspare_parts_inventory\tCREATE TABLE `spare_parts_inventory` (\n  `id` int(11) NOT NULL AUTO_INCREMENT,\n  `sparePartId` int(11) NOT NULL,\n  `warehouseId` int(11) DEFAULT NULL,\n  `quantity` int(11) NOT NULL DEFAULT '0',\n  `reservedQuantity` int(11) NOT NULL DEFAULT '0',\n  `lastUpdated` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  `availableQuantity` int(11) DEFAULT '0',\n  `lastStockCheck` timestamp NULL DEFAULT NULL,\n  PRIMARY KEY (`id`) /*T![clustered_index] CLUSTERED */,\n  KEY `idx_spare_parts_inventory_sparePartId` (`sparePartId`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin AUTO_INCREMENT=30001\n",
+  "stderr": "",
+  "execution_time_ms": 1572
+}

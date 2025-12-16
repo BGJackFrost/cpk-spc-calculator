@@ -2522,3 +2522,10 @@
 - [x] Fix lỗi nhập kho (importStock mutation)
 - [x] Test và xác nhận các lỗi đã được fix
 
+
+## Phase 120: Fix lỗi TRUNG BÌNH - Spare Parts
+- [x] Sửa chức năng +1/-1 để ghi lịch sử giao dịch
+- [x] Thêm validation kiểm tra tồn kho trước khi xuất kho
+- [x] Hoàn thiện chức năng kiểm kê định kỳ
+- [ ] Test và xác nhận các chức năng hoạt động
+
