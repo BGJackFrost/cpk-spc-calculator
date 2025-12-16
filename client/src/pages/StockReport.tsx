@@ -22,8 +22,8 @@ export default function StockReport() {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [movementTypeFilter, setMovementTypeFilter] = useState<string>("all");
 
-  // Get categories for filter dropdown
-  const { data: categories } = trpc.spareParts.getCategories.useQuery();
+  // Get categories for filter dropdown - disabled as getCategories is not implemented
+  const categories: string[] = [];
 
   // Auto-set dates based on report type
   const handleReportTypeChange = (type: "monthly" | "quarterly" | "custom") => {
@@ -56,10 +56,10 @@ export default function StockReport() {
         m.partName || "",
         m.movementType || "",
         m.quantity || "0",
-        m.unitPrice || "0",
-        m.totalValue || "0",
-        m.reference || "",
-        m.notes || "",
+        m.unitCost || "0",
+        m.totalCost || "0",
+        m.referenceNumber || "",
+        m.reason || "",
         m.createdAt ? format(new Date(m.createdAt), "dd/MM/yyyy HH:mm") : ""
       ]);
 
@@ -109,8 +109,8 @@ export default function StockReport() {
         (m.partName?.toLowerCase().includes(searchLower)) ||
         (m.partNumber?.toLowerCase().includes(searchLower));
       
-      // Category filter
-      const matchesCategory = categoryFilter === "all" || m.category === categoryFilter;
+      // Category filter - removed as category is not in the response
+      const matchesCategory = categoryFilter === "all";
       
       // Movement type filter
       const matchesType = movementTypeFilter === "all" || 
@@ -125,8 +125,8 @@ export default function StockReport() {
   const filteredSummary = useMemo(() => {
     const totalIn = filteredMovements.filter(m => m.movementType?.includes("in")).reduce((sum, m) => sum + (m.quantity || 0), 0);
     const totalOut = filteredMovements.filter(m => m.movementType?.includes("out")).reduce((sum, m) => sum + (m.quantity || 0), 0);
-    const totalInValue = filteredMovements.filter(m => m.movementType?.includes("in")).reduce((sum, m) => sum + (Number(m.totalValue) || 0), 0);
-    const totalOutValue = filteredMovements.filter(m => m.movementType?.includes("out")).reduce((sum, m) => sum + (Number(m.totalValue) || 0), 0);
+    const totalInValue = filteredMovements.filter(m => m.movementType?.includes("in")).reduce((sum, m) => sum + (Number(m.totalCost) || 0), 0);
+    const totalOutValue = filteredMovements.filter(m => m.movementType?.includes("out")).reduce((sum, m) => sum + (Number(m.totalCost) || 0), 0);
     return {
       totalIn,
       totalOut,
@@ -223,7 +223,7 @@ export default function StockReport() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Tất cả danh mục</SelectItem>
-                    {categories?.map((cat) => (
+                    {categories?.map((cat: string) => (
                       <SelectItem key={cat} value={cat}>{cat}</SelectItem>
                     ))}
                   </SelectContent>
@@ -367,9 +367,9 @@ export default function StockReport() {
                             <TableCell>{movement.partName || "-"}</TableCell>
                             <TableCell>{getMovementTypeBadge(movement.movementType)}</TableCell>
                             <TableCell className="text-right">{movement.quantity}</TableCell>
-                            <TableCell className="text-right">{formatCurrency(Number(movement.unitPrice) || 0)}</TableCell>
-                            <TableCell className="text-right">{formatCurrency(Number(movement.totalValue) || 0)}</TableCell>
-                            <TableCell>{movement.reference || "-"}</TableCell>
+                            <TableCell className="text-right">{formatCurrency(Number(movement.unitCost) || 0)}</TableCell>
+                            <TableCell className="text-right">{formatCurrency(Number(movement.totalCost) || 0)}</TableCell>
+                            <TableCell>{movement.referenceNumber || "-"}</TableCell>
                             <TableCell>
                               {movement.createdAt ? format(new Date(movement.createdAt), "dd/MM/yyyy HH:mm", { locale: vi }) : "-"}
                             </TableCell>

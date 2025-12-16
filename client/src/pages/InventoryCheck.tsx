@@ -300,7 +300,7 @@ export default function InventoryCheck() {
                   </div>
                   <div>
                     <p className="text-muted-foreground">Trạng thái</p>
-                    {getStatusBadge(checkDetail.status)}
+                    {getStatusBadge(checkDetail.status || "")}
                   </div>
                   <div>
                     <p className="text-muted-foreground">Tiến độ</p>

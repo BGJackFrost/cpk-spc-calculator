@@ -69,6 +69,76 @@ export default function SparePartsManagement() {
     onError: (err) => toast.error(err.message),
   });
 
+  const { data: purchaseOrdersData, refetch: refetchPurchaseOrders } = trpc.spareParts.listPurchaseOrders.useQuery({ limit: 50 });
+
+  const createPurchaseOrderMutation = trpc.spareParts.createPurchaseOrder.useMutation({
+    onSuccess: () => {
+      toast.success("Đã tạo đơn hàng mới");
+      refetchPurchaseOrders();
+      setIsCreatePOOpen(false);
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  // State for PO form
+  const [poSupplierId, setPOSupplierId] = useState<string>("");
+  const [poExpectedDate, setPOExpectedDate] = useState<string>("");
+  const [poNotes, setPONotes] = useState<string>("");
+  const [poItems, setPOItems] = useState<Array<{ sparePartId: number; quantity: number; unitPrice: number; partName: string }>>([]);
+
+  const handleAddPOItem = (partId: number, partName: string, unitPrice: number) => {
+    const existing = poItems.find(item => item.sparePartId === partId);
+    if (existing) {
+      setPOItems(poItems.map(item => 
+        item.sparePartId === partId ? { ...item, quantity: item.quantity + 1 } : item
+      ));
+    } else {
+      setPOItems([...poItems, { sparePartId: partId, quantity: 1, unitPrice, partName }]);
+    }
+  };
+
+  const handleRemovePOItem = (partId: number) => {
+    setPOItems(poItems.filter(item => item.sparePartId !== partId));
+  };
+
+  const handleUpdatePOItemQty = (partId: number, quantity: number) => {
+    if (quantity <= 0) {
+      handleRemovePOItem(partId);
+    } else {
+      setPOItems(poItems.map(item => 
+        item.sparePartId === partId ? { ...item, quantity } : item
+      ));
+    }
+  };
+
+  const handleCreatePO = () => {
+    if (!poSupplierId) {
+      toast.error("Vui lòng chọn nhà cung cấp");
+      return;
+    }
+    if (poItems.length === 0) {
+      toast.error("Vui lòng thêm ít nhất 1 phụ tùng");
+      return;
+    }
+    createPurchaseOrderMutation.mutate({
+      supplierId: Number(poSupplierId),
+      expectedDeliveryDate: poExpectedDate || undefined,
+      notes: poNotes || undefined,
+      items: poItems.map(item => ({
+        sparePartId: item.sparePartId,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+      })),
+    });
+  };
+
+  const resetPOForm = () => {
+    setPOSupplierId("");
+    setPOExpectedDate("");
+    setPONotes("");
+    setPOItems([]);
+  };
+
   const handleAddPart = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
@@ -670,6 +740,154 @@ export default function SparePartsManagement() {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* Dialog tạo đơn hàng */}
+        <Dialog open={isCreatePOOpen} onOpenChange={(open) => {
+          setIsCreatePOOpen(open);
+          if (!open) resetPOForm();
+        }}>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Tạo Đơn đặt hàng mới</DialogTitle>
+              <DialogDescription>Chọn nhà cung cấp và thêm phụ tùng cần đặt</DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Nhà cung cấp *</Label>
+                  <Select value={poSupplierId} onValueChange={setPOSupplierId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Chọn nhà cung cấp" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {suppliers?.map(s => (
+                        <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Ngày dự kiến nhận</Label>
+                  <Input 
+                    type="date" 
+                    value={poExpectedDate} 
+                    onChange={(e) => setPOExpectedDate(e.target.value)} 
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Ghi chú</Label>
+                <Input 
+                  value={poNotes} 
+                  onChange={(e) => setPONotes(e.target.value)} 
+                  placeholder="Ghi chú cho đơn hàng..." 
+                />
+              </div>
+
+              {/* Chọn phụ tùng */}
+              <div className="space-y-2">
+                <Label>Chọn phụ tùng cần đặt</Label>
+                <div className="border rounded-md max-h-48 overflow-y-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Mã PT</TableHead>
+                        <TableHead>Tên</TableHead>
+                        <TableHead>Đơn giá</TableHead>
+                        <TableHead></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {parts?.map((part) => (
+                        <TableRow key={part.id}>
+                          <TableCell className="font-mono text-sm">{part.partNumber}</TableCell>
+                          <TableCell>{part.name}</TableCell>
+                          <TableCell>
+                            {part.unitPrice ? new Intl.NumberFormat('vi-VN').format(Number(part.unitPrice)) : "-"}
+                          </TableCell>
+                          <TableCell>
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => handleAddPOItem(part.id, part.name, Number(part.unitPrice) || 0)}
+                            >
+                              <Plus className="w-3 h-3" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+
+              {/* Danh sách phụ tùng đã chọn */}
+              {poItems.length > 0 && (
+                <div className="space-y-2">
+                  <Label>Phụ tùng đã chọn ({poItems.length})</Label>
+                  <div className="border rounded-md">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Tên phụ tùng</TableHead>
+                          <TableHead className="w-32">Số lượng</TableHead>
+                          <TableHead>Đơn giá</TableHead>
+                          <TableHead>Thành tiền</TableHead>
+                          <TableHead></TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {poItems.map((item) => (
+                          <TableRow key={item.sparePartId}>
+                            <TableCell>{item.partName}</TableCell>
+                            <TableCell>
+                              <Input 
+                                type="number" 
+                                min="1"
+                                value={item.quantity}
+                                onChange={(e) => handleUpdatePOItemQty(item.sparePartId, Number(e.target.value))}
+                                className="w-20"
+                              />
+                            </TableCell>
+                            <TableCell>
+                              {new Intl.NumberFormat('vi-VN').format(item.unitPrice)}
+                            </TableCell>
+                            <TableCell className="font-medium">
+                              {new Intl.NumberFormat('vi-VN').format(item.quantity * item.unitPrice)}
+                            </TableCell>
+                            <TableCell>
+                              <Button 
+                                size="sm" 
+                                variant="ghost"
+                                onClick={() => handleRemovePOItem(item.sparePartId)}
+                              >
+                                <XCircle className="w-4 h-4 text-red-500" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        <TableRow>
+                          <TableCell colSpan={3} className="text-right font-bold">Tổng cộng:</TableCell>
+                          <TableCell colSpan={2} className="font-bold text-lg">
+                            {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
+                              poItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0)
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsCreatePOOpen(false)}>Hủy</Button>
+              <Button onClick={handleCreatePO} disabled={createPurchaseOrderMutation.isPending}>
+                {createPurchaseOrderMutation.isPending ? "Đang tạo..." : "Tạo đơn hàng"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );

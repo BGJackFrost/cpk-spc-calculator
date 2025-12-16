@@ -2485,3 +2485,24 @@
 - [x] Tạo file cấu hình mẫu
 - [x] Tạo Docker Compose cho triển khai dễ dàng
 
+
+## Phase 118: Nâng cấp MMS Pages
+### Supervisor Dashboard
+- [x] Fix lỗi infinite loop và rà soát toàn bộ page
+- [x] Nâng cấp UI/UX và tính năng
+
+### Spare Parts
+- [x] Kiểm tra và fix chức năng xuất kho
+- [x] Kiểm tra và fix chức năng nhập kho
+- [x] Kiểm tra và fix chức năng tồn kho
+- [x] Kiểm tra và fix chức năng kiểm kê định kỳ
+- [x] Fix chức năng tạo đơn hàng (Purchase Order)
+
+### Maintenance Dashboard
+- [x] Thêm chức năng sửa Work Order
+- [x] Thêm chức năng xóa Work Order
+
+### Quản lý Kỹ thuật viên
+- [x] Tạo CRUD quản lý KTV (trong tab Kỹ thuật viên của Maintenance Dashboard)
+- [x] Thêm chức năng Thêm/Sửa/Xóa KTV
+

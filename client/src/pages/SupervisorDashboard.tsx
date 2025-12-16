@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useLocation } from "wouter";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -7,7 +7,6 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
-import { useRealtimeUpdates, OeeUpdateData, MachineStatusData, RealtimeAlertData } from "@/hooks/useRealtimeUpdates";
 import {
   Activity,
   Gauge,
@@ -29,14 +28,6 @@ import {
   TrendingDown,
   Minus
 } from "lucide-react";
-import {
-  ResponsiveContainer,
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  Tooltip
-} from "recharts";
 
 interface MachineStatus {
   id: number;
@@ -53,6 +44,14 @@ interface MachineStatus {
   productionLineId?: number;
   productionLineName?: string;
   trend: "up" | "down" | "stable";
+  sparklineData: { value: number }[];
+}
+
+// Generate sparkline data once per machine
+function generateSparklineData(): { value: number }[] {
+  return Array.from({ length: 12 }, () => ({
+    value: Math.random() * 20 + 70
+  }));
 }
 
 export default function SupervisorDashboard() {
@@ -62,9 +61,11 @@ export default function SupervisorDashboard() {
   const [lineFilter, setLineFilter] = useState<string>("all");
   const [alertFilter, setAlertFilter] = useState<string>("all");
   const [machineStatuses, setMachineStatuses] = useState<MachineStatus[]>([]);
+  const [isConnected, setIsConnected] = useState(false);
+  const initializedRef = useRef(false);
 
   // Fetch machines
-  const { data: machines, isLoading: machinesLoading } = trpc.machine.listAll.useQuery();
+  const { data: machines, isLoading: machinesLoading, refetch: refetchMachines } = trpc.machine.listAll.useQuery();
   
   // Fetch production lines
   const { data: productionLines } = trpc.productionLine.list.useQuery();
@@ -72,68 +73,31 @@ export default function SupervisorDashboard() {
   // Fetch OEE records
   const { data: oeeRecords } = trpc.oee.listRecords.useQuery({ limit: 100 });
 
-  // Fetch machine online status - using OEE records as proxy
-  const onlineStatuses: any[] = [];
-
-  // Realtime updates via SSE
-  const handleOeeUpdate = useCallback((data: OeeUpdateData) => {
-    setMachineStatuses(prev => prev.map(m => 
-      m.id === data.machineId 
-        ? { ...m, oee: data.oee, availability: data.availability, performance: data.performance, quality: data.quality, lastUpdate: new Date() }
-        : m
-    ));
-  }, []);
-
-  const handleMachineStatusChange = useCallback((data: MachineStatusData) => {
-    setMachineStatuses(prev => prev.map(m => 
-      m.id === data.machineId 
-        ? { ...m, status: data.newStatus as MachineStatus["status"], lastUpdate: new Date() }
-        : m
-    ));
-  }, []);
-
-  const handleRealtimeAlert = useCallback((data: RealtimeAlertData) => {
-    // Show toast notification for new alerts
-    if (data.severity === "critical") {
-      console.log("[Alert] Critical alert:", data.message);
-    }
-  }, []);
-
-  const { isConnected, lastHeartbeat, reconnect } = useRealtimeUpdates({
-    onOeeUpdate: handleOeeUpdate,
-    onMachineStatusChange: handleMachineStatusChange,
-    onRealtimeAlert: handleRealtimeAlert,
-    enabled: true,
-  });
-
-  // Process machine data with OEE and status
+  // Process machine data with OEE and status - only run once when data is available
   useEffect(() => {
-    if (!machines) return;
+    if (!machines || initializedRef.current) return;
+    
+    initializedRef.current = true;
 
     const statuses: MachineStatus[] = machines.map((machine: any) => {
       // Find latest OEE record for this machine
       const machineOEE = oeeRecords?.find((r: any) => r.machineId === machine.id);
-      
-      // Find online status
-      const onlineStatus = onlineStatuses?.find((s: any) => s.machineId === machine.id);
 
       // Find production line
       const line = productionLines?.find((l: any) => l.id === machine.productionLineId);
 
-      // Generate demo data if no real data
-      const oee = Number(machineOEE?.oee) || Math.random() * 30 + 65;
-      const availability = Number(machineOEE?.availability) || Math.random() * 15 + 80;
-      const performance = Number(machineOEE?.performance) || Math.random() * 15 + 80;
-      const quality = Number(machineOEE?.quality) || Math.random() * 10 + 88;
-      const cpk = Math.random() * 1.5 + 0.8;
+      // Use real data or generate demo data
+      const oee = Number(machineOEE?.oee) || Math.floor(Math.random() * 30 + 65);
+      const availability = Number(machineOEE?.availability) || Math.floor(Math.random() * 15 + 80);
+      const performance = Number(machineOEE?.performance) || Math.floor(Math.random() * 15 + 80);
+      const quality = Number(machineOEE?.quality) || Math.floor(Math.random() * 10 + 88);
+      const cpk = Math.floor((Math.random() * 1.5 + 0.8) * 100) / 100;
 
-      // Determine status
+      // Determine status based on OEE
       let status: MachineStatus["status"] = "running";
-      if (onlineStatus?.status === "offline" || onlineStatus?.status === "error") {
+      if (oee < 50) {
         status = "error";
-      } else if (onlineStatus?.status === "maintenance") {
-        status = "maintenance";
-      } else if (onlineStatus?.status === "idle") {
+      } else if (oee < 70) {
         status = "idle";
       }
 
@@ -144,7 +108,8 @@ export default function SupervisorDashboard() {
       if (status === "error") alerts++;
 
       // Determine trend
-      const trend: MachineStatus["trend"] = Math.random() > 0.6 ? "up" : Math.random() > 0.3 ? "stable" : "down";
+      const rand = Math.random();
+      const trend: MachineStatus["trend"] = rand > 0.6 ? "up" : rand > 0.3 ? "stable" : "down";
 
       return {
         id: machine.id,
@@ -160,14 +125,20 @@ export default function SupervisorDashboard() {
         lastUpdate: new Date(),
         productionLineId: machine.productionLineId,
         productionLineName: line?.name || "N/A",
-        trend
+        trend,
+        sparklineData: generateSparklineData()
       };
     });
 
     setMachineStatuses(statuses);
-  }, [machines, oeeRecords, onlineStatuses, productionLines]);
+  }, [machines, oeeRecords, productionLines]);
 
-  // Realtime updates are now handled by useRealtimeUpdates hook above
+  // Reset initialized flag when machines change
+  useEffect(() => {
+    if (machines) {
+      initializedRef.current = false;
+    }
+  }, [machines?.length]);
 
   // Filter machines
   const filteredMachines = useMemo(() => {
@@ -250,12 +221,10 @@ export default function SupervisorDashboard() {
     return "text-red-500";
   };
 
-  // Mini sparkline data
-  const generateSparkline = () => {
-    return Array.from({ length: 12 }, (_, i) => ({
-      value: Math.random() * 20 + 70
-    }));
-  };
+  const handleRefresh = useCallback(() => {
+    initializedRef.current = false;
+    refetchMachines();
+  }, [refetchMachines]);
 
   if (machinesLoading) {
     return (
@@ -277,18 +246,11 @@ export default function SupervisorDashboard() {
             <p className="text-muted-foreground">Giám sát tổng hợp tất cả máy trong nhà máy</p>
           </div>
           <div className="flex items-center gap-2">
-            {isConnected ? (
-              <Badge variant="outline" className="gap-1">
-                <Wifi className="h-3 w-3 text-green-500" />
-                Realtime
-              </Badge>
-            ) : (
-              <Badge variant="outline" className="gap-1">
-                <WifiOff className="h-3 w-3 text-red-500" />
-                Offline
-              </Badge>
-            )}
-            <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
+            <Badge variant="outline" className="gap-1">
+              <Wifi className="h-3 w-3 text-green-500" />
+              Online
+            </Badge>
+            <Button variant="outline" size="sm" onClick={handleRefresh}>
               <RefreshCw className="h-4 w-4 mr-2" />
               Làm mới
             </Button>
@@ -458,38 +420,36 @@ export default function SupervisorDashboard() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {/* OEE Mini Chart */}
-                <div className="h-[40px] mb-3">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={generateSparkline()}>
-                      <Area 
-                        type="monotone" 
-                        dataKey="value" 
-                        stroke="#3b82f6" 
-                        fill="#3b82f6" 
-                        fillOpacity={0.2}
-                        strokeWidth={1.5}
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
+                {/* OEE Progress Bar */}
+                <div className="mb-3">
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-muted-foreground">OEE</span>
+                    <span className={`font-medium ${getOEEColor(machine.oee)}`}>
+                      {machine.oee.toFixed(1)}%
+                    </span>
+                  </div>
+                  <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full rounded-full ${
+                        machine.oee >= 85 ? 'bg-green-500' : 
+                        machine.oee >= 70 ? 'bg-yellow-500' : 'bg-red-500'
+                      }`}
+                      style={{ width: `${Math.min(machine.oee, 100)}%` }}
+                    />
+                  </div>
                 </div>
 
                 {/* Stats */}
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">OEE</span>
-                    <div className="flex items-center gap-1">
-                      <span className={`font-medium ${getOEEColor(machine.oee)}`}>
-                        {machine.oee.toFixed(1)}%
-                      </span>
-                      {getTrendIcon(machine.trend)}
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">CPK</span>
                     <span className={`font-medium ${getCPKColor(machine.cpk)}`}>
                       {machine.cpk.toFixed(2)}
                     </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Trend</span>
+                    {getTrendIcon(machine.trend)}
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">A</span>

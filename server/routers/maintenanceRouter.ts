@@ -369,7 +369,7 @@ export const maintenanceRouter = router({
 
           // Update inventory
           await db.update(sparePartsInventory).set({
-            quantity: String(newQty),
+            quantity: newQty,
             updatedAt: now,
           }).where(eq(sparePartsInventory.id, inventory.id));
 
@@ -377,15 +377,15 @@ export const maintenanceRouter = router({
           await db.insert(sparePartsStockMovements).values({
             sparePartId: part.sparePartId,
             movementType: "work_order_out",
-            quantity: String(usedQty),
-            unitPrice: String(unitPrice),
-            totalValue: String(usedQty * unitPrice),
-            previousStock: String(currentQty),
-            newStock: String(newQty),
-            reference: `WO-${order.workOrderNumber}`,
-            notes: `Auto export for completed work order #${order.workOrderNumber}`,
-            createdBy: ctx.user?.id,
-            createdAt: now,
+            quantity: usedQty,
+            beforeQuantity: currentQty,
+            afterQuantity: newQty,
+            unitCost: String(unitPrice),
+            totalCost: String(usedQty * unitPrice),
+            referenceType: "work_order",
+            referenceNumber: `WO-${order.workOrderNumber}`,
+            reason: `Auto export for completed work order #${order.workOrderNumber}`,
+            performedBy: ctx.user?.id || 0,
           });
         }
       }
@@ -450,7 +450,7 @@ export const maintenanceRouter = router({
 
       // Check if can delete
       const allowedStatuses = ["pending", "cancelled"];
-      if (!allowedStatuses.includes(order.status) && !input.force) {
+      if (!allowedStatuses.includes(order.status || "") && !input.force) {
         throw new Error(`Cannot delete work order with status '${order.status}'. Only pending or cancelled orders can be deleted. Use force=true for admin override.`);
       }
 

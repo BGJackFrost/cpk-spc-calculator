@@ -436,7 +436,7 @@ export const sparePartsRouter = router({
         subtotal: String(total),
         total: String(total),
         expectedDeliveryDate: input.expectedDeliveryDate ? new Date(input.expectedDeliveryDate) : null,
-        notes: input.notes,
+        notes: input.notes || null,
         createdBy: ctx.user?.id,
       }).$returningId();
 
@@ -1133,10 +1133,10 @@ export const sparePartsRouter = router({
           partName: spareParts.name,
           movementType: sparePartsStockMovements.movementType,
           quantity: sparePartsStockMovements.quantity,
-          unitPrice: sparePartsStockMovements.unitPrice,
-          totalValue: sparePartsStockMovements.totalValue,
-          reference: sparePartsStockMovements.reference,
-          notes: sparePartsStockMovements.notes,
+          unitCost: sparePartsStockMovements.unitCost,
+          totalCost: sparePartsStockMovements.totalCost,
+          referenceNumber: sparePartsStockMovements.referenceNumber,
+          reason: sparePartsStockMovements.reason,
           createdAt: sparePartsStockMovements.createdAt,
         })
         .from(sparePartsStockMovements)
@@ -1155,7 +1155,7 @@ export const sparePartsRouter = router({
 
       movements.forEach(m => {
         const qty = Number(m.quantity) || 0;
-        const val = Number(m.totalValue) || 0;
+        const val = Number(m.totalCost) || 0;
         if (m.movementType?.includes("in")) {
           totalIn += qty;
           totalInValue += val;
@@ -1263,7 +1263,7 @@ export const sparePartsRouter = router({
 
         // Update inventory
         await db.update(sparePartsInventory).set({
-          quantity: String(currentQty - item.quantity),
+          quantity: currentQty - item.quantity,
           updatedAt: new Date(),
         }).where(eq(sparePartsInventory.id, inventory.id));
 
@@ -1271,15 +1271,16 @@ export const sparePartsRouter = router({
         await db.insert(sparePartsStockMovements).values({
           sparePartId: item.sparePartId,
           movementType: "work_order_out",
-          quantity: String(item.quantity),
-          unitPrice: String(unitPrice),
-          totalValue: String(item.quantity * unitPrice),
-          previousStock: String(currentQty),
-          newStock: String(currentQty - item.quantity),
-          reference: `WO-${input.workOrderId}`,
-          notes: `Auto export for work order #${input.workOrderId}`,
-          createdBy: ctx.user?.id,
-          createdAt: new Date(),
+          quantity: item.quantity,
+          beforeQuantity: currentQty,
+          afterQuantity: currentQty - item.quantity,
+          unitCost: String(unitPrice),
+          totalCost: String(item.quantity * unitPrice),
+          referenceType: "work_order",
+          referenceId: input.workOrderId,
+          referenceNumber: `WO-${input.workOrderId}`,
+          reason: `Auto export for work order #${input.workOrderId}`,
+          performedBy: ctx.user?.id || 0,
         });
 
         results.push({ sparePartId: item.sparePartId, success: true });

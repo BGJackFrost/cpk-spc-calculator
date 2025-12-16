@@ -12,8 +12,26 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { 
   Wrench, Clock, AlertTriangle, CheckCircle, Calendar, Users,
   Plus, Filter, Search, MoreHorizontal, Play, Pause, XCircle,
-  TrendingUp, BarChart3, FileText
+  TrendingUp, BarChart3, FileText, Pencil, Trash2
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, BarChart, Bar
@@ -87,18 +105,112 @@ export default function MaintenanceDashboard() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [showNewWODialog, setShowNewWODialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [selectedWO, setSelectedWO] = useState<typeof demoWorkOrders[0] | null>(null);
+  const [workOrders, setWorkOrders] = useState(demoWorkOrders);
+  const { toast } = useToast();
+  
+  // KTV (Technician) management states
+  const [showTechDialog, setShowTechDialog] = useState(false);
+  const [showEditTechDialog, setShowEditTechDialog] = useState(false);
+  const [showDeleteTechDialog, setShowDeleteTechDialog] = useState(false);
+  const [selectedTech, setSelectedTech] = useState<typeof demoTechnicians[0] | null>(null);
+  const [technicians, setTechnicians] = useState(demoTechnicians);
+  const [newTech, setNewTech] = useState({ name: "", specialty: "", available: true });
 
   const stats = {
-    total: demoWorkOrders.length,
-    pending: demoWorkOrders.filter(w => w.status === "pending").length,
-    inProgress: demoWorkOrders.filter(w => w.status === "in_progress" || w.status === "assigned").length,
-    completed: demoWorkOrders.filter(w => w.status === "completed").length,
-    overdue: 1,
+    total: workOrders.length,
+    pending: workOrders.filter(w => w.status === "pending").length,
+    inProgress: workOrders.filter(w => w.status === "in_progress" || w.status === "assigned").length,
+    completed: workOrders.filter(w => w.status === "completed").length,
+    overdue: workOrders.filter(w => new Date(w.dueDate) < new Date() && w.status !== "completed").length,
     mttr: 4.5, // Mean Time To Repair (hours)
     mtbf: 168, // Mean Time Between Failures (hours)
   };
 
-  const filteredWorkOrders = demoWorkOrders.filter(wo => {
+  const handleEditWO = (wo: typeof demoWorkOrders[0]) => {
+    setSelectedWO(wo);
+    setShowEditDialog(true);
+  };
+
+  const handleDeleteWO = (wo: typeof demoWorkOrders[0]) => {
+    setSelectedWO(wo);
+    setShowDeleteDialog(true);
+  };
+
+  const confirmDelete = () => {
+    if (selectedWO) {
+      setWorkOrders(prev => prev.filter(w => w.id !== selectedWO.id));
+      toast({
+        title: "Đã xóa Work Order",
+        description: `Work Order ${selectedWO.id} đã được xóa thành công.`,
+      });
+      setShowDeleteDialog(false);
+      setSelectedWO(null);
+    }
+  };
+
+  const handleUpdateWO = (updatedWO: typeof demoWorkOrders[0]) => {
+    setWorkOrders(prev => prev.map(w => w.id === updatedWO.id ? updatedWO : w));
+    toast({
+      title: "Đã cập nhật Work Order",
+      description: `Work Order ${updatedWO.id} đã được cập nhật thành công.`,
+    });
+    setShowEditDialog(false);
+    setSelectedWO(null);
+  };
+
+  // KTV CRUD handlers
+  const handleCreateTech = () => {
+    if (!newTech.name.trim()) {
+      toast({ title: "Lỗi", description: "Vui lòng nhập tên kỹ thuật viên", variant: "destructive" });
+      return;
+    }
+    const newId = Math.max(...technicians.map(t => t.id)) + 1;
+    const tech = {
+      id: newId,
+      name: newTech.name,
+      specialty: newTech.specialty || "General",
+      activeOrders: 0,
+      completedThisMonth: 0,
+      available: newTech.available,
+    };
+    setTechnicians(prev => [...prev, tech]);
+    toast({ title: "Thành công", description: `Đã thêm kỹ thuật viên ${tech.name}` });
+    setNewTech({ name: "", specialty: "", available: true });
+    setShowTechDialog(false);
+  };
+
+  const handleEditTech = (tech: typeof demoTechnicians[0]) => {
+    setSelectedTech(tech);
+    setShowEditTechDialog(true);
+  };
+
+  const handleUpdateTech = () => {
+    if (selectedTech) {
+      setTechnicians(prev => prev.map(t => t.id === selectedTech.id ? selectedTech : t));
+      toast({ title: "Thành công", description: `Đã cập nhật thông tin ${selectedTech.name}` });
+      setShowEditTechDialog(false);
+      setSelectedTech(null);
+    }
+  };
+
+  const handleDeleteTech = (tech: typeof demoTechnicians[0]) => {
+    setSelectedTech(tech);
+    setShowDeleteTechDialog(true);
+  };
+
+  const confirmDeleteTech = () => {
+    if (selectedTech) {
+      setTechnicians(prev => prev.filter(t => t.id !== selectedTech.id));
+      toast({ title: "Thành công", description: `Đã xóa kỹ thuật viên ${selectedTech.name}` });
+      setShowDeleteTechDialog(false);
+      setSelectedTech(null);
+    }
+  };
+
+  const filteredWorkOrders = workOrders.filter(wo => {
     const matchesSearch = wo.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          wo.machine.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === "all" || wo.status === statusFilter;
@@ -328,9 +440,27 @@ export default function MaintenanceDashboard() {
                           </div>
                         </div>
                       </div>
-                      <Button variant="ghost" size="icon">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleEditWO(wo)}>
+                            <Pencil className="h-4 w-4 mr-2" />
+                            Sửa Work Order
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem 
+                            onClick={() => handleDeleteWO(wo)}
+                            className="text-red-600 focus:text-red-600"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Xóa Work Order
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   ))}
                 </div>
@@ -372,20 +502,96 @@ export default function MaintenanceDashboard() {
 
           <TabsContent value="technicians">
             <Card>
-              <CardHeader>
-                <CardTitle>Đội ngũ kỹ thuật viên</CardTitle>
-                <CardDescription>Quản lý và phân công công việc</CardDescription>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Đội ngũ kỹ thuật viên</CardTitle>
+                  <CardDescription>Quản lý và phân công công việc</CardDescription>
+                </div>
+                <Dialog open={showTechDialog} onOpenChange={setShowTechDialog}>
+                  <DialogTrigger asChild>
+                    <Button size="sm">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Thêm KTV
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Thêm kỹ thuật viên mới</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div>
+                        <Label>Họ tên</Label>
+                        <Input 
+                          value={newTech.name} 
+                          onChange={(e) => setNewTech({...newTech, name: e.target.value})}
+                          placeholder="Nhập họ tên"
+                        />
+                      </div>
+                      <div>
+                        <Label>Chuyên môn</Label>
+                        <Select value={newTech.specialty} onValueChange={(v) => setNewTech({...newTech, specialty: v})}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Chọn chuyên môn" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="CNC">CNC</SelectItem>
+                            <SelectItem value="Hydraulics">Hydraulics</SelectItem>
+                            <SelectItem value="Electrical">Electrical</SelectItem>
+                            <SelectItem value="Mechanical">Mechanical</SelectItem>
+                            <SelectItem value="General">General</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input 
+                          type="checkbox" 
+                          checked={newTech.available}
+                          onChange={(e) => setNewTech({...newTech, available: e.target.checked})}
+                          className="rounded"
+                        />
+                        <Label>Sẵn sàng làm việc</Label>
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <Button variant="outline" onClick={() => setShowTechDialog(false)}>Hủy</Button>
+                        <Button onClick={handleCreateTech}>Thêm</Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {demoTechnicians.map((t) => (
+                  {technicians.map((t) => (
                     <Card key={t.id}>
                       <CardContent className="pt-4">
                         <div className="flex items-center justify-between mb-2">
                           <div className="font-medium">{t.name}</div>
-                          <Badge variant={t.available ? "default" : "secondary"}>
-                            {t.available ? "Sẵn sàng" : "Bận"}
-                          </Badge>
+                          <div className="flex items-center gap-2">
+                            <Badge variant={t.available ? "default" : "secondary"}>
+                              {t.available ? "Sẵn sàng" : "Bận"}
+                            </Badge>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-6 w-6">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleEditTech(t)}>
+                                  <Pencil className="h-4 w-4 mr-2" />
+                                  Sửa thông tin
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem 
+                                  onClick={() => handleDeleteTech(t)}
+                                  className="text-red-600"
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Xóa KTV
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
                         </div>
                         <div className="text-sm text-muted-foreground mb-3">{t.specialty}</div>
                         <div className="grid grid-cols-2 gap-2 text-sm">
@@ -462,6 +668,181 @@ export default function MaintenanceDashboard() {
             </div>
           </TabsContent>
         </Tabs>
+
+        {/* Edit Work Order Dialog */}
+        <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Sửa Work Order</DialogTitle>
+            </DialogHeader>
+            {selectedWO && (
+              <div className="space-y-4">
+                <div>
+                  <Label>Mã WO</Label>
+                  <Input value={selectedWO.id} disabled />
+                </div>
+                <div>
+                  <Label>Tiêu đề</Label>
+                  <Input 
+                    value={selectedWO.title} 
+                    onChange={(e) => setSelectedWO({...selectedWO, title: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <Label>Máy</Label>
+                  <Input 
+                    value={selectedWO.machine} 
+                    onChange={(e) => setSelectedWO({...selectedWO, machine: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <Label>Người thực hiện</Label>
+                  <Input 
+                    value={selectedWO.assignee} 
+                    onChange={(e) => setSelectedWO({...selectedWO, assignee: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <Label>Trạng thái</Label>
+                  <Select 
+                    value={selectedWO.status} 
+                    onValueChange={(value) => setSelectedWO({...selectedWO, status: value})}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pending">Chờ xử lý</SelectItem>
+                      <SelectItem value="assigned">Đã phân công</SelectItem>
+                      <SelectItem value="in_progress">Đang thực hiện</SelectItem>
+                      <SelectItem value="on_hold">Tạm dừng</SelectItem>
+                      <SelectItem value="completed">Hoàn thành</SelectItem>
+                      <SelectItem value="cancelled">Đã hủy</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Độ ưu tiên</Label>
+                  <Select 
+                    value={selectedWO.priority} 
+                    onValueChange={(value) => setSelectedWO({...selectedWO, priority: value})}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">Thấp</SelectItem>
+                      <SelectItem value="medium">Trung bình</SelectItem>
+                      <SelectItem value="high">Cao</SelectItem>
+                      <SelectItem value="critical">Khẩn cấp</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Hạn hoàn thành</Label>
+                  <Input 
+                    type="date"
+                    value={selectedWO.dueDate} 
+                    onChange={(e) => setSelectedWO({...selectedWO, dueDate: e.target.value})}
+                  />
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setShowEditDialog(false)}>Hủy</Button>
+                  <Button onClick={() => handleUpdateWO(selectedWO)}>Lưu thay đổi</Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Xác nhận xóa Work Order</AlertDialogTitle>
+              <AlertDialogDescription>
+                Bạn có chắc chắn muốn xóa Work Order <strong>{selectedWO?.id}</strong>?
+                Hành động này không thể hoàn tác.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Hủy</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">
+                Xóa
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Edit Technician Dialog */}
+        <Dialog open={showEditTechDialog} onOpenChange={setShowEditTechDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Sửa thông tin kỹ thuật viên</DialogTitle>
+            </DialogHeader>
+            {selectedTech && (
+              <div className="space-y-4">
+                <div>
+                  <Label>Họ tên</Label>
+                  <Input 
+                    value={selectedTech.name} 
+                    onChange={(e) => setSelectedTech({...selectedTech, name: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <Label>Chuyên môn</Label>
+                  <Select 
+                    value={selectedTech.specialty} 
+                    onValueChange={(v) => setSelectedTech({...selectedTech, specialty: v})}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="CNC">CNC</SelectItem>
+                      <SelectItem value="Hydraulics">Hydraulics</SelectItem>
+                      <SelectItem value="Electrical">Electrical</SelectItem>
+                      <SelectItem value="Mechanical">Mechanical</SelectItem>
+                      <SelectItem value="General">General</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input 
+                    type="checkbox" 
+                    checked={selectedTech.available}
+                    onChange={(e) => setSelectedTech({...selectedTech, available: e.target.checked})}
+                    className="rounded"
+                  />
+                  <Label>Sẵn sàng làm việc</Label>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setShowEditTechDialog(false)}>Hủy</Button>
+                  <Button onClick={handleUpdateTech}>Lưu thay đổi</Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Technician Confirmation */}
+        <AlertDialog open={showDeleteTechDialog} onOpenChange={setShowDeleteTechDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Xác nhận xóa kỹ thuật viên</AlertDialogTitle>
+              <AlertDialogDescription>
+                Bạn có chắc chắn muốn xóa kỹ thuật viên <strong>{selectedTech?.name}</strong>?
+                Hành động này không thể hoàn tác.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Hủy</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmDeleteTech} className="bg-red-600 hover:bg-red-700">
+                Xóa
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </DashboardLayout>
   );
