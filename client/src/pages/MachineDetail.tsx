@@ -71,7 +71,7 @@ export default function MachineDetail() {
 
   // WebSocket realtime updates
   const { isConnected, status: realtimeStatus } = useMachineStatus(machineId);
-  const { oeeData: realtimeOEE } = useOEEUpdates(machineId);
+  const { data: realtimeOEE } = useOEEUpdates(machineId);
 
   // Process OEE data for charts
   const oeeChartData = useMemo(() => {
