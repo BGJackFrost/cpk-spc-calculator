@@ -2259,3 +2259,9 @@
 - [x] Cập nhật rateLimiter.ts để đọc/ghi config từ database
 - [x] Thêm API endpoints: getConfigHistory, getRoleConfigs, updateRoleConfig
 - [x] Cập nhật UI hiển thị lịch sử và cấu hình theo role
+
+## Phase 100: Role Config Editor & Quota Warning
+- [x] Thêm form chỉnh sửa role config trong RateLimitDashboard
+- [x] Thêm dialog edit với input fields cho maxRequests, maxAuthRequests, maxExportRequests
+- [x] Thêm cảnh báo khi user gần đạt giới hạn (>80% quota)
+- [x] Hiển thị progress bar với màu warning khi >80%, danger khi >95%

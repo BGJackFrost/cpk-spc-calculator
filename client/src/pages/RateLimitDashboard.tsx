@@ -22,8 +22,20 @@ import {
   Clock,
   Server,
   BarChart3,
-  Users
+  Users,
+  Edit,
+  Save
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -42,6 +54,12 @@ import {
 export default function RateLimitDashboard() {
   const { language } = useLanguage();
   const [newIp, setNewIp] = useState("");
+  const [editingRole, setEditingRole] = useState<any>(null);
+  const [editForm, setEditForm] = useState({
+    maxRequests: 0,
+    maxAuthRequests: 0,
+    maxExportRequests: 0,
+  });
   
   const { data: stats, isLoading, refetch } = trpc.rateLimit.getStats.useQuery(undefined, {
     refetchInterval: 30000, // Refresh every 30 seconds
@@ -515,12 +533,47 @@ export default function RateLimitDashboard() {
                 </span>
               </div>
             </div>
-            <div className="mt-4 w-full bg-muted rounded-full h-2">
-              <div 
-                className="bg-primary h-2 rounded-full transition-all" 
-                style={{ width: `${((userRateLimit?.count || 0) / (userRateLimit?.limit || 3000)) * 100}%` }}
-              />
-            </div>
+            {(() => {
+              const usagePercent = ((userRateLimit?.count || 0) / (userRateLimit?.limit || 3000)) * 100;
+              const isWarning = usagePercent >= 80;
+              const isDanger = usagePercent >= 95;
+              return (
+                <>
+                  <div className="mt-4 space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className={isDanger ? 'text-destructive font-medium' : isWarning ? 'text-yellow-600 font-medium' : 'text-muted-foreground'}>
+                        {userRateLimit?.count || 0} / {userRateLimit?.limit || 3000} requests
+                      </span>
+                      <span className={isDanger ? 'text-destructive font-medium' : isWarning ? 'text-yellow-600 font-medium' : 'text-muted-foreground'}>
+                        {usagePercent.toFixed(1)}%
+                      </span>
+                    </div>
+                    <Progress 
+                      value={usagePercent} 
+                      className={`h-3 ${isDanger ? '[&>div]:bg-destructive' : isWarning ? '[&>div]:bg-yellow-500' : ''}`}
+                    />
+                  </div>
+                  {isWarning && (
+                    <div className={`mt-4 p-3 rounded-lg flex items-start gap-2 ${isDanger ? 'bg-destructive/10 text-destructive' : 'bg-yellow-500/10 text-yellow-700'}`}>
+                      <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                      <div className="text-sm">
+                        <p className="font-medium">
+                          {isDanger 
+                            ? (language === "vi" ? "Cảnh báo: Sắp đạt giới hạn!" : "Warning: Almost at limit!")
+                            : (language === "vi" ? "Chú ý: Đã sử dụng hơn 80% quota" : "Notice: Over 80% quota used")
+                          }
+                        </p>
+                        <p className="text-xs mt-1 opacity-80">
+                          {language === "vi" 
+                            ? `Giới hạn sẽ reset lúc ${userRateLimit?.resetAt ? new Date(userRateLimit.resetAt).toLocaleTimeString() : '--:--'}` 
+                            : `Limit resets at ${userRateLimit?.resetAt ? new Date(userRateLimit.resetAt).toLocaleTimeString() : '--:--'}`}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
           </CardContent>
         </Card>
 
@@ -626,6 +679,7 @@ export default function RateLimitDashboard() {
                     <TableHead className="text-right">Auth Requests</TableHead>
                     <TableHead className="text-right">Export Requests</TableHead>
                     <TableHead className="text-right">{language === "vi" ? "Trạng thái" : "Status"}</TableHead>
+                    <TableHead className="text-right">{language === "vi" ? "Hành động" : "Actions"}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -643,6 +697,22 @@ export default function RateLimitDashboard() {
                         <Badge variant={config.isActive ? 'default' : 'secondary'}>
                           {config.isActive ? (language === "vi" ? "Hoạt động" : "Active") : (language === "vi" ? "Tắt" : "Inactive")}
                         </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setEditingRole(config);
+                            setEditForm({
+                              maxRequests: config.maxRequests,
+                              maxAuthRequests: config.maxAuthRequests,
+                              maxExportRequests: config.maxExportRequests,
+                            });
+                          }}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -712,6 +782,66 @@ export default function RateLimitDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Edit Role Config Dialog */}
+      <Dialog open={!!editingRole} onOpenChange={(open) => !open && setEditingRole(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {language === "vi" ? "Chỉnh sửa giới hạn cho" : "Edit limits for"} {editingRole?.role}
+            </DialogTitle>
+            <DialogDescription>
+              {language === "vi" 
+                ? "Thay đổi giới hạn request cho role này" 
+                : "Change request limits for this role"}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>API Requests (per 15 min)</Label>
+              <Input
+                type="number"
+                value={editForm.maxRequests}
+                onChange={(e) => setEditForm({ ...editForm, maxRequests: parseInt(e.target.value) || 0 })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Auth Requests (per 15 min)</Label>
+              <Input
+                type="number"
+                value={editForm.maxAuthRequests}
+                onChange={(e) => setEditForm({ ...editForm, maxAuthRequests: parseInt(e.target.value) || 0 })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Export Requests (per 15 min)</Label>
+              <Input
+                type="number"
+                value={editForm.maxExportRequests}
+                onChange={(e) => setEditForm({ ...editForm, maxExportRequests: parseInt(e.target.value) || 0 })}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingRole(null)}>
+              {language === "vi" ? "Hủy" : "Cancel"}
+            </Button>
+            <Button 
+              onClick={() => {
+                updateRoleConfigMutation.mutate({
+                  role: editingRole.role,
+                  ...editForm,
+                });
+                setEditingRole(null);
+              }}
+              disabled={updateRoleConfigMutation.isPending}
+            >
+              <Save className="h-4 w-4 mr-2" />
+              {language === "vi" ? "Lưu" : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }
