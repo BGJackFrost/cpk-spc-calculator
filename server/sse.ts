@@ -20,8 +20,17 @@ export interface SseEvent {
   timestamp: Date;
 }
 
+// Maximum SSE clients to prevent resource exhaustion
+const MAX_SSE_CLIENTS = 100;
+
 // Add a new SSE client
 export function addSseClient(clientId: string, res: Response) {
+  // Check max clients limit
+  if (clients.size >= MAX_SSE_CLIENTS) {
+    res.status(503).json({ error: "Too many SSE connections" });
+    return;
+  }
+  
   // Set SSE headers
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
@@ -31,7 +40,10 @@ export function addSseClient(clientId: string, res: Response) {
 
   // Store client
   clients.set(clientId, res);
-  console.log(`[SSE] Client connected: ${clientId}. Total clients: ${clients.size}`);
+  // Only log when client count changes significantly
+  if (clients.size === 1 || clients.size % 10 === 0) {
+    console.log(`[SSE] Clients: ${clients.size}`);
+  }
 
   // Send initial connection event
   sendEventToClient(clientId, {
@@ -43,7 +55,10 @@ export function addSseClient(clientId: string, res: Response) {
   // Handle client disconnect
   res.on("close", () => {
     clients.delete(clientId);
-    console.log(`[SSE] Client disconnected: ${clientId}. Total clients: ${clients.size}`);
+    // Only log when client count changes significantly
+    if (clients.size === 0 || clients.size % 10 === 0) {
+      console.log(`[SSE] Clients: ${clients.size}`);
+    }
   });
 }
 
@@ -128,22 +143,33 @@ export function notifyPlanStatusChange(data: {
 
 // Start heartbeat interval (keep connections alive)
 let heartbeatInterval: NodeJS.Timeout | null = null;
+let heartbeatStarted = false;
 
 export function startHeartbeat(intervalMs: number = 30000) {
+  // Only start once
+  if (heartbeatStarted) {
+    return;
+  }
+  
   if (heartbeatInterval) {
     clearInterval(heartbeatInterval);
   }
   
   heartbeatInterval = setInterval(() => {
     if (clients.size > 0) {
-      broadcastEvent({
-        type: "heartbeat",
-        data: { timestamp: new Date().toISOString() },
-        timestamp: new Date(),
+      // Silent heartbeat - don't log every heartbeat
+      const eventData = `event: heartbeat\ndata: ${JSON.stringify({ type: "heartbeat", data: { timestamp: new Date().toISOString() }, timestamp: new Date() })}\n\n`;
+      clients.forEach((client, clientId) => {
+        try {
+          client.write(eventData);
+        } catch (error) {
+          clients.delete(clientId);
+        }
       });
     }
   }, intervalMs);
   
+  heartbeatStarted = true;
   console.log(`[SSE] Heartbeat started with interval ${intervalMs}ms`);
 }
 

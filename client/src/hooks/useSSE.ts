@@ -22,6 +22,152 @@ interface UseSSEOptions {
   onDisconnect?: () => void;
   autoReconnect?: boolean;
   reconnectInterval?: number;
+  maxReconnectAttempts?: number;
+  enabled?: boolean;
+}
+
+// Global SSE connection singleton to prevent multiple connections
+let globalEventSource: EventSource | null = null;
+let globalListeners: Map<string, Set<(event: SseEvent) => void>> = new Map();
+let globalConnected = false;
+let globalReconnectTimeout: NodeJS.Timeout | null = null;
+let globalReconnectAttempts = 0;
+const MAX_RECONNECT_ATTEMPTS = 5;
+const RECONNECT_BACKOFF_BASE = 5000; // Start with 5 seconds
+
+function getReconnectDelay(): number {
+  // Exponential backoff: 5s, 10s, 20s, 40s, 80s
+  return Math.min(RECONNECT_BACKOFF_BASE * Math.pow(2, globalReconnectAttempts), 80000);
+}
+
+function initGlobalSSE() {
+  if (globalEventSource) {
+    return;
+  }
+
+  // Don't reconnect if max attempts reached
+  if (globalReconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+    console.log("[SSE] Max reconnect attempts reached, stopping");
+    return;
+  }
+
+  try {
+    console.log("[SSE] Initializing global connection...");
+    globalEventSource = new EventSource("/api/sse");
+
+    globalEventSource.onopen = () => {
+      globalConnected = true;
+      globalReconnectAttempts = 0; // Reset on successful connection
+      console.log("[SSE] Global connection established");
+      
+      // Notify all listeners
+      globalListeners.forEach((listeners) => {
+        listeners.forEach((listener) => {
+          listener({ type: "heartbeat", data: { connected: true }, timestamp: new Date().toISOString() });
+        });
+      });
+    };
+
+    globalEventSource.onerror = () => {
+      globalConnected = false;
+      console.error("[SSE] Global connection error");
+      
+      // Clean up
+      if (globalEventSource) {
+        globalEventSource.close();
+        globalEventSource = null;
+      }
+
+      // Schedule reconnect with backoff
+      if (globalReconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+        const delay = getReconnectDelay();
+        console.log(`[SSE] Scheduling reconnect in ${delay}ms (attempt ${globalReconnectAttempts + 1}/${MAX_RECONNECT_ATTEMPTS})`);
+        
+        if (globalReconnectTimeout) {
+          clearTimeout(globalReconnectTimeout);
+        }
+        
+        globalReconnectTimeout = setTimeout(() => {
+          globalReconnectAttempts++;
+          initGlobalSSE();
+        }, delay);
+      }
+    };
+
+    // Setup event listeners
+    const eventTypes = ["spc_analysis_complete", "cpk_alert", "plan_status_change", "heartbeat"];
+    eventTypes.forEach((eventType) => {
+      globalEventSource!.addEventListener(eventType, (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          const sseEvent: SseEvent = {
+            type: eventType as SseEventType,
+            data: data.data,
+            timestamp: data.timestamp || new Date().toISOString(),
+          };
+          
+          // Notify listeners for this event type
+          const listeners = globalListeners.get(eventType);
+          if (listeners) {
+            listeners.forEach((listener) => listener(sseEvent));
+          }
+          
+          // Also notify "all" listeners
+          const allListeners = globalListeners.get("all");
+          if (allListeners) {
+            allListeners.forEach((listener) => listener(sseEvent));
+          }
+        } catch (error) {
+          console.error(`[SSE] Error parsing ${eventType} event:`, error);
+        }
+      });
+    });
+
+  } catch (error) {
+    console.error("[SSE] Failed to create EventSource:", error);
+  }
+}
+
+function closeGlobalSSE() {
+  if (globalReconnectTimeout) {
+    clearTimeout(globalReconnectTimeout);
+    globalReconnectTimeout = null;
+  }
+  if (globalEventSource) {
+    globalEventSource.close();
+    globalEventSource = null;
+  }
+  globalConnected = false;
+  globalReconnectAttempts = 0;
+}
+
+function addGlobalListener(eventType: string, listener: (event: SseEvent) => void) {
+  if (!globalListeners.has(eventType)) {
+    globalListeners.set(eventType, new Set());
+  }
+  globalListeners.get(eventType)!.add(listener);
+  
+  // Initialize connection if first listener
+  if (!globalEventSource) {
+    initGlobalSSE();
+  }
+}
+
+function removeGlobalListener(eventType: string, listener: (event: SseEvent) => void) {
+  const listeners = globalListeners.get(eventType);
+  if (listeners) {
+    listeners.delete(listener);
+    if (listeners.size === 0) {
+      globalListeners.delete(eventType);
+    }
+  }
+  
+  // Close connection if no more listeners
+  let totalListeners = 0;
+  globalListeners.forEach((set) => totalListeners += set.size);
+  if (totalListeners === 0) {
+    closeGlobalSSE();
+  }
 }
 
 export function useSSE(options: UseSSEOptions = {}) {
@@ -30,114 +176,71 @@ export function useSSE(options: UseSSEOptions = {}) {
     onCpkAlert,
     onPlanStatusChange,
     onHeartbeat,
-    onError,
     onConnect,
     onDisconnect,
-    autoReconnect = true,
-    reconnectInterval = 5000,
+    enabled = true,
   } = options;
 
-  const [isConnected, setIsConnected] = useState(false);
+  const [isConnected, setIsConnected] = useState(globalConnected);
   const [lastEvent, setLastEvent] = useState<SseEvent | null>(null);
   const [connectionError, setConnectionError] = useState<string | null>(null);
-  const eventSourceRef = useRef<EventSource | null>(null);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const callbacksRef = useRef({ onSpcAnalysisComplete, onCpkAlert, onPlanStatusChange, onHeartbeat, onConnect, onDisconnect });
 
-  const connect = useCallback(() => {
-    // Clean up existing connection
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-    }
-
-    try {
-      const eventSource = new EventSource("/api/sse");
-      eventSourceRef.current = eventSource;
-
-      eventSource.onopen = () => {
-        setIsConnected(true);
-        setConnectionError(null);
-        onConnect?.();
-        console.log("[SSE] Connected");
-      };
-
-      eventSource.onerror = (error) => {
-        setIsConnected(false);
-        setConnectionError("Connection error");
-        onError?.(error);
-        onDisconnect?.();
-        console.error("[SSE] Connection error:", error);
-
-        // Auto reconnect
-        if (autoReconnect) {
-          reconnectTimeoutRef.current = setTimeout(() => {
-            console.log("[SSE] Attempting to reconnect...");
-            connect();
-          }, reconnectInterval);
-        }
-      };
-
-      // Listen for specific event types
-      eventSource.addEventListener("spc_analysis_complete", (event) => {
-        const data = JSON.parse(event.data);
-        setLastEvent(data);
-        onSpcAnalysisComplete?.(data.data);
-      });
-
-      eventSource.addEventListener("cpk_alert", (event) => {
-        const data = JSON.parse(event.data);
-        setLastEvent(data);
-        onCpkAlert?.(data.data);
-      });
-
-      eventSource.addEventListener("plan_status_change", (event) => {
-        const data = JSON.parse(event.data);
-        setLastEvent(data);
-        onPlanStatusChange?.(data.data);
-      });
-
-      eventSource.addEventListener("heartbeat", (event) => {
-        const data = JSON.parse(event.data);
-        setLastEvent(data);
-        onHeartbeat?.(data.data);
-      });
-
-    } catch (error) {
-      console.error("[SSE] Failed to create EventSource:", error);
-      setConnectionError("Failed to connect");
-    }
-  }, [
-    onSpcAnalysisComplete,
-    onCpkAlert,
-    onPlanStatusChange,
-    onHeartbeat,
-    onError,
-    onConnect,
-    onDisconnect,
-    autoReconnect,
-    reconnectInterval,
-  ]);
-
-  const disconnect = useCallback(() => {
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current);
-      reconnectTimeoutRef.current = null;
-    }
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-      eventSourceRef.current = null;
-    }
-    setIsConnected(false);
-    onDisconnect?.();
-    console.log("[SSE] Disconnected");
-  }, [onDisconnect]);
+  // Update callbacks ref
+  useEffect(() => {
+    callbacksRef.current = { onSpcAnalysisComplete, onCpkAlert, onPlanStatusChange, onHeartbeat, onConnect, onDisconnect };
+  }, [onSpcAnalysisComplete, onCpkAlert, onPlanStatusChange, onHeartbeat, onConnect, onDisconnect]);
 
   useEffect(() => {
-    connect();
+    if (!enabled) {
+      return;
+    }
+
+    const handleEvent = (event: SseEvent) => {
+      setLastEvent(event);
+      setIsConnected(globalConnected);
+      setConnectionError(globalConnected ? null : "Disconnected");
+      
+      switch (event.type) {
+        case "spc_analysis_complete":
+          callbacksRef.current.onSpcAnalysisComplete?.(event.data);
+          break;
+        case "cpk_alert":
+          callbacksRef.current.onCpkAlert?.(event.data);
+          break;
+        case "plan_status_change":
+          callbacksRef.current.onPlanStatusChange?.(event.data);
+          break;
+        case "heartbeat":
+          if (event.data?.connected) {
+            callbacksRef.current.onConnect?.();
+          }
+          callbacksRef.current.onHeartbeat?.(event.data);
+          break;
+      }
+    };
+
+    // Add listener for all events
+    addGlobalListener("all", handleEvent);
+
+    // Initial connection state
+    setIsConnected(globalConnected);
 
     return () => {
-      disconnect();
+      removeGlobalListener("all", handleEvent);
     };
-  }, [connect, disconnect]);
+  }, [enabled]);
+
+  const connect = useCallback(() => {
+    globalReconnectAttempts = 0;
+    initGlobalSSE();
+  }, []);
+
+  const disconnect = useCallback(() => {
+    closeGlobalSSE();
+    setIsConnected(false);
+    callbacksRef.current.onDisconnect?.();
+  }, []);
 
   return {
     isConnected,
@@ -149,15 +252,20 @@ export function useSSE(options: UseSSEOptions = {}) {
 }
 
 // Simplified hook for just listening to events
-export function useSseEvents() {
+export function useSseEvents(enabled: boolean = true) {
   const [events, setEvents] = useState<SseEvent[]>([]);
   const [isConnected, setIsConnected] = useState(false);
 
   const addEvent = useCallback((event: SseEvent) => {
+    // Don't add heartbeat events to the list
+    if (event.type === "heartbeat") {
+      return;
+    }
     setEvents((prev) => [...prev.slice(-99), event]); // Keep last 100 events
   }, []);
 
   useSSE({
+    enabled,
     onSpcAnalysisComplete: (data) => addEvent({ type: "spc_analysis_complete", data, timestamp: new Date().toISOString() }),
     onCpkAlert: (data) => addEvent({ type: "cpk_alert", data, timestamp: new Date().toISOString() }),
     onPlanStatusChange: (data) => addEvent({ type: "plan_status_change", data, timestamp: new Date().toISOString() }),

@@ -63,7 +63,7 @@ async function startServer() {
   app.get("/api/sse", (req, res) => {
     const clientId = `client_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
     addSseClient(clientId, res);
-    startHeartbeat(30000); // 30 second heartbeat
+    // Note: startHeartbeat is called once at server startup, not per client
   });
   
   // Upload file endpoint (generic)
@@ -271,6 +271,9 @@ async function startServer() {
     // Initialize WebSocket server
     wsServer.initialize(server);
     console.log(`WebSocket server initialized on ws://localhost:${port}/ws`);
+    
+    // Start SSE heartbeat (once at server startup)
+    startHeartbeat(30000); // 30 second heartbeat
     
     // Initialize scheduled jobs after server starts
     initScheduledJobs();

@@ -2284,3 +2284,17 @@
 - [x] Thêm WebSocket reconnect button (trong popover)
 - [x] Hiển thị latency/ping trong WebSocket indicator (màu theo mức độ)
 - [x] Tạo WebSocket event log cho admin (WebSocketEventLog.tsx)
+
+
+## Phase 104: Bug Fix - SSE Reconnect Loop
+- [x] Sửa lỗi SSE client liên tục connect/disconnect gây treo hệ thống
+  - Sử dụng global singleton SSE connection thay vì tạo mới mỗi component
+  - Thêm exponential backoff cho reconnect (5s, 10s, 20s, 40s, 80s)
+  - Giới hạn max 5 lần reconnect attempts
+- [x] Thêm debounce/throttle cho SSE reconnect
+  - Global connection được share giữa tất cả components
+  - Chỉ reconnect khi không còn connection active
+- [x] Kiểm tra và tối ưu SSE server
+  - Giới hạn max 100 SSE clients
+  - Giảm log spam (chỉ log khi client count thay đổi đáng kể)
+  - startHeartbeat chỉ gọi 1 lần khi server khởi động
