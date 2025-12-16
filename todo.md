@@ -2265,3 +2265,9 @@
 - [x] Thêm dialog edit với input fields cho maxRequests, maxAuthRequests, maxExportRequests
 - [x] Thêm cảnh báo khi user gần đạt giới hạn (>80% quota)
 - [x] Hiển thị progress bar với màu warning khi >80%, danger khi >95%
+
+## Phase 101: WebSocket Server Toggle
+- [x] Thêm cấu hình bật/tắt WebSocket server (mặc định tắt)
+- [x] Cập nhật client để kiểm tra cấu hình WebSocket trước khi kết nối
+- [x] Thêm API endpoint để lấy trạng thái WebSocket (system.getWebSocketStatus)
+- [x] Thêm API endpoint để bật/tắt WebSocket (system.setWebSocketEnabled)

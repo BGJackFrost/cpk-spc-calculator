@@ -19,12 +19,35 @@ interface RealtimeMessage {
   data?: any;
 }
 
+// WebSocket enabled flag - default is disabled
+let wsEnabled = process.env.WEBSOCKET_ENABLED === 'true';
+
+export function isWebSocketEnabled(): boolean {
+  return wsEnabled;
+}
+
+export function setWebSocketEnabled(enabled: boolean): void {
+  wsEnabled = enabled;
+  console.log(`[WebSocket] ${enabled ? 'Enabled' : 'Disabled'}`);
+}
+
 class RealtimeWebSocketServer {
   private wss: WebSocketServer | null = null;
   private clients: Set<WebSocketClient> = new Set();
   private heartbeatInterval: NodeJS.Timeout | null = null;
+  private initialized: boolean = false;
 
   initialize(server: HttpServer) {
+    // Check if WebSocket is enabled
+    if (!wsEnabled) {
+      console.log('[WebSocket] Server is disabled. Set WEBSOCKET_ENABLED=true to enable.');
+      return;
+    }
+    
+    if (this.initialized) {
+      console.log('[WebSocket] Server already initialized');
+      return;
+    }
     this.wss = new WebSocketServer({ 
       server,
       path: '/ws/realtime'
@@ -88,7 +111,12 @@ class RealtimeWebSocketServer {
     // Listen to data collector events
     this.setupDataCollectorListeners();
 
+    this.initialized = true;
     console.log('[WebSocket] Server initialized on /ws/realtime');
+  }
+
+  isInitialized(): boolean {
+    return this.initialized;
   }
 
   private setupDataCollectorListeners() {

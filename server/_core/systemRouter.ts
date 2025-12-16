@@ -5,6 +5,7 @@ import { getDb } from "../db";
 import { systemConfig, companyInfo } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { storagePut } from "../storage";
+import { isWebSocketEnabled, setWebSocketEnabled, realtimeWebSocketServer } from "../websocketServer";
 
 export const systemRouter = router({
   health: publicProcedure
@@ -247,6 +248,23 @@ export const systemRouter = router({
         });
       }
       return { success: true };
+    }),
+
+  // WebSocket status
+  getWebSocketStatus: publicProcedure.query(() => {
+    return {
+      enabled: isWebSocketEnabled(),
+      initialized: realtimeWebSocketServer.isInitialized(),
+      clientCount: realtimeWebSocketServer.getClientCount(),
+    };
+  }),
+
+  // Toggle WebSocket
+  setWebSocketEnabled: adminProcedure
+    .input(z.object({ enabled: z.boolean() }))
+    .mutation(({ input }) => {
+      setWebSocketEnabled(input.enabled);
+      return { success: true, enabled: input.enabled };
     }),
 
   // Upload company logo to S3

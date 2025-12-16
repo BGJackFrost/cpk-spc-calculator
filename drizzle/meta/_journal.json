@@ -253,6 +253,20 @@
       "when": 1765857380938,
       "tag": "0035_dazzling_champions",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "5",
+      "when": 1765858669582,
+      "tag": "0036_tiresome_prism",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "5",
+      "when": 1765858779145,
+      "tag": "0037_even_sentry",
+      "breakpoints": true
     }
   ]
 }

@@ -3,6 +3,7 @@
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { trpc } from '@/lib/trpc';
 
 interface RealtimeMessage {
   type: 'subscribe' | 'unsubscribe' | 'data' | 'status' | 'alert' | 'ping' | 'pong';
@@ -34,8 +35,25 @@ export function useRealtimeWebSocket(options: UseRealtimeWebSocketOptions = {}) 
   const [isConnected, setIsConnected] = useState(false);
   const [lastMessage, setLastMessage] = useState<RealtimeMessage | null>(null);
   const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [wsEnabled, setWsEnabled] = useState<boolean | null>(null);
+
+  // Check if WebSocket is enabled on server
+  const { data: wsStatus } = trpc.system.getWebSocketStatus.useQuery(undefined, {
+    refetchInterval: 60000, // Check every minute
+  });
+
+  useEffect(() => {
+    if (wsStatus) {
+      setWsEnabled(wsStatus.enabled);
+    }
+  }, [wsStatus]);
 
   const connect = useCallback(() => {
+    // Don't connect if WebSocket is disabled
+    if (wsEnabled === false) {
+      console.log('[WebSocket] Server WebSocket is disabled, skipping connection');
+      return;
+    }
     // Determine WebSocket URL
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${window.location.host}/ws/realtime`;
@@ -130,13 +148,17 @@ export function useRealtimeWebSocket(options: UseRealtimeWebSocketOptions = {}) 
     }
   }, []);
 
-  // Connect on mount
+  // Connect only when WebSocket is enabled
   useEffect(() => {
-    connect();
+    if (wsEnabled === true) {
+      connect();
+    } else if (wsEnabled === false) {
+      disconnect();
+    }
     return () => {
       disconnect();
     };
-  }, []);
+  }, [wsEnabled]);
 
   // Ping interval to keep connection alive
   useEffect(() => {
@@ -150,6 +172,7 @@ export function useRealtimeWebSocket(options: UseRealtimeWebSocketOptions = {}) 
     isConnected,
     lastMessage,
     connectionError,
+    wsEnabled,
     connect,
     disconnect,
     subscribe,
