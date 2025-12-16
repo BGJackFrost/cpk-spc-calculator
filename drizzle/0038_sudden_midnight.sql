@@ -1,0 +1,63 @@
+CREATE TABLE `spare_parts_inventory_check_items` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`checkId` int NOT NULL,
+	`sparePartId` int NOT NULL,
+	`systemQuantity` int NOT NULL,
+	`actualQuantity` int,
+	`discrepancy` int,
+	`unitPrice` decimal(12,2),
+	`systemValue` decimal(14,2),
+	`actualValue` decimal(14,2),
+	`status` enum('pending','counted','verified','adjusted') DEFAULT 'pending',
+	`notes` text,
+	`countedBy` int,
+	`countedAt` timestamp,
+	`verifiedBy` int,
+	`verifiedAt` timestamp,
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	CONSTRAINT `spare_parts_inventory_check_items_id` PRIMARY KEY(`id`)
+);
+--> statement-breakpoint
+CREATE TABLE `spare_parts_inventory_checks` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`checkNumber` varchar(50) NOT NULL,
+	`checkDate` timestamp NOT NULL,
+	`checkType` enum('full','partial','cycle','spot') NOT NULL DEFAULT 'full',
+	`status` enum('draft','in_progress','completed','cancelled') DEFAULT 'draft',
+	`warehouseLocation` varchar(100),
+	`category` varchar(100),
+	`totalItems` int DEFAULT 0,
+	`checkedItems` int DEFAULT 0,
+	`matchedItems` int DEFAULT 0,
+	`discrepancyItems` int DEFAULT 0,
+	`totalSystemValue` decimal(14,2),
+	`totalActualValue` decimal(14,2),
+	`discrepancyValue` decimal(14,2),
+	`notes` text,
+	`completedAt` timestamp,
+	`completedBy` int,
+	`createdBy` int NOT NULL,
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `spare_parts_inventory_checks_id` PRIMARY KEY(`id`)
+);
+--> statement-breakpoint
+CREATE TABLE `spare_parts_stock_movements` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`sparePartId` int NOT NULL,
+	`movementType` enum('purchase_in','return_in','transfer_in','adjustment_in','initial_in','work_order_out','transfer_out','adjustment_out','scrap_out','return_supplier') NOT NULL,
+	`quantity` int NOT NULL,
+	`beforeQuantity` int NOT NULL,
+	`afterQuantity` int NOT NULL,
+	`unitCost` decimal(12,2),
+	`totalCost` decimal(14,2),
+	`referenceType` varchar(50),
+	`referenceId` int,
+	`referenceNumber` varchar(100),
+	`fromLocation` varchar(100),
+	`toLocation` varchar(100),
+	`reason` text,
+	`performedBy` int NOT NULL,
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	CONSTRAINT `spare_parts_stock_movements_id` PRIMARY KEY(`id`)
+);

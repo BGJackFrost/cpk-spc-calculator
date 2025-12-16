@@ -75,6 +75,8 @@ import MaintenanceDashboard from "./pages/MaintenanceDashboard";
 import MachineDetail from "./pages/MachineDetail";
 import ExportRealtimeData from "./pages/ExportRealtimeData";
 import SparePartsManagement from "./pages/SparePartsManagement";
+import StockMovements from "./pages/StockMovements";
+import InventoryCheck from "./pages/InventoryCheck";
 import PredictiveMaintenance from "./pages/PredictiveMaintenance";
 import MMSDataInit from "./pages/MMSDataInit";
 import MaintenanceSchedule from "./pages/MaintenanceSchedule";
@@ -138,6 +140,8 @@ function Router() {
       <Route path="/machine/:id" component={MachineDetail} />
       <Route path="/export-realtime" component={ExportRealtimeData} />
       <Route path="/spare-parts" component={SparePartsManagement} />
+      <Route path="/stock-movements" component={StockMovements} />
+      <Route path="/inventory-check" component={InventoryCheck} />
       <Route path="/predictive-maintenance" component={PredictiveMaintenance} />
       <Route path="/maintenance-schedule" component={MaintenanceSchedule} />
       <Route path="/equipment-qr" component={EquipmentQRLookup} />

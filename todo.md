@@ -2359,3 +2359,38 @@
 ## Phase 111: Sửa lỗi SSE exports và tắt SSE
 - [x] Sửa lỗi SSE exports thiếu - Các exports đã có trong sse.ts, lỗi là do TypeScript watcher cũ bị cache
 - [x] Tắt SSE để chạy thử - Đặt sseServerEnabled = false mặc định
+
+
+## Phase 112: Nâng cấp Kho phụ tùng & Sửa lỗi Supervisor Dashboard
+
+### Sửa lỗi Supervisor Dashboard
+- [ ] Kiểm tra và sửa lỗi trang Supervisor Dashboard
+
+### Nâng cấp Kho phụ tùng - Xuất nhập tồn
+- [ ] Thêm bảng spare_parts_transactions (xuất/nhập)
+- [ ] Thêm bảng spare_parts_inventory_checks (kiểm kê)
+- [ ] API nhập kho (import)
+- [ ] API xuất kho (export)
+- [ ] API kiểm kê (inventory check)
+- [ ] Báo cáo xuất nhập tồn
+- [ ] UI quản lý xuất nhập tồn
+- [ ] UI kiểm kê kho
+
+
+## Phase 112: Nâng cấp Kho phụ tùng & Sửa lỗi Supervisor Dashboard
+
+### Sửa lỗi Supervisor Dashboard
+- [x] Kiểm tra và sửa lỗi trang Supervisor Dashboard - Sửa useRealtimeUpdates không connect khi SSE disabled
+
+### Nâng cấp Kho phụ tùng
+- [x] Thêm bảng kiểm kê kho (sparePartsInventoryChecks, sparePartsInventoryCheckItems)
+- [x] Thêm bảng lịch sử xuất nhập tồn (sparePartsStockMovements)
+- [x] API nhập kho (importStock) - Hỗ trợ purchase_in, adjustment_in
+- [x] API xuất kho (exportStock) - Hỗ trợ work_order_out, adjustment_out
+- [x] API lịch sử xuất nhập tồn (listStockMovements)
+- [x] API báo cáo xuất nhập tồn (getStockReport)
+- [x] API tạo phiếu kiểm kê (createInventoryCheck)
+- [x] API cập nhật số lượng thực tế (updateCheckItem)
+- [x] API hoàn thành kiểm kê và điều chỉnh tồn kho (completeInventoryCheck)
+- [x] UI trang Xuất nhập tồn (/stock-movements)
+- [x] UI trang Kiểm kê kho (/inventory-check)

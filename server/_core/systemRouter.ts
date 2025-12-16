@@ -6,7 +6,7 @@ import { systemConfig, companyInfo } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { storagePut } from "../storage";
 import { isWebSocketEnabled, setWebSocketEnabled, realtimeWebSocketServer, loadWebSocketConfig, getEventLog, clearEventLog } from "../websocketServer";
-import { getConnectedClientsCount as getSseClientCount, isSseServerEnabled, setSseServerEnabled as setSseEnabled, getSseEventLog, clearSseEventLog } from "../sse";
+import { getConnectedClientsCount as getSseClientCount, isSseServerEnabled, setSseServerEnabled, getSseEventLog, clearSseEventLog } from "../sse";
 import { getRecentLogs, clearLogBuffer, getLogStats, type LogLevel } from "./logger";
 
 export const systemRouter = router({
@@ -264,7 +264,7 @@ export const systemRouter = router({
   setSseServerEnabled: protectedProcedure
     .input(z.object({ enabled: z.boolean() }))
     .mutation(async ({ input }) => {
-      setSseEnabled(input.enabled);
+      setSseServerEnabled(input.enabled);
       return { success: true, enabled: input.enabled };
     }),
 

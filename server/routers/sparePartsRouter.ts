@@ -3,7 +3,8 @@ import { router, publicProcedure, protectedProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { 
   spareParts, sparePartsInventory, sparePartsTransactions,
-  suppliers, purchaseOrders, purchaseOrderItems
+  suppliers, purchaseOrders, purchaseOrderItems,
+  sparePartsInventoryChecks, sparePartsInventoryCheckItems, sparePartsStockMovements
 } from "../../drizzle/schema";
 import { eq, desc, and, gte, lte, sql, or } from "drizzle-orm";
 
@@ -619,4 +620,494 @@ export const sparePartsRouter = router({
         estimatedCost: (p.reorderQuantity || ((p.minStock || 0) * 2 - (p.currentStock || 0))) * Number(p.unitPrice || 0),
       }));
   }),
+
+  // ============ XUẤT NHẬP TỒN ============
+
+  // Nhập kho
+  importStock: protectedProcedure
+    .input(z.object({
+      sparePartId: z.number(),
+      quantity: z.number().min(1),
+      unitCost: z.number().optional(),
+      purchaseOrderId: z.number().optional(),
+      referenceNumber: z.string().optional(),
+      toLocation: z.string().optional(),
+      reason: z.string().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      // Get current inventory
+      const [inv] = await db.select().from(sparePartsInventory)
+        .where(eq(sparePartsInventory.sparePartId, input.sparePartId));
+      
+      const beforeQty = inv?.quantity || 0;
+      const afterQty = beforeQty + input.quantity;
+      const totalCost = input.unitCost ? input.quantity * input.unitCost : undefined;
+
+      // Create stock movement
+      await db.insert(sparePartsStockMovements).values({
+        sparePartId: input.sparePartId,
+        movementType: input.purchaseOrderId ? "purchase_in" : "adjustment_in",
+        quantity: input.quantity,
+        beforeQuantity: beforeQty,
+        afterQuantity: afterQty,
+        unitCost: input.unitCost ? String(input.unitCost) : undefined,
+        totalCost: totalCost ? String(totalCost) : undefined,
+        referenceType: input.purchaseOrderId ? "purchase_order" : undefined,
+        referenceId: input.purchaseOrderId,
+        referenceNumber: input.referenceNumber,
+        toLocation: input.toLocation,
+        reason: input.reason,
+        performedBy: ctx.user?.id || 0,
+      });
+
+      // Create transaction
+      await db.insert(sparePartsTransactions).values({
+        sparePartId: input.sparePartId,
+        transactionType: "in",
+        quantity: input.quantity,
+        unitCost: input.unitCost ? String(input.unitCost) : undefined,
+        totalCost: totalCost ? String(totalCost) : undefined,
+        purchaseOrderId: input.purchaseOrderId,
+        reason: input.reason,
+        performedBy: ctx.user?.id,
+      });
+
+      // Update inventory
+      if (inv) {
+        await db.update(sparePartsInventory).set({
+          quantity: afterQty,
+          updatedAt: new Date(),
+        }).where(eq(sparePartsInventory.sparePartId, input.sparePartId));
+      } else {
+        await db.insert(sparePartsInventory).values({
+          sparePartId: input.sparePartId,
+          quantity: afterQty,
+        });
+      }
+
+      return { success: true, newQuantity: afterQty };
+    }),
+
+  // Xuất kho
+  exportStock: protectedProcedure
+    .input(z.object({
+      sparePartId: z.number(),
+      quantity: z.number().min(1),
+      workOrderId: z.number().optional(),
+      referenceNumber: z.string().optional(),
+      fromLocation: z.string().optional(),
+      reason: z.string().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      // Get current inventory
+      const [inv] = await db.select().from(sparePartsInventory)
+        .where(eq(sparePartsInventory.sparePartId, input.sparePartId));
+      
+      const beforeQty = inv?.quantity || 0;
+      if (beforeQty < input.quantity) {
+        throw new Error(`Không đủ tồn kho. Hiện có: ${beforeQty}, yêu cầu: ${input.quantity}`);
+      }
+      const afterQty = beforeQty - input.quantity;
+
+      // Get unit price for cost calculation
+      const [part] = await db.select().from(spareParts)
+        .where(eq(spareParts.id, input.sparePartId));
+      const unitCost = part?.unitPrice ? Number(part.unitPrice) : undefined;
+      const totalCost = unitCost ? input.quantity * unitCost : undefined;
+
+      // Create stock movement
+      await db.insert(sparePartsStockMovements).values({
+        sparePartId: input.sparePartId,
+        movementType: input.workOrderId ? "work_order_out" : "adjustment_out",
+        quantity: input.quantity,
+        beforeQuantity: beforeQty,
+        afterQuantity: afterQty,
+        unitCost: unitCost ? String(unitCost) : undefined,
+        totalCost: totalCost ? String(totalCost) : undefined,
+        referenceType: input.workOrderId ? "work_order" : undefined,
+        referenceId: input.workOrderId,
+        referenceNumber: input.referenceNumber,
+        fromLocation: input.fromLocation,
+        reason: input.reason,
+        performedBy: ctx.user?.id || 0,
+      });
+
+      // Create transaction
+      await db.insert(sparePartsTransactions).values({
+        sparePartId: input.sparePartId,
+        transactionType: "out",
+        quantity: input.quantity,
+        unitCost: unitCost ? String(unitCost) : undefined,
+        totalCost: totalCost ? String(totalCost) : undefined,
+        workOrderId: input.workOrderId,
+        reason: input.reason,
+        performedBy: ctx.user?.id,
+      });
+
+      // Update inventory
+      await db.update(sparePartsInventory).set({
+        quantity: afterQty,
+        updatedAt: new Date(),
+      }).where(eq(sparePartsInventory.sparePartId, input.sparePartId));
+
+      return { success: true, newQuantity: afterQty };
+    }),
+
+  // Lịch sử xuất nhập tồn
+  listStockMovements: publicProcedure
+    .input(z.object({
+      sparePartId: z.number().optional(),
+      movementType: z.string().optional(),
+      startDate: z.string().optional(),
+      endDate: z.string().optional(),
+      limit: z.number().default(100),
+    }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return [];
+
+      const conditions = [];
+      if (input.sparePartId) conditions.push(eq(sparePartsStockMovements.sparePartId, input.sparePartId));
+      if (input.movementType) conditions.push(eq(sparePartsStockMovements.movementType, input.movementType as any));
+      if (input.startDate) conditions.push(gte(sparePartsStockMovements.createdAt, new Date(input.startDate)));
+      if (input.endDate) conditions.push(lte(sparePartsStockMovements.createdAt, new Date(input.endDate)));
+
+      return db
+        .select({
+          id: sparePartsStockMovements.id,
+          sparePartId: sparePartsStockMovements.sparePartId,
+          partName: spareParts.name,
+          partNumber: spareParts.partNumber,
+          movementType: sparePartsStockMovements.movementType,
+          quantity: sparePartsStockMovements.quantity,
+          beforeQuantity: sparePartsStockMovements.beforeQuantity,
+          afterQuantity: sparePartsStockMovements.afterQuantity,
+          unitCost: sparePartsStockMovements.unitCost,
+          totalCost: sparePartsStockMovements.totalCost,
+          referenceType: sparePartsStockMovements.referenceType,
+          referenceId: sparePartsStockMovements.referenceId,
+          referenceNumber: sparePartsStockMovements.referenceNumber,
+          fromLocation: sparePartsStockMovements.fromLocation,
+          toLocation: sparePartsStockMovements.toLocation,
+          reason: sparePartsStockMovements.reason,
+          createdAt: sparePartsStockMovements.createdAt,
+        })
+        .from(sparePartsStockMovements)
+        .leftJoin(spareParts, eq(sparePartsStockMovements.sparePartId, spareParts.id))
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .orderBy(desc(sparePartsStockMovements.createdAt))
+        .limit(input.limit);
+    }),
+
+  // Báo cáo xuất nhập tồn
+  getStockReport: publicProcedure
+    .input(z.object({
+      startDate: z.string(),
+      endDate: z.string(),
+      sparePartId: z.number().optional(),
+    }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return null;
+
+      const conditions = [
+        gte(sparePartsStockMovements.createdAt, new Date(input.startDate)),
+        lte(sparePartsStockMovements.createdAt, new Date(input.endDate)),
+      ];
+      if (input.sparePartId) conditions.push(eq(sparePartsStockMovements.sparePartId, input.sparePartId));
+
+      const movements = await db
+        .select()
+        .from(sparePartsStockMovements)
+        .where(and(...conditions));
+
+      // Calculate summary
+      let totalIn = 0, totalOut = 0, totalInValue = 0, totalOutValue = 0;
+      movements.forEach(m => {
+        if (m.movementType.includes("_in")) {
+          totalIn += m.quantity;
+          totalInValue += Number(m.totalCost || 0);
+        } else if (m.movementType.includes("_out")) {
+          totalOut += m.quantity;
+          totalOutValue += Number(m.totalCost || 0);
+        }
+      });
+
+      return {
+        totalIn,
+        totalOut,
+        netChange: totalIn - totalOut,
+        totalInValue,
+        totalOutValue,
+        netValueChange: totalInValue - totalOutValue,
+        movementCount: movements.length,
+      };
+    }),
+
+  // ============ KIỂM KÊ ============
+
+  // Tạo phiếu kiểm kê
+  createInventoryCheck: protectedProcedure
+    .input(z.object({
+      checkType: z.enum(["full", "partial", "cycle", "spot"]).default("full"),
+      warehouseLocation: z.string().optional(),
+      category: z.string().optional(),
+      notes: z.string().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      // Generate check number
+      const checkNumber = `IC-${Date.now()}`;
+
+      // Create inventory check
+      const [result] = await db.insert(sparePartsInventoryChecks).values({
+        checkNumber,
+        checkDate: new Date(),
+        checkType: input.checkType,
+        status: "draft",
+        warehouseLocation: input.warehouseLocation,
+        category: input.category,
+        notes: input.notes,
+        createdBy: ctx.user?.id || 0,
+      }).$returningId();
+
+      // Get parts to check based on filters
+      const partsConditions = [eq(spareParts.isActive, 1)];
+      if (input.warehouseLocation) partsConditions.push(eq(spareParts.warehouseLocation, input.warehouseLocation));
+      if (input.category) partsConditions.push(eq(spareParts.category, input.category));
+
+      const parts = await db
+        .select({
+          id: spareParts.id,
+          unitPrice: spareParts.unitPrice,
+          quantity: sparePartsInventory.quantity,
+        })
+        .from(spareParts)
+        .leftJoin(sparePartsInventory, eq(spareParts.id, sparePartsInventory.sparePartId))
+        .where(and(...partsConditions));
+
+      // Create check items
+      for (const part of parts) {
+        const qty = part.quantity || 0;
+        const price = Number(part.unitPrice || 0);
+        await db.insert(sparePartsInventoryCheckItems).values({
+          checkId: result.id,
+          sparePartId: part.id,
+          systemQuantity: qty,
+          unitPrice: part.unitPrice,
+          systemValue: String(qty * price),
+          status: "pending",
+        });
+      }
+
+      // Update check totals
+      await db.update(sparePartsInventoryChecks).set({
+        totalItems: parts.length,
+      }).where(eq(sparePartsInventoryChecks.id, result.id));
+
+      return { id: result.id, checkNumber };
+    }),
+
+  // Danh sách phiếu kiểm kê
+  listInventoryChecks: publicProcedure
+    .input(z.object({
+      status: z.string().optional(),
+      limit: z.number().default(50),
+    }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return [];
+
+      const conditions = [];
+      if (input.status) conditions.push(eq(sparePartsInventoryChecks.status, input.status as any));
+
+      return db
+        .select()
+        .from(sparePartsInventoryChecks)
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .orderBy(desc(sparePartsInventoryChecks.createdAt))
+        .limit(input.limit);
+    }),
+
+  // Chi tiết phiếu kiểm kê
+  getInventoryCheck: publicProcedure
+    .input(z.object({ id: z.number() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return null;
+
+      const [check] = await db
+        .select()
+        .from(sparePartsInventoryChecks)
+        .where(eq(sparePartsInventoryChecks.id, input.id));
+
+      if (!check) return null;
+
+      const items = await db
+        .select({
+          id: sparePartsInventoryCheckItems.id,
+          sparePartId: sparePartsInventoryCheckItems.sparePartId,
+          partName: spareParts.name,
+          partNumber: spareParts.partNumber,
+          systemQuantity: sparePartsInventoryCheckItems.systemQuantity,
+          actualQuantity: sparePartsInventoryCheckItems.actualQuantity,
+          discrepancy: sparePartsInventoryCheckItems.discrepancy,
+          unitPrice: sparePartsInventoryCheckItems.unitPrice,
+          systemValue: sparePartsInventoryCheckItems.systemValue,
+          actualValue: sparePartsInventoryCheckItems.actualValue,
+          status: sparePartsInventoryCheckItems.status,
+          notes: sparePartsInventoryCheckItems.notes,
+          countedAt: sparePartsInventoryCheckItems.countedAt,
+        })
+        .from(sparePartsInventoryCheckItems)
+        .leftJoin(spareParts, eq(sparePartsInventoryCheckItems.sparePartId, spareParts.id))
+        .where(eq(sparePartsInventoryCheckItems.checkId, input.id));
+
+      return { ...check, items };
+    }),
+
+  // Cập nhật số lượng thực tế
+  updateCheckItem: protectedProcedure
+    .input(z.object({
+      itemId: z.number(),
+      actualQuantity: z.number().min(0),
+      notes: z.string().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      // Get item
+      const [item] = await db
+        .select()
+        .from(sparePartsInventoryCheckItems)
+        .where(eq(sparePartsInventoryCheckItems.id, input.itemId));
+
+      if (!item) throw new Error("Item not found");
+
+      const discrepancy = input.actualQuantity - item.systemQuantity;
+      const unitPrice = Number(item.unitPrice || 0);
+      const actualValue = input.actualQuantity * unitPrice;
+
+      await db.update(sparePartsInventoryCheckItems).set({
+        actualQuantity: input.actualQuantity,
+        discrepancy,
+        actualValue: String(actualValue),
+        status: "counted",
+        notes: input.notes,
+        countedBy: ctx.user?.id,
+        countedAt: new Date(),
+      }).where(eq(sparePartsInventoryCheckItems.id, input.itemId));
+
+      // Update check progress
+      const [check] = await db
+        .select()
+        .from(sparePartsInventoryChecks)
+        .where(eq(sparePartsInventoryChecks.id, item.checkId));
+
+      if (check) {
+        const items = await db
+          .select()
+          .from(sparePartsInventoryCheckItems)
+          .where(eq(sparePartsInventoryCheckItems.checkId, item.checkId));
+
+        const checkedItems = items.filter(i => i.status !== "pending").length;
+        const matchedItems = items.filter(i => i.discrepancy === 0).length;
+        const discrepancyItems = items.filter(i => i.discrepancy !== null && i.discrepancy !== 0).length;
+
+        await db.update(sparePartsInventoryChecks).set({
+          checkedItems,
+          matchedItems,
+          discrepancyItems,
+          status: checkedItems === items.length ? "completed" : "in_progress",
+        }).where(eq(sparePartsInventoryChecks.id, item.checkId));
+      }
+
+      return { success: true };
+    }),
+
+  // Hoàn thành kiểm kê và điều chỉnh tồn kho
+  completeInventoryCheck: protectedProcedure
+    .input(z.object({
+      checkId: z.number(),
+      adjustInventory: z.boolean().default(false),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      // Get check and items
+      const [check] = await db
+        .select()
+        .from(sparePartsInventoryChecks)
+        .where(eq(sparePartsInventoryChecks.id, input.checkId));
+
+      if (!check) throw new Error("Inventory check not found");
+
+      const items = await db
+        .select()
+        .from(sparePartsInventoryCheckItems)
+        .where(eq(sparePartsInventoryCheckItems.checkId, input.checkId));
+
+      // Calculate totals
+      let totalSystemValue = 0, totalActualValue = 0;
+      items.forEach(item => {
+        totalSystemValue += Number(item.systemValue || 0);
+        totalActualValue += Number(item.actualValue || 0);
+      });
+
+      // Adjust inventory if requested
+      if (input.adjustInventory) {
+        for (const item of items) {
+          if (item.discrepancy && item.discrepancy !== 0 && item.actualQuantity !== null) {
+            // Create adjustment movement
+            const movementType = item.discrepancy > 0 ? "adjustment_in" : "adjustment_out";
+            await db.insert(sparePartsStockMovements).values({
+              sparePartId: item.sparePartId,
+              movementType,
+              quantity: Math.abs(item.discrepancy),
+              beforeQuantity: item.systemQuantity,
+              afterQuantity: item.actualQuantity,
+              referenceType: "inventory_check",
+              referenceId: input.checkId,
+              referenceNumber: check.checkNumber,
+              reason: `Điều chỉnh sau kiểm kê: ${item.notes || ""}`,
+              performedBy: ctx.user?.id || 0,
+            });
+
+            // Update inventory
+            await db.update(sparePartsInventory).set({
+              quantity: item.actualQuantity,
+              lastStockCheck: new Date(),
+              updatedAt: new Date(),
+            }).where(eq(sparePartsInventory.sparePartId, item.sparePartId));
+
+            // Mark item as adjusted
+            await db.update(sparePartsInventoryCheckItems).set({
+              status: "adjusted",
+            }).where(eq(sparePartsInventoryCheckItems.id, item.id));
+          }
+        }
+      }
+
+      // Complete check
+      await db.update(sparePartsInventoryChecks).set({
+        status: "completed",
+        totalSystemValue: String(totalSystemValue),
+        totalActualValue: String(totalActualValue),
+        discrepancyValue: String(totalActualValue - totalSystemValue),
+        completedAt: new Date(),
+        completedBy: ctx.user?.id,
+      }).where(eq(sparePartsInventoryChecks.id, input.checkId));
+
+      return { success: true };
+    }),
 });

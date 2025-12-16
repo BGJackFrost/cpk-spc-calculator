@@ -192,7 +192,10 @@ export function useRealtimeUpdates(options: UseRealtimeUpdatesOptions = {}) {
   }, []);
 
   useEffect(() => {
-    if (enabled) {
+    // Check if SSE is enabled in localStorage
+    const sseEnabled = localStorage.getItem('sseEnabled') !== 'false';
+    
+    if (enabled && sseEnabled) {
       connect();
     } else {
       disconnect();

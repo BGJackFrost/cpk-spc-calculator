@@ -2213,3 +2213,118 @@ export type RateLimitRoleConfig = typeof rateLimitRoleConfig.$inferSelect;
 export type InsertRateLimitRoleConfig = typeof rateLimitRoleConfig.$inferInsert;
 
 
+
+/**
+ * Spare Parts Inventory Checks - kiểm kê kho phụ tùng
+ */
+export const sparePartsInventoryChecks = mysqlTable("spare_parts_inventory_checks", {
+  id: int("id").autoincrement().primaryKey(),
+  checkNumber: varchar("checkNumber", { length: 50 }).notNull(),
+  checkDate: timestamp("checkDate").notNull(),
+  checkType: mysqlEnum("checkType", ["full", "partial", "cycle", "spot"]).notNull().default("full"),
+  status: mysqlEnum("status", ["draft", "in_progress", "completed", "cancelled"]).default("draft"),
+  
+  // Phạm vi kiểm kê
+  warehouseLocation: varchar("warehouseLocation", { length: 100 }),
+  category: varchar("category", { length: 100 }),
+  
+  // Kết quả
+  totalItems: int("totalItems").default(0),
+  checkedItems: int("checkedItems").default(0),
+  matchedItems: int("matchedItems").default(0),
+  discrepancyItems: int("discrepancyItems").default(0),
+  
+  // Giá trị
+  totalSystemValue: decimal("totalSystemValue", { precision: 14, scale: 2 }),
+  totalActualValue: decimal("totalActualValue", { precision: 14, scale: 2 }),
+  discrepancyValue: decimal("discrepancyValue", { precision: 14, scale: 2 }),
+  
+  notes: text("notes"),
+  completedAt: timestamp("completedAt"),
+  completedBy: int("completedBy"),
+  createdBy: int("createdBy").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type SparePartInventoryCheck = typeof sparePartsInventoryChecks.$inferSelect;
+export type InsertSparePartInventoryCheck = typeof sparePartsInventoryChecks.$inferInsert;
+
+/**
+ * Spare Parts Inventory Check Items - chi tiết kiểm kê từng phụ tùng
+ */
+export const sparePartsInventoryCheckItems = mysqlTable("spare_parts_inventory_check_items", {
+  id: int("id").autoincrement().primaryKey(),
+  checkId: int("checkId").notNull(),
+  sparePartId: int("sparePartId").notNull(),
+  
+  // Số lượng
+  systemQuantity: int("systemQuantity").notNull(),
+  actualQuantity: int("actualQuantity"),
+  discrepancy: int("discrepancy"),
+  
+  // Giá trị
+  unitPrice: decimal("unitPrice", { precision: 12, scale: 2 }),
+  systemValue: decimal("systemValue", { precision: 14, scale: 2 }),
+  actualValue: decimal("actualValue", { precision: 14, scale: 2 }),
+  
+  // Trạng thái
+  status: mysqlEnum("status", ["pending", "counted", "verified", "adjusted"]).default("pending"),
+  
+  // Ghi chú
+  notes: text("notes"),
+  countedBy: int("countedBy"),
+  countedAt: timestamp("countedAt"),
+  verifiedBy: int("verifiedBy"),
+  verifiedAt: timestamp("verifiedAt"),
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type SparePartInventoryCheckItem = typeof sparePartsInventoryCheckItems.$inferSelect;
+export type InsertSparePartInventoryCheckItem = typeof sparePartsInventoryCheckItems.$inferInsert;
+
+/**
+ * Spare Parts Stock Movements - lịch sử di chuyển tồn kho
+ */
+export const sparePartsStockMovements = mysqlTable("spare_parts_stock_movements", {
+  id: int("id").autoincrement().primaryKey(),
+  sparePartId: int("sparePartId").notNull(),
+  movementType: mysqlEnum("movementType", [
+    "purchase_in",      // Nhập mua
+    "return_in",        // Nhập trả
+    "transfer_in",      // Nhập chuyển kho
+    "adjustment_in",    // Điều chỉnh tăng
+    "initial_in",       // Nhập đầu kỳ
+    "work_order_out",   // Xuất cho work order
+    "transfer_out",     // Xuất chuyển kho
+    "adjustment_out",   // Điều chỉnh giảm
+    "scrap_out",        // Xuất hủy
+    "return_supplier"   // Trả nhà cung cấp
+  ]).notNull(),
+  
+  // Số lượng
+  quantity: int("quantity").notNull(),
+  beforeQuantity: int("beforeQuantity").notNull(),
+  afterQuantity: int("afterQuantity").notNull(),
+  
+  // Giá trị
+  unitCost: decimal("unitCost", { precision: 12, scale: 2 }),
+  totalCost: decimal("totalCost", { precision: 14, scale: 2 }),
+  
+  // Liên kết
+  referenceType: varchar("referenceType", { length: 50 }), // purchase_order, work_order, inventory_check, etc.
+  referenceId: int("referenceId"),
+  referenceNumber: varchar("referenceNumber", { length: 100 }),
+  
+  // Vị trí
+  fromLocation: varchar("fromLocation", { length: 100 }),
+  toLocation: varchar("toLocation", { length: 100 }),
+  
+  reason: text("reason"),
+  performedBy: int("performedBy").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type SparePartStockMovement = typeof sparePartsStockMovements.$inferSelect;
+export type InsertSparePartStockMovement = typeof sparePartsStockMovements.$inferInsert;
