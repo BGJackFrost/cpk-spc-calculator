@@ -23,7 +23,10 @@ import {
   RefreshCw,
   ArrowLeft,
   Wifi,
-  WifiOff
+  WifiOff,
+  Bell,
+  Settings,
+  History
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -239,6 +242,7 @@ export default function MachineDetail() {
             <TabsTrigger value="oee">OEE Chi tiết</TabsTrigger>
             <TabsTrigger value="spc">SPC</TabsTrigger>
             <TabsTrigger value="maintenance">Bảo trì</TabsTrigger>
+            <TabsTrigger value="alerts">Cảnh báo</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-4">
@@ -512,6 +516,78 @@ export default function MachineDetail() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="alerts" className="space-y-4">
+            {/* Alert History */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Bell className="h-4 w-4" />
+                  Lịch sử cảnh báo
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between p-3 border-l-4 border-red-500 bg-red-50 dark:bg-red-900/20 rounded-r-lg">
+                    <div>
+                      <p className="font-medium">OEE dưới ngưỡng</p>
+                      <p className="text-sm text-muted-foreground">OEE = 72.5% (ngưỡng: 85%)</p>
+                      <p className="text-xs text-muted-foreground">15/12/2025 14:30</p>
+                    </div>
+                    <Badge className="bg-red-500">Nghiêm trọng</Badge>
+                  </div>
+                  <div className="flex items-center justify-between p-3 border-l-4 border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20 rounded-r-lg">
+                    <div>
+                      <p className="font-medium">CPK cảnh báo</p>
+                      <p className="text-sm text-muted-foreground">CPK = 1.25 (ngưỡng: 1.33)</p>
+                      <p className="text-xs text-muted-foreground">15/12/2025 10:15</p>
+                    </div>
+                    <Badge className="bg-yellow-500">Cảnh báo</Badge>
+                  </div>
+                  <div className="flex items-center justify-between p-3 border-l-4 border-orange-500 bg-orange-50 dark:bg-orange-900/20 rounded-r-lg">
+                    <div>
+                      <p className="font-medium">Performance giảm</p>
+                      <p className="text-sm text-muted-foreground">Performance = 78% (ngưỡng: 90%)</p>
+                      <p className="text-xs text-muted-foreground">14/12/2025 16:45</p>
+                    </div>
+                    <Badge className="bg-orange-500">Trung bình</Badge>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Alert Statistics */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <Card>
+                <CardContent className="pt-4 text-center">
+                  <p className="text-sm text-muted-foreground">Tổng cảnh báo</p>
+                  <p className="text-2xl font-bold">24</p>
+                  <p className="text-xs text-muted-foreground">7 ngày qua</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-4 text-center">
+                  <p className="text-sm text-muted-foreground">Nghiêm trọng</p>
+                  <p className="text-2xl font-bold text-red-500">3</p>
+                  <p className="text-xs text-muted-foreground">Cần xử lý ngay</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-4 text-center">
+                  <p className="text-sm text-muted-foreground">Cảnh báo</p>
+                  <p className="text-2xl font-bold text-yellow-500">8</p>
+                  <p className="text-xs text-muted-foreground">Cần theo dõi</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-4 text-center">
+                  <p className="text-sm text-muted-foreground">Đã xử lý</p>
+                  <p className="text-2xl font-bold text-green-500">13</p>
+                  <p className="text-xs text-muted-foreground">Hoàn thành</p>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
         </Tabs>
       </div>

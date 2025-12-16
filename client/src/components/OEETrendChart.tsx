@@ -1,7 +1,9 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useState, useMemo } from "react";
+import { Button } from "@/components/ui/button";
+import { useState, useMemo, useEffect, useCallback } from "react";
+import { useOEEUpdates } from "@/hooks/useWebSocket";
 import {
   ResponsiveContainer,
   ComposedChart,
@@ -15,7 +17,7 @@ import {
   Legend,
   ReferenceLine
 } from "recharts";
-import { TrendingUp, TrendingDown, Minus, Activity } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, Activity, Wifi, WifiOff, RefreshCw, Pause, Play } from "lucide-react";
 
 interface OEEDataPoint {
   timestamp: Date | string;
@@ -34,6 +36,9 @@ interface OEETrendChartProps {
   showComponents?: boolean;
   targetOEE?: number;
   height?: number;
+  machineId?: number;
+  enableRealtime?: boolean;
+  onDataUpdate?: (newData: OEEDataPoint) => void;
 }
 
 export function OEETrendChart({
@@ -42,13 +47,57 @@ export function OEETrendChart({
   description = "Biểu đồ theo dõi OEE theo thời gian",
   showComponents = true,
   targetOEE = 85,
-  height = 300
+  height = 300,
+  machineId,
+  enableRealtime = false,
+  onDataUpdate
 }: OEETrendChartProps) {
   const [viewMode, setViewMode] = useState<"oee" | "components" | "all">("all");
   const [timeRange, setTimeRange] = useState<"1h" | "4h" | "8h" | "24h" | "7d">("8h");
+  const [isPaused, setIsPaused] = useState(false);
+  const [realtimeData, setRealtimeData] = useState<OEEDataPoint[]>(data);
+
+  // WebSocket realtime updates
+  const { data: wsOEEData, isConnected } = useOEEUpdates(machineId);
+
+  // Update realtime data when WebSocket receives new data
+  useEffect(() => {
+    if (enableRealtime && wsOEEData && !isPaused) {
+      const newPoint: OEEDataPoint = {
+        timestamp: new Date(),
+        oee: wsOEEData.oee,
+        availability: wsOEEData.availability,
+        performance: wsOEEData.performance,
+        quality: wsOEEData.quality,
+        machineId: wsOEEData.machineId
+      };
+      
+      setRealtimeData(prev => {
+        const updated = [...prev, newPoint];
+        // Keep only last 100 data points
+        if (updated.length > 100) {
+          return updated.slice(-100);
+        }
+        return updated;
+      });
+
+      if (onDataUpdate) {
+        onDataUpdate(newPoint);
+      }
+    }
+  }, [wsOEEData, enableRealtime, isPaused, onDataUpdate]);
+
+  // Sync with prop data when not in realtime mode
+  useEffect(() => {
+    if (!enableRealtime) {
+      setRealtimeData(data);
+    }
+  }, [data, enableRealtime]);
+
+  const displayData = enableRealtime ? realtimeData : data;
 
   const chartData = useMemo(() => {
-    return data.map((point) => ({
+    return displayData.map((point) => ({
       ...point,
       time: new Date(point.timestamp).toLocaleTimeString('vi-VN', { 
         hour: '2-digit', 
@@ -56,12 +105,12 @@ export function OEETrendChart({
       }),
       fullTime: new Date(point.timestamp).toLocaleString('vi-VN')
     }));
-  }, [data]);
+  }, [displayData]);
 
   const stats = useMemo(() => {
-    if (data.length === 0) return null;
+    if (displayData.length === 0) return null;
     
-    const oeeValues = data.map(d => d.oee);
+    const oeeValues = displayData.map(d => d.oee);
     const avgOEE = oeeValues.reduce((a, b) => a + b, 0) / oeeValues.length;
     const minOEE = Math.min(...oeeValues);
     const maxOEE = Math.max(...oeeValues);
@@ -70,7 +119,7 @@ export function OEETrendChart({
     const trend = latestOEE - previousOEE;
 
     return { avgOEE, minOEE, maxOEE, latestOEE, trend };
-  }, [data]);
+  }, [displayData]);
 
   const getTrendIcon = (trend: number) => {
     if (trend > 0.5) return <TrendingUp className="h-4 w-4 text-green-500" />;
@@ -121,6 +170,38 @@ export function OEETrendChart({
             <CardDescription>{description}</CardDescription>
           </div>
           <div className="flex items-center gap-2">
+            {/* Realtime Controls */}
+            {enableRealtime && (
+              <>
+                <Badge variant={isConnected ? "default" : "destructive"} className="gap-1">
+                  {isConnected ? (
+                    <><Wifi className="h-3 w-3" /> Live</>
+                  ) : (
+                    <><WifiOff className="h-3 w-3" /> Offline</>
+                  )}
+                </Badge>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsPaused(!isPaused)}
+                  className="h-8"
+                >
+                  {isPaused ? (
+                    <Play className="h-4 w-4" />
+                  ) : (
+                    <Pause className="h-4 w-4" />
+                  )}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setRealtimeData(data)}
+                  className="h-8"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                </Button>
+              </>
+            )}
             <Select value={viewMode} onValueChange={(v: any) => setViewMode(v)}>
               <SelectTrigger className="w-[140px] h-8">
                 <SelectValue />

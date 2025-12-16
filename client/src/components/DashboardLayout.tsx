@@ -109,6 +109,7 @@ const menuGroups: MenuGroup[] = [
       { icon: Cpu, labelKey: "nav.iotGateway", path: "/iot-gateway", adminOnly: true },
       { icon: FileText, labelKey: "nav.reportsExport", path: "/reports-export" },
       { icon: AlertTriangle, labelKey: "nav.alertConfig", path: "/alert-config", adminOnly: true },
+      { icon: Target, labelKey: "nav.alertThresholdConfig", path: "/alert-threshold-config", adminOnly: true },
       { icon: Mail, labelKey: "nav.scheduledReports", path: "/scheduled-reports" },
       { icon: FileSpreadsheet, labelKey: "nav.exportRealtime", path: "/export-realtime" },
     ]

@@ -161,7 +161,7 @@ export function useOEEUpdates(machineId?: number) {
     }
   });
 
-  return { isConnected, oeeData };
+  return { isConnected, data: oeeData };
 }
 
 // Hook for SPC alerts

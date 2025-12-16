@@ -2156,3 +2156,16 @@
 - [x] Thêm chức năng export dữ liệu realtime (ExportRealtimeData.tsx)
 - [x] Thêm menu Export Realtime Data vào sidebar
 - [x] Thêm translations cho menu mới (vi.json, en.json)
+
+## Phase 88: Machine Detail, Alert Thresholds & WebSocket Realtime
+- [ ] Nâng cấp trang chi tiết OEE/SPC cho từng máy (MachineDetail.tsx)
+- [ ] Tạo trang cấu hình ngưỡng cảnh báo (AlertThresholdConfig.tsx)
+- [ ] Cập nhật OEETrendChart với WebSocket realtime
+- [ ] Thêm API endpoints cho alert thresholds
+
+## Phase 88: Machine Detail, Alert Thresholds & Realtime OEE
+- [x] Nâng cấp trang chi tiết OEE/SPC cho từng máy với tab Alerts
+- [x] Tạo trang cấu hình ngưỡng cảnh báo (AlertThresholdConfig.tsx)
+- [x] Cập nhật OEETrendChart với WebSocket realtime support
+- [x] Thêm menu Alert Threshold Config vào sidebar
+- [x] Thêm translations cho alertThresholdConfig (vi/en)

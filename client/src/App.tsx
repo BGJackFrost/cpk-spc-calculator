@@ -78,6 +78,7 @@ import SparePartsManagement from "./pages/SparePartsManagement";
 import PredictiveMaintenance from "./pages/PredictiveMaintenance";
 import MMSDataInit from "./pages/MMSDataInit";
 import MaintenanceSchedule from "./pages/MaintenanceSchedule";
+import AlertThresholdConfig from "./pages/AlertThresholdConfig";
 import EquipmentQRLookup from "./pages/EquipmentQRLookup";
 import PlantKPIDashboard from "./pages/PlantKPIDashboard";
 import IoTGatewayConfig from "./pages/IoTGatewayConfig";
@@ -134,6 +135,7 @@ function Router() {
       <Route path="/alert-config" component={AlertConfiguration} />
       <Route path="/scheduled-reports" component={ScheduledReports} />
       <Route path="/mms-data-init" component={MMSDataInit} />
+      <Route path="/alert-threshold-config" component={AlertThresholdConfig} />
       <Route path="/email-notifications" component={EmailNotificationSettings} />
       <Route path="/permissions" component={RolePermissionManagement} />
       <Route path="/smtp-settings" component={SmtpSettings} />
