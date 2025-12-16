@@ -92,6 +92,8 @@ import NotificationCenter from "./pages/NotificationCenter";
 import ScheduledJobsManagement from "./pages/ScheduledJobsManagement";
 import AdvancedAnalytics from "./pages/AdvancedAnalytics";
 import ExportReports from "./pages/ExportReports";
+import CustomReportBuilder from "./pages/CustomReportBuilder";
+import { GlobalKeyboardShortcuts } from "./components/GlobalKeyboardShortcuts";
 
 function Router() {
   return (
@@ -184,6 +186,7 @@ function Router() {
       <Route path="/measurement-standards-dashboard" component={MeasurementStandardsDashboard} />
       <Route path="/spc-visualization" component={SpcPlanVisualization} />
       <Route path="/spc-visualization/:type/:id" component={SpcVisualizationDetail} />
+      <Route path="/custom-report-builder" component={CustomReportBuilder} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
@@ -195,10 +198,12 @@ function App() {
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light" switchable={true}>
         <TooltipProvider>
-          <SseNotificationProvider>
-            <Toaster />
-            <Router />
-          </SseNotificationProvider>
+          <GlobalKeyboardShortcuts>
+            <SseNotificationProvider>
+              <Toaster />
+              <Router />
+            </SseNotificationProvider>
+          </GlobalKeyboardShortcuts>
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>

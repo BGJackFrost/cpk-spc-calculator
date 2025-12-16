@@ -2225,3 +2225,9 @@
 - [x] Apple mobile web app meta tags
 - [ ] Responsive improvements cho tablet/mobile
 - [ ] Keyboard shortcuts cho power users
+
+## Phase 94: Bug Fixes & New Features
+- [x] Sửa lỗi không tải được trang chủ (server hoạt động bình thường, lỗi do proxy/network)
+- [x] Thêm WebSocket/SSE realtime cho Dashboard Supervisor (useRealtimeUpdates hook)
+- [x] Tạo Custom Report Builder (CustomReportBuilder.tsx)
+- [x] Thêm Keyboard Shortcuts (Ctrl+S, Ctrl+E, Ctrl+D, Ctrl+/, etc.)

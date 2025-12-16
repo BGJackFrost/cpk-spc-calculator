@@ -112,6 +112,7 @@ const menuGroups: MenuGroup[] = [
       { icon: Cpu, labelKey: "nav.iotGateway", path: "/iot-gateway", adminOnly: true },
       { icon: FileText, labelKey: "nav.reportsExport", path: "/reports-export" },
       { icon: Download, labelKey: "nav.exportReports", path: "/export-reports" },
+      { icon: FileText, labelKey: "nav.customReportBuilder", path: "/custom-report-builder" },
       { icon: AlertTriangle, labelKey: "nav.alertConfig", path: "/alert-config", adminOnly: true },
       { icon: Target, labelKey: "nav.alertThresholdConfig", path: "/alert-threshold-config", adminOnly: true },
       { icon: Mail, labelKey: "nav.scheduledReports", path: "/scheduled-reports" },
@@ -285,6 +286,7 @@ const fallbackLabelsVi: Record<string, string> = {
   "nav.scheduledJobs": "Quản lý Scheduled Jobs",
   "nav.advancedAnalytics": "Phân tích Nâng cao",
   "nav.exportReports": "Xuất Báo cáo",
+  "nav.customReportBuilder": "Tạo Báo cáo Tùy chỉnh",
 };
 
 const fallbackLabelsEn: Record<string, string> = {
@@ -349,6 +351,7 @@ const fallbackLabelsEn: Record<string, string> = {
   "nav.scheduledJobs": "Scheduled Jobs",
   "nav.advancedAnalytics": "Advanced Analytics",
   "nav.exportReports": "Export Reports",
+  "nav.customReportBuilder": "Custom Report Builder",
 };
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
