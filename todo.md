@@ -2506,3 +2506,19 @@
 - [x] Tạo CRUD quản lý KTV (trong tab Kỹ thuật viên của Maintenance Dashboard)
 - [x] Thêm chức năng Thêm/Sửa/Xóa KTV
 
+
+## Phase 119: Fix lỗi CAO - Spare Parts
+- [ ] Đồng bộ schema database cho bảng spare_parts_inventory_checks
+- [ ] Cấu hình connection pool với retry logic
+- [ ] Test chức năng tạo phiếu kiểm kê
+- [ ] Test chức năng xuất/nhập kho
+
+
+## Phase 119: Fix lỗi CAO - Spare Parts
+- [x] Đồng bộ schema database cho bảng spare_parts_inventory_checks
+- [x] Tạo bảng spare_parts_inventory_check_items
+- [x] Tạo bảng spare_parts_stock_movements
+- [x] Cấu hình connection pool với retry logic
+- [x] Fix lỗi nhập kho (importStock mutation)
+- [x] Test và xác nhận các lỗi đã được fix
+

@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `spare_parts_stock_movements` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `sparePartId` int NOT NULL,\n  `movementType` enum('purchase_in','return_in','transfer_in','adjustment_in','initial_in','work_order_out','transfer_out','adjustment_out','scrap_out','return_supplier') NOT NULL,\n  `quantity` int NOT NULL,\n  `beforeQuantity` int NOT NULL,\n  `afterQuantity` int NOT NULL,\n  `unitCost` decimal(12,2),\n  `totalCost` decimal(14,2),\n  `referenceType` varchar(50),\n  `referenceId` int,\n  `referenceNumber` varchar(100),\n  `fromLocation` varchar(100),\n  `toLocation` varchar(100),\n  `reason` text,\n  `performedBy` int NOT NULL,\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  CONSTRAINT `spare_parts_stock_movements_id` PRIMARY KEY(`id`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute CREATE TABLE IF NOT EXISTS `spare_parts_stock_movements` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `sparePartId` int NOT NULL,\n  `movementType` enum('purchase_in','return_in','transfer_in','adjustment_in','initial_in','work_order_out','transfer_out','adjustment_out','scrap_out','return_supplier') NOT NULL,\n  `quantity` int NOT NULL,\n  `beforeQuantity` int NOT NULL,\n  `afterQuantity` int NOT NULL,\n  `unitCost` decimal(12,2),\n  `totalCost` decimal(14,2),\n  `referenceType` varchar(50),\n  `referenceId` int,\n  `referenceNumber` varchar(100),\n  `fromLocation` varchar(100),\n  `toLocation` varchar(100),\n  `reason` text,\n  `performedBy` int NOT NULL,\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  CONSTRAINT `spare_parts_stock_movements_id` PRIMARY KEY(`id`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1684
+}

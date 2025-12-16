@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `spare_parts_inventory_check_items` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `checkId` int NOT NULL,\n  `sparePartId` int NOT NULL,\n  `systemQuantity` int NOT NULL,\n  `actualQuantity` int,\n  `discrepancy` int,\n  `unitPrice` decimal(12,2),\n  `systemValue` decimal(14,2),\n  `actualValue` decimal(14,2),\n  `status` enum('pending','counted','verified','adjusted') DEFAULT 'pending',\n  `notes` text,\n  `countedBy` int,\n  `countedAt` timestamp NULL,\n  `verifiedBy` int,\n  `verifiedAt` timestamp NULL,\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  CONSTRAINT `spare_parts_inventory_check_items_id` PRIMARY KEY(`id`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute CREATE TABLE IF NOT EXISTS `spare_parts_inventory_check_items` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `checkId` int NOT NULL,\n  `sparePartId` int NOT NULL,\n  `systemQuantity` int NOT NULL,\n  `actualQuantity` int,\n  `discrepancy` int,\n  `unitPrice` decimal(12,2),\n  `systemValue` decimal(14,2),\n  `actualValue` decimal(14,2),\n  `status` enum('pending','counted','verified','adjusted') DEFAULT 'pending',\n  `notes` text,\n  `countedBy` int,\n  `countedAt` timestamp NULL,\n  `verifiedBy` int,\n  `verifiedAt` timestamp NULL,\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  CONSTRAINT `spare_parts_inventory_check_items_id` PRIMARY KEY(`id`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1662
+}

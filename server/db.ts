@@ -71,10 +71,62 @@ import {
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
+let _pool: mysql.Pool | null = null;
+let _connectionRetries = 0;
+const MAX_RETRIES = 3;
+const RETRY_DELAY_MS = 1000;
+
+// Connection pool configuration for better stability
+const poolConfig = {
+  connectionLimit: 10,
+  waitForConnections: true,
+  queueLimit: 0,
+  enableKeepAlive: true,
+  keepAliveInitialDelay: 10000,
+  connectTimeout: 30000,
+  idleTimeout: 60000,
+};
+
+async function createConnectionWithRetry(): Promise<mysql.Pool | null> {
+  if (!process.env.DATABASE_URL) {
+    console.warn("[Database] DATABASE_URL not configured");
+    return null;
+  }
+
+  while (_connectionRetries < MAX_RETRIES) {
+    try {
+      const pool = mysql.createPool({
+        uri: process.env.DATABASE_URL,
+        ...poolConfig,
+      });
+      
+      // Test connection
+      const connection = await pool.getConnection();
+      await connection.ping();
+      connection.release();
+      
+      console.log("[Database] Connection pool established successfully");
+      _connectionRetries = 0;
+      return pool;
+    } catch (error) {
+      _connectionRetries++;
+      console.warn(`[Database] Connection attempt ${_connectionRetries}/${MAX_RETRIES} failed:`, error);
+      
+      if (_connectionRetries < MAX_RETRIES) {
+        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS * _connectionRetries));
+      }
+    }
+  }
+  
+  console.error("[Database] All connection attempts failed");
+  _connectionRetries = 0;
+  return null;
+}
 
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
+      // Try simple connection first (for compatibility)
       _db = drizzle(process.env.DATABASE_URL);
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
@@ -82,6 +134,75 @@ export async function getDb() {
     }
   }
   return _db;
+}
+
+// Get database with connection pool for better stability
+export async function getDbWithPool() {
+  if (!_pool) {
+    _pool = await createConnectionWithRetry();
+  }
+  
+  if (_pool) {
+    try {
+      // Test if pool is still alive
+      const connection = await _pool.getConnection();
+      connection.release();
+      return drizzle(_pool);
+    } catch (error) {
+      console.warn("[Database] Pool connection lost, reconnecting...", error);
+      _pool = await createConnectionWithRetry();
+      if (_pool) {
+        return drizzle(_pool);
+      }
+    }
+  }
+  
+  // Fallback to simple connection
+  return getDb();
+}
+
+// Execute query with automatic retry on connection errors
+export async function executeWithRetry<T>(
+  operation: () => Promise<T>,
+  maxRetries: number = 3
+): Promise<T> {
+  let lastError: Error | null = null;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await operation();
+    } catch (error: any) {
+      lastError = error;
+      
+      // Check if it's a connection error that can be retried
+      const isConnectionError = 
+        error.code === 'ECONNRESET' ||
+        error.code === 'PROTOCOL_CONNECTION_LOST' ||
+        error.code === 'ETIMEDOUT' ||
+        error.message?.includes('Connection lost');
+      
+      if (isConnectionError && attempt < maxRetries) {
+        console.warn(`[Database] Connection error on attempt ${attempt}/${maxRetries}, retrying...`);
+        
+        // Reset pool to force reconnection
+        if (_pool) {
+          try {
+            await _pool.end();
+          } catch (e) {
+            // Ignore pool end errors
+          }
+          _pool = null;
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS * attempt));
+        continue;
+      }
+      
+      throw error;
+    }
+  }
+  
+  throw lastError;
 }
 
 // User operations

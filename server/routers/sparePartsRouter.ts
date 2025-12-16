@@ -638,8 +638,12 @@ export const sparePartsRouter = router({
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
-      // Get current inventory
-      const [inv] = await db.select().from(sparePartsInventory)
+      // Get current inventory - only select required columns
+      const [inv] = await db.select({
+        id: sparePartsInventory.id,
+        sparePartId: sparePartsInventory.sparePartId,
+        quantity: sparePartsInventory.quantity,
+      }).from(sparePartsInventory)
         .where(eq(sparePartsInventory.sparePartId, input.sparePartId));
       
       const beforeQty = inv?.quantity || 0;
@@ -663,17 +667,19 @@ export const sparePartsRouter = router({
         performedBy: ctx.user?.id || 0,
       });
 
-      // Create transaction
-      await db.insert(sparePartsTransactions).values({
+      // Create transaction - only include defined fields
+      const transactionData: any = {
         sparePartId: input.sparePartId,
-        transactionType: "in",
+        transactionType: "in" as const,
         quantity: input.quantity,
-        unitCost: input.unitCost ? String(input.unitCost) : undefined,
-        totalCost: totalCost ? String(totalCost) : undefined,
-        purchaseOrderId: input.purchaseOrderId,
-        reason: input.reason,
-        performedBy: ctx.user?.id,
-      });
+        performedBy: ctx.user?.id || 0,
+      };
+      if (input.unitCost) transactionData.unitCost = String(input.unitCost);
+      if (totalCost) transactionData.totalCost = String(totalCost);
+      if (input.purchaseOrderId) transactionData.purchaseOrderId = input.purchaseOrderId;
+      if (input.reason) transactionData.reason = input.reason;
+      
+      await db.insert(sparePartsTransactions).values(transactionData);
 
       // Update inventory
       if (inv) {
@@ -705,8 +711,12 @@ export const sparePartsRouter = router({
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
-      // Get current inventory
-      const [inv] = await db.select().from(sparePartsInventory)
+      // Get current inventory - only select required columns
+      const [inv] = await db.select({
+        id: sparePartsInventory.id,
+        sparePartId: sparePartsInventory.sparePartId,
+        quantity: sparePartsInventory.quantity,
+      }).from(sparePartsInventory)
         .where(eq(sparePartsInventory.sparePartId, input.sparePartId));
       
       const beforeQty = inv?.quantity || 0;
