@@ -9,8 +9,7 @@ import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { addSseClient, startHeartbeat } from "../sse";
 import { initScheduledJobs } from "../scheduledJobs";
-import { apiRateLimiter, authRateLimiter, setAlertCallback } from "./rateLimiter";
-import { notifyOwner } from "./notification";
+import { apiRateLimiter, authRateLimiter } from "./rateLimiter";
 import { storagePut } from "../storage";
 import { wsServer } from "../websocket";
 
@@ -32,19 +31,6 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
   }
   throw new Error(`No available port found starting from ${startPort}`);
 }
-
-// Initialize rate limit alert callback
-setAlertCallback(async (alert) => {
-  console.log(`[RateLimiter Alert] Block rate: ${alert.blockRate}%`);
-  try {
-    await notifyOwner({
-      title: `⚠️ Cảnh báo Rate Limit - Block rate cao: ${alert.blockRate}%`,
-      content: alert.message,
-    });
-  } catch (error) {
-    console.error('[RateLimiter Alert] Failed to send notification:', error);
-  }
-});
 
 async function startServer() {
   const app = express();

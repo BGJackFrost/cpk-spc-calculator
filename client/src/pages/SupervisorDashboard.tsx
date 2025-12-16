@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useLocation } from "wouter";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
-import { useRealtimeUpdates, OeeUpdateData, MachineStatusData, RealtimeAlertData } from "@/hooks/useRealtimeUpdates";
+import { useWebSocket } from "@/hooks/useWebSocket";
 import {
   Activity,
   Gauge,
@@ -75,36 +75,8 @@ export default function SupervisorDashboard() {
   // Fetch machine online status - using OEE records as proxy
   const onlineStatuses: any[] = [];
 
-  // Realtime updates via SSE
-  const handleOeeUpdate = useCallback((data: OeeUpdateData) => {
-    setMachineStatuses(prev => prev.map(m => 
-      m.id === data.machineId 
-        ? { ...m, oee: data.oee, availability: data.availability, performance: data.performance, quality: data.quality, lastUpdate: new Date() }
-        : m
-    ));
-  }, []);
-
-  const handleMachineStatusChange = useCallback((data: MachineStatusData) => {
-    setMachineStatuses(prev => prev.map(m => 
-      m.id === data.machineId 
-        ? { ...m, status: data.newStatus as MachineStatus["status"], lastUpdate: new Date() }
-        : m
-    ));
-  }, []);
-
-  const handleRealtimeAlert = useCallback((data: RealtimeAlertData) => {
-    // Show toast notification for new alerts
-    if (data.severity === "critical") {
-      console.log("[Alert] Critical alert:", data.message);
-    }
-  }, []);
-
-  const { isConnected, lastHeartbeat, reconnect } = useRealtimeUpdates({
-    onOeeUpdate: handleOeeUpdate,
-    onMachineStatusChange: handleMachineStatusChange,
-    onRealtimeAlert: handleRealtimeAlert,
-    enabled: true,
-  });
+  // WebSocket connection
+  const { isConnected, lastMessage } = useWebSocket();
 
   // Process machine data with OEE and status
   useEffect(() => {
@@ -167,7 +139,17 @@ export default function SupervisorDashboard() {
     setMachineStatuses(statuses);
   }, [machines, oeeRecords, onlineStatuses, productionLines]);
 
-  // Realtime updates are now handled by useRealtimeUpdates hook above
+  // Update from WebSocket
+  useEffect(() => {
+    if (lastMessage?.type === "machine_status_update") {
+      const update = lastMessage.data;
+      setMachineStatuses(prev => prev.map(m => 
+        m.id === update.machineId 
+          ? { ...m, status: update.status, oee: update.oee || m.oee, lastUpdate: new Date() }
+          : m
+      ));
+    }
+  }, [lastMessage]);
 
   // Filter machines
   const filteredMachines = useMemo(() => {

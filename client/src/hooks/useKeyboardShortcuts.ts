@@ -146,34 +146,10 @@ export function createCommonShortcuts(options: {
 
 // Keyboard shortcuts help dialog content
 export const GLOBAL_SHORTCUTS = [
-  { keys: "Ctrl + S", description: "Lưu form hiện tại", descriptionEn: "Save current form" },
-  { keys: "Ctrl + Enter", description: "Chạy phân tích / Submit", descriptionEn: "Run analysis / Submit" },
-  { keys: "Esc", description: "Đóng dialog / Hủy", descriptionEn: "Close dialog / Cancel" },
-  { keys: "Ctrl + N", description: "Tạo mới", descriptionEn: "Create new" },
-  { keys: "Ctrl + K", description: "Tìm kiếm", descriptionEn: "Search" },
-  { keys: "Ctrl + /", description: "Hiển thị phím tắt", descriptionEn: "Show shortcuts" },
+  { keys: "Ctrl + S", description: "Lưu form hiện tại" },
+  { keys: "Ctrl + Enter", description: "Chạy phân tích / Submit" },
+  { keys: "Esc", description: "Đóng dialog / Hủy" },
+  { keys: "Ctrl + N", description: "Tạo mới" },
+  { keys: "Ctrl + K", description: "Tìm kiếm" },
+  { keys: "Ctrl + /", description: "Hiển thị phím tắt" },
 ];
-
-// Navigation shortcuts
-export const NAVIGATION_SHORTCUTS = [
-  { keys: "Ctrl + D", description: "Đi đến Dashboard", descriptionEn: "Go to Dashboard", path: "/dashboard" },
-  { keys: "Ctrl + A", description: "Đi đến Phân tích", descriptionEn: "Go to Analysis", path: "/analyze" },
-  { keys: "Ctrl + H", description: "Đi đến Lịch sử", descriptionEn: "Go to History", path: "/history" },
-  { keys: "Ctrl + M", description: "Đi đến Tổng quan Máy", descriptionEn: "Go to Machine Overview", path: "/machine-overview" },
-  { keys: "Ctrl + O", description: "Đi đến Dashboard OEE", descriptionEn: "Go to OEE Dashboard", path: "/oee-dashboard" },
-  { keys: "Ctrl + E", description: "Đi đến Xuất Báo cáo", descriptionEn: "Go to Export Reports", path: "/export-reports" },
-  { keys: "Ctrl + Shift + R", description: "Đi đến Tạo Báo cáo", descriptionEn: "Go to Report Builder", path: "/custom-report-builder" },
-];
-
-// Create navigation shortcuts config
-export function createNavigationShortcuts(navigate: (path: string) => void): ShortcutConfig[] {
-  return [
-    { key: "d", ctrl: true, action: () => navigate("/dashboard"), description: "Đi đến Dashboard" },
-    { key: "a", ctrl: true, action: () => navigate("/analyze"), description: "Đi đến Phân tích" },
-    { key: "h", ctrl: true, action: () => navigate("/history"), description: "Đi đến Lịch sử" },
-    { key: "m", ctrl: true, action: () => navigate("/machine-overview"), description: "Đi đến Tổng quan Máy" },
-    { key: "o", ctrl: true, action: () => navigate("/oee-dashboard"), description: "Đi đến Dashboard OEE" },
-    { key: "e", ctrl: true, action: () => navigate("/export-reports"), description: "Đi đến Xuất Báo cáo" },
-    { key: "r", ctrl: true, shift: true, action: () => navigate("/custom-report-builder"), description: "Đi đến Tạo Báo cáo" },
-  ];
-}

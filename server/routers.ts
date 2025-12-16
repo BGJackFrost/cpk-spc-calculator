@@ -25,20 +25,6 @@ import {
   type LocalAuthUser,
 } from "./localAuthService";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
-import { 
-  getRateLimitStats, 
-  resetRateLimitStats, 
-  addToWhitelist, 
-  removeFromWhitelist, 
-  getWhitelist,
-  getUserRateLimitInfo,
-  clearAlerts,
-  getRedisStatus,
-  setAlertCallback,
-  setRateLimitEnabled,
-  isRateLimitEnabled
-} from "./_core/rateLimiter";
-import { notifyOwner } from "./_core/notification";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import {
@@ -182,6 +168,7 @@ import {
 } from "./db";
 import { sql } from "drizzle-orm";
 import { invokeLLM } from "./_core/llm";
+import { notifyOwner } from "./_core/notification";
 import { generateCsvContent, generateHtmlReport, ExportData } from "./exportUtils";
 import { generatePdfHtml, generateExcelBuffer, generateEnhancedCsv, ExportData as EnhancedExportData } from "./exportService";
 import {
@@ -5419,142 +5406,6 @@ export const appRouter = router({
   }),
 
   // Shift Report router
-  // Rate Limit Monitoring Router
-  rateLimit: router({
-    getStats: protectedProcedure
-      .query(async ({ ctx }) => {
-        if (ctx.user.role !== 'admin') {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
-        }
-        return getRateLimitStats();
-      }),
-    
-    resetStats: protectedProcedure
-      .mutation(async ({ ctx }) => {
-        if (ctx.user.role !== 'admin') {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
-        }
-        resetRateLimitStats();
-        return { success: true };
-      }),
-    
-    clearAlerts: protectedProcedure
-      .mutation(async ({ ctx }) => {
-        if (ctx.user.role !== 'admin') {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
-        }
-        clearAlerts();
-        return { success: true };
-      }),
-    
-    getWhitelist: protectedProcedure
-      .query(async ({ ctx }) => {
-        if (ctx.user.role !== 'admin') {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
-        }
-        return getWhitelist();
-      }),
-    
-    addToWhitelist: protectedProcedure
-      .input(z.object({ ip: z.string() }))
-      .mutation(async ({ ctx, input }) => {
-        if (ctx.user.role !== 'admin') {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
-        }
-        addToWhitelist(input.ip);
-        return { success: true };
-      }),
-    
-    removeFromWhitelist: protectedProcedure
-      .input(z.object({ ip: z.string() }))
-      .mutation(async ({ ctx, input }) => {
-        if (ctx.user.role !== 'admin') {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
-        }
-        removeFromWhitelist(input.ip);
-        return { success: true };
-      }),
-    
-    getRedisStatus: protectedProcedure
-      .query(async ({ ctx }) => {
-        if (ctx.user.role !== 'admin') {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
-        }
-        return getRedisStatus();
-      }),
-    
-    getUserRateLimit: protectedProcedure
-      .query(async ({ ctx }) => {
-        return getUserRateLimitInfo(String(ctx.user.id));
-      }),
-    
-    getEnabled: protectedProcedure
-      .query(async ({ ctx }) => {
-        if (ctx.user.role !== 'admin') {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
-        }
-        return { enabled: isRateLimitEnabled() };
-      }),
-    
-    setEnabled: protectedProcedure
-      .input(z.object({ enabled: z.boolean() }))
-      .mutation(async ({ ctx, input }) => {
-        if (ctx.user.role !== 'admin') {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
-        }
-        const success = await setRateLimitEnabled(
-          input.enabled, 
-          ctx.user.id, 
-          ctx.user.name || 'Unknown',
-          undefined // IP address not available in tRPC context
-        );
-        return { success, enabled: input.enabled };
-      }),
-    
-    getConfigHistory: protectedProcedure
-      .input(z.object({ limit: z.number().default(50) }))
-      .query(async ({ ctx, input }) => {
-        if (ctx.user.role !== 'admin') {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
-        }
-        const { getConfigHistory } = await import('./services/rateLimitConfigService');
-        return await getConfigHistory(input.limit);
-      }),
-    
-    getRoleConfigs: protectedProcedure
-      .query(async ({ ctx }) => {
-        if (ctx.user.role !== 'admin') {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
-        }
-        const { getAllRoleConfigs } = await import('./services/rateLimitConfigService');
-        return await getAllRoleConfigs();
-      }),
-    
-    updateRoleConfig: protectedProcedure
-      .input(z.object({
-        role: z.enum(['admin', 'user', 'guest']),
-        maxRequests: z.number().optional(),
-        maxAuthRequests: z.number().optional(),
-        maxExportRequests: z.number().optional(),
-        windowMs: z.number().optional(),
-        description: z.string().optional(),
-      }))
-      .mutation(async ({ ctx, input }) => {
-        if (ctx.user.role !== 'admin') {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
-        }
-        const { updateRoleConfig } = await import('./services/rateLimitConfigService');
-        const { role, ...config } = input;
-        const success = await updateRoleConfig(
-          role, 
-          config, 
-          ctx.user.id, 
-          ctx.user.name || 'Unknown'
-        );
-        return { success };
-      }),
-  }),
-
   shiftReport: router({
     list: protectedProcedure
       .input(z.object({
