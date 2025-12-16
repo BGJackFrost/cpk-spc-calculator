@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,12 @@ export default function StockReport() {
   const [startDate, setStartDate] = useState(format(startOfMonth(new Date()), "yyyy-MM-dd"));
   const [endDate, setEndDate] = useState(format(endOfMonth(new Date()), "yyyy-MM-dd"));
   const [isExporting, setIsExporting] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [movementTypeFilter, setMovementTypeFilter] = useState<string>("all");
+
+  // Get categories for filter dropdown
+  const { data: categories } = trpc.spareParts.getCategories.useQuery();
 
   // Auto-set dates based on report type
   const handleReportTypeChange = (type: "monthly" | "quarterly" | "custom") => {
@@ -92,6 +98,45 @@ export default function StockReport() {
     return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(value);
   };
 
+  // Filter movements based on search and filters
+  const filteredMovements = useMemo(() => {
+    if (!reportQuery.data?.movements) return [];
+    
+    return reportQuery.data.movements.filter(m => {
+      // Search filter
+      const searchLower = searchTerm.toLowerCase();
+      const matchesSearch = !searchTerm || 
+        (m.partName?.toLowerCase().includes(searchLower)) ||
+        (m.partNumber?.toLowerCase().includes(searchLower));
+      
+      // Category filter
+      const matchesCategory = categoryFilter === "all" || m.category === categoryFilter;
+      
+      // Movement type filter
+      const matchesType = movementTypeFilter === "all" || 
+        (movementTypeFilter === "in" && m.movementType?.includes("in")) ||
+        (movementTypeFilter === "out" && m.movementType?.includes("out"));
+      
+      return matchesSearch && matchesCategory && matchesType;
+    });
+  }, [reportQuery.data?.movements, searchTerm, categoryFilter, movementTypeFilter]);
+
+  // Recalculate summary for filtered data
+  const filteredSummary = useMemo(() => {
+    const totalIn = filteredMovements.filter(m => m.movementType?.includes("in")).reduce((sum, m) => sum + (m.quantity || 0), 0);
+    const totalOut = filteredMovements.filter(m => m.movementType?.includes("out")).reduce((sum, m) => sum + (m.quantity || 0), 0);
+    const totalInValue = filteredMovements.filter(m => m.movementType?.includes("in")).reduce((sum, m) => sum + (Number(m.totalValue) || 0), 0);
+    const totalOutValue = filteredMovements.filter(m => m.movementType?.includes("out")).reduce((sum, m) => sum + (Number(m.totalValue) || 0), 0);
+    return {
+      totalIn,
+      totalOut,
+      netChange: totalIn - totalOut,
+      totalInValue,
+      totalOutValue,
+      netValue: totalInValue - totalOutValue
+    };
+  }, [filteredMovements]);
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -159,6 +204,50 @@ export default function StockReport() {
                 </Button>
               </div>
             </div>
+
+            {/* Search and Filter Row */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4 pt-4 border-t">
+              <div className="space-y-2">
+                <Label>Tìm kiếm phụ tùng</Label>
+                <Input
+                  placeholder="Nhập tên hoặc mã phụ tùng..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Danh mục</Label>
+                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Tất cả danh mục" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tất cả danh mục</SelectItem>
+                    {categories?.map((cat) => (
+                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Loại giao dịch</Label>
+                <Select value={movementTypeFilter} onValueChange={setMovementTypeFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Tất cả" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tất cả</SelectItem>
+                    <SelectItem value="in">Nhập kho</SelectItem>
+                    <SelectItem value="out">Xuất kho</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-end">
+                <Button variant="outline" onClick={() => { setSearchTerm(""); setCategoryFilter("all"); setMovementTypeFilter("all"); }} className="w-full">
+                  Xóa bộ lọc
+                </Button>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
@@ -172,12 +261,12 @@ export default function StockReport() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-muted-foreground">Tổng nhập</p>
-                      <p className="text-2xl font-bold text-green-600">{reportQuery.data.summary.totalIn}</p>
+                      <p className="text-2xl font-bold text-green-600">{filteredSummary.totalIn}</p>
                     </div>
                     <TrendingUp className="h-8 w-8 text-green-500" />
                   </div>
                   <p className="text-xs text-muted-foreground mt-2">
-                    {formatCurrency(reportQuery.data.summary.totalInValue)}
+                    {formatCurrency(filteredSummary.totalInValue)}
                   </p>
                 </CardContent>
               </Card>
@@ -186,12 +275,12 @@ export default function StockReport() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-muted-foreground">Tổng xuất</p>
-                      <p className="text-2xl font-bold text-red-600">{reportQuery.data.summary.totalOut}</p>
+                      <p className="text-2xl font-bold text-red-600">{filteredSummary.totalOut}</p>
                     </div>
                     <TrendingDown className="h-8 w-8 text-red-500" />
                   </div>
                   <p className="text-xs text-muted-foreground mt-2">
-                    {formatCurrency(reportQuery.data.summary.totalOutValue)}
+                    {formatCurrency(filteredSummary.totalOutValue)}
                   </p>
                 </CardContent>
               </Card>
@@ -200,14 +289,14 @@ export default function StockReport() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-muted-foreground">Chênh lệch</p>
-                      <p className={`text-2xl font-bold ${reportQuery.data.summary.netChange >= 0 ? "text-green-600" : "text-red-600"}`}>
-                        {reportQuery.data.summary.netChange >= 0 ? "+" : ""}{reportQuery.data.summary.netChange}
+                      <p className={`text-2xl font-bold ${filteredSummary.netChange >= 0 ? "text-green-600" : "text-red-600"}`}>
+                        {filteredSummary.netChange >= 0 ? "+" : ""}{filteredSummary.netChange}
                       </p>
                     </div>
                     <Package className="h-8 w-8 text-blue-500" />
                   </div>
                   <p className="text-xs text-muted-foreground mt-2">
-                    {formatCurrency(reportQuery.data.summary.netValue)}
+                    {formatCurrency(filteredSummary.netValue)}
                   </p>
                 </CardContent>
               </Card>
@@ -216,7 +305,7 @@ export default function StockReport() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-muted-foreground">Số giao dịch</p>
-                      <p className="text-2xl font-bold">{reportQuery.data.movements.length}</p>
+                      <p className="text-2xl font-bold">{filteredMovements.length}</p>
                     </div>
                     <FileSpreadsheet className="h-8 w-8 text-purple-500" />
                   </div>
@@ -263,14 +352,16 @@ export default function StockReport() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {reportQuery.data.movements.length === 0 ? (
+                      {filteredMovements.length === 0 ? (
                         <TableRow>
                           <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                            Không có giao dịch nào trong khoảng thời gian này
+                            {searchTerm || categoryFilter !== "all" || movementTypeFilter !== "all" 
+                              ? "Không tìm thấy giao dịch phù hợp với bộ lọc"
+                              : "Không có giao dịch nào trong khoảng thời gian này"}
                           </TableCell>
                         </TableRow>
                       ) : (
-                        reportQuery.data.movements.map((movement) => (
+                        filteredMovements.map((movement) => (
                           <TableRow key={movement.id}>
                             <TableCell className="font-mono">{movement.partNumber || "-"}</TableCell>
                             <TableCell>{movement.partName || "-"}</TableCell>

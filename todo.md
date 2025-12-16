@@ -2430,3 +2430,17 @@
 - [x] Phân loại critical (đỏ) và warning (vàng)
 - [x] Link đến trang chi tiết phụ tùng cần đặt hàng
 - [x] Thêm vào Dashboard trong phần System Status
+
+
+## Phase 115: Sửa lỗi Port và Tìm kiếm Phụ tùng
+
+### Rà soát lỗi port
+- [x] So sánh phiên bản a899bcc3 và 824e28cb - Không có sự khác biệt về port config
+- [x] Tìm nguyên nhân gốc rễ lỗi port 6379 vs 3000 - Lỗi từ webdev system hiển thị sai, server thực tế luôn chạy trên port 3000
+- [x] Sửa lỗi và đồng bộ cấu hình - Server cố định port 3000, không tự động chuyển port
+
+### Tìm kiếm/lọc phụ tùng trong báo cáo
+- [x] Thêm input tìm kiếm theo tên hoặc mã phụ tùng
+- [x] Thêm dropdown lọc theo category và loại giao dịch (nhập/xuất)
+- [x] Filter kết quả báo cáo theo điều kiện với useMemo
+- [x] Tự động tính lại summary theo dữ liệu đã lọc
