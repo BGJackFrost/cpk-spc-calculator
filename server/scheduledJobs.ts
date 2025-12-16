@@ -547,3 +547,104 @@ async function checkLowStock(): Promise<void> {
 export async function triggerLowStockCheck(): Promise<void> {
   await checkLowStock();
 }
+
+/**
+ * Send low stock email alert to owner
+ * Uses emailAlertThreshold if set, otherwise uses minStock
+ */
+export async function sendLowStockEmailAlertJob(): Promise<{ sent: boolean; itemCount: number; message: string }> {
+  console.log('[ScheduledJob] Sending low stock email alert...');
+  
+  try {
+    const db = await getDb();
+    if (!db) {
+      return { sent: false, itemCount: 0, message: 'Database not available' };
+    }
+
+    // Get all active parts with inventory
+    const parts = await db
+      .select({
+        id: spareParts.id,
+        partNumber: spareParts.partNumber,
+        name: spareParts.name,
+        category: spareParts.category,
+        unit: spareParts.unit,
+        minStock: spareParts.minStock,
+        reorderPoint: spareParts.reorderPoint,
+        emailAlertThreshold: spareParts.emailAlertThreshold,
+        currentStock: sparePartsInventory.quantity,
+        supplierName: suppliers.name,
+      })
+      .from(spareParts)
+      .leftJoin(sparePartsInventory, eq(spareParts.id, sparePartsInventory.sparePartId))
+      .leftJoin(suppliers, eq(spareParts.supplierId, suppliers.id))
+      .where(eq(spareParts.isActive, 1));
+
+    // Filter items that need email alert
+    // Use emailAlertThreshold if set, otherwise use minStock
+    const alertItems = parts.filter(item => {
+      const current = Number(item.currentStock) || 0;
+      const threshold = Number(item.emailAlertThreshold) || Number(item.minStock) || 0;
+      return current <= threshold && threshold > 0;
+    });
+
+    if (alertItems.length === 0) {
+      return { sent: false, itemCount: 0, message: 'Không có phụ tùng nào cần cảnh báo' };
+    }
+
+    // Build email content
+    const emailHtml = `
+      <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto;">
+        <h2 style="color: #dc2626;">\u26a0\ufe0f Cảnh báo tồn kho thấp - ${new Date().toLocaleDateString('vi-VN')}</h2>
+        <p>Có <strong>${alertItems.length}</strong> phụ tùng cần bổ sung:</p>
+        <table style="border-collapse: collapse; width: 100%; margin: 20px 0;">
+          <thead>
+            <tr style="background: #f3f4f6;">
+              <th style="padding: 10px; border: 1px solid #ddd; text-align: left;">Mã PT</th>
+              <th style="padding: 10px; border: 1px solid #ddd; text-align: left;">Tên</th>
+              <th style="padding: 10px; border: 1px solid #ddd; text-align: left;">Danh mục</th>
+              <th style="padding: 10px; border: 1px solid #ddd; text-align: center;">Tồn hiện tại</th>
+              <th style="padding: 10px; border: 1px solid #ddd; text-align: center;">Ngưỡng cảnh báo</th>
+              <th style="padding: 10px; border: 1px solid #ddd; text-align: left;">NCC</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${alertItems.map(item => {
+              const threshold = Number(item.emailAlertThreshold) || Number(item.minStock) || 0;
+              const current = Number(item.currentStock) || 0;
+              const bgColor = current <= 0 ? '#fee2e2' : current <= threshold * 0.5 ? '#fef3c7' : '#fff';
+              return `
+                <tr style="background: ${bgColor};">
+                  <td style="padding: 8px; border: 1px solid #ddd; font-family: monospace;">${item.partNumber}</td>
+                  <td style="padding: 8px; border: 1px solid #ddd;">${item.name}</td>
+                  <td style="padding: 8px; border: 1px solid #ddd;">${item.category || '-'}</td>
+                  <td style="padding: 8px; border: 1px solid #ddd; text-align: center; font-weight: bold; color: ${current <= 0 ? '#dc2626' : '#f59e0b'};">${current} ${item.unit}</td>
+                  <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">${threshold} ${item.unit}</td>
+                  <td style="padding: 8px; border: 1px solid #ddd;">${item.supplierName || '-'}</td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+        <p style="color: #666; font-size: 12px;">Email này được gửi tự động từ hệ thống SPC/CPK Calculator.</p>
+      </div>
+    `;
+
+    // Send notification to owner
+    const result = await notifyOwner({
+      title: `\u26a0\ufe0f Cảnh báo tồn kho: ${alertItems.length} phụ tùng cần bổ sung`,
+      content: emailHtml,
+    });
+
+    console.log(`[ScheduledJob] Low stock email alert sent: ${alertItems.length} items`);
+    return { 
+      sent: result, 
+      itemCount: alertItems.length, 
+      message: `\u0110ã gửi cảnh báo cho ${alertItems.length} phụ tùng` 
+    };
+    
+  } catch (error) {
+    console.error('[ScheduledJob] Error sending low stock email:', error);
+    return { sent: false, itemCount: 0, message: 'Lỗi khi gửi email: ' + String(error) };
+  }
+}

@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import * as XLSX from "xlsx";
 import { Link } from "wouter";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,7 +22,6 @@ import {
   CheckCircle2, Clock, XCircle, RefreshCw, Download, Bell,
   MoreHorizontal, Pencil, Trash2, QrCode, BarChart3, Camera, Printer, ScanLine, Mail, BookOpen, HelpCircle
 } from "lucide-react";
-import * as XLSX from "xlsx";
 import QRCode from "qrcode";
 import QRScanner from "@/components/QRScanner";
 
@@ -45,7 +45,7 @@ export default function SparePartsManagement() {
   const [editPartForm, setEditPartForm] = useState({
     name: "", partNumber: "", category: "", unit: "pcs",
     minStock: 0, maxStock: 0, reorderPoint: 0, unitPrice: 0,
-    supplierId: "", description: ""
+    supplierId: "", description: "", emailAlertThreshold: 0
   });
   
   // Edit/Delete states for suppliers
@@ -75,6 +75,9 @@ export default function SparePartsManagement() {
   const [isBulkQROpen, setIsBulkQROpen] = useState(false);
   const [selectedPartsForQR, setSelectedPartsForQR] = useState<number[]>([]);
   const [bulkQRDataUrls, setBulkQRDataUrls] = useState<Map<number, string>>(new Map());
+  
+  // Stock status filter
+  const [stockStatusFilter, setStockStatusFilter] = useState<string>("all");
 
   // Queries
   const { data: parts, refetch: refetchParts } = trpc.spareParts.listParts.useQuery({
@@ -297,7 +300,8 @@ export default function SparePartsManagement() {
       reorderPoint: part.reorderPoint || 0,
       unitPrice: part.unitPrice || 0,
       supplierId: part.supplierId ? String(part.supplierId) : "",
-      description: part.description || ""
+      description: part.description || "",
+      emailAlertThreshold: part.emailAlertThreshold || 0
     });
     setIsEditPartOpen(true);
   };
@@ -497,6 +501,114 @@ export default function SparePartsManagement() {
     printWindow.document.close();
   };
 
+  // Filter parts by stock status
+  const filteredParts = useMemo(() => {
+    if (!parts) return [];
+    if (stockStatusFilter === "all") return parts;
+    return parts.filter(part => {
+      const stock = Number(part.currentStock) || 0;
+      const min = Number(part.minStock) || 0;
+      const reorder = Number(part.reorderPoint) || min;
+      if (stockStatusFilter === "out") return stock <= 0;
+      if (stockStatusFilter === "low") return stock > 0 && stock <= reorder;
+      if (stockStatusFilter === "ok") return stock > reorder;
+      return true;
+    });
+  }, [parts, stockStatusFilter]);
+
+  // Export selected parts to Excel
+  const exportSelectedToExcel = () => {
+    const selectedParts = parts?.filter(p => selectedPartsForQR.includes(p.id)) || [];
+    if (selectedParts.length === 0) {
+      toast.error("Vui lòng chọn ít nhất 1 phụ tùng");
+      return;
+    }
+
+    const data = selectedParts.map(part => ({
+      "Mã phụ tùng": part.partNumber,
+      "Tên": part.name,
+      "Danh mục": part.category || "",
+      "Đơn vị": part.unit || "pcs",
+      "Tồn kho": part.currentStock || 0,
+      "Tồn tối thiểu": part.minStock || 0,
+      "Điểm đặt hàng": part.reorderPoint || 0,
+      "Đơn giá": part.unitPrice || 0,
+      "Giá trị tồn": (Number(part.currentStock) || 0) * (Number(part.unitPrice) || 0),
+      "Nhà cung cấp": part.supplierName || "",
+      "Trạng thái": getStockStatus(part.currentStock, part.minStock, part.reorderPoint).label
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Phụ tùng");
+    XLSX.writeFile(wb, `phu_tung_${new Date().toISOString().split('T')[0]}.xlsx`);
+    toast.success(`Đã xuất ${selectedParts.length} phụ tùng ra Excel`);
+  };
+
+  // Print thermal labels (58mm width format)
+  const printThermalLabels = () => {
+    const selectedParts = parts?.filter(p => selectedPartsForQR.includes(p.id)) || [];
+    if (selectedParts.length === 0) {
+      toast.error("Vui lòng chọn ít nhất 1 phụ tùng");
+      return;
+    }
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      toast.error("Không thể mở cửa sổ in. Vui lòng cho phép popup.");
+      return;
+    }
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>In nhãn Thermal - Phụ tùng</title>
+        <style>
+          @page { size: 58mm auto; margin: 0; }
+          body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
+          .label {
+            width: 54mm;
+            padding: 2mm;
+            border-bottom: 1px dashed #000;
+            page-break-after: always;
+            text-align: center;
+          }
+          .label:last-child { border-bottom: none; }
+          .label img { width: 35mm; height: 35mm; }
+          .label .part-number { font-family: monospace; font-weight: bold; font-size: 14pt; margin-top: 2mm; }
+          .label .part-name { font-size: 10pt; margin-top: 1mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+          .label .stock-info { font-size: 9pt; color: #333; margin-top: 1mm; }
+          .label .barcode { font-family: 'Libre Barcode 39', monospace; font-size: 28pt; }
+          .no-print { display: none; }
+          @media screen {
+            body { padding: 10px; background: #f0f0f0; }
+            .label { background: white; margin: 10px auto; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+            .no-print { display: block; text-align: center; margin-bottom: 20px; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="no-print">
+          <button onclick="window.print()" style="padding: 10px 20px; font-size: 16px; cursor: pointer; margin-right: 10px;">In nhãn Thermal</button>
+          <span>Tổng: ${selectedParts.length} nhãn (58mm)</span>
+        </div>
+        ${selectedParts.map(part => `
+          <div class="label">
+            <img src="${bulkQRDataUrls.get(part.id) || ''}" alt="QR" />
+            <div class="part-number">${part.partNumber}</div>
+            <div class="part-name">${part.name}</div>
+            <div class="stock-info">Tồn: ${part.currentStock || 0} ${part.unit || 'pcs'} | Min: ${part.minStock || 0}</div>
+          </div>
+        `).join('')}
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(html);
+    printWindow.document.close();
+  };
+
   const getStockStatus = (current: number | null, min: number | null, reorder: number | null) => {
     const stock = current || 0;
     const threshold = reorder || min || 0;
@@ -528,6 +640,11 @@ export default function SparePartsManagement() {
             <p className="text-muted-foreground">Quản lý kho phụ tùng, nhà cung cấp và đơn đặt hàng</p>
           </div>
           <div className="flex gap-2">
+            <Link href="/spare-parts-cost-report">
+              <Button variant="outline">
+                <BarChart3 className="w-4 h-4 mr-2" />Báo cáo chi phí
+              </Button>
+            </Link>
             <Link href="/spare-parts-guide">
               <Button variant="outline">
                 <BookOpen className="w-4 h-4 mr-2" />Hướng dẫn
@@ -964,23 +1081,45 @@ export default function SparePartsManagement() {
                         className="pl-8 w-64"
                       />
                     </div>
-                    <Button
-                      variant={showLowStock ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setShowLowStock(!showLowStock)}
-                    >
-                      <AlertTriangle className="w-4 h-4 mr-1" />
-                      Tồn thấp
-                    </Button>
+                    <Select value={stockStatusFilter} onValueChange={setStockStatusFilter}>
+                      <SelectTrigger className="w-[150px]">
+                        <SelectValue placeholder="Trạng thái" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tất cả</SelectItem>
+                        <SelectItem value="ok">Đủ hàng</SelectItem>
+                        <SelectItem value="low">Cần đặt hàng</SelectItem>
+                        <SelectItem value="out">Hết hàng</SelectItem>
+                      </SelectContent>
+                    </Select>
                     {selectedPartsForQR.length > 0 && (
-                      <Button
-                        variant="default"
-                        size="sm"
-                        onClick={generateBulkQRCodes}
-                      >
-                        <Printer className="h-4 w-4 mr-1" />
-                        In {selectedPartsForQR.length} nhãn QR
-                      </Button>
+                      <>
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={generateBulkQRCodes}
+                        >
+                          <Printer className="h-4 w-4 mr-1" />
+                          In {selectedPartsForQR.length} nhãn QR
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={printThermalLabels}
+                          title="In nhãn cho máy in nhiệt 58mm"
+                        >
+                          <ScanLine className="h-4 w-4 mr-1" />
+                          Thermal
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={exportSelectedToExcel}
+                        >
+                          <Download className="h-4 w-4 mr-1" />
+                          Xuất Excel
+                        </Button>
+                      </>
                     )}
                     <Button
                       variant="outline"
@@ -1039,7 +1178,7 @@ export default function SparePartsManagement() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {parts?.slice((partsPage - 1) * pageSize, partsPage * pageSize).map((part) => {
+                    {filteredParts?.slice((partsPage - 1) * pageSize, partsPage * pageSize).map((part) => {
                       const status = getStockStatus(part.currentStock, part.minStock, part.reorderPoint);
                       return (
                         <TableRow key={part.id}>
@@ -1116,20 +1255,21 @@ export default function SparePartsManagement() {
                         </TableRow>
                       );
                     })}
-                    {(!parts || parts.length === 0) && (
+                    {(!filteredParts || filteredParts.length === 0) && (
                       <TableRow>
-                        <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                          Chưa có phụ tùng nào
+                        <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                          {stockStatusFilter !== "all" ? "Không có phụ tùng nào phù hợp bộ lọc" : "Chưa có phụ tùng nào"}
                         </TableCell>
                       </TableRow>
                     )}
                   </TableBody>
                 </Table>
                 {/* Pagination for Parts */}
-                {parts && parts.length > pageSize && (
+                {filteredParts && filteredParts.length > pageSize && (
                   <div className="flex items-center justify-between px-4 py-3 border-t">
                     <div className="text-sm text-muted-foreground">
-                      Hiển thị {((partsPage - 1) * pageSize) + 1} - {Math.min(partsPage * pageSize, parts.length)} / {parts.length} phụ tùng
+                      Hiển thị {((partsPage - 1) * pageSize) + 1} - {Math.min(partsPage * pageSize, filteredParts.length)} / {filteredParts.length} phụ tùng
+                      {stockStatusFilter !== "all" && ` (đang lọc)`}
                     </div>
                     <div className="flex gap-2">
                       <Button 
@@ -1141,13 +1281,13 @@ export default function SparePartsManagement() {
                         Trước
                       </Button>
                       <span className="flex items-center px-3 text-sm">
-                        Trang {partsPage} / {Math.ceil(parts.length / pageSize)}
+                        Trang {partsPage} / {Math.ceil(filteredParts.length / pageSize)}
                       </span>
                       <Button 
                         variant="outline" 
                         size="sm" 
-                        onClick={() => setPartsPage(p => Math.min(Math.ceil(parts.length / pageSize), p + 1))}
-                        disabled={partsPage >= Math.ceil(parts.length / pageSize)}
+                        onClick={() => setPartsPage(p => Math.min(Math.ceil(filteredParts.length / pageSize), p + 1))}
+                        disabled={partsPage >= Math.ceil(filteredParts.length / pageSize)}
                       >
                         Sau
                       </Button>
@@ -1716,7 +1856,7 @@ export default function SparePartsManagement() {
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label>Đơn giá</Label>
                   <Input 
@@ -1724,6 +1864,16 @@ export default function SparePartsManagement() {
                     value={editPartForm.unitPrice} 
                     onChange={(e) => setEditPartForm({...editPartForm, unitPrice: Number(e.target.value)})}
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label>Ngưỡng cảnh báo Email</Label>
+                  <Input 
+                    type="number" 
+                    value={editPartForm.emailAlertThreshold} 
+                    onChange={(e) => setEditPartForm({...editPartForm, emailAlertThreshold: Number(e.target.value)})}
+                    placeholder="0 = dùng mức tồn tối thiểu"
+                  />
+                  <p className="text-xs text-muted-foreground">0 = sử dụng mức tồn tối thiểu</p>
                 </div>
                 <div className="space-y-2">
                   <Label>Nhà cung cấp</Label>

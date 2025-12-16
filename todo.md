@@ -2555,3 +2555,11 @@
 - [x] Cảnh báo email tự động khi tồn kho thấp - sendLowStockEmailAlert API
 - [x] Hướng dẫn sử dụng xuất/nhập/kiểm kê kho - Trang SparePartsGuide.tsx
 
+
+## Phase 124: Nâng cấp Spare Parts - Scheduled Job, Thermal Print, Báo cáo Chi phí
+- [x] Scheduled job gửi email cảnh báo tồn kho mỗi sáng (7:00 AM) - sendLowStockEmailAlertJob()
+- [x] Tích hợp in nhãn với máy in nhiệt (thermal printer format) - printThermalLabels() 58mm
+- [x] Báo cáo thống kê chi phí phụ tùng theo tháng/quý - SparePartsCostReport.tsx
+- [x] Bộ lọc trạng thái trong bảng danh sách Phụ tùng - stockStatusFilter (Tất cả/Đủ hàng/Cần đặt/Hết hàng)
+- [x] Tùy chỉnh mức tồn kho tối thiểu cho cảnh báo Email - emailAlertThreshold field
+- [x] Xuất file Excel cho danh sách phụ tùng đã chọn - exportSelectedToExcel()

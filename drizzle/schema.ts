@@ -1827,6 +1827,7 @@ export const spareParts = mysqlTable("spare_parts", {
   maxStock: int("maxStock"),
   reorderPoint: int("reorderPoint"),
   reorderQuantity: int("reorderQuantity"),
+  emailAlertThreshold: int("emailAlertThreshold").default(0), // Ngưỡng cảnh báo email (0 = dùng minStock)
   
   // Vị trí
   warehouseLocation: varchar("warehouseLocation", { length: 100 }),
