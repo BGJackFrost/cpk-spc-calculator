@@ -2276,3 +2276,11 @@
 - [x] Lưu cấu hình WebSocket vào database (system_config)
 - [x] Thêm UI toggle WebSocket trong Settings (tab mới)
 - [x] Thêm WebSocket connection indicator trên header (WebSocketIndicator.tsx)
+
+## Phase 103: WebSocket Optimization & Features
+- [x] Kiểm tra và đặt giới hạn cho WebSocket (max 100 clients, 10 msg/sec, 64KB max)
+- [x] Kiểm tra và đặt giới hạn cho Webhook (10s timeout, 100KB max, 10 concurrent)
+- [x] Rate Limiter đã được tối ưu (mặc định tắt)
+- [x] Thêm WebSocket reconnect button (trong popover)
+- [x] Hiển thị latency/ping trong WebSocket indicator (màu theo mức độ)
+- [x] Tạo WebSocket event log cho admin (WebSocketEventLog.tsx)

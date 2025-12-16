@@ -8,6 +8,20 @@ export type WebhookEventType = "cpk_alert" | "rule_violation" | "analysis_comple
 const RETRY_DELAYS = [60, 300, 900, 3600, 7200]; // 1min, 5min, 15min, 1hr, 2hr
 const MAX_RETRIES = 5;
 
+// Webhook limits to prevent system hang
+const WEBHOOK_TIMEOUT_MS = parseInt(process.env.WEBHOOK_TIMEOUT_MS || '10000'); // 10 seconds default
+const WEBHOOK_MAX_PAYLOAD_SIZE = parseInt(process.env.WEBHOOK_MAX_PAYLOAD_SIZE || '102400'); // 100KB default
+const WEBHOOK_MAX_CONCURRENT = parseInt(process.env.WEBHOOK_MAX_CONCURRENT || '10'); // Max concurrent requests
+
+let activeWebhookRequests = 0;
+
+// Helper to create AbortController with timeout
+function createTimeoutController(timeoutMs: number): { controller: AbortController; timeoutId: NodeJS.Timeout } {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  return { controller, timeoutId };
+}
+
 /**
  * Calculate next retry time using exponential backoff
  */
@@ -194,11 +208,33 @@ export async function sendWebhook(
         body = JSON.stringify(payload);
     }
     
-    const response = await fetch(webhook.url, {
-      method: "POST",
-      headers,
-      body,
-    });
+    // Check concurrent limit
+    if (activeWebhookRequests >= WEBHOOK_MAX_CONCURRENT) {
+      console.log('[Webhook] Max concurrent requests reached, queuing...');
+      // Wait a bit and retry
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+
+    // Check payload size
+    if (body.length > WEBHOOK_MAX_PAYLOAD_SIZE) {
+      throw new Error(`Payload too large: ${body.length} bytes (max: ${WEBHOOK_MAX_PAYLOAD_SIZE})`);
+    }
+
+    activeWebhookRequests++;
+    const { controller, timeoutId } = createTimeoutController(WEBHOOK_TIMEOUT_MS);
+    
+    let response: Response;
+    try {
+      response = await fetch(webhook.url, {
+        method: "POST",
+        headers,
+        body,
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeoutId);
+      activeWebhookRequests--;
+    }
     
     const responseBody = await response.text();
     
@@ -378,11 +414,22 @@ async function retryWebhookLog(
       }
     }
 
-    const response = await fetch(webhook.url, {
-      method: "POST",
-      headers,
-      body: logEntry.payload,
-    });
+    // Add timeout for retry requests
+    activeWebhookRequests++;
+    const { controller, timeoutId } = createTimeoutController(WEBHOOK_TIMEOUT_MS);
+    
+    let response: Response;
+    try {
+      response = await fetch(webhook.url, {
+        method: "POST",
+        headers,
+        body: logEntry.payload,
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeoutId);
+      activeWebhookRequests--;
+    }
 
     const responseBody = await response.text();
     const newRetryCount = logEntry.retryCount + 1;

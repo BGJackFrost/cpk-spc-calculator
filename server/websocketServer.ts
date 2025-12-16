@@ -83,11 +83,43 @@ export async function setWebSocketEnabled(enabled: boolean): Promise<void> {
   }
 }
 
+// WebSocket limits
+const WS_MAX_CLIENTS = parseInt(process.env.WS_MAX_CLIENTS || '100');
+const WS_MAX_MESSAGES_PER_SECOND = parseInt(process.env.WS_MAX_MESSAGES_PER_SECOND || '10');
+const WS_MESSAGE_MAX_SIZE = parseInt(process.env.WS_MESSAGE_MAX_SIZE || '65536'); // 64KB
+
+// Event log for admin
+interface WebSocketEvent {
+  timestamp: Date;
+  type: 'connect' | 'disconnect' | 'error' | 'message' | 'rate_limit';
+  clientId?: string;
+  message?: string;
+}
+
+const eventLog: WebSocketEvent[] = [];
+const MAX_EVENT_LOG_SIZE = 1000;
+
+function logEvent(event: Omit<WebSocketEvent, 'timestamp'>) {
+  eventLog.unshift({ ...event, timestamp: new Date() });
+  if (eventLog.length > MAX_EVENT_LOG_SIZE) {
+    eventLog.pop();
+  }
+}
+
+export function getEventLog(limit: number = 100): WebSocketEvent[] {
+  return eventLog.slice(0, limit);
+}
+
+export function clearEventLog(): void {
+  eventLog.length = 0;
+}
+
 class RealtimeWebSocketServer {
   private wss: WebSocketServer | null = null;
   private clients: Set<WebSocketClient> = new Set();
   private heartbeatInterval: NodeJS.Timeout | null = null;
   private initialized: boolean = false;
+  private messageRates: Map<WebSocketClient, { count: number; resetTime: number }> = new Map();
 
   initialize(server: HttpServer) {
     // Check if WebSocket is enabled
@@ -106,20 +138,57 @@ class RealtimeWebSocketServer {
     });
 
     this.wss.on('connection', (ws: WebSocket) => {
+      // Check max clients limit
+      if (this.clients.size >= WS_MAX_CLIENTS) {
+        console.log('[WebSocket] Max clients reached, rejecting connection');
+        logEvent({ type: 'error', message: `Connection rejected: max clients (${WS_MAX_CLIENTS}) reached` });
+        ws.close(1013, 'Max clients reached');
+        return;
+      }
+
       const client = ws as WebSocketClient;
       client.isAlive = true;
       client.subscriptions = new Set();
       this.clients.add(client);
+      
+      // Initialize rate limiter for this client
+      this.messageRates.set(client, { count: 0, resetTime: Date.now() + 1000 });
 
+      const clientId = `client-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      logEvent({ type: 'connect', clientId, message: `Total clients: ${this.clients.size}` });
       console.log('[WebSocket] Client connected. Total clients:', this.clients.size);
 
-      // Handle incoming messages
+      // Handle incoming messages with rate limiting
       client.on('message', (message: Buffer) => {
+        // Check message size
+        if (message.length > WS_MESSAGE_MAX_SIZE) {
+          console.log('[WebSocket] Message too large, ignoring');
+          logEvent({ type: 'error', message: `Message too large: ${message.length} bytes` });
+          return;
+        }
+
+        // Check rate limit
+        const rateInfo = this.messageRates.get(client);
+        if (rateInfo) {
+          const now = Date.now();
+          if (now > rateInfo.resetTime) {
+            rateInfo.count = 0;
+            rateInfo.resetTime = now + 1000;
+          }
+          rateInfo.count++;
+          if (rateInfo.count > WS_MAX_MESSAGES_PER_SECOND) {
+            console.log('[WebSocket] Rate limit exceeded for client');
+            logEvent({ type: 'rate_limit', message: `Rate limit exceeded: ${rateInfo.count} messages/sec` });
+            return;
+          }
+        }
+
         try {
           const msg: RealtimeMessage = JSON.parse(message.toString());
           this.handleMessage(client, msg);
         } catch (error) {
           console.error('[WebSocket] Error parsing message:', error);
+          logEvent({ type: 'error', message: `Parse error: ${error}` });
         }
       });
 
@@ -131,6 +200,8 @@ class RealtimeWebSocketServer {
       // Handle disconnect
       client.on('close', () => {
         this.clients.delete(client);
+        this.messageRates.delete(client);
+        logEvent({ type: 'disconnect', message: `Total clients: ${this.clients.size}` });
         console.log('[WebSocket] Client disconnected. Total clients:', this.clients.size);
       });
 
