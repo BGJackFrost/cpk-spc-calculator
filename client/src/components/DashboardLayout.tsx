@@ -43,6 +43,7 @@ import { Button } from "./ui/button";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { useLanguage } from "../contexts/LanguageContext";
 import { NotificationBell } from "./NotificationBell";
+import { WebSocketIndicator } from "./WebSocketIndicator";
 
 // Menu groups configuration
 interface MenuItem {
@@ -727,6 +728,7 @@ function DashboardLayoutContent({
         <header className="h-16 shrink-0 flex items-center gap-2 border-b px-4 lg:px-6">
           <SidebarTrigger className="-ml-1 lg:hidden" />
           <div className="flex-1" />
+          <WebSocketIndicator />
           <NotificationBell />
         </header>
         <main className="flex-1 overflow-auto">

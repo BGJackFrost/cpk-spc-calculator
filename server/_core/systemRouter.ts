@@ -5,7 +5,7 @@ import { getDb } from "../db";
 import { systemConfig, companyInfo } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { storagePut } from "../storage";
-import { isWebSocketEnabled, setWebSocketEnabled, realtimeWebSocketServer } from "../websocketServer";
+import { isWebSocketEnabled, setWebSocketEnabled, realtimeWebSocketServer, loadWebSocketConfig } from "../websocketServer";
 
 export const systemRouter = router({
   health: publicProcedure
@@ -262,8 +262,8 @@ export const systemRouter = router({
   // Toggle WebSocket
   setWebSocketEnabled: adminProcedure
     .input(z.object({ enabled: z.boolean() }))
-    .mutation(({ input }) => {
-      setWebSocketEnabled(input.enabled);
+    .mutation(async ({ input }) => {
+      await setWebSocketEnabled(input.enabled);
       return { success: true, enabled: input.enabled };
     }),
 

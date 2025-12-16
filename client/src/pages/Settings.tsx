@@ -36,7 +36,9 @@ import {
   CheckCircle2,
   XCircle,
   TestTube,
-  Search
+  Search,
+  Wifi,
+  WifiOff
 } from "lucide-react";
 import DatabaseExplorer from "@/components/DatabaseExplorer";
 import Breadcrumb from "@/components/Breadcrumb";
@@ -248,6 +250,10 @@ export default function Settings() {
             <TabsTrigger value="alerts" className="gap-2">
               <Bell className="h-4 w-4" />
               Cảnh báo
+            </TabsTrigger>
+            <TabsTrigger value="websocket" className="gap-2">
+              <Wifi className="h-4 w-4" />
+              WebSocket
             </TabsTrigger>
           </TabsList>
 
@@ -541,8 +547,100 @@ export default function Settings() {
             </Card>
           </TabsContent>
 
+          {/* WebSocket Tab */}
+          <TabsContent value="websocket">
+            <WebSocketSettings />
+          </TabsContent>
+
         </Tabs>
       </div>
     </DashboardLayout>
+  );
+}
+
+// WebSocket Settings Component
+function WebSocketSettings() {
+  const { data: wsStatus, refetch } = trpc.system.getWebSocketStatus.useQuery();
+  const toggleMutation = trpc.system.setWebSocketEnabled.useMutation({
+    onSuccess: (data) => {
+      toast.success(data.enabled ? 'WebSocket đã được bật' : 'WebSocket đã được tắt');
+      refetch();
+    },
+    onError: (error) => {
+      toast.error('Lỗi: ' + error.message);
+    },
+  });
+
+  return (
+    <Card className="bg-card rounded-xl border border-border/50 shadow-md">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          {wsStatus?.enabled ? (
+            <Wifi className="h-5 w-5 text-green-500" />
+          ) : (
+            <WifiOff className="h-5 w-5 text-muted-foreground" />
+          )}
+          Cấu hình WebSocket
+        </CardTitle>
+        <CardDescription>
+          Quản lý kết nối WebSocket cho dữ liệu realtime
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Toggle WebSocket */}
+        <div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
+          <div className="space-y-1">
+            <Label className="text-base font-medium">Bật WebSocket Server</Label>
+            <p className="text-sm text-muted-foreground">
+              Cho phép kết nối WebSocket để nhận dữ liệu realtime
+            </p>
+          </div>
+          <Switch
+            checked={wsStatus?.enabled ?? false}
+            onCheckedChange={(checked) => {
+              toggleMutation.mutate({ enabled: checked });
+            }}
+            disabled={toggleMutation.isPending}
+          />
+        </div>
+
+        {/* Status Info */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="p-4 bg-muted/30 rounded-lg">
+            <div className="text-sm text-muted-foreground">Trạng thái</div>
+            <div className="text-lg font-semibold flex items-center gap-2">
+              {wsStatus?.enabled ? (
+                <><CheckCircle2 className="h-4 w-4 text-green-500" /> Bật</>
+              ) : (
+                <><XCircle className="h-4 w-4 text-red-500" /> Tắt</>
+              )}
+            </div>
+          </div>
+          <div className="p-4 bg-muted/30 rounded-lg">
+            <div className="text-sm text-muted-foreground">Server</div>
+            <div className="text-lg font-semibold">
+              {wsStatus?.initialized ? 'Hoạt động' : 'Chưa khởi tạo'}
+            </div>
+          </div>
+          <div className="p-4 bg-muted/30 rounded-lg">
+            <div className="text-sm text-muted-foreground">Kết nối</div>
+            <div className="text-lg font-semibold">
+              {wsStatus?.clientCount ?? 0} clients
+            </div>
+          </div>
+        </div>
+
+        {/* Info */}
+        <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+          <h4 className="font-medium text-blue-600 dark:text-blue-400 mb-2">Thông tin</h4>
+          <ul className="text-sm text-muted-foreground space-y-1">
+            <li>• WebSocket cho phép nhận dữ liệu realtime từ máy móc và cảnh báo</li>
+            <li>• Mặc định WebSocket được tắt để tiết kiệm tài nguyên</li>
+            <li>• Cấu hình được lưu vào database và giữ nguyên sau khi restart</li>
+            <li>• Có thể bật qua biến môi trường: WEBSOCKET_ENABLED=true</li>
+          </ul>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

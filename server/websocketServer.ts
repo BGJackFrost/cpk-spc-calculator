@@ -6,6 +6,9 @@
 import { Server as HttpServer } from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
 import { dataCollectorManager } from './dataCollector';
+import { getDb } from './db';
+import { systemConfig } from '../drizzle/schema';
+import { eq } from 'drizzle-orm';
 
 interface WebSocketClient extends WebSocket {
   isAlive: boolean;
@@ -21,14 +24,63 @@ interface RealtimeMessage {
 
 // WebSocket enabled flag - default is disabled
 let wsEnabled = process.env.WEBSOCKET_ENABLED === 'true';
+let configLoaded = false;
+
+// Load WebSocket config from database
+export async function loadWebSocketConfig(): Promise<void> {
+  if (configLoaded) return;
+  try {
+    const db = await getDb();
+    if (!db) return;
+    const [config] = await db
+      .select()
+      .from(systemConfig)
+      .where(eq(systemConfig.configKey, 'websocket_enabled'))
+      .limit(1);
+    if (config) {
+      wsEnabled = config.configValue === 'true';
+      console.log(`[WebSocket] Loaded config from database: ${wsEnabled ? 'Enabled' : 'Disabled'}`);
+    }
+    configLoaded = true;
+  } catch (error) {
+    console.error('[WebSocket] Error loading config from database:', error);
+  }
+}
 
 export function isWebSocketEnabled(): boolean {
   return wsEnabled;
 }
 
-export function setWebSocketEnabled(enabled: boolean): void {
+export async function setWebSocketEnabled(enabled: boolean): Promise<void> {
   wsEnabled = enabled;
   console.log(`[WebSocket] ${enabled ? 'Enabled' : 'Disabled'}`);
+  
+  // Save to database
+  try {
+    const db = await getDb();
+    if (!db) return;
+    const [existing] = await db
+      .select()
+      .from(systemConfig)
+      .where(eq(systemConfig.configKey, 'websocket_enabled'))
+      .limit(1);
+    
+    if (existing) {
+      await db
+        .update(systemConfig)
+        .set({ configValue: enabled ? 'true' : 'false' })
+        .where(eq(systemConfig.configKey, 'websocket_enabled'));
+    } else {
+      await db.insert(systemConfig).values({
+        configKey: 'websocket_enabled',
+        configValue: enabled ? 'true' : 'false',
+        configType: 'boolean',
+        description: 'WebSocket server enabled/disabled',
+      });
+    }
+  } catch (error) {
+    console.error('[WebSocket] Error saving config to database:', error);
+  }
 }
 
 class RealtimeWebSocketServer {

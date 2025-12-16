@@ -2271,3 +2271,8 @@
 - [x] Cập nhật client để kiểm tra cấu hình WebSocket trước khi kết nối
 - [x] Thêm API endpoint để lấy trạng thái WebSocket (system.getWebSocketStatus)
 - [x] Thêm API endpoint để bật/tắt WebSocket (system.setWebSocketEnabled)
+
+## Phase 102: WebSocket UI & Persistence
+- [x] Lưu cấu hình WebSocket vào database (system_config)
+- [x] Thêm UI toggle WebSocket trong Settings (tab mới)
+- [x] Thêm WebSocket connection indicator trên header (WebSocketIndicator.tsx)
