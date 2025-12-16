@@ -30,8 +30,13 @@ import {
   resetRateLimitStats, 
   addToWhitelist, 
   removeFromWhitelist, 
-  getWhitelist 
+  getWhitelist,
+  getUserRateLimitInfo,
+  clearAlerts,
+  getRedisStatus,
+  setAlertCallback
 } from "./_core/rateLimiter";
+import { notifyOwner } from "./_core/notification";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import {
@@ -175,7 +180,6 @@ import {
 } from "./db";
 import { sql } from "drizzle-orm";
 import { invokeLLM } from "./_core/llm";
-import { notifyOwner } from "./_core/notification";
 import { generateCsvContent, generateHtmlReport, ExportData } from "./exportUtils";
 import { generatePdfHtml, generateExcelBuffer, generateEnhancedCsv, ExportData as EnhancedExportData } from "./exportService";
 import {
@@ -5432,6 +5436,15 @@ export const appRouter = router({
         return { success: true };
       }),
     
+    clearAlerts: protectedProcedure
+      .mutation(async ({ ctx }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
+        }
+        clearAlerts();
+        return { success: true };
+      }),
+    
     getWhitelist: protectedProcedure
       .query(async ({ ctx }) => {
         if (ctx.user.role !== 'admin') {
@@ -5458,6 +5471,19 @@ export const appRouter = router({
         }
         removeFromWhitelist(input.ip);
         return { success: true };
+      }),
+    
+    getRedisStatus: protectedProcedure
+      .query(async ({ ctx }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
+        }
+        return getRedisStatus();
+      }),
+    
+    getUserRateLimit: protectedProcedure
+      .query(async ({ ctx }) => {
+        return getUserRateLimitInfo(String(ctx.user.id));
       }),
   }),
 

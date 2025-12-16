@@ -2240,3 +2240,8 @@
 - [x] Thêm IP whitelist bypass rate limiting (private IPs auto-whitelisted)
 - [x] Tạo Dashboard monitoring rate limits (RateLimitDashboard.tsx)
 - [x] Thống kê số requests bị block theo thời gian (API endpoints)
+
+## Phase 97: Rate Limiter Enhancements
+- [x] Cấu hình REDIS_URL với hướng dẫn setup (tự động fallback về memory)
+- [x] Alert khi block rate cao (> 5%) - gửi notification cho owner
+- [x] Rate limit theo user ID (3000 req/15min per user)

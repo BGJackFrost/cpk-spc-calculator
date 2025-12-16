@@ -48,6 +48,17 @@ export default function RateLimitDashboard() {
   
   const { data: whitelist, refetch: refetchWhitelist } = trpc.rateLimit.getWhitelist.useQuery();
   
+  const { data: redisStatus } = trpc.rateLimit.getRedisStatus.useQuery();
+  
+  const { data: userRateLimit } = trpc.rateLimit.getUserRateLimit.useQuery();
+  
+  const clearAlertsMutation = trpc.rateLimit.clearAlerts.useMutation({
+    onSuccess: () => {
+      toast.success(language === "vi" ? "Đã xóa cảnh báo" : "Alerts cleared");
+      refetch();
+    },
+  });
+  
   const resetStatsMutation = trpc.rateLimit.resetStats.useMutation({
     onSuccess: () => {
       toast.success(language === "vi" ? "Đã reset thống kê" : "Statistics reset");
@@ -160,8 +171,8 @@ export default function RateLimitDashboard() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <Badge variant={stats?.config ? "default" : "secondary"}>
-                {stats?.config ? "Memory" : "Loading..."}
+              <Badge variant={redisStatus?.connected ? "default" : "secondary"}>
+                {redisStatus?.connected ? "Redis" : "Memory"}
               </Badge>
               <p className="text-xs text-muted-foreground mt-1">
                 {stats?.config?.maxRequests || 0} req/{(stats?.config?.windowMs || 900000) / 60000}min
@@ -379,7 +390,7 @@ export default function RateLimitDashboard() {
               <h4 className="font-medium mb-2">
                 {language === "vi" ? "Cấu hình Rate Limit" : "Rate Limit Configuration"}
               </h4>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                 <div>
                   <span className="text-muted-foreground">API:</span>
                   <span className="ml-2 font-mono">{stats?.config?.maxRequests || 0}/15min</span>
@@ -393,10 +404,132 @@ export default function RateLimitDashboard() {
                   <span className="ml-2 font-mono">{stats?.config?.maxExportRequests || 0}/15min</span>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Window:</span>
-                  <span className="ml-2 font-mono">{(stats?.config?.windowMs || 900000) / 60000}min</span>
+                  <span className="text-muted-foreground">Per User:</span>
+                  <span className="ml-2 font-mono">{(stats?.config as any)?.maxUserRequests || 3000}/15min</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Alert:</span>
+                  <span className="ml-2 font-mono">&gt;{(stats?.config as any)?.alertThreshold || 5}%</span>
                 </div>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Your Rate Limit */}
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              {language === "vi" ? "Rate Limit của bạn" : "Your Rate Limit"}
+            </CardTitle>
+            <CardDescription>
+              {language === "vi" 
+                ? "Giới hạn requests cá nhân của bạn" 
+                : "Your personal request limits"}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-8">
+              <div>
+                <span className="text-muted-foreground">{language === "vi" ? "Đã dùng:" : "Used:"}</span>
+                <span className="ml-2 font-bold text-lg">{userRateLimit?.count || 0}</span>
+                <span className="text-muted-foreground"> / {userRateLimit?.limit || 3000}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">{language === "vi" ? "Còn lại:" : "Remaining:"}</span>
+                <span className="ml-2 font-bold text-lg text-green-600">{userRateLimit?.remaining || 3000}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">{language === "vi" ? "Reset lúc:" : "Resets at:"}</span>
+                <span className="ml-2 font-mono">
+                  {userRateLimit?.resetAt ? new Date(userRateLimit.resetAt).toLocaleTimeString() : "--:--"}
+                </span>
+              </div>
+            </div>
+            <div className="mt-4 w-full bg-muted rounded-full h-2">
+              <div 
+                className="bg-primary h-2 rounded-full transition-all" 
+                style={{ width: `${((userRateLimit?.count || 0) / (userRateLimit?.limit || 3000)) * 100}%` }}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Recent Alerts */}
+        {stats?.recentAlerts && stats.recentAlerts.length > 0 && (
+          <Card className="border-destructive">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2 text-destructive">
+                  <AlertTriangle className="h-5 w-5" />
+                  {language === "vi" ? "Cảnh báo gần đây" : "Recent Alerts"}
+                </CardTitle>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => clearAlertsMutation.mutate()}
+                  disabled={clearAlertsMutation.isPending}
+                >
+                  {language === "vi" ? "Xóa tất cả" : "Clear All"}
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {stats.recentAlerts.map((alert: any, index: number) => (
+                  <div key={index} className="flex items-start gap-3 p-3 bg-destructive/10 rounded-lg">
+                    <AlertTriangle className="h-4 w-4 text-destructive mt-0.5" />
+                    <div className="flex-1">
+                      <p className="text-sm">{alert.message}</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {new Date(alert.timestamp).toLocaleString()}
+                      </p>
+                    </div>
+                    <Badge variant="destructive">{alert.blockRate}%</Badge>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Redis Configuration */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Server className="h-5 w-5" />
+              {language === "vi" ? "Cấu hình Redis" : "Redis Configuration"}
+            </CardTitle>
+            <CardDescription>
+              {language === "vi" 
+                ? "Redis cho phép rate limiting hoạt động distributed khi scale nhiều instances" 
+                : "Redis enables distributed rate limiting across multiple instances"}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center gap-4">
+                <Badge variant={redisStatus?.connected ? "default" : "secondary"}>
+                  {redisStatus?.connected ? "Connected" : "Not Connected"}
+                </Badge>
+                {redisStatus?.url && (
+                  <span className="font-mono text-sm text-muted-foreground">{redisStatus.url}</span>
+                )}
+              </div>
+              
+              {!redisStatus?.connected && (
+                <div className="bg-muted/50 rounded-lg p-4 text-sm">
+                  <h4 className="font-medium mb-2">
+                    {language === "vi" ? "Hướng dẫn cấu hình Redis" : "Redis Setup Guide"}
+                  </h4>
+                  <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
+                    <li>{language === "vi" ? "Vào Settings > Secrets trong Management UI" : "Go to Settings > Secrets in Management UI"}</li>
+                    <li>{language === "vi" ? "Thêm biến môi trường REDIS_URL" : "Add environment variable REDIS_URL"}</li>
+                    <li>{language === "vi" ? "Giá trị: redis://host:port hoặc redis://:password@host:port" : "Value: redis://host:port or redis://:password@host:port"}</li>
+                    <li>{language === "vi" ? "Restart server để áp dụng" : "Restart server to apply"}</li>
+                  </ol>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

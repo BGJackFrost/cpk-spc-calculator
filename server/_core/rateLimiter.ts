@@ -8,13 +8,19 @@ const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 const RATE_LIMIT_MAX_REQUESTS = 5000; // Max requests per window
 const RATE_LIMIT_MAX_AUTH_REQUESTS = 200; // Max auth requests per window
 const RATE_LIMIT_MAX_EXPORT_REQUESTS = 100; // Max export requests per window
+const RATE_LIMIT_MAX_USER_REQUESTS = 3000; // Max requests per user per window
+
+// Alert configuration
+const BLOCK_RATE_ALERT_THRESHOLD = 5; // Alert when block rate > 5%
+const ALERT_CHECK_INTERVAL = 5 * 60 * 1000; // Check every 5 minutes
+let lastAlertTime = 0;
+const ALERT_COOLDOWN = 30 * 60 * 1000; // 30 minutes cooldown between alerts
 
 // IP Whitelist - these IPs bypass rate limiting completely
 const IP_WHITELIST = new Set<string>([
   "127.0.0.1",
   "::1",
   "localhost",
-  // Add internal network IPs here
   "10.0.0.0/8",
   "172.16.0.0/12",
   "192.168.0.0/16",
@@ -24,10 +30,8 @@ const IP_WHITELIST = new Set<string>([
 function isWhitelisted(ip: string | undefined): boolean {
   if (!ip) return false;
   
-  // Direct match
   if (IP_WHITELIST.has(ip)) return true;
   
-  // Check for private IP ranges
   if (ip.startsWith("10.") || 
       ip.startsWith("192.168.") ||
       ip.startsWith("172.16.") ||
@@ -58,8 +62,10 @@ interface RateLimitStats {
   blockedRequests: number;
   byEndpoint: Map<string, { total: number; blocked: number }>;
   byIp: Map<string, { total: number; blocked: number; lastBlocked?: number }>;
+  byUser: Map<string, { total: number; blocked: number; lastBlocked?: number }>;
   hourlyBlocked: number[];
   lastReset: number;
+  alerts: Array<{ timestamp: number; blockRate: number; message: string }>;
 }
 
 const stats: RateLimitStats = {
@@ -67,12 +73,100 @@ const stats: RateLimitStats = {
   blockedRequests: 0,
   byEndpoint: new Map(),
   byIp: new Map(),
+  byUser: new Map(),
   hourlyBlocked: new Array(24).fill(0),
   lastReset: Date.now(),
+  alerts: [],
 };
 
+// User rate limit tracking
+const userRateLimits = new Map<string, { count: number; resetAt: number }>();
+
+// Check and track user rate limit
+export function checkUserRateLimit(userId: string): { allowed: boolean; remaining: number; resetAt: number } {
+  const now = Date.now();
+  const existing = userRateLimits.get(userId);
+  
+  if (!existing || existing.resetAt < now) {
+    userRateLimits.set(userId, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    return { allowed: true, remaining: RATE_LIMIT_MAX_USER_REQUESTS - 1, resetAt: now + RATE_LIMIT_WINDOW_MS };
+  }
+  
+  if (existing.count >= RATE_LIMIT_MAX_USER_REQUESTS) {
+    // Track blocked request for user
+    const userStats = stats.byUser.get(userId) || { total: 0, blocked: 0 };
+    userStats.blocked++;
+    userStats.lastBlocked = now;
+    stats.byUser.set(userId, userStats);
+    
+    return { allowed: false, remaining: 0, resetAt: existing.resetAt };
+  }
+  
+  existing.count++;
+  
+  // Track request for user
+  const userStats = stats.byUser.get(userId) || { total: 0, blocked: 0 };
+  userStats.total++;
+  stats.byUser.set(userId, userStats);
+  
+  return { allowed: true, remaining: RATE_LIMIT_MAX_USER_REQUESTS - existing.count, resetAt: existing.resetAt };
+}
+
+// Get user rate limit info
+export function getUserRateLimitInfo(userId: string): { count: number; limit: number; remaining: number; resetAt: number } {
+  const now = Date.now();
+  const existing = userRateLimits.get(userId);
+  
+  if (!existing || existing.resetAt < now) {
+    return { count: 0, limit: RATE_LIMIT_MAX_USER_REQUESTS, remaining: RATE_LIMIT_MAX_USER_REQUESTS, resetAt: now + RATE_LIMIT_WINDOW_MS };
+  }
+  
+  return { 
+    count: existing.count, 
+    limit: RATE_LIMIT_MAX_USER_REQUESTS, 
+    remaining: Math.max(0, RATE_LIMIT_MAX_USER_REQUESTS - existing.count),
+    resetAt: existing.resetAt 
+  };
+}
+
+// Alert callback type
+type AlertCallback = (alert: { blockRate: number; message: string; timestamp: number }) => void;
+let alertCallback: AlertCallback | null = null;
+
+// Set alert callback
+export function setAlertCallback(callback: AlertCallback) {
+  alertCallback = callback;
+}
+
+// Check block rate and trigger alert if needed
+function checkBlockRateAlert() {
+  if (stats.totalRequests < 100) return; // Need minimum requests to calculate meaningful rate
+  
+  const blockRate = (stats.blockedRequests / stats.totalRequests) * 100;
+  const now = Date.now();
+  
+  if (blockRate > BLOCK_RATE_ALERT_THRESHOLD && (now - lastAlertTime) > ALERT_COOLDOWN) {
+    lastAlertTime = now;
+    
+    const alert = {
+      timestamp: now,
+      blockRate: parseFloat(blockRate.toFixed(2)),
+      message: `Cảnh báo: Tỷ lệ block cao (${blockRate.toFixed(2)}%) - ${stats.blockedRequests}/${stats.totalRequests} requests bị block trong 15 phút qua`,
+    };
+    
+    stats.alerts.push(alert);
+    if (stats.alerts.length > 100) stats.alerts.shift(); // Keep last 100 alerts
+    
+    console.warn(`[RateLimiter] ${alert.message}`);
+    
+    if (alertCallback) {
+      alertCallback(alert);
+    }
+  }
+}
+
 // Track request for monitoring
-export function trackRateLimitRequest(ip: string, endpoint: string, blocked: boolean) {
+export function trackRateLimitRequest(ip: string, endpoint: string, blocked: boolean, userId?: string) {
   stats.totalRequests++;
   
   // Track by endpoint
@@ -89,11 +183,21 @@ export function trackRateLimitRequest(ip: string, endpoint: string, blocked: boo
     ipStats.lastBlocked = Date.now();
     stats.blockedRequests++;
     
-    // Track hourly blocked
     const hour = new Date().getHours();
     stats.hourlyBlocked[hour]++;
   }
   stats.byIp.set(ip, ipStats);
+  
+  // Track by user if provided
+  if (userId) {
+    const userStats = stats.byUser.get(userId) || { total: 0, blocked: 0 };
+    userStats.total++;
+    if (blocked) {
+      userStats.blocked++;
+      userStats.lastBlocked = Date.now();
+    }
+    stats.byUser.set(userId, userStats);
+  }
 }
 
 // Get rate limit statistics
@@ -110,34 +214,57 @@ export function getRateLimitStats() {
     .slice(0, 10)
     .map(([endpoint, s]) => ({ endpoint, ...s }));
 
+  const topBlockedUsers = Array.from(stats.byUser.entries())
+    .filter(([_, s]) => s.blocked > 0)
+    .sort((a, b) => b[1].blocked - a[1].blocked)
+    .slice(0, 10)
+    .map(([userId, s]) => ({ userId, ...s }));
+
+  const blockRate = stats.totalRequests > 0 
+    ? (stats.blockedRequests / stats.totalRequests) * 100
+    : 0;
+
   return {
     totalRequests: stats.totalRequests,
     blockedRequests: stats.blockedRequests,
-    blockRate: stats.totalRequests > 0 
-      ? ((stats.blockedRequests / stats.totalRequests) * 100).toFixed(2) + '%'
-      : '0%',
+    blockRate: blockRate.toFixed(2) + '%',
+    blockRateValue: blockRate,
+    alertThreshold: BLOCK_RATE_ALERT_THRESHOLD,
+    isAlertActive: blockRate > BLOCK_RATE_ALERT_THRESHOLD,
     topBlockedIps,
     topBlockedEndpoints,
+    topBlockedUsers,
     hourlyBlocked: stats.hourlyBlocked,
     uptime: Date.now() - stats.lastReset,
+    recentAlerts: stats.alerts.slice(-10),
     config: {
       windowMs: RATE_LIMIT_WINDOW_MS,
       maxRequests: RATE_LIMIT_MAX_REQUESTS,
       maxAuthRequests: RATE_LIMIT_MAX_AUTH_REQUESTS,
       maxExportRequests: RATE_LIMIT_MAX_EXPORT_REQUESTS,
+      maxUserRequests: RATE_LIMIT_MAX_USER_REQUESTS,
+      alertThreshold: BLOCK_RATE_ALERT_THRESHOLD,
     },
     whitelistedIps: Array.from(IP_WHITELIST),
+    redisConnected: redisClient?.status === 'ready',
   };
 }
 
-// Reset statistics (call periodically or on demand)
+// Reset statistics
 export function resetRateLimitStats() {
   stats.totalRequests = 0;
   stats.blockedRequests = 0;
   stats.byEndpoint.clear();
   stats.byIp.clear();
+  stats.byUser.clear();
   stats.hourlyBlocked = new Array(24).fill(0);
   stats.lastReset = Date.now();
+  // Keep alerts history
+}
+
+// Clear alerts
+export function clearAlerts() {
+  stats.alerts = [];
 }
 
 // Add IP to whitelist
@@ -157,7 +284,7 @@ export function getWhitelist(): string[] {
   return Array.from(IP_WHITELIST);
 }
 
-// Redis client (optional - falls back to memory store if not configured)
+// Redis client
 let redisClient: Redis | null = null;
 let redisStore: RedisStore | null = null;
 
@@ -196,12 +323,23 @@ if (REDIS_URL) {
   }
 } else {
   console.log("[RateLimiter] REDIS_URL not configured, using memory store");
+  console.log("[RateLimiter] To enable Redis, set REDIS_URL environment variable");
+  console.log("[RateLimiter] Example: redis://localhost:6379 or redis://:password@host:port");
+}
+
+// Export Redis connection status
+export function getRedisStatus(): { connected: boolean; url: string | null } {
+  return {
+    connected: redisClient?.status === 'ready',
+    url: REDIS_URL ? REDIS_URL.replace(/:[^:@]+@/, ':***@') : null, // Hide password
+  };
 }
 
 // Custom handler for rate limit exceeded
 const rateLimitHandler = (req: Request, res: Response) => {
   const ip = req.ip || req.socket.remoteAddress || "unknown";
-  trackRateLimitRequest(ip, req.path, true);
+  const userId = (req as any).user?.id;
+  trackRateLimitRequest(ip, req.path, true, userId);
   
   res.status(429).json({
     error: {
@@ -223,12 +361,10 @@ const createSkipFunction = (additionalSkips?: (req: Request) => boolean) => {
   return (req: Request) => {
     const ip = req.ip || req.socket.remoteAddress;
     
-    // Skip if IP is whitelisted
     if (isWhitelisted(ip)) {
       return true;
     }
     
-    // Skip for health checks, SSE, and static assets
     if (req.path === "/api/health" || 
         req.path === "/api/sse" ||
         req.path.startsWith("/@") ||
@@ -237,13 +373,12 @@ const createSkipFunction = (additionalSkips?: (req: Request) => boolean) => {
       return true;
     }
     
-    // Additional custom skips
     if (additionalSkips && additionalSkips(req)) {
       return true;
     }
     
-    // Track non-skipped request
-    trackRateLimitRequest(ip || "unknown", req.path, false);
+    const userId = (req as any).user?.id;
+    trackRateLimitRequest(ip || "unknown", req.path, false, userId);
     
     return false;
   };
@@ -288,7 +423,7 @@ export const exportRateLimiter = rateLimit({
   ...(redisStore && { store: redisStore }),
 });
 
-// In-memory store for tracking request counts (for logging/monitoring)
+// In-memory store for tracking request counts
 const requestCounts = new Map<string, { count: number; resetAt: number }>();
 
 export function trackRequest(key: string): { count: number; remaining: number } {
@@ -307,6 +442,8 @@ export function trackRequest(key: string): { count: number; remaining: number } 
 // Cleanup old entries periodically
 setInterval(() => {
   const now = Date.now();
+  
+  // Cleanup request counts
   const keys = Array.from(requestCounts.keys());
   for (const key of keys) {
     const value = requestCounts.get(key);
@@ -314,7 +451,21 @@ setInterval(() => {
       requestCounts.delete(key);
     }
   }
-}, 60 * 1000); // Cleanup every minute
+  
+  // Cleanup user rate limits
+  const userKeys = Array.from(userRateLimits.keys());
+  for (const key of userKeys) {
+    const value = userRateLimits.get(key);
+    if (value && value.resetAt < now) {
+      userRateLimits.delete(key);
+    }
+  }
+}, 60 * 1000);
+
+// Check block rate alert periodically
+setInterval(() => {
+  checkBlockRateAlert();
+}, ALERT_CHECK_INTERVAL);
 
 // Reset hourly stats at midnight
 setInterval(() => {
@@ -328,5 +479,7 @@ console.log("[RateLimiter] Rate limiting configured:");
 console.log(`  - General API: ${RATE_LIMIT_MAX_REQUESTS} requests per ${RATE_LIMIT_WINDOW_MS / 60000} minutes`);
 console.log(`  - Auth endpoints: ${RATE_LIMIT_MAX_AUTH_REQUESTS} requests per ${RATE_LIMIT_WINDOW_MS / 60000} minutes`);
 console.log(`  - Export endpoints: ${RATE_LIMIT_MAX_EXPORT_REQUESTS} requests per ${RATE_LIMIT_WINDOW_MS / 60000} minutes`);
+console.log(`  - Per-user limit: ${RATE_LIMIT_MAX_USER_REQUESTS} requests per ${RATE_LIMIT_WINDOW_MS / 60000} minutes`);
+console.log(`  - Alert threshold: ${BLOCK_RATE_ALERT_THRESHOLD}% block rate`);
 console.log(`  - Store: ${redisStore ? 'Redis' : 'Memory'}`);
 console.log(`  - Whitelisted IPs: ${IP_WHITELIST.size}`);
