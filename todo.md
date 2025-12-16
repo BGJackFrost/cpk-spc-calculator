@@ -2304,3 +2304,9 @@
 - [x] Thêm SSE reconnect button - Cho phép user thủ công reset SSE connection (trong SseIndicator popover)
 - [x] SSE connection status indicator - Hiển thị trạng thái SSE trên header (SseIndicator.tsx)
 - [x] Disable SSE option - Cho phép tắt SSE hoàn toàn trong Settings (tab SSE)
+
+
+## Phase 106: SSE Advanced Features
+- [x] SSE event history - Thêm trang SseEventLog.tsx xem lịch sử events SSE
+- [x] SSE notification preferences - Thêm tùy chọn trong Settings/SSE tab cho phép user chọn loại thông báo
+- [x] SSE server-side toggle - Admin có thể bật/tắt SSE server trong Settings/SSE tab

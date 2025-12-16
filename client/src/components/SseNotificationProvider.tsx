@@ -1,16 +1,58 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useSSE } from "@/hooks/useSSE";
 import { AlertTriangle, CheckCircle2, TrendingUp, Bell } from "lucide-react";
 import { addNotification } from "./NotificationBell";
+import { useSseEnabled } from "./SseIndicator";
+
+// Get notification preferences from localStorage
+function getNotificationPrefs() {
+  const stored = localStorage.getItem('sse_notification_prefs');
+  if (stored) {
+    try {
+      return JSON.parse(stored);
+    } catch {
+      return getDefaultNotificationPrefs();
+    }
+  }
+  return getDefaultNotificationPrefs();
+}
+
+function getDefaultNotificationPrefs() {
+  return {
+    spc_analysis_complete: true,
+    cpk_alert: true,
+    plan_status_change: true,
+    oee_update: false,
+    machine_status_change: true,
+    maintenance_alert: true,
+    realtime_alert: true,
+  };
+}
 
 interface SseNotificationProviderProps {
   children: React.ReactNode;
 }
 
 export function SseNotificationProvider({ children }: SseNotificationProviderProps) {
+  const sseEnabled = useSseEnabled();
+  const [notificationPrefs, setNotificationPrefs] = useState(getNotificationPrefs);
+  
+  // Listen for notification preferences changes
+  useEffect(() => {
+    const handlePrefsChange = (event: CustomEvent<any>) => {
+      setNotificationPrefs(event.detail);
+    };
+    window.addEventListener('sse-notification-prefs-change', handlePrefsChange as EventListener);
+    return () => {
+      window.removeEventListener('sse-notification-prefs-change', handlePrefsChange as EventListener);
+    };
+  }, []);
+  
   const { isConnected } = useSSE({
+    enabled: sseEnabled,
     onSpcAnalysisComplete: (data) => {
+      if (!notificationPrefs.spc_analysis_complete) return;
       // Add to notification store
       addNotification({
         type: data.alertTriggered ? "cpk_warning" : "info",
@@ -58,6 +100,7 @@ export function SseNotificationProvider({ children }: SseNotificationProviderPro
       }
     },
     onCpkAlert: (data) => {
+      if (!notificationPrefs.cpk_alert) return;
       // Add to notification store
       addNotification({
         type: data.severity === "critical" ? "cpk_critical" : "cpk_warning",
@@ -97,6 +140,7 @@ export function SseNotificationProvider({ children }: SseNotificationProviderPro
       );
     },
     onPlanStatusChange: (data) => {
+      if (!notificationPrefs.plan_status_change) return;
       // Add to notification store
       addNotification({
         type: "plan_status",

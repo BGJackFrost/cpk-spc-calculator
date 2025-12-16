@@ -44,6 +44,7 @@ import {
 import DatabaseExplorer from "@/components/DatabaseExplorer";
 import Breadcrumb from "@/components/Breadcrumb";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { Link } from "wouter";
 
 interface ConnectionFormData {
   name: string;
@@ -658,8 +659,22 @@ function WebSocketSettings() {
 
 // SSE Settings Component
 function SseSettings() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
+  
   const { data: sseStatus, refetch } = trpc.system.getSseStatus.useQuery(undefined, {
     refetchInterval: 5000, // Refresh every 5 seconds
+  });
+  
+  // Server toggle mutation (admin only)
+  const serverToggleMutation = trpc.system.setSseServerEnabled.useMutation({
+    onSuccess: (data) => {
+      toast.success(data.enabled ? 'SSE Server đã được bật' : 'SSE Server đã được tắt');
+      refetch();
+    },
+    onError: (error) => {
+      toast.error('Lỗi: ' + error.message);
+    },
   });
   
   // Get SSE enabled state from localStorage
@@ -668,76 +683,241 @@ function SseSettings() {
     return stored !== 'false'; // Default to true
   });
   
+  // Notification preferences
+  const [notificationPrefs, setNotificationPrefs] = useState(() => {
+    const stored = localStorage.getItem('sse_notification_prefs');
+    if (stored) {
+      try {
+        return JSON.parse(stored);
+      } catch {
+        return getDefaultNotificationPrefs();
+      }
+    }
+    return getDefaultNotificationPrefs();
+  });
+  
+  function getDefaultNotificationPrefs() {
+    return {
+      spc_analysis_complete: true,
+      cpk_alert: true,
+      plan_status_change: true,
+      oee_update: false,
+      machine_status_change: true,
+      maintenance_alert: true,
+      realtime_alert: true,
+    };
+  }
+  
   const handleToggle = (checked: boolean) => {
     localStorage.setItem('sse_enabled', checked ? 'true' : 'false');
     setSseEnabledState(checked);
-    // Trigger a page reload to apply the change
     toast.success(checked ? 'SSE đã được bật' : 'SSE đã được tắt');
-    // Notify other components
     window.dispatchEvent(new CustomEvent('sse-toggle', { detail: { enabled: checked } }));
+  };
+  
+  const handleNotificationPrefChange = (key: string, value: boolean) => {
+    const newPrefs = { ...notificationPrefs, [key]: value };
+    setNotificationPrefs(newPrefs);
+    localStorage.setItem('sse_notification_prefs', JSON.stringify(newPrefs));
+    window.dispatchEvent(new CustomEvent('sse-notification-prefs-change', { detail: newPrefs }));
   };
 
   return (
-    <Card className="bg-card rounded-xl border border-border/50 shadow-md">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          {sseEnabled ? (
-            <Radio className="h-5 w-5 text-green-500" />
-          ) : (
-            <WifiOff className="h-5 w-5 text-muted-foreground" />
+    <div className="space-y-6">
+      {/* Main SSE Card */}
+      <Card className="bg-card rounded-xl border border-border/50 shadow-md">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            {sseStatus?.enabled ? (
+              <Radio className="h-5 w-5 text-green-500" />
+            ) : (
+              <WifiOff className="h-5 w-5 text-muted-foreground" />
+            )}
+            Cấu hình SSE (Server-Sent Events)
+          </CardTitle>
+          <CardDescription>
+            Quản lý kết nối SSE cho thông báo realtime
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Server Toggle (Admin only) */}
+          {isAdmin && (
+            <div className="flex items-center justify-between p-4 bg-orange-500/10 border border-orange-500/20 rounded-lg">
+              <div className="space-y-1">
+                <Label className="text-base font-medium">Bật SSE Server (Admin)</Label>
+                <p className="text-sm text-muted-foreground">
+                  Bật/tắt SSE server cho toàn bộ hệ thống
+                </p>
+              </div>
+              <Switch
+                checked={sseStatus?.enabled ?? true}
+                onCheckedChange={(checked) => {
+                  serverToggleMutation.mutate({ enabled: checked });
+                }}
+                disabled={serverToggleMutation.isPending}
+              />
+            </div>
           )}
-          Cấu hình SSE (Server-Sent Events)
-        </CardTitle>
-        <CardDescription>
-          Quản lý kết nối SSE cho thông báo realtime
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Toggle SSE */}
-        <div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
-          <div className="space-y-1">
-            <Label className="text-base font-medium">Bật SSE Client</Label>
-            <p className="text-sm text-muted-foreground">
-              Cho phép nhận thông báo realtime từ server
-            </p>
+          
+          {/* Client Toggle */}
+          <div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
+            <div className="space-y-1">
+              <Label className="text-base font-medium">Bật SSE Client</Label>
+              <p className="text-sm text-muted-foreground">
+                Cho phép nhận thông báo realtime từ server
+              </p>
+            </div>
+            <Switch
+              checked={sseEnabled}
+              onCheckedChange={handleToggle}
+            />
           </div>
-          <Switch
-            checked={sseEnabled}
-            onCheckedChange={handleToggle}
-          />
-        </div>
 
-        {/* Status Info */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="p-4 bg-muted/30 rounded-lg">
-            <div className="text-sm text-muted-foreground">Trạng thái Client</div>
-            <div className="text-lg font-semibold flex items-center gap-2">
-              {sseEnabled ? (
-                <><CheckCircle2 className="h-4 w-4 text-green-500" /> Bật</>
-              ) : (
-                <><XCircle className="h-4 w-4 text-red-500" /> Tắt</>
-              )}
+          {/* Status Info */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="p-4 bg-muted/30 rounded-lg">
+              <div className="text-sm text-muted-foreground">Server Status</div>
+              <div className="text-lg font-semibold flex items-center gap-2">
+                {sseStatus?.enabled ? (
+                  <><CheckCircle2 className="h-4 w-4 text-green-500" /> Bật</>
+                ) : (
+                  <><XCircle className="h-4 w-4 text-red-500" /> Tắt</>
+                )}
+              </div>
+            </div>
+            <div className="p-4 bg-muted/30 rounded-lg">
+              <div className="text-sm text-muted-foreground">Client Status</div>
+              <div className="text-lg font-semibold flex items-center gap-2">
+                {sseEnabled ? (
+                  <><CheckCircle2 className="h-4 w-4 text-green-500" /> Bật</>
+                ) : (
+                  <><XCircle className="h-4 w-4 text-red-500" /> Tắt</>
+                )}
+              </div>
+            </div>
+            <div className="p-4 bg-muted/30 rounded-lg">
+              <div className="text-sm text-muted-foreground">Server Clients</div>
+              <div className="text-lg font-semibold">
+                {sseStatus?.clientCount ?? 0} clients
+              </div>
             </div>
           </div>
-          <div className="p-4 bg-muted/30 rounded-lg">
-            <div className="text-sm text-muted-foreground">Server Clients</div>
-            <div className="text-lg font-semibold">
-              {sseStatus?.clientCount ?? 0} clients
+          
+          {/* Event Log Link */}
+          {isAdmin && (
+            <div className="flex justify-end">
+              <Link href="/sse-event-log">
+                <Button variant="outline" size="sm">
+                  Xem Event Log
+                </Button>
+              </Link>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+      
+      {/* Notification Preferences Card */}
+      <Card className="bg-card rounded-xl border border-border/50 shadow-md">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Bell className="h-5 w-5" />
+            Tùy chọn thông báo SSE
+          </CardTitle>
+          <CardDescription>
+            Chọn loại thông báo bạn muốn nhận qua SSE
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+              <div className="space-y-0.5">
+                <Label className="font-medium">Phân tích SPC hoàn thành</Label>
+                <p className="text-xs text-muted-foreground">Thông báo khi phân tích SPC hoàn tất</p>
+              </div>
+              <Switch
+                checked={notificationPrefs.spc_analysis_complete}
+                onCheckedChange={(v) => handleNotificationPrefChange('spc_analysis_complete', v)}
+              />
+            </div>
+            
+            <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+              <div className="space-y-0.5">
+                <Label className="font-medium">Cảnh báo CPK</Label>
+                <p className="text-xs text-muted-foreground">Thông báo khi CPK vượt ngưỡng</p>
+              </div>
+              <Switch
+                checked={notificationPrefs.cpk_alert}
+                onCheckedChange={(v) => handleNotificationPrefChange('cpk_alert', v)}
+              />
+            </div>
+            
+            <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+              <div className="space-y-0.5">
+                <Label className="font-medium">Thay đổi trạng thái kế hoạch</Label>
+                <p className="text-xs text-muted-foreground">Thông báo khi kế hoạch SPC thay đổi</p>
+              </div>
+              <Switch
+                checked={notificationPrefs.plan_status_change}
+                onCheckedChange={(v) => handleNotificationPrefChange('plan_status_change', v)}
+              />
+            </div>
+            
+            <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+              <div className="space-y-0.5">
+                <Label className="font-medium">Cập nhật OEE</Label>
+                <p className="text-xs text-muted-foreground">Thông báo khi OEE được cập nhật</p>
+              </div>
+              <Switch
+                checked={notificationPrefs.oee_update}
+                onCheckedChange={(v) => handleNotificationPrefChange('oee_update', v)}
+              />
+            </div>
+            
+            <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+              <div className="space-y-0.5">
+                <Label className="font-medium">Thay đổi trạng thái máy</Label>
+                <p className="text-xs text-muted-foreground">Thông báo khi máy thay đổi trạng thái</p>
+              </div>
+              <Switch
+                checked={notificationPrefs.machine_status_change}
+                onCheckedChange={(v) => handleNotificationPrefChange('machine_status_change', v)}
+              />
+            </div>
+            
+            <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+              <div className="space-y-0.5">
+                <Label className="font-medium">Cảnh báo bảo trì</Label>
+                <p className="text-xs text-muted-foreground">Thông báo về lịch bảo trì máy</p>
+              </div>
+              <Switch
+                checked={notificationPrefs.maintenance_alert}
+                onCheckedChange={(v) => handleNotificationPrefChange('maintenance_alert', v)}
+              />
+            </div>
+            
+            <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+              <div className="space-y-0.5">
+                <Label className="font-medium">Cảnh báo realtime</Label>
+                <p className="text-xs text-muted-foreground">Các cảnh báo realtime khác</p>
+              </div>
+              <Switch
+                checked={notificationPrefs.realtime_alert}
+                onCheckedChange={(v) => handleNotificationPrefChange('realtime_alert', v)}
+              />
             </div>
           </div>
-        </div>
-
-        {/* Info */}
-        <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-          <h4 className="font-medium text-blue-600 dark:text-blue-400 mb-2">Thông tin</h4>
-          <ul className="text-sm text-muted-foreground space-y-1">
-            <li>• SSE cho phép nhận thông báo realtime như cảnh báo CPK, phân tích SPC</li>
-            <li>• Khác với WebSocket, SSE là kết nối một chiều từ server đến client</li>
-            <li>• Cấu hình được lưu vào trình duyệt (localStorage)</li>
-            <li>• Tắt SSE nếu bạn không cần nhận thông báo realtime</li>
-          </ul>
-        </div>
-      </CardContent>
-    </Card>
+          
+          {/* Info */}
+          <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+            <h4 className="font-medium text-blue-600 dark:text-blue-400 mb-2">Thông tin</h4>
+            <ul className="text-sm text-muted-foreground space-y-1">
+              <li>• Tùy chọn này chỉ ảnh hưởng đến thông báo hiển thị trên trình duyệt của bạn</li>
+              <li>• Cấu hình được lưu vào trình duyệt (localStorage)</li>
+              <li>• Tắt các loại thông báo không cần thiết để giảm nhiễu</li>
+            </ul>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

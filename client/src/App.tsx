@@ -93,6 +93,7 @@ import ScheduledJobsManagement from "./pages/ScheduledJobsManagement";
 import AdvancedAnalytics from "./pages/AdvancedAnalytics";
 import ExportReports from "./pages/ExportReports";
 import WebSocketEventLog from "./pages/WebSocketEventLog";
+import SseEventLog from "./pages/SseEventLog";
 import CustomReportBuilder from "./pages/CustomReportBuilder";
 import { GlobalKeyboardShortcuts } from "./components/GlobalKeyboardShortcuts";
 import RateLimitDashboard from "./pages/RateLimitDashboard";
@@ -153,6 +154,7 @@ function Router() {
       <Route path="/advanced-analytics" component={AdvancedAnalytics} />
       <Route path="/export-reports" component={ExportReports} />
               <Route path="/websocket-event-log" component={WebSocketEventLog} />
+      <Route path="/sse-event-log" component={SseEventLog} />
       <Route path="/mms-data-init" component={MMSDataInit} />
       <Route path="/alert-threshold-config" component={AlertThresholdConfig} />
       <Route path="/email-notifications" component={EmailNotificationSettings} />

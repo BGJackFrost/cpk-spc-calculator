@@ -3,6 +3,9 @@ import { Response } from "express";
 // Store connected SSE clients
 const clients: Map<string, Response> = new Map();
 
+// SSE Server enabled state
+let sseServerEnabled = true;
+
 // Event types
 export type SseEventType = 
   | "spc_analysis_complete"
@@ -20,11 +23,83 @@ export interface SseEvent {
   timestamp: Date;
 }
 
+// Event log for history
+interface SseEventLogEntry {
+  id: number;
+  type: SseEventType;
+  data: any;
+  timestamp: Date;
+  clientCount: number;
+}
+
+const eventLog: SseEventLogEntry[] = [];
+let eventLogIdCounter = 0;
+const MAX_EVENT_LOG_SIZE = 500;
+
+// Add event to log
+function logEvent(event: SseEvent, clientCount: number) {
+  eventLogIdCounter++;
+  eventLog.push({
+    id: eventLogIdCounter,
+    type: event.type,
+    data: event.data,
+    timestamp: event.timestamp,
+    clientCount,
+  });
+  
+  // Trim log if too large
+  if (eventLog.length > MAX_EVENT_LOG_SIZE) {
+    eventLog.splice(0, eventLog.length - MAX_EVENT_LOG_SIZE);
+  }
+}
+
+// Get event log
+export function getSseEventLog(limit: number = 100): SseEventLogEntry[] {
+  return eventLog.slice(-limit).reverse();
+}
+
+// Clear event log
+export function clearSseEventLog() {
+  eventLog.length = 0;
+  eventLogIdCounter = 0;
+}
+
+// SSE Server toggle functions
+export function isSseServerEnabled(): boolean {
+  return sseServerEnabled;
+}
+
+export function setSseServerEnabled(enabled: boolean) {
+  sseServerEnabled = enabled;
+  console.log(`[SSE] Server ${enabled ? 'enabled' : 'disabled'}`);
+  
+  if (!enabled) {
+    // Disconnect all clients when disabled
+    clients.forEach((client, clientId) => {
+      try {
+        client.end();
+      } catch (e) {
+        // Ignore errors
+      }
+    });
+    clients.clear();
+    stopHeartbeat();
+  } else {
+    startHeartbeat(30000);
+  }
+}
+
 // Maximum SSE clients to prevent resource exhaustion
 const MAX_SSE_CLIENTS = 100;
 
 // Add a new SSE client
 export function addSseClient(clientId: string, res: Response) {
+  // Check if SSE server is enabled
+  if (!sseServerEnabled) {
+    res.status(503).json({ error: "SSE server is disabled" });
+    return;
+  }
+  
   // Check max clients limit
   if (clients.size >= MAX_SSE_CLIENTS) {
     res.status(503).json({ error: "Too many SSE connections" });
@@ -82,6 +157,15 @@ export function sendEventToClient(clientId: string, event: SseEvent) {
 
 // Broadcast event to all clients
 export function broadcastEvent(event: SseEvent) {
+  if (!sseServerEnabled) {
+    return;
+  }
+  
+  // Log event (except heartbeat)
+  if (event.type !== "heartbeat") {
+    logEvent(event, clients.size);
+  }
+  
   const eventData = `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`;
   clients.forEach((client, clientId) => {
     try {
@@ -91,7 +175,11 @@ export function broadcastEvent(event: SseEvent) {
       clients.delete(clientId);
     }
   });
-  console.log(`[SSE] Broadcasted ${event.type} to ${clients.size} clients`);
+  
+  // Only log non-heartbeat events
+  if (event.type !== "heartbeat") {
+    console.log(`[SSE] Broadcasted ${event.type} to ${clients.size} clients`);
+  }
 }
 
 // Send SPC analysis complete event
@@ -146,8 +234,8 @@ let heartbeatInterval: NodeJS.Timeout | null = null;
 let heartbeatStarted = false;
 
 export function startHeartbeat(intervalMs: number = 30000) {
-  // Only start once
-  if (heartbeatStarted) {
+  // Only start once and if enabled
+  if (heartbeatStarted || !sseServerEnabled) {
     return;
   }
   
@@ -156,7 +244,7 @@ export function startHeartbeat(intervalMs: number = 30000) {
   }
   
   heartbeatInterval = setInterval(() => {
-    if (clients.size > 0) {
+    if (clients.size > 0 && sseServerEnabled) {
       // Silent heartbeat - don't log every heartbeat
       const eventData = `event: heartbeat\ndata: ${JSON.stringify({ type: "heartbeat", data: { timestamp: new Date().toISOString() }, timestamp: new Date() })}\n\n`;
       clients.forEach((client, clientId) => {
@@ -177,6 +265,7 @@ export function stopHeartbeat() {
   if (heartbeatInterval) {
     clearInterval(heartbeatInterval);
     heartbeatInterval = null;
+    heartbeatStarted = false;
     console.log("[SSE] Heartbeat stopped");
   }
 }

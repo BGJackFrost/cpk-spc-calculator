@@ -6,7 +6,7 @@ import { systemConfig, companyInfo } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { storagePut } from "../storage";
 import { isWebSocketEnabled, setWebSocketEnabled, realtimeWebSocketServer, loadWebSocketConfig, getEventLog, clearEventLog } from "../websocketServer";
-import { getConnectedClientsCount as getSseClientCount } from "../sse";
+import { getConnectedClientsCount as getSseClientCount, isSseServerEnabled, setSseServerEnabled as setSseEnabled, getSseEventLog, clearSseEventLog } from "../sse";
 
 export const systemRouter = router({
   health: publicProcedure
@@ -254,9 +254,32 @@ export const systemRouter = router({
   // SSE status
   getSseStatus: publicProcedure.query(() => {
     return {
+      enabled: isSseServerEnabled(),
       clientCount: getSseClientCount(),
     };
   }),
+
+  // Toggle SSE server
+  setSseServerEnabled: adminProcedure
+    .input(z.object({ enabled: z.boolean() }))
+    .mutation(async ({ input }) => {
+      setSseEnabled(input.enabled);
+      return { success: true, enabled: input.enabled };
+    }),
+
+  // Get SSE event log
+  getSseEventLog: adminProcedure
+    .input(z.object({ limit: z.number().optional().default(100) }))
+    .query(({ input }) => {
+      return getSseEventLog(input.limit);
+    }),
+
+  // Clear SSE event log
+  clearSseEventLog: adminProcedure
+    .mutation(() => {
+      clearSseEventLog();
+      return { success: true };
+    }),
 
   // WebSocket status
   getWebSocketStatus: publicProcedure.query(() => {
