@@ -203,6 +203,7 @@ const menuGroups: MenuGroup[] = [
       { icon: Info, labelKey: "nav.about", path: "/about" },
       { icon: Bell, labelKey: "nav.notificationCenter", path: "/notification-center" },
       { icon: Clock, labelKey: "nav.scheduledJobs", path: "/scheduled-jobs", adminOnly: true },
+      { icon: Shield, labelKey: "nav.rateLimitDashboard", path: "/rate-limit-dashboard", adminOnly: true },
     ]
   },
   {
@@ -284,6 +285,7 @@ const fallbackLabelsVi: Record<string, string> = {
   "nav.shiftReports": "Báo cáo theo Ca",
   "nav.notificationCenter": "Trung tâm Thông báo",
   "nav.scheduledJobs": "Quản lý Scheduled Jobs",
+  "nav.rateLimitDashboard": "Giám sát Rate Limit",
   "nav.advancedAnalytics": "Phân tích Nâng cao",
   "nav.exportReports": "Xuất Báo cáo",
   "nav.customReportBuilder": "Tạo Báo cáo Tùy chỉnh",
@@ -349,6 +351,7 @@ const fallbackLabelsEn: Record<string, string> = {
   "nav.shiftReports": "Shift Reports",
   "nav.notificationCenter": "Notification Center",
   "nav.scheduledJobs": "Scheduled Jobs",
+  "nav.rateLimitDashboard": "Rate Limit Dashboard",
   "nav.advancedAnalytics": "Advanced Analytics",
   "nav.exportReports": "Export Reports",
   "nav.customReportBuilder": "Custom Report Builder",

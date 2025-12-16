@@ -25,6 +25,13 @@ import {
   type LocalAuthUser,
 } from "./localAuthService";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
+import { 
+  getRateLimitStats, 
+  resetRateLimitStats, 
+  addToWhitelist, 
+  removeFromWhitelist, 
+  getWhitelist 
+} from "./_core/rateLimiter";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import {
@@ -5406,6 +5413,54 @@ export const appRouter = router({
   }),
 
   // Shift Report router
+  // Rate Limit Monitoring Router
+  rateLimit: router({
+    getStats: protectedProcedure
+      .query(async ({ ctx }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
+        }
+        return getRateLimitStats();
+      }),
+    
+    resetStats: protectedProcedure
+      .mutation(async ({ ctx }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
+        }
+        resetRateLimitStats();
+        return { success: true };
+      }),
+    
+    getWhitelist: protectedProcedure
+      .query(async ({ ctx }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
+        }
+        return getWhitelist();
+      }),
+    
+    addToWhitelist: protectedProcedure
+      .input(z.object({ ip: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
+        }
+        addToWhitelist(input.ip);
+        return { success: true };
+      }),
+    
+    removeFromWhitelist: protectedProcedure
+      .input(z.object({ ip: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
+        }
+        removeFromWhitelist(input.ip);
+        return { success: true };
+      }),
+  }),
+
   shiftReport: router({
     list: protectedProcedure
       .input(z.object({

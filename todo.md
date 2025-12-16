@@ -2234,3 +2234,9 @@
 
 ## Phase 95: Rate Limiter Fix
 - [x] Sửa lỗi "Too many requests" - tăng rate limit (5000 requests/15 min) và tắt validation warnings
+
+## Phase 96: Advanced Rate Limiter Features
+- [x] Thêm Redis store cho rate limiter (scale nhiều instances)
+- [x] Thêm IP whitelist bypass rate limiting (private IPs auto-whitelisted)
+- [x] Tạo Dashboard monitoring rate limits (RateLimitDashboard.tsx)
+- [x] Thống kê số requests bị block theo thời gian (API endpoints)

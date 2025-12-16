@@ -94,6 +94,7 @@ import AdvancedAnalytics from "./pages/AdvancedAnalytics";
 import ExportReports from "./pages/ExportReports";
 import CustomReportBuilder from "./pages/CustomReportBuilder";
 import { GlobalKeyboardShortcuts } from "./components/GlobalKeyboardShortcuts";
+import RateLimitDashboard from "./pages/RateLimitDashboard";
 
 function Router() {
   return (
@@ -187,6 +188,7 @@ function Router() {
       <Route path="/spc-visualization" component={SpcPlanVisualization} />
       <Route path="/spc-visualization/:type/:id" component={SpcVisualizationDetail} />
       <Route path="/custom-report-builder" component={CustomReportBuilder} />
+      <Route path="/rate-limit-dashboard" component={RateLimitDashboard} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
