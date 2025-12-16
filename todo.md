@@ -2535,3 +2535,15 @@
 - [x] Thêm Export Excel báo cáo xuất/nhập/tồn kho theo tháng
 - [x] Thêm cảnh báo tồn kho thấp với notification
 
+
+## Phase 122: Fix lỗi THẤP và Cải tiến UX - Spare Parts
+### Lỗi Ưu tiên THẤP
+- [x] Thêm validation cho form tạo đơn hàng
+- [x] Thêm chức năng Sửa/Xóa phụ tùng
+- [x] Thêm chức năng Sửa/Xóa nhà cung cấp
+- [x] Thêm pagination cho các danh sách
+
+### Cải tiến UX
+- [ ] Thêm Dashboard thống kê biểu đồ xuất/nhập theo thời gian
+- [x] Tích hợp barcode/QR code cho nhập/xuất kho nhanh
+
