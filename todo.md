@@ -2298,3 +2298,9 @@
   - Giới hạn max 100 SSE clients
   - Giảm log spam (chỉ log khi client count thay đổi đáng kể)
   - startHeartbeat chỉ gọi 1 lần khi server khởi động
+
+
+## Phase 105: SSE UX Improvements
+- [x] Thêm SSE reconnect button - Cho phép user thủ công reset SSE connection (trong SseIndicator popover)
+- [x] SSE connection status indicator - Hiển thị trạng thái SSE trên header (SseIndicator.tsx)
+- [x] Disable SSE option - Cho phép tắt SSE hoàn toàn trong Settings (tab SSE)

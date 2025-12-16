@@ -6,6 +6,7 @@ import { systemConfig, companyInfo } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { storagePut } from "../storage";
 import { isWebSocketEnabled, setWebSocketEnabled, realtimeWebSocketServer, loadWebSocketConfig, getEventLog, clearEventLog } from "../websocketServer";
+import { getConnectedClientsCount as getSseClientCount } from "../sse";
 
 export const systemRouter = router({
   health: publicProcedure
@@ -249,6 +250,13 @@ export const systemRouter = router({
       }
       return { success: true };
     }),
+
+  // SSE status
+  getSseStatus: publicProcedure.query(() => {
+    return {
+      clientCount: getSseClientCount(),
+    };
+  }),
 
   // WebSocket status
   getWebSocketStatus: publicProcedure.query(() => {

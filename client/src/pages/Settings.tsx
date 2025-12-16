@@ -38,7 +38,8 @@ import {
   TestTube,
   Search,
   Wifi,
-  WifiOff
+  WifiOff,
+  Radio
 } from "lucide-react";
 import DatabaseExplorer from "@/components/DatabaseExplorer";
 import Breadcrumb from "@/components/Breadcrumb";
@@ -254,6 +255,10 @@ export default function Settings() {
             <TabsTrigger value="websocket" className="gap-2">
               <Wifi className="h-4 w-4" />
               WebSocket
+            </TabsTrigger>
+            <TabsTrigger value="sse" className="gap-2">
+              <Radio className="h-4 w-4" />
+              SSE
             </TabsTrigger>
           </TabsList>
 
@@ -552,6 +557,11 @@ export default function Settings() {
             <WebSocketSettings />
           </TabsContent>
 
+          {/* SSE Tab */}
+          <TabsContent value="sse">
+            <SseSettings />
+          </TabsContent>
+
         </Tabs>
       </div>
     </DashboardLayout>
@@ -638,6 +648,93 @@ function WebSocketSettings() {
             <li>• Mặc định WebSocket được tắt để tiết kiệm tài nguyên</li>
             <li>• Cấu hình được lưu vào database và giữ nguyên sau khi restart</li>
             <li>• Có thể bật qua biến môi trường: WEBSOCKET_ENABLED=true</li>
+          </ul>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+
+// SSE Settings Component
+function SseSettings() {
+  const { data: sseStatus, refetch } = trpc.system.getSseStatus.useQuery(undefined, {
+    refetchInterval: 5000, // Refresh every 5 seconds
+  });
+  
+  // Get SSE enabled state from localStorage
+  const [sseEnabled, setSseEnabledState] = useState(() => {
+    const stored = localStorage.getItem('sse_enabled');
+    return stored !== 'false'; // Default to true
+  });
+  
+  const handleToggle = (checked: boolean) => {
+    localStorage.setItem('sse_enabled', checked ? 'true' : 'false');
+    setSseEnabledState(checked);
+    // Trigger a page reload to apply the change
+    toast.success(checked ? 'SSE đã được bật' : 'SSE đã được tắt');
+    // Notify other components
+    window.dispatchEvent(new CustomEvent('sse-toggle', { detail: { enabled: checked } }));
+  };
+
+  return (
+    <Card className="bg-card rounded-xl border border-border/50 shadow-md">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          {sseEnabled ? (
+            <Radio className="h-5 w-5 text-green-500" />
+          ) : (
+            <WifiOff className="h-5 w-5 text-muted-foreground" />
+          )}
+          Cấu hình SSE (Server-Sent Events)
+        </CardTitle>
+        <CardDescription>
+          Quản lý kết nối SSE cho thông báo realtime
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Toggle SSE */}
+        <div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
+          <div className="space-y-1">
+            <Label className="text-base font-medium">Bật SSE Client</Label>
+            <p className="text-sm text-muted-foreground">
+              Cho phép nhận thông báo realtime từ server
+            </p>
+          </div>
+          <Switch
+            checked={sseEnabled}
+            onCheckedChange={handleToggle}
+          />
+        </div>
+
+        {/* Status Info */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="p-4 bg-muted/30 rounded-lg">
+            <div className="text-sm text-muted-foreground">Trạng thái Client</div>
+            <div className="text-lg font-semibold flex items-center gap-2">
+              {sseEnabled ? (
+                <><CheckCircle2 className="h-4 w-4 text-green-500" /> Bật</>
+              ) : (
+                <><XCircle className="h-4 w-4 text-red-500" /> Tắt</>
+              )}
+            </div>
+          </div>
+          <div className="p-4 bg-muted/30 rounded-lg">
+            <div className="text-sm text-muted-foreground">Server Clients</div>
+            <div className="text-lg font-semibold">
+              {sseStatus?.clientCount ?? 0} clients
+            </div>
+          </div>
+        </div>
+
+        {/* Info */}
+        <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+          <h4 className="font-medium text-blue-600 dark:text-blue-400 mb-2">Thông tin</h4>
+          <ul className="text-sm text-muted-foreground space-y-1">
+            <li>• SSE cho phép nhận thông báo realtime như cảnh báo CPK, phân tích SPC</li>
+            <li>• Khác với WebSocket, SSE là kết nối một chiều từ server đến client</li>
+            <li>• Cấu hình được lưu vào trình duyệt (localStorage)</li>
+            <li>• Tắt SSE nếu bạn không cần nhận thông báo realtime</li>
           </ul>
         </div>
       </CardContent>
