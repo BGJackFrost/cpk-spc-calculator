@@ -12,11 +12,59 @@ const RATE_LIMIT_MAX_USER_REQUESTS = 3000; // Max requests per user per window
 
 // Global rate limit enabled flag - DEFAULT IS DISABLED
 let rateLimitEnabled = process.env.RATE_LIMIT_ENABLED === 'true'; // Default: disabled
+let configInitialized = false;
 
-// Enable/disable rate limiting
-export function setRateLimitEnabled(enabled: boolean) {
+// Import config service (lazy to avoid circular deps)
+let configService: any = null;
+async function getConfigService() {
+  if (!configService) {
+    configService = await import('../services/rateLimitConfigService');
+  }
+  return configService;
+}
+
+// Initialize from database
+export async function initFromDatabase(): Promise<void> {
+  if (configInitialized) return;
+  try {
+    const svc = await getConfigService();
+    const enabled = await svc.getBooleanConfig('enabled', false);
+    rateLimitEnabled = enabled;
+    configInitialized = true;
+    console.log(`[RateLimiter] Loaded config from database: enabled=${enabled}`);
+  } catch (error) {
+    console.warn('[RateLimiter] Failed to load config from database, using defaults');
+  }
+}
+
+// Enable/disable rate limiting (also saves to database)
+export async function setRateLimitEnabled(
+  enabled: boolean, 
+  userId?: number, 
+  userName?: string,
+  ipAddress?: string
+): Promise<boolean> {
   rateLimitEnabled = enabled;
   console.log(`[RateLimiter] Rate limiting ${enabled ? 'ENABLED' : 'DISABLED'}`);
+  
+  // Save to database if user info provided
+  if (userId && userName) {
+    try {
+      const svc = await getConfigService();
+      await svc.setConfigValue(
+        'enabled', 
+        String(enabled), 
+        userId, 
+        userName,
+        `Rate limiting ${enabled ? 'enabled' : 'disabled'}`,
+        ipAddress
+      );
+    } catch (error) {
+      console.error('[RateLimiter] Failed to save config to database:', error);
+      return false;
+    }
+  }
+  return true;
 }
 
 // Check if rate limiting is enabled

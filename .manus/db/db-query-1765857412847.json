@@ -1,0 +1,9 @@
+{
+  "query": "INSERT INTO rate_limit_config (configKey, configValue, description) VALUES \n('enabled', 'false', 'Bật/tắt rate limiting (mặc định tắt)'),\n('alertThreshold', '5', 'Ngưỡng cảnh báo khi tỷ lệ block vượt (%)'),\n('alertCooldown', '1800000', 'Thời gian chờ giữa các cảnh báo (ms)')\nON DUPLICATE KEY UPDATE configValue = VALUES(configValue);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute INSERT INTO rate_limit_config (configKey, configValue, description) VALUES \n('enabled', 'false', 'Bật/tắt rate limiting (mặc định tắt)'),\n('alertThreshold', '5', 'Ngưỡng cảnh báo khi tỷ lệ block vượt (%)'),\n('alertCooldown', '1800000', 'Thời gian chờ giữa các cảnh báo (ms)')\nON DUPLICATE KEY UPDATE configValue = VALUES(configValue);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1522
+}

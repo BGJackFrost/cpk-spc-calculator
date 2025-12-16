@@ -5502,8 +5502,56 @@ export const appRouter = router({
         if (ctx.user.role !== 'admin') {
           throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
         }
-        setRateLimitEnabled(input.enabled);
-        return { success: true, enabled: input.enabled };
+        const success = await setRateLimitEnabled(
+          input.enabled, 
+          ctx.user.id, 
+          ctx.user.name || 'Unknown',
+          undefined // IP address not available in tRPC context
+        );
+        return { success, enabled: input.enabled };
+      }),
+    
+    getConfigHistory: protectedProcedure
+      .input(z.object({ limit: z.number().default(50) }))
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
+        }
+        const { getConfigHistory } = await import('./services/rateLimitConfigService');
+        return await getConfigHistory(input.limit);
+      }),
+    
+    getRoleConfigs: protectedProcedure
+      .query(async ({ ctx }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
+        }
+        const { getAllRoleConfigs } = await import('./services/rateLimitConfigService');
+        return await getAllRoleConfigs();
+      }),
+    
+    updateRoleConfig: protectedProcedure
+      .input(z.object({
+        role: z.enum(['admin', 'user', 'guest']),
+        maxRequests: z.number().optional(),
+        maxAuthRequests: z.number().optional(),
+        maxExportRequests: z.number().optional(),
+        windowMs: z.number().optional(),
+        description: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
+        }
+        const { updateRoleConfig } = await import('./services/rateLimitConfigService');
+        const { role, ...config } = input;
+        const success = await updateRoleConfig(
+          role, 
+          config, 
+          ctx.user.id, 
+          ctx.user.name || 'Unknown'
+        );
+        return { success };
       }),
   }),
 

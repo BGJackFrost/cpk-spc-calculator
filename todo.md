@@ -2250,3 +2250,12 @@
 - [x] Thêm cấu hình bật/tắt Rate Limit (mặc định tắt)
 - [x] Cập nhật UI quản lý cấu hình Rate Limit (toggle switch)
 - [x] Lưu checkpoint để deploy staging
+
+## Phase 99: Rate Limit Persistent Config & Role-based Limits
+- [x] Tạo bảng rate_limit_config trong database
+- [x] Tạo bảng rate_limit_config_history để lưu lịch sử thay đổi
+- [x] Tạo bảng rate_limit_role_config cho cấu hình theo role
+- [x] Tạo rateLimitConfigService.ts để quản lý config
+- [x] Cập nhật rateLimiter.ts để đọc/ghi config từ database
+- [x] Thêm API endpoints: getConfigHistory, getRoleConfigs, updateRoleConfig
+- [x] Cập nhật UI hiển thị lịch sử và cấu hình theo role

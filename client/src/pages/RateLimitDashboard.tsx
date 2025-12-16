@@ -21,7 +21,8 @@ import {
   AlertTriangle,
   Clock,
   Server,
-  BarChart3
+  BarChart3,
+  Users
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
@@ -90,6 +91,21 @@ export default function RateLimitDashboard() {
     onSuccess: () => {
       toast.success(language === "vi" ? "Đã xóa IP khỏi whitelist" : "IP removed from whitelist");
       refetchWhitelist();
+    },
+  });
+  
+  const { data: configHistory, refetch: refetchHistory } = trpc.rateLimit.getConfigHistory.useQuery(
+    { limit: 20 },
+    { enabled: true }
+  );
+  
+  const { data: roleConfigs, refetch: refetchRoleConfigs } = trpc.rateLimit.getRoleConfigs.useQuery();
+  
+  const updateRoleConfigMutation = trpc.rateLimit.updateRoleConfig.useMutation({
+    onSuccess: () => {
+      toast.success(language === "vi" ? "Cập nhật thành công" : "Updated successfully");
+      refetchRoleConfigs();
+      refetchHistory();
     },
   });
 
@@ -584,6 +600,115 @@ export default function RateLimitDashboard() {
                 </div>
               )}
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Role-based Rate Limits */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              {language === "vi" ? "Giới hạn theo Role" : "Role-based Limits"}
+            </CardTitle>
+            <CardDescription>
+              {language === "vi" 
+                ? "Cấu hình giới hạn request khác nhau cho từng role" 
+                : "Configure different request limits for each role"}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="border rounded-lg">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Role</TableHead>
+                    <TableHead className="text-right">API Requests</TableHead>
+                    <TableHead className="text-right">Auth Requests</TableHead>
+                    <TableHead className="text-right">Export Requests</TableHead>
+                    <TableHead className="text-right">{language === "vi" ? "Trạng thái" : "Status"}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {roleConfigs?.map((config: any) => (
+                    <TableRow key={config.id}>
+                      <TableCell>
+                        <Badge variant={config.role === 'admin' ? 'default' : config.role === 'user' ? 'secondary' : 'outline'}>
+                          {config.role}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right font-mono">{config.maxRequests}/15min</TableCell>
+                      <TableCell className="text-right font-mono">{config.maxAuthRequests}/15min</TableCell>
+                      <TableCell className="text-right font-mono">{config.maxExportRequests}/15min</TableCell>
+                      <TableCell className="text-right">
+                        <Badge variant={config.isActive ? 'default' : 'secondary'}>
+                          {config.isActive ? (language === "vi" ? "Hoạt động" : "Active") : (language === "vi" ? "Tắt" : "Inactive")}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              {language === "vi" 
+                ? "* Admin có giới hạn cao hơn, Guest (chưa đăng nhập) có giới hạn thấp nhất" 
+                : "* Admin has higher limits, Guest (not logged in) has lowest limits"}
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Config Change History */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="h-5 w-5" />
+              {language === "vi" ? "Lịch sử thay đổi cấu hình" : "Configuration History"}
+            </CardTitle>
+            <CardDescription>
+              {language === "vi" 
+                ? "Theo dõi ai đã thay đổi cấu hình và khi nào" 
+                : "Track who changed configuration and when"}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {configHistory && configHistory.length > 0 ? (
+              <div className="border rounded-lg">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>{language === "vi" ? "Thời gian" : "Time"}</TableHead>
+                      <TableHead>{language === "vi" ? "Cấu hình" : "Config"}</TableHead>
+                      <TableHead>{language === "vi" ? "Giá trị cũ" : "Old Value"}</TableHead>
+                      <TableHead>{language === "vi" ? "Giá trị mới" : "New Value"}</TableHead>
+                      <TableHead>{language === "vi" ? "Người thay đổi" : "Changed By"}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {configHistory.map((item: any) => (
+                      <TableRow key={item.id}>
+                        <TableCell className="text-sm">
+                          {new Date(item.createdAt).toLocaleString()}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{item.configKey}</Badge>
+                        </TableCell>
+                        <TableCell className="font-mono text-sm text-muted-foreground">
+                          {item.oldValue || '-'}
+                        </TableCell>
+                        <TableCell className="font-mono text-sm">
+                          {item.newValue}
+                        </TableCell>
+                        <TableCell>{item.changedByName || 'System'}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                {language === "vi" ? "Chưa có lịch sử thay đổi" : "No configuration changes yet"}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
