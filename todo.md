@@ -2820,3 +2820,34 @@
 - [x] Hiển thị badge vai trò với màu sắc (Admin-đỏ, Manager-xanh, User-xám)
 - [x] Cập nhật dialog chỉnh sửa quyền với 3 options: User/Manager/Admin
 - [x] Cập nhật LocalUserManagement với Manager role
+
+
+## Phase 137: Bulk Assign Role, BOM Máy, và Quản lý Lỗi NTF
+
+### Bulk Assign Role
+- [x] Thêm checkbox chọn nhiều người dùng trong bảng
+- [x] Thanh công cụ bulk actions khi có user được chọn (badge hiển thị số lượng)
+- [x] Dialog gán vai trò hàng loạt (User/Manager/Admin)
+- [x] API bulkUpdateRole để cập nhật nhiều user cùng lúc
+
+### BOM cho Máy (Bill of Materials)
+- [x] Tạo bảng machine_bom (machineId, sparePartId, quantity, isRequired, notes)
+- [x] API CRUD cho machine BOM (listBom, addBomItem, updateBomItem, removeBomItem, getBomSummary)
+- [x] Tab BOM trong trang chi tiết máy
+- [x] Tích hợp với phụ tùng - hiển thị tồn kho và cảnh báo thiếu (badge đỏ)
+- [x] Summary: Tổng phụ tùng, Bắt buộc, Tồn kho thấp
+
+### Quản lý Lỗi - Real NG vs NTF
+- [x] Thêm trường verificationStatus (pending/real_ng/ntf) vào spcDefectRecords
+- [x] Thêm trường verifiedBy, verifiedAt, verificationNotes, ntfReason
+- [x] Tab "Xác nhận lỗi" với nút Real NG/NTF cho từng lỗi
+- [x] Dialog xác nhận với lý do NTF (sensor_error, false_detection, calibration_issue, etc.)
+- [x] Badge hiển thị số lỗi chưa xác nhận trên tab
+
+### Biểu đồ Xu hướng NTF
+- [x] API getNtfStatistics với groupBy (hour/day/week/month)
+- [x] API getPendingVerification lấy danh sách lỗi chưa xác nhận
+- [x] Biểu đồ đường NTF rate theo thời gian (LineChart)
+- [x] Biểu đồ cột phân bố Real NG vs NTF vs Pending (BarChart stacked)
+- [x] Summary cards: Tổng lỗi, Real NG, NTF, Chưa xác nhận, Tỉ lệ NTF
+- [x] Bộ lọc: nhóm theo giờ/ngày/tuần/tháng, khoảng thời gian

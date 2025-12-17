@@ -248,6 +248,141 @@ export const machineRouter = router({
       await deleteMachine(input.id);
       return { success: true };
     }),
+
+  // BOM (Bill of Materials) endpoints
+  getBom: protectedProcedure
+    .input(z.object({ machineId: z.number() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      const { machineBom, spareParts } = await import("../drizzle/schema");
+      const { eq } = await import("drizzle-orm");
+      
+      const bomItems = await db.select({
+        id: machineBom.id,
+        machineId: machineBom.machineId,
+        sparePartId: machineBom.sparePartId,
+        quantity: machineBom.quantity,
+        isRequired: machineBom.isRequired,
+        replacementInterval: machineBom.replacementInterval,
+        notes: machineBom.notes,
+        sparePartCode: spareParts.partNumber,
+        sparePartName: spareParts.name,
+        sparePartUnit: spareParts.unit,
+        minStock: spareParts.minStock,
+        unitPrice: spareParts.unitPrice,
+      })
+      .from(machineBom)
+      .leftJoin(spareParts, eq(machineBom.sparePartId, spareParts.id))
+      .where(eq(machineBom.machineId, input.machineId));
+      
+      // Get current stock from inventory
+      const { sparePartsInventory } = await import("../drizzle/schema");
+      const inventoryData = await db.select().from(sparePartsInventory);
+      const inventoryMap = new Map(inventoryData.map(inv => [inv.sparePartId, inv.quantity]));
+      
+      return bomItems.map(item => ({
+        ...item,
+        currentStock: inventoryMap.get(item.sparePartId) || 0,
+      }));
+    }),
+
+  addBomItem: protectedProcedure
+    .input(z.object({
+      machineId: z.number(),
+      sparePartId: z.number(),
+      quantity: z.number().min(1).default(1),
+      isRequired: z.number().default(1),
+      replacementInterval: z.number().optional(),
+      notes: z.string().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      if (ctx.user?.role !== "admin" && ctx.user?.role !== "manager") {
+        throw new Error("Admin or Manager access required");
+      }
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      const { machineBom } = await import("../drizzle/schema");
+      
+      const result = await db.insert(machineBom).values(input);
+      return { id: Number(result[0].insertId) };
+    }),
+
+  updateBomItem: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      quantity: z.number().min(1).optional(),
+      isRequired: z.number().optional(),
+      replacementInterval: z.number().nullable().optional(),
+      notes: z.string().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      if (ctx.user?.role !== "admin" && ctx.user?.role !== "manager") {
+        throw new Error("Admin or Manager access required");
+      }
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      const { machineBom } = await import("../drizzle/schema");
+      const { eq } = await import("drizzle-orm");
+      
+      const { id, ...data } = input;
+      await db.update(machineBom).set(data).where(eq(machineBom.id, id));
+      return { success: true };
+    }),
+
+  deleteBomItem: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      if (ctx.user?.role !== "admin" && ctx.user?.role !== "manager") {
+        throw new Error("Admin or Manager access required");
+      }
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      const { machineBom } = await import("../drizzle/schema");
+      const { eq } = await import("drizzle-orm");
+      
+      await db.delete(machineBom).where(eq(machineBom.id, input.id));
+      return { success: true };
+    }),
+
+  getBomSummary: protectedProcedure
+    .input(z.object({ machineId: z.number() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      const { machineBom, spareParts, sparePartsInventory } = await import("../drizzle/schema");
+      const { eq, sql } = await import("drizzle-orm");
+      
+      // Get BOM items with inventory
+      const bomItems = await db.select({
+        sparePartId: machineBom.sparePartId,
+        quantity: machineBom.quantity,
+        isRequired: machineBom.isRequired,
+        minStock: spareParts.minStock,
+        unitPrice: spareParts.unitPrice,
+      })
+      .from(machineBom)
+      .leftJoin(spareParts, eq(machineBom.sparePartId, spareParts.id))
+      .where(eq(machineBom.machineId, input.machineId));
+      
+      // Get inventory data
+      const inventoryData = await db.select().from(sparePartsInventory);
+      const inventoryMap = new Map(inventoryData.map(inv => [inv.sparePartId, inv.quantity || 0]));
+      
+      let totalItems = bomItems.length;
+      let requiredItems = 0;
+      let lowStockItems = 0;
+      let totalValue = 0;
+      
+      bomItems.forEach(item => {
+        if (item.isRequired === 1) requiredItems++;
+        const currentStock = inventoryMap.get(item.sparePartId) || 0;
+        if (currentStock < (item.minStock || 0)) lowStockItems++;
+        totalValue += item.quantity * Number(item.unitPrice || 0);
+      });
+      
+      return { totalItems, requiredItems, lowStockItems, totalValue };
+    }),
 });
 
 // SPC Rules Router

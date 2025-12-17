@@ -475,6 +475,24 @@ export type Machine = typeof machines.$inferSelect;
 export type InsertMachine = typeof machines.$inferInsert;
 
 /**
+ * Machine BOM (Bill of Materials) - Danh sách phụ tùng cần thiết cho máy
+ */
+export const machineBom = mysqlTable("machine_bom", {
+  id: int("id").autoincrement().primaryKey(),
+  machineId: int("machineId").notNull(),
+  sparePartId: int("sparePartId").notNull(),
+  quantity: int("quantity").notNull().default(1), // Số lượng cần thiết
+  isRequired: int("isRequired").notNull().default(1), // Bắt buộc hay tùy chọn
+  replacementInterval: int("replacementInterval"), // Chu kỳ thay thế (ngày)
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type MachineBom = typeof machineBom.$inferSelect;
+export type InsertMachineBom = typeof machineBom.$inferInsert;
+
+/**
  * SPC Rules Configuration - cấu hình các quy tắc kiểm tra SPC
  */
 export const spcRulesConfig = mysqlTable("spc_rules_config", {
@@ -1085,6 +1103,14 @@ export const spcDefectRecords = mysqlTable("spc_defect_records", {
   resolvedBy: int("resolvedBy"), // Người giải quyết
   rootCause: text("rootCause"), // Nguyên nhân gốc
   correctiveAction: text("correctiveAction"), // Hành động khắc phục
+  
+  // NTF (Not True Fail) verification
+  verificationStatus: mysqlEnum("verificationStatus", ["pending", "real_ng", "ntf"]).default("pending"), // pending: chưa xác nhận, real_ng: lỗi thật, ntf: không phải lỗi thật
+  verifiedAt: timestamp("verifiedAt"), // Thời điểm xác nhận
+  verifiedBy: int("verifiedBy"), // Người xác nhận
+  verificationNotes: text("verificationNotes"), // Ghi chú xác nhận
+  ntfReason: varchar("ntfReason", { length: 200 }), // Lý do NTF: sensor_error, false_detection, calibration_issue, etc.
+  
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

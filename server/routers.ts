@@ -44,6 +44,8 @@ import {
 import { notifyOwner } from "./_core/notification";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
+import { spcDefectRecords } from "../drizzle/schema";
+import { eq, and, gte, lte, desc } from "drizzle-orm";
 import {
   createDatabaseConnection,
   getDatabaseConnections,
@@ -223,11 +225,35 @@ const userRouter = router({
   updateRole: adminProcedure
     .input(z.object({
       userId: z.number(),
-      role: z.enum(["user", "admin"]),
+      role: z.enum(["user", "manager", "admin"]),
     }))
     .mutation(async ({ input }) => {
       await updateUserRole(input.userId, input.role);
       return { success: true };
+    }),
+
+  bulkUpdateRole: adminProcedure
+    .input(z.object({
+      userIds: z.array(z.number()),
+      role: z.enum(["user", "manager", "admin"]),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      
+      // Don't allow changing own role
+      const filteredIds = input.userIds.filter(id => id !== ctx.user.id);
+      if (filteredIds.length === 0) {
+        return { updated: 0 };
+      }
+      
+      await db.execute(sql`
+        UPDATE users 
+        SET role = ${input.role}, updatedAt = NOW()
+        WHERE id IN (${sql.join(filteredIds.map(id => sql`${id}`), sql`, `)})
+      `);
+      
+      return { updated: filteredIds.length };
     }),
 });
 
@@ -2475,6 +2501,147 @@ const defectRouter = router({
     }).optional())
     .query(async ({ input }) => {
       return await getDefectByRuleStatistics(input);
+    }),
+
+  // Verify defect as Real NG or NTF
+  verifyDefect: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      verificationStatus: z.enum(["real_ng", "ntf"]),
+      verificationNotes: z.string().optional(),
+      ntfReason: z.string().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      
+      await db.update(spcDefectRecords).set({
+        verificationStatus: input.verificationStatus,
+        verifiedAt: new Date(),
+        verifiedBy: ctx.user.id,
+        verificationNotes: input.verificationNotes,
+        ntfReason: input.ntfReason,
+      }).where(eq(spcDefectRecords.id, input.id));
+      
+      return { success: true };
+    }),
+
+  // NTF Statistics - for trend charts
+  getNtfStatistics: protectedProcedure
+    .input(z.object({
+      machineId: z.number().optional(),
+      workstationId: z.number().optional(),
+      productionLineId: z.number().optional(),
+      startDate: z.date().optional(),
+      endDate: z.date().optional(),
+      groupBy: z.enum(["hour", "day", "week", "month"]).default("day"),
+    }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      
+      const startDate = input.startDate || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      const endDate = input.endDate || new Date();
+      
+      // Get all defects in date range
+      let query = db.select({
+        id: spcDefectRecords.id,
+        occurredAt: spcDefectRecords.occurredAt,
+        verificationStatus: spcDefectRecords.verificationStatus,
+        workstationId: spcDefectRecords.workstationId,
+        productionLineId: spcDefectRecords.productionLineId,
+      }).from(spcDefectRecords)
+        .where(and(
+          gte(spcDefectRecords.occurredAt, startDate),
+          lte(spcDefectRecords.occurredAt, endDate),
+          input.productionLineId ? eq(spcDefectRecords.productionLineId, input.productionLineId) : undefined,
+          input.workstationId ? eq(spcDefectRecords.workstationId, input.workstationId) : undefined,
+        ));
+      
+      const defects = await query;
+      
+      // Group by time period
+      const grouped = new Map<string, { total: number; realNg: number; ntf: number; pending: number }>();
+      
+      defects.forEach((d: any) => {
+        const date = new Date(d.occurredAt);
+        let key: string;
+        
+        switch (input.groupBy) {
+          case "hour":
+            key = `${date.toISOString().slice(0, 13)}:00`;
+            break;
+          case "week":
+            const weekStart = new Date(date);
+            weekStart.setDate(date.getDate() - date.getDay());
+            key = weekStart.toISOString().slice(0, 10);
+            break;
+          case "month":
+            key = date.toISOString().slice(0, 7);
+            break;
+          default: // day
+            key = date.toISOString().slice(0, 10);
+        }
+        
+        if (!grouped.has(key)) {
+          grouped.set(key, { total: 0, realNg: 0, ntf: 0, pending: 0 });
+        }
+        
+        const stats = grouped.get(key)!;
+        stats.total++;
+        
+        if (d.verificationStatus === "real_ng") stats.realNg++;
+        else if (d.verificationStatus === "ntf") stats.ntf++;
+        else stats.pending++;
+      });
+      
+      // Convert to array and calculate NTF rate
+      const result = Array.from(grouped.entries()).map(([period, stats]) => ({
+        period,
+        ...stats,
+        ntfRate: stats.total > 0 ? (stats.ntf / stats.total * 100).toFixed(2) : "0.00",
+      })).sort((a, b) => a.period.localeCompare(b.period));
+      
+      // Calculate overall summary
+      const summary = {
+        totalDefects: defects.length,
+        realNg: defects.filter((d: any) => d.verificationStatus === "real_ng").length,
+        ntf: defects.filter((d: any) => d.verificationStatus === "ntf").length,
+        pending: defects.filter((d: any) => d.verificationStatus === "pending" || !d.verificationStatus).length,
+        overallNtfRate: defects.length > 0 
+          ? (defects.filter((d: any) => d.verificationStatus === "ntf").length / defects.length * 100).toFixed(2)
+          : "0.00",
+      };
+      
+      return { data: result, summary };
+    }),
+
+  // Get pending verification defects
+  getPendingVerification: protectedProcedure
+    .input(z.object({
+      productionLineId: z.number().optional(),
+      workstationId: z.number().optional(),
+      limit: z.number().optional().default(50),
+    }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      
+      let conditions = [eq(spcDefectRecords.verificationStatus, "pending")];
+      if (input.productionLineId) {
+        conditions.push(eq(spcDefectRecords.productionLineId, input.productionLineId));
+      }
+      if (input.workstationId) {
+        conditions.push(eq(spcDefectRecords.workstationId, input.workstationId));
+      }
+      
+      const records = await db.select()
+        .from(spcDefectRecords)
+        .where(and(...conditions))
+        .orderBy(desc(spcDefectRecords.occurredAt))
+        .limit(input.limit);
+      
+      return records;
     }),
 });
 

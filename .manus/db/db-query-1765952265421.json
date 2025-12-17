@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS machine_bom (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  machineId INT NOT NULL,\n  sparePartId INT NOT NULL,\n  quantity INT NOT NULL DEFAULT 1,\n  isRequired INT NOT NULL DEFAULT 1,\n  replacementInterval INT,\n  notes TEXT,\n  createdAt TIMESTAMP NOT NULL DEFAULT NOW(),\n  updatedAt TIMESTAMP NOT NULL DEFAULT NOW() ON UPDATE CURRENT_TIMESTAMP,\n  INDEX idx_machine_bom_machine (machineId),\n  INDEX idx_machine_bom_spare_part (sparePartId)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute CREATE TABLE IF NOT EXISTS machine_bom (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  machineId INT NOT NULL,\n  sparePartId INT NOT NULL,\n  quantity INT NOT NULL DEFAULT 1,\n  isRequired INT NOT NULL DEFAULT 1,\n  replacementInterval INT,\n  notes TEXT,\n  createdAt TIMESTAMP NOT NULL DEFAULT NOW(),\n  updatedAt TIMESTAMP NOT NULL DEFAULT NOW() ON UPDATE CURRENT_TIMESTAMP,\n  INDEX idx_machine_bom_machine (machineId),\n  INDEX idx_machine_bom_spare_part (sparePartId)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1718
+}

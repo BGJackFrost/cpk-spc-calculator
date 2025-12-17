@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { Checkbox } from "@/components/ui/checkbox";
 import { 
   Users, 
   Shield, 
@@ -16,7 +17,9 @@ import {
   Pencil,
   Trash2,
   Loader2,
-  Search
+  Search,
+  CheckSquare,
+  UserCog
 } from "lucide-react";
 
 export default function UserManagement() {
@@ -25,6 +28,9 @@ export default function UserManagement() {
   const [editingUser, setEditingUser] = useState<any>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedUsers, setSelectedUsers] = useState<number[]>([]);
+  const [isBulkDialogOpen, setIsBulkDialogOpen] = useState(false);
+  const [bulkRole, setBulkRole] = useState<"user" | "manager" | "admin">("user");
   const pageSize = 10;
 
   // Fetch users
@@ -36,6 +42,19 @@ export default function UserManagement() {
       toast.success("Cập nhật quyền người dùng thành công");
       refetch();
       setIsEditDialogOpen(false);
+    },
+    onError: (error) => {
+      toast.error(`Lỗi: ${error.message}`);
+    },
+  });
+
+  // Bulk update role mutation
+  const bulkUpdateRoleMutation = trpc.user.bulkUpdateRole.useMutation({
+    onSuccess: (result) => {
+      toast.success(`Đã cập nhật vai trò cho ${result.updated} người dùng`);
+      refetch();
+      setIsBulkDialogOpen(false);
+      setSelectedUsers([]);
     },
     onError: (error) => {
       toast.error(`Lỗi: ${error.message}`);
@@ -63,6 +82,32 @@ export default function UserManagement() {
       userId: editingUser.id,
       role: editingUser.role,
     });
+  };
+
+  const handleBulkUpdateRole = () => {
+    if (selectedUsers.length === 0) return;
+    bulkUpdateRoleMutation.mutate({
+      userIds: selectedUsers,
+      role: bulkRole,
+    });
+  };
+
+  const toggleUserSelection = (userId: number) => {
+    setSelectedUsers(prev => 
+      prev.includes(userId) 
+        ? prev.filter(id => id !== userId)
+        : [...prev, userId]
+    );
+  };
+
+  const toggleSelectAll = () => {
+    if (!paginatedUsers) return;
+    const selectableUsers = paginatedUsers.filter(u => u.id !== currentUser?.id);
+    if (selectedUsers.length === selectableUsers.length) {
+      setSelectedUsers([]);
+    } else {
+      setSelectedUsers(selectableUsers.map(u => u.id));
+    }
   };
 
   // Check if current user is admin
@@ -153,6 +198,19 @@ export default function UserManagement() {
                   className="pl-10"
                 />
               </div>
+              {selectedUsers.length > 0 && (
+                <div className="flex items-center gap-2 bg-primary/10 px-4 py-2 rounded-lg">
+                  <CheckSquare className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-medium">Đã chọn {selectedUsers.length} người dùng</span>
+                  <Button size="sm" onClick={() => setIsBulkDialogOpen(true)}>
+                    <UserCog className="h-4 w-4 mr-1" />
+                    Gán vai trò
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setSelectedUsers([])}>
+                    Bỏ chọn
+                  </Button>
+                </div>
+              )}
             </div>
 
             {isLoading ? (
@@ -164,6 +222,13 @@ export default function UserManagement() {
                 <table className="w-full">
                   <thead className="border-b bg-muted/50">
                     <tr>
+                      <th className="px-4 py-3 w-10">
+                        <Checkbox
+                          checked={paginatedUsers && paginatedUsers.filter(u => u.id !== currentUser?.id).length > 0 && 
+                            paginatedUsers.filter(u => u.id !== currentUser?.id).every(u => selectedUsers.includes(u.id))}
+                          onCheckedChange={toggleSelectAll}
+                        />
+                      </th>
                       <th className="px-4 py-3 text-left font-semibold">Tên</th>
                       <th className="px-4 py-3 text-left font-semibold">Email</th>
                       <th className="px-4 py-3 text-left font-semibold">Quyền</th>
@@ -173,7 +238,14 @@ export default function UserManagement() {
                   </thead>
                   <tbody>
                     {paginatedUsers?.map((user) => (
-                      <tr key={user.id} className="border-b hover:bg-muted/30">
+                      <tr key={user.id} className={`border-b hover:bg-muted/30 ${selectedUsers.includes(user.id) ? 'bg-primary/5' : ''}`}>
+                        <td className="px-4 py-3">
+                          <Checkbox
+                            checked={selectedUsers.includes(user.id)}
+                            onCheckedChange={() => toggleUserSelection(user.id)}
+                            disabled={user.id === currentUser?.id}
+                          />
+                        </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-3">
                             <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
@@ -300,6 +372,48 @@ export default function UserManagement() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Bulk Assign Role Dialog */}
+      <Dialog open={isBulkDialogOpen} onOpenChange={setIsBulkDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Gán vai trò hàng loạt</DialogTitle>
+            <DialogDescription>
+              Gán vai trò cho {selectedUsers.length} người dùng đã chọn
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Label>Chọn vai trò</Label>
+            <Select value={bulkRole} onValueChange={(v) => setBulkRole(v as "user" | "manager" | "admin")}>
+              <SelectTrigger className="mt-2">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="user">Người dùng</SelectItem>
+                <SelectItem value="manager">Quản lý</SelectItem>
+                <SelectItem value="admin">Quản trị viên</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-sm text-muted-foreground mt-4">
+              Lưu ý: Thao tác này sẽ thay đổi vai trò của tất cả người dùng đã chọn.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsBulkDialogOpen(false)}>
+              Hủy
+            </Button>
+            <Button 
+              onClick={handleBulkUpdateRole}
+              disabled={bulkUpdateRoleMutation.isPending}
+            >
+              {bulkUpdateRoleMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
+              Áp dụng cho {selectedUsers.length} người dùng
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }

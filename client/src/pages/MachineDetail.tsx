@@ -9,6 +9,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { trpc } from "@/lib/trpc";
 import { OEETrendChart } from "@/components/OEETrendChart";
 import { useMachineStatus, useOEEUpdates } from "@/hooks/useWebSocket";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { toast } from "sonner";
 import {
   Activity,
   Gauge,
@@ -26,7 +30,12 @@ import {
   WifiOff,
   Bell,
   Settings,
-  History
+  History,
+  Package,
+  Plus,
+  Trash2,
+  Edit,
+  Loader2
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -241,6 +250,7 @@ export default function MachineDetail() {
             <TabsTrigger value="overview">Tổng quan</TabsTrigger>
             <TabsTrigger value="oee">OEE Chi tiết</TabsTrigger>
             <TabsTrigger value="spc">SPC</TabsTrigger>
+            <TabsTrigger value="bom">BOM Phụ tùng</TabsTrigger>
             <TabsTrigger value="maintenance">Bảo trì</TabsTrigger>
             <TabsTrigger value="alerts">Cảnh báo</TabsTrigger>
           </TabsList>
@@ -455,6 +465,10 @@ export default function MachineDetail() {
             </div>
           </TabsContent>
 
+          <TabsContent value="bom" className="space-y-4">
+            <BomTab machineId={machineId} />
+          </TabsContent>
+
           <TabsContent value="maintenance" className="space-y-4">
             <Card>
               <CardHeader>
@@ -592,5 +606,361 @@ export default function MachineDetail() {
         </Tabs>
       </div>
     </DashboardLayout>
+  );
+}
+
+// BOM Tab Component
+function BomTab({ machineId }: { machineId: number }) {
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [selectedSparePartId, setSelectedSparePartId] = useState<number | null>(null);
+  const [bomQuantity, setBomQuantity] = useState(1);
+  const [isRequired, setIsRequired] = useState(true);
+  const [replacementInterval, setReplacementInterval] = useState<number | null>(null);
+  const [bomNotes, setBomNotes] = useState("");
+  const [editingItem, setEditingItem] = useState<any>(null);
+
+  // Queries
+  const { data: bomItems, isLoading, refetch } = trpc.machine.getBom.useQuery({ machineId });
+  const { data: bomSummary } = trpc.machine.getBomSummary.useQuery({ machineId });
+  const { data: spareParts } = trpc.spareParts.listParts.useQuery({});
+
+  // Mutations
+  const addBomItem = trpc.machine.addBomItem.useMutation({
+    onSuccess: () => {
+      toast.success("Thêm phụ tùng vào BOM thành công");
+      refetch();
+      resetForm();
+      setIsAddDialogOpen(false);
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const updateBomItem = trpc.machine.updateBomItem.useMutation({
+    onSuccess: () => {
+      toast.success("Cập nhật thành công");
+      refetch();
+      setEditingItem(null);
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const deleteBomItem = trpc.machine.deleteBomItem.useMutation({
+    onSuccess: () => {
+      toast.success("Xóa phụ tùng khỏi BOM thành công");
+      refetch();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const resetForm = () => {
+    setSelectedSparePartId(null);
+    setBomQuantity(1);
+    setIsRequired(true);
+    setReplacementInterval(null);
+    setBomNotes("");
+  };
+
+  const handleAddBomItem = () => {
+    if (!selectedSparePartId) {
+      toast.error("Vui lòng chọn phụ tùng");
+      return;
+    }
+    addBomItem.mutate({
+      machineId,
+      sparePartId: selectedSparePartId,
+      quantity: bomQuantity,
+      isRequired: isRequired ? 1 : 0,
+      replacementInterval: replacementInterval || undefined,
+      notes: bomNotes || undefined,
+    });
+  };
+
+  const handleUpdateBomItem = () => {
+    if (!editingItem) return;
+    updateBomItem.mutate({
+      id: editingItem.id,
+      quantity: editingItem.quantity,
+      isRequired: editingItem.isRequired,
+      replacementInterval: editingItem.replacementInterval,
+      notes: editingItem.notes,
+    });
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Summary Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="pt-4 text-center">
+            <p className="text-sm text-muted-foreground">Tổng phụ tùng</p>
+            <p className="text-2xl font-bold">{bomSummary?.totalItems || 0}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 text-center">
+            <p className="text-sm text-muted-foreground">Bắt buộc</p>
+            <p className="text-2xl font-bold text-blue-500">{bomSummary?.requiredItems || 0}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 text-center">
+            <p className="text-sm text-muted-foreground">Tồn kho thấp</p>
+            <p className="text-2xl font-bold text-red-500">{bomSummary?.lowStockItems || 0}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 text-center">
+            <p className="text-sm text-muted-foreground">Tổng giá trị</p>
+            <p className="text-2xl font-bold text-green-500">
+              {new Intl.NumberFormat('vi-VN').format(bomSummary?.totalValue || 0)} đ
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* BOM List */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5" />
+              Danh sách phụ tùng BOM
+            </CardTitle>
+            <CardDescription>Danh sách phụ tùng cần thiết cho máy</CardDescription>
+          </div>
+          <Button onClick={() => setIsAddDialogOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Thêm phụ tùng
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin" />
+            </div>
+          ) : bomItems && bomItems.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left p-2">Mã PT</th>
+                    <th className="text-left p-2">Tên phụ tùng</th>
+                    <th className="text-center p-2">SL cần</th>
+                    <th className="text-center p-2">Tồn kho</th>
+                    <th className="text-center p-2">Trạng thái</th>
+                    <th className="text-center p-2">Bắt buộc</th>
+                    <th className="text-center p-2">Chu kỳ thay</th>
+                    <th className="text-right p-2">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {bomItems.map((item: any) => (
+                    <tr key={item.id} className="border-b hover:bg-muted/50">
+                      <td className="p-2 font-mono text-sm">{item.sparePartCode}</td>
+                      <td className="p-2">{item.sparePartName}</td>
+                      <td className="p-2 text-center">{item.quantity} {item.sparePartUnit}</td>
+                      <td className="p-2 text-center">
+                        <span className={item.currentStock < (item.minStock || 0) ? "text-red-500 font-bold" : ""}>
+                          {item.currentStock}
+                        </span>
+                      </td>
+                      <td className="p-2 text-center">
+                        {item.currentStock >= item.quantity ? (
+                          <Badge className="bg-green-500">Đủ</Badge>
+                        ) : item.currentStock > 0 ? (
+                          <Badge className="bg-yellow-500">Thiếu</Badge>
+                        ) : (
+                          <Badge className="bg-red-500">Hết</Badge>
+                        )}
+                      </td>
+                      <td className="p-2 text-center">
+                        {item.isRequired ? (
+                          <Badge variant="outline">Bắt buộc</Badge>
+                        ) : (
+                          <Badge variant="secondary">Tùy chọn</Badge>
+                        )}
+                      </td>
+                      <td className="p-2 text-center">
+                        {item.replacementInterval ? `${item.replacementInterval} ngày` : "-"}
+                      </td>
+                      <td className="p-2 text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setEditingItem(item)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              if (confirm("Xác nhận xóa phụ tùng này khỏi BOM?")) {
+                                deleteBomItem.mutate({ id: item.id });
+                              }
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4 text-red-500" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>Chưa có phụ tùng nào trong BOM</p>
+              <p className="text-sm">Click "Thêm phụ tùng" để bắt đầu</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Add BOM Item Dialog */}
+      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Thêm phụ tùng vào BOM</DialogTitle>
+            <DialogDescription>Chọn phụ tùng và cấu hình số lượng cần thiết</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Phụ tùng</Label>
+              <Select
+                value={selectedSparePartId?.toString() || ""}
+                onValueChange={(v) => setSelectedSparePartId(parseInt(v))}
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Chọn phụ tùng" />
+                </SelectTrigger>
+                <SelectContent>
+                  {spareParts?.filter((sp: any) => sp.isActive === 1).map((sp: any) => (
+                    <SelectItem key={sp.id} value={sp.id.toString()}>
+                      {sp.partNumber} - {sp.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Số lượng cần</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={bomQuantity}
+                  onChange={(e) => setBomQuantity(parseInt(e.target.value) || 1)}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label>Chu kỳ thay (ngày)</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={replacementInterval || ""}
+                  onChange={(e) => setReplacementInterval(e.target.value ? parseInt(e.target.value) : null)}
+                  placeholder="Tùy chọn"
+                  className="mt-1"
+                />
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="isRequired"
+                checked={isRequired}
+                onChange={(e) => setIsRequired(e.target.checked)}
+                className="rounded"
+              />
+              <Label htmlFor="isRequired">Phụ tùng bắt buộc</Label>
+            </div>
+            <div>
+              <Label>Ghi chú</Label>
+              <Input
+                value={bomNotes}
+                onChange={(e) => setBomNotes(e.target.value)}
+                placeholder="Ghi chú thêm..."
+                className="mt-1"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>Hủy</Button>
+            <Button onClick={handleAddBomItem} disabled={addBomItem.isPending}>
+              {addBomItem.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Thêm
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit BOM Item Dialog */}
+      <Dialog open={!!editingItem} onOpenChange={(open) => !open && setEditingItem(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Chỉnh sửa phụ tùng BOM</DialogTitle>
+          </DialogHeader>
+          {editingItem && (
+            <div className="space-y-4">
+              <div>
+                <Label>Phụ tùng</Label>
+                <p className="font-medium">{editingItem.sparePartCode} - {editingItem.sparePartName}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Số lượng cần</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={editingItem.quantity}
+                    onChange={(e) => setEditingItem({ ...editingItem, quantity: parseInt(e.target.value) || 1 })}
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label>Chu kỳ thay (ngày)</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={editingItem.replacementInterval || ""}
+                    onChange={(e) => setEditingItem({ ...editingItem, replacementInterval: e.target.value ? parseInt(e.target.value) : null })}
+                    className="mt-1"
+                  />
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={editingItem.isRequired === 1}
+                  onChange={(e) => setEditingItem({ ...editingItem, isRequired: e.target.checked ? 1 : 0 })}
+                  className="rounded"
+                />
+                <Label>Phụ tùng bắt buộc</Label>
+              </div>
+              <div>
+                <Label>Ghi chú</Label>
+                <Input
+                  value={editingItem.notes || ""}
+                  onChange={(e) => setEditingItem({ ...editingItem, notes: e.target.value })}
+                  className="mt-1"
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingItem(null)}>Hủy</Button>
+            <Button onClick={handleUpdateBomItem} disabled={updateBomItem.isPending}>
+              {updateBomItem.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Lưu
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }
