@@ -2851,3 +2851,25 @@
 - [x] Biểu đồ cột phân bố Real NG vs NTF vs Pending (BarChart stacked)
 - [x] Summary cards: Tổng lỗi, Real NG, NTF, Chưa xác nhận, Tỉ lệ NTF
 - [x] Bộ lọc: nhóm theo giờ/ngày/tuần/tháng, khoảng thời gian
+
+
+## Phase 138: Xuất BOM, Cảnh báo NTF, Widget Dashboard
+
+### Xuất BOM ra Excel/PDF
+- [x] API exportBomExcel để xuất BOM ra file Excel (exceljs)
+- [x] API exportBomPdf để xuất BOM ra file PDF
+- [x] Nút "Xuất Excel" và "Xuất PDF" trong tab BOM
+- [x] Template với thông tin máy, danh sách phụ tùng, tồn kho, nhà cung cấp
+
+### Cảnh báo tự động NTF rate cao
+- [x] API checkNtfAlert kiểm tra NTF rate và gửi cảnh báo
+- [x] API getNtfAlertConfig lấy cấu hình ngưỡng (mặc định 30%)
+- [x] Gửi email qua SMTP khi vượt ngưỡng
+- [x] Trả về kết quả kiểm tra chi tiết
+
+### Widget NTF rate trên Dashboard
+- [x] Thêm widget NTF Rate vào Dashboard chính (7 ngày gần nhất)
+- [x] Hiển thị: Tỉ lệ NTF, Tổng lỗi, Real NG, NTF, Chưa xác nhận
+- [x] Highlight màu đỏ khi NTF rate >= 30%
+- [x] Link đến trang Quản lý lỗi khi click
+- [x] Thêm vào dropdown tùy chỉnh widgets

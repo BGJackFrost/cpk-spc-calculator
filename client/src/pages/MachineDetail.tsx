@@ -652,6 +652,32 @@ function BomTab({ machineId }: { machineId: number }) {
     onError: (error) => toast.error(error.message),
   });
 
+  const exportBomExcel = trpc.machine.exportBomExcel.useMutation({
+    onSuccess: (data) => {
+      // Download file
+      const link = document.createElement("a");
+      link.href = `data:${data.mimeType};base64,${data.data}`;
+      link.download = data.filename;
+      link.click();
+      toast.success("Xuất Excel thành công");
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const exportBomPdf = trpc.machine.exportBomPdf.useMutation({
+    onSuccess: (data) => {
+      // Open HTML in new tab for printing
+      const newWindow = window.open();
+      if (newWindow) {
+        newWindow.document.write(atob(data.data));
+        newWindow.document.close();
+        newWindow.print();
+      }
+      toast.success("Xuất PDF thành công - Vui lòng in hoặc lưu dưới dạng PDF");
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
   const resetForm = () => {
     setSelectedSparePartId(null);
     setBomQuantity(1);
@@ -728,10 +754,28 @@ function BomTab({ machineId }: { machineId: number }) {
             </CardTitle>
             <CardDescription>Danh sách phụ tùng cần thiết cho máy</CardDescription>
           </div>
-          <Button onClick={() => setIsAddDialogOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Thêm phụ tùng
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => exportBomExcel.mutate({ machineId })}
+              disabled={exportBomExcel.isPending || !bomItems?.length}
+            >
+              {exportBomExcel.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+              Xuất Excel
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={() => exportBomPdf.mutate({ machineId })}
+              disabled={exportBomPdf.isPending || !bomItems?.length}
+            >
+              {exportBomPdf.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+              Xuất PDF
+            </Button>
+            <Button onClick={() => setIsAddDialogOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Thêm phụ tùng
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (

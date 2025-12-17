@@ -383,6 +383,223 @@ export const machineRouter = router({
       
       return { totalItems, requiredItems, lowStockItems, totalValue };
     }),
+
+  exportBomExcel: protectedProcedure
+    .input(z.object({ machineId: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      const { machineBom, spareParts, machines, sparePartsInventory } = await import("../drizzle/schema");
+      const { eq } = await import("drizzle-orm");
+      
+      // Get machine info
+      const machineInfo = await db.select().from(machines).where(eq(machines.id, input.machineId));
+      if (!machineInfo.length) throw new Error("Machine not found");
+      
+      // Get BOM items with spare part details
+      const bomItems = await db.select({
+        id: machineBom.id,
+        sparePartId: machineBom.sparePartId,
+        quantity: machineBom.quantity,
+        isRequired: machineBom.isRequired,
+        replacementInterval: machineBom.replacementInterval,
+        notes: machineBom.notes,
+        partNumber: spareParts.partNumber,
+        partName: spareParts.name,
+        category: spareParts.category,
+        unitPrice: spareParts.unitPrice,
+        unit: spareParts.unit,
+        minStock: spareParts.minStock,
+      })
+      .from(machineBom)
+      .leftJoin(spareParts, eq(machineBom.sparePartId, spareParts.id))
+      .where(eq(machineBom.machineId, input.machineId));
+      
+      // Get inventory
+      const inventory = await db.select().from(sparePartsInventory);
+      const inventoryMap = new Map(inventory.map(i => [i.sparePartId, i.quantity]));
+      
+      // Generate Excel using xlsx
+      const ExcelJS = await import("exceljs");
+      const workbook = new ExcelJS.default.Workbook();
+      const worksheet = workbook.addWorksheet("BOM");
+      
+      // Header info
+      worksheet.addRow([`BOM - ${machineInfo[0].name} (${machineInfo[0].code})`]);
+      worksheet.addRow([`Ngày xuất: ${new Date().toLocaleDateString("vi-VN")}`]);
+      worksheet.addRow([]);
+      
+      // Column headers
+      worksheet.addRow(["STT", "Mã phụ tùng", "Tên phụ tùng", "Danh mục", "Số lượng cần", "Đơn vị", "Tồn kho", "Bắt buộc", "Chu kỳ thay thế", "Đơn giá", "Thành tiền", "Ghi chú"]);
+      
+      // Style header row
+      const headerRow = worksheet.getRow(4);
+      headerRow.font = { bold: true };
+      headerRow.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE0E0E0" } };
+      
+      // Data rows
+      let totalValue = 0;
+      bomItems.forEach((item, index) => {
+        const currentStock = inventoryMap.get(item.sparePartId) || 0;
+        const itemTotal = item.quantity * Number(item.unitPrice || 0);
+        totalValue += itemTotal;
+        
+        const row = worksheet.addRow([
+          index + 1,
+          item.partNumber || "",
+          item.partName || "",
+          item.category || "",
+          item.quantity,
+          item.unit || "Cái",
+          currentStock,
+          item.isRequired === 1 ? "Có" : "Không",
+          item.replacementInterval ? `${item.replacementInterval} ngày` : "-",
+          Number(item.unitPrice || 0).toLocaleString("vi-VN"),
+          itemTotal.toLocaleString("vi-VN"),
+          item.notes || "",
+        ]);
+        
+        // Highlight low stock
+        if (currentStock < item.quantity) {
+          row.getCell(7).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFCCCC" } };
+        }
+      });
+      
+      // Total row
+      worksheet.addRow([]);
+      const totalRow = worksheet.addRow(["", "", "", "", "", "", "", "", "", "Tổng cộng:", totalValue.toLocaleString("vi-VN") + " VNĐ", ""]);
+      totalRow.font = { bold: true };
+      
+      // Auto-fit columns
+      worksheet.columns.forEach(column => {
+        column.width = 15;
+      });
+      
+      // Generate buffer
+      const buffer = await workbook.xlsx.writeBuffer();
+      const base64 = Buffer.from(buffer).toString("base64");
+      
+      return {
+        filename: `BOM_${machineInfo[0].code}_${new Date().toISOString().split("T")[0]}.xlsx`,
+        data: base64,
+        mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      };
+    }),
+
+  exportBomPdf: protectedProcedure
+    .input(z.object({ machineId: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      const { machineBom, spareParts, machines, sparePartsInventory } = await import("../drizzle/schema");
+      const { eq } = await import("drizzle-orm");
+      
+      // Get machine info
+      const machineInfo = await db.select().from(machines).where(eq(machines.id, input.machineId));
+      if (!machineInfo.length) throw new Error("Machine not found");
+      
+      // Get BOM items
+      const bomItems = await db.select({
+        id: machineBom.id,
+        sparePartId: machineBom.sparePartId,
+        quantity: machineBom.quantity,
+        isRequired: machineBom.isRequired,
+        replacementInterval: machineBom.replacementInterval,
+        notes: machineBom.notes,
+        partNumber: spareParts.partNumber,
+        partName: spareParts.name,
+        category: spareParts.category,
+        unitPrice: spareParts.unitPrice,
+        unit: spareParts.unit,
+      })
+      .from(machineBom)
+      .leftJoin(spareParts, eq(machineBom.sparePartId, spareParts.id))
+      .where(eq(machineBom.machineId, input.machineId));
+      
+      // Get inventory
+      const inventory = await db.select().from(sparePartsInventory);
+      const inventoryMap = new Map(inventory.map(i => [i.sparePartId, i.quantity]));
+      
+      // Generate HTML for PDF
+      let totalValue = 0;
+      const tableRows = bomItems.map((item, index) => {
+        const currentStock = inventoryMap.get(item.sparePartId) || 0;
+        const itemTotal = item.quantity * Number(item.unitPrice || 0);
+        totalValue += itemTotal;
+        const lowStock = currentStock < item.quantity;
+        
+        return `
+          <tr style="${lowStock ? "background-color: #ffcccc;" : ""}">
+            <td>${index + 1}</td>
+            <td>${item.partNumber || "-"}</td>
+            <td>${item.partName || "-"}</td>
+            <td>${item.quantity}</td>
+            <td>${item.unit || "Cái"}</td>
+            <td>${currentStock}</td>
+            <td>${item.isRequired === 1 ? "Có" : "Không"}</td>
+            <td>${Number(item.unitPrice || 0).toLocaleString("vi-VN")}</td>
+            <td>${itemTotal.toLocaleString("vi-VN")}</td>
+          </tr>
+        `;
+      }).join("");
+      
+      const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <style>
+            body { font-family: Arial, sans-serif; padding: 20px; }
+            h1 { color: #333; border-bottom: 2px solid #007bff; padding-bottom: 10px; }
+            .info { margin-bottom: 20px; color: #666; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 12px; }
+            th { background-color: #007bff; color: white; }
+            tr:nth-child(even) { background-color: #f9f9f9; }
+            .total { font-weight: bold; text-align: right; margin-top: 20px; font-size: 14px; }
+            .footer { margin-top: 30px; font-size: 11px; color: #999; }
+          </style>
+        </head>
+        <body>
+          <h1>DANH SÁCH PHỤ TÙNG (BOM)</h1>
+          <div class="info">
+            <p><strong>Máy:</strong> ${machineInfo[0].name} (${machineInfo[0].code})</p>
+            <p><strong>Ngày xuất:</strong> ${new Date().toLocaleDateString("vi-VN")}</p>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>STT</th>
+                <th>Mã PT</th>
+                <th>Tên phụ tùng</th>
+                <th>SL cần</th>
+                <th>ĐVT</th>
+                <th>Tồn kho</th>
+                <th>Bắt buộc</th>
+                <th>Đơn giá</th>
+                <th>Thành tiền</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${tableRows}
+            </tbody>
+          </table>
+          <p class="total">Tổng giá trị: ${totalValue.toLocaleString("vi-VN")} VNĐ</p>
+          <div class="footer">
+            <p>* Các dòng nền đỏ: Tồn kho thấp hơn số lượng cần</p>
+            <p>Xuất bởi Hệ thống CPK/SPC</p>
+          </div>
+        </body>
+        </html>
+      `;
+      
+      return {
+        filename: `BOM_${machineInfo[0].code}_${new Date().toISOString().split("T")[0]}.html`,
+        data: Buffer.from(html).toString("base64"),
+        mimeType: "text/html",
+        html: html,
+      };
+    }),
 });
 
 // SPC Rules Router

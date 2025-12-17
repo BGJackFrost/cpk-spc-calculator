@@ -2643,6 +2643,136 @@ const defectRouter = router({
       
       return records;
     }),
+
+  // NTF Alert Configuration
+  getNtfAlertConfig: protectedProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new Error("Database not available");
+    
+    // Get from system settings or return defaults
+    const { systemSettings } = await import("../drizzle/schema");
+    const settings = await db.select().from(systemSettings).where(eq(systemSettings.key, "ntf_alert_config"));
+    
+    if (settings.length > 0 && settings[0].value) {
+      return JSON.parse(settings[0].value);
+    }
+    
+    // Default config
+    return {
+      threshold: 30, // 30% NTF rate
+      emailEnabled: true,
+      notificationEnabled: true,
+      checkIntervalHours: 1,
+    };
+  }),
+
+  updateNtfAlertConfig: protectedProcedure
+    .input(z.object({
+      threshold: z.number().min(1).max(100),
+      emailEnabled: z.boolean(),
+      notificationEnabled: z.boolean(),
+      checkIntervalHours: z.number().min(1).max(24),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      if (ctx.user?.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+      }
+      
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      
+      const { systemSettings } = await import("../drizzle/schema");
+      
+      // Upsert config
+      await db.delete(systemSettings).where(eq(systemSettings.key, "ntf_alert_config"));
+      await db.insert(systemSettings).values({
+        key: "ntf_alert_config",
+        value: JSON.stringify(input),
+        updatedAt: new Date(),
+      });
+      
+      return { success: true };
+    }),
+
+  // Check NTF rate and send alert if needed
+  checkNtfAlert: protectedProcedure
+    .input(z.object({
+      hours: z.number().optional().default(24),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      
+      const startDate = new Date(Date.now() - input.hours * 60 * 60 * 1000);
+      
+      // Get defects in time range
+      const defects = await db.select({
+        id: spcDefectRecords.id,
+        verificationStatus: spcDefectRecords.verificationStatus,
+      }).from(spcDefectRecords)
+        .where(gte(spcDefectRecords.occurredAt, startDate));
+      
+      const total = defects.length;
+      const ntfCount = defects.filter((d: any) => d.verificationStatus === "ntf").length;
+      const ntfRate = total > 0 ? (ntfCount / total * 100) : 0;
+      
+      // Get config
+      const { systemSettings } = await import("../drizzle/schema");
+      const configResult = await db.select().from(systemSettings).where(eq(systemSettings.key, "ntf_alert_config"));
+      const config = configResult.length > 0 && configResult[0].value 
+        ? JSON.parse(configResult[0].value) 
+        : { threshold: 30, emailEnabled: true, notificationEnabled: true };
+      
+      const isAlert = ntfRate >= config.threshold;
+      
+      if (isAlert) {
+        // Send notification to owner
+        if (config.notificationEnabled) {
+          await notifyOwner({
+            title: `⚠️ Cảnh báo NTF Rate cao: ${ntfRate.toFixed(1)}%`,
+            content: `Tỉ lệ NTF trong ${input.hours} giờ qua là ${ntfRate.toFixed(1)}%, vượt ngưỡng ${config.threshold}%.\n\nTổng lỗi: ${total}\nNTF: ${ntfCount}\n\nVui lòng kiểm tra và xác nhận các lỗi đang chờ.`,
+          });
+        }
+        
+        // Send email if configured
+        if (config.emailEnabled) {
+          try {
+            const { sendEmail } = await import("./emailService");
+            const smtpConfig = await db.select().from(systemSettings).where(eq(systemSettings.key, "smtp_config"));
+            if (smtpConfig.length > 0 && smtpConfig[0].value) {
+              const smtp = JSON.parse(smtpConfig[0].value);
+              if (smtp.host && smtp.alertEmail) {
+                await sendEmail(
+                  smtp.alertEmail,
+                  `[Cảnh báo] NTF Rate cao: ${ntfRate.toFixed(1)}%`,
+                  `
+                    <h2>⚠️ Cảnh báo NTF Rate cao</h2>
+                    <p>Tỉ lệ NTF trong <strong>${input.hours} giờ</strong> qua là <strong style="color: red;">${ntfRate.toFixed(1)}%</strong>, vượt ngưỡng ${config.threshold}%.</p>
+                    <table border="1" cellpadding="8" style="border-collapse: collapse;">
+                      <tr><td>Tổng lỗi</td><td><strong>${total}</strong></td></tr>
+                      <tr><td>NTF (Not True Fail)</td><td><strong>${ntfCount}</strong></td></tr>
+                      <tr><td>Tỉ lệ NTF</td><td><strong style="color: red;">${ntfRate.toFixed(1)}%</strong></td></tr>
+                    </table>
+                    <p>Vui lòng kiểm tra và xác nhận các lỗi đang chờ trong hệ thống.</p>
+                  `
+                );
+              }
+            }
+          } catch (e) {
+            console.error("Failed to send NTF alert email:", e);
+          }
+        }
+      }
+      
+      return {
+        total,
+        ntfCount,
+        ntfRate: ntfRate.toFixed(2),
+        threshold: config.threshold,
+        isAlert,
+        alertSent: isAlert,
+      };
+    }),
 });
 
 // Email Notification Router
