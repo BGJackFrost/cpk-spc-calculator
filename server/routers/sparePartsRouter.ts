@@ -5,7 +5,7 @@ import { checkPermission, MODULE_CODES, ActionType } from "../_core/permissionMi
 import { getDb } from "../db";
 import { 
   spareParts, sparePartsInventory, sparePartsTransactions,
-  suppliers, purchaseOrders, purchaseOrderItems,
+  suppliers, purchaseOrders, purchaseOrderItems, poReceivingHistory,
   sparePartsInventoryChecks, sparePartsInventoryCheckItems, sparePartsStockMovements,
   approvalWorkflows, approvalSteps, approvalRequests, approvalHistories,
   employeeProfiles, positions
@@ -569,6 +569,9 @@ export const sparePartsRouter = router({
     .input(z.object({
       itemId: z.number(),
       receivedQuantity: z.number(),
+      notes: z.string().optional(),
+      batchNumber: z.string().optional(),
+      qualityStatus: z.enum(["good", "damaged", "rejected"]).optional(),
     }))
     .mutation(async ({ input, ctx }) => {
       const db = await getDb();
@@ -578,31 +581,53 @@ export const sparePartsRouter = router({
       const [item] = await db.select().from(purchaseOrderItems).where(eq(purchaseOrderItems.id, input.itemId));
       if (!item) throw new Error("Item not found");
 
+      // Validate: cannot receive more than ordered
+      const remainingQty = item.quantity - (item.receivedQuantity || 0);
+      if (input.receivedQuantity > remainingQty) {
+        throw new Error(`Số lượng nhận không thể vượt quá số lượng còn lại (${remainingQty})`);
+      }
+
       // Update received quantity
       const newReceivedQty = (item.receivedQuantity || 0) + input.receivedQuantity;
       await db.update(purchaseOrderItems).set({
         receivedQuantity: newReceivedQty,
       }).where(eq(purchaseOrderItems.id, input.itemId));
 
-      // Create inventory transaction
-      await db.insert(sparePartsTransactions).values({
-        sparePartId: item.sparePartId,
-        transactionType: "in",
-        quantity: input.receivedQuantity,
-        unitCost: item.unitPrice,
-        totalCost: String(input.receivedQuantity * Number(item.unitPrice)),
+      // Record receiving history
+      await db.insert(poReceivingHistory).values({
         purchaseOrderId: item.purchaseOrderId,
-        performedBy: ctx.user?.id,
+        purchaseOrderItemId: item.id,
+        sparePartId: item.sparePartId,
+        quantityReceived: input.receivedQuantity,
+        receivedBy: ctx.user?.id,
+        notes: input.notes || null,
+        batchNumber: input.batchNumber || null,
+        qualityStatus: input.qualityStatus || "good",
       });
 
-      // Update inventory
-      const [inv] = await db.select().from(sparePartsInventory)
-        .where(eq(sparePartsInventory.sparePartId, item.sparePartId));
-      if (inv) {
-        await db.update(sparePartsInventory).set({
-          quantity: (inv.quantity || 0) + input.receivedQuantity,
-          updatedAt: new Date(),
-        }).where(eq(sparePartsInventory.sparePartId, item.sparePartId));
+      // Only add to inventory if quality is good
+      if (!input.qualityStatus || input.qualityStatus === "good") {
+        // Create inventory transaction
+        await db.insert(sparePartsTransactions).values({
+          sparePartId: item.sparePartId,
+          transactionType: "in",
+          quantity: input.receivedQuantity,
+          unitCost: item.unitPrice,
+          totalCost: String(input.receivedQuantity * Number(item.unitPrice)),
+          purchaseOrderId: item.purchaseOrderId,
+          performedBy: ctx.user?.id,
+          reason: input.notes || null,
+        });
+
+        // Update inventory
+        const [inv] = await db.select().from(sparePartsInventory)
+          .where(eq(sparePartsInventory.sparePartId, item.sparePartId));
+        if (inv) {
+          await db.update(sparePartsInventory).set({
+            quantity: (inv.quantity || 0) + input.receivedQuantity,
+            updatedAt: new Date(),
+          }).where(eq(sparePartsInventory.sparePartId, item.sparePartId));
+        }
       }
 
       // Check if all items received
@@ -621,13 +646,18 @@ export const sparePartsRouter = router({
           .where(eq(purchaseOrders.id, item.purchaseOrderId));
       }
 
-      return { success: true };
+      return { 
+        success: true,
+        newReceivedQty,
+        remainingQty: item.quantity - newReceivedQty,
+      };
     }),
 
   // Receive entire purchase order (mark all items as received)
   receivePurchaseOrder: protectedProcedure
     .input(z.object({
       id: z.number(),
+      notes: z.string().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
       const db = await getDb();
@@ -636,7 +666,9 @@ export const sparePartsRouter = router({
       // Get PO details
       const [po] = await db.select().from(purchaseOrders).where(eq(purchaseOrders.id, input.id));
       if (!po) throw new Error("Purchase order not found");
-      if (po.status !== "ordered") throw new Error("Chỉ có thể nhận hàng cho đơn ở trạng thái 'Đã đặt'");
+      if (po.status !== "ordered" && po.status !== "partial_received") {
+        throw new Error("Chỉ có thể nhận hàng cho đơn ở trạng thái 'Đã đặt' hoặc 'Đã nhận một phần'");
+      }
 
       // Get all items
       const items = await db.select().from(purchaseOrderItems)
@@ -652,6 +684,17 @@ export const sparePartsRouter = router({
           receivedQuantity: item.quantity,
         }).where(eq(purchaseOrderItems.id, item.id));
 
+        // Record receiving history
+        await db.insert(poReceivingHistory).values({
+          purchaseOrderId: input.id,
+          purchaseOrderItemId: item.id,
+          sparePartId: item.sparePartId,
+          quantityReceived: remainingQty,
+          receivedBy: ctx.user?.id,
+          notes: input.notes || "Nhận toàn bộ đơn hàng",
+          qualityStatus: "good",
+        });
+
         // Create inventory transaction
         await db.insert(sparePartsTransactions).values({
           sparePartId: item.sparePartId,
@@ -661,6 +704,7 @@ export const sparePartsRouter = router({
           totalCost: String(remainingQty * Number(item.unitPrice)),
           purchaseOrderId: input.id,
           performedBy: ctx.user?.id,
+          reason: input.notes || null,
         });
 
         // Update inventory
@@ -681,6 +725,33 @@ export const sparePartsRouter = router({
       }).where(eq(purchaseOrders.id, input.id));
 
       return { success: true };
+    }),
+
+  // Get receiving history for a PO
+  getReceivingHistory: publicProcedure
+    .input(z.object({ purchaseOrderId: z.number() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return [];
+
+      return await db.select({
+        id: poReceivingHistory.id,
+        purchaseOrderId: poReceivingHistory.purchaseOrderId,
+        purchaseOrderItemId: poReceivingHistory.purchaseOrderItemId,
+        sparePartId: poReceivingHistory.sparePartId,
+        sparePartName: spareParts.name,
+        sparePartCode: spareParts.partNumber,
+        quantityReceived: poReceivingHistory.quantityReceived,
+        receivedBy: poReceivingHistory.receivedBy,
+        receivedAt: poReceivingHistory.receivedAt,
+        notes: poReceivingHistory.notes,
+        batchNumber: poReceivingHistory.batchNumber,
+        qualityStatus: poReceivingHistory.qualityStatus,
+      })
+        .from(poReceivingHistory)
+        .leftJoin(spareParts, eq(poReceivingHistory.sparePartId, spareParts.id))
+        .where(eq(poReceivingHistory.purchaseOrderId, input.purchaseOrderId))
+        .orderBy(desc(poReceivingHistory.receivedAt));
     }),
 
   // Statistics

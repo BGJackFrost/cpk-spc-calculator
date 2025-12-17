@@ -2700,3 +2700,26 @@
 - [x] Gửi email khi đơn được duyệt - processApproval approved
 - [x] Gửi email khi đơn bị từ chối - processApproval rejected
 - [x] Gửi email khi đơn được trả lại - processApproval returned
+
+
+## Phase 131: Email SMTP thực và Cải tiến Nhập kho
+
+### Email SMTP thực cho Approval Workflow
+- [x] Tích hợp nodemailer với SMTP config từ database
+- [x] Gửi email thực khi tạo đơn mới cần phê duyệt
+- [x] Gửi email thực khi đơn được duyệt/từ chối
+- [x] Template email HTML chuyên nghiệp với thông tin chi tiết
+
+### Cải tiến Nhập kho theo Đơn đặt hàng
+- [x] Thêm trường receivedQuantity vào purchase_order_items
+- [x] Cho phép nhập số lượng nhận thực tế từng lần
+- [x] Tính toán số lượng còn lại chưa nhận
+- [x] Cập nhật trạng thái đơn: pending → partial → received
+- [x] Lưu lịch sử nhập kho từng lần (po_receiving_history)
+- [x] UI dialog nhập kho với danh sách items và số lượng
+
+### Hoàn thiện chức năng Kiểm kê
+- [x] Thêm tab Kiểm kê vào trang Phụ tùng
+- [x] UI tạo phiếu kiểm kê mới
+- [x] UI cập nhật số lượng thực tế
+- [x] UI hoàn thành kiểm kê và điều chỉnh tồn kho

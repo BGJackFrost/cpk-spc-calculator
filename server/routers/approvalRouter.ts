@@ -2,6 +2,7 @@ import { z } from "zod";
 import { router, protectedProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { notifyOwner } from "../_core/notification";
+import { notifyApprovalRequest, notifyApprovalResult } from "../emailService";
 import { approvalWorkflows, approvalSteps, approvalRequests, approvalHistories, employeeProfiles, positions, users } from "../../drizzle/schema";
 import { eq, and, gt, lt, sql } from "drizzle-orm";
 
@@ -293,11 +294,56 @@ export const approvalRouter = router({
           leave_request: "Đơn nghỉ phép",
         };
         const entityLabel = entityTypeLabels[input.entityType] || input.entityType;
-        const amountInfo = input.totalAmount ? ` - Giá trị: ${input.totalAmount.toLocaleString("vi-VN")} VNĐ` : "";
         
+        // Get approver info based on first step
+        let approverEmail = "";
+        let approverName = "";
+        
+        if (firstStep) {
+          if (firstStep.approverType === "user" && firstStep.approverId) {
+            const [approverUser] = await db.select().from(users).where(eq(users.id, firstStep.approverId));
+            if (approverUser) {
+              approverEmail = approverUser.email || "";
+              approverName = approverUser.name || approverUser.openId;
+            }
+          } else if (firstStep.approverType === "position" && firstStep.approverId) {
+            // Get users with this position
+            const profiles = await db.select({
+              userId: employeeProfiles.userId,
+              userName: users.name,
+              userEmail: users.email,
+            }).from(employeeProfiles)
+              .innerJoin(users, eq(users.id, employeeProfiles.userId))
+              .where(eq(employeeProfiles.positionId, firstStep.approverId));
+            
+            if (profiles.length > 0) {
+              approverEmail = profiles.map(p => p.userEmail).filter(Boolean).join(",");
+              approverName = profiles.map(p => p.userName).filter(Boolean).join(", ");
+            }
+          }
+        }
+        
+        // Send SMTP email if approver email found
+        if (approverEmail) {
+          await notifyApprovalRequest({
+            entityType: input.entityType,
+            entityId: input.entityId,
+            entityLabel,
+            requesterName: ctx.user.name || ctx.user.openId,
+            requesterEmail: ctx.user.email || undefined,
+            totalAmount: input.totalAmount,
+            notes: input.notes,
+            approverName,
+            approverEmail,
+            stepName: firstStep?.name,
+            systemUrl: process.env.VITE_APP_URL || undefined,
+          });
+        }
+        
+        // Also send notification to owner as fallback
         await notifyOwner({
           title: `[Đơn mới cần phê duyệt] ${entityLabel} #${input.entityId}`,
-          content: `Có đơn mới cần phê duyệt:\n\n- Loại: ${entityLabel}\n- Mã đơn: #${input.entityId}${amountInfo}\n- Người yêu cầu: ${ctx.user.name || ctx.user.openId}\n- Ghi chú: ${input.notes || "Không có"}\n\nVui lòng truy cập hệ thống để phê duyệt.`,
+          content: `Có đơn mới cần phê duyệt:\n\n- Loại: ${entityLabel}\n- Mã đơn: #${input.entityId}\n- Giá trị: ${input.totalAmount ? input.totalAmount.toLocaleString("vi-VN") + " VNĐ" : "N/A"}\n- Người yêu cầu: ${ctx.user.name || ctx.user.openId}\n- Ghi chú: ${input.notes || "Không có"}\n\nVui lòng truy cập hệ thống để phê duyệt.`,
         });
       } catch (e) {
         console.error("Failed to send approval notification:", e);
@@ -464,6 +510,26 @@ export const approvalRouter = router({
           const entityLabel = entityTypeLabels[input.entityType] || input.entityType;
           const actionLabel = input.action === "rejected" ? "bị từ chối" : "được trả lại";
           
+          // Get requester info for SMTP email
+          if (request.requesterId) {
+            const [requester] = await db.select().from(users).where(eq(users.id, request.requesterId));
+            if (requester && requester.email) {
+              await notifyApprovalResult({
+                entityType: input.entityType,
+                entityId: input.entityId,
+                entityLabel,
+                requesterName: requester.name || requester.openId,
+                requesterEmail: requester.email,
+                action: input.action,
+                approverName: ctx.user.name || ctx.user.openId,
+                comments: input.comments,
+                totalAmount: request.totalAmount ? Number(request.totalAmount) : undefined,
+                systemUrl: process.env.VITE_APP_URL || undefined,
+              });
+            }
+          }
+          
+          // Also send notification to owner as fallback
           await notifyOwner({
             title: `[${entityLabel} #${input.entityId}] Đã ${actionLabel}`,
             content: `${entityLabel} #${input.entityId} đã ${actionLabel}.\n\n- Người xử lý: ${ctx.user.name || ctx.user.openId}\n- Lý do: ${input.comments || "Không có"}`,
@@ -517,6 +583,26 @@ export const approvalRouter = router({
           };
           const entityLabel = entityTypeLabels[input.entityType] || input.entityType;
           
+          // Get requester info for SMTP email
+          if (request.requesterId) {
+            const [requester] = await db.select().from(users).where(eq(users.id, request.requesterId));
+            if (requester && requester.email) {
+              await notifyApprovalResult({
+                entityType: input.entityType,
+                entityId: input.entityId,
+                entityLabel,
+                requesterName: requester.name || requester.openId,
+                requesterEmail: requester.email,
+                action: "approved",
+                approverName: ctx.user.name || ctx.user.openId,
+                comments: input.comments,
+                totalAmount: request.totalAmount ? Number(request.totalAmount) : undefined,
+                systemUrl: process.env.VITE_APP_URL || undefined,
+              });
+            }
+          }
+          
+          // Also send notification to owner as fallback
           await notifyOwner({
             title: `[${entityLabel} #${input.entityId}] Đã được phê duyệt`,
             content: `${entityLabel} #${input.entityId} đã được phê duyệt hoàn tất.\n\n- Người phê duyệt cuối: ${ctx.user.name || ctx.user.openId}\n- Ghi chú: ${input.comments || "Không có"}`,

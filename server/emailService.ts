@@ -9,7 +9,35 @@ import { eq } from "drizzle-orm";
 import nodemailer from "nodemailer";
 
 // Email template types
-export type EmailType = "spc_violation" | "cpk_warning" | "ca_violation" | "daily_report" | "oee_alert" | "maintenance_alert" | "predictive_alert";
+export type EmailType = "spc_violation" | "cpk_warning" | "ca_violation" | "daily_report" | "oee_alert" | "maintenance_alert" | "predictive_alert" | "approval_request" | "approval_result";
+
+// Approval notification types
+export interface ApprovalRequestEmailData {
+  entityType: string;
+  entityId: number;
+  entityLabel: string;
+  requesterName: string;
+  requesterEmail?: string;
+  totalAmount?: number;
+  notes?: string;
+  approverName?: string;
+  approverEmail: string;
+  stepName?: string;
+  systemUrl?: string;
+}
+
+export interface ApprovalResultEmailData {
+  entityType: string;
+  entityId: number;
+  entityLabel: string;
+  requesterName: string;
+  requesterEmail: string;
+  action: "approved" | "rejected" | "returned";
+  approverName: string;
+  comments?: string;
+  totalAmount?: number;
+  systemUrl?: string;
+}
 
 export interface SpcViolationEmailData {
   productCode: string;
@@ -601,5 +629,171 @@ export async function notifyPredictiveAlert(data: PredictiveAlertEmailData, reci
   const { subject, html } = generatePredictiveAlertEmail(data);
   const result = await sendEmail(recipients, subject, html);
   console.log(`[Email] Sent Predictive alert notification to ${result.sentCount || 0} recipients`);
+  return { success: result.success, sentCount: result.sentCount || 0 };
+}
+
+
+/**
+ * Generate HTML email for approval request notification
+ */
+function generateApprovalRequestEmail(data: ApprovalRequestEmailData): { subject: string; html: string } {
+  const subject = `[Cần phê duyệt] ${data.entityLabel} #${data.entityId}`;
+  const amountInfo = data.totalAmount 
+    ? `<div class="metric"><span class="metric-label">Giá trị</span><br><span class="metric-value">${data.totalAmount.toLocaleString("vi-VN")} VNĐ</span></div>` 
+    : "";
+  
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+    .container { max-width: 600px; margin: 0 auto; }
+    .header { background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; padding: 25px; text-align: center; }
+    .header h1 { margin: 0; font-size: 22px; }
+    .content { background: #ffffff; padding: 25px; border: 1px solid #e5e7eb; }
+    .footer { background: #1f2937; color: #9ca3af; padding: 15px; text-align: center; font-size: 12px; }
+    .metric { display: inline-block; background: #f3f4f6; padding: 12px 18px; margin: 5px; border-radius: 8px; text-align: center; }
+    .metric-label { font-size: 12px; color: #6b7280; display: block; }
+    .metric-value { font-size: 16px; font-weight: 600; color: #111827; }
+    .info-box { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 15px; margin: 15px 0; }
+    .btn { display: inline-block; background: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 500; margin-top: 15px; }
+    .btn:hover { background: #2563eb; }
+    table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+    td { padding: 8px 0; border-bottom: 1px solid #e5e7eb; }
+    td:first-child { color: #6b7280; width: 40%; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>📋 Yêu cầu Phê duyệt</h1>
+    </div>
+    <div class="content">
+      <p>Xin chào <strong>${data.approverName || "Quý vị"}</strong>,</p>
+      <p>Bạn có một yêu cầu mới cần phê duyệt:</p>
+      
+      <div class="info-box">
+        <table>
+          <tr><td>Loại yêu cầu:</td><td><strong>${data.entityLabel}</strong></td></tr>
+          <tr><td>Mã đơn:</td><td><strong>#${data.entityId}</strong></td></tr>
+          <tr><td>Người yêu cầu:</td><td>${data.requesterName}</td></tr>
+          ${data.stepName ? `<tr><td>Bước phê duyệt:</td><td>${data.stepName}</td></tr>` : ""}
+          ${data.totalAmount ? `<tr><td>Giá trị:</td><td><strong>${data.totalAmount.toLocaleString("vi-VN")} VNĐ</strong></td></tr>` : ""}
+          ${data.notes ? `<tr><td>Ghi chú:</td><td>${data.notes}</td></tr>` : ""}
+        </table>
+      </div>
+      
+      <p>Vui lòng truy cập hệ thống để xem chi tiết và xử lý yêu cầu này.</p>
+      
+      ${data.systemUrl ? `<a href="${data.systemUrl}/pending-approvals" class="btn">Xem và Phê duyệt</a>` : ""}
+    </div>
+    <div class="footer">
+      <p>Email này được gửi tự động từ hệ thống SPC/CPK Calculator.</p>
+      <p>Vui lòng không trả lời email này.</p>
+    </div>
+  </div>
+</body>
+</html>
+`;
+  
+  return { subject, html };
+}
+
+/**
+ * Generate HTML email for approval result notification
+ */
+function generateApprovalResultEmail(data: ApprovalResultEmailData): { subject: string; html: string } {
+  const actionLabels: Record<string, { label: string; color: string; icon: string }> = {
+    approved: { label: "Đã được phê duyệt", color: "#22c55e", icon: "✅" },
+    rejected: { label: "Đã bị từ chối", color: "#ef4444", icon: "❌" },
+    returned: { label: "Đã được trả lại", color: "#f59e0b", icon: "↩️" },
+  };
+  
+  const actionInfo = actionLabels[data.action] || actionLabels.approved;
+  const subject = `[${actionInfo.label}] ${data.entityLabel} #${data.entityId}`;
+  
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+    .container { max-width: 600px; margin: 0 auto; }
+    .header { background: ${actionInfo.color}; color: white; padding: 25px; text-align: center; }
+    .header h1 { margin: 0; font-size: 22px; }
+    .content { background: #ffffff; padding: 25px; border: 1px solid #e5e7eb; }
+    .footer { background: #1f2937; color: #9ca3af; padding: 15px; text-align: center; font-size: 12px; }
+    .status-badge { display: inline-block; background: ${actionInfo.color}; color: white; padding: 8px 16px; border-radius: 20px; font-weight: 600; font-size: 14px; }
+    .info-box { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 15px; margin: 15px 0; }
+    table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+    td { padding: 8px 0; border-bottom: 1px solid #e5e7eb; }
+    td:first-child { color: #6b7280; width: 40%; }
+    .comments { background: #fef3c7; border: 1px solid #fcd34d; border-radius: 8px; padding: 15px; margin: 15px 0; }
+    .btn { display: inline-block; background: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 500; margin-top: 15px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>${actionInfo.icon} ${actionInfo.label}</h1>
+    </div>
+    <div class="content">
+      <p>Xin chào <strong>${data.requesterName}</strong>,</p>
+      <p>Yêu cầu của bạn đã được xử lý:</p>
+      
+      <div style="text-align: center; margin: 20px 0;">
+        <span class="status-badge">${actionInfo.label.toUpperCase()}</span>
+      </div>
+      
+      <div class="info-box">
+        <table>
+          <tr><td>Loại yêu cầu:</td><td><strong>${data.entityLabel}</strong></td></tr>
+          <tr><td>Mã đơn:</td><td><strong>#${data.entityId}</strong></td></tr>
+          <tr><td>Người xử lý:</td><td>${data.approverName}</td></tr>
+          ${data.totalAmount ? `<tr><td>Giá trị:</td><td><strong>${data.totalAmount.toLocaleString("vi-VN")} VNĐ</strong></td></tr>` : ""}
+        </table>
+      </div>
+      
+      ${data.comments ? `
+      <div class="comments">
+        <strong>💬 Ghi chú từ người phê duyệt:</strong>
+        <p style="margin: 10px 0 0 0;">${data.comments}</p>
+      </div>
+      ` : ""}
+      
+      ${data.systemUrl ? `<a href="${data.systemUrl}" class="btn">Xem chi tiết</a>` : ""}
+    </div>
+    <div class="footer">
+      <p>Email này được gửi tự động từ hệ thống SPC/CPK Calculator.</p>
+      <p>Vui lòng không trả lời email này.</p>
+    </div>
+  </div>
+</body>
+</html>
+`;
+  
+  return { subject, html };
+}
+
+/**
+ * Send approval request notification via SMTP
+ */
+export async function notifyApprovalRequest(data: ApprovalRequestEmailData): Promise<{ success: boolean; sentCount: number }> {
+  const { subject, html } = generateApprovalRequestEmail(data);
+  const result = await sendEmail(data.approverEmail, subject, html);
+  console.log(`[Email] Sent approval request notification to ${data.approverEmail}: ${result.success ? "success" : result.error}`);
+  return { success: result.success, sentCount: result.sentCount || 0 };
+}
+
+/**
+ * Send approval result notification via SMTP
+ */
+export async function notifyApprovalResult(data: ApprovalResultEmailData): Promise<{ success: boolean; sentCount: number }> {
+  const { subject, html } = generateApprovalResultEmail(data);
+  const result = await sendEmail(data.requesterEmail, subject, html);
+  console.log(`[Email] Sent approval result notification to ${data.requesterEmail}: ${result.success ? "success" : result.error}`);
   return { success: result.success, sentCount: result.sentCount || 0 };
 }

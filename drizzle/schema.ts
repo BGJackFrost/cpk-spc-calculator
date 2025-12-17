@@ -2167,6 +2167,26 @@ export type PurchaseOrderItem = typeof purchaseOrderItems.$inferSelect;
 export type InsertPurchaseOrderItem = typeof purchaseOrderItems.$inferInsert;
 
 /**
+ * PO Receiving History - lịch sử nhập kho từng lần theo đơn đặt hàng
+ */
+export const poReceivingHistory = mysqlTable("po_receiving_history", {
+  id: int("id").autoincrement().primaryKey(),
+  purchaseOrderId: int("purchaseOrderId").notNull(),
+  purchaseOrderItemId: int("purchaseOrderItemId").notNull(),
+  sparePartId: int("sparePartId").notNull(),
+  quantityReceived: int("quantityReceived").notNull(),
+  receivedBy: int("receivedBy"),
+  receivedAt: timestamp("receivedAt").defaultNow().notNull(),
+  notes: text("notes"),
+  batchNumber: varchar("batchNumber", { length: 100 }), // Số lô hàng
+  qualityStatus: mysqlEnum("qualityStatus", ["good", "damaged", "rejected"]).default("good"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type PoReceivingHistory = typeof poReceivingHistory.$inferSelect;
+export type InsertPoReceivingHistory = typeof poReceivingHistory.$inferInsert;
+
+/**
  * Sensor Types - loại sensor
  */
 export const sensorTypes = mysqlTable("sensor_types", {

@@ -99,6 +99,23 @@ export default function SparePartsManagement() {
   const [isRejectPOOpen, setIsRejectPOOpen] = useState(false);
   const [rejectPOId, setRejectPOId] = useState<number | null>(null);
   const [rejectReason, setRejectReason] = useState("");
+  
+  // Nhập kho từng phần states
+  const [isReceivePOOpen, setIsReceivePOOpen] = useState(false);
+  const [receivePOId, setReceivePOId] = useState<number | null>(null);
+  const [receiveItems, setReceiveItems] = useState<Array<{
+    itemId: number;
+    sparePartName: string;
+    orderedQty: number;
+    receivedQty: number;
+    remainingQty: number;
+    receiveNow: number;
+    notes: string;
+    batchNumber: string;
+    qualityStatus: "good" | "damaged" | "rejected";
+  }>>([]);
+  const [isReceiveHistoryOpen, setIsReceiveHistoryOpen] = useState(false);
+  const [receiveHistoryPOId, setReceiveHistoryPOId] = useState<number | null>(null);
 
   // Queries
   const { data: parts, refetch: refetchParts } = trpc.spareParts.listParts.useQuery({
@@ -251,6 +268,22 @@ export default function SparePartsManagement() {
     },
     onError: (err) => toast.error(err.message),
   });
+
+  // Mutation nhập kho từng item
+  const receivePOItemMutation = trpc.spareParts.receivePurchaseOrderItem.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Đã nhập kho thành công. Còn lại: ${data.remainingQty}`);
+      refetchPurchaseOrders();
+      refetchParts();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  // Query lịch sử nhập kho
+  const { data: receivingHistory, refetch: refetchReceivingHistory } = trpc.spareParts.getReceivingHistory.useQuery(
+    { purchaseOrderId: receiveHistoryPOId || 0 },
+    { enabled: !!receiveHistoryPOId }
+  );
 
   // Mutations cho xuất kho hàng loạt
   const bulkExportMutation = trpc.spareParts.bulkExportStock.useMutation({
@@ -969,6 +1002,7 @@ export default function SparePartsManagement() {
             <TabsTrigger value="returns"><RefreshCw className="w-4 h-4 mr-1" />Nhập kho lại</TabsTrigger>
             <TabsTrigger value="transactions">Lịch sử giao dịch</TabsTrigger>
             <TabsTrigger value="suppliers">Nhà cung cấp</TabsTrigger>
+            <TabsTrigger value="stockcheck"><ScanLine className="w-4 h-4 mr-1" />Kiểm kê</TabsTrigger>
           </TabsList>
 
           {/* Dashboard Tab */}
@@ -1553,21 +1587,50 @@ export default function SparePartsManagement() {
                               </Button>
                             )}
                             {/* Trạng thái đã đặt - chờ nhận hàng */}
-                            {po.status === "ordered" && (
+                            {(po.status === "ordered" || po.status === "partial_received") && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="default"
+                                  className="bg-green-600 hover:bg-green-700"
+                                  onClick={() => {
+                                    setReceivePOId(po.id);
+                                    setIsReceivePOOpen(true);
+                                  }}
+                                >
+                                  <PackageCheck className="w-3 h-3 mr-1" />Nhập kho
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => receivePOMutation.mutate({ id: po.id })}
+                                >
+                                  Nhận tất cả
+                                </Button>
+                              </>
+                            )}
+                            {/* Xem lịch sử nhập kho */}
+                            {(po.status === "partial_received" || po.status === "received") && (
                               <Button
                                 size="sm"
-                                variant="default"
-                                className="bg-green-600 hover:bg-green-700"
-                                onClick={() => receivePOMutation.mutate({ id: po.id })}
+                                variant="ghost"
+                                onClick={() => {
+                                  setReceiveHistoryPOId(po.id);
+                                  setIsReceiveHistoryOpen(true);
+                                }}
                               >
-                                <PackageCheck className="w-3 h-3 mr-1" />Đã nhận hàng
+                                <Clock className="w-3 h-3 mr-1" />Lịch sử
                               </Button>
                             )}
                             {/* Trạng thái đã nhận */}
-                            {(po.status === "received" || po.status === "partial_received") && (
+                            {po.status === "received" && (
                               <Badge variant="outline" className="text-green-600">
-                                <CheckCircle2 className="w-3 h-3 mr-1" />
-                                {po.status === "received" ? "Đã nhận đủ" : "Nhận một phần"}
+                                <CheckCircle2 className="w-3 h-3 mr-1" />Đã nhận đủ
+                              </Badge>
+                            )}
+                            {po.status === "partial_received" && (
+                              <Badge variant="outline" className="text-amber-600">
+                                <Clock className="w-3 h-3 mr-1" />Nhận một phần
                               </Badge>
                             )}
                           </div>
@@ -1882,6 +1945,11 @@ export default function SparePartsManagement() {
                 </Table>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Stock Check Tab - Kiểm kê */}
+          <TabsContent value="stockcheck" className="space-y-4">
+            <StockCheckTab parts={parts || []} />
           </TabsContent>
         </Tabs>
 
@@ -2604,7 +2672,543 @@ export default function SparePartsManagement() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Dialog nhập kho từng phần */}
+        <Dialog open={isReceivePOOpen} onOpenChange={setIsReceivePOOpen}>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Nhập kho theo đơn đặt hàng</DialogTitle>
+              <DialogDescription>
+                Nhập số lượng thực tế nhận được cho từng mặt hàng. Có thể nhập nhiều lần cho mỗi đơn.
+              </DialogDescription>
+            </DialogHeader>
+            <ReceivePOContent 
+              poId={receivePOId}
+              onClose={() => setIsReceivePOOpen(false)}
+              onReceive={(itemId, qty, notes, batchNumber, qualityStatus) => {
+                receivePOItemMutation.mutate({
+                  itemId,
+                  receivedQuantity: qty,
+                  notes,
+                  batchNumber,
+                  qualityStatus,
+                });
+              }}
+            />
+          </DialogContent>
+        </Dialog>
+
+        {/* Dialog lịch sử nhập kho */}
+        <Dialog open={isReceiveHistoryOpen} onOpenChange={setIsReceiveHistoryOpen}>
+          <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Lịch sử nhập kho</DialogTitle>
+              <DialogDescription>
+                Danh sách các lần nhập kho cho đơn hàng này
+              </DialogDescription>
+            </DialogHeader>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Phụ tùng</TableHead>
+                  <TableHead>Số lượng</TableHead>
+                  <TableHead>Số lô</TableHead>
+                  <TableHead>Chất lượng</TableHead>
+                  <TableHead>Ngày nhận</TableHead>
+                  <TableHead>Ghi chú</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {receivingHistory?.map((h) => (
+                  <TableRow key={h.id}>
+                    <TableCell>
+                      <div>
+                        <span className="font-medium">{h.sparePartName}</span>
+                        <span className="text-xs text-muted-foreground ml-2">({h.sparePartCode})</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="font-medium">{h.quantityReceived}</TableCell>
+                    <TableCell>{h.batchNumber || "-"}</TableCell>
+                    <TableCell>
+                      <Badge variant={h.qualityStatus === "good" ? "default" : h.qualityStatus === "damaged" ? "secondary" : "destructive"}>
+                        {h.qualityStatus === "good" ? "Đạt" : h.qualityStatus === "damaged" ? "Hư hỏng" : "Từ chối"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{new Date(h.receivedAt).toLocaleString("vi-VN")}</TableCell>
+                    <TableCell className="max-w-[200px] truncate">{h.notes || "-"}</TableCell>
+                  </TableRow>
+                ))}
+                {(!receivingHistory || receivingHistory.length === 0) && (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      Chưa có lịch sử nhập kho
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
+  );
+}
+
+// Component con cho nhập kho từng phần
+function ReceivePOContent({ 
+  poId, 
+  onClose, 
+  onReceive 
+}: { 
+  poId: number | null; 
+  onClose: () => void;
+  onReceive: (itemId: number, qty: number, notes: string, batchNumber: string, qualityStatus: "good" | "damaged" | "rejected") => void;
+}) {
+  const { data: poDetails } = trpc.spareParts.getPurchaseOrder.useQuery(
+    { id: poId || 0 },
+    { enabled: !!poId }
+  );
+
+  const [receiveData, setReceiveData] = useState<Map<number, {
+    quantity: number;
+    notes: string;
+    batchNumber: string;
+    qualityStatus: "good" | "damaged" | "rejected";
+  }>>(new Map());
+
+  const updateItem = (itemId: number, field: string, value: any) => {
+    setReceiveData(prev => {
+      const newMap = new Map(prev);
+      const existing = newMap.get(itemId) || { quantity: 0, notes: "", batchNumber: "", qualityStatus: "good" as const };
+      newMap.set(itemId, { ...existing, [field]: value });
+      return newMap;
+    });
+  };
+
+  if (!poDetails) return <div className="text-center py-8">Loading...</div>;
+
+  return (
+    <div className="space-y-4">
+      <div className="border rounded-lg">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Phụ tùng</TableHead>
+              <TableHead className="text-center">Đặt</TableHead>
+              <TableHead className="text-center">Đã nhận</TableHead>
+              <TableHead className="text-center">Còn lại</TableHead>
+              <TableHead className="text-center">Nhận lần này</TableHead>
+              <TableHead>Số lô</TableHead>
+              <TableHead>Chất lượng</TableHead>
+              <TableHead>Ghi chú</TableHead>
+              <TableHead></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {poDetails.items?.map((item: any) => {
+              const remaining = item.quantity - (item.receivedQuantity || 0);
+              const data = receiveData.get(item.id) || { quantity: 0, notes: "", batchNumber: "", qualityStatus: "good" as const };
+              
+              return (
+                <TableRow key={item.id}>
+                  <TableCell>
+                    <div>
+                      <span className="font-medium">{item.partName}</span>
+                      <span className="text-xs text-muted-foreground block">{item.partNumber}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-center font-medium">{item.quantity}</TableCell>
+                  <TableCell className="text-center">
+                    <Badge variant="secondary">{item.receivedQuantity || 0}</Badge>
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <Badge variant={remaining > 0 ? "destructive" : "default"}>{remaining}</Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={remaining}
+                      value={data.quantity || ""}
+                      onChange={(e) => updateItem(item.id, "quantity", Math.min(Number(e.target.value), remaining))}
+                      className="w-20 text-center"
+                      disabled={remaining <= 0}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      value={data.batchNumber}
+                      onChange={(e) => updateItem(item.id, "batchNumber", e.target.value)}
+                      placeholder="Số lô"
+                      className="w-24"
+                      disabled={remaining <= 0}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Select 
+                      value={data.qualityStatus} 
+                      onValueChange={(v) => updateItem(item.id, "qualityStatus", v)}
+                      disabled={remaining <= 0}
+                    >
+                      <SelectTrigger className="w-24">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="good">Đạt</SelectItem>
+                        <SelectItem value="damaged">Hư hỏng</SelectItem>
+                        <SelectItem value="rejected">Từ chối</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      value={data.notes}
+                      onChange={(e) => updateItem(item.id, "notes", e.target.value)}
+                      placeholder="Ghi chú"
+                      className="w-32"
+                      disabled={remaining <= 0}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      size="sm"
+                      disabled={!data.quantity || data.quantity <= 0 || remaining <= 0}
+                      onClick={() => {
+                        onReceive(item.id, data.quantity, data.notes, data.batchNumber, data.qualityStatus);
+                        setReceiveData(prev => {
+                          const newMap = new Map(prev);
+                          newMap.delete(item.id);
+                          return newMap;
+                        });
+                      }}
+                    >
+                      Nhập
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
+      <DialogFooter>
+        <Button variant="outline" onClick={onClose}>Hoàn tất</Button>
+      </DialogFooter>
+    </div>
+  );
+}
+
+
+// Component kiểm kê kho
+function StockCheckTab({ parts }: { parts: any[] }) {
+  const [isCreateCheckOpen, setIsCreateCheckOpen] = useState(false);
+  const [checkType, setCheckType] = useState<"full" | "partial" | "cycle" | "spot">("full");
+  const [checkCategory, setCheckCategory] = useState("");
+  const [checkNotes, setCheckNotes] = useState("");
+  const [selectedCheckId, setSelectedCheckId] = useState<number | null>(null);
+  const [isCheckDetailOpen, setIsCheckDetailOpen] = useState(false);
+
+  const { data: inventoryChecks, refetch: refetchChecks } = trpc.spareParts.listInventoryChecks.useQuery({ limit: 50 });
+  const { data: checkDetail, refetch: refetchCheckDetail } = trpc.spareParts.getInventoryCheck.useQuery(
+    { id: selectedCheckId || 0 },
+    { enabled: !!selectedCheckId }
+  );
+
+  const createCheckMutation = trpc.spareParts.createInventoryCheck.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Đã tạo phiếu kiểm kê ${data.checkNumber}`);
+      refetchChecks();
+      setIsCreateCheckOpen(false);
+      setSelectedCheckId(data.id);
+      setIsCheckDetailOpen(true);
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const updateCheckItemMutation = trpc.spareParts.updateCheckItem.useMutation({
+    onSuccess: () => {
+      toast.success("Đã cập nhật số lượng thực tế");
+      refetchCheckDetail();
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
+  const completeCheckMutation = trpc.spareParts.completeInventoryCheck.useMutation({
+    onSuccess: () => {
+      toast.success("Đã hoàn thành kiểm kê và điều chỉnh tồn kho");
+      refetchChecks();
+      refetchCheckDetail();
+      setIsCheckDetailOpen(false);
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "draft": return <Badge variant="secondary">Nháp</Badge>;
+      case "in_progress": return <Badge variant="default">Đang kiểm</Badge>;
+      case "completed": return <Badge className="bg-green-600">Hoàn thành</Badge>;
+      case "cancelled": return <Badge variant="destructive">Đã hủy</Badge>;
+      default: return <Badge>{status}</Badge>;
+    }
+  };
+
+  const getCheckTypeName = (type: string) => {
+    switch (type) {
+      case "full": return "Toàn bộ";
+      case "partial": return "Một phần";
+      case "cycle": return "Định kỳ";
+      case "spot": return "Đột xuất";
+      default: return type;
+    }
+  };
+
+  // Get unique categories from parts
+  const categories = Array.from(new Set(parts.map(p => p.category).filter(Boolean)));
+
+  return (
+    <>
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <ScanLine className="w-5 h-5" />
+                Kiểm kê kho
+              </CardTitle>
+              <CardDescription>Quản lý và thực hiện kiểm kê tồn kho phụ tùng</CardDescription>
+            </div>
+            <Button onClick={() => setIsCreateCheckOpen(true)}>
+              <Plus className="w-4 h-4 mr-2" />Tạo phiếu kiểm kê
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Số phiếu</TableHead>
+                <TableHead>Loại kiểm kê</TableHead>
+                <TableHead>Trạng thái</TableHead>
+                <TableHead>Ngày kiểm</TableHead>
+                <TableHead>Số mặt hàng</TableHead>
+                <TableHead>Chênh lệch</TableHead>
+                <TableHead>Thao tác</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {inventoryChecks?.map((check) => (
+                <TableRow key={check.id}>
+                  <TableCell className="font-mono font-medium">{check.checkNumber}</TableCell>
+                  <TableCell>{getCheckTypeName(check.checkType)}</TableCell>
+                  <TableCell>{getStatusBadge(check.status || "")}</TableCell>
+                  <TableCell>{new Date(check.checkDate).toLocaleDateString("vi-VN")}</TableCell>
+                  <TableCell className="text-center">{check.totalItems || 0}</TableCell>
+                  <TableCell>
+                    <span className="text-muted-foreground">-</span>
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setSelectedCheckId(check.id);
+                        setIsCheckDetailOpen(true);
+                      }}
+                    >
+                      {check.status === "draft" || check.status === "in_progress" ? "Tiếp tục" : "Xem"}
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {(!inventoryChecks || inventoryChecks.length === 0) && (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    Chưa có phiếu kiểm kê nào
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {/* Dialog tạo phiếu kiểm kê */}
+      <Dialog open={isCreateCheckOpen} onOpenChange={setIsCreateCheckOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Tạo phiếu kiểm kê mới</DialogTitle>
+            <DialogDescription>Chọn loại kiểm kê và phạm vi áp dụng</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label>Loại kiểm kê</Label>
+              <Select value={checkType} onValueChange={(v: any) => setCheckType(v)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="full">Toàn bộ kho</SelectItem>
+                  <SelectItem value="partial">Một phần (theo danh mục)</SelectItem>
+                  <SelectItem value="cycle">Kiểm kê định kỳ</SelectItem>
+                  <SelectItem value="spot">Kiểm kê đột xuất</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {checkType === "partial" && (
+              <div className="space-y-2">
+                <Label>Danh mục</Label>
+                <Select value={checkCategory} onValueChange={setCheckCategory}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Chọn danh mục" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map(cat => (
+                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label>Ghi chú</Label>
+              <Textarea
+                value={checkNotes}
+                onChange={(e) => setCheckNotes(e.target.value)}
+                placeholder="Ghi chú cho phiếu kiểm kê..."
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCreateCheckOpen(false)}>Hủy</Button>
+            <Button onClick={() => createCheckMutation.mutate({
+              checkType,
+              category: checkType === "partial" ? checkCategory : undefined,
+              notes: checkNotes || undefined,
+            })}>
+              Tạo phiếu
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog chi tiết kiểm kê */}
+      <Dialog open={isCheckDetailOpen} onOpenChange={setIsCheckDetailOpen}>
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Phiếu kiểm kê {checkDetail?.checkNumber}
+              <span className="ml-2">{getStatusBadge(checkDetail?.status || "")}</span>
+            </DialogTitle>
+            <DialogDescription>
+              {getCheckTypeName(checkDetail?.checkType || "")} - {checkDetail?.checkDate ? new Date(checkDetail.checkDate).toLocaleDateString("vi-VN") : ""}
+              {checkDetail?.notes && <span className="ml-2">- {checkDetail.notes}</span>}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="border rounded-lg">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Mã PT</TableHead>
+                  <TableHead>Tên phụ tùng</TableHead>
+                  <TableHead className="text-center">Tồn hệ thống</TableHead>
+                  <TableHead className="text-center">Tồn thực tế</TableHead>
+                  <TableHead className="text-center">Chênh lệch</TableHead>
+                  <TableHead>Ghi chú</TableHead>
+                  {(checkDetail?.status === "draft" || checkDetail?.status === "in_progress") && (
+                    <TableHead></TableHead>
+                  )}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {checkDetail?.items?.map((item: any) => {
+                  const discrepancy = (item.actualQuantity || 0) - item.systemQuantity;
+                  return (
+                    <TableRow key={item.id}>
+                      <TableCell className="font-mono text-sm">{item.partNumber}</TableCell>
+                      <TableCell>{item.partName}</TableCell>
+                      <TableCell className="text-center font-medium">{item.systemQuantity}</TableCell>
+                      <TableCell className="text-center">
+                        {(checkDetail?.status === "draft" || checkDetail?.status === "in_progress") ? (
+                          <Input
+                            type="number"
+                            min={0}
+                            value={item.actualQuantity ?? ""}
+                            onChange={(e) => {
+                              const newVal = Number(e.target.value);
+                              updateCheckItemMutation.mutate({
+                                itemId: item.id,
+                                actualQuantity: newVal,
+                              });
+                            }}
+                            className="w-20 text-center"
+                          />
+                        ) : (
+                          <span className="font-medium">{item.actualQuantity ?? "-"}</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {item.actualQuantity !== null && (
+                          <Badge variant={discrepancy === 0 ? "secondary" : discrepancy > 0 ? "default" : "destructive"}>
+                            {discrepancy > 0 ? "+" : ""}{discrepancy}
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="max-w-[150px] truncate text-muted-foreground">
+                        {item.notes || "-"}
+                      </TableCell>
+                      {(checkDetail?.status === "draft" || checkDetail?.status === "in_progress") && (
+                        <TableCell>
+                          <Input
+                            placeholder="Ghi chú"
+                            className="w-32"
+                            defaultValue={item.notes || ""}
+                            onBlur={(e) => {
+                              if (e.target.value !== item.notes) {
+                                updateCheckItemMutation.mutate({
+                                  itemId: item.id,
+                                  actualQuantity: item.actualQuantity ?? item.systemQuantity,
+                                  notes: e.target.value,
+                                });
+                              }
+                            }}
+                          />
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setIsCheckDetailOpen(false)}>Đóng</Button>
+            {(checkDetail?.status === "draft" || checkDetail?.status === "in_progress") && (
+              <>
+                <Button
+                  variant="secondary"
+                  onClick={() => completeCheckMutation.mutate({
+                    checkId: checkDetail.id,
+                    adjustInventory: false,
+                  })}
+                >
+                  Hoàn thành (không điều chỉnh)
+                </Button>
+                <Button
+                  onClick={() => completeCheckMutation.mutate({
+                    checkId: checkDetail.id,
+                    adjustInventory: true,
+                  })}
+                >
+                  Hoàn thành & Điều chỉnh tồn kho
+                </Button>
+              </>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
