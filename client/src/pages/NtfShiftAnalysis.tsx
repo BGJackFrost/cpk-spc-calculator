@@ -9,11 +9,37 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend,
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, LineChart, Line
 } from "recharts";
-import { Clock, Sun, Sunset, Moon, TrendingUp, TrendingDown, Minus, AlertTriangle } from "lucide-react";
+import { Clock, Sun, Sunset, Moon, TrendingUp, TrendingDown, Minus, AlertTriangle, Download, FileSpreadsheet, FileText, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 export default function NtfShiftAnalysis() {
   const [days, setDays] = useState(30);
   const [selectedLine, setSelectedLine] = useState<string>("all");
+
+  const exportMutation = trpc.ntfConfig.exportShiftReport.useMutation({
+    onSuccess: (data) => {
+      if (data) {
+        const blob = new Blob([Uint8Array.from(atob(data.data), c => c.charCodeAt(0))], { type: data.mimeType });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = data.filename;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast.success('Xuất báo cáo thành công!');
+      }
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const handleExport = (format: 'excel' | 'pdf') => {
+    exportMutation.mutate({
+      days,
+      productionLineId: selectedLine !== 'all' ? Number(selectedLine) : undefined,
+      format,
+    });
+  };
 
   const { data: lines } = trpc.productionLine.list.useQuery();
   const { data, isLoading } = trpc.ntfConfig.getShiftAnalysis.useQuery({
@@ -89,6 +115,24 @@ export default function NtfShiftAnalysis() {
             <p className="text-muted-foreground">So sánh NTF rate giữa các ca sáng, chiều, đêm</p>
           </div>
           <div className="flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => handleExport('excel')}
+              disabled={exportMutation.isPending || !data}
+            >
+              {exportMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <FileSpreadsheet className="w-4 h-4 mr-2" />}
+              Excel
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => handleExport('pdf')}
+              disabled={exportMutation.isPending || !data}
+            >
+              {exportMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <FileText className="w-4 h-4 mr-2" />}
+              PDF
+            </Button>
             <Select value={selectedLine} onValueChange={setSelectedLine}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Chọn dây chuyền" />

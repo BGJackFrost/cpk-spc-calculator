@@ -6876,6 +6876,328 @@ Hãy trả về JSON với format:
           })),
         };
       }),
+
+    // Export Shift Report
+    exportShiftReport: protectedProcedure
+      .input(z.object({
+        days: z.number().default(30),
+        productionLineId: z.number().optional(),
+        format: z.enum(['excel', 'pdf']),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
+        }
+        const { getDb } = await import('./db');
+        const { sql } = await import('drizzle-orm');
+        const db = await getDb();
+        if (!db) return null;
+        
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - input.days);
+        
+        let whereClause = `WHERE d.createdAt >= '${startDate.toISOString()}'`;
+        if (input.productionLineId) {
+          whereClause += ` AND d.productionLineId = ${input.productionLineId}`;
+        }
+        
+        // Get shift data
+        const byShiftResult = await db.execute(sql.raw(`
+          SELECT 
+            CASE 
+              WHEN HOUR(d.createdAt) >= 6 AND HOUR(d.createdAt) < 14 THEN 'morning'
+              WHEN HOUR(d.createdAt) >= 14 AND HOUR(d.createdAt) < 22 THEN 'afternoon'
+              ELSE 'night'
+            END as shift,
+            COUNT(*) as total,
+            SUM(CASE WHEN d.verificationStatus = 'ntf' THEN 1 ELSE 0 END) as ntfCount,
+            SUM(CASE WHEN d.verificationStatus = 'real_ng' THEN 1 ELSE 0 END) as realNgCount
+          FROM spc_defect_records d
+          ${whereClause}
+          GROUP BY shift
+        `));
+        
+        const shiftNames: Record<string, string> = {
+          'morning': 'Ca sáng (6h-14h)',
+          'afternoon': 'Ca chiều (14h-22h)',
+          'night': 'Ca đêm (22h-6h)',
+        };
+        
+        const shiftData = ((byShiftResult as unknown as any[])[0] as any[]).map(row => ({
+          shift: row.shift,
+          shiftName: shiftNames[row.shift] || row.shift,
+          total: Number(row.total),
+          ntfCount: Number(row.ntfCount),
+          realNgCount: Number(row.realNgCount),
+          ntfRate: row.total > 0 ? (Number(row.ntfCount) / Number(row.total)) * 100 : 0,
+        }));
+        
+        if (input.format === 'excel') {
+          const ExcelJS = await import('exceljs');
+          const workbook = new ExcelJS.Workbook();
+          const sheet = workbook.addWorksheet('NTF Shift Report');
+          
+          sheet.columns = [
+            { header: 'Ca làm việc', key: 'shiftName', width: 20 },
+            { header: 'Tổng lỗi', key: 'total', width: 12 },
+            { header: 'NTF', key: 'ntfCount', width: 12 },
+            { header: 'Real NG', key: 'realNgCount', width: 12 },
+            { header: 'NTF Rate (%)', key: 'ntfRate', width: 15 },
+          ];
+          
+          shiftData.forEach(row => {
+            sheet.addRow({ ...row, ntfRate: row.ntfRate.toFixed(1) });
+          });
+          
+          // Style header
+          sheet.getRow(1).font = { bold: true };
+          sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
+          
+          const buffer = await workbook.xlsx.writeBuffer();
+          return {
+            data: Buffer.from(buffer as ArrayBuffer).toString('base64'),
+            filename: `ntf_shift_report_${new Date().toISOString().split('T')[0]}.xlsx`,
+            mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          };
+        } else {
+          // PDF format
+          const PDFDocument = (await import('pdfkit')).default;
+          const chunks: Buffer[] = [];
+          const doc = new PDFDocument({ margin: 50 });
+          
+          doc.on('data', (chunk: Buffer) => chunks.push(chunk));
+          
+          // Title
+          doc.fontSize(18).text('BÁO CÁO NTF THEO CA LÀM VIỆC', { align: 'center' });
+          doc.moveDown();
+          doc.fontSize(10).text(`Thời gian: ${input.days} ngày gần nhất`, { align: 'center' });
+          doc.moveDown(2);
+          
+          // Table header
+          const tableTop = doc.y;
+          const colWidths = [120, 80, 80, 80, 100];
+          const headers = ['Ca làm việc', 'Tổng lỗi', 'NTF', 'Real NG', 'NTF Rate (%)'];
+          
+          doc.fontSize(10).font('Helvetica-Bold');
+          let x = 50;
+          headers.forEach((header, i) => {
+            doc.text(header, x, tableTop, { width: colWidths[i], align: 'left' });
+            x += colWidths[i];
+          });
+          
+          doc.moveDown();
+          doc.font('Helvetica');
+          
+          // Table rows
+          shiftData.forEach(row => {
+            const y = doc.y;
+            x = 50;
+            doc.text(row.shiftName, x, y, { width: colWidths[0] }); x += colWidths[0];
+            doc.text(String(row.total), x, y, { width: colWidths[1] }); x += colWidths[1];
+            doc.text(String(row.ntfCount), x, y, { width: colWidths[2] }); x += colWidths[2];
+            doc.text(String(row.realNgCount), x, y, { width: colWidths[3] }); x += colWidths[3];
+            doc.text(row.ntfRate.toFixed(1) + '%', x, y, { width: colWidths[4] });
+            doc.moveDown();
+          });
+          
+          doc.end();
+          
+          await new Promise<void>(resolve => doc.on('end', resolve));
+          const pdfBuffer = Buffer.concat(chunks);
+          
+          return {
+            data: pdfBuffer.toString('base64'),
+            filename: `ntf_shift_report_${new Date().toISOString().split('T')[0]}.pdf`,
+            mimeType: 'application/pdf',
+          };
+        }
+      }),
+    
+    // Product NTF Analysis
+    getProductNtfAnalysis: protectedProcedure
+      .input(z.object({
+        days: z.number().default(30),
+      }))
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
+        }
+        const { getDb } = await import('./db');
+        const { sql } = await import('drizzle-orm');
+        const db = await getDb();
+        if (!db) return null;
+        
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - input.days);
+        
+        // By product
+        const byProductResult = await db.execute(sql.raw(`
+          SELECT 
+            p.id as productId, p.name as productName, p.code as productCode,
+            COUNT(*) as total,
+            SUM(CASE WHEN d.verificationStatus = 'ntf' THEN 1 ELSE 0 END) as ntfCount,
+            SUM(CASE WHEN d.verificationStatus = 'real_ng' THEN 1 ELSE 0 END) as realNgCount
+          FROM spc_defect_records d
+          LEFT JOIN products p ON d.productId = p.id
+          WHERE d.createdAt >= '${startDate.toISOString()}'
+          GROUP BY p.id, p.name, p.code
+          ORDER BY ntfCount DESC
+        `));
+        
+        // Trend by product and date
+        const trendResult = await db.execute(sql.raw(`
+          SELECT 
+            p.id as productId, p.name as productName,
+            DATE(d.createdAt) as date,
+            COUNT(*) as total,
+            SUM(CASE WHEN d.verificationStatus = 'ntf' THEN 1 ELSE 0 END) as ntfCount
+          FROM spc_defect_records d
+          LEFT JOIN products p ON d.productId = p.id
+          WHERE d.createdAt >= '${startDate.toISOString()}'
+          GROUP BY p.id, p.name, DATE(d.createdAt)
+          ORDER BY date ASC
+        `));
+        
+        // Top defect categories by product
+        const categoryResult = await db.execute(sql.raw(`
+          SELECT 
+            p.id as productId, p.name as productName,
+            COALESCE(c.category, 'Unknown') as category,
+            COUNT(*) as count
+          FROM spc_defect_records d
+          LEFT JOIN products p ON d.productId = p.id
+          LEFT JOIN spc_defect_categories c ON d.categoryId = c.id
+          WHERE d.createdAt >= '${startDate.toISOString()}' AND d.verificationStatus = 'ntf'
+          GROUP BY p.id, p.name, c.category
+          ORDER BY count DESC
+        `));
+        
+        const products = ((byProductResult as unknown as any[])[0] as any[]).map(row => ({
+          productId: row.productId,
+          productName: row.productName || 'Không xác định',
+          productCode: row.productCode || '-',
+          total: Number(row.total),
+          ntfCount: Number(row.ntfCount),
+          realNgCount: Number(row.realNgCount),
+          ntfRate: row.total > 0 ? (Number(row.ntfCount) / Number(row.total)) * 100 : 0,
+        }));
+        
+        // Group trend by product
+        const trendByProduct: Record<number, any[]> = {};
+        ((trendResult as unknown as any[])[0] as any[]).forEach(row => {
+          const pid = row.productId || 0;
+          if (!trendByProduct[pid]) trendByProduct[pid] = [];
+          trendByProduct[pid].push({
+            date: row.date,
+            total: Number(row.total),
+            ntfCount: Number(row.ntfCount),
+            ntfRate: row.total > 0 ? (Number(row.ntfCount) / Number(row.total)) * 100 : 0,
+          });
+        });
+        
+        // Group categories by product
+        const categoryByProduct: Record<number, any[]> = {};
+        ((categoryResult as unknown as any[])[0] as any[]).forEach(row => {
+          const pid = row.productId || 0;
+          if (!categoryByProduct[pid]) categoryByProduct[pid] = [];
+          categoryByProduct[pid].push({
+            category: row.category,
+            count: Number(row.count),
+          });
+        });
+        
+        // Summary stats
+        const totalDefects = products.reduce((sum, p) => sum + p.total, 0);
+        const totalNtf = products.reduce((sum, p) => sum + p.ntfCount, 0);
+        const avgNtfRate = totalDefects > 0 ? (totalNtf / totalDefects) * 100 : 0;
+        const worstProduct = products[0];
+        const bestProduct = products.length > 0 ? products.reduce((min, p) => p.ntfRate < min.ntfRate ? p : min, products[0]) : null;
+        
+        return {
+          products,
+          trendByProduct,
+          categoryByProduct,
+          summary: {
+            totalProducts: products.length,
+            totalDefects,
+            totalNtf,
+            avgNtfRate,
+            worstProduct,
+            bestProduct,
+          },
+        };
+      }),
+    
+    // AI Trend Monitor
+    monitorNtfTrend: protectedProcedure
+      .mutation(async ({ ctx }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
+        }
+        const { getDb } = await import('./db');
+        const { sql } = await import('drizzle-orm');
+        const { invokeLLM } = await import('./_core/llm');
+        const db = await getDb();
+        if (!db) return null;
+        
+        // Get last 14 days data
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - 14);
+        
+        const trendResult = await db.execute(sql.raw(`
+          SELECT 
+            DATE(createdAt) as date,
+            COUNT(*) as total,
+            SUM(CASE WHEN verificationStatus = 'ntf' THEN 1 ELSE 0 END) as ntfCount
+          FROM spc_defect_records
+          WHERE createdAt >= '${startDate.toISOString()}'
+          GROUP BY DATE(createdAt)
+          ORDER BY date ASC
+        `));
+        
+        const trendData = ((trendResult as unknown as any[])[0] as any[]).map(row => ({
+          date: row.date,
+          total: Number(row.total),
+          ntfCount: Number(row.ntfCount),
+          ntfRate: row.total > 0 ? (Number(row.ntfCount) / Number(row.total)) * 100 : 0,
+        }));
+        
+        // Simple trend detection
+        const recentRates = trendData.slice(-7).map(d => d.ntfRate);
+        const olderRates = trendData.slice(0, 7).map(d => d.ntfRate);
+        const recentAvg = recentRates.length > 0 ? recentRates.reduce((a, b) => a + b, 0) / recentRates.length : 0;
+        const olderAvg = olderRates.length > 0 ? olderRates.reduce((a, b) => a + b, 0) / olderRates.length : 0;
+        
+        const isAbnormal = recentAvg > olderAvg + 5 || recentAvg > 30;
+        const trend = recentAvg > olderAvg + 2 ? 'increasing' : recentAvg < olderAvg - 2 ? 'decreasing' : 'stable';
+        
+        let aiAnalysis = null;
+        if (isAbnormal) {
+          try {
+            const response = await invokeLLM({
+              messages: [
+                { role: 'system', content: 'Bạn là chuyên gia phân tích chất lượng. Trả về JSON.' },
+                { role: 'user', content: `Phân tích xu hướng NTF bất thường:\n- NTF rate 7 ngày gần: ${recentAvg.toFixed(1)}%\n- NTF rate 7 ngày trước: ${olderAvg.toFixed(1)}%\n- Tăng: ${(recentAvg - olderAvg).toFixed(1)}%\n\nTrả về JSON: {"severity": "low"|"medium"|"high"|"critical", "message": "string", "recommendations": ["string"]}` },
+              ],
+              response_format: { type: 'json_object' },
+            });
+            aiAnalysis = JSON.parse(response.choices[0]?.message?.content || '{}');
+          } catch (e) {
+            console.error('[NTF Monitor] AI error:', e);
+          }
+        }
+        
+        return {
+          isAbnormal,
+          trend,
+          recentAvg,
+          olderAvg,
+          change: recentAvg - olderAvg,
+          aiAnalysis,
+          trendData,
+          checkedAt: new Date().toISOString(),
+        };
+      }),
   }),
 
   // Notification Channels Router

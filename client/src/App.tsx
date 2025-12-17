@@ -113,6 +113,7 @@ import NtfDashboard from "./pages/NtfDashboard";
 import NotificationSettings from "./pages/NotificationSettings";
 import NtfLineDetail from "./pages/NtfLineDetail";
 import NtfShiftAnalysis from "./pages/NtfShiftAnalysis";
+import NtfProductAnalysis from "./pages/NtfProductAnalysis";
 
 function Router() {
   return (
@@ -177,6 +178,7 @@ function Router() {
       <Route path="/notification-settings" component={NotificationSettings} />
       <Route path="/ntf-line/:id" component={NtfLineDetail} />
       <Route path="/ntf-shift-analysis" component={NtfShiftAnalysis} />
+      <Route path="/ntf-product-analysis" component={NtfProductAnalysis} />
       <Route path="/scheduled-reports" component={ScheduledReports} />
       <Route path="/supervisor-dashboard" component={SupervisorDashboard} />
       <Route path="/shift-reports" component={ShiftReportHistory} />

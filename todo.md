@@ -2997,3 +2997,25 @@
 - [x] Biểu đồ so sánh NTF rate giữa ca sáng/chiều/đêm
 - [x] Bảng thống kê chi tiết theo ca
 - [x] Phân tích xu hướng NTF theo thời gian trong ngày
+
+
+## Phase 143 - NTF Export, Real-time AI Alerts & Product Analysis
+
+### Export báo cáo NTF theo ca
+- [x] API exportShiftReport để xuất báo cáo theo ca
+- [x] Export Excel với đầy đủ thống kê theo ca
+- [x] Export PDF với format báo cáo chuyên nghiệp
+- [x] Nút Export trên trang NtfShiftAnalysis
+
+### Thông báo real-time AI
+- [x] API monitorNtfTrend để AI theo dõi xu hướng
+- [x] Scheduled job kiểm tra xu hướng NTF định kỳ
+- [x] Gửi thông báo real-time qua SSE khi phát hiện bất thường
+- [x] Hiển thị cảnh báo AI trên Dashboard
+
+### Dashboard NTF theo sản phẩm
+- [x] API getProductNtfAnalysis để lấy NTF theo sản phẩm
+- [x] Trang NtfProductAnalysis.tsx so sánh các sản phẩm
+- [x] Biểu đồ so sánh NTF rate giữa các sản phẩm
+- [x] Bảng xếp hạng sản phẩm theo NTF rate
+- [x] Drill-down từ sản phẩm xuống chi tiết lỗi
