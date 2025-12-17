@@ -125,7 +125,9 @@
     "ntfComparison": "So sánh NTF",
     "notificationSettings": "Cài đặt Thông báo",
     "ntfShiftAnalysis": "NTF theo Ca",
-    "ntfProductAnalysis": "NTF theo Sản phẩm"
+    "ntfProductAnalysis": "NTF theo Sản phẩm",
+    "ntfSupplierAnalysis": "NTF theo NCC",
+    "ntfEnvironment": "NTF & Môi trường"
   },
   "dashboard": {
     "welcome": "Xin chào",

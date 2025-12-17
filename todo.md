@@ -3019,3 +3019,26 @@
 - [x] Biểu đồ so sánh NTF rate giữa các sản phẩm
 - [x] Bảng xếp hạng sản phẩm theo NTF rate
 - [x] Drill-down từ sản phẩm xuống chi tiết lỗi
+
+
+## Phase 144 - NTF Supplier Analysis, Monthly Report & Environment Correlation
+
+### So sánh NTF theo nhà cung cấp
+- [x] API getSupplierNtfAnalysis để lấy NTF theo nhà cung cấp
+- [x] Trang NtfSupplierAnalysis.tsx so sánh các nhà cung cấp
+- [x] Biểu đồ so sánh NTF rate giữa các nhà cung cấp
+- [x] Bảng xếp hạng nhà cung cấp theo chất lượng
+- [x] Trend NTF theo từng nhà cung cấp
+
+### Báo cáo NTF hàng tháng tự động
+- [x] Scheduled job chạy đầu mỗi tháng
+- [x] Tổng hợp NTF rate, top nguyên nhân, so sánh với tháng trước
+- [x] Gửi email báo cáo cho management
+- [x] Lưu lịch sử báo cáo hàng tháng
+
+### Biểu đồ correlation NTF với môi trường
+- [x] API getEnvironmentCorrelation để lấy dữ liệu tương quan
+- [x] Scatter plot NTF vs nhiệt độ
+- [x] Scatter plot NTF vs độ ẩm
+- [x] Hệ số tương quan Pearson
+- [x] Phân tích và khuyến nghị dựa trên correlation

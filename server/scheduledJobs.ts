@@ -321,6 +321,16 @@ export function initScheduledJobs(): void {
   
   console.log('[ScheduledJob] Scheduled: NTF monthly report at 8:00 AM on 1st (Asia/Ho_Chi_Minh)');
   
+  // NTF monthly management report - runs at 9:00 AM on 1st of each month
+  cron.schedule('0 0 9 1 * *', async () => {
+    console.log('[ScheduledJob] Triggered: NTF monthly management report');
+    await sendNtfMonthlyManagementReport();
+  }, {
+    timezone: 'Asia/Ho_Chi_Minh'
+  });
+  
+  console.log('[ScheduledJob] Scheduled: NTF monthly management report at 9:00 AM on 1st (Asia/Ho_Chi_Minh)');
+  
   jobsInitialized = true;
   console.log('[ScheduledJob] All scheduled jobs initialized successfully');
 }
@@ -1068,4 +1078,314 @@ function getNtfReasonLabel(reason: string): string {
     'other': 'Khác',
   };
   return labels[reason] || reason;
+}
+
+
+/**
+ * Send comprehensive monthly NTF management report
+ * Includes: NTF summary, trend analysis, supplier comparison, product analysis, recommendations
+ */
+async function sendNtfMonthlyManagementReport(): Promise<{ sent: number; failed: number; message: string }> {
+  console.log('[ScheduledJob] Generating monthly NTF management report...');
+  
+  try {
+    const db = await getDb();
+    if (!db) {
+      return { sent: 0, failed: 0, message: 'Database not available' };
+    }
+    
+    // Get last month's date range
+    const now = new Date();
+    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+    const prevMonth = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+    const prevMonthEnd = new Date(now.getFullYear(), now.getMonth() - 1, 0);
+    
+    // Get NTF stats for last month
+    const lastMonthStats = await db.execute(sql.raw(`
+      SELECT 
+        COUNT(*) as total,
+        SUM(CASE WHEN verificationStatus = 'ntf' THEN 1 ELSE 0 END) as ntfCount,
+        SUM(CASE WHEN verificationStatus = 'real_ng' THEN 1 ELSE 0 END) as realNgCount
+      FROM spc_defect_records
+      WHERE createdAt >= '${lastMonth.toISOString()}' AND createdAt <= '${lastMonthEnd.toISOString()}'
+    `));
+    
+    // Get NTF stats for previous month (for comparison)
+    const prevMonthStats = await db.execute(sql.raw(`
+      SELECT 
+        COUNT(*) as total,
+        SUM(CASE WHEN verificationStatus = 'ntf' THEN 1 ELSE 0 END) as ntfCount
+      FROM spc_defect_records
+      WHERE createdAt >= '${prevMonth.toISOString()}' AND createdAt <= '${prevMonthEnd.toISOString()}'
+    `));
+    
+    // Get top NTF reasons
+    const topReasons = await db.execute(sql.raw(`
+      SELECT ntfReason, COUNT(*) as count
+      FROM spc_defect_records
+      WHERE createdAt >= '${lastMonth.toISOString()}' AND createdAt <= '${lastMonthEnd.toISOString()}'
+        AND verificationStatus = 'ntf' AND ntfReason IS NOT NULL
+      GROUP BY ntfReason
+      ORDER BY count DESC
+      LIMIT 5
+    `));
+    
+    // Get top suppliers by NTF
+    const topSuppliers = await db.execute(sql.raw(`
+      SELECT 
+        s.name as supplierName,
+        COUNT(*) as total,
+        SUM(CASE WHEN d.verificationStatus = 'ntf' THEN 1 ELSE 0 END) as ntfCount
+      FROM spc_defect_records d
+      LEFT JOIN materials m ON d.materialId = m.id
+      LEFT JOIN suppliers s ON m.supplierId = s.id
+      WHERE d.createdAt >= '${lastMonth.toISOString()}' AND d.createdAt <= '${lastMonthEnd.toISOString()}'
+      GROUP BY s.id, s.name
+      HAVING total > 0
+      ORDER BY (ntfCount / total) DESC
+      LIMIT 5
+    `));
+    
+    // Get top products by NTF
+    const topProducts = await db.execute(sql.raw(`
+      SELECT 
+        p.name as productName,
+        COUNT(*) as total,
+        SUM(CASE WHEN d.verificationStatus = 'ntf' THEN 1 ELSE 0 END) as ntfCount
+      FROM spc_defect_records d
+      LEFT JOIN products p ON d.productId = p.id
+      WHERE d.createdAt >= '${lastMonth.toISOString()}' AND d.createdAt <= '${lastMonthEnd.toISOString()}'
+      GROUP BY p.id, p.name
+      HAVING total > 0
+      ORDER BY (ntfCount / total) DESC
+      LIMIT 5
+    `));
+    
+    // Get weekly trend
+    const weeklyTrend = await db.execute(sql.raw(`
+      SELECT 
+        WEEK(createdAt) as week,
+        COUNT(*) as total,
+        SUM(CASE WHEN verificationStatus = 'ntf' THEN 1 ELSE 0 END) as ntfCount
+      FROM spc_defect_records
+      WHERE createdAt >= '${lastMonth.toISOString()}' AND createdAt <= '${lastMonthEnd.toISOString()}'
+      GROUP BY WEEK(createdAt)
+      ORDER BY week
+    `));
+    
+    // Get management emails from config
+    const configResult = await db.execute(sql.raw(`
+      SELECT configValue FROM ntf_alert_config WHERE configKey = 'management_emails' LIMIT 1
+    `));
+    
+    const lastStats = ((lastMonthStats as unknown as any[])[0] as any[])[0] || { total: 0, ntfCount: 0, realNgCount: 0 };
+    const prevStats = ((prevMonthStats as unknown as any[])[0] as any[])[0] || { total: 0, ntfCount: 0 };
+    const reasons = ((topReasons as unknown as any[])[0] as any[]) || [];
+    const suppliers = ((topSuppliers as unknown as any[])[0] as any[]) || [];
+    const products = ((topProducts as unknown as any[])[0] as any[]) || [];
+    const trends = ((weeklyTrend as unknown as any[])[0] as any[]) || [];
+    const config = ((configResult as unknown as any[])[0] as any[])[0];
+    
+    const total = Number(lastStats.total);
+    const ntfCount = Number(lastStats.ntfCount);
+    const realNgCount = Number(lastStats.realNgCount);
+    const ntfRate = total > 0 ? (ntfCount / total) * 100 : 0;
+    
+    const prevTotal = Number(prevStats.total);
+    const prevNtfCount = Number(prevStats.ntfCount);
+    const prevNtfRate = prevTotal > 0 ? (prevNtfCount / prevTotal) * 100 : 0;
+    const ntfRateChange = ntfRate - prevNtfRate;
+    
+    // Get management emails
+    let managementEmails: string[] = [];
+    if (config?.configValue) {
+      try {
+        managementEmails = JSON.parse(config.configValue);
+      } catch {}
+    }
+    
+    // Also get from alert emails
+    const alertEmailsResult = await db.execute(sql.raw(`
+      SELECT configValue FROM ntf_alert_config WHERE configKey = 'alert_emails' LIMIT 1
+    `));
+    const alertConfig = ((alertEmailsResult as unknown as any[])[0] as any[])[0];
+    if (alertConfig?.configValue) {
+      try {
+        const alertEmails = JSON.parse(alertConfig.configValue);
+        managementEmails = [...new Set([...managementEmails, ...alertEmails])];
+      } catch {}
+    }
+    
+    if (managementEmails.length === 0) {
+      console.log('[ScheduledJob] No management emails configured for monthly report');
+      return { sent: 0, failed: 0, message: 'No management emails configured' };
+    }
+    
+    const monthName = lastMonth.toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' });
+    
+    // Generate email HTML
+    const emailHtml = `
+      <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; padding: 30px; border-radius: 10px 10px 0 0;">
+          <h1 style="margin: 0;">📊 Báo cáo NTF Tháng ${monthName}</h1>
+          <p style="margin: 10px 0 0 0; opacity: 0.9;">Báo cáo tổng hợp cho ban quản lý</p>
+        </div>
+        
+        <div style="background: #f8fafc; padding: 20px; border: 1px solid #e2e8f0;">
+          <!-- Summary Cards -->
+          <div style="display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 150px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+              <div style="color: #64748b; font-size: 12px;">Tổng lỗi phát hiện</div>
+              <div style="font-size: 24px; font-weight: bold; color: #1e293b;">${total.toLocaleString()}</div>
+            </div>
+            <div style="flex: 1; min-width: 150px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+              <div style="color: #64748b; font-size: 12px;">NTF (Không phải lỗi)</div>
+              <div style="font-size: 24px; font-weight: bold; color: #f59e0b;">${ntfCount.toLocaleString()}</div>
+            </div>
+            <div style="flex: 1; min-width: 150px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+              <div style="color: #64748b; font-size: 12px;">NTF Rate</div>
+              <div style="font-size: 24px; font-weight: bold; color: ${ntfRate >= 30 ? '#dc2626' : ntfRate >= 20 ? '#f59e0b' : '#22c55e'};">${ntfRate.toFixed(1)}%</div>
+              <div style="font-size: 12px; color: ${ntfRateChange > 0 ? '#dc2626' : '#22c55e'};">
+                ${ntfRateChange > 0 ? '↑' : '↓'} ${Math.abs(ntfRateChange).toFixed(1)}% so với tháng trước
+              </div>
+            </div>
+            <div style="flex: 1; min-width: 150px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+              <div style="color: #64748b; font-size: 12px;">Real NG</div>
+              <div style="font-size: 24px; font-weight: bold; color: #dc2626;">${realNgCount.toLocaleString()}</div>
+            </div>
+          </div>
+          
+          <!-- Top NTF Reasons -->
+          ${reasons.length > 0 ? `
+            <div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+              <h3 style="margin: 0 0 15px 0; color: #1e293b;">🔍 Top nguyên nhân NTF</h3>
+              <table style="width: 100%; border-collapse: collapse;">
+                <tr style="background: #f1f5f9;">
+                  <th style="padding: 10px; text-align: left; border-bottom: 1px solid #e2e8f0;">Nguyên nhân</th>
+                  <th style="padding: 10px; text-align: right; border-bottom: 1px solid #e2e8f0;">Số lượng</th>
+                  <th style="padding: 10px; text-align: right; border-bottom: 1px solid #e2e8f0;">Tỷ lệ</th>
+                </tr>
+                ${reasons.map((r: any) => `
+                  <tr>
+                    <td style="padding: 10px; border-bottom: 1px solid #e2e8f0;">${getNtfReasonLabel(r.ntfReason)}</td>
+                    <td style="padding: 10px; text-align: right; border-bottom: 1px solid #e2e8f0;">${Number(r.count).toLocaleString()}</td>
+                    <td style="padding: 10px; text-align: right; border-bottom: 1px solid #e2e8f0;">${ntfCount > 0 ? ((Number(r.count) / ntfCount) * 100).toFixed(1) : 0}%</td>
+                  </tr>
+                `).join('')}
+              </table>
+            </div>
+          ` : ''}
+          
+          <!-- Top Suppliers -->
+          ${suppliers.length > 0 ? `
+            <div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+              <h3 style="margin: 0 0 15px 0; color: #1e293b;">🏭 NTF theo Nhà cung cấp</h3>
+              <table style="width: 100%; border-collapse: collapse;">
+                <tr style="background: #f1f5f9;">
+                  <th style="padding: 10px; text-align: left; border-bottom: 1px solid #e2e8f0;">Nhà cung cấp</th>
+                  <th style="padding: 10px; text-align: right; border-bottom: 1px solid #e2e8f0;">Tổng lỗi</th>
+                  <th style="padding: 10px; text-align: right; border-bottom: 1px solid #e2e8f0;">NTF</th>
+                  <th style="padding: 10px; text-align: right; border-bottom: 1px solid #e2e8f0;">NTF Rate</th>
+                </tr>
+                ${suppliers.map((s: any) => {
+                  const sTotal = Number(s.total);
+                  const sNtf = Number(s.ntfCount);
+                  const sRate = sTotal > 0 ? (sNtf / sTotal) * 100 : 0;
+                  return `
+                    <tr>
+                      <td style="padding: 10px; border-bottom: 1px solid #e2e8f0;">${s.supplierName || 'Không xác định'}</td>
+                      <td style="padding: 10px; text-align: right; border-bottom: 1px solid #e2e8f0;">${sTotal.toLocaleString()}</td>
+                      <td style="padding: 10px; text-align: right; border-bottom: 1px solid #e2e8f0;">${sNtf.toLocaleString()}</td>
+                      <td style="padding: 10px; text-align: right; border-bottom: 1px solid #e2e8f0; color: ${sRate >= 30 ? '#dc2626' : sRate >= 20 ? '#f59e0b' : '#22c55e'}; font-weight: bold;">${sRate.toFixed(1)}%</td>
+                    </tr>
+                  `;
+                }).join('')}
+              </table>
+            </div>
+          ` : ''}
+          
+          <!-- Top Products -->
+          ${products.length > 0 ? `
+            <div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+              <h3 style="margin: 0 0 15px 0; color: #1e293b;">📦 NTF theo Sản phẩm</h3>
+              <table style="width: 100%; border-collapse: collapse;">
+                <tr style="background: #f1f5f9;">
+                  <th style="padding: 10px; text-align: left; border-bottom: 1px solid #e2e8f0;">Sản phẩm</th>
+                  <th style="padding: 10px; text-align: right; border-bottom: 1px solid #e2e8f0;">Tổng lỗi</th>
+                  <th style="padding: 10px; text-align: right; border-bottom: 1px solid #e2e8f0;">NTF</th>
+                  <th style="padding: 10px; text-align: right; border-bottom: 1px solid #e2e8f0;">NTF Rate</th>
+                </tr>
+                ${products.map((p: any) => {
+                  const pTotal = Number(p.total);
+                  const pNtf = Number(p.ntfCount);
+                  const pRate = pTotal > 0 ? (pNtf / pTotal) * 100 : 0;
+                  return `
+                    <tr>
+                      <td style="padding: 10px; border-bottom: 1px solid #e2e8f0;">${p.productName || 'Không xác định'}</td>
+                      <td style="padding: 10px; text-align: right; border-bottom: 1px solid #e2e8f0;">${pTotal.toLocaleString()}</td>
+                      <td style="padding: 10px; text-align: right; border-bottom: 1px solid #e2e8f0;">${pNtf.toLocaleString()}</td>
+                      <td style="padding: 10px; text-align: right; border-bottom: 1px solid #e2e8f0; color: ${pRate >= 30 ? '#dc2626' : pRate >= 20 ? '#f59e0b' : '#22c55e'}; font-weight: bold;">${pRate.toFixed(1)}%</td>
+                    </tr>
+                  `;
+                }).join('')}
+              </table>
+            </div>
+          ` : ''}
+          
+          <!-- Recommendations -->
+          <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+            <h3 style="margin: 0 0 15px 0; color: #1e293b;">💡 Khuyến nghị</h3>
+            <ul style="margin: 0; padding-left: 20px; color: #475569;">
+              ${ntfRate >= 30 ? '<li style="color: #dc2626; margin-bottom: 8px;"><strong>Cảnh báo nghiêm trọng:</strong> NTF rate vượt 30%. Cần rà soát toàn bộ hệ thống phát hiện lỗi.</li>' : ''}
+              ${ntfRateChange > 5 ? '<li style="color: #f59e0b; margin-bottom: 8px;"><strong>Xu hướng tăng:</strong> NTF rate tăng đáng kể so với tháng trước. Cần điều tra nguyên nhân.</li>' : ''}
+              ${suppliers.length > 0 && Number(suppliers[0].ntfCount) / Number(suppliers[0].total) > 0.3 ? `<li style="margin-bottom: 8px;">Nhà cung cấp <strong>${suppliers[0].supplierName}</strong> có NTF rate cao. Cần đánh giá lại chất lượng nguyên vật liệu.</li>` : ''}
+              <li style="margin-bottom: 8px;">Tập trung cải thiện các nguyên nhân NTF hàng đầu để giảm tỷ lệ phát hiện sai.</li>
+              <li style="margin-bottom: 8px;">Xem xét cập nhật tiêu chuẩn kiểm tra cho các sản phẩm có NTF rate cao.</li>
+              <li>Đào tạo định kỳ cho nhân viên về phân loại lỗi chính xác.</li>
+            </ul>
+          </div>
+        </div>
+        
+        <div style="background: #1e293b; color: white; padding: 15px; border-radius: 0 0 10px 10px; text-align: center;">
+          <p style="margin: 0; font-size: 12px; opacity: 0.8;">
+            Báo cáo này được gửi tự động từ hệ thống SPC/CPK Calculator<br>
+            Thời gian tạo: ${new Date().toLocaleString('vi-VN')}
+          </p>
+        </div>
+      </div>
+    `;
+    
+    // Send to management emails
+    let sent = 0;
+    let failed = 0;
+    
+    for (const email of managementEmails) {
+      try {
+        await sendEmail(
+          email,
+          `📊 Báo cáo NTF Tháng ${monthName} - Tổng hợp cho Ban quản lý`,
+          emailHtml
+        );
+        sent++;
+      } catch (err) {
+        console.error(`[ScheduledJob] Failed to send monthly report to ${email}:`, err);
+        failed++;
+      }
+    }
+    
+    console.log(`[ScheduledJob] Monthly NTF management report: sent=${sent}, failed=${failed}`);
+    return { sent, failed, message: `Sent to ${sent} recipients, ${failed} failed` };
+    
+  } catch (error) {
+    console.error('[ScheduledJob] Error generating monthly NTF management report:', error);
+    return { sent: 0, failed: 0, message: 'Error: ' + String(error) };
+  }
+}
+
+/**
+ * Manually trigger monthly NTF management report (for testing)
+ */
+export async function triggerMonthlyNtfManagementReport(): Promise<{ sent: number; failed: number; message: string }> {
+  return await sendNtfMonthlyManagementReport();
 }

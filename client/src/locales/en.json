@@ -125,7 +125,9 @@
     "ntfComparison": "NTF Comparison",
     "notificationSettings": "Notification Settings",
     "ntfShiftAnalysis": "NTF by Shift",
-    "ntfProductAnalysis": "NTF by Product"
+    "ntfProductAnalysis": "NTF by Product",
+    "ntfSupplierAnalysis": "NTF by Supplier",
+    "ntfEnvironment": "NTF & Environment"
   },
   "dashboard": {
     "welcome": "Welcome",
