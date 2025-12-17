@@ -4255,6 +4255,128 @@ export const appRouter = router({
         
         return { success: true };
       }),
+
+    // Get license revenue statistics
+    getRevenue: protectedProcedure.query(async ({ ctx }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+      }
+      
+      const { getDb } = await import("./db");
+      const db = await getDb();
+      if (!db) return { totalVND: 0, totalUSD: 0, totalEUR: 0, byCurrency: {}, byType: {} };
+      
+      const { licenses } = await import("../drizzle/schema");
+      const allLicenses = await db.select().from(licenses);
+      
+      const byCurrency: Record<string, number> = { VND: 0, USD: 0, EUR: 0 };
+      const byType: Record<string, { count: number; revenue: Record<string, number> }> = {
+        trial: { count: 0, revenue: { VND: 0, USD: 0, EUR: 0 } },
+        standard: { count: 0, revenue: { VND: 0, USD: 0, EUR: 0 } },
+        professional: { count: 0, revenue: { VND: 0, USD: 0, EUR: 0 } },
+        enterprise: { count: 0, revenue: { VND: 0, USD: 0, EUR: 0 } }
+      };
+      
+      for (const lic of allLicenses) {
+        const price = Number((lic as any).price) || 0;
+        const currency = (lic as any).currency || "VND";
+        const licType = lic.licenseType || "standard";
+        
+        if (price > 0) {
+          byCurrency[currency] = (byCurrency[currency] || 0) + price;
+          if (byType[licType]) {
+            byType[licType].count++;
+            byType[licType].revenue[currency] = (byType[licType].revenue[currency] || 0) + price;
+          }
+        }
+      }
+      
+      return {
+        totalVND: byCurrency.VND || 0,
+        totalUSD: byCurrency.USD || 0,
+        totalEUR: byCurrency.EUR || 0,
+        byCurrency,
+        byType,
+        totalLicenses: allLicenses.length,
+        paidLicenses: allLicenses.filter(l => Number((l as any).price) > 0).length
+      };
+    }),
+
+    // Get revenue by period (month/quarter/year)
+    getRevenueByPeriod: protectedProcedure
+      .input(z.object({
+        period: z.enum(["month", "quarter", "year"]),
+        year: z.number().optional(),
+        currency: z.string().optional()
+      }))
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        
+        const { getDb } = await import("./db");
+        const db = await getDb();
+        if (!db) return { data: [], summary: {} };
+        
+        const { licenses } = await import("../drizzle/schema");
+        const allLicenses = await db.select().from(licenses);
+        
+        const currentYear = input.year || new Date().getFullYear();
+        const targetCurrency = input.currency || "all";
+        
+        // Group by period
+        const periodData: Record<string, { revenue: Record<string, number>; count: number }> = {};
+        
+        for (const lic of allLicenses) {
+          const price = Number((lic as any).price) || 0;
+          const currency = (lic as any).currency || "VND";
+          const issuedAt = lic.issuedAt ? new Date(lic.issuedAt) : null;
+          
+          if (price <= 0 || !issuedAt) continue;
+          if (targetCurrency !== "all" && currency !== targetCurrency) continue;
+          
+          const licYear = issuedAt.getFullYear();
+          if (licYear !== currentYear) continue;
+          
+          let periodKey = "";
+          if (input.period === "month") {
+            periodKey = `${licYear}-${String(issuedAt.getMonth() + 1).padStart(2, "0")}`;
+          } else if (input.period === "quarter") {
+            const quarter = Math.ceil((issuedAt.getMonth() + 1) / 3);
+            periodKey = `Q${quarter} ${licYear}`;
+          } else {
+            periodKey = String(licYear);
+          }
+          
+          if (!periodData[periodKey]) {
+            periodData[periodKey] = { revenue: { VND: 0, USD: 0, EUR: 0 }, count: 0 };
+          }
+          periodData[periodKey].revenue[currency] = (periodData[periodKey].revenue[currency] || 0) + price;
+          periodData[periodKey].count++;
+        }
+        
+        // Convert to array and sort
+        const data = Object.entries(periodData)
+          .map(([period, stats]) => ({
+            period,
+            ...stats,
+            totalVND: stats.revenue.VND || 0,
+            totalUSD: stats.revenue.USD || 0,
+            totalEUR: stats.revenue.EUR || 0
+          }))
+          .sort((a, b) => a.period.localeCompare(b.period));
+        
+        // Calculate summary
+        const summary = {
+          totalVND: data.reduce((sum, d) => sum + d.totalVND, 0),
+          totalUSD: data.reduce((sum, d) => sum + d.totalUSD, 0),
+          totalEUR: data.reduce((sum, d) => sum + d.totalEUR, 0),
+          totalCount: data.reduce((sum, d) => sum + d.count, 0),
+          avgPerPeriod: data.length > 0 ? data.reduce((sum, d) => sum + d.count, 0) / data.length : 0
+        };
+        
+        return { data, summary, year: currentYear, period: input.period };
+      }),
   }),
   
   // Webhook router

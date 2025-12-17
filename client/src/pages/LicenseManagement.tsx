@@ -36,7 +36,8 @@ import {
   MoreHorizontal,
   Power,
   PowerOff,
-  Trash2
+  Trash2,
+  DollarSign
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -52,6 +53,8 @@ export default function LicenseManagement() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [currencyFilter, setCurrencyFilter] = useState<string>("all");
+  const [priceFilter, setPriceFilter] = useState<string>("all"); // all, free, paid, high
   
   // Dialogs
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -87,11 +90,22 @@ export default function LicenseManagement() {
   const [newFingerprint, setNewFingerprint] = useState("");
   const [transferReason, setTransferReason] = useState("");
   
+  // Revenue filters
+  const [revenuePeriod, setRevenuePeriod] = useState<"month" | "quarter" | "year">("month");
+  const [revenueYear, setRevenueYear] = useState(new Date().getFullYear());
+  const [revenueCurrency, setRevenueCurrency] = useState("all");
+  
   // Queries
   const statisticsQuery = trpc.license.statistics.useQuery();
   const analyticsQuery = trpc.license.getUsageAnalytics.useQuery();
   const licensesQuery = trpc.license.list.useQuery();
   const generatedKeyQuery = trpc.license.generateKey.useQuery();
+  const revenueQuery = trpc.license.getRevenue.useQuery();
+  const revenueByPeriodQuery = trpc.license.getRevenueByPeriod.useQuery({
+    period: revenuePeriod,
+    year: revenueYear,
+    currency: revenueCurrency === "all" ? undefined : revenueCurrency
+  });
   
   // Mutations
   const createMutation = trpc.license.create.useMutation();
@@ -122,7 +136,17 @@ export default function LicenseManagement() {
     
     const matchesType = typeFilter === "all" || lic.licenseType === typeFilter;
     
-    return matchesSearch && matchesStatus && matchesType;
+    const licPrice = Number((lic as any).price) || 0;
+    const licCurrency = (lic as any).currency || "VND";
+    
+    const matchesCurrency = currencyFilter === "all" || licCurrency === currencyFilter;
+    
+    const matchesPrice = priceFilter === "all" ||
+      (priceFilter === "free" && licPrice === 0) ||
+      (priceFilter === "paid" && licPrice > 0) ||
+      (priceFilter === "high" && licPrice >= 10000000); // >= 10M VND or equivalent
+    
+    return matchesSearch && matchesStatus && matchesType && matchesCurrency && matchesPrice;
   });
   
   const handleCreate = async () => {
@@ -559,6 +583,10 @@ export default function LicenseManagement() {
               <TrendingUp className="h-4 w-4 mr-2" />
               Phân tích
             </TabsTrigger>
+            <TabsTrigger value="revenue">
+              <DollarSign className="h-4 w-4 mr-2" />
+              Doanh thu
+            </TabsTrigger>
           </TabsList>
           
           {/* Licenses Tab */}
@@ -677,6 +705,28 @@ export default function LicenseManagement() {
                       <SelectItem value="standard">Standard</SelectItem>
                       <SelectItem value="professional">Professional</SelectItem>
                       <SelectItem value="enterprise">Enterprise</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={currencyFilter} onValueChange={setCurrencyFilter}>
+                    <SelectTrigger className="w-[120px]">
+                      <SelectValue placeholder="Tiền tệ" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tất cả</SelectItem>
+                      <SelectItem value="VND">VND</SelectItem>
+                      <SelectItem value="USD">USD</SelectItem>
+                      <SelectItem value="EUR">EUR</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={priceFilter} onValueChange={setPriceFilter}>
+                    <SelectTrigger className="w-[130px]">
+                      <SelectValue placeholder="Giá" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tất cả</SelectItem>
+                      <SelectItem value="free">Miễn phí</SelectItem>
+                      <SelectItem value="paid">Có giá</SelectItem>
+                      <SelectItem value="high">Cao (≥10M)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -960,6 +1010,215 @@ export default function LicenseManagement() {
                 </div>
               </>
             )}
+          </TabsContent>
+          
+          {/* Revenue Tab */}
+          <TabsContent value="revenue" className="space-y-6">
+            {/* Revenue Summary Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                      <DollarSign className="h-5 w-5 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Tổng VND</p>
+                      <p className="text-2xl font-bold">{(revenueQuery.data?.totalVND || 0).toLocaleString("vi-VN")} ₫</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                      <DollarSign className="h-5 w-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Tổng USD</p>
+                      <p className="text-2xl font-bold">${(revenueQuery.data?.totalUSD || 0).toLocaleString("en-US")}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                      <DollarSign className="h-5 w-5 text-purple-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Tổng EUR</p>
+                      <p className="text-2xl font-bold">€{(revenueQuery.data?.totalEUR || 0).toLocaleString("de-DE")}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
+                      <Package className="h-5 w-5 text-orange-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">License có giá</p>
+                      <p className="text-2xl font-bold">{revenueQuery.data?.paidLicenses || 0} / {revenueQuery.data?.totalLicenses || 0}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+            
+            {/* Revenue by Type */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Doanh thu theo loại License</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {revenueQuery.data?.byType && Object.entries(revenueQuery.data.byType).map(([type, data]: [string, any]) => (
+                      <div key={type} className="p-3 bg-muted/50 rounded-lg">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            {getTypeBadge(type)}
+                            <span className="text-sm text-muted-foreground">({data.count} licenses)</span>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 text-sm">
+                          <div>
+                            <span className="text-muted-foreground">VND: </span>
+                            <span className="font-medium">{(data.revenue?.VND || 0).toLocaleString("vi-VN")}</span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">USD: </span>
+                            <span className="font-medium">${data.revenue?.USD || 0}</span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">EUR: </span>
+                            <span className="font-medium">€{data.revenue?.EUR || 0}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+              
+              {/* Filters */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Báo cáo theo thời gian</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="space-y-2">
+                        <Label>Chu kỳ</Label>
+                        <Select value={revenuePeriod} onValueChange={(v: any) => setRevenuePeriod(v)}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="month">Theo tháng</SelectItem>
+                            <SelectItem value="quarter">Theo quý</SelectItem>
+                            <SelectItem value="year">Theo năm</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Năm</Label>
+                        <Select value={String(revenueYear)} onValueChange={(v) => setRevenueYear(Number(v))}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {[2023, 2024, 2025, 2026].map(y => (
+                              <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Loại tiền</Label>
+                        <Select value={revenueCurrency} onValueChange={setRevenueCurrency}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Tất cả</SelectItem>
+                            <SelectItem value="VND">VND</SelectItem>
+                            <SelectItem value="USD">USD</SelectItem>
+                            <SelectItem value="EUR">EUR</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    
+                    {/* Summary */}
+                    {revenueByPeriodQuery.data?.summary && (
+                      <div className="p-4 bg-primary/5 rounded-lg">
+                        <h4 className="font-medium mb-2">Tổng kết {revenueByPeriodQuery.data.year}</h4>
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          <div>Số license: <span className="font-bold">{revenueByPeriodQuery.data.summary.totalCount}</span></div>
+                          <div>TB/kỳ: <span className="font-bold">{(revenueByPeriodQuery.data.summary.avgPerPeriod || 0).toFixed(1)}</span></div>
+                          <div>VND: <span className="font-bold">{(revenueByPeriodQuery.data.summary.totalVND || 0).toLocaleString("vi-VN")}</span></div>
+                          <div>USD: <span className="font-bold">${revenueByPeriodQuery.data.summary.totalUSD || 0}</span></div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+            
+            {/* Revenue Chart */}
+            <Card>
+              <CardHeader>
+                <CardTitle>
+                  Biểu đồ doanh thu {revenuePeriod === "month" ? "theo tháng" : revenuePeriod === "quarter" ? "theo quý" : "theo năm"} - {revenueYear}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {revenueByPeriodQuery.data?.data && revenueByPeriodQuery.data.data.length > 0 ? (
+                  <div className="space-y-2">
+                    {revenueByPeriodQuery.data.data.map((item: any) => {
+                      const maxRevenue = Math.max(
+                        ...revenueByPeriodQuery.data!.data.map((d: any) => 
+                          Math.max(d.totalVND / 1000000, d.totalUSD * 25, d.totalEUR * 27)
+                        )
+                      ) || 1;
+                      const currentRevenue = Math.max(item.totalVND / 1000000, item.totalUSD * 25, item.totalEUR * 27);
+                      const percentage = (currentRevenue / maxRevenue) * 100;
+                      
+                      return (
+                        <div key={item.period} className="flex items-center gap-4">
+                          <span className="w-24 text-sm text-muted-foreground">{item.period}</span>
+                          <div className="flex-1 h-8 bg-muted rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-end pr-3"
+                              style={{ width: `${Math.max(10, percentage)}%` }}
+                            >
+                              <span className="text-xs text-white font-medium">
+                                {item.count} licenses
+                              </span>
+                            </div>
+                          </div>
+                          <div className="w-40 text-right text-sm">
+                            {item.totalVND > 0 && <span className="text-green-600">{(item.totalVND / 1000000).toFixed(1)}M₫ </span>}
+                            {item.totalUSD > 0 && <span className="text-blue-600">${item.totalUSD} </span>}
+                            {item.totalEUR > 0 && <span className="text-purple-600">€{item.totalEUR}</span>}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground text-center py-8">Chưa có dữ liệu doanh thu trong kỳ này</p>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
         

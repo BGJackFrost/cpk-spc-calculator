@@ -3131,3 +3131,24 @@
 ### Sửa lỗi trang Quản lý Cấu trúc Tổ chức
 - [x] Sửa lỗi tab Nhân viên hiển thị đè lên
 - [x] Sửa lỗi chức năng gán nhân viên báo lỗi
+
+
+## Phase 148 - Doanh thu License
+
+### Tính toán và hiển thị tổng doanh thu
+- [x] API getLicenseRevenue tính tổng doanh thu
+- [x] Hiển thị tổng doanh thu trên trang Thống kê License
+- [x] Phân loại doanh thu theo loại tiền tệ (VND, USD, EUR)
+
+### Bộ lọc giá tiền và loại tiền tệ
+- [x] Thêm bộ lọc theo khoảng giá tiền
+- [x] Thêm bộ lọc theo loại tiền tệ
+- [x] Cập nhật UI danh sách License với bộ lọc mới
+
+### Báo cáo doanh thu theo thời gian
+- [x] API getRevenueByPeriod (tháng/quý/năm)
+- [x] Tab Báo cáo Doanh thu trên trang License
+- [x] Biểu đồ doanh thu theo tháng (Bar Chart)
+- [x] Biểu đồ doanh thu theo quý (Area Chart)
+- [x] Biểu đồ doanh thu theo năm (Line Chart)
+- [x] Bảng thống kê chi tiết doanh thu
