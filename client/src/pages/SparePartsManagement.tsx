@@ -369,8 +369,8 @@ export default function SparePartsManagement() {
         }
         itemsBySupplier.get(supplierId)!.push({
           sparePartId: suggestion.id,
-          quantity: selected.qty,
-          unitPrice: suggestion.unitPrice || 0,
+          quantity: Number(selected.qty),
+          unitPrice: Number(suggestion.unitPrice) || 0,
         });
       }
     });

@@ -372,7 +372,18 @@ export default function MaintenanceSchedule() {
                 </div>
               </div>
             )}
-            <DialogFooter>
+            <DialogFooter className="flex justify-between">
+              <Button 
+                variant="destructive" 
+                onClick={() => {
+                  if (selectedTask && confirm('Bạn có chắc chắn muốn xóa công việc này?')) {
+                    deleteWorkOrderMutation.mutate({ id: selectedTask.id });
+                  }
+                }}
+                disabled={deleteWorkOrderMutation.isPending}
+              >
+                {deleteWorkOrderMutation.isPending ? "Đang xóa..." : "Xóa công việc"}
+              </Button>
               <Button variant="outline" onClick={() => setSelectedTask(null)}>Đóng</Button>
             </DialogFooter>
           </DialogContent>

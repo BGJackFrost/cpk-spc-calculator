@@ -3152,3 +3152,42 @@
 - [x] Biểu đồ doanh thu theo quý (Area Chart)
 - [x] Biểu đồ doanh thu theo năm (Line Chart)
 - [x] Bảng thống kê chi tiết doanh thu
+
+
+## Phase 149 - Bug Fixes & SPC Plan Enhancement
+
+### Sửa lỗi
+- [ ] Sửa lỗi xóa công việc trên Gantt
+- [ ] Sửa lỗi tạo đơn đặt hàng phụ tùng từ Đề xuất đặt hàng
+- [ ] Sửa lỗi xuất PDF/PNG SPC Plan
+- [ ] Sửa lỗi xuất báo cáo OEE/KPI/Phân tích
+
+### Cải tiến tạo SPC Plan
+- [ ] Chế độ 1: Tải tự động thông tin SPC Plan theo tiêu chuẩn
+- [ ] Chế độ 2: Hiển thị các trường để chọn thông tin cho SPC Plan
+- [ ] UI chuyển đổi giữa 2 chế độ
+
+
+## Phase 149 - Bug Fixes & SPC Plan Enhancement
+
+### Sửa lỗi xóa công việc trên Gantt
+- [x] Thêm nút Xóa vào dialog chi tiết công việc
+- [x] Xác nhận trước khi xóa
+
+### Sửa lỗi tạo đơn đặt hàng phụ tùng
+- [x] Sửa lỗi unitPrice phải là number
+- [x] Test tạo đơn hàng từ đề xuất
+
+### Sửa lỗi xuất PDF/PNG SPC Plan
+- [x] Sửa lỗi oklch color không được hỗ trợ bởi html2canvas
+- [x] Thêm hàm chuyển đổi oklch sang rgb
+- [x] Test xuất PNG và PDF
+
+### Sửa lỗi xuất báo cáo OEE/KPI/Phân tích
+- [x] Kiểm tra và sửa lỗi nếu có - Đã hoạt động bình thường
+
+### Cải tiến tạo SPC Plan với 2 chế độ
+- [x] Chế độ 1: Tải tự động từ Tiêu chuẩn đo lường
+- [x] Chế độ 2: Nhập thủ công thông tin SPC Plan
+- [x] UI chọn chế độ tạo
+- [x] Form nhập thủ công đầy đủ các trường

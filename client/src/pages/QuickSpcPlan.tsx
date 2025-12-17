@@ -62,6 +62,7 @@ export default function QuickSpcPlan() {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0, success: 0, failed: 0 });
   const [isCreatingBatch, setIsCreatingBatch] = useState(false);
+  const [createMode, setCreateMode] = useState<"auto" | "manual">("auto"); // Thêm chế độ tạo
   
   // Form state for additional options
   const [formData, setFormData] = useState({
@@ -70,6 +71,28 @@ export default function QuickSpcPlan() {
     isRecurring: true,
     notifyOnViolation: true,
     notifyEmail: "",
+  });
+  
+  // Manual form state for manual mode
+  const [manualFormData, setManualFormData] = useState({
+    name: "",
+    productionLineId: 0,
+    productId: 0,
+    workstationId: 0,
+    machineId: 0,
+    samplingConfigId: 0,
+    measurementName: "",
+    usl: "",
+    lsl: "",
+    target: "",
+    unit: "",
+    sampleSize: 5,
+    sampleFrequency: 60,
+    isRecurring: true,
+    notifyOnViolation: true,
+    notifyEmail: "",
+    enabledSpcRules: [] as number[],
+    enabledCpkRules: [] as number[],
   });
 
   // Fetch data
@@ -177,7 +200,7 @@ export default function QuickSpcPlan() {
     setSelectedStandardIds([]);
   };
 
-  // Handle create SPC Plan
+  // Handle create SPC Plan (Auto mode)
   const handleCreate = () => {
     if (!selectedStandard || !formData.productionLineId) {
       toast.error("Vui lòng chọn đầy đủ thông tin");
@@ -204,6 +227,43 @@ export default function QuickSpcPlan() {
       enabledSpcRules: selectedStandard.appliedSpcRules || "[]",
       enabledCpkRules: selectedStandard.appliedCpkRules || "[]",
       enabledCaRules: selectedStandard.appliedCaRules || "[]",
+    });
+  };
+  
+  // Handle create SPC Plan (Manual mode)
+  const handleManualCreate = () => {
+    if (!manualFormData.name || !manualFormData.productionLineId || !manualFormData.measurementName) {
+      toast.error("Vui lòng nhập đầy đủ thông tin bắt buộc");
+      return;
+    }
+    
+    if (!manualFormData.usl || !manualFormData.lsl) {
+      toast.error("Vui lòng nhập giới hạn USL và LSL");
+      return;
+    }
+
+    const samplingConfig = manualFormData.samplingConfigId 
+      ? samplingConfigs.find((s: any) => s.id === manualFormData.samplingConfigId)
+      : samplingConfigs.find((s: any) => s.name.toLowerCase().includes("default")) || samplingConfigs[0];
+    
+    if (!samplingConfig) {
+      toast.error("Chưa có phương pháp lấy mẫu. Vui lòng tạo phương pháp lấy mẫu trước.");
+      return;
+    }
+
+    createMutation.mutate({
+      name: manualFormData.name,
+      productionLineId: manualFormData.productionLineId,
+      productId: manualFormData.productId || undefined,
+      workstationId: manualFormData.workstationId || undefined,
+      machineId: manualFormData.machineId || undefined,
+      samplingConfigId: samplingConfig.id,
+      isRecurring: manualFormData.isRecurring,
+      notifyOnViolation: manualFormData.notifyOnViolation,
+      notifyEmail: manualFormData.notifyEmail || undefined,
+      enabledSpcRules: JSON.stringify(manualFormData.enabledSpcRules),
+      enabledCpkRules: JSON.stringify(manualFormData.enabledCpkRules),
+      enabledCaRules: "[]",
     });
   };
 
@@ -299,9 +359,49 @@ export default function QuickSpcPlan() {
               Tạo nhanh SPC Plan
             </h1>
             <p className="text-muted-foreground mt-1">
-              Tạo kế hoạch SPC chỉ với 3 bước đơn giản từ Tiêu chuẩn đo lường
+              {createMode === "auto" 
+                ? "Tạo kế hoạch SPC tự động từ Tiêu chuẩn đo lường" 
+                : "Tạo kế hoạch SPC bằng cách nhập thông tin thủ công"}
             </p>
           </div>
+        </div>
+        
+        {/* Mode Selection */}
+        <div className="flex gap-4">
+          <Card 
+            className={`flex-1 cursor-pointer transition-all hover:shadow-md ${createMode === "auto" ? "ring-2 ring-primary bg-primary/5" : ""}`}
+            onClick={() => { setCreateMode("auto"); setStep(1); }}
+          >
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${createMode === "auto" ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
+                  <Zap className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="font-semibold">Tải tự động từ Tiêu chuẩn</h3>
+                  <p className="text-sm text-muted-foreground">Chọn tiêu chuẩn đo lường đã cấu hình sẵn</p>
+                </div>
+                {createMode === "auto" && <CheckCircle className="h-5 w-5 text-primary ml-auto" />}
+              </div>
+            </CardContent>
+          </Card>
+          <Card 
+            className={`flex-1 cursor-pointer transition-all hover:shadow-md ${createMode === "manual" ? "ring-2 ring-primary bg-primary/5" : ""}`}
+            onClick={() => { setCreateMode("manual"); setStep(1); }}
+          >
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${createMode === "manual" ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
+                  <Cog className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="font-semibold">Nhập thủ công</h3>
+                  <p className="text-sm text-muted-foreground">Tự nhập thông tin cho SPC Plan</p>
+                </div>
+                {createMode === "manual" && <CheckCircle className="h-5 w-5 text-primary ml-auto" />}
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Progress Steps */}
@@ -328,8 +428,8 @@ export default function QuickSpcPlan() {
           </div>
         </div>
 
-        {/* Step 1: Select Measurement Standard */}
-        {step === 1 && (
+        {/* Step 1: Select Measurement Standard (Auto Mode) */}
+        {step === 1 && createMode === "auto" && (
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -468,8 +568,8 @@ export default function QuickSpcPlan() {
           </Card>
         )}
 
-        {/* Step 2: Review Information */}
-        {step === 2 && selectedStandard && (
+        {/* Step 2: Review Information (Auto Mode) */}
+        {step === 2 && createMode === "auto" && selectedStandard && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -564,8 +664,8 @@ export default function QuickSpcPlan() {
           </Card>
         )}
 
-        {/* Step 3: Final Configuration */}
-        {step === 3 && (selectedStandard || (isBatchMode && selectedStandardIds.length > 0)) && (
+        {/* Step 3: Final Configuration (Auto Mode) */}
+        {step === 3 && createMode === "auto" && (selectedStandard || (isBatchMode && selectedStandardIds.length > 0)) && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -703,6 +803,353 @@ export default function QuickSpcPlan() {
                     <>
                       <CheckCircle className="h-4 w-4 mr-2" />
                       {isBatchMode ? `Tạo ${selectedStandardIds.length} kế hoạch SPC` : "Tạo kế hoạch SPC"}
+                    </>
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        
+        {/* Manual Mode Form */}
+        {createMode === "manual" && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Cog className="h-5 w-5" />
+                Nhập thông tin SPC Plan thủ công
+              </CardTitle>
+              <CardDescription>
+                Điền đầy đủ thông tin để tạo kế hoạch SPC mới
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Basic Info */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Tên kế hoạch SPC *</Label>
+                  <Input
+                    value={manualFormData.name}
+                    onChange={(e) => setManualFormData({ ...manualFormData, name: e.target.value })}
+                    placeholder="VD: SPC Plan - Đường kính trục"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Tên phép đo *</Label>
+                  <Input
+                    value={manualFormData.measurementName}
+                    onChange={(e) => setManualFormData({ ...manualFormData, measurementName: e.target.value })}
+                    placeholder="VD: Đường kính trục chính"
+                  />
+                </div>
+              </div>
+              
+              {/* Selection fields */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="space-y-2">
+                  <Label>Dây chuyền sản xuất *</Label>
+                  <Select
+                    value={manualFormData.productionLineId.toString()}
+                    onValueChange={(v) => setManualFormData({ ...manualFormData, productionLineId: parseInt(v) })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Chọn dây chuyền" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {productionLines.map((line: any) => (
+                        <SelectItem key={line.id} value={line.id.toString()}>
+                          <div className="flex items-center gap-2">
+                            <Factory className="h-4 w-4" />
+                            {line.name}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Sản phẩm</Label>
+                  <Select
+                    value={manualFormData.productId.toString()}
+                    onValueChange={(v) => setManualFormData({ ...manualFormData, productId: parseInt(v) })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Chọn sản phẩm" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="0">-- Không chọn --</SelectItem>
+                      {products.map((p: any) => (
+                        <SelectItem key={p.id} value={p.id.toString()}>
+                          <div className="flex items-center gap-2">
+                            <Package className="h-4 w-4" />
+                            {p.name}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Công trạm</Label>
+                  <Select
+                    value={manualFormData.workstationId.toString()}
+                    onValueChange={(v) => setManualFormData({ ...manualFormData, workstationId: parseInt(v) })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Chọn công trạm" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="0">-- Không chọn --</SelectItem>
+                      {workstations.map((w: any) => (
+                        <SelectItem key={w.id} value={w.id.toString()}>
+                          <div className="flex items-center gap-2">
+                            <Cog className="h-4 w-4" />
+                            {w.name}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Máy</Label>
+                  <Select
+                    value={manualFormData.machineId.toString()}
+                    onValueChange={(v) => setManualFormData({ ...manualFormData, machineId: parseInt(v) })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Chọn máy" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="0">-- Không chọn --</SelectItem>
+                      {machines.map((m: any) => (
+                        <SelectItem key={m.id} value={m.id.toString()}>
+                          <div className="flex items-center gap-2">
+                            <Cpu className="h-4 w-4" />
+                            {m.name}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              {/* Specification Limits */}
+              <div className="border rounded-lg p-4">
+                <h4 className="font-medium flex items-center gap-2 mb-4">
+                  <Target className="h-4 w-4" />
+                  Giới hạn kỹ thuật (Specification Limits)
+                </h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="space-y-2">
+                    <Label>USL (Giới hạn trên) *</Label>
+                    <Input
+                      type="number"
+                      step="0.001"
+                      value={manualFormData.usl}
+                      onChange={(e) => setManualFormData({ ...manualFormData, usl: e.target.value })}
+                      placeholder="VD: 10.05"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>LSL (Giới hạn dưới) *</Label>
+                    <Input
+                      type="number"
+                      step="0.001"
+                      value={manualFormData.lsl}
+                      onChange={(e) => setManualFormData({ ...manualFormData, lsl: e.target.value })}
+                      placeholder="VD: 9.95"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Target (Mục tiêu)</Label>
+                    <Input
+                      type="number"
+                      step="0.001"
+                      value={manualFormData.target}
+                      onChange={(e) => setManualFormData({ ...manualFormData, target: e.target.value })}
+                      placeholder="VD: 10.00"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Đơn vị</Label>
+                    <Input
+                      value={manualFormData.unit}
+                      onChange={(e) => setManualFormData({ ...manualFormData, unit: e.target.value })}
+                      placeholder="VD: mm"
+                    />
+                  </div>
+                </div>
+              </div>
+              
+              {/* Sampling Config */}
+              <div className="border rounded-lg p-4">
+                <h4 className="font-medium flex items-center gap-2 mb-4">
+                  <Clock className="h-4 w-4" />
+                  Cấu hình lấy mẫu
+                </h4>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label>Phương pháp lấy mẫu</Label>
+                    <Select
+                      value={manualFormData.samplingConfigId.toString()}
+                      onValueChange={(v) => setManualFormData({ ...manualFormData, samplingConfigId: parseInt(v) })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Chọn phương pháp" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="0">-- Mặc định --</SelectItem>
+                        {samplingConfigs.map((s: any) => (
+                          <SelectItem key={s.id} value={s.id.toString()}>
+                            {s.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Kích thước mẫu</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      value={manualFormData.sampleSize}
+                      onChange={(e) => setManualFormData({ ...manualFormData, sampleSize: parseInt(e.target.value) || 5 })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Tần suất (phút)</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      value={manualFormData.sampleFrequency}
+                      onChange={(e) => setManualFormData({ ...manualFormData, sampleFrequency: parseInt(e.target.value) || 60 })}
+                    />
+                  </div>
+                </div>
+              </div>
+              
+              {/* Rules Selection */}
+              <div className="border rounded-lg p-4">
+                <h4 className="font-medium flex items-center gap-2 mb-4">
+                  <Zap className="h-4 w-4" />
+                  Chọn Rules áp dụng
+                </h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="mb-2 block">SPC Rules</Label>
+                    <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+                      {spcRules.map((rule: any) => (
+                        <Badge
+                          key={rule.id}
+                          variant={manualFormData.enabledSpcRules.includes(rule.id) ? "default" : "outline"}
+                          className="cursor-pointer"
+                          onClick={() => {
+                            setManualFormData(prev => ({
+                              ...prev,
+                              enabledSpcRules: prev.enabledSpcRules.includes(rule.id)
+                                ? prev.enabledSpcRules.filter(id => id !== rule.id)
+                                : [...prev.enabledSpcRules, rule.id]
+                            }));
+                          }}
+                        >
+                          {rule.code}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="mb-2 block">CPK Rules</Label>
+                    <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+                      {cpkRules.map((rule: any) => (
+                        <Badge
+                          key={rule.id}
+                          variant={manualFormData.enabledCpkRules.includes(rule.id) ? "default" : "outline"}
+                          className="cursor-pointer"
+                          onClick={() => {
+                            setManualFormData(prev => ({
+                              ...prev,
+                              enabledCpkRules: prev.enabledCpkRules.includes(rule.id)
+                                ? prev.enabledCpkRules.filter(id => id !== rule.id)
+                                : [...prev.enabledCpkRules, rule.id]
+                            }));
+                          }}
+                        >
+                          {rule.code}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Notification Options */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                  <div className="space-y-0.5">
+                    <Label>Lặp lại tự động</Label>
+                    <p className="text-xs text-muted-foreground">Chạy kế hoạch theo chu kỳ</p>
+                  </div>
+                  <Switch
+                    checked={manualFormData.isRecurring}
+                    onCheckedChange={(v) => setManualFormData({ ...manualFormData, isRecurring: v })}
+                  />
+                </div>
+                <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                  <div className="space-y-0.5">
+                    <Label>Thông báo khi vi phạm</Label>
+                    <p className="text-xs text-muted-foreground">Gửi email khi phát hiện lỗi SPC</p>
+                  </div>
+                  <Switch
+                    checked={manualFormData.notifyOnViolation}
+                    onCheckedChange={(v) => setManualFormData({ ...manualFormData, notifyOnViolation: v })}
+                  />
+                </div>
+              </div>
+              
+              {manualFormData.notifyOnViolation && (
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <Mail className="h-4 w-4" />
+                    Email nhận thông báo
+                  </Label>
+                  <Input
+                    type="email"
+                    value={manualFormData.notifyEmail}
+                    onChange={(e) => setManualFormData({ ...manualFormData, notifyEmail: e.target.value })}
+                    placeholder="email@example.com"
+                  />
+                </div>
+              )}
+              
+              {/* Summary */}
+              <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                <h4 className="font-medium text-blue-800 dark:text-blue-200 mb-2">Tóm tắt thông tin</h4>
+                <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-1">
+                  <li>• Tên: {manualFormData.name || "Chưa nhập"}</li>
+                  <li>• Phép đo: {manualFormData.measurementName || "Chưa nhập"}</li>
+                  <li>• Giới hạn: {manualFormData.lsl || "?"} - {manualFormData.usl || "?"} {manualFormData.unit}</li>
+                  <li>• Dây chuyền: {productionLines.find((l: any) => l.id === manualFormData.productionLineId)?.name || "Chưa chọn"}</li>
+                  <li>• SPC Rules: {manualFormData.enabledSpcRules.length} rules</li>
+                  <li>• CPK Rules: {manualFormData.enabledCpkRules.length} rules</li>
+                </ul>
+              </div>
+              
+              <div className="flex justify-end">
+                <Button
+                  onClick={handleManualCreate}
+                  disabled={createMutation.isPending}
+                >
+                  {createMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Đang tạo...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      Tạo kế hoạch SPC
                     </>
                   )}
                 </Button>

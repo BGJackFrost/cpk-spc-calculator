@@ -118,6 +118,70 @@ export default function SpcPlanVisualization() {
     }
   );
 
+  // Helper function to convert oklch to hex
+  const convertOklchToHex = (element: HTMLElement) => {
+    const computedStyle = window.getComputedStyle(element);
+    const allElements = element.querySelectorAll('*');
+    
+    // Store original styles
+    const originalStyles: Map<Element, { bg: string; color: string; border: string }> = new Map();
+    
+    const convertColor = (color: string): string => {
+      if (color.includes('oklch')) {
+        // Create a temporary element to compute the color
+        const temp = document.createElement('div');
+        temp.style.color = color;
+        document.body.appendChild(temp);
+        const computed = window.getComputedStyle(temp).color;
+        document.body.removeChild(temp);
+        return computed;
+      }
+      return color;
+    };
+    
+    // Convert element itself
+    const bgColor = computedStyle.backgroundColor;
+    const textColor = computedStyle.color;
+    if (bgColor.includes('oklch') || textColor.includes('oklch')) {
+      originalStyles.set(element, { 
+        bg: element.style.backgroundColor, 
+        color: element.style.color,
+        border: element.style.borderColor
+      });
+      if (bgColor.includes('oklch')) element.style.backgroundColor = convertColor(bgColor);
+      if (textColor.includes('oklch')) element.style.color = convertColor(textColor);
+    }
+    
+    // Convert all child elements
+    allElements.forEach((el) => {
+      const style = window.getComputedStyle(el);
+      const bg = style.backgroundColor;
+      const color = style.color;
+      const border = style.borderColor;
+      
+      if (bg.includes('oklch') || color.includes('oklch') || border.includes('oklch')) {
+        originalStyles.set(el, { 
+          bg: (el as HTMLElement).style.backgroundColor, 
+          color: (el as HTMLElement).style.color,
+          border: (el as HTMLElement).style.borderColor
+        });
+        if (bg.includes('oklch')) (el as HTMLElement).style.backgroundColor = convertColor(bg);
+        if (color.includes('oklch')) (el as HTMLElement).style.color = convertColor(color);
+        if (border.includes('oklch')) (el as HTMLElement).style.borderColor = convertColor(border);
+      }
+    });
+    
+    return originalStyles;
+  };
+  
+  const restoreStyles = (element: HTMLElement, originalStyles: Map<Element, { bg: string; color: string; border: string }>) => {
+    originalStyles.forEach((styles, el) => {
+      (el as HTMLElement).style.backgroundColor = styles.bg;
+      (el as HTMLElement).style.color = styles.color;
+      (el as HTMLElement).style.borderColor = styles.border;
+    });
+  };
+
   // Export functions
   const handleExportPNG = async () => {
     try {
@@ -135,6 +199,9 @@ export default function SpcPlanVisualization() {
         return;
       }
       
+      // Convert oklch colors to rgb before capturing
+      const originalStyles = convertOklchToHex(element);
+      
       const html2canvas = (await import('html2canvas')).default;
       const canvas = await html2canvas(element, {
         backgroundColor: '#ffffff',
@@ -145,12 +212,22 @@ export default function SpcPlanVisualization() {
         foreignObjectRendering: false,
         windowWidth: element.scrollWidth,
         windowHeight: element.scrollHeight,
+        onclone: (clonedDoc) => {
+          // Also convert colors in cloned document
+          const clonedElement = clonedDoc.getElementById('spc-visualization-content');
+          if (clonedElement) {
+            convertOklchToHex(clonedElement);
+          }
+        }
       });
       
       if (!canvas || canvas.width === 0 || canvas.height === 0) {
         toast.error("Không thể tạo hình ảnh. Vui lòng thử lại.");
         return;
       }
+      
+      // Restore original styles
+      restoreStyles(element, originalStyles);
       
       const link = document.createElement('a');
       link.download = `spc-visualization-${new Date().toISOString().split('T')[0]}.png`;
@@ -174,6 +251,9 @@ export default function SpcPlanVisualization() {
         return;
       }
       
+      // Convert oklch colors to rgb before capturing
+      const originalStyles = convertOklchToHex(element);
+      
       // Ensure element is visible and has content
       if (element.offsetHeight === 0 || element.offsetWidth === 0) {
         toast.error("Nội dung chưa sẵn sàng. Vui lòng thử lại.");
@@ -192,7 +272,16 @@ export default function SpcPlanVisualization() {
         foreignObjectRendering: false,
         windowWidth: element.scrollWidth,
         windowHeight: element.scrollHeight,
+        onclone: (clonedDoc) => {
+          const clonedElement = clonedDoc.getElementById('spc-visualization-content');
+          if (clonedElement) {
+            convertOklchToHex(clonedElement);
+          }
+        }
       });
+      
+      // Restore original styles
+      restoreStyles(element, originalStyles);
       
       if (!canvas || canvas.width === 0 || canvas.height === 0) {
         toast.error("Không thể tạo hình ảnh. Vui lòng thử lại.");
