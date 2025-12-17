@@ -3109,3 +3109,25 @@
 - [x] Auto-load USL/LSL theo tiêu chuẩn
 - [x] Auto-load SPC Rules theo tiêu chuẩn
 - [x] Auto-load CPK/CA Rules theo tiêu chuẩn
+
+
+## Phase 147 - Bug Fixes & Enhancements
+
+### Rà soát 8 tính năng Phase 146
+- [x] Kiểm tra Multi-year NTF comparison trên CEO Dashboard
+- [x] Kiểm tra Gửi PowerPoint tự động qua email
+- [x] Kiểm tra Dashboard NTF theo bộ phận
+- [x] Kiểm tra Sửa lỗi xóa công việc Gantt
+- [x] Kiểm tra Nâng cấp Đề xuất đặt hàng phụ tùng
+- [x] Kiểm tra Sửa lỗi xuất PDF/PNG
+- [x] Kiểm tra Tải tự động thông tin SPC Plan
+
+### Thêm trường giá tiền License
+- [x] Thêm trường price vào bảng licenses
+- [x] Cập nhật API create/update license với price
+- [x] Cập nhật UI quản lý license với cột giá tiền
+- [ ] Tính toán doanh thu dựa trên giá license
+
+### Sửa lỗi trang Quản lý Cấu trúc Tổ chức
+- [x] Sửa lỗi tab Nhân viên hiển thị đè lên
+- [x] Sửa lỗi chức năng gán nhân viên báo lỗi

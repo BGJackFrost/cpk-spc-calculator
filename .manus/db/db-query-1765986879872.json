@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE licenses ADD COLUMN price DECIMAL(15, 2) NULL, ADD COLUMN currency VARCHAR(3) DEFAULT 'VND';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute ALTER TABLE licenses ADD COLUMN price DECIMAL(15, 2) NULL, ADD COLUMN currency VARCHAR(3) DEFAULT 'VND';",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 2691
+}

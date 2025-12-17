@@ -68,7 +68,9 @@ export default function LicenseManagement() {
     maxUsers: 10,
     maxProductionLines: 5,
     maxSpcPlans: 20,
-    durationDays: 365
+    durationDays: 365,
+    price: 0,
+    currency: "VND"
   });
   
   // Bulk create form
@@ -136,7 +138,9 @@ export default function LicenseManagement() {
         maxUsers: newLicense.maxUsers,
         maxProductionLines: newLicense.maxProductionLines,
         maxSpcPlans: newLicense.maxSpcPlans,
-        expiresAt
+        expiresAt,
+        price: newLicense.price || undefined,
+        currency: newLicense.currency || "VND"
       });
       
       toast.success(`Đã tạo license: ${result.licenseKey}`);
@@ -148,7 +152,9 @@ export default function LicenseManagement() {
         maxUsers: 10,
         maxProductionLines: 5,
         maxSpcPlans: 20,
-        durationDays: 365
+        durationDays: 365,
+        price: 0,
+        currency: "VND"
       });
       licensesQuery.refetch();
       statisticsQuery.refetch();
@@ -498,6 +504,34 @@ export default function LicenseManagement() {
                       onChange={(e) => setNewLicense({...newLicense, durationDays: parseInt(e.target.value) || 365})}
                     />
                   </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-2">
+                      <Label>Giá tiền</Label>
+                      <Input 
+                        type="number"
+                        min={0}
+                        value={newLicense.price}
+                        onChange={(e) => setNewLicense({...newLicense, price: parseFloat(e.target.value) || 0})}
+                        placeholder="0"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Loại tiền</Label>
+                      <Select 
+                        value={newLicense.currency}
+                        onValueChange={(v) => setNewLicense({...newLicense, currency: v})}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="VND">VND</SelectItem>
+                          <SelectItem value="USD">USD</SelectItem>
+                          <SelectItem value="EUR">EUR</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
                 </div>
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>Hủy</Button>
@@ -661,13 +695,14 @@ export default function LicenseManagement() {
                       <TableHead>Trạng thái</TableHead>
                       <TableHead>Hết hạn</TableHead>
                       <TableHead>Giới hạn</TableHead>
+                      <TableHead className="text-right">Giá tiền</TableHead>
                       <TableHead className="text-right">Thao tác</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredLicenses.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                        <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                           Không tìm thấy license nào
                         </TableCell>
                       </TableRow>
@@ -718,6 +753,15 @@ export default function LicenseManagement() {
                                   {lic.maxProductionLines === -1 ? "∞" : lic.maxProductionLines}
                                 </div>
                               </div>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {(lic as any).price ? (
+                                <span className="font-medium">
+                                  {Number((lic as any).price).toLocaleString("vi-VN")} {(lic as any).currency || "VND"}
+                                </span>
+                              ) : (
+                                <span className="text-muted-foreground">-</span>
+                              )}
                             </TableCell>
                             <TableCell className="text-right">
                               <DropdownMenu>

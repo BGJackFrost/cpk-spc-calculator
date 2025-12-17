@@ -371,19 +371,20 @@ export default function OrganizationManagement() {
   };
 
   const handleSaveEmployee = () => {
-    if (!employeeForm.userId) {
+    if (!employeeForm.userId || employeeForm.userId === "__none__") {
       toast.error("Vui lòng chọn nhân viên");
       return;
     }
+    const parseValue = (val: string) => (val && val !== "__none__") ? Number(val) : undefined;
     upsertEmployeeMutation.mutate({
       userId: Number(employeeForm.userId),
       userType: employeeForm.userType as "manus" | "local",
       employeeCode: employeeForm.employeeCode || undefined,
-      companyId: employeeForm.companyId ? Number(employeeForm.companyId) : undefined,
-      departmentId: employeeForm.departmentId ? Number(employeeForm.departmentId) : undefined,
-      teamId: employeeForm.teamId ? Number(employeeForm.teamId) : undefined,
-      positionId: employeeForm.positionId ? Number(employeeForm.positionId) : undefined,
-      managerId: employeeForm.managerId ? Number(employeeForm.managerId) : undefined,
+      companyId: parseValue(employeeForm.companyId),
+      departmentId: parseValue(employeeForm.departmentId),
+      teamId: parseValue(employeeForm.teamId),
+      positionId: parseValue(employeeForm.positionId),
+      managerId: parseValue(employeeForm.managerId),
       phone: employeeForm.phone || undefined,
       address: employeeForm.address || undefined,
     });
@@ -449,7 +450,7 @@ export default function OrganizationManagement() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="companies">
               <Building2 className="h-4 w-4 mr-2" />
               Công ty
@@ -1156,7 +1157,7 @@ export default function OrganizationManagement() {
                       <SelectValue placeholder="Chọn công ty" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">-- Không chọn --</SelectItem>
+                      <SelectItem value="__none__">-- Không chọn --</SelectItem>
                       {companies?.map((c: Company) => (
                         <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
                       ))}
@@ -1170,7 +1171,7 @@ export default function OrganizationManagement() {
                       <SelectValue placeholder="Chọn phòng ban" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">-- Không chọn --</SelectItem>
+                      <SelectItem value="__none__">-- Không chọn --</SelectItem>
                       {departments?.filter((d: Department) => d.companyId === Number(employeeForm.companyId)).map((d: Department) => (
                         <SelectItem key={d.id} value={String(d.id)}>{d.name}</SelectItem>
                       ))}
@@ -1186,7 +1187,7 @@ export default function OrganizationManagement() {
                       <SelectValue placeholder="Chọn nhóm" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">-- Không chọn --</SelectItem>
+                      <SelectItem value="__none__">-- Không chọn --</SelectItem>
                       {teams?.filter((t: Team) => t.departmentId === Number(employeeForm.departmentId)).map((t: Team) => (
                         <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>
                       ))}
@@ -1200,7 +1201,7 @@ export default function OrganizationManagement() {
                       <SelectValue placeholder="Chọn chức vụ" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">-- Không chọn --</SelectItem>
+                      <SelectItem value="__none__">-- Không chọn --</SelectItem>
                       {positions?.map((p: Position) => (
                         <SelectItem key={p.id} value={String(p.id)}>{p.name} (Cấp {p.level})</SelectItem>
                       ))}
@@ -1215,7 +1216,7 @@ export default function OrganizationManagement() {
                     <SelectValue placeholder="Chọn quản lý" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">-- Không có --</SelectItem>
+                    <SelectItem value="__none__">-- Không có --</SelectItem>
                     {(users as User[] | undefined)?.filter((u: User) => String(u.id) !== employeeForm.userId).map((u: User) => (
                       <SelectItem key={u.id} value={String(u.id)}>{u.name}</SelectItem>
                     ))}

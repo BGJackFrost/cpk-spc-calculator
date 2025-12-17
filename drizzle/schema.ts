@@ -1279,6 +1279,8 @@ export const licenses = mysqlTable("licenses", {
   offlineLicenseFile: text("offlineLicenseFile"), // Base64 encoded offline license
   activationMode: mysqlEnum("activationMode", ["online", "offline", "hybrid"]).default("online"),
   lastValidatedAt: timestamp("lastValidatedAt"), // Last online validation
+  price: decimal("price", { precision: 15, scale: 2 }), // Giá tiền license (VND)
+  currency: varchar("currency", { length: 3 }).default("VND"), // Mã tiền tệ
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

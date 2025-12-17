@@ -13,7 +13,8 @@ import {
   text, 
   timestamp, 
   mysqlEnum,
-  bigint
+  bigint,
+  decimal
 } from "drizzle-orm/mysql-core";
 import { eq, and, gte, lte, desc, sql } from "drizzle-orm";
 
@@ -34,6 +35,8 @@ export const licenseServerLicenses = mysqlTable("licenses", {
   isRevoked: int("is_revoked").notNull().default(0),
   revokeReason: text("revoke_reason"),
   notes: text("notes"),
+  price: decimal("price", { precision: 15, scale: 2 }), // Giá tiền license
+  currency: varchar("currency", { length: 3 }).default("VND"), // Mã tiền tệ
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
 });
@@ -599,6 +602,8 @@ export async function createLicenseInServer(data: {
   features?: string;
   expiresAt?: Date;
   notes?: string;
+  price?: number;
+  currency?: string;
 }): Promise<{ success: boolean; id?: number; error?: string }> {
   const db = getLicenseDb();
   if (!db) {

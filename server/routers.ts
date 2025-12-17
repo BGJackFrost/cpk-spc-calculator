@@ -5084,7 +5084,9 @@ export const appRouter = router({
         maxDevices: z.number().optional(),
         features: z.string().optional(),
         expiresAt: z.date().optional(),
-        notes: z.string().optional()
+        notes: z.string().optional(),
+        price: z.number().optional(), // Giá tiền license
+        currency: z.string().optional().default("VND") // Mã tiền tệ
       }))
       .mutation(async ({ input }) => {
         const { createLicenseInServer, isLicenseDbConnected } = await import("./licenseServerDb");
