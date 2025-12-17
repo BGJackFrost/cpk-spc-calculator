@@ -2873,3 +2873,57 @@
 - [x] Highlight màu đỏ khi NTF rate >= 30%
 - [x] Link đến trang Quản lý lỗi khi click
 - [x] Thêm vào dropdown tùy chỉnh widgets
+
+
+## Phase 139: NTF Scheduled Job, Cấu hình Ngưỡng, Báo cáo Định kỳ
+
+### Scheduled Job kiểm tra NTF mỗi giờ
+- [ ] Tạo scheduled job checkNtfRateJob chạy mỗi giờ
+- [ ] Tích hợp với checkNtfAlert API để kiểm tra và gửi cảnh báo
+- [ ] Lưu lịch sử cảnh báo vào database
+
+### Trang cài đặt ngưỡng NTF cho admin
+- [ ] Tạo bảng ntf_alert_config trong database
+- [ ] API CRUD cho NTF alert config (getConfig, updateConfig)
+- [ ] Trang NtfAlertConfig.tsx với form cấu hình ngưỡng
+- [ ] Cấu hình: ngưỡng cảnh báo (%), danh sách email nhận, bật/tắt cảnh báo
+- [ ] Thêm route và menu vào sidebar
+
+### Báo cáo NTF định kỳ gửi email
+- [ ] Tạo bảng ntf_report_schedule trong database
+- [ ] API CRUD cho NTF report schedule
+- [ ] Scheduled job gửi báo cáo hàng ngày (8:00 AM)
+- [ ] Scheduled job gửi báo cáo hàng tuần (Thứ 2, 8:00 AM)
+- [ ] Template email báo cáo NTF với thống kê và biểu đồ
+- [ ] UI cấu hình lịch gửi báo cáo
+
+
+## Phase 139 - NTF Scheduled Jobs & Config
+
+### Scheduled Job kiểm tra NTF
+- [x] Tạo scheduled job chạy mỗi giờ để kiểm tra NTF rate
+- [x] Tạo bảng ntf_alert_config để lưu cấu hình ngưỡng cảnh báo
+- [x] Tạo bảng ntf_alert_history để lưu lịch sử cảnh báo
+- [x] Gửi email cảnh báo khi NTF rate vượt ngưỡng warning (20%) hoặc critical (30%)
+- [x] Hỗ trợ cooldown giữa các cảnh báo để tránh spam
+
+### Trang cài đặt ngưỡng NTF cho admin
+- [x] Tạo trang NtfAlertConfig.tsx (/ntf-config)
+- [x] Tab Cấu hình: ngưỡng warning/critical, tần suất kiểm tra, cooldown
+- [x] Tab Email: quản lý danh sách email nhận cảnh báo
+- [x] Tab Lịch sử: xem lịch sử các cảnh báo đã gửi
+- [x] Nút "Kiểm tra ngay" để trigger kiểm tra thủ công
+
+### Báo cáo NTF định kỳ
+- [x] Tạo bảng ntf_report_schedule để lưu lịch gửi báo cáo
+- [x] Hỗ trợ 3 loại báo cáo: hàng ngày, hàng tuần, hàng tháng
+- [x] Scheduled jobs gửi báo cáo vào 8:00 AM (daily), Monday (weekly), ngày 1 (monthly)
+- [x] Tab Lịch báo cáo: tạo/sửa/xóa lịch gửi báo cáo
+- [x] Email báo cáo với thống kê NTF, top nguyên nhân, khuyến nghị
+
+### Unit Tests
+- [x] Test NTF rate calculation
+- [x] Test alert type determination (warning/critical)
+- [x] Test cooldown logic
+- [x] Test report schedule date ranges
+- [x] Test email recipients parsing

@@ -281,6 +281,46 @@ export function initScheduledJobs(): void {
   
   console.log('[ScheduledJob] Scheduled: Low stock check at 7:00 AM daily (Asia/Ho_Chi_Minh)');
   
+  // NTF rate check - runs every hour
+  cron.schedule('0 0 * * * *', async () => {
+    console.log('[ScheduledJob] Triggered: NTF rate check');
+    await checkNtfRateJob();
+  }, {
+    timezone: 'Asia/Ho_Chi_Minh'
+  });
+  
+  console.log('[ScheduledJob] Scheduled: NTF rate check every hour (Asia/Ho_Chi_Minh)');
+  
+  // NTF daily report - runs at 8:00 AM daily
+  cron.schedule('0 0 8 * * *', async () => {
+    console.log('[ScheduledJob] Triggered: NTF daily report');
+    await sendNtfScheduledReports('daily');
+  }, {
+    timezone: 'Asia/Ho_Chi_Minh'
+  });
+  
+  console.log('[ScheduledJob] Scheduled: NTF daily report at 8:00 AM (Asia/Ho_Chi_Minh)');
+  
+  // NTF weekly report - runs at 8:00 AM every Monday
+  cron.schedule('0 0 8 * * 1', async () => {
+    console.log('[ScheduledJob] Triggered: NTF weekly report');
+    await sendNtfScheduledReports('weekly');
+  }, {
+    timezone: 'Asia/Ho_Chi_Minh'
+  });
+  
+  console.log('[ScheduledJob] Scheduled: NTF weekly report at 8:00 AM Monday (Asia/Ho_Chi_Minh)');
+  
+  // NTF monthly report - runs at 8:00 AM on 1st of each month
+  cron.schedule('0 0 8 1 * *', async () => {
+    console.log('[ScheduledJob] Triggered: NTF monthly report');
+    await sendNtfScheduledReports('monthly');
+  }, {
+    timezone: 'Asia/Ho_Chi_Minh'
+  });
+  
+  console.log('[ScheduledJob] Scheduled: NTF monthly report at 8:00 AM on 1st (Asia/Ho_Chi_Minh)');
+  
   jobsInitialized = true;
   console.log('[ScheduledJob] All scheduled jobs initialized successfully');
 }
@@ -647,4 +687,385 @@ export async function sendLowStockEmailAlertJob(): Promise<{ sent: boolean; item
     console.error('[ScheduledJob] Error sending low stock email:', error);
     return { sent: false, itemCount: 0, message: 'Lỗi khi gửi email: ' + String(error) };
   }
+}
+
+
+/**
+ * Check NTF rate and send alerts if threshold exceeded
+ */
+export async function checkNtfRateJob(): Promise<{ 
+  checked: boolean; 
+  ntfRate: number; 
+  alertSent: boolean; 
+  message: string 
+}> {
+  console.log('[ScheduledJob] Running NTF rate check...');
+  
+  try {
+    const db = await getDb();
+    if (!db) {
+      return { checked: false, ntfRate: 0, alertSent: false, message: 'Database not available' };
+    }
+    
+    // Get NTF alert config
+    const configResult = await db.execute(sql`SELECT * FROM ntf_alert_config LIMIT 1`);
+    const config = ((configResult as unknown as any[])[0] as any[])[0];
+    
+    if (!config || !config.enabled) {
+      return { checked: true, ntfRate: 0, alertSent: false, message: 'NTF alert is disabled' };
+    }
+    
+    // Check cooldown
+    if (config.lastAlertAt) {
+      const lastAlert = new Date(config.lastAlertAt);
+      const cooldownMs = (config.cooldownMinutes || 120) * 60 * 1000;
+      if (Date.now() - lastAlert.getTime() < cooldownMs) {
+        return { checked: true, ntfRate: 0, alertSent: false, message: 'Still in cooldown period' };
+      }
+    }
+    
+    // Calculate NTF rate for last 7 days
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    
+    const statsResult = await db.execute(sql`
+      SELECT 
+        COUNT(*) as total,
+        SUM(CASE WHEN verificationStatus = 'ntf' THEN 1 ELSE 0 END) as ntfCount,
+        SUM(CASE WHEN verificationStatus = 'real_ng' THEN 1 ELSE 0 END) as realNgCount,
+        SUM(CASE WHEN verificationStatus = 'pending' THEN 1 ELSE 0 END) as pendingCount
+      FROM spc_defect_records
+      WHERE createdAt >= ${sevenDaysAgo.toISOString()}
+    `);
+    
+    const stats = ((statsResult as unknown as any[])[0] as any[])[0];
+    const total = Number(stats?.total) || 0;
+    const ntfCount = Number(stats?.ntfCount) || 0;
+    const realNgCount = Number(stats?.realNgCount) || 0;
+    const pendingCount = Number(stats?.pendingCount) || 0;
+    
+    if (total === 0) {
+      return { checked: true, ntfRate: 0, alertSent: false, message: 'No defect records found' };
+    }
+    
+    const ntfRate = (ntfCount / total) * 100;
+    const warningThreshold = Number(config.warningThreshold) || 20;
+    const criticalThreshold = Number(config.criticalThreshold) || 30;
+    
+    // Determine alert type
+    let alertType: 'warning' | 'critical' | null = null;
+    if (ntfRate >= criticalThreshold) {
+      alertType = 'critical';
+    } else if (ntfRate >= warningThreshold) {
+      alertType = 'warning';
+    }
+    
+    if (!alertType) {
+      return { checked: true, ntfRate, alertSent: false, message: `NTF rate ${ntfRate.toFixed(1)}% is below threshold` };
+    }
+    
+    // Save alert history
+    const now = new Date();
+    await db.execute(sql`
+      INSERT INTO ntf_alert_history (ntfRate, totalDefects, ntfCount, realNgCount, pendingCount, alertType, periodStart, periodEnd)
+      VALUES (${ntfRate}, ${total}, ${ntfCount}, ${realNgCount}, ${pendingCount}, ${alertType}, ${sevenDaysAgo.toISOString()}, ${now.toISOString()})
+    `);
+    
+    // Send email alert
+    const alertEmails = config.alertEmails ? JSON.parse(config.alertEmails) : [];
+    let emailSent = false;
+    
+    if (alertEmails.length > 0) {
+      const emailHtml = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: ${alertType === 'critical' ? '#dc2626' : '#f59e0b'};">
+            ${alertType === 'critical' ? '🚨 CẢNH BÁO NGHIÊM TRỌNG' : '⚠️ Cảnh báo'}: Tỉ lệ NTF cao
+          </h2>
+          <p>Tỉ lệ NTF (Not True Fail) trong 7 ngày qua đã vượt ngưỡng ${alertType === 'critical' ? 'nghiêm trọng' : 'cảnh báo'}.</p>
+          
+          <table style="border-collapse: collapse; width: 100%; margin: 20px 0;">
+            <tr style="background: ${alertType === 'critical' ? '#fee2e2' : '#fef3c7'};">
+              <td style="padding: 12px; border: 1px solid #ddd;"><strong>Tỉ lệ NTF hiện tại:</strong></td>
+              <td style="padding: 12px; border: 1px solid #ddd; font-size: 24px; font-weight: bold; color: ${alertType === 'critical' ? '#dc2626' : '#f59e0b'};">${ntfRate.toFixed(1)}%</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px; border: 1px solid #ddd;">Ngưỡng cảnh báo:</td>
+              <td style="padding: 8px; border: 1px solid #ddd;">${warningThreshold}%</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px; border: 1px solid #ddd;">Ngưỡng nghiêm trọng:</td>
+              <td style="padding: 8px; border: 1px solid #ddd;">${criticalThreshold}%</td>
+            </tr>
+          </table>
+          
+          <h3>Thống kê chi tiết (7 ngày qua):</h3>
+          <table style="border-collapse: collapse; width: 100%; margin: 20px 0;">
+            <tr><td style="padding: 8px; border: 1px solid #ddd;">Tổng số lỗi:</td><td style="padding: 8px; border: 1px solid #ddd;">${total}</td></tr>
+            <tr><td style="padding: 8px; border: 1px solid #ddd;">Lỗi thực (Real NG):</td><td style="padding: 8px; border: 1px solid #ddd;">${realNgCount}</td></tr>
+            <tr><td style="padding: 8px; border: 1px solid #ddd;">Không phải lỗi (NTF):</td><td style="padding: 8px; border: 1px solid #ddd; color: #dc2626; font-weight: bold;">${ntfCount}</td></tr>
+            <tr><td style="padding: 8px; border: 1px solid #ddd;">Chưa xác nhận:</td><td style="padding: 8px; border: 1px solid #ddd;">${pendingCount}</td></tr>
+          </table>
+          
+          <p><strong>Khuyến nghị:</strong></p>
+          <ul>
+            <li>Kiểm tra lại các cảm biến và thiết bị đo</li>
+            <li>Rà soát quy trình kiểm tra chất lượng</li>
+            <li>Đào tạo lại nhân viên về phân loại lỗi</li>
+          </ul>
+          
+          <p style="color: #666; font-size: 12px;">Email này được gửi tự động từ hệ thống SPC/CPK Calculator.</p>
+        </div>
+      `;
+      
+      for (const email of alertEmails) {
+        await sendEmail(
+          email,
+          `${alertType === 'critical' ? '🚨' : '⚠️'} Cảnh báo NTF: Tỉ lệ ${ntfRate.toFixed(1)}% vượt ngưỡng`,
+          emailHtml
+        );
+      }
+      emailSent = true;
+      
+      // Update alert history with email sent
+      await db.execute(sql`
+        UPDATE ntf_alert_history 
+        SET emailSent = TRUE, emailSentAt = NOW(), emailRecipients = ${JSON.stringify(alertEmails)}
+        WHERE id = (SELECT MAX(id) FROM ntf_alert_history)
+      `);
+    }
+    
+    // Update last alert time
+    await db.execute(sql`
+      UPDATE ntf_alert_config 
+      SET lastAlertAt = NOW(), lastAlertNtfRate = ${ntfRate}
+      WHERE id = ${config.id}
+    `);
+    
+    // Notify owner
+    await notifyOwner({
+      title: `${alertType === 'critical' ? '🚨' : '⚠️'} Cảnh báo NTF: ${ntfRate.toFixed(1)}%`,
+      content: `Tỉ lệ NTF trong 7 ngày qua là ${ntfRate.toFixed(1)}%, vượt ngưỡng ${alertType === 'critical' ? 'nghiêm trọng' : 'cảnh báo'} (${alertType === 'critical' ? criticalThreshold : warningThreshold}%). Tổng lỗi: ${total}, NTF: ${ntfCount}, Real NG: ${realNgCount}.`
+    });
+    
+    console.log(`[ScheduledJob] NTF alert sent: rate=${ntfRate.toFixed(1)}%, type=${alertType}`);
+    
+    return { 
+      checked: true, 
+      ntfRate, 
+      alertSent: emailSent, 
+      message: `NTF rate ${ntfRate.toFixed(1)}% - ${alertType} alert sent` 
+    };
+    
+  } catch (error) {
+    console.error('[ScheduledJob] Error checking NTF rate:', error);
+    return { checked: false, ntfRate: 0, alertSent: false, message: 'Error: ' + String(error) };
+  }
+}
+
+
+/**
+ * Send NTF scheduled reports based on report type
+ */
+export async function sendNtfScheduledReports(reportType: 'daily' | 'weekly' | 'monthly'): Promise<{
+  sent: number;
+  failed: number;
+  message: string;
+}> {
+  console.log(`[ScheduledJob] Sending NTF ${reportType} reports...`);
+  
+  let sent = 0;
+  let failed = 0;
+  
+  try {
+    const db = await getDb();
+    if (!db) {
+      return { sent: 0, failed: 0, message: 'Database not available' };
+    }
+    
+    // Get enabled schedules for this report type
+    const schedulesResult = await db.execute(sql`
+      SELECT * FROM ntf_report_schedule 
+      WHERE reportType = ${reportType} AND enabled = TRUE
+    `);
+    const schedules = (schedulesResult as unknown as any[])[0] as any[];
+    
+    if (schedules.length === 0) {
+      return { sent: 0, failed: 0, message: `No enabled ${reportType} schedules found` };
+    }
+    
+    // Calculate date range based on report type
+    const endDate = new Date();
+    const startDate = new Date();
+    
+    if (reportType === 'daily') {
+      startDate.setDate(startDate.getDate() - 1);
+    } else if (reportType === 'weekly') {
+      startDate.setDate(startDate.getDate() - 7);
+    } else {
+      startDate.setMonth(startDate.getMonth() - 1);
+    }
+    
+    // Get NTF statistics for the period
+    const statsResult = await db.execute(sql`
+      SELECT 
+        COUNT(*) as total,
+        SUM(CASE WHEN verificationStatus = 'ntf' THEN 1 ELSE 0 END) as ntfCount,
+        SUM(CASE WHEN verificationStatus = 'real_ng' THEN 1 ELSE 0 END) as realNgCount,
+        SUM(CASE WHEN verificationStatus = 'pending' THEN 1 ELSE 0 END) as pendingCount
+      FROM spc_defect_records
+      WHERE createdAt >= ${startDate.toISOString()} AND createdAt <= ${endDate.toISOString()}
+    `);
+    
+    const stats = ((statsResult as unknown as any[])[0] as any[])[0];
+    const total = Number(stats?.total) || 0;
+    const ntfCount = Number(stats?.ntfCount) || 0;
+    const realNgCount = Number(stats?.realNgCount) || 0;
+    const pendingCount = Number(stats?.pendingCount) || 0;
+    const ntfRate = total > 0 ? (ntfCount / total) * 100 : 0;
+    
+    // Get top NTF reasons
+    const reasonsResult = await db.execute(sql`
+      SELECT ntfReason, COUNT(*) as count
+      FROM spc_defect_records
+      WHERE verificationStatus = 'ntf' 
+        AND createdAt >= ${startDate.toISOString()} 
+        AND createdAt <= ${endDate.toISOString()}
+        AND ntfReason IS NOT NULL
+      GROUP BY ntfReason
+      ORDER BY count DESC
+      LIMIT 5
+    `);
+    const topReasons = (reasonsResult as unknown as any[])[0] as any[];
+    
+    // Generate email HTML
+    const reportTitle = reportType === 'daily' ? 'Hàng ngày' : reportType === 'weekly' ? 'Hàng tuần' : 'Hàng tháng';
+    const emailHtml = `
+      <div style="font-family: Arial, sans-serif; max-width: 700px; margin: 0 auto;">
+        <h2 style="color: #1e40af;">📊 Báo cáo NTF ${reportTitle}</h2>
+        <p>Khoảng thời gian: <strong>${startDate.toLocaleDateString('vi-VN')}</strong> - <strong>${endDate.toLocaleDateString('vi-VN')}</strong></p>
+        
+        <h3>Tổng quan</h3>
+        <table style="border-collapse: collapse; width: 100%; margin: 20px 0;">
+          <tr style="background: ${ntfRate >= 30 ? '#fee2e2' : ntfRate >= 20 ? '#fef3c7' : '#dcfce7'};">
+            <td style="padding: 15px; border: 1px solid #ddd; font-size: 18px;"><strong>Tỉ lệ NTF:</strong></td>
+            <td style="padding: 15px; border: 1px solid #ddd; font-size: 24px; font-weight: bold; color: ${ntfRate >= 30 ? '#dc2626' : ntfRate >= 20 ? '#f59e0b' : '#16a34a'};">${ntfRate.toFixed(1)}%</td>
+          </tr>
+        </table>
+        
+        <table style="border-collapse: collapse; width: 100%; margin: 20px 0;">
+          <tr style="background: #f3f4f6;">
+            <th style="padding: 10px; border: 1px solid #ddd; text-align: left;">Chỉ số</th>
+            <th style="padding: 10px; border: 1px solid #ddd; text-align: right;">Số lượng</th>
+            <th style="padding: 10px; border: 1px solid #ddd; text-align: right;">Tỉ lệ</th>
+          </tr>
+          <tr>
+            <td style="padding: 8px; border: 1px solid #ddd;">Tổng số lỗi phát hiện</td>
+            <td style="padding: 8px; border: 1px solid #ddd; text-align: right; font-weight: bold;">${total}</td>
+            <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">100%</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px; border: 1px solid #ddd;">Lỗi thực (Real NG)</td>
+            <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">${realNgCount}</td>
+            <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">${total > 0 ? ((realNgCount / total) * 100).toFixed(1) : 0}%</td>
+          </tr>
+          <tr style="background: #fef3c7;">
+            <td style="padding: 8px; border: 1px solid #ddd;">Không phải lỗi (NTF)</td>
+            <td style="padding: 8px; border: 1px solid #ddd; text-align: right; font-weight: bold; color: #dc2626;">${ntfCount}</td>
+            <td style="padding: 8px; border: 1px solid #ddd; text-align: right; font-weight: bold; color: #dc2626;">${ntfRate.toFixed(1)}%</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px; border: 1px solid #ddd;">Chưa xác nhận</td>
+            <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">${pendingCount}</td>
+            <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">${total > 0 ? ((pendingCount / total) * 100).toFixed(1) : 0}%</td>
+          </tr>
+        </table>
+        
+        ${topReasons.length > 0 ? `
+          <h3>Top nguyên nhân NTF</h3>
+          <table style="border-collapse: collapse; width: 100%; margin: 20px 0;">
+            <tr style="background: #f3f4f6;">
+              <th style="padding: 10px; border: 1px solid #ddd; text-align: left;">Nguyên nhân</th>
+              <th style="padding: 10px; border: 1px solid #ddd; text-align: right;">Số lượng</th>
+            </tr>
+            ${topReasons.map((r: any) => `
+              <tr>
+                <td style="padding: 8px; border: 1px solid #ddd;">${getNtfReasonLabel(r.ntfReason)}</td>
+                <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">${r.count}</td>
+              </tr>
+            `).join('')}
+          </table>
+        ` : ''}
+        
+        <h3>Khuyến nghị</h3>
+        <ul>
+          ${ntfRate >= 30 ? '<li style="color: #dc2626;"><strong>Cảnh báo:</strong> Tỉ lệ NTF vượt ngưỡng nghiêm trọng (30%). Cần kiểm tra ngay hệ thống phát hiện lỗi.</li>' : ''}
+          ${ntfRate >= 20 && ntfRate < 30 ? '<li style="color: #f59e0b;"><strong>Lưu ý:</strong> Tỉ lệ NTF vượt ngưỡng cảnh báo (20%). Cần theo dõi và cải thiện.</li>' : ''}
+          ${pendingCount > 0 ? `<li>Còn ${pendingCount} lỗi chưa được xác nhận. Vui lòng xác nhận để có số liệu chính xác.</li>` : ''}
+          <li>Rà soát các cảm biến và thiết bị đo có tỉ lệ NTF cao</li>
+          <li>Đào tạo nhân viên về phân loại lỗi chính xác</li>
+        </ul>
+        
+        <p style="color: #666; font-size: 12px; margin-top: 30px;">
+          Báo cáo này được gửi tự động từ hệ thống SPC/CPK Calculator.<br>
+          Thời gian tạo: ${new Date().toLocaleString('vi-VN')}
+        </p>
+      </div>
+    `;
+    
+    // Send to each schedule's recipients
+    for (const schedule of schedules) {
+      try {
+        const recipients = schedule.recipients ? JSON.parse(schedule.recipients) : [];
+        
+        for (const email of recipients) {
+          await sendEmail(
+            email,
+            `📊 Báo cáo NTF ${reportTitle} - ${new Date().toLocaleDateString('vi-VN')}`,
+            emailHtml
+          );
+        }
+        
+        // Update last sent status
+        await db.execute(sql`
+          UPDATE ntf_report_schedule 
+          SET lastSentAt = NOW(), lastSentStatus = 'success', lastSentError = NULL
+          WHERE id = ${schedule.id}
+        `);
+        
+        sent++;
+      } catch (err) {
+        // Update with error
+        await db.execute(sql`
+          UPDATE ntf_report_schedule 
+          SET lastSentAt = NOW(), lastSentStatus = 'failed', lastSentError = ${String(err)}
+          WHERE id = ${schedule.id}
+        `);
+        
+        failed++;
+      }
+    }
+    
+    console.log(`[ScheduledJob] NTF ${reportType} reports: sent=${sent}, failed=${failed}`);
+    return { sent, failed, message: `Sent ${sent} reports, ${failed} failed` };
+    
+  } catch (error) {
+    console.error(`[ScheduledJob] Error sending NTF ${reportType} reports:`, error);
+    return { sent: 0, failed: 0, message: 'Error: ' + String(error) };
+  }
+}
+
+/**
+ * Get human-readable label for NTF reason
+ */
+function getNtfReasonLabel(reason: string): string {
+  const labels: Record<string, string> = {
+    'sensor_error': 'Lỗi cảm biến',
+    'false_detection': 'Phát hiện sai',
+    'calibration_issue': 'Vấn đề hiệu chuẩn',
+    'environmental_factor': 'Yếu tố môi trường',
+    'operator_error': 'Lỗi vận hành',
+    'software_bug': 'Lỗi phần mềm',
+    'other': 'Khác',
+  };
+  return labels[reason] || reason;
 }

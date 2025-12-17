@@ -107,6 +107,7 @@ import SseEventLog from "./pages/SseEventLog";
 import CustomReportBuilder from "./pages/CustomReportBuilder";
 import { GlobalKeyboardShortcuts } from "./components/GlobalKeyboardShortcuts";
 import RateLimitDashboard from "./pages/RateLimitDashboard";
+import NtfAlertConfig from "./pages/NtfAlertConfig";
 
 function Router() {
   return (
@@ -165,6 +166,7 @@ function Router() {
       <Route path="/iot-gateway" component={IoTGatewayConfig} />
       <Route path="/reports-export" component={ReportsExport} />
       <Route path="/alert-config" component={AlertConfiguration} />
+      <Route path="/ntf-config" component={NtfAlertConfig} />
       <Route path="/scheduled-reports" component={ScheduledReports} />
       <Route path="/supervisor-dashboard" component={SupervisorDashboard} />
       <Route path="/shift-reports" component={ShiftReportHistory} />

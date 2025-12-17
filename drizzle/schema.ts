@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, decimal, json } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, decimal, json, boolean } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -2638,3 +2638,105 @@ export const sparePartsStockMovements = mysqlTable("spare_parts_stock_movements"
 
 export type SparePartStockMovement = typeof sparePartsStockMovements.$inferSelect;
 export type InsertSparePartStockMovement = typeof sparePartsStockMovements.$inferInsert;
+
+/**
+ * NTF Alert Configuration - cấu hình cảnh báo NTF rate
+ */
+export const ntfAlertConfig = mysqlTable("ntf_alert_config", {
+  id: int("id").autoincrement().primaryKey(),
+  
+  // Ngưỡng cảnh báo
+  warningThreshold: decimal("warningThreshold", { precision: 5, scale: 2 }).default("20.00"), // 20%
+  criticalThreshold: decimal("criticalThreshold", { precision: 5, scale: 2 }).default("30.00"), // 30%
+  
+  // Email nhận cảnh báo (JSON array)
+  alertEmails: text("alertEmails"), // ["email1@example.com", "email2@example.com"]
+  
+  // Bật/tắt cảnh báo
+  enabled: boolean("enabled").default(true),
+  
+  // Tần suất kiểm tra (phút)
+  checkIntervalMinutes: int("checkIntervalMinutes").default(60), // Mặc định 1 giờ
+  
+  // Cooldown giữa các cảnh báo (phút)
+  cooldownMinutes: int("cooldownMinutes").default(120), // 2 giờ
+  
+  // Lần cảnh báo cuối
+  lastAlertAt: timestamp("lastAlertAt"),
+  lastAlertNtfRate: decimal("lastAlertNtfRate", { precision: 5, scale: 2 }),
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type NtfAlertConfig = typeof ntfAlertConfig.$inferSelect;
+export type InsertNtfAlertConfig = typeof ntfAlertConfig.$inferInsert;
+
+/**
+ * NTF Alert History - lịch sử cảnh báo NTF
+ */
+export const ntfAlertHistory = mysqlTable("ntf_alert_history", {
+  id: int("id").autoincrement().primaryKey(),
+  
+  // Thông tin cảnh báo
+  ntfRate: decimal("ntfRate", { precision: 5, scale: 2 }).notNull(),
+  totalDefects: int("totalDefects").notNull(),
+  ntfCount: int("ntfCount").notNull(),
+  realNgCount: int("realNgCount").notNull(),
+  pendingCount: int("pendingCount").notNull(),
+  
+  // Loại cảnh báo
+  alertType: mysqlEnum("alertType", ["warning", "critical"]).notNull(),
+  
+  // Trạng thái gửi
+  emailSent: boolean("emailSent").default(false),
+  emailSentAt: timestamp("emailSentAt"),
+  emailRecipients: text("emailRecipients"), // JSON array
+  
+  // Thời gian
+  periodStart: timestamp("periodStart").notNull(),
+  periodEnd: timestamp("periodEnd").notNull(),
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type NtfAlertHistory = typeof ntfAlertHistory.$inferSelect;
+export type InsertNtfAlertHistory = typeof ntfAlertHistory.$inferInsert;
+
+/**
+ * NTF Report Schedule - lịch gửi báo cáo NTF định kỳ
+ */
+export const ntfReportSchedule = mysqlTable("ntf_report_schedule", {
+  id: int("id").autoincrement().primaryKey(),
+  
+  // Tên lịch
+  name: varchar("name", { length: 200 }).notNull(),
+  
+  // Loại báo cáo
+  reportType: mysqlEnum("reportType", ["daily", "weekly", "monthly"]).notNull(),
+  
+  // Thời gian gửi (giờ trong ngày, 0-23)
+  sendHour: int("sendHour").default(8), // 8:00 AM
+  
+  // Ngày gửi (cho weekly: 0-6 = CN-T7, cho monthly: 1-28)
+  sendDay: int("sendDay"),
+  
+  // Email nhận báo cáo (JSON array)
+  recipients: text("recipients").notNull(), // ["email1@example.com"]
+  
+  // Bật/tắt
+  enabled: boolean("enabled").default(true),
+  
+  // Lần gửi cuối
+  lastSentAt: timestamp("lastSentAt"),
+  lastSentStatus: mysqlEnum("lastSentStatus", ["success", "failed"]),
+  lastSentError: text("lastSentError"),
+  
+  // Metadata
+  createdBy: int("createdBy").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type NtfReportSchedule = typeof ntfReportSchedule.$inferSelect;
+export type InsertNtfReportSchedule = typeof ntfReportSchedule.$inferInsert;

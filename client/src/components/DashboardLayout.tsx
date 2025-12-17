@@ -160,6 +160,7 @@ const menuGroups: MenuGroup[] = [
       { icon: Download, labelKey: "nav.exportReports", path: "/export-reports" },
       { icon: FileText, labelKey: "nav.customReportBuilder", path: "/custom-report-builder" },
       { icon: AlertTriangle, labelKey: "nav.alertConfig", path: "/alert-config", adminOnly: true },
+      { icon: Bell, labelKey: "nav.ntfConfig", path: "/ntf-config", adminOnly: true },
       { icon: Target, labelKey: "nav.alertThresholdConfig", path: "/alert-threshold-config", adminOnly: true },
       { icon: Mail, labelKey: "nav.scheduledReports", path: "/scheduled-reports" },
       { icon: Clock, labelKey: "nav.shiftReports", path: "/shift-reports" },

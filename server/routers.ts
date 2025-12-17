@@ -5858,6 +5858,186 @@ organization: organizationRouter,
       }),
   }),
 
+  ntfConfig: router({
+    getConfig: protectedProcedure
+      .query(async ({ ctx }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
+        }
+        const { getDb } = await import('./db');
+        const { sql } = await import('drizzle-orm');
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+        
+        const result = await db.execute(sql`SELECT * FROM ntf_alert_config LIMIT 1`);
+        const config = ((result as unknown as any[])[0] as any[])[0];
+        if (!config) {
+          // Create default config
+          await db.execute(sql`INSERT INTO ntf_alert_config (warningThreshold, criticalThreshold, enabled) VALUES (20.00, 30.00, TRUE)`);
+          const newResult = await db.execute(sql`SELECT * FROM ntf_alert_config LIMIT 1`);
+          return ((newResult as unknown as any[])[0] as any[])[0];
+        }
+        return {
+          ...config,
+          alertEmails: config.alertEmails ? JSON.parse(config.alertEmails) : []
+        };
+      }),
+    
+    updateConfig: protectedProcedure
+      .input(z.object({
+        warningThreshold: z.number().min(0).max(100).optional(),
+        criticalThreshold: z.number().min(0).max(100).optional(),
+        alertEmails: z.array(z.string().email()).optional(),
+        enabled: z.boolean().optional(),
+        checkIntervalMinutes: z.number().min(15).max(1440).optional(),
+        cooldownMinutes: z.number().min(30).max(1440).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
+        }
+        const { getDb } = await import('./db');
+        const { sql } = await import('drizzle-orm');
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+        
+        const updates: string[] = [];
+        if (input.warningThreshold !== undefined) updates.push(`warningThreshold = ${input.warningThreshold}`);
+        if (input.criticalThreshold !== undefined) updates.push(`criticalThreshold = ${input.criticalThreshold}`);
+        if (input.alertEmails !== undefined) updates.push(`alertEmails = '${JSON.stringify(input.alertEmails)}'`);
+        if (input.enabled !== undefined) updates.push(`enabled = ${input.enabled}`);
+        if (input.checkIntervalMinutes !== undefined) updates.push(`checkIntervalMinutes = ${input.checkIntervalMinutes}`);
+        if (input.cooldownMinutes !== undefined) updates.push(`cooldownMinutes = ${input.cooldownMinutes}`);
+        
+        if (updates.length > 0) {
+          await db.execute(sql.raw(`UPDATE ntf_alert_config SET ${updates.join(', ')} WHERE id = 1`));
+        }
+        return { success: true };
+      }),
+    
+    getAlertHistory: protectedProcedure
+      .input(z.object({ limit: z.number().default(50) }))
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
+        }
+        const { getDb } = await import('./db');
+        const { sql } = await import('drizzle-orm');
+        const db = await getDb();
+        if (!db) return [];
+        
+        const result = await db.execute(sql`
+          SELECT * FROM ntf_alert_history 
+          ORDER BY createdAt DESC 
+          LIMIT ${input.limit}
+        `);
+        return ((result as unknown as any[])[0] as any[]).map(row => ({
+          ...row,
+          emailRecipients: row.emailRecipients ? JSON.parse(row.emailRecipients) : []
+        }));
+      }),
+    
+    triggerCheck: protectedProcedure
+      .mutation(async ({ ctx }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
+        }
+        const { checkNtfRateJob } = await import('./scheduledJobs');
+        return await checkNtfRateJob();
+      }),
+    
+    // Report schedule management
+    listReportSchedules: protectedProcedure
+      .query(async ({ ctx }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
+        }
+        const { getDb } = await import('./db');
+        const { sql } = await import('drizzle-orm');
+        const db = await getDb();
+        if (!db) return [];
+        
+        const result = await db.execute(sql`SELECT * FROM ntf_report_schedule ORDER BY createdAt DESC`);
+        return ((result as unknown as any[])[0] as any[]).map(row => ({
+          ...row,
+          recipients: row.recipients ? JSON.parse(row.recipients) : []
+        }));
+      }),
+    
+    createReportSchedule: protectedProcedure
+      .input(z.object({
+        name: z.string().min(1),
+        reportType: z.enum(['daily', 'weekly', 'monthly']),
+        sendHour: z.number().min(0).max(23).default(8),
+        sendDay: z.number().min(0).max(31).optional(),
+        recipients: z.array(z.string().email()).min(1),
+        enabled: z.boolean().default(true),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
+        }
+        const { getDb } = await import('./db');
+        const { sql } = await import('drizzle-orm');
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+        
+        await db.execute(sql`
+          INSERT INTO ntf_report_schedule (name, reportType, sendHour, sendDay, recipients, enabled, createdBy)
+          VALUES (${input.name}, ${input.reportType}, ${input.sendHour}, ${input.sendDay || null}, ${JSON.stringify(input.recipients)}, ${input.enabled}, ${ctx.user.id})
+        `);
+        return { success: true };
+      }),
+    
+    updateReportSchedule: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        name: z.string().min(1).optional(),
+        reportType: z.enum(['daily', 'weekly', 'monthly']).optional(),
+        sendHour: z.number().min(0).max(23).optional(),
+        sendDay: z.number().min(0).max(31).optional(),
+        recipients: z.array(z.string().email()).optional(),
+        enabled: z.boolean().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
+        }
+        const { getDb } = await import('./db');
+        const { sql } = await import('drizzle-orm');
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+        
+        const updates: string[] = [];
+        if (input.name !== undefined) updates.push(`name = '${input.name}'`);
+        if (input.reportType !== undefined) updates.push(`reportType = '${input.reportType}'`);
+        if (input.sendHour !== undefined) updates.push(`sendHour = ${input.sendHour}`);
+        if (input.sendDay !== undefined) updates.push(`sendDay = ${input.sendDay}`);
+        if (input.recipients !== undefined) updates.push(`recipients = '${JSON.stringify(input.recipients)}'`);
+        if (input.enabled !== undefined) updates.push(`enabled = ${input.enabled}`);
+        
+        if (updates.length > 0) {
+          await db.execute(sql.raw(`UPDATE ntf_report_schedule SET ${updates.join(', ')} WHERE id = ${input.id}`));
+        }
+        return { success: true };
+      }),
+    
+    deleteReportSchedule: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
+        }
+        const { getDb } = await import('./db');
+        const { sql } = await import('drizzle-orm');
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+        
+        await db.execute(sql`DELETE FROM ntf_report_schedule WHERE id = ${input.id}`);
+        return { success: true };
+      }),
+  }),
+
   shiftReport: router({
     list: protectedProcedure
       .input(z.object({
