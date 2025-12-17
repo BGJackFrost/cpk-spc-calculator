@@ -2736,3 +2736,10 @@
 - [x] Sửa lỗi React #301 trong trang Module và Quyền (useMemo -> useEffect)
 - [x] Gộp 2 trang thành 1 trang duy nhất với tabs
 - [x] Cập nhật menu sidebar - xóa route /permissions cũ
+
+
+## Phase 133: Sửa lỗi React #185 trong /module-permissions
+
+- [x] Xác định nguyên nhân lỗi: Maximum update depth exceeded (useEffect + setState loop)
+- [x] Sửa lỗi trong ModulePermissionManagement.tsx - thêm điều kiện kiểm tra thay đổi trước khi setState
+- [x] Test và xác nhận trang hoạt động bình thường - cả 3 tabs Modules/Quyền hạn/Phân quyền Vai trò

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -297,10 +297,15 @@ export default function ModulePermissionManagement() {
 
   // Load role permissions when role is selected
   useEffect(() => {
-    if (rolePermissions.length > 0) {
-      setSelectedPermissions(new Set(rolePermissions.map((rp: { permissionId: number }) => rp.permissionId)));
-    } else {
-      setSelectedPermissions(new Set());
+    const newPermIds = rolePermissions.map((rp: { permissionId: number }) => rp.permissionId);
+    const currentPermIds = Array.from(selectedPermissions);
+    
+    // Only update if permissions actually changed
+    const hasChanged = newPermIds.length !== currentPermIds.length || 
+      !newPermIds.every(id => currentPermIds.includes(id));
+    
+    if (hasChanged) {
+      setSelectedPermissions(new Set(newPermIds));
     }
   }, [rolePermissions]);
 
@@ -474,7 +479,7 @@ export default function ModulePermissionManagement() {
               <Card>
                 <CardHeader>
                   <CardTitle>
-                    Quyền của module: {modules.find((m: Module) => m.id === selectedModuleId)?.name}
+                    Quyền của module: {modules.find((m: Module) => m.id === selectedModuleId)?.name || ""}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -497,7 +502,7 @@ export default function ModulePermissionManagement() {
                             <TableCell>{permission.name}</TableCell>
                             <TableCell>
                               <Badge variant="outline">
-                                {ACTION_TYPES.find((a) => a.value === permission.actionType)?.label}
+                                {ACTION_TYPES.find((a) => a.value === permission.actionType)?.label || permission.actionType}
                               </Badge>
                             </TableCell>
                             <TableCell>
