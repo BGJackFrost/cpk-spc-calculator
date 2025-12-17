@@ -114,6 +114,7 @@ import NotificationSettings from "./pages/NotificationSettings";
 import NtfLineDetail from "./pages/NtfLineDetail";
 import NtfShiftAnalysis from "./pages/NtfShiftAnalysis";
 import NtfProductAnalysis from "./pages/NtfProductAnalysis";
+import NtfDepartmentDashboard from "./pages/NtfDepartmentDashboard";
 import NtfSupplierAnalysis from "./pages/NtfSupplierAnalysis";
 import NtfEnvironmentCorrelation from "./pages/NtfEnvironmentCorrelation";
 import EnvironmentAlertConfig from "./pages/EnvironmentAlertConfig";
@@ -183,6 +184,7 @@ function Router() {
       <Route path="/ntf-line/:id" component={NtfLineDetail} />
       <Route path="/ntf-shift-analysis" component={NtfShiftAnalysis} />
       <Route path="/ntf-product-analysis" component={NtfProductAnalysis} />
+              <Route path="/ntf-department" component={NtfDepartmentDashboard} />
       <Route path="/ntf-supplier-analysis" component={NtfSupplierAnalysis} />
       <Route path="/ntf-environment" component={NtfEnvironmentCorrelation} />
       <Route path="/environment-alerts" component={EnvironmentAlertConfig} />

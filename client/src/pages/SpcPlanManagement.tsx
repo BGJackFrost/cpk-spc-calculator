@@ -441,6 +441,12 @@ export default function SpcPlanManagement() {
                           // Tự động tạo tên kế hoạch
                           const autoName = `SPC Plan - ${standard.measurementName} (${product?.name || 'N/A'})`;
                           
+                          // Tìm phương pháp lấy mẫu phù hợp (nếu có trong tiêu chuẩn)
+                          const samplingId = (standard as any).samplingConfigId || formData.samplingConfigId;
+                          
+                          // Tìm tiêu chuẩn USL/LSL phù hợp (nếu có)
+                          const specId = (standard as any).specificationId || formData.specificationId;
+                          
                           setFormData({ 
                             ...formData, 
                             measurementStandardId: stdId,
@@ -450,11 +456,22 @@ export default function SpcPlanManagement() {
                             machineId: standard.machineId || formData.machineId,
                             productionLineId: lineId,
                             mappingId: matchingMapping?.id || formData.mappingId,
+                            samplingConfigId: samplingId,
+                            specificationId: specId,
                             enabledSpcRules: appliedSpcRules.length > 0 ? appliedSpcRules : formData.enabledSpcRules,
                             enabledCpkRules: appliedCpkRules.length > 0 ? appliedCpkRules : formData.enabledCpkRules,
                             enabledCaRules: appliedCaRules.length > 0 ? appliedCaRules : formData.enabledCaRules,
                           });
-                          toast.success(`Đã áp dụng tiêu chuẩn: ${standard.measurementName}`);
+                          
+                          // Hiển thị thông báo chi tiết
+                          const loadedItems = [];
+                          if (appliedSpcRules.length > 0) loadedItems.push(`${appliedSpcRules.length} SPC Rules`);
+                          if (appliedCpkRules.length > 0) loadedItems.push(`${appliedCpkRules.length} CPK Rules`);
+                          if (appliedCaRules.length > 0) loadedItems.push(`${appliedCaRules.length} CA Rules`);
+                          if (samplingId) loadedItems.push('Phương pháp lấy mẫu');
+                          if (specId) loadedItems.push('Tiêu chuẩn USL/LSL');
+                          
+                          toast.success(`Đã áp dụng tiêu chuẩn: ${standard.measurementName}${loadedItems.length > 0 ? ` (Đã tải: ${loadedItems.join(', ')})` : ''}`);
                         } else {
                           setFormData({ ...formData, measurementStandardId: stdId });
                         }
@@ -477,7 +494,7 @@ export default function SpcPlanManagement() {
                       </SelectContent>
                     </Select>
                     <p className="text-xs text-muted-foreground">
-                      Chọn tiêu chuẩn đo để tự động áp dụng Sản phẩm, Công trạm, Máy và SPC Rules
+                      Chọn tiêu chuẩn đo để tự động áp dụng: Sản phẩm, Công trạm, Máy, Phương pháp lấy mẫu, Tiêu chuẩn USL/LSL, SPC/CPK/CA Rules
                     </p>
                   </div>
                 </div>

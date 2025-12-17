@@ -77,6 +77,9 @@ export default function SparePartsManagement() {
   const [selectedPartsForQR, setSelectedPartsForQR] = useState<number[]>([]);
   const [bulkQRDataUrls, setBulkQRDataUrls] = useState<Map<number, string>>(new Map());
   
+  // Reorder selection states
+  const [selectedReorderItems, setSelectedReorderItems] = useState<Array<{id: number; qty: number}>>([]);
+  
   // Stock status filter
   const [stockStatusFilter, setStockStatusFilter] = useState<string>("all");
   
@@ -347,13 +350,57 @@ export default function SparePartsManagement() {
     }
   };
 
+// Create order from reorder suggestions
+  const createOrderFromSuggestions = () => {
+    if (selectedReorderItems.length === 0) {
+      toast.error("Vui lòng chọn ít nhất 1 phụ tùng");
+      return;
+    }
+    
+    // Group by supplier
+    const itemsBySupplier = new Map<number, Array<{sparePartId: number; quantity: number; unitPrice: number}>>();
+    
+    selectedReorderItems.forEach(selected => {
+      const suggestion = reorderSuggestions?.find(s => s.id === selected.id);
+      if (suggestion) {
+        const supplierId = suggestion.supplierId || 0;
+        if (!itemsBySupplier.has(supplierId)) {
+          itemsBySupplier.set(supplierId, []);
+        }
+        itemsBySupplier.get(supplierId)!.push({
+          sparePartId: suggestion.id,
+          quantity: selected.qty,
+          unitPrice: suggestion.unitPrice || 0,
+        });
+      }
+    });
+    
+    // Create orders for each supplier
+    let createdCount = 0;
+    itemsBySupplier.forEach((items, supplierId) => {
+      createPurchaseOrderMutation.mutate({
+        supplierId: supplierId || undefined,
+        notes: `Tạo từ đề xuất đặt hàng - ${new Date().toLocaleDateString('vi-VN')}`,
+        items,
+      }, {
+        onSuccess: () => {
+          createdCount++;
+          if (createdCount === itemsBySupplier.size) {
+            toast.success(`Đã tạo ${createdCount} đơn hàng từ đề xuất`);
+            setSelectedReorderItems([]);
+          }
+        }
+      });
+    });
+  };
+
   const handleCreatePO = () => {
     if (!poSupplierId) {
       toast.error("Vui lòng chọn nhà cung cấp");
       return;
     }
     if (poItems.length === 0) {
-      toast.error("Vui lòng thêm ít nhất 1 phụ tùng");
+      toast.error("Vui lòng chọn ít nhất 1 phụ tùng");
       return;
     }
     createPurchaseOrderMutation.mutate({
@@ -1459,39 +1506,100 @@ export default function SparePartsManagement() {
           <TabsContent value="reorder" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Đề xuất đặt hàng</CardTitle>
-                <CardDescription>Phụ tùng cần bổ sung dựa trên mức tồn kho tối thiểu</CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Đề xuất đặt hàng</CardTitle>
+                    <CardDescription>Phụ tùng cần bổ sung dựa trên mức tồn kho tối thiểu</CardDescription>
+                  </div>
+                  {selectedReorderItems.length > 0 && (
+                    <Button onClick={createOrderFromSuggestions}>
+                      <ShoppingCart className="w-4 h-4 mr-2" />
+                      Tạo đơn hàng ({selectedReorderItems.length})
+                    </Button>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-10">
+                        <input
+                          type="checkbox"
+                          checked={selectedReorderItems.length === (reorderSuggestions?.length || 0) && (reorderSuggestions?.length || 0) > 0}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedReorderItems(reorderSuggestions?.map(s => ({ id: s.id, qty: s.suggestedQuantity })) || []);
+                            } else {
+                              setSelectedReorderItems([]);
+                            }
+                          }}
+                          className="w-4 h-4 rounded border-gray-300"
+                        />
+                      </TableHead>
                       <TableHead>Mã PT</TableHead>
                       <TableHead>Tên phụ tùng</TableHead>
                       <TableHead>Nhà cung cấp</TableHead>
                       <TableHead className="text-center">Tồn hiện tại</TableHead>
                       <TableHead className="text-center">Điểm đặt hàng</TableHead>
-                      <TableHead className="text-center">SL đề xuất</TableHead>
+                      <TableHead className="text-center w-28">SL đặt</TableHead>
                       <TableHead>Chi phí ước tính</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {reorderSuggestions?.map((item) => (
-                      <TableRow key={item.id}>
-                        <TableCell className="font-mono">{item.partNumber}</TableCell>
-                        <TableCell className="font-medium">{item.name}</TableCell>
-                        <TableCell>{item.supplierName || "-"}</TableCell>
-                        <TableCell className="text-center text-red-500 font-bold">{item.currentStock || 0}</TableCell>
-                        <TableCell className="text-center">{item.reorderPoint || item.minStock || 0}</TableCell>
-                        <TableCell className="text-center font-bold text-blue-600">{item.suggestedQuantity}</TableCell>
-                        <TableCell>
-                          {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(item.estimatedCost)}
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {reorderSuggestions?.map((item) => {
+                      const selectedItem = selectedReorderItems.find(s => s.id === item.id);
+                      const qty = selectedItem?.qty || item.suggestedQuantity;
+                      return (
+                        <TableRow key={item.id} className={selectedItem ? "bg-blue-50 dark:bg-blue-950/20" : ""}>
+                          <TableCell>
+                            <input
+                              type="checkbox"
+                              checked={!!selectedItem}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedReorderItems([...selectedReorderItems, { id: item.id, qty: item.suggestedQuantity }]);
+                                } else {
+                                  setSelectedReorderItems(selectedReorderItems.filter(s => s.id !== item.id));
+                                }
+                              }}
+                              className="w-4 h-4 rounded border-gray-300"
+                            />
+                          </TableCell>
+                          <TableCell className="font-mono">{item.partNumber}</TableCell>
+                          <TableCell className="font-medium">{item.name}</TableCell>
+                          <TableCell>{item.supplierName || "-"}</TableCell>
+                          <TableCell className="text-center text-red-500 font-bold">{item.currentStock || 0}</TableCell>
+                          <TableCell className="text-center">{item.reorderPoint || item.minStock || 0}</TableCell>
+                          <TableCell>
+                            <Input
+                              type="number"
+                              min={1}
+                              value={qty}
+                              onChange={(e) => {
+                                const newQty = Number(e.target.value) || 1;
+                                if (selectedItem) {
+                                  setSelectedReorderItems(selectedReorderItems.map(s => 
+                                    s.id === item.id ? { ...s, qty: newQty } : s
+                                  ));
+                                } else {
+                                  setSelectedReorderItems([...selectedReorderItems, { id: item.id, qty: newQty }]);
+                                }
+                              }}
+                              className="w-20 h-8 text-center"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
+                              (selectedItem?.qty || item.suggestedQuantity) * (item.unitPrice || 0)
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                     {(!reorderSuggestions || reorderSuggestions.length === 0) && (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                        <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                           <CheckCircle2 className="w-8 h-8 mx-auto mb-2 text-green-500" />
                           Tất cả phụ tùng đều đủ tồn kho
                         </TableCell>
@@ -1499,6 +1607,25 @@ export default function SparePartsManagement() {
                     )}
                   </TableBody>
                 </Table>
+                {selectedReorderItems.length > 0 && (
+                  <div className="mt-4 p-4 bg-muted rounded-lg flex items-center justify-between">
+                    <div>
+                      <span className="font-medium">Đã chọn {selectedReorderItems.length} phụ tùng</span>
+                      <span className="text-muted-foreground ml-2">
+                        Tổng: {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
+                          selectedReorderItems.reduce((sum, s) => {
+                            const item = reorderSuggestions?.find(r => r.id === s.id);
+                            return sum + (s.qty * (item?.unitPrice || 0));
+                          }, 0)
+                        )}
+                      </span>
+                    </div>
+                    <Button onClick={createOrderFromSuggestions}>
+                      <ShoppingCart className="w-4 h-4 mr-2" />
+                      Tạo đơn đặt hàng
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

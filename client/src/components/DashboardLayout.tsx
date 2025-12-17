@@ -166,6 +166,7 @@ const menuGroups: MenuGroup[] = [
       { icon: BellRing, labelKey: "nav.notificationSettings", path: "/notification-settings", adminOnly: true },
       { icon: Clock, labelKey: "nav.ntfShiftAnalysis", path: "/ntf-shift-analysis", adminOnly: true },
       { icon: Package, labelKey: "nav.ntfProductAnalysis", path: "/ntf-product-analysis", adminOnly: true },
+      { icon: Building2, labelKey: "nav.ntfDepartment", path: "/ntf-department", adminOnly: true },
       { icon: Truck, labelKey: "nav.ntfSupplierAnalysis", path: "/ntf-supplier-analysis", adminOnly: true },
       { icon: Thermometer, labelKey: "nav.ntfEnvironment", path: "/ntf-environment", adminOnly: true },
       { icon: AlertTriangle, labelKey: "nav.environmentAlerts", path: "/environment-alerts", adminOnly: true },

@@ -125,7 +125,13 @@ export default function SpcPlanVisualization() {
       // Use html2canvas to capture the visualization
       const element = document.getElementById('spc-visualization-content');
       if (!element) {
-        toast.error("Không tìm thấy nội dung để xuất");
+        toast.error("Không tìm thấy nội dung để xuất. Vui lòng đợi trang tải xong.");
+        return;
+      }
+      
+      // Ensure element is visible and has content
+      if (element.offsetHeight === 0 || element.offsetWidth === 0) {
+        toast.error("Nội dung chưa sẵn sàng. Vui lòng thử lại.");
         return;
       }
       
@@ -134,16 +140,28 @@ export default function SpcPlanVisualization() {
         backgroundColor: '#ffffff',
         scale: 2,
         useCORS: true,
+        logging: false,
+        allowTaint: true,
+        foreignObjectRendering: false,
+        windowWidth: element.scrollWidth,
+        windowHeight: element.scrollHeight,
       });
+      
+      if (!canvas || canvas.width === 0 || canvas.height === 0) {
+        toast.error("Không thể tạo hình ảnh. Vui lòng thử lại.");
+        return;
+      }
       
       const link = document.createElement('a');
       link.download = `spc-visualization-${new Date().toISOString().split('T')[0]}.png`;
       link.href = canvas.toDataURL('image/png');
+      document.body.appendChild(link);
       link.click();
+      document.body.removeChild(link);
       toast.success("Đã xuất hình ảnh thành công");
     } catch (error) {
       console.error('Export PNG error:', error);
-      toast.error("Lỗi khi xuất hình ảnh");
+      toast.error(`Lỗi khi xuất hình ảnh: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -152,7 +170,13 @@ export default function SpcPlanVisualization() {
       toast.info("Đang xuất PDF...");
       const element = document.getElementById('spc-visualization-content');
       if (!element) {
-        toast.error("Không tìm thấy nội dung để xuất");
+        toast.error("Không tìm thấy nội dung để xuất. Vui lòng đợi trang tải xong.");
+        return;
+      }
+      
+      // Ensure element is visible and has content
+      if (element.offsetHeight === 0 || element.offsetWidth === 0) {
+        toast.error("Nội dung chưa sẵn sàng. Vui lòng thử lại.");
         return;
       }
       
@@ -163,7 +187,17 @@ export default function SpcPlanVisualization() {
         backgroundColor: '#ffffff',
         scale: 2,
         useCORS: true,
+        logging: false,
+        allowTaint: true,
+        foreignObjectRendering: false,
+        windowWidth: element.scrollWidth,
+        windowHeight: element.scrollHeight,
       });
+      
+      if (!canvas || canvas.width === 0 || canvas.height === 0) {
+        toast.error("Không thể tạo hình ảnh. Vui lòng thử lại.");
+        return;
+      }
       
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF({
@@ -172,15 +206,29 @@ export default function SpcPlanVisualization() {
         format: 'a4',
       });
       
-      const imgWidth = 280; // A4 landscape width minus margins
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = pdfWidth - 20; // margins
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
       
-      pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, imgHeight);
+      // Handle multi-page if content is too tall
+      if (imgHeight > pdfHeight - 20) {
+        let yOffset = 0;
+        const pageHeight = pdfHeight - 20;
+        while (yOffset < imgHeight) {
+          if (yOffset > 0) pdf.addPage();
+          pdf.addImage(imgData, 'PNG', 10, 10 - yOffset, imgWidth, imgHeight);
+          yOffset += pageHeight;
+        }
+      } else {
+        pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, imgHeight);
+      }
+      
       pdf.save(`spc-visualization-${new Date().toISOString().split('T')[0]}.pdf`);
       toast.success("Đã xuất PDF thành công");
     } catch (error) {
       console.error('Export PDF error:', error);
-      toast.error("Lỗi khi xuất PDF");
+      toast.error(`Lỗi khi xuất PDF: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 

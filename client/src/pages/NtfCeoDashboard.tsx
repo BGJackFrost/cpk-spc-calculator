@@ -4,6 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { 
@@ -22,7 +24,14 @@ export default function NtfCeoDashboard() {
   const currentYear = new Date().getFullYear();
   const [year, setYear] = useState(currentYear);
 
+  const [selectedYears, setSelectedYears] = useState([currentYear, currentYear - 1, currentYear - 2]);
+  const [activeTab, setActiveTab] = useState("overview");
+
   const { data, isLoading } = trpc.ceoDashboard.getData.useQuery({ year });
+  const { data: multiYearData, isLoading: multiYearLoading } = trpc.ceoDashboard.getMultiYearComparison.useQuery(
+    { years: selectedYears },
+    { enabled: activeTab === "comparison" }
+  );
 
   const exportMutation = trpc.ceoDashboard.exportPowerPoint.useMutation({
     onSuccess: (data) => {
@@ -55,6 +64,14 @@ export default function NtfCeoDashboard() {
               Dashboard NTF cho CEO
             </h1>
             <p className="text-muted-foreground">Tổng quan KPI và hiệu suất NTF theo năm</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-auto">
+              <TabsList>
+                <TabsTrigger value="overview">Tổng quan</TabsTrigger>
+                <TabsTrigger value="comparison">So sánh nhiều năm</TabsTrigger>
+              </TabsList>
+            </Tabs>
           </div>
           <div className="flex items-center gap-2">
             <Select value={String(year)} onValueChange={(v) => setYear(Number(v))}>
@@ -371,6 +388,173 @@ export default function NtfCeoDashboard() {
               </CardContent>
             </Card>
           </>
+        )}
+
+        {/* Multi-year Comparison Tab */}
+        {activeTab === "comparison" && (
+          <div className="space-y-6">
+            {/* Year Selection */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Chọn các năm so sánh</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-4">
+                  {[currentYear, currentYear - 1, currentYear - 2, currentYear - 3, currentYear - 4].map(y => (
+                    <div key={y} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`year-${y}`}
+                        checked={selectedYears.includes(y)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setSelectedYears([...selectedYears, y].sort((a, b) => b - a));
+                          } else {
+                            setSelectedYears(selectedYears.filter(yr => yr !== y));
+                          }
+                        }}
+                      />
+                      <label htmlFor={`year-${y}`} className="text-sm font-medium">{y}</label>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {multiYearLoading ? (
+              <Card><CardContent className="h-64 animate-pulse bg-muted" /></Card>
+            ) : !multiYearData ? (
+              <Card><CardContent className="py-12 text-center text-muted-foreground">Không có dữ liệu</CardContent></Card>
+            ) : (
+              <>
+                {/* Yearly Comparison Chart */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>So sánh NTF Rate qua các năm</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-[300px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={multiYearData.data}>
+                          <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                          <XAxis dataKey="year" tick={{ fontSize: 12 }} />
+                          <YAxis tick={{ fontSize: 12 }} />
+                          <Tooltip 
+                            contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}
+                            formatter={(value: number) => [`${value.toFixed(1)}%`, 'NTF Rate']}
+                          />
+                          <ReferenceLine y={15} stroke="#ef4444" strokeDasharray="5 5" label="Target 15%" />
+                          <Bar dataKey="ntfRate" fill="#3b82f6" radius={[4, 4, 0, 0]}>
+                            {multiYearData.data.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.ntfRate <= 15 ? '#22c55e' : entry.ntfRate <= 25 ? '#f59e0b' : '#ef4444'} />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Trend Indicator */}
+                {multiYearData.trend && (
+                  <Card className={multiYearData.trend.improved ? 'border-green-500/50' : 'border-red-500/50'}>
+                    <CardContent className="py-6">
+                      <div className="flex items-center justify-center gap-4">
+                        {multiYearData.trend.improved ? (
+                          <TrendingDown className="w-8 h-8 text-green-500" />
+                        ) : (
+                          <TrendingUp className="w-8 h-8 text-red-500" />
+                        )}
+                        <div>
+                          <p className="text-lg font-medium">
+                            NTF Rate {multiYearData.trend.improved ? 'giảm' : 'tăng'} {Math.abs(multiYearData.trend.change).toFixed(1)}% so với năm trước
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {multiYearData.trend.improved ? 'Xu hướng tích cực' : 'Cần cải thiện'}
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Detailed Comparison Table */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Bảng so sánh chi tiết</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b">
+                            <th className="text-left p-3">Năm</th>
+                            <th className="text-right p-3">Tổng lỗi</th>
+                            <th className="text-right p-3">NTF</th>
+                            <th className="text-right p-3">Real NG</th>
+                            <th className="text-right p-3">NTF Rate</th>
+                            <th className="text-center p-3">Trạng thái</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {multiYearData.data.map((y) => (
+                            <tr key={y.year} className="border-b hover:bg-muted/50">
+                              <td className="p-3 font-medium">{y.year}</td>
+                              <td className="p-3 text-right">{y.total.toLocaleString()}</td>
+                              <td className="p-3 text-right">{y.ntfCount.toLocaleString()}</td>
+                              <td className="p-3 text-right">{y.realNgCount.toLocaleString()}</td>
+                              <td className={`p-3 text-right font-medium ${y.ntfRate <= 15 ? 'text-green-500' : 'text-red-500'}`}>
+                                {y.ntfRate.toFixed(1)}%
+                              </td>
+                              <td className="p-3 text-center">
+                                {y.ntfRate <= 15 ? (
+                                  <Badge className="bg-green-500">Đạt</Badge>
+                                ) : (
+                                  <Badge variant="destructive">Chưa đạt</Badge>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Quarterly Comparison by Year */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>So sánh theo Quý</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-[300px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={['Q1', 'Q2', 'Q3', 'Q4'].map(q => {
+                          const item: any = { quarter: q };
+                          multiYearData.data.forEach(y => {
+                            const qData = y.quarterly.find(qd => qd.quarter === q);
+                            item[y.year] = qData?.ntfRate || 0;
+                          });
+                          return item;
+                        })}>
+                          <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                          <XAxis dataKey="quarter" tick={{ fontSize: 12 }} />
+                          <YAxis tick={{ fontSize: 12 }} />
+                          <Tooltip 
+                            contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}
+                            formatter={(value: number) => [`${value.toFixed(1)}%`, 'NTF Rate']}
+                          />
+                          <Legend />
+                          {multiYearData.data.map((y, i) => (
+                            <Bar key={y.year} dataKey={String(y.year)} fill={COLORS[i % COLORS.length]} />
+                          ))}
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+              </>
+            )}
+          </div>
         )}
       </div>
     </DashboardLayout>

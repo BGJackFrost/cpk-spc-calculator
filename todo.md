@@ -3066,3 +3066,46 @@
 - [x] Slide phân tích theo sản phẩm/NCC
 - [x] Slide khuyến nghị và action items
 - [x] Nút Export PowerPoint trên các trang NTF
+
+
+## Phase 146 - Multi-year NTF, Auto Email, Department Dashboard & Bug Fixes
+
+### Multi-year NTF Comparison
+- [x] API getMultiYearComparison để lấy NTF theo nhiều năm
+- [x] Tab so sánh multi-year trên CEO Dashboard
+- [x] Biểu đồ so sánh NTF rate qua các năm
+- [x] Bảng chi tiết so sánh theo quý
+
+### Gửi PowerPoint tự động qua email
+- [x] Scheduled job gửi báo cáo PowerPoint hàng tháng
+- [x] API triggerPowerPointEmail để gửi thủ công
+- [x] Cấu hình danh sách email nhận báo cáo
+- [x] Lưu lịch sử gửi báo cáo
+
+### Dashboard NTF theo bộ phận
+- [x] Bảng departments lưu thông tin bộ phận
+- [x] API getDepartmentNtfAnalysis
+- [x] Trang NtfDepartmentDashboard.tsx
+- [x] Phân quyền xem theo bộ phận
+
+### Sửa lỗi xóa công việc Gantt
+- [x] Kiểm tra và sửa lỗi delete task trên Gantt chart
+- [x] Đảm bảo xóa cascade các dependencies
+
+### Nâng cấp Đề xuất đặt hàng phụ tùng
+- [x] Cho phép chọn phụ tùng trong đề xuất
+- [x] Tạo đơn đặt hàng từ đề xuất
+- [x] Workflow approve/reject đơn hàng
+
+### Sửa lỗi xuất PDF/PNG
+- [x] Fix export PDF/PNG trên SPC Plan Visualization
+- [x] Fix export báo cáo OEE Dashboard
+- [x] Fix export báo cáo KPI Nhà máy
+- [x] Fix export báo cáo Phân tích Nâng cao
+
+### Tải tự động thông tin SPC Plan
+- [x] Cho phép chọn Tiêu chuẩn đo lường
+- [x] Auto-load Phương pháp lấy mẫu theo tiêu chuẩn
+- [x] Auto-load USL/LSL theo tiêu chuẩn
+- [x] Auto-load SPC Rules theo tiêu chuẩn
+- [x] Auto-load CPK/CA Rules theo tiêu chuẩn

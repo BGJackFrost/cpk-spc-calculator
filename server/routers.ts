@@ -7653,6 +7653,148 @@ Hãy trả về JSON với format:
         };
       }),
 
+    // Department NTF Analysis
+    getDepartmentAnalysis: protectedProcedure
+      .input(z.object({
+        days: z.number().default(30),
+        departmentId: z.number().optional(),
+      }))
+      .query(async ({ ctx, input }) => {
+        const { getDb } = await import('./db');
+        const { sql } = await import('drizzle-orm');
+        const db = await getDb();
+        if (!db) return null;
+        
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - input.days);
+        const startDateStr = startDate.toISOString().split('T')[0];
+        
+        // Get departments with NTF data
+        const deptQuery = input.departmentId 
+          ? `AND pl.departmentId = ${input.departmentId}`
+          : '';
+        
+        const deptResult = await db.execute(sql.raw(`
+          SELECT 
+            COALESCE(d.id, 0) as id,
+            COALESCE(d.name, 'Không xác định') as name,
+            COUNT(*) as total,
+            SUM(CASE WHEN sdr.verificationStatus = 'ntf' THEN 1 ELSE 0 END) as ntfCount,
+            SUM(CASE WHEN sdr.verificationStatus = 'real_ng' THEN 1 ELSE 0 END) as realNgCount
+          FROM spc_defect_records sdr
+          LEFT JOIN production_lines pl ON sdr.productionLineId = pl.id
+          LEFT JOIN departments d ON pl.departmentId = d.id
+          WHERE sdr.createdAt >= '${startDateStr}' ${deptQuery}
+          GROUP BY d.id, d.name
+          ORDER BY total DESC
+        `));
+        
+        const departments = ((deptResult as unknown as any[])[0] as any[]).map((d: any) => ({
+          id: d.id,
+          name: d.name,
+          total: Number(d.total),
+          ntfCount: Number(d.ntfCount),
+          realNgCount: Number(d.realNgCount),
+          ntfRate: d.total > 0 ? (Number(d.ntfCount) / Number(d.total)) * 100 : 0,
+        }));
+        
+        // Calculate summary
+        const totalDepts = departments.length;
+        const avgNtfRate = totalDepts > 0 
+          ? departments.reduce((sum, d) => sum + d.ntfRate, 0) / totalDepts 
+          : 0;
+        const sortedByRate = [...departments].sort((a, b) => a.ntfRate - b.ntfRate);
+        const bestDept = sortedByRate[0]?.name || 'N/A';
+        const worstDept = sortedByRate[sortedByRate.length - 1]?.name || 'N/A';
+        
+        // Generate recommendations
+        const recommendations = departments
+          .filter(d => d.ntfRate >= 20)
+          .map(d => ({
+            department: d.name,
+            priority: d.ntfRate >= 30 ? 'high' : 'medium',
+            message: d.ntfRate >= 30 
+              ? `NTF rate ${d.ntfRate.toFixed(1)}% vượt ngưỡng nghiêm trọng. Cần rà soát quy trình kiểm tra ngay.`
+              : `NTF rate ${d.ntfRate.toFixed(1)}% ở mức cảnh báo. Xem xét cải thiện tiêu chuẩn kiểm tra.`
+          }));
+        
+        return {
+          departments,
+          summary: {
+            totalDepartments: totalDepts,
+            avgNtfRate,
+            bestDepartment: bestDept,
+            worstDepartment: worstDept,
+          },
+          recommendations,
+          trend: [], // Simplified - can add trend data later
+        };
+      }),
+
+    // Multi-year comparison
+    getMultiYearComparison: protectedProcedure
+      .input(z.object({
+        years: z.array(z.number()).default([new Date().getFullYear(), new Date().getFullYear() - 1, new Date().getFullYear() - 2]),
+      }))
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
+        }
+        const { getDb } = await import('./db');
+        const { sql } = await import('drizzle-orm');
+        const db = await getDb();
+        if (!db) return null;
+        
+        const yearlyData = [];
+        for (const year of input.years) {
+          const result = await db.execute(sql.raw(`
+            SELECT 
+              COUNT(*) as total,
+              SUM(CASE WHEN verificationStatus = 'ntf' THEN 1 ELSE 0 END) as ntfCount,
+              SUM(CASE WHEN verificationStatus = 'real_ng' THEN 1 ELSE 0 END) as realNgCount
+            FROM spc_defect_records
+            WHERE YEAR(createdAt) = ${year}
+          `));
+          
+          const quarterlyResult = await db.execute(sql.raw(`
+            SELECT 
+              QUARTER(createdAt) as quarter,
+              COUNT(*) as total,
+              SUM(CASE WHEN verificationStatus = 'ntf' THEN 1 ELSE 0 END) as ntfCount
+            FROM spc_defect_records
+            WHERE YEAR(createdAt) = ${year}
+            GROUP BY QUARTER(createdAt)
+            ORDER BY quarter
+          `));
+          
+          const data = ((result as unknown as any[])[0] as any[])[0] || { total: 0, ntfCount: 0, realNgCount: 0 };
+          const quarterly = ((quarterlyResult as unknown as any[])[0] as any[]).map(q => ({
+            quarter: `Q${q.quarter}`,
+            total: Number(q.total),
+            ntfCount: Number(q.ntfCount),
+            ntfRate: q.total > 0 ? (Number(q.ntfCount) / Number(q.total)) * 100 : 0,
+          }));
+          
+          yearlyData.push({
+            year,
+            total: Number(data.total),
+            ntfCount: Number(data.ntfCount),
+            realNgCount: Number(data.realNgCount),
+            ntfRate: data.total > 0 ? (Number(data.ntfCount) / Number(data.total)) * 100 : 0,
+            quarterly,
+          });
+        }
+        
+        return {
+          years: input.years,
+          data: yearlyData,
+          trend: yearlyData.length >= 2 ? {
+            improved: yearlyData[0].ntfRate < yearlyData[1].ntfRate,
+            change: yearlyData[0].ntfRate - yearlyData[1].ntfRate,
+          } : null,
+        };
+      }),
+
     // Export PowerPoint
     exportPowerPoint: protectedProcedure
       .input(z.object({

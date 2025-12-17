@@ -212,7 +212,7 @@ export default function PlantKPIDashboard() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <div id="plant-kpi-content" className="space-y-6">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
@@ -236,7 +236,39 @@ export default function PlantKPIDashboard() {
             <Button variant="outline" size="icon">
               <RefreshCw className="h-4 w-4" />
             </Button>
-            <Button variant="outline" size="icon">
+            <Button 
+              variant="outline" 
+              size="icon"
+              onClick={async () => {
+                try {
+                  toast.info("Đang xuất báo cáo...");
+                  const element = document.getElementById('plant-kpi-content');
+                  if (!element) {
+                    toast.error("Không tìm thấy nội dung để xuất");
+                    return;
+                  }
+                  const html2canvas = (await import('html2canvas')).default;
+                  const { jsPDF } = await import('jspdf');
+                  const canvas = await html2canvas(element, {
+                    backgroundColor: '#ffffff',
+                    scale: 2,
+                    useCORS: true,
+                    logging: false,
+                  });
+                  const imgData = canvas.toDataURL('image/png');
+                  const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+                  const pdfWidth = pdf.internal.pageSize.getWidth();
+                  const imgWidth = pdfWidth - 20;
+                  const imgHeight = (canvas.height * imgWidth) / canvas.width;
+                  pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, imgHeight);
+                  pdf.save(`plant-kpi-${new Date().toISOString().split('T')[0]}.pdf`);
+                  toast.success("Đã xuất báo cáo thành công");
+                } catch (error) {
+                  console.error('Export error:', error);
+                  toast.error("Đã xảy ra lỗi khi xuất báo cáo");
+                }
+              }}
+            >
               <Download className="h-4 w-4" />
             </Button>
             

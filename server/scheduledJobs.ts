@@ -331,6 +331,16 @@ export function initScheduledJobs(): void {
   
   console.log('[ScheduledJob] Scheduled: NTF monthly management report at 9:00 AM on 1st (Asia/Ho_Chi_Minh)');
   
+  // NTF PowerPoint report - runs at 10:00 AM on 1st of each month
+  cron.schedule('0 0 10 1 * *', async () => {
+    console.log('[ScheduledJob] Triggered: NTF PowerPoint report');
+    await sendNtfPowerPointReport();
+  }, {
+    timezone: 'Asia/Ho_Chi_Minh'
+  });
+  
+  console.log('[ScheduledJob] Scheduled: NTF PowerPoint report at 10:00 AM on 1st (Asia/Ho_Chi_Minh)');
+  
   jobsInitialized = true;
   console.log('[ScheduledJob] All scheduled jobs initialized successfully');
 }
@@ -1388,4 +1398,163 @@ async function sendNtfMonthlyManagementReport(): Promise<{ sent: number; failed:
  */
 export async function triggerMonthlyNtfManagementReport(): Promise<{ sent: number; failed: number; message: string }> {
   return await sendNtfMonthlyManagementReport();
+}
+
+
+/**
+ * Send NTF PowerPoint report via email
+ */
+async function sendNtfPowerPointReport(): Promise<{ sent: number; failed: number; message: string }> {
+  try {
+    const db = await getDb();
+    if (!db) {
+      console.log('[ScheduledJob] Database not available for PowerPoint report');
+      return { sent: 0, failed: 0, message: 'Database not available' };
+    }
+    
+    // Get management emails from NTF alert config
+    const configResult = await db.execute(sql.raw(`
+      SELECT alertEmails FROM ntf_alert_config WHERE id = 1
+    `));
+    const config = ((configResult as unknown as any[])[0] as any[])[0];
+    const managementEmails = config?.alertEmails ? JSON.parse(config.alertEmails) : [];
+    
+    if (managementEmails.length === 0) {
+      console.log('[ScheduledJob] No management emails configured for PowerPoint report');
+      return { sent: 0, failed: 0, message: 'No emails configured' };
+    }
+    
+    const currentYear = new Date().getFullYear();
+    const lastMonth = new Date();
+    lastMonth.setMonth(lastMonth.getMonth() - 1);
+    const monthName = lastMonth.toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' });
+    
+    // Get YTD data
+    const ytdResult = await db.execute(sql.raw(`
+      SELECT 
+        COUNT(*) as total,
+        SUM(CASE WHEN verificationStatus = 'ntf' THEN 1 ELSE 0 END) as ntfCount
+      FROM spc_defect_records
+      WHERE YEAR(createdAt) = ${currentYear}
+    `));
+    
+    // Get quarterly data
+    const quarterlyResult = await db.execute(sql.raw(`
+      SELECT 
+        QUARTER(createdAt) as quarter,
+        COUNT(*) as total,
+        SUM(CASE WHEN verificationStatus = 'ntf' THEN 1 ELSE 0 END) as ntfCount
+      FROM spc_defect_records
+      WHERE YEAR(createdAt) = ${currentYear}
+      GROUP BY QUARTER(createdAt)
+      ORDER BY quarter
+    `));
+    
+    const ytd = ((ytdResult as unknown as any[])[0] as any[])[0] || { total: 0, ntfCount: 0 };
+    const quarterly = ((quarterlyResult as unknown as any[])[0] as any[]).map((q: any) => ({
+      quarter: `Q${q.quarter}`,
+      total: Number(q.total),
+      ntfCount: Number(q.ntfCount),
+      ntfRate: q.total > 0 ? (Number(q.ntfCount) / Number(q.total)) * 100 : 0,
+    }));
+    
+    const ytdTotal = Number(ytd.total);
+    const ytdNtf = Number(ytd.ntfCount);
+    const ytdNtfRate = ytdTotal > 0 ? (ytdNtf / ytdTotal) * 100 : 0;
+    
+    // Create email with PowerPoint data summary
+    const emailHtml = `
+      <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; background: #f8fafc; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); color: white; padding: 30px; border-radius: 10px 10px 0 0;">
+          <h1 style="margin: 0; font-size: 24px;">📊 Báo cáo NTF PowerPoint - ${monthName}</h1>
+          <p style="margin: 10px 0 0 0; opacity: 0.9;">Dữ liệu tổng hợp cho presentation</p>
+        </div>
+        
+        <div style="background: white; padding: 20px; border-radius: 0 0 10px 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+          <h2 style="color: #1e3a8a; border-bottom: 2px solid #3b82f6; padding-bottom: 10px;">📈 Tổng quan YTD ${currentYear}</h2>
+          
+          <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+            <tr style="background: #f1f5f9;">
+              <th style="padding: 12px; text-align: left; border: 1px solid #e2e8f0;">Chỉ số</th>
+              <th style="padding: 12px; text-align: right; border: 1px solid #e2e8f0;">Giá trị</th>
+            </tr>
+            <tr>
+              <td style="padding: 12px; border: 1px solid #e2e8f0;">Tổng lỗi phát hiện</td>
+              <td style="padding: 12px; text-align: right; border: 1px solid #e2e8f0; font-weight: bold;">${ytdTotal.toLocaleString()}</td>
+            </tr>
+            <tr>
+              <td style="padding: 12px; border: 1px solid #e2e8f0;">NTF (Không phải lỗi)</td>
+              <td style="padding: 12px; text-align: right; border: 1px solid #e2e8f0; font-weight: bold;">${ytdNtf.toLocaleString()}</td>
+            </tr>
+            <tr>
+              <td style="padding: 12px; border: 1px solid #e2e8f0;">NTF Rate</td>
+              <td style="padding: 12px; text-align: right; border: 1px solid #e2e8f0; font-weight: bold; color: ${ytdNtfRate >= 30 ? '#dc2626' : ytdNtfRate >= 20 ? '#f59e0b' : '#22c55e'};">${ytdNtfRate.toFixed(1)}%</td>
+            </tr>
+          </table>
+          
+          <h2 style="color: #1e3a8a; border-bottom: 2px solid #3b82f6; padding-bottom: 10px;">📊 Theo Quý</h2>
+          
+          <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+            <tr style="background: #f1f5f9;">
+              <th style="padding: 12px; text-align: left; border: 1px solid #e2e8f0;">Quý</th>
+              <th style="padding: 12px; text-align: right; border: 1px solid #e2e8f0;">Tổng lỗi</th>
+              <th style="padding: 12px; text-align: right; border: 1px solid #e2e8f0;">NTF</th>
+              <th style="padding: 12px; text-align: right; border: 1px solid #e2e8f0;">NTF Rate</th>
+            </tr>
+            ${quarterly.map(q => `
+              <tr>
+                <td style="padding: 12px; border: 1px solid #e2e8f0; font-weight: bold;">${q.quarter}</td>
+                <td style="padding: 12px; text-align: right; border: 1px solid #e2e8f0;">${q.total.toLocaleString()}</td>
+                <td style="padding: 12px; text-align: right; border: 1px solid #e2e8f0;">${q.ntfCount.toLocaleString()}</td>
+                <td style="padding: 12px; text-align: right; border: 1px solid #e2e8f0; font-weight: bold; color: ${q.ntfRate >= 30 ? '#dc2626' : q.ntfRate >= 20 ? '#f59e0b' : '#22c55e'};">${q.ntfRate.toFixed(1)}%</td>
+              </tr>
+            `).join('')}
+          </table>
+          
+          <div style="background: #f0f9ff; padding: 15px; border-radius: 8px; border-left: 4px solid #3b82f6;">
+            <p style="margin: 0; color: #1e3a8a;">
+              <strong>💡 Hướng dẫn:</strong> Để tạo file PowerPoint đầy đủ với biểu đồ, vui lòng truy cập 
+              <strong>Dashboard CEO</strong> trong hệ thống và sử dụng nút <strong>Export PowerPoint</strong>.
+            </p>
+          </div>
+        </div>
+        
+        <div style="text-align: center; padding: 20px; color: #64748b; font-size: 12px;">
+          <p>Báo cáo này được gửi tự động từ hệ thống SPC/CPK Calculator</p>
+          <p>Thời gian tạo: ${new Date().toLocaleString('vi-VN')}</p>
+        </div>
+      </div>
+    `;
+    
+    let sent = 0;
+    let failed = 0;
+    
+    for (const email of managementEmails) {
+      try {
+        await sendEmail(
+          email,
+          `📊 Báo cáo NTF PowerPoint - ${monthName}`,
+          emailHtml
+        );
+        sent++;
+      } catch (err) {
+        console.error(`[ScheduledJob] Failed to send PowerPoint report to ${email}:`, err);
+        failed++;
+      }
+    }
+    
+    console.log(`[ScheduledJob] NTF PowerPoint report: sent=${sent}, failed=${failed}`);
+    return { sent, failed, message: `Sent to ${sent} recipients, ${failed} failed` };
+    
+  } catch (error) {
+    console.error('[ScheduledJob] Error sending NTF PowerPoint report:', error);
+    return { sent: 0, failed: 0, message: 'Error: ' + String(error) };
+  }
+}
+
+/**
+ * Manually trigger NTF PowerPoint report (for testing)
+ */
+export async function triggerNtfPowerPointReport(): Promise<{ sent: number; failed: number; message: string }> {
+  return await sendNtfPowerPointReport();
 }

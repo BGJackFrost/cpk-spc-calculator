@@ -97,7 +97,7 @@ export default function AdvancedAnalytics() {
 
   return (
     <DashboardLayout>
-      <div className="container py-6 space-y-6">
+      <div id="advanced-analytics-content" className="container py-6 space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold">
@@ -121,7 +121,40 @@ export default function AdvancedAnalytics() {
                 <SelectItem value="year">{language === "vi" ? "Theo năm" : "Yearly"}</SelectItem>
               </SelectContent>
             </Select>
-            <Button variant="outline">
+            <Button 
+              variant="outline"
+              onClick={async () => {
+                try {
+                  const { toast } = await import('sonner');
+                  toast.info("Đang xuất báo cáo...");
+                  const element = document.getElementById('advanced-analytics-content');
+                  if (!element) {
+                    toast.error("Không tìm thấy nội dung để xuất");
+                    return;
+                  }
+                  const html2canvas = (await import('html2canvas')).default;
+                  const { jsPDF } = await import('jspdf');
+                  const canvas = await html2canvas(element, {
+                    backgroundColor: '#ffffff',
+                    scale: 2,
+                    useCORS: true,
+                    logging: false,
+                  });
+                  const imgData = canvas.toDataURL('image/png');
+                  const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+                  const pdfWidth = pdf.internal.pageSize.getWidth();
+                  const imgWidth = pdfWidth - 20;
+                  const imgHeight = (canvas.height * imgWidth) / canvas.width;
+                  pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, imgHeight);
+                  pdf.save(`advanced-analytics-${new Date().toISOString().split('T')[0]}.pdf`);
+                  toast.success("Đã xuất báo cáo thành công");
+                } catch (error) {
+                  console.error('Export error:', error);
+                  const { toast } = await import('sonner');
+                  toast.error("Đã xảy ra lỗi khi xuất báo cáo");
+                }
+              }}
+            >
               <Download className="h-4 w-4 mr-2" />
               {language === "vi" ? "Xuất báo cáo" : "Export"}
             </Button>

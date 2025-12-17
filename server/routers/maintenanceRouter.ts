@@ -491,13 +491,26 @@ export const maintenanceRouter = router({
       }
 
       // Delete related records first
-      await db.delete(workOrderParts).where(eq(workOrderParts.workOrderId, input.id));
-      await db.delete(maintenanceHistory).where(eq(maintenanceHistory.workOrderId, input.id));
-      
-      // Delete the work order
-      await db.delete(workOrders).where(eq(workOrders.id, input.id));
-
-      return { success: true, deletedId: input.id };
+      try {
+        // Delete work order parts
+        await db.delete(workOrderParts).where(eq(workOrderParts.workOrderId, input.id));
+        
+        // Delete maintenance history
+        await db.delete(maintenanceHistory).where(eq(maintenanceHistory.workOrderId, input.id));
+        
+        // Delete any scheduled tasks related to this work order
+        const { scheduledMaintenanceTasks } = await import('../../drizzle/schema');
+        await db.delete(scheduledMaintenanceTasks).where(eq(scheduledMaintenanceTasks.workOrderId, input.id)).catch(() => {});
+        
+        // Delete the work order
+        await db.delete(workOrders).where(eq(workOrders.id, input.id));
+        
+        console.log(`[Maintenance] Deleted work order ${input.id} successfully`);
+        return { success: true, deletedId: input.id };
+      } catch (error) {
+        console.error(`[Maintenance] Error deleting work order ${input.id}:`, error);
+        throw new Error(`Failed to delete work order: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
     }),
 
   // Technicians
