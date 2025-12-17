@@ -12,7 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { Bell, Settings, History, Calendar, Plus, Trash2, Play, Mail, Clock, AlertTriangle, CheckCircle } from "lucide-react";
+import { Bell, Settings, History, Calendar, Plus, Trash2, Play, Mail, Clock, AlertTriangle, CheckCircle, TrendingUp, Download } from "lucide-react";
+import { Area, AreaChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
 
 export default function NtfAlertConfig() {
   const [activeTab, setActiveTab] = useState("config");
@@ -30,6 +31,9 @@ export default function NtfAlertConfig() {
   const { data: config, refetch: refetchConfig } = trpc.ntfConfig.getConfig.useQuery();
   const { data: alertHistory, refetch: refetchHistory } = trpc.ntfConfig.getAlertHistory.useQuery({ limit: 50 });
   const { data: reportSchedules, refetch: refetchSchedules } = trpc.ntfConfig.listReportSchedules.useQuery();
+  const [trendDays, setTrendDays] = useState(30);
+  const [trendGroupBy, setTrendGroupBy] = useState<'day' | 'week' | 'month'>('day');
+  const { data: trendData } = trpc.ntfConfig.getTrendData.useQuery({ days: trendDays, groupBy: trendGroupBy });
 
   // Mutations
   const updateConfig = trpc.ntfConfig.updateConfig.useMutation({
@@ -74,6 +78,20 @@ export default function NtfAlertConfig() {
     onSuccess: () => {
       toast.success("Đã xóa lịch báo cáo");
       refetchSchedules();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const exportHistory = trpc.ntfConfig.exportAlertHistory.useMutation({
+    onSuccess: (result) => {
+      // Download file
+      const link = document.createElement('a');
+      link.href = `data:${result.mimeType};base64,${result.data}`;
+      link.download = result.filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast.success(`Đã xuất file ${result.filename}`);
     },
     onError: (err) => toast.error(err.message),
   });
@@ -141,6 +159,10 @@ export default function NtfAlertConfig() {
             <TabsTrigger value="schedules">
               <Calendar className="w-4 h-4 mr-2" />
               Lịch báo cáo
+            </TabsTrigger>
+            <TabsTrigger value="trend">
+              <TrendingUp className="w-4 h-4 mr-2" />
+              Xu hướng
             </TabsTrigger>
             <TabsTrigger value="history">
               <History className="w-4 h-4 mr-2" />
@@ -494,11 +516,167 @@ export default function NtfAlertConfig() {
             </Card>
           </TabsContent>
 
+          <TabsContent value="trend" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <TrendingUp className="w-5 h-5" />
+                      Xu hướng NTF Rate
+                    </CardTitle>
+                    <CardDescription>Biểu đồ NTF rate theo thời gian</CardDescription>
+                  </div>
+                  <div className="flex gap-2">
+                    <Select value={String(trendDays)} onValueChange={(v) => setTrendDays(Number(v))}>
+                      <SelectTrigger className="w-[120px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="7">7 ngày</SelectItem>
+                        <SelectItem value="14">14 ngày</SelectItem>
+                        <SelectItem value="30">30 ngày</SelectItem>
+                        <SelectItem value="90">90 ngày</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select value={trendGroupBy} onValueChange={(v) => setTrendGroupBy(v as any)}>
+                      <SelectTrigger className="w-[120px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="day">Theo ngày</SelectItem>
+                        <SelectItem value="week">Theo tuần</SelectItem>
+                        <SelectItem value="month">Theo tháng</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {trendData && trendData.length > 0 ? (
+                  <div className="h-[400px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={trendData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id="ntfGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.8}/>
+                            <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.1}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                        <XAxis 
+                          dataKey="periodStart" 
+                          tickFormatter={(value) => new Date(value).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}
+                          className="text-xs"
+                        />
+                        <YAxis 
+                          domain={[0, 'auto']}
+                          tickFormatter={(value) => `${value.toFixed(0)}%`}
+                          className="text-xs"
+                        />
+                        <Tooltip 
+                          formatter={(value: number) => [`${value.toFixed(1)}%`, 'NTF Rate']}
+                          labelFormatter={(label) => new Date(label).toLocaleDateString('vi-VN')}
+                          contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}
+                        />
+                        <ReferenceLine y={config?.warningThreshold || 20} stroke="#f59e0b" strokeDasharray="5 5" label={{ value: 'Warning', position: 'right', fill: '#f59e0b', fontSize: 12 }} />
+                        <ReferenceLine y={config?.criticalThreshold || 30} stroke="#dc2626" strokeDasharray="5 5" label={{ value: 'Critical', position: 'right', fill: '#dc2626', fontSize: 12 }} />
+                        <Area 
+                          type="monotone" 
+                          dataKey="ntfRate" 
+                          stroke="#f59e0b" 
+                          fillOpacity={1} 
+                          fill="url(#ntfGradient)" 
+                          strokeWidth={2}
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <div className="h-[400px] flex items-center justify-center text-muted-foreground">
+                    Chưa có dữ liệu để hiển thị
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {trendData && trendData.length > 0 && (
+              <div className="grid gap-4 md:grid-cols-3">
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">NTF Rate trung bình</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {(trendData.reduce((sum, d) => sum + d.ntfRate, 0) / trendData.length).toFixed(1)}%
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">Tổng số lỗi</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {trendData.reduce((sum, d) => sum + d.total, 0).toLocaleString()}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      NTF: {trendData.reduce((sum, d) => sum + d.ntfCount, 0).toLocaleString()} | 
+                      Real NG: {trendData.reduce((sum, d) => sum + d.realNgCount, 0).toLocaleString()}
+                    </p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">Ngày NTF cao nhất</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {(() => {
+                      const maxDay = trendData.reduce((max, d) => d.ntfRate > max.ntfRate ? d : max, trendData[0]);
+                      return (
+                        <>
+                          <div className="text-2xl font-bold text-red-500">{maxDay.ntfRate.toFixed(1)}%</div>
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(maxDay.periodStart).toLocaleDateString('vi-VN')}
+                          </p>
+                        </>
+                      );
+                    })()}
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+          </TabsContent>
+
           <TabsContent value="history" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Lịch sử cảnh báo NTF</CardTitle>
-                <CardDescription>Các cảnh báo đã được gửi trong quá khứ</CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Lịch sử cảnh báo NTF</CardTitle>
+                    <CardDescription>Các cảnh báo đã được gửi trong quá khứ</CardDescription>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => exportHistory.mutate({ format: 'excel', days: 90 })}
+                      disabled={exportHistory.isPending}
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      Excel
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => exportHistory.mutate({ format: 'pdf', days: 90 })}
+                      disabled={exportHistory.isPending}
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      PDF
+                    </Button>
+                  </div>
+                </div>
               </CardHeader>
               <Table>
                 <TableHeader>

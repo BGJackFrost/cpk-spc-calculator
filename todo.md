@@ -2927,3 +2927,25 @@
 - [x] Test cooldown logic
 - [x] Test report schedule date ranges
 - [x] Test email recipients parsing
+
+
+## Phase 140 - NTF Enhancements
+
+### Biểu đồ trend NTF rate
+- [x] Thêm API getTrendData để lấy NTF rate theo ngày/tuần/tháng
+- [x] Thêm tab Trend vào trang /ntf-config
+- [x] Biểu đồ Area Chart hiển thị NTF rate theo thời gian
+- [x] Bộ lọc theo khoảng thời gian (7/14/30/90 ngày)
+
+### Widget NTF trên Dashboard
+- [x] Tạo component NtfStatsWidget
+- [x] Hiển thị NTF rate hiện tại với màu sắc theo ngưỡng
+- [x] Hiển thị số lượng lỗi NTF/Real NG/Pending
+- [x] Mini chart trend 7 ngày gần nhất
+- [x] Tích hợp vào Dashboard chính
+
+### Export lịch sử cảnh báo NTF
+- [x] Thêm API exportAlertHistory
+- [x] Export Excel với đầy đủ thông tin cảnh báo
+- [x] Export PDF với format báo cáo
+- [x] Nút Export trên tab Lịch sử cảnh báo

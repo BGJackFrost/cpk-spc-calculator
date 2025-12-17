@@ -39,6 +39,7 @@ import { WebhookRetryWidget } from "@/components/WebhookRetryWidget";
 import { LowStockWidget } from "@/components/LowStockWidget";
 import { ValidationRulesCard } from "@/components/ValidationRulesCard";
 import { OnboardingWizard } from "@/components/OnboardingWizard";
+import NtfStatsWidget from "@/components/NtfStatsWidget";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -310,51 +311,8 @@ export default function Dashboard() {
             <LowStockWidget />
             {isWidgetVisible("validation_rules") && <ValidationRulesCard />}
             
-            {/* NTF Rate Widget */}
-            {isWidgetVisible("ntf_rate") && ntfStats && (
-              <Link href="/defect-management">
-                <Card className="elegant-card cursor-pointer h-full hover:border-primary/50">
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-sm font-medium text-muted-foreground">Tỉ lệ NTF (7 ngày)</CardTitle>
-                      <Activity className={`h-5 w-5 ${Number(ntfStats.summary.overallNtfRate) >= 30 ? 'text-destructive' : 'text-chart-3'}`} />
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-baseline gap-2">
-                      <span className={`text-3xl font-bold ${Number(ntfStats.summary.overallNtfRate) >= 30 ? 'text-destructive' : 'text-chart-3'}`}>
-                        {ntfStats.summary.overallNtfRate}%
-                      </span>
-                      {Number(ntfStats.summary.overallNtfRate) >= 30 && (
-                        <span className="text-xs text-destructive flex items-center gap-1">
-                          <AlertTriangle className="h-3 w-3" /> Cao
-                        </span>
-                      )}
-                    </div>
-                    <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
-                      <div className="text-center p-1 rounded bg-muted">
-                        <div className="font-semibold">{ntfStats.summary.totalDefects}</div>
-                        <div className="text-muted-foreground">Tổng</div>
-                      </div>
-                      <div className="text-center p-1 rounded bg-red-500/10">
-                        <div className="font-semibold text-red-500">{ntfStats.summary.realNg}</div>
-                        <div className="text-muted-foreground">Real NG</div>
-                      </div>
-                      <div className="text-center p-1 rounded bg-yellow-500/10">
-                        <div className="font-semibold text-yellow-500">{ntfStats.summary.ntf}</div>
-                        <div className="text-muted-foreground">NTF</div>
-                      </div>
-                    </div>
-                    {ntfStats.summary.pending > 0 && (
-                      <div className="mt-2 text-xs text-muted-foreground">
-                        <XCircle className="h-3 w-3 inline mr-1" />
-                        {ntfStats.summary.pending} lỗi chưa xác nhận
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </Link>
-            )}
+            {/* NTF Stats Widget - Enhanced */}
+            {isWidgetVisible("ntf_rate") && <NtfStatsWidget />}
           </div>
         </div>
 

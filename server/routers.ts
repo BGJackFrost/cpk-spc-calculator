@@ -6036,6 +6036,289 @@ organization: organizationRouter,
         await db.execute(sql`DELETE FROM ntf_report_schedule WHERE id = ${input.id}`);
         return { success: true };
       }),
+    
+    // NTF Trend Data
+    getTrendData: protectedProcedure
+      .input(z.object({
+        days: z.number().default(30),
+        groupBy: z.enum(['day', 'week', 'month']).default('day'),
+      }))
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
+        }
+        const { getDb } = await import('./db');
+        const { sql } = await import('drizzle-orm');
+        const db = await getDb();
+        if (!db) return [];
+        
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - input.days);
+        
+        let groupByClause = 'DATE(createdAt)';
+        if (input.groupBy === 'week') {
+          groupByClause = 'YEARWEEK(createdAt, 1)';
+        } else if (input.groupBy === 'month') {
+          groupByClause = 'DATE_FORMAT(createdAt, \'%Y-%m\')';
+        }
+        
+        const result = await db.execute(sql.raw(`
+          SELECT 
+            ${groupByClause} as period,
+            MIN(DATE(createdAt)) as periodStart,
+            COUNT(*) as total,
+            SUM(CASE WHEN verificationStatus = 'ntf' THEN 1 ELSE 0 END) as ntfCount,
+            SUM(CASE WHEN verificationStatus = 'real_ng' THEN 1 ELSE 0 END) as realNgCount,
+            SUM(CASE WHEN verificationStatus = 'pending' THEN 1 ELSE 0 END) as pendingCount
+          FROM spc_defect_records
+          WHERE createdAt >= '${startDate.toISOString()}'
+          GROUP BY ${groupByClause}
+          ORDER BY period ASC
+        `));
+        
+        return ((result as unknown as any[])[0] as any[]).map(row => ({
+          period: row.period,
+          periodStart: row.periodStart,
+          total: Number(row.total),
+          ntfCount: Number(row.ntfCount),
+          realNgCount: Number(row.realNgCount),
+          pendingCount: Number(row.pendingCount),
+          ntfRate: row.total > 0 ? (Number(row.ntfCount) / Number(row.total)) * 100 : 0,
+        }));
+      }),
+    
+    // Current NTF Stats for Dashboard Widget
+    getCurrentStats: protectedProcedure
+      .query(async () => {
+        const { getDb } = await import('./db');
+        const { sql } = await import('drizzle-orm');
+        const db = await getDb();
+        if (!db) return null;
+        
+        // Get stats for last 7 days
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        
+        const statsResult = await db.execute(sql`
+          SELECT 
+            COUNT(*) as total,
+            SUM(CASE WHEN verificationStatus = 'ntf' THEN 1 ELSE 0 END) as ntfCount,
+            SUM(CASE WHEN verificationStatus = 'real_ng' THEN 1 ELSE 0 END) as realNgCount,
+            SUM(CASE WHEN verificationStatus = 'pending' THEN 1 ELSE 0 END) as pendingCount
+          FROM spc_defect_records
+          WHERE createdAt >= ${sevenDaysAgo.toISOString()}
+        `);
+        
+        const stats = ((statsResult as unknown as any[])[0] as any[])[0];
+        const total = Number(stats?.total) || 0;
+        const ntfCount = Number(stats?.ntfCount) || 0;
+        const realNgCount = Number(stats?.realNgCount) || 0;
+        const pendingCount = Number(stats?.pendingCount) || 0;
+        const ntfRate = total > 0 ? (ntfCount / total) * 100 : 0;
+        
+        // Get config for thresholds
+        const configResult = await db.execute(sql`SELECT warningThreshold, criticalThreshold FROM ntf_alert_config LIMIT 1`);
+        const config = ((configResult as unknown as any[])[0] as any[])[0];
+        
+        // Get mini trend (last 7 days by day)
+        const trendResult = await db.execute(sql`
+          SELECT 
+            DATE(createdAt) as date,
+            COUNT(*) as total,
+            SUM(CASE WHEN verificationStatus = 'ntf' THEN 1 ELSE 0 END) as ntfCount
+          FROM spc_defect_records
+          WHERE createdAt >= ${sevenDaysAgo.toISOString()}
+          GROUP BY DATE(createdAt)
+          ORDER BY date ASC
+        `);
+        
+        const trend = ((trendResult as unknown as any[])[0] as any[]).map(row => ({
+          date: row.date,
+          ntfRate: row.total > 0 ? (Number(row.ntfCount) / Number(row.total)) * 100 : 0,
+        }));
+        
+        return {
+          total,
+          ntfCount,
+          realNgCount,
+          pendingCount,
+          ntfRate,
+          warningThreshold: Number(config?.warningThreshold) || 20,
+          criticalThreshold: Number(config?.criticalThreshold) || 30,
+          trend,
+        };
+      }),
+    
+    // Export Alert History
+    exportAlertHistory: protectedProcedure
+      .input(z.object({
+        format: z.enum(['excel', 'pdf']),
+        days: z.number().default(90),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
+        }
+        const { getDb } = await import('./db');
+        const { sql } = await import('drizzle-orm');
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+        
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - input.days);
+        
+        const result = await db.execute(sql`
+          SELECT * FROM ntf_alert_history 
+          WHERE createdAt >= ${startDate.toISOString()}
+          ORDER BY createdAt DESC
+        `);
+        
+        const alerts = ((result as unknown as any[])[0] as any[]).map(row => ({
+          id: row.id,
+          createdAt: row.createdAt,
+          alertType: row.alertType,
+          ntfRate: Number(row.ntfRate),
+          totalDefects: row.totalDefects,
+          ntfCount: row.ntfCount,
+          realNgCount: row.realNgCount,
+          pendingCount: row.pendingCount,
+          emailSent: row.emailSent,
+          emailRecipients: row.emailRecipients ? JSON.parse(row.emailRecipients) : [],
+          periodStart: row.periodStart,
+          periodEnd: row.periodEnd,
+        }));
+        
+        if (input.format === 'excel') {
+          const ExcelJS = await import('exceljs');
+          const workbook = new ExcelJS.default.Workbook();
+          const sheet = workbook.addWorksheet('NTF Alert History');
+          
+          sheet.columns = [
+            { header: 'ID', key: 'id', width: 10 },
+            { header: 'Thời gian', key: 'createdAt', width: 20 },
+            { header: 'Loại cảnh báo', key: 'alertType', width: 15 },
+            { header: 'NTF Rate (%)', key: 'ntfRate', width: 15 },
+            { header: 'Tổng lỗi', key: 'totalDefects', width: 12 },
+            { header: 'NTF', key: 'ntfCount', width: 10 },
+            { header: 'Real NG', key: 'realNgCount', width: 10 },
+            { header: 'Pending', key: 'pendingCount', width: 10 },
+            { header: 'Email gửi', key: 'emailSent', width: 12 },
+            { header: 'Người nhận', key: 'emailRecipients', width: 30 },
+            { header: 'Từ ngày', key: 'periodStart', width: 15 },
+            { header: 'Đến ngày', key: 'periodEnd', width: 15 },
+          ];
+          
+          alerts.forEach(alert => {
+            sheet.addRow({
+              ...alert,
+              createdAt: new Date(alert.createdAt).toLocaleString('vi-VN'),
+              alertType: alert.alertType === 'critical' ? 'Nghiêm trọng' : 'Cảnh báo',
+              ntfRate: alert.ntfRate.toFixed(1),
+              emailSent: alert.emailSent ? 'Có' : 'Không',
+              emailRecipients: alert.emailRecipients.join(', '),
+              periodStart: new Date(alert.periodStart).toLocaleDateString('vi-VN'),
+              periodEnd: new Date(alert.periodEnd).toLocaleDateString('vi-VN'),
+            });
+          });
+          
+          // Style header
+          sheet.getRow(1).font = { bold: true };
+          sheet.getRow(1).fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFE0E0E0' },
+          };
+          
+          const buffer = await workbook.xlsx.writeBuffer();
+          const base64 = Buffer.from(buffer).toString('base64');
+          
+          return {
+            filename: `ntf_alert_history_${new Date().toISOString().split('T')[0]}.xlsx`,
+            data: base64,
+            mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          };
+        } else {
+          // PDF export
+          const PDFDocument = (await import('pdfkit')).default;
+          const doc = new PDFDocument({ margin: 50, size: 'A4', layout: 'landscape' });
+          const chunks: Buffer[] = [];
+          
+          doc.on('data', (chunk: Buffer) => chunks.push(chunk));
+          
+          // Title
+          doc.fontSize(18).font('Helvetica-Bold').text('Lich su Canh bao NTF', { align: 'center' });
+          doc.moveDown();
+          doc.fontSize(10).font('Helvetica').text(`Xuat ngay: ${new Date().toLocaleString('vi-VN')}`, { align: 'center' });
+          doc.moveDown(2);
+          
+          // Summary
+          const totalAlerts = alerts.length;
+          const criticalCount = alerts.filter(a => a.alertType === 'critical').length;
+          const warningCount = alerts.filter(a => a.alertType === 'warning').length;
+          
+          doc.fontSize(12).font('Helvetica-Bold').text('Tong quan:');
+          doc.fontSize(10).font('Helvetica');
+          doc.text(`Tong so canh bao: ${totalAlerts}`);
+          doc.text(`Canh bao nghiem trong: ${criticalCount}`);
+          doc.text(`Canh bao thuong: ${warningCount}`);
+          doc.moveDown(2);
+          
+          // Table
+          const tableTop = doc.y;
+          const colWidths = [60, 100, 80, 60, 60, 60, 60, 100];
+          const headers = ['ID', 'Thoi gian', 'Loai', 'NTF Rate', 'Tong loi', 'NTF', 'Real NG', 'Ky'];
+          
+          let x = 50;
+          doc.fontSize(9).font('Helvetica-Bold');
+          headers.forEach((header, i) => {
+            doc.text(header, x, tableTop, { width: colWidths[i], align: 'left' });
+            x += colWidths[i];
+          });
+          
+          doc.moveTo(50, tableTop + 15).lineTo(750, tableTop + 15).stroke();
+          
+          let y = tableTop + 20;
+          doc.font('Helvetica').fontSize(8);
+          
+          alerts.slice(0, 30).forEach(alert => {
+            if (y > 500) {
+              doc.addPage();
+              y = 50;
+            }
+            
+            x = 50;
+            const row = [
+              String(alert.id),
+              new Date(alert.createdAt).toLocaleString('vi-VN'),
+              alert.alertType === 'critical' ? 'Nghiem trong' : 'Canh bao',
+              alert.ntfRate.toFixed(1) + '%',
+              String(alert.totalDefects),
+              String(alert.ntfCount),
+              String(alert.realNgCount),
+              `${new Date(alert.periodStart).toLocaleDateString('vi-VN')} - ${new Date(alert.periodEnd).toLocaleDateString('vi-VN')}`,
+            ];
+            
+            row.forEach((cell, i) => {
+              doc.text(cell, x, y, { width: colWidths[i], align: 'left' });
+              x += colWidths[i];
+            });
+            
+            y += 15;
+          });
+          
+          doc.end();
+          
+          await new Promise(resolve => doc.on('end', resolve));
+          const pdfBuffer = Buffer.concat(chunks);
+          const base64 = pdfBuffer.toString('base64');
+          
+          return {
+            filename: `ntf_alert_history_${new Date().toISOString().split('T')[0]}.pdf`,
+            data: base64,
+            mimeType: 'application/pdf',
+          };
+        }
+      }),
   }),
 
   shiftReport: router({
