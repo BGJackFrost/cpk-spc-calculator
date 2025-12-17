@@ -127,7 +127,9 @@
     "ntfShiftAnalysis": "NTF theo Ca",
     "ntfProductAnalysis": "NTF theo Sản phẩm",
     "ntfSupplierAnalysis": "NTF theo NCC",
-    "ntfEnvironment": "NTF & Môi trường"
+    "ntfEnvironment": "NTF & Môi trường",
+    "environmentAlerts": "Cảnh báo Môi trường",
+    "ceoDashboard": "Dashboard CEO"
   },
   "dashboard": {
     "welcome": "Xin chào",

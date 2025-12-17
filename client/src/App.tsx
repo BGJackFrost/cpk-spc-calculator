@@ -116,6 +116,8 @@ import NtfShiftAnalysis from "./pages/NtfShiftAnalysis";
 import NtfProductAnalysis from "./pages/NtfProductAnalysis";
 import NtfSupplierAnalysis from "./pages/NtfSupplierAnalysis";
 import NtfEnvironmentCorrelation from "./pages/NtfEnvironmentCorrelation";
+import EnvironmentAlertConfig from "./pages/EnvironmentAlertConfig";
+import NtfCeoDashboard from "./pages/NtfCeoDashboard";
 
 function Router() {
   return (
@@ -183,6 +185,8 @@ function Router() {
       <Route path="/ntf-product-analysis" component={NtfProductAnalysis} />
       <Route path="/ntf-supplier-analysis" component={NtfSupplierAnalysis} />
       <Route path="/ntf-environment" component={NtfEnvironmentCorrelation} />
+      <Route path="/environment-alerts" component={EnvironmentAlertConfig} />
+      <Route path="/ceo-dashboard" component={NtfCeoDashboard} />
       <Route path="/scheduled-reports" component={ScheduledReports} />
       <Route path="/supervisor-dashboard" component={SupervisorDashboard} />
       <Route path="/shift-reports" component={ShiftReportHistory} />

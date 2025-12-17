@@ -3042,3 +3042,27 @@
 - [x] Scatter plot NTF vs độ ẩm
 - [x] Hệ số tương quan Pearson
 - [x] Phân tích và khuyến nghị dựa trên correlation
+
+
+## Phase 145 - Environment Alerts, CEO Dashboard & PowerPoint Export
+
+### Ngưỡng cảnh báo môi trường tự động
+- [x] Bảng environment_alert_config lưu cấu hình ngưỡng
+- [x] API getEnvironmentAlertConfig và updateEnvironmentAlertConfig
+- [x] Trang cấu hình ngưỡng nhiệt độ/độ ẩm
+- [x] Scheduled job kiểm tra môi trường và gửi cảnh báo
+- [x] Lịch sử cảnh báo môi trường
+
+### Dashboard NTF cho CEO
+- [x] API getCeoNtfDashboard với KPI tổng hợp
+- [x] Trang NtfCeoDashboard.tsx với giao diện executive
+- [x] So sánh NTF rate theo quý (Q1, Q2, Q3, Q4)
+- [x] KPI cards: NTF rate, trend, target vs actual
+- [x] Biểu đồ tổng quan và insights
+
+### Export báo cáo NTF ra PowerPoint
+- [x] API exportNtfPowerPoint để tạo file PPTX
+- [x] Slide tổng quan NTF với charts
+- [x] Slide phân tích theo sản phẩm/NCC
+- [x] Slide khuyến nghị và action items
+- [x] Nút Export PowerPoint trên các trang NTF

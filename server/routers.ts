@@ -7412,6 +7412,348 @@ Hãy trả về JSON với format:
       }),
   }),
 
+  // Environment Alerts Router
+  environmentAlerts: router({
+    // Get environment alert config
+    getConfig: protectedProcedure
+      .query(async ({ ctx }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
+        }
+        const { getDb } = await import('./db');
+        const { sql } = await import('drizzle-orm');
+        const db = await getDb();
+        if (!db) return null;
+        
+        const result = await db.execute(sql.raw(`
+          SELECT configKey, configValue FROM ntf_alert_config 
+          WHERE configKey LIKE 'env_%'
+        `));
+        
+        const configs = ((result as unknown as any[])[0] as any[]) || [];
+        const configMap: Record<string, any> = {};
+        configs.forEach(c => {
+          try {
+            configMap[c.configKey] = JSON.parse(c.configValue);
+          } catch {
+            configMap[c.configKey] = c.configValue;
+          }
+        });
+        
+        return {
+          tempMin: configMap.env_temp_min ?? 18,
+          tempMax: configMap.env_temp_max ?? 28,
+          humidityMin: configMap.env_humidity_min ?? 40,
+          humidityMax: configMap.env_humidity_max ?? 70,
+          checkInterval: configMap.env_check_interval ?? 30,
+          alertEmails: configMap.env_alert_emails ?? [],
+          enabled: configMap.env_enabled ?? true,
+        };
+      }),
+
+    // Update environment alert config
+    updateConfig: protectedProcedure
+      .input(z.object({
+        tempMin: z.number().optional(),
+        tempMax: z.number().optional(),
+        humidityMin: z.number().optional(),
+        humidityMax: z.number().optional(),
+        checkInterval: z.number().optional(),
+        alertEmails: z.array(z.string()).optional(),
+        enabled: z.boolean().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
+        }
+        const { getDb } = await import('./db');
+        const { sql } = await import('drizzle-orm');
+        const db = await getDb();
+        if (!db) return { success: false };
+        
+        const updates: [string, any][] = [
+          ['env_temp_min', input.tempMin],
+          ['env_temp_max', input.tempMax],
+          ['env_humidity_min', input.humidityMin],
+          ['env_humidity_max', input.humidityMax],
+          ['env_check_interval', input.checkInterval],
+          ['env_alert_emails', input.alertEmails],
+          ['env_enabled', input.enabled],
+        ];
+        
+        for (const [key, value] of updates) {
+          if (value !== undefined) {
+            const jsonValue = JSON.stringify(value);
+            await db.execute(sql.raw(`
+              INSERT INTO ntf_alert_config (configKey, configValue, createdAt, updatedAt)
+              VALUES ('${key}', '${jsonValue}', NOW(), NOW())
+              ON DUPLICATE KEY UPDATE configValue = '${jsonValue}', updatedAt = NOW()
+            `));
+          }
+        }
+        
+        return { success: true };
+      }),
+
+    // Get environment alert history
+    getAlertHistory: protectedProcedure
+      .input(z.object({
+        limit: z.number().default(50),
+      }))
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
+        }
+        const { getDb } = await import('./db');
+        const { sql } = await import('drizzle-orm');
+        const db = await getDb();
+        if (!db) return [];
+        
+        const result = await db.execute(sql.raw(`
+          SELECT * FROM ntf_alert_history 
+          WHERE alertType LIKE 'environment_%'
+          ORDER BY createdAt DESC 
+          LIMIT ${input.limit}
+        `));
+        
+        return ((result as unknown as any[])[0] as any[]) || [];
+      }),
+  }),
+
+  // CEO NTF Dashboard
+  ceoDashboard: router({
+    // Get CEO dashboard data
+    getData: protectedProcedure
+      .input(z.object({
+        year: z.number().default(new Date().getFullYear()),
+      }))
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
+        }
+        const { getDb } = await import('./db');
+        const { sql } = await import('drizzle-orm');
+        const db = await getDb();
+        if (!db) return null;
+        
+        // Get quarterly data
+        const quarterlyResult = await db.execute(sql.raw(`
+          SELECT 
+            QUARTER(createdAt) as quarter,
+            COUNT(*) as total,
+            SUM(CASE WHEN verificationStatus = 'ntf' THEN 1 ELSE 0 END) as ntfCount,
+            SUM(CASE WHEN verificationStatus = 'real_ng' THEN 1 ELSE 0 END) as realNgCount
+          FROM spc_defect_records
+          WHERE YEAR(createdAt) = ${input.year}
+          GROUP BY QUARTER(createdAt)
+          ORDER BY quarter
+        `));
+        
+        // Get monthly trend
+        const monthlyResult = await db.execute(sql.raw(`
+          SELECT 
+            MONTH(createdAt) as month,
+            COUNT(*) as total,
+            SUM(CASE WHEN verificationStatus = 'ntf' THEN 1 ELSE 0 END) as ntfCount
+          FROM spc_defect_records
+          WHERE YEAR(createdAt) = ${input.year}
+          GROUP BY MONTH(createdAt)
+          ORDER BY month
+        `));
+        
+        // Get YTD stats
+        const ytdResult = await db.execute(sql.raw(`
+          SELECT 
+            COUNT(*) as total,
+            SUM(CASE WHEN verificationStatus = 'ntf' THEN 1 ELSE 0 END) as ntfCount,
+            SUM(CASE WHEN verificationStatus = 'real_ng' THEN 1 ELSE 0 END) as realNgCount
+          FROM spc_defect_records
+          WHERE YEAR(createdAt) = ${input.year}
+        `));
+        
+        // Get previous year for comparison
+        const prevYearResult = await db.execute(sql.raw(`
+          SELECT 
+            COUNT(*) as total,
+            SUM(CASE WHEN verificationStatus = 'ntf' THEN 1 ELSE 0 END) as ntfCount
+          FROM spc_defect_records
+          WHERE YEAR(createdAt) = ${input.year - 1}
+        `));
+        
+        // Get top issues
+        const topIssuesResult = await db.execute(sql.raw(`
+          SELECT 
+            COALESCE(ntfReason, 'unknown') as reason,
+            COUNT(*) as count
+          FROM spc_defect_records
+          WHERE YEAR(createdAt) = ${input.year} AND verificationStatus = 'ntf'
+          GROUP BY ntfReason
+          ORDER BY count DESC
+          LIMIT 5
+        `));
+        
+        const quarterly = ((quarterlyResult as unknown as any[])[0] as any[]).map(q => ({
+          quarter: `Q${q.quarter}`,
+          total: Number(q.total),
+          ntfCount: Number(q.ntfCount),
+          realNgCount: Number(q.realNgCount),
+          ntfRate: q.total > 0 ? (Number(q.ntfCount) / Number(q.total)) * 100 : 0,
+        }));
+        
+        const monthly = ((monthlyResult as unknown as any[])[0] as any[]).map(m => ({
+          month: m.month,
+          monthName: new Date(input.year, m.month - 1).toLocaleDateString('vi-VN', { month: 'short' }),
+          total: Number(m.total),
+          ntfCount: Number(m.ntfCount),
+          ntfRate: m.total > 0 ? (Number(m.ntfCount) / Number(m.total)) * 100 : 0,
+        }));
+        
+        const ytd = ((ytdResult as unknown as any[])[0] as any[])[0] || { total: 0, ntfCount: 0, realNgCount: 0 };
+        const prevYear = ((prevYearResult as unknown as any[])[0] as any[])[0] || { total: 0, ntfCount: 0 };
+        const topIssues = ((topIssuesResult as unknown as any[])[0] as any[]) || [];
+        
+        const ytdTotal = Number(ytd.total);
+        const ytdNtf = Number(ytd.ntfCount);
+        const ytdRealNg = Number(ytd.realNgCount);
+        const ytdNtfRate = ytdTotal > 0 ? (ytdNtf / ytdTotal) * 100 : 0;
+        
+        const prevTotal = Number(prevYear.total);
+        const prevNtf = Number(prevYear.ntfCount);
+        const prevNtfRate = prevTotal > 0 ? (prevNtf / prevTotal) * 100 : 0;
+        
+        // Calculate target (assume 15% is target)
+        const targetNtfRate = 15;
+        const targetAchieved = ytdNtfRate <= targetNtfRate;
+        
+        return {
+          year: input.year,
+          quarterly,
+          monthly,
+          ytd: {
+            total: ytdTotal,
+            ntfCount: ytdNtf,
+            realNgCount: ytdRealNg,
+            ntfRate: ytdNtfRate,
+          },
+          comparison: {
+            prevYearNtfRate: prevNtfRate,
+            change: ytdNtfRate - prevNtfRate,
+            improved: ytdNtfRate < prevNtfRate,
+          },
+          kpi: {
+            targetNtfRate,
+            actualNtfRate: ytdNtfRate,
+            targetAchieved,
+            gap: ytdNtfRate - targetNtfRate,
+          },
+          topIssues: topIssues.map((i: any) => ({
+            reason: i.reason,
+            count: Number(i.count),
+          })),
+        };
+      }),
+
+    // Export PowerPoint
+    exportPowerPoint: protectedProcedure
+      .input(z.object({
+        year: z.number().default(new Date().getFullYear()),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
+        }
+        
+        // Get dashboard data first
+        const { getDb } = await import('./db');
+        const { sql } = await import('drizzle-orm');
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+        
+        // Simplified - return JSON data that frontend can use to generate PPTX
+        const quarterlyResult = await db.execute(sql.raw(`
+          SELECT 
+            QUARTER(createdAt) as quarter,
+            COUNT(*) as total,
+            SUM(CASE WHEN verificationStatus = 'ntf' THEN 1 ELSE 0 END) as ntfCount
+          FROM spc_defect_records
+          WHERE YEAR(createdAt) = ${input.year}
+          GROUP BY QUARTER(createdAt)
+          ORDER BY quarter
+        `));
+        
+        const ytdResult = await db.execute(sql.raw(`
+          SELECT 
+            COUNT(*) as total,
+            SUM(CASE WHEN verificationStatus = 'ntf' THEN 1 ELSE 0 END) as ntfCount
+          FROM spc_defect_records
+          WHERE YEAR(createdAt) = ${input.year}
+        `));
+        
+        const topSuppliersResult = await db.execute(sql.raw(`
+          SELECT 
+            s.name as supplierName,
+            COUNT(*) as total,
+            SUM(CASE WHEN d.verificationStatus = 'ntf' THEN 1 ELSE 0 END) as ntfCount
+          FROM spc_defect_records d
+          LEFT JOIN materials m ON d.materialId = m.id
+          LEFT JOIN suppliers s ON m.supplierId = s.id
+          WHERE YEAR(d.createdAt) = ${input.year}
+          GROUP BY s.id, s.name
+          HAVING total > 0
+          ORDER BY (ntfCount / total) DESC
+          LIMIT 5
+        `));
+        
+        const topProductsResult = await db.execute(sql.raw(`
+          SELECT 
+            p.name as productName,
+            COUNT(*) as total,
+            SUM(CASE WHEN d.verificationStatus = 'ntf' THEN 1 ELSE 0 END) as ntfCount
+          FROM spc_defect_records d
+          LEFT JOIN products p ON d.productId = p.id
+          WHERE YEAR(d.createdAt) = ${input.year}
+          GROUP BY p.id, p.name
+          HAVING total > 0
+          ORDER BY (ntfCount / total) DESC
+          LIMIT 5
+        `));
+        
+        const quarterly = ((quarterlyResult as unknown as any[])[0] as any[]).map(q => ({
+          quarter: `Q${q.quarter}`,
+          total: Number(q.total),
+          ntfCount: Number(q.ntfCount),
+          ntfRate: q.total > 0 ? (Number(q.ntfCount) / Number(q.total)) * 100 : 0,
+        }));
+        
+        const ytd = ((ytdResult as unknown as any[])[0] as any[])[0] || { total: 0, ntfCount: 0 };
+        const suppliers = ((topSuppliersResult as unknown as any[])[0] as any[]).map((s: any) => ({
+          name: s.supplierName || 'Không xác định',
+          total: Number(s.total),
+          ntfCount: Number(s.ntfCount),
+          ntfRate: s.total > 0 ? (Number(s.ntfCount) / Number(s.total)) * 100 : 0,
+        }));
+        const products = ((topProductsResult as unknown as any[])[0] as any[]).map((p: any) => ({
+          name: p.productName || 'Không xác định',
+          total: Number(p.total),
+          ntfCount: Number(p.ntfCount),
+          ntfRate: p.total > 0 ? (Number(p.ntfCount) / Number(p.total)) * 100 : 0,
+        }));
+        
+        return {
+          year: input.year,
+          generatedAt: new Date().toISOString(),
+          ytd: {
+            total: Number(ytd.total),
+            ntfCount: Number(ytd.ntfCount),
+            ntfRate: ytd.total > 0 ? (Number(ytd.ntfCount) / Number(ytd.total)) * 100 : 0,
+          },
+          quarterly,
+          topSuppliers: suppliers,
+          topProducts: products,
+        };
+      }),
+  }),
+
   // Notification Channels Router
   notification: router({
     // Get user's channels

@@ -33,7 +33,7 @@ import {
   BarChart3, AlertTriangle, Cpu, GitCompare, ArrowUpDown, Info, BookOpen, 
   Layers, Key, Webhook, FileType, FolderClock, UserCog, ChevronRight,
   Gauge, ClipboardList, Building2, ShieldCheck, Boxes, Moon, Sun, Zap,
-  Target, HardHat, Hammer, Truck, Brain, Bell, Download, BellRing
+  Target, HardHat, Hammer, Truck, Brain, Bell, Download, BellRing, Award, Thermometer
 } from "lucide-react";
 import { useTheme } from "../contexts/ThemeContext";
 import { CSSProperties, useEffect, useRef, useState } from "react";
@@ -168,6 +168,8 @@ const menuGroups: MenuGroup[] = [
       { icon: Package, labelKey: "nav.ntfProductAnalysis", path: "/ntf-product-analysis", adminOnly: true },
       { icon: Truck, labelKey: "nav.ntfSupplierAnalysis", path: "/ntf-supplier-analysis", adminOnly: true },
       { icon: Thermometer, labelKey: "nav.ntfEnvironment", path: "/ntf-environment", adminOnly: true },
+      { icon: AlertTriangle, labelKey: "nav.environmentAlerts", path: "/environment-alerts", adminOnly: true },
+      { icon: Award, labelKey: "nav.ceoDashboard", path: "/ceo-dashboard", adminOnly: true },
       { icon: Target, labelKey: "nav.alertThresholdConfig", path: "/alert-threshold-config", adminOnly: true },
       { icon: Mail, labelKey: "nav.scheduledReports", path: "/scheduled-reports" },
       { icon: Clock, labelKey: "nav.shiftReports", path: "/shift-reports" },

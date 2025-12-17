@@ -127,7 +127,9 @@
     "ntfShiftAnalysis": "NTF by Shift",
     "ntfProductAnalysis": "NTF by Product",
     "ntfSupplierAnalysis": "NTF by Supplier",
-    "ntfEnvironment": "NTF & Environment"
+    "ntfEnvironment": "NTF & Environment",
+    "environmentAlerts": "Environment Alerts",
+    "ceoDashboard": "CEO Dashboard"
   },
   "dashboard": {
     "welcome": "Welcome",
