@@ -119,7 +119,11 @@
     "webhookManagement": "Quản lý Webhook",
     "reportTemplates": "Mẫu Báo cáo",
     "backupHistory": "Lịch sử Backup",
-    "auditLog": "Nhật ký Audit"
+    "auditLog": "Nhật ký Audit",
+    "ntfConfig": "Cấu hình NTF",
+    "ntfDashboard": "Dashboard NTF",
+    "ntfComparison": "So sánh NTF",
+    "notificationSettings": "Cài đặt Thông báo"
   },
   "dashboard": {
     "welcome": "Xin chào",

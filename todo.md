@@ -2949,3 +2949,27 @@
 - [x] Export Excel với đầy đủ thông tin cảnh báo
 - [x] Export PDF với format báo cáo
 - [x] Nút Export trên tab Lịch sử cảnh báo
+
+
+## Phase 141 - NTF Advanced Features
+
+### So sánh NTF rate giữa các dây chuyền
+- [x] API getComparisonData để lấy NTF rate theo từng dây chuyền
+- [x] Trang NtfComparison.tsx với biểu đồ so sánh
+- [x] Bar chart so sánh NTF rate giữa các dây chuyền
+- [x] Bảng xếp hạng dây chuyền theo NTF rate
+- [x] Bộ lọc theo khoảng thời gian
+
+### Dashboard NTF với Root Cause Analysis
+- [x] Trang NtfDashboard.tsx với tổng quan NTF
+- [x] Biểu đồ Pareto nguyên nhân gốc (5M1E)
+- [x] Biểu đồ trend NTF theo thời gian
+- [x] Phân tích tương quan NTF với các yếu tố
+- [x] Khuyến nghị cải tiến dựa trên dữ liệu
+
+### Notification push/SMS
+- [x] Bảng notification_channels lưu cấu hình kênh thông báo
+- [x] Tích hợp SMS gateway (Twilio/Vonage)
+- [x] Tích hợp push notification (Firebase/OneSignal)
+- [x] Cấu hình kênh thông báo theo user
+- [x] Gửi notification khi NTF rate vượt ngưỡng critical

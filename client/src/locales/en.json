@@ -119,7 +119,11 @@
     "scheduledJobs": "Scheduled Jobs",
     "shiftReports": "Shift Reports",
     "supervisorDashboard": "Supervisor Dashboard",
-    "websocketEventLog": "WebSocket Event Log"
+    "websocketEventLog": "WebSocket Event Log",
+    "ntfConfig": "NTF Config",
+    "ntfDashboard": "NTF Dashboard",
+    "ntfComparison": "NTF Comparison",
+    "notificationSettings": "Notification Settings"
   },
   "dashboard": {
     "welcome": "Welcome",

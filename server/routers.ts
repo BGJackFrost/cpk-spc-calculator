@@ -6319,6 +6319,300 @@ organization: organizationRouter,
           };
         }
       }),
+    // NTF Comparison by Production Line
+    getComparisonData: protectedProcedure
+      .input(z.object({
+        days: z.number().default(30),
+        productionLineIds: z.array(z.number()).optional(),
+      }))
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
+        }
+        const { getDb } = await import('./db');
+        const { sql } = await import('drizzle-orm');
+        const db = await getDb();
+        if (!db) return [];
+        
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - input.days);
+        
+        let whereClause = `WHERE d.createdAt >= '${startDate.toISOString()}'`;
+        if (input.productionLineIds && input.productionLineIds.length > 0) {
+          whereClause += ` AND d.productionLineId IN (${input.productionLineIds.join(',')})`;
+        }
+        
+        const result = await db.execute(sql.raw(`
+          SELECT 
+            pl.id as productionLineId,
+            pl.name as productionLineName,
+            COUNT(*) as total,
+            SUM(CASE WHEN d.verificationStatus = 'ntf' THEN 1 ELSE 0 END) as ntfCount,
+            SUM(CASE WHEN d.verificationStatus = 'real_ng' THEN 1 ELSE 0 END) as realNgCount,
+            SUM(CASE WHEN d.verificationStatus = 'pending' THEN 1 ELSE 0 END) as pendingCount
+          FROM spc_defect_records d
+          LEFT JOIN production_lines pl ON d.productionLineId = pl.id
+          ${whereClause}
+          GROUP BY pl.id, pl.name
+          ORDER BY total DESC
+        `));
+        
+        return ((result as unknown as any[])[0] as any[]).map(row => ({
+          productionLineId: row.productionLineId,
+          productionLineName: row.productionLineName || 'Không xác định',
+          total: Number(row.total),
+          ntfCount: Number(row.ntfCount),
+          realNgCount: Number(row.realNgCount),
+          pendingCount: Number(row.pendingCount),
+          ntfRate: row.total > 0 ? (Number(row.ntfCount) / Number(row.total)) * 100 : 0,
+        }));
+      }),
+    
+    // Root Cause Analysis (5M1E)
+    getRootCauseAnalysis: protectedProcedure
+      .input(z.object({
+        days: z.number().default(30),
+        productionLineId: z.number().optional(),
+      }))
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
+        }
+        const { getDb } = await import('./db');
+        const { sql } = await import('drizzle-orm');
+        const db = await getDb();
+        if (!db) return { byCategory: [], byRule: [], recommendations: [] };
+        
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - input.days);
+        
+        let whereClause = `WHERE d.createdAt >= '${startDate.toISOString()}'`;
+        if (input.productionLineId) {
+          whereClause += ` AND d.productionLineId = ${input.productionLineId}`;
+        }
+        
+        // By 5M1E Category
+        const byCategoryResult = await db.execute(sql.raw(`
+          SELECT 
+            COALESCE(c.category, 'Unknown') as category,
+            COUNT(*) as count,
+            SUM(CASE WHEN d.verificationStatus = 'ntf' THEN 1 ELSE 0 END) as ntfCount
+          FROM spc_defect_records d
+          LEFT JOIN spc_defect_categories c ON d.categoryId = c.id
+          ${whereClause}
+          GROUP BY c.category
+          ORDER BY count DESC
+        `));
+        
+        // By Rule Violated
+        const byRuleResult = await db.execute(sql.raw(`
+          SELECT 
+            COALESCE(d.ruleViolated, 'Unknown') as rule,
+            COUNT(*) as count,
+            SUM(CASE WHEN d.verificationStatus = 'ntf' THEN 1 ELSE 0 END) as ntfCount
+          FROM spc_defect_records d
+          ${whereClause}
+          GROUP BY d.ruleViolated
+          ORDER BY count DESC
+          LIMIT 10
+        `));
+        
+        const byCategory = ((byCategoryResult as unknown as any[])[0] as any[]).map(row => ({
+          category: row.category,
+          count: Number(row.count),
+          ntfCount: Number(row.ntfCount),
+          ntfRate: row.count > 0 ? (Number(row.ntfCount) / Number(row.count)) * 100 : 0,
+        }));
+        
+        const byRule = ((byRuleResult as unknown as any[])[0] as any[]).map(row => ({
+          rule: row.rule,
+          count: Number(row.count),
+          ntfCount: Number(row.ntfCount),
+          ntfRate: row.count > 0 ? (Number(row.ntfCount) / Number(row.count)) * 100 : 0,
+        }));
+        
+        // Generate recommendations based on data
+        const recommendations: string[] = [];
+        const totalDefects = byCategory.reduce((sum, c) => sum + c.count, 0);
+        const totalNtf = byCategory.reduce((sum, c) => sum + c.ntfCount, 0);
+        const overallNtfRate = totalDefects > 0 ? (totalNtf / totalDefects) * 100 : 0;
+        
+        if (overallNtfRate > 30) {
+          recommendations.push('NTF rate rất cao (>30%). Cần rà soát lại quy trình kiểm tra và tiêu chuẩn đánh giá.');
+        } else if (overallNtfRate > 20) {
+          recommendations.push('NTF rate cao (>20%). Xem xét cải thiện đào tạo nhân viên kiểm tra.');
+        }
+        
+        const topCategory = byCategory[0];
+        if (topCategory && topCategory.count > totalDefects * 0.3) {
+          const categoryNames: Record<string, string> = {
+            'Machine': 'Máy móc',
+            'Material': 'Nguyên vật liệu',
+            'Method': 'Phương pháp',
+            'Man': 'Nhân lực',
+            'Environment': 'Môi trường',
+            'Measurement': 'Đo lường',
+          };
+          recommendations.push(`Nguyên nhân chính tập trung vào ${categoryNames[topCategory.category] || topCategory.category} (${((topCategory.count / totalDefects) * 100).toFixed(0)}%). Cần ưu tiên cải thiện.`);
+        }
+        
+        const topRule = byRule[0];
+        if (topRule && topRule.ntfRate > 50) {
+          recommendations.push(`Rule "${topRule.rule}" có tỉ lệ NTF cao (${topRule.ntfRate.toFixed(0)}%). Xem xét điều chỉnh ngưỡng hoặc logic phát hiện.`);
+        }
+        
+        if (recommendations.length === 0) {
+          recommendations.push('Hệ thống đang hoạt động ổn định. Tiếp tục theo dõi và duy trì.');
+        }
+        
+        return { byCategory, byRule, recommendations };
+      }),
+    
+    // NTF Dashboard Summary
+    getDashboardSummary: protectedProcedure
+      .input(z.object({
+        days: z.number().default(30),
+      }))
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
+        }
+        const { getDb } = await import('./db');
+        const { sql } = await import('drizzle-orm');
+        const db = await getDb();
+        if (!db) return null;
+        
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - input.days);
+        
+        // Overall stats
+        const statsResult = await db.execute(sql`
+          SELECT 
+            COUNT(*) as total,
+            SUM(CASE WHEN verificationStatus = 'ntf' THEN 1 ELSE 0 END) as ntfCount,
+            SUM(CASE WHEN verificationStatus = 'real_ng' THEN 1 ELSE 0 END) as realNgCount,
+            SUM(CASE WHEN verificationStatus = 'pending' THEN 1 ELSE 0 END) as pendingCount
+          FROM spc_defect_records
+          WHERE createdAt >= ${startDate.toISOString()}
+        `);
+        
+        const stats = ((statsResult as unknown as any[])[0] as any[])[0];
+        
+        // Trend by day
+        const trendResult = await db.execute(sql.raw(`
+          SELECT 
+            DATE(createdAt) as date,
+            COUNT(*) as total,
+            SUM(CASE WHEN verificationStatus = 'ntf' THEN 1 ELSE 0 END) as ntfCount
+          FROM spc_defect_records
+          WHERE createdAt >= '${startDate.toISOString()}'
+          GROUP BY DATE(createdAt)
+          ORDER BY date ASC
+        `));
+        
+        // Top production lines by NTF
+        const topLinesResult = await db.execute(sql.raw(`
+          SELECT 
+            pl.name as productionLineName,
+            COUNT(*) as total,
+            SUM(CASE WHEN d.verificationStatus = 'ntf' THEN 1 ELSE 0 END) as ntfCount
+          FROM spc_defect_records d
+          LEFT JOIN production_lines pl ON d.productionLineId = pl.id
+          WHERE d.createdAt >= '${startDate.toISOString()}'
+          GROUP BY pl.id, pl.name
+          ORDER BY ntfCount DESC
+          LIMIT 5
+        `));
+        
+        // Alert count
+        const alertResult = await db.execute(sql`
+          SELECT COUNT(*) as alertCount FROM ntf_alert_history WHERE createdAt >= ${startDate.toISOString()}
+        `);
+        
+        return {
+          total: Number(stats?.total) || 0,
+          ntfCount: Number(stats?.ntfCount) || 0,
+          realNgCount: Number(stats?.realNgCount) || 0,
+          pendingCount: Number(stats?.pendingCount) || 0,
+          ntfRate: stats?.total > 0 ? (Number(stats?.ntfCount) / Number(stats?.total)) * 100 : 0,
+          trend: ((trendResult as unknown as any[])[0] as any[]).map(row => ({
+            date: row.date,
+            total: Number(row.total),
+            ntfCount: Number(row.ntfCount),
+            ntfRate: row.total > 0 ? (Number(row.ntfCount) / Number(row.total)) * 100 : 0,
+          })),
+          topLines: ((topLinesResult as unknown as any[])[0] as any[]).map(row => ({
+            name: row.productionLineName || 'Không xác định',
+            total: Number(row.total),
+            ntfCount: Number(row.ntfCount),
+            ntfRate: row.total > 0 ? (Number(row.ntfCount) / Number(row.total)) * 100 : 0,
+          })),
+          alertCount: Number(((alertResult as unknown as any[])[0] as any[])[0]?.alertCount) || 0,
+        };
+      }),
+  }),
+
+  // Notification Channels Router
+  notification: router({
+    // Get user's channels
+    getChannels: protectedProcedure
+      .query(async ({ ctx }) => {
+        const { getUserChannels } = await import('./services/notificationService');
+        return await getUserChannels(ctx.user.id);
+      }),
+    
+    // Upsert channel
+    upsertChannel: protectedProcedure
+      .input(z.object({
+        channelType: z.enum(['email', 'sms', 'push', 'webhook']),
+        config: z.record(z.any()),
+        enabled: z.boolean().default(true),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const { upsertChannel } = await import('./services/notificationService');
+        const id = await upsertChannel(ctx.user.id, input.channelType, input.config, input.enabled);
+        return { success: true, id };
+      }),
+    
+    // Delete channel
+    deleteChannel: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const { deleteChannel } = await import('./services/notificationService');
+        await deleteChannel(input.id);
+        return { success: true };
+      }),
+    
+    // Get logs (admin only)
+    getLogs: protectedProcedure
+      .input(z.object({ limit: z.number().default(50) }))
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
+        }
+        const { getNotificationLogs } = await import('./services/notificationService');
+        return await getNotificationLogs(input.limit);
+      }),
+    
+    // Test notification
+    testNotification: protectedProcedure
+      .input(z.object({
+        channelType: z.enum(['email', 'sms', 'push', 'webhook']),
+        recipient: z.string(),
+        config: z.record(z.any()).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const { sendNotification } = await import('./services/notificationService');
+        const success = await sendNotification({
+          userId: ctx.user.id,
+          channelType: input.channelType,
+          recipient: input.recipient,
+          subject: 'Test Notification',
+          message: 'This is a test notification from CPK/SPC Calculator.',
+          config: input.config,
+        });
+        return { success };
+      }),
   }),
 
   shiftReport: router({

@@ -108,6 +108,9 @@ import CustomReportBuilder from "./pages/CustomReportBuilder";
 import { GlobalKeyboardShortcuts } from "./components/GlobalKeyboardShortcuts";
 import RateLimitDashboard from "./pages/RateLimitDashboard";
 import NtfAlertConfig from "./pages/NtfAlertConfig";
+import NtfComparison from "./pages/NtfComparison";
+import NtfDashboard from "./pages/NtfDashboard";
+import NotificationSettings from "./pages/NotificationSettings";
 
 function Router() {
   return (
@@ -167,6 +170,9 @@ function Router() {
       <Route path="/reports-export" component={ReportsExport} />
       <Route path="/alert-config" component={AlertConfiguration} />
       <Route path="/ntf-config" component={NtfAlertConfig} />
+      <Route path="/ntf-comparison" component={NtfComparison} />
+      <Route path="/ntf-dashboard" component={NtfDashboard} />
+      <Route path="/notification-settings" component={NotificationSettings} />
       <Route path="/scheduled-reports" component={ScheduledReports} />
       <Route path="/supervisor-dashboard" component={SupervisorDashboard} />
       <Route path="/shift-reports" component={ShiftReportHistory} />

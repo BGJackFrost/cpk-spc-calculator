@@ -33,7 +33,7 @@ import {
   BarChart3, AlertTriangle, Cpu, GitCompare, ArrowUpDown, Info, BookOpen, 
   Layers, Key, Webhook, FileType, FolderClock, UserCog, ChevronRight,
   Gauge, ClipboardList, Building2, ShieldCheck, Boxes, Moon, Sun, Zap,
-  Target, HardHat, Hammer, Truck, Brain, Bell, Download
+  Target, HardHat, Hammer, Truck, Brain, Bell, Download, BellRing
 } from "lucide-react";
 import { useTheme } from "../contexts/ThemeContext";
 import { CSSProperties, useEffect, useRef, useState } from "react";
@@ -161,6 +161,9 @@ const menuGroups: MenuGroup[] = [
       { icon: FileText, labelKey: "nav.customReportBuilder", path: "/custom-report-builder" },
       { icon: AlertTriangle, labelKey: "nav.alertConfig", path: "/alert-config", adminOnly: true },
       { icon: Bell, labelKey: "nav.ntfConfig", path: "/ntf-config", adminOnly: true },
+      { icon: BarChart3, labelKey: "nav.ntfDashboard", path: "/ntf-dashboard", adminOnly: true },
+      { icon: GitCompare, labelKey: "nav.ntfComparison", path: "/ntf-comparison", adminOnly: true },
+      { icon: BellRing, labelKey: "nav.notificationSettings", path: "/notification-settings", adminOnly: true },
       { icon: Target, labelKey: "nav.alertThresholdConfig", path: "/alert-threshold-config", adminOnly: true },
       { icon: Mail, labelKey: "nav.scheduledReports", path: "/scheduled-reports" },
       { icon: Clock, labelKey: "nav.shiftReports", path: "/shift-reports" },
