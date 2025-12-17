@@ -6550,6 +6550,332 @@ organization: organizationRouter,
           alertCount: Number(((alertResult as unknown as any[])[0] as any[])[0]?.alertCount) || 0,
         };
       }),
+    // Drill-down: Line Detail
+    getLineDetail: protectedProcedure
+      .input(z.object({
+        productionLineId: z.number(),
+        days: z.number().default(30),
+      }))
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
+        }
+        const { getDb } = await import('./db');
+        const { sql } = await import('drizzle-orm');
+        const db = await getDb();
+        if (!db) return null;
+        
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - input.days);
+        
+        // Line info
+        const lineResult = await db.execute(sql`
+          SELECT id, name FROM production_lines WHERE id = ${input.productionLineId}
+        `);
+        const line = ((lineResult as unknown as any[])[0] as any[])[0];
+        if (!line) return null;
+        
+        // Stats
+        const statsResult = await db.execute(sql.raw(`
+          SELECT 
+            COUNT(*) as total,
+            SUM(CASE WHEN verificationStatus = 'ntf' THEN 1 ELSE 0 END) as ntfCount,
+            SUM(CASE WHEN verificationStatus = 'real_ng' THEN 1 ELSE 0 END) as realNgCount
+          FROM spc_defect_records
+          WHERE productionLineId = ${input.productionLineId} AND createdAt >= '${startDate.toISOString()}'
+        `));
+        const stats = ((statsResult as unknown as any[])[0] as any[])[0];
+        
+        // By machine
+        const byMachineResult = await db.execute(sql.raw(`
+          SELECT 
+            m.id as machineId, m.name as machineName,
+            COUNT(*) as total,
+            SUM(CASE WHEN d.verificationStatus = 'ntf' THEN 1 ELSE 0 END) as ntfCount
+          FROM spc_defect_records d
+          LEFT JOIN machines m ON d.machineId = m.id
+          WHERE d.productionLineId = ${input.productionLineId} AND d.createdAt >= '${startDate.toISOString()}'
+          GROUP BY m.id, m.name
+          ORDER BY ntfCount DESC
+        `));
+        
+        // Trend by day
+        const trendResult = await db.execute(sql.raw(`
+          SELECT 
+            DATE(createdAt) as date,
+            COUNT(*) as total,
+            SUM(CASE WHEN verificationStatus = 'ntf' THEN 1 ELSE 0 END) as ntfCount
+          FROM spc_defect_records
+          WHERE productionLineId = ${input.productionLineId} AND createdAt >= '${startDate.toISOString()}'
+          GROUP BY DATE(createdAt)
+          ORDER BY date ASC
+        `));
+        
+        // Recent defects
+        const defectsResult = await db.execute(sql.raw(`
+          SELECT d.*, m.name as machineName, c.name as categoryName
+          FROM spc_defect_records d
+          LEFT JOIN machines m ON d.machineId = m.id
+          LEFT JOIN spc_defect_categories c ON d.categoryId = c.id
+          WHERE d.productionLineId = ${input.productionLineId} AND d.createdAt >= '${startDate.toISOString()}'
+          ORDER BY d.createdAt DESC
+          LIMIT 100
+        `));
+        
+        return {
+          line: { id: line.id, name: line.name },
+          stats: {
+            total: Number(stats?.total) || 0,
+            ntfCount: Number(stats?.ntfCount) || 0,
+            realNgCount: Number(stats?.realNgCount) || 0,
+            ntfRate: stats?.total > 0 ? (Number(stats?.ntfCount) / Number(stats?.total)) * 100 : 0,
+          },
+          byMachine: ((byMachineResult as unknown as any[])[0] as any[]).map(row => ({
+            machineId: row.machineId,
+            machineName: row.machineName || 'Không xác định',
+            total: Number(row.total),
+            ntfCount: Number(row.ntfCount),
+            ntfRate: row.total > 0 ? (Number(row.ntfCount) / Number(row.total)) * 100 : 0,
+          })),
+          trend: ((trendResult as unknown as any[])[0] as any[]).map(row => ({
+            date: row.date,
+            total: Number(row.total),
+            ntfCount: Number(row.ntfCount),
+            ntfRate: row.total > 0 ? (Number(row.ntfCount) / Number(row.total)) * 100 : 0,
+          })),
+          recentDefects: (defectsResult as unknown as any[])[0] as any[],
+        };
+      }),
+    
+    // AI Prediction
+    predictNtfRate: protectedProcedure
+      .input(z.object({
+        productionLineId: z.number().optional(),
+        days: z.number().default(30),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
+        }
+        const { getDb } = await import('./db');
+        const { sql } = await import('drizzle-orm');
+        const { invokeLLM } = await import('./_core/llm');
+        const db = await getDb();
+        if (!db) return null;
+        
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - input.days);
+        
+        let whereClause = `WHERE createdAt >= '${startDate.toISOString()}'`;
+        if (input.productionLineId) {
+          whereClause += ` AND productionLineId = ${input.productionLineId}`;
+        }
+        
+        // Get historical data
+        const trendResult = await db.execute(sql.raw(`
+          SELECT 
+            DATE(createdAt) as date,
+            COUNT(*) as total,
+            SUM(CASE WHEN verificationStatus = 'ntf' THEN 1 ELSE 0 END) as ntfCount
+          FROM spc_defect_records
+          ${whereClause}
+          GROUP BY DATE(createdAt)
+          ORDER BY date ASC
+        `));
+        
+        const trendData = ((trendResult as unknown as any[])[0] as any[]).map(row => ({
+          date: row.date,
+          total: Number(row.total),
+          ntfCount: Number(row.ntfCount),
+          ntfRate: row.total > 0 ? (Number(row.ntfCount) / Number(row.total)) * 100 : 0,
+        }));
+        
+        // Get category distribution
+        const categoryResult = await db.execute(sql.raw(`
+          SELECT 
+            COALESCE(c.category, 'Unknown') as category,
+            COUNT(*) as count
+          FROM spc_defect_records d
+          LEFT JOIN spc_defect_categories c ON d.categoryId = c.id
+          ${whereClause}
+          GROUP BY c.category
+        `));
+        
+        const categories = ((categoryResult as unknown as any[])[0] as any[]).map(row => ({
+          category: row.category,
+          count: Number(row.count),
+        }));
+        
+        // Call LLM for prediction
+        const prompt = `Bạn là chuyên gia phân tích chất lượng sản xuất. Dựa trên dữ liệu NTF (No Trouble Found) sau đây, hãy dự đoán NTF rate cho 7 ngày tới và đưa ra cảnh báo sớm.
+
+Dữ liệu ${input.days} ngày gần nhất:
+${JSON.stringify(trendData.slice(-14), null, 2)}
+
+Phân bố theo danh mục:
+${JSON.stringify(categories, null, 2)}
+
+Hãy trả về JSON với format:
+{
+  "predictions": [{"date": "YYYY-MM-DD", "predictedNtfRate": number, "confidence": number}] (7 ngày),
+  "trend": "increasing" | "decreasing" | "stable",
+  "riskLevel": "low" | "medium" | "high" | "critical",
+  "earlyWarnings": [string] (các cảnh báo sớm),
+  "recommendations": [string] (khuyến nghị cải thiện),
+  "keyFactors": [string] (yếu tố ảnh hưởng chính)
+}`;
+        
+        try {
+          const response = await invokeLLM({
+            messages: [
+              { role: 'system', content: 'Bạn là AI chuyên phân tích dữ liệu sản xuất. Trả về JSON hợp lệ.' },
+              { role: 'user', content: prompt },
+            ],
+            response_format: { type: 'json_object' },
+          });
+          
+          const content = response.choices[0]?.message?.content || '{}';
+          const prediction = JSON.parse(content);
+          
+          return {
+            historicalData: trendData,
+            prediction,
+            generatedAt: new Date().toISOString(),
+          };
+        } catch (error) {
+          console.error('[NTF Prediction] LLM error:', error);
+          // Fallback: simple moving average prediction
+          const recentRates = trendData.slice(-7).map(d => d.ntfRate);
+          const avgRate = recentRates.length > 0 ? recentRates.reduce((a, b) => a + b, 0) / recentRates.length : 0;
+          const trend = recentRates.length >= 3 ? 
+            (recentRates[recentRates.length - 1] > recentRates[0] ? 'increasing' : 
+             recentRates[recentRates.length - 1] < recentRates[0] ? 'decreasing' : 'stable') : 'stable';
+          
+          const predictions = [];
+          for (let i = 1; i <= 7; i++) {
+            const date = new Date();
+            date.setDate(date.getDate() + i);
+            predictions.push({
+              date: date.toISOString().split('T')[0],
+              predictedNtfRate: Math.max(0, avgRate + (trend === 'increasing' ? i * 0.5 : trend === 'decreasing' ? -i * 0.3 : 0)),
+              confidence: 0.6,
+            });
+          }
+          
+          return {
+            historicalData: trendData,
+            prediction: {
+              predictions,
+              trend,
+              riskLevel: avgRate > 30 ? 'critical' : avgRate > 20 ? 'high' : avgRate > 10 ? 'medium' : 'low',
+              earlyWarnings: avgRate > 20 ? ['NTF rate đang ở mức cao, cần theo dõi chặt chẽ'] : [],
+              recommendations: ['Tiếp tục theo dõi và thu thập dữ liệu'],
+              keyFactors: categories.slice(0, 3).map(c => c.category),
+            },
+            generatedAt: new Date().toISOString(),
+            fallback: true,
+          };
+        }
+      }),
+    
+    // Shift Analysis
+    getShiftAnalysis: protectedProcedure
+      .input(z.object({
+        days: z.number().default(30),
+        productionLineId: z.number().optional(),
+      }))
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
+        }
+        const { getDb } = await import('./db');
+        const { sql } = await import('drizzle-orm');
+        const db = await getDb();
+        if (!db) return null;
+        
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - input.days);
+        
+        let whereClause = `WHERE d.createdAt >= '${startDate.toISOString()}'`;
+        if (input.productionLineId) {
+          whereClause += ` AND d.productionLineId = ${input.productionLineId}`;
+        }
+        
+        // By shift (morning: 6-14, afternoon: 14-22, night: 22-6)
+        const byShiftResult = await db.execute(sql.raw(`
+          SELECT 
+            CASE 
+              WHEN HOUR(d.createdAt) >= 6 AND HOUR(d.createdAt) < 14 THEN 'morning'
+              WHEN HOUR(d.createdAt) >= 14 AND HOUR(d.createdAt) < 22 THEN 'afternoon'
+              ELSE 'night'
+            END as shift,
+            COUNT(*) as total,
+            SUM(CASE WHEN d.verificationStatus = 'ntf' THEN 1 ELSE 0 END) as ntfCount,
+            SUM(CASE WHEN d.verificationStatus = 'real_ng' THEN 1 ELSE 0 END) as realNgCount
+          FROM spc_defect_records d
+          ${whereClause}
+          GROUP BY shift
+        `));
+        
+        // By hour
+        const byHourResult = await db.execute(sql.raw(`
+          SELECT 
+            HOUR(d.createdAt) as hour,
+            COUNT(*) as total,
+            SUM(CASE WHEN d.verificationStatus = 'ntf' THEN 1 ELSE 0 END) as ntfCount
+          FROM spc_defect_records d
+          ${whereClause}
+          GROUP BY HOUR(d.createdAt)
+          ORDER BY hour
+        `));
+        
+        // By day and shift
+        const byDayShiftResult = await db.execute(sql.raw(`
+          SELECT 
+            DATE(d.createdAt) as date,
+            CASE 
+              WHEN HOUR(d.createdAt) >= 6 AND HOUR(d.createdAt) < 14 THEN 'morning'
+              WHEN HOUR(d.createdAt) >= 14 AND HOUR(d.createdAt) < 22 THEN 'afternoon'
+              ELSE 'night'
+            END as shift,
+            COUNT(*) as total,
+            SUM(CASE WHEN d.verificationStatus = 'ntf' THEN 1 ELSE 0 END) as ntfCount
+          FROM spc_defect_records d
+          ${whereClause}
+          GROUP BY DATE(d.createdAt), shift
+          ORDER BY date, shift
+        `));
+        
+        const shiftNames: Record<string, string> = {
+          'morning': 'Ca sáng (6h-14h)',
+          'afternoon': 'Ca chiều (14h-22h)',
+          'night': 'Ca đêm (22h-6h)',
+        };
+        
+        return {
+          byShift: ((byShiftResult as unknown as any[])[0] as any[]).map(row => ({
+            shift: row.shift,
+            shiftName: shiftNames[row.shift] || row.shift,
+            total: Number(row.total),
+            ntfCount: Number(row.ntfCount),
+            realNgCount: Number(row.realNgCount),
+            ntfRate: row.total > 0 ? (Number(row.ntfCount) / Number(row.total)) * 100 : 0,
+          })),
+          byHour: ((byHourResult as unknown as any[])[0] as any[]).map(row => ({
+            hour: Number(row.hour),
+            total: Number(row.total),
+            ntfCount: Number(row.ntfCount),
+            ntfRate: row.total > 0 ? (Number(row.ntfCount) / Number(row.total)) * 100 : 0,
+          })),
+          byDayShift: ((byDayShiftResult as unknown as any[])[0] as any[]).map(row => ({
+            date: row.date,
+            shift: row.shift,
+            total: Number(row.total),
+            ntfCount: Number(row.ntfCount),
+            ntfRate: row.total > 0 ? (Number(row.ntfCount) / Number(row.total)) * 100 : 0,
+          })),
+        };
+      }),
   }),
 
   // Notification Channels Router

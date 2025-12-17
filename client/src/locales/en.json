@@ -123,7 +123,8 @@
     "ntfConfig": "NTF Config",
     "ntfDashboard": "NTF Dashboard",
     "ntfComparison": "NTF Comparison",
-    "notificationSettings": "Notification Settings"
+    "notificationSettings": "Notification Settings",
+    "ntfShiftAnalysis": "NTF by Shift"
   },
   "dashboard": {
     "welcome": "Welcome",

@@ -164,6 +164,7 @@ const menuGroups: MenuGroup[] = [
       { icon: BarChart3, labelKey: "nav.ntfDashboard", path: "/ntf-dashboard", adminOnly: true },
       { icon: GitCompare, labelKey: "nav.ntfComparison", path: "/ntf-comparison", adminOnly: true },
       { icon: BellRing, labelKey: "nav.notificationSettings", path: "/notification-settings", adminOnly: true },
+      { icon: Clock, labelKey: "nav.ntfShiftAnalysis", path: "/ntf-shift-analysis", adminOnly: true },
       { icon: Target, labelKey: "nav.alertThresholdConfig", path: "/alert-threshold-config", adminOnly: true },
       { icon: Mail, labelKey: "nav.scheduledReports", path: "/scheduled-reports" },
       { icon: Clock, labelKey: "nav.shiftReports", path: "/shift-reports" },

@@ -13,6 +13,7 @@ import {
   Lightbulb, Factory, Wrench, Users, Thermometer, Ruler, Package
 } from "lucide-react";
 import { Link } from "wouter";
+import NtfPrediction from "@/components/NtfPrediction";
 
 const CATEGORY_COLORS: Record<string, string> = {
   'Machine': '#3b82f6',
@@ -350,6 +351,9 @@ export default function NtfDashboard() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* AI Prediction */}
+            <NtfPrediction productionLineId={selectedLine} />
 
             {/* Recommendations */}
             <Card className="border-primary/50">

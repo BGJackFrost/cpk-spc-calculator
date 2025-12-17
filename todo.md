@@ -2973,3 +2973,27 @@
 - [x] Tích hợp push notification (Firebase/OneSignal)
 - [x] Cấu hình kênh thông báo theo user
 - [x] Gửi notification khi NTF rate vượt ngưỡng critical
+
+
+## Phase 142 - NTF Drill-down, AI Prediction & Shift Analysis
+
+### Drill-down chi tiết dây chuyền/máy
+- [x] API getLineDetail để lấy chi tiết NTF theo dây chuyền
+- [x] API getMachineDetail để lấy chi tiết NTF theo máy
+- [x] Trang NtfLineDetail.tsx với drill-down từ Dashboard
+- [x] Biểu đồ trend NTF theo máy trong dây chuyền
+- [x] Bảng chi tiết lỗi với filter và pagination
+
+### AI dự đoán NTF rate
+- [x] API predictNtfRate sử dụng LLM để phân tích và dự đoán
+- [x] Component NtfPrediction.tsx hiển thị dự đoán
+- [x] Biểu đồ dự đoán NTF 7 ngày tới
+- [x] Cảnh báo sớm khi dự đoán vượt ngưỡng
+- [x] Phân tích yếu tố ảnh hưởng
+
+### Báo cáo NTF theo ca làm việc
+- [x] API getShiftAnalysis để lấy NTF theo ca
+- [x] Trang NtfShiftAnalysis.tsx so sánh các ca
+- [x] Biểu đồ so sánh NTF rate giữa ca sáng/chiều/đêm
+- [x] Bảng thống kê chi tiết theo ca
+- [x] Phân tích xu hướng NTF theo thời gian trong ngày
