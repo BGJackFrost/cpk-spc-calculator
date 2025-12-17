@@ -16,7 +16,7 @@ import { toast } from "sonner";
 import { 
   Plus, Edit, Trash2, Settings, Shield, Database, 
   LayoutDashboard, Wrench, Package, BarChart3, Users, Building2,
-  ChevronRight, ChevronDown, Search, RefreshCw, Save
+  ChevronRight, ChevronDown, Search, RefreshCw, Save, Copy
 } from "lucide-react";
 
 interface Module {
@@ -107,6 +107,15 @@ export default function ModulePermissionManagement() {
   const [selectedRoleId, setSelectedRoleId] = useState<number | null>(null);
   const [expandedModules, setExpandedModules] = useState<Set<number>>(new Set());
   const [selectedPermissions, setSelectedPermissions] = useState<Set<number>>(new Set());
+  
+  // Permission search and filter state
+  const [permSearchTerm, setPermSearchTerm] = useState("");
+  const [permFilterModule, setPermFilterModule] = useState<string>("all");
+  const [permFilterAction, setPermFilterAction] = useState<string>("all");
+  
+  // Copy permissions state
+  const [copyDialogOpen, setCopyDialogOpen] = useState(false);
+  const [sourceRoleId, setSourceRoleId] = useState<number | null>(null);
 
   // Queries
   const { data: modules = [], refetch: refetchModules } = trpc.permissionModule.listModules.useQuery();
@@ -193,6 +202,26 @@ export default function ModulePermissionManagement() {
   const setRolePermissionsMutation = trpc.permissionModule.setRolePermissions.useMutation({
     onSuccess: () => {
       toast.success("Đã lưu quyền cho vai trò");
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const copyRolePermissionsMutation = trpc.permissionModule.copyRolePermissions.useMutation({
+    onSuccess: (result) => {
+      if (result.success) {
+        toast.success(result.message);
+        setCopyDialogOpen(false);
+        setSourceRoleId(null);
+        // Reload permissions for current role
+        if (selectedRoleId) {
+          // Trigger re-fetch by toggling role
+          const currentRole = selectedRoleId;
+          setSelectedRoleId(null);
+          setTimeout(() => setSelectedRoleId(currentRole), 100);
+        }
+      } else {
+        toast.error(result.message);
+      }
     },
     onError: (error) => toast.error(error.message),
   });
@@ -330,6 +359,41 @@ export default function ModulePermissionManagement() {
     return groups;
   }, [filteredModules]);
 
+  // Filter permissions for Quyền hạn tab
+  const filteredPermissions = useMemo(() => {
+    return permissions.filter((permission: Permission) => {
+      const matchesSearch = permission.name.toLowerCase().includes(permSearchTerm.toLowerCase()) ||
+                           permission.code.toLowerCase().includes(permSearchTerm.toLowerCase());
+      const matchesModule = permFilterModule === "all" || permission.moduleId === Number(permFilterModule);
+      const matchesAction = permFilterAction === "all" || permission.actionType === permFilterAction;
+      return matchesSearch && matchesModule && matchesAction;
+    });
+  }, [permissions, permSearchTerm, permFilterModule, permFilterAction]);
+
+  // Handle copy permissions
+  const handleCopyPermissions = () => {
+    if (!sourceRoleId || !selectedRoleId) return;
+    copyRolePermissionsMutation.mutate({
+      sourceRoleId,
+      targetRoleId: selectedRoleId,
+    });
+  };
+
+  // Select all permissions for a module
+  const handleSelectAllModulePermissions = (moduleId: number, modulePermissions: Array<{id: number}>) => {
+    const newSelected = new Set(selectedPermissions);
+    const allSelected = modulePermissions.every(p => newSelected.has(p.id));
+    
+    if (allSelected) {
+      // Deselect all
+      modulePermissions.forEach(p => newSelected.delete(p.id));
+    } else {
+      // Select all
+      modulePermissions.forEach(p => newSelected.add(p.id));
+    }
+    setSelectedPermissions(newSelected);
+  };
+
   return (
     <DashboardLayout>
       <div className="p-6 space-y-6">
@@ -450,13 +514,52 @@ export default function ModulePermissionManagement() {
 
           {/* Permissions Tab */}
           <TabsContent value="permissions" className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="relative flex-1 min-w-[200px] max-w-sm">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Tìm kiếm quyền..."
+                  value={permSearchTerm}
+                  onChange={(e) => setPermSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <Select
+                value={permFilterModule}
+                onValueChange={setPermFilterModule}
+              >
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Lọc theo module" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tất cả modules</SelectItem>
+                  {modules.map((module: Module) => (
+                    <SelectItem key={module.id} value={module.id.toString()}>
+                      {module.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={permFilterAction}
+                onValueChange={setPermFilterAction}
+              >
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder="Loại quyền" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tất cả</SelectItem>
+                  {ACTION_TYPES.map((type) => (
+                    <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Select
                 value={selectedModuleId?.toString() || ""}
                 onValueChange={(v) => setSelectedModuleId(v ? Number(v) : null)}
               >
                 <SelectTrigger className="w-64">
-                  <SelectValue placeholder="Chọn module để xem quyền" />
+                  <SelectValue placeholder="Chọn module để thêm quyền" />
                 </SelectTrigger>
                 <SelectContent>
                   {modules.map((module: Module) => (
@@ -474,70 +577,86 @@ export default function ModulePermissionManagement() {
                 Thêm Quyền
               </Button>
             </div>
+            
+            <div className="text-sm text-muted-foreground">
+              Hiển thị {filteredPermissions.length} / {permissions.length} quyền
+            </div>
 
-            {selectedModuleId && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>
-                    Quyền của module: {modules.find((m: Module) => m.id === selectedModuleId)?.name || ""}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableHeader>
+            <Card>
+              <CardHeader>
+                <CardTitle>Danh sách Quyền hạn</CardTitle>
+                <CardDescription>
+                  {permFilterModule !== "all" && `Module: ${modules.find((m: Module) => m.id === Number(permFilterModule))?.name || ""}`}
+                  {permFilterAction !== "all" && ` | Loại: ${ACTION_TYPES.find(a => a.value === permFilterAction)?.label || ""}`}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Mã</TableHead>
+                      <TableHead>Tên</TableHead>
+                      <TableHead>Module</TableHead>
+                      <TableHead>Loại</TableHead>
+                      <TableHead>Trạng thái</TableHead>
+                      <TableHead className="text-right">Thao tác</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredPermissions.length === 0 ? (
                       <TableRow>
-                        <TableHead>Mã</TableHead>
-                        <TableHead>Tên</TableHead>
-                        <TableHead>Loại</TableHead>
-                        <TableHead>Trạng thái</TableHead>
-                        <TableHead className="text-right">Thao tác</TableHead>
+                        <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                          Không tìm thấy quyền nào
+                        </TableCell>
                       </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {permissions
-                        .filter((p: Permission) => p.moduleId === selectedModuleId)
-                        .map((permission: Permission) => (
-                          <TableRow key={permission.id}>
-                            <TableCell className="font-mono text-sm">{permission.code}</TableCell>
-                            <TableCell>{permission.name}</TableCell>
-                            <TableCell>
-                              <Badge variant="outline">
-                                {ACTION_TYPES.find((a) => a.value === permission.actionType)?.label || permission.actionType}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant={permission.isActive ? "default" : "secondary"}>
-                                {permission.isActive ? "Hoạt động" : "Tắt"}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <Button variant="ghost" size="icon" onClick={() => handleEditPermission(permission)}>
-                                <Edit className="w-4 h-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => {
-                                  if (confirm("Bạn có chắc muốn xóa quyền này?")) {
-                                    deletePermissionMutation.mutate({ id: permission.id });
-                                  }
-                                }}
-                              >
-                                <Trash2 className="w-4 h-4 text-destructive" />
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            )}
+                    ) : (
+                      filteredPermissions.map((permission: Permission) => (
+                        <TableRow key={permission.id}>
+                          <TableCell className="font-mono text-sm">{permission.code}</TableCell>
+                          <TableCell>{permission.name}</TableCell>
+                          <TableCell>
+                            <Badge variant="secondary">
+                              {modules.find((m: Module) => m.id === permission.moduleId)?.name || "N/A"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline">
+                              {ACTION_TYPES.find((a) => a.value === permission.actionType)?.label || permission.actionType}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={permission.isActive ? "default" : "secondary"}>
+                              {permission.isActive ? "Hoạt động" : "Tắt"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button variant="ghost" size="icon" onClick={() => handleEditPermission(permission)}>
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                if (confirm("Bạn có chắc muốn xóa quyền này?")) {
+                                  deletePermissionMutation.mutate({ id: permission.id });
+                                }
+                              }}
+                            >
+                              <Trash2 className="w-4 h-4 text-destructive" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* Role Permissions Tab */}
           <TabsContent value="role-permissions" className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center gap-4">
               <Select
                 value={selectedRoleId?.toString() || ""}
                 onValueChange={(v) => setSelectedRoleId(v ? Number(v) : null)}
@@ -553,6 +672,23 @@ export default function ModulePermissionManagement() {
                   ))}
                 </SelectContent>
               </Select>
+              
+              {selectedRoleId && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <span>Đã chọn: {selectedPermissions.size} quyền</span>
+                </div>
+              )}
+              
+              <div className="flex-1" />
+              
+              <Button
+                variant="outline"
+                onClick={() => setCopyDialogOpen(true)}
+                disabled={!selectedRoleId}
+              >
+                <Copy className="w-4 h-4 mr-2" />
+                Sao chép từ vai trò khác
+              </Button>
               <Button onClick={handleSaveRolePermissions} disabled={!selectedRoleId}>
                 <Save className="w-4 h-4 mr-2" />
                 Lưu quyền
@@ -577,40 +713,56 @@ export default function ModulePermissionManagement() {
                       </CardHeader>
                       <CardContent>
                         <div className="space-y-2">
-                          {systemModules.map((module: ModuleWithPermissions) => (
-                            <div key={module.id} className="border rounded-lg">
-                              <button
-                                className="w-full flex items-center justify-between p-3 hover:bg-muted/50"
-                                onClick={() => handleToggleModuleExpand(module.id)}
-                              >
-                                <span className="font-medium">{module.name}</span>
-                                {expandedModules.has(module.id) ? (
-                                  <ChevronDown className="w-4 h-4" />
-                                ) : (
-                                  <ChevronRight className="w-4 h-4" />
-                                )}
-                              </button>
-                              {expandedModules.has(module.id) && (
-                                <div className="px-3 pb-3 space-y-2">
-                                  {module.permissions.map((perm) => (
-                                    <div key={perm.id} className="flex items-center gap-2">
-                                      <Checkbox
-                                        id={`perm-${perm.id}`}
-                                        checked={selectedPermissions.has(perm.id)}
-                                        onCheckedChange={() => handleTogglePermission(perm.id)}
-                                      />
-                                      <label
-                                        htmlFor={`perm-${perm.id}`}
-                                        className="text-sm cursor-pointer"
-                                      >
-                                        {perm.name}
-                                      </label>
+                          {systemModules.map((module: ModuleWithPermissions) => {
+                            const allSelected = module.permissions.length > 0 && module.permissions.every(p => selectedPermissions.has(p.id));
+                            const someSelected = module.permissions.some(p => selectedPermissions.has(p.id));
+                            return (
+                              <div key={module.id} className="border rounded-lg">
+                                <div className="flex items-center gap-2 p-3 hover:bg-muted/50">
+                                  <Checkbox
+                                    checked={allSelected}
+                                    className={someSelected && !allSelected ? "data-[state=checked]:bg-primary/50" : ""}
+                                    onCheckedChange={() => handleSelectAllModulePermissions(module.id, module.permissions)}
+                                  />
+                                  <button
+                                    className="flex-1 flex items-center justify-between"
+                                    onClick={() => handleToggleModuleExpand(module.id)}
+                                  >
+                                    <span className="font-medium">{module.name}</span>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs text-muted-foreground">
+                                        {module.permissions.filter(p => selectedPermissions.has(p.id)).length}/{module.permissions.length}
+                                      </span>
+                                      {expandedModules.has(module.id) ? (
+                                        <ChevronDown className="w-4 h-4" />
+                                      ) : (
+                                        <ChevronRight className="w-4 h-4" />
+                                      )}
                                     </div>
-                                  ))}
+                                  </button>
                                 </div>
-                              )}
-                            </div>
-                          ))}
+                                {expandedModules.has(module.id) && (
+                                  <div className="px-3 pb-3 space-y-2 ml-6">
+                                    {module.permissions.map((perm) => (
+                                      <div key={perm.id} className="flex items-center gap-2">
+                                        <Checkbox
+                                          id={`perm-${perm.id}`}
+                                          checked={selectedPermissions.has(perm.id)}
+                                          onCheckedChange={() => handleTogglePermission(perm.id)}
+                                        />
+                                        <label
+                                          htmlFor={`perm-${perm.id}`}
+                                          className="text-sm cursor-pointer"
+                                        >
+                                          {perm.name}
+                                        </label>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                       </CardContent>
                     </Card>
@@ -768,6 +920,60 @@ export default function ModulePermissionManagement() {
               <Button variant="outline" onClick={() => setPermissionDialogOpen(false)}>Hủy</Button>
               <Button onClick={handleSavePermission}>
                 {editingPermission ? "Cập nhật" : "Tạo mới"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Copy Permissions Dialog */}
+        <Dialog open={copyDialogOpen} onOpenChange={setCopyDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Sao chép quyền từ vai trò khác</DialogTitle>
+              <DialogDescription>
+                Chọn vai trò nguồn để sao chép quyền sang vai trò hiện tại.
+                Lưu ý: Quyền hiện tại sẽ bị ghi đè hoàn toàn.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Vai trò đích</Label>
+                <Input
+                  value={roles.find(r => r.id === selectedRoleId)?.name || ""}
+                  disabled
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Sao chép quyền từ</Label>
+                <Select
+                  value={sourceRoleId?.toString() || ""}
+                  onValueChange={(v) => setSourceRoleId(v ? Number(v) : null)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Chọn vai trò nguồn" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {roles
+                      .filter(r => r.id !== selectedRoleId)
+                      .map((role) => (
+                        <SelectItem key={role.id} value={role.id.toString()}>
+                          {role.name}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+                <p className="text-sm text-amber-800 dark:text-amber-200">
+                  <strong>Cảnh báo:</strong> Tất cả quyền hiện tại của vai trò "{roles.find(r => r.id === selectedRoleId)?.name}" sẽ bị thay thế bằng quyền của vai trò nguồn.
+                </p>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => { setCopyDialogOpen(false); setSourceRoleId(null); }}>Hủy</Button>
+              <Button onClick={handleCopyPermissions} disabled={!sourceRoleId}>
+                <Copy className="w-4 h-4 mr-2" />
+                Sao chép quyền
               </Button>
             </DialogFooter>
           </DialogContent>

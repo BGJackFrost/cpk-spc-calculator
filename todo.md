@@ -2743,3 +2743,32 @@
 - [x] Xác định nguyên nhân lỗi: Maximum update depth exceeded (useEffect + setState loop)
 - [x] Sửa lỗi trong ModulePermissionManagement.tsx - thêm điều kiện kiểm tra thay đổi trước khi setState
 - [x] Test và xác nhận trang hoạt động bình thường - cả 3 tabs Modules/Quyền hạn/Phân quyền Vai trò
+
+
+## Phase 134: Cải tiến trang Phân quyền
+
+### Khởi tạo modules mặc định
+- [x] Cập nhật danh sách modules mặc định đầy đủ cho hệ thống (MMS, SPC, System)
+- [x] Tự động tạo permissions cho mỗi module (view, create, edit, delete, export, import, approve, manage)
+- [x] Hiển thị thông báo kết quả khởi tạo
+
+### Phân quyền vai trò
+- [x] Vai trò Admin, Manager, User đã có sẵn trong hệ thống
+- [x] Giao diện phân quyền cho từng vai trò với checkbox
+
+### Tìm kiếm và bộ lọc
+- [x] Thêm ô tìm kiếm quyền theo tên/code
+- [x] Thêm bộ lọc theo module
+- [x] Thêm bộ lọc theo loại action (view/create/edit/delete/export/import/approve/manage)
+- [x] Hiển thị số lượng quyền đã lọc/tổng số
+
+### Tối ưu UI
+- [x] Cải thiện layout hiển thị quyền theo nhóm module (MMS, SPC, System)
+- [x] Thêm checkbox chọn tất cả quyền của module
+- [x] Hiển thị số lượng quyền đã chọn/tổng số cho mỗi module và tổng thể
+
+### Sao chép quyền
+- [x] Thêm nút sao chép quyền từ vai trò khác
+- [x] Dialog chọn vai trò nguồn để sao chép
+- [x] Xác nhận trước khi ghi đè quyền hiện tại (cảnh báo màu vàng)
+- [x] API copyRolePermissions trong permissionRouter

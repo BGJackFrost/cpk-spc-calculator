@@ -271,6 +271,39 @@ export const permissionRouter = router({
       return { success: true };
     }),
 
+  // Copy permissions from one role to another
+  copyRolePermissions: protectedProcedure
+    .input(z.object({
+      sourceRoleId: z.number(),
+      targetRoleId: z.number(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      
+      // Get source role permissions
+      const sourcePermissions = await db.select()
+        .from(roleModulePermissions)
+        .where(eq(roleModulePermissions.roleId, input.sourceRoleId));
+      
+      if (sourcePermissions.length === 0) {
+        return { success: false, message: "Vai trò nguồn không có quyền nào", count: 0 };
+      }
+      
+      // Delete existing permissions for target role
+      await db.delete(roleModulePermissions).where(eq(roleModulePermissions.roleId, input.targetRoleId));
+      
+      // Copy permissions to target role
+      await db.insert(roleModulePermissions).values(
+        sourcePermissions.map(p => ({
+          roleId: input.targetRoleId,
+          permissionId: p.permissionId,
+        }))
+      );
+      
+      return { success: true, message: `Đã sao chép ${sourcePermissions.length} quyền`, count: sourcePermissions.length };
+    }),
+
   // ===== INITIALIZATION =====
   initializeDefaultModules: protectedProcedure.mutation(async () => {
     const db = await getDb();
