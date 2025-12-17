@@ -78,6 +78,8 @@ import SparePartsManagement from "./pages/SparePartsManagement";
 import OrganizationManagement from "./pages/OrganizationManagement";
 import ApprovalWorkflowManagement from "./pages/ApprovalWorkflowManagement";
 import ModulePermissionManagement from "./pages/ModulePermissionManagement";
+import PendingApprovals from "./pages/PendingApprovals";
+import ApprovalReport from "./pages/ApprovalReport";
 import SparePartsGuide from "./pages/SparePartsGuide";
 import SparePartsCostReport from "./pages/SparePartsCostReport";
 import StockMovements from "./pages/StockMovements";
@@ -149,6 +151,8 @@ function Router() {
       <Route path="/organization" component={OrganizationManagement} />
       <Route path="/approval-workflow" component={ApprovalWorkflowManagement} />
       <Route path="/module-permissions" component={ModulePermissionManagement} />
+      <Route path="/pending-approvals" component={PendingApprovals} />
+      <Route path="/approval-report" component={ApprovalReport} />
       <Route path="/spare-parts-guide" component={SparePartsGuide} />
       <Route path="/spare-parts-cost-report" component={SparePartsCostReport} />
       <Route path="/stock-movements" component={StockMovements} />

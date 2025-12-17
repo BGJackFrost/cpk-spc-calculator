@@ -472,6 +472,75 @@ export const approvalRouter = router({
       }
     }),
 
+  // List all approval requests with filters
+  listRequests: protectedProcedure
+    .input(z.object({
+      entityType: z.string().optional(),
+      status: z.string().optional(),
+    }).optional())
+    .query(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) return [];
+      
+      let query = db.select({
+        id: approvalRequests.id,
+        entityType: approvalRequests.entityType,
+        entityId: approvalRequests.entityId,
+        requesterId: approvalRequests.requesterId,
+        workflowId: approvalRequests.workflowId,
+        currentStepId: approvalRequests.currentStepId,
+        status: approvalRequests.status,
+        totalAmount: approvalRequests.totalAmount,
+        notes: approvalRequests.notes,
+        createdAt: approvalRequests.createdAt,
+        updatedAt: approvalRequests.updatedAt,
+      }).from(approvalRequests);
+      
+      // Build conditions
+      const conditions = [];
+      if (input?.entityType) {
+        conditions.push(eq(approvalRequests.entityType, input.entityType as any));
+      }
+      if (input?.status) {
+        conditions.push(eq(approvalRequests.status, input.status as any));
+      }
+      
+      if (conditions.length > 0) {
+        query = query.where(and(...conditions)) as any;
+      }
+      
+      const requests = await query.orderBy(approvalRequests.createdAt);
+      
+      // Get requester names
+      const results = [];
+      for (const req of requests) {
+        const [user] = await db.select({ name: users.name }).from(users)
+          .where(eq(users.id, req.requesterId));
+        
+        // Count total steps
+        const steps = await db.select().from(approvalSteps)
+          .where(eq(approvalSteps.workflowId, req.workflowId));
+        
+        // Find current step order
+        let currentStep = 1;
+        if (req.currentStepId) {
+          const [step] = await db.select().from(approvalSteps)
+            .where(eq(approvalSteps.id, req.currentStepId));
+          if (step) currentStep = step.stepOrder;
+        }
+        
+        results.push({
+          ...req,
+          requesterName: user?.name || req.requesterId,
+          totalSteps: steps.length,
+          currentStep: req.status === "approved" ? steps.length : currentStep,
+          totalAmount: req.totalAmount ? Number(req.totalAmount) : undefined,
+        });
+      }
+      
+      return results;
+    }),
+
   // Get pending approvals for current user
   getMyPendingApprovals: protectedProcedure.query(async ({ ctx }) => {
     const db = await getDb();

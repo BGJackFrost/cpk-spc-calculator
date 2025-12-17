@@ -2656,3 +2656,26 @@
 - [x] Cho phép thêm/sửa/xóa module và permission động - permissionRouter CRUD
 - [x] Tạo trang Module & Quyền - /module-permissions
 - [x] Tự động khởi tạo modules mặc định khi chưa có dữ liệu - initializeDefaultModules mutation
+
+
+## Phase 129: Dashboard Phê duyệt, Middleware Quyền và Báo cáo
+
+### Dashboard đơn chờ phê duyệt
+- [x] Tạo trang PendingApprovals hiển thị danh sách đơn cần phê duyệt - /pending-approvals
+- [x] Filter theo loại đơn (purchase_order, stock_export, maintenance_request, leave_request)
+- [x] Filter theo trạng thái (pending, approved, rejected)
+- [x] Hiển thị thông tin chi tiết đơn và người yêu cầu
+- [x] Nút Phê duyệt/Từ chối trực tiếp từ dashboard - processApproval mutation
+
+### Middleware kiểm tra quyền từ database
+- [x] Tạo hàm checkPermission kiểm tra quyền từ database - server/_core/permissionMiddleware.ts
+- [x] Tạo middleware createPermissionMiddleware cho tRPC
+- [x] Định nghĩa MODULE_CODES cho toàn hệ thống (MMS/SPC/System/Common)
+- [x] Cache permissions với TTL 5 phút - permissionCache Map
+
+### Báo cáo thống kê phê duyệt
+- [x] Tạo trang ApprovalReport với thống kê theo thời gian - /approval-report
+- [x] Thống kê tổng quan: tổng số, chờ duyệt, đã duyệt, từ chối, tỷ lệ duyệt
+- [x] Thống kê theo loại đơn và trạng thái - Table với tỷ lệ duyệt
+- [x] Xu hướng theo tháng (6 tháng gần nhất) - Monthly trend table
+- [x] Thời gian phê duyệt trung bình - avgProcessingTime

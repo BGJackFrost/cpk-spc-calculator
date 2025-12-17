@@ -205,6 +205,8 @@ const menuGroups: MenuGroup[] = [
       { icon: Building2, labelKey: "nav.organization", path: "/organization", adminOnly: true },
       { icon: GitBranch, labelKey: "nav.approvalWorkflow", path: "/approval-workflow", adminOnly: true },
       { icon: Shield, labelKey: "nav.modulePermissions", path: "/module-permissions", adminOnly: true },
+      { icon: Clock, labelKey: "nav.pendingApprovals", path: "/pending-approvals" },
+      { icon: BarChart3, labelKey: "nav.approvalReport", path: "/approval-report" },
     ]
   },
   {
@@ -322,6 +324,8 @@ const fallbackLabelsVi: Record<string, string> = {
   "nav.sparePartsGuide": "Hướng dẫn Sử dụng",
   "nav.approvalWorkflow": "Quy trình Phê duyệt",
   "nav.modulePermissions": "Module & Quyền",
+  "nav.pendingApprovals": "Phê duyệt",
+  "nav.approvalReport": "Báo cáo Phê duyệt",
 };
 
 const fallbackLabelsEn: Record<string, string> = {
@@ -396,6 +400,8 @@ const fallbackLabelsEn: Record<string, string> = {
   "nav.sparePartsGuide": "User Guide",
   "nav.approvalWorkflow": "Approval Workflow",
   "nav.modulePermissions": "Module & Permissions",
+  "nav.pendingApprovals": "Pending Approvals",
+  "nav.approvalReport": "Approval Report",
 };
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
