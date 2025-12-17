@@ -58,6 +58,179 @@ export type LoginHistory = typeof loginHistory.$inferSelect;
 export type InsertLoginHistory = typeof loginHistory.$inferInsert;
 
 /**
+ * Companies - Công ty
+ */
+export const companies = mysqlTable("companies", {
+  id: int("id").autoincrement().primaryKey(),
+  code: varchar("code", { length: 50 }).notNull().unique(),
+  name: varchar("name", { length: 255 }).notNull(),
+  address: text("address"),
+  phone: varchar("phone", { length: 50 }),
+  email: varchar("email", { length: 320 }),
+  taxCode: varchar("taxCode", { length: 50 }),
+  logo: varchar("logo", { length: 500 }),
+  isActive: int("isActive").notNull().default(1),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Company = typeof companies.$inferSelect;
+export type InsertCompany = typeof companies.$inferInsert;
+
+/**
+ * Departments - Phòng ban
+ */
+export const departments = mysqlTable("departments", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull(),
+  code: varchar("code", { length: 50 }).notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  parentId: int("parentId"), // Phòng ban cha (cho cấu trúc cây)
+  managerId: int("managerId"), // Trưởng phòng
+  isActive: int("isActive").notNull().default(1),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Department = typeof departments.$inferSelect;
+export type InsertDepartment = typeof departments.$inferInsert;
+
+/**
+ * Teams - Nhóm/Tổ
+ */
+export const teams = mysqlTable("teams", {
+  id: int("id").autoincrement().primaryKey(),
+  departmentId: int("departmentId").notNull(),
+  code: varchar("code", { length: 50 }).notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  leaderId: int("leaderId"), // Trưởng nhóm
+  isActive: int("isActive").notNull().default(1),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Team = typeof teams.$inferSelect;
+export type InsertTeam = typeof teams.$inferInsert;
+
+/**
+ * Positions - Chức vụ
+ */
+export const positions = mysqlTable("positions", {
+  id: int("id").autoincrement().primaryKey(),
+  code: varchar("code", { length: 50 }).notNull().unique(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  level: int("level").notNull().default(1), // Cấp bậc (1-10, 1 là cao nhất)
+  canApprove: int("canApprove").notNull().default(0), // Có quyền phê duyệt
+  approvalLimit: decimal("approvalLimit", { precision: 15, scale: 2 }), // Hạn mức phê duyệt (VND)
+  isActive: int("isActive").notNull().default(1),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Position = typeof positions.$inferSelect;
+export type InsertPosition = typeof positions.$inferInsert;
+
+/**
+ * Employee Profiles - Thông tin nhân viên mở rộng
+ */
+export const employeeProfiles = mysqlTable("employee_profiles", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(), // Liên kết với users hoặc localUsers
+  userType: mysqlEnum("userType", ["manus", "local"]).notNull().default("local"),
+  employeeCode: varchar("employeeCode", { length: 50 }).unique(),
+  companyId: int("companyId"),
+  departmentId: int("departmentId"),
+  teamId: int("teamId"),
+  positionId: int("positionId"),
+  managerId: int("managerId"), // Quản lý trực tiếp
+  phone: varchar("phone", { length: 50 }),
+  address: text("address"),
+  dateOfBirth: timestamp("dateOfBirth"),
+  joinDate: timestamp("joinDate"),
+  isActive: int("isActive").notNull().default(1),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type EmployeeProfile = typeof employeeProfiles.$inferSelect;
+export type InsertEmployeeProfile = typeof employeeProfiles.$inferInsert;
+
+/**
+ * Approval Workflows - Quy trình phê duyệt
+ */
+export const approvalWorkflows = mysqlTable("approval_workflows", {
+  id: int("id").autoincrement().primaryKey(),
+  code: varchar("code", { length: 50 }).notNull().unique(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  entityType: mysqlEnum("entityType", ["purchase_order", "stock_export", "maintenance_request", "leave_request"]).notNull(),
+  isActive: int("isActive").notNull().default(1),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ApprovalWorkflow = typeof approvalWorkflows.$inferSelect;
+export type InsertApprovalWorkflow = typeof approvalWorkflows.$inferInsert;
+
+/**
+ * Approval Steps - Các bước phê duyệt
+ */
+export const approvalSteps = mysqlTable("approval_steps", {
+  id: int("id").autoincrement().primaryKey(),
+  workflowId: int("workflowId").notNull(),
+  stepOrder: int("stepOrder").notNull(), // Thứ tự bước
+  name: varchar("name", { length: 255 }).notNull(),
+  approverType: mysqlEnum("approverType", ["position", "user", "manager", "department_head"]).notNull(),
+  approverId: int("approverId"), // ID của position hoặc user tùy theo approverType
+  minAmount: decimal("minAmount", { precision: 15, scale: 2 }), // Giá trị tối thiểu cần bước này
+  maxAmount: decimal("maxAmount", { precision: 15, scale: 2 }), // Giá trị tối đa cần bước này
+  isRequired: int("isRequired").notNull().default(1),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ApprovalStep = typeof approvalSteps.$inferSelect;
+export type InsertApprovalStep = typeof approvalSteps.$inferInsert;
+
+/**
+ * Approval Requests - Yêu cầu phê duyệt
+ */
+export const approvalRequests = mysqlTable("approval_requests", {
+  id: int("id").autoincrement().primaryKey(),
+  workflowId: int("workflowId").notNull(),
+  entityType: mysqlEnum("entityType", ["purchase_order", "stock_export", "maintenance_request", "leave_request"]).notNull(),
+  entityId: int("entityId").notNull(), // ID của đơn hàng, phiếu xuất, etc.
+  requesterId: int("requesterId").notNull(), // Người yêu cầu
+  currentStepId: int("currentStepId"), // Bước hiện tại
+  status: mysqlEnum("status", ["pending", "approved", "rejected", "cancelled"]).notNull().default("pending"),
+  totalAmount: decimal("totalAmount", { precision: 15, scale: 2 }),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ApprovalRequest = typeof approvalRequests.$inferSelect;
+export type InsertApprovalRequest = typeof approvalRequests.$inferInsert;
+
+/**
+ * Approval Histories - Lịch sử phê duyệt
+ */
+export const approvalHistories = mysqlTable("approval_histories", {
+  id: int("id").autoincrement().primaryKey(),
+  requestId: int("requestId").notNull(),
+  stepId: int("stepId").notNull(),
+  approverId: int("approverId").notNull(),
+  action: mysqlEnum("action", ["approved", "rejected", "returned"]).notNull(),
+  comments: text("comments"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ApprovalHistory = typeof approvalHistories.$inferSelect;
+export type InsertApprovalHistory = typeof approvalHistories.$inferInsert;
+
+/**
  * Database connections - stores external database connection strings
  * Supports multiple database types: mysql, sqlserver, oracle, postgres, access, excel
  */
@@ -607,13 +780,18 @@ export type InsertSpcSummaryStats = typeof spcSummaryStats.$inferInsert;
 
 /**
  * Permissions - định nghĩa các quyền trong hệ thống
+ * system: SPC (SPC/CPK System) hoặc MMS (Maintenance Management System)
+ * module: dashboard, analyze, settings, spare-parts, maintenance, etc.
  */
 export const permissions = mysqlTable("permissions", {
   id: int("id").autoincrement().primaryKey(),
   code: varchar("code", { length: 100 }).notNull().unique(),
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
+  system: mysqlEnum("system", ["SPC", "MMS", "COMMON"]).notNull().default("COMMON"), // Hệ thống: SPC, MMS, COMMON
   module: varchar("module", { length: 100 }).notNull(), // dashboard, analyze, settings, etc.
+  parentId: int("parentId"), // Cho cây quyền
+  sortOrder: int("sortOrder").default(0), // Thứ tự hiển thị
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 

@@ -18,7 +18,10 @@ interface Permission {
   code: string;
   name: string;
   description: string | null;
+  system: "SPC" | "MMS" | "COMMON";
   module: string;
+  parentId: number | null;
+  sortOrder: number;
 }
 
 interface RolePermission {
@@ -34,50 +37,56 @@ const ROLES = [
   { value: "user", label: "Người dùng", description: "Quyền cơ bản" },
 ];
 
+// Hệ thống phân quyền
+const SYSTEMS = [
+  { value: "SPC", label: "SPC/CPK System", description: "Hệ thống phân tích chất lượng" },
+  { value: "MMS", label: "MMS - Maintenance", description: "Hệ thống quản lý bảo trì" },
+  { value: "COMMON", label: "Chung", description: "Quyền dùng chung" },
+];
+
 const MODULES = [
-  // Tổng quan
-  { value: "dashboard", label: "Dashboard" },
-  { value: "realtime", label: "Realtime Dây chuyền" },
-  { value: "spc_overview", label: "Tổng quan SPC Plan" },
+  // ===== SPC SYSTEM =====
+  { value: "spc_dashboard", label: "Dashboard SPC", system: "SPC" },
+  { value: "spc_realtime", label: "Realtime Dây chuyền", system: "SPC" },
+  { value: "spc_overview", label: "Tổng quan SPC Plan", system: "SPC" },
+  { value: "spc_analyze", label: "Phân tích SPC", system: "SPC" },
+  { value: "spc_multi_analysis", label: "Phân tích đa đối tượng", system: "SPC" },
+  { value: "spc_comparison", label: "So sánh dây chuyền/máy", system: "SPC" },
+  { value: "spc_history", label: "Lịch sử phân tích", system: "SPC" },
+  { value: "spc_report", label: "Báo cáo SPC", system: "SPC" },
+  { value: "spc_defect", label: "Quản lý lỗi", system: "SPC" },
+  { value: "spc_rules", label: "Cấu hình Rules", system: "SPC" },
+  { value: "spc_plan", label: "Kế hoạch SPC", system: "SPC" },
   
-  // Phân tích
-  { value: "analyze", label: "Phân tích SPC" },
-  { value: "multi_analysis", label: "Phân tích đa đối tượng" },
-  { value: "line_comparison", label: "So sánh dây chuyền" },
-  { value: "history", label: "Lịch sử phân tích" },
-  { value: "spc_report", label: "Báo cáo SPC" },
+  // ===== MMS SYSTEM =====
+  { value: "mms_dashboard", label: "Dashboard MMS", system: "MMS" },
+  { value: "mms_oee", label: "OEE Dashboard", system: "MMS" },
+  { value: "mms_kpi", label: "Plant KPI", system: "MMS" },
+  { value: "mms_maintenance", label: "Lịch bảo trì", system: "MMS" },
+  { value: "mms_predictive", label: "Bảo trì dự đoán", system: "MMS" },
+  { value: "mms_spare_parts", label: "Quản lý phụ tùng", system: "MMS" },
+  { value: "mms_purchase_order", label: "Đơn đặt hàng", system: "MMS" },
+  { value: "mms_inventory", label: "Xuất/Nhập kho", system: "MMS" },
+  { value: "mms_equipment", label: "Quản lý thiết bị", system: "MMS" },
   
-  // Chất lượng
-  { value: "defect", label: "Quản lý lỗi" },
-  { value: "pareto", label: "Biểu đồ Pareto" },
-  { value: "rules", label: "Quản lý Rules" },
-  
-  // Sản xuất
-  { value: "production_line", label: "Dây chuyền sản xuất" },
-  { value: "workstation", label: "Công trạm" },
-  { value: "machine", label: "Máy móc" },
-  { value: "machine_type", label: "Loại máy" },
-  { value: "fixture", label: "Fixture" },
-  { value: "process", label: "Quy trình" },
-  { value: "spc_plan", label: "Kế hoạch SPC" },
-  
-  // Dữ liệu chính
-  { value: "product", label: "Sản phẩm" },
-  { value: "specification", label: "Tiêu chuẩn USL/LSL" },
-  { value: "mapping", label: "Cấu hình Mapping" },
-  { value: "database_config", label: "Cấu hình Database" },
-  { value: "sampling", label: "Phương pháp lấy mẫu" },
-  
-  // Người dùng
-  { value: "user", label: "Quản lý người dùng" },
-  { value: "local_user", label: "Người dùng Local" },
-  { value: "permission", label: "Phân quyền" },
-  { value: "login_history", label: "Lịch sử đăng nhập" },
-  
-  // Hệ thống
-  { value: "settings", label: "Cài đặt" },
-  { value: "database_settings", label: "Cấu hình Database" },
-  { value: "notification", label: "Thông báo Email" },
+  // ===== COMMON =====
+  { value: "production_line", label: "Dây chuyền sản xuất", system: "COMMON" },
+  { value: "workstation", label: "Công trạm", system: "COMMON" },
+  { value: "machine", label: "Máy móc", system: "COMMON" },
+  { value: "machine_type", label: "Loại máy", system: "COMMON" },
+  { value: "fixture", label: "Fixture", system: "COMMON" },
+  { value: "process", label: "Quy trình", system: "COMMON" },
+  { value: "product", label: "Sản phẩm", system: "COMMON" },
+  { value: "specification", label: "Tiêu chuẩn USL/LSL", system: "COMMON" },
+  { value: "mapping", label: "Cấu hình Mapping", system: "COMMON" },
+  { value: "database_config", label: "Cấu hình Database", system: "COMMON" },
+  { value: "user", label: "Quản lý người dùng", system: "COMMON" },
+  { value: "local_user", label: "Người dùng Local", system: "COMMON" },
+  { value: "permission", label: "Phân quyền", system: "COMMON" },
+  { value: "login_history", label: "Lịch sử đăng nhập", system: "COMMON" },
+  { value: "settings", label: "Cài đặt", system: "COMMON" },
+  { value: "database_settings", label: "Cấu hình Database", system: "COMMON" },
+  { value: "notification", label: "Thông báo Email", system: "COMMON" },
   { value: "smtp", label: "Cấu hình SMTP" },
   { value: "webhook", label: "Webhook" },
   { value: "license", label: "License" },

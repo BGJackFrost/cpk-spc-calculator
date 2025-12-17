@@ -2586,3 +2586,38 @@
 ### Gantt Chart - Lịch bảo trì
 - [x] Thêm nút Xóa vào popup chi tiết lịch bảo trì - onTaskDelete callback
 - [x] Xác nhận trước khi xóa - confirm dialog
+
+
+## Phase 126: Tối ưu UX, Phân trang, Menu, Phân quyền và Cấu trúc Tổ chức
+
+### 1. Tối ưu Spare Parts
+- [x] Gộp 2 nút xuất Excel thành 1 dropdown menu - DropdownMenu với 2 options
+- [x] Thêm nút "Đã nhận hàng" cho đơn đặt hàng ở trạng thái "ordered" - receivePurchaseOrder mutation
+- [x] Cập nhật flow: ordered → received (không cần hệ thống mua hàng)
+
+### 2. Phân trang toàn bộ các bảng
+- [x] Rà soát các trang còn thiếu pagination
+- [x] Thêm pagination cho MachineManagement - 10 items/page
+- [x] Thêm pagination cho UserManagement - 10 items/page
+
+### 3. Tối ưu Menu Sidebar
+- [x] Thiết kế lại cấu trúc menu theo nhóm chức năng - menuGroups reorganized
+- [x] Rà soát và sửa lỗi tên menu - fallback labels updated
+- [x] Tổ chức menu theo 2 hệ thống: MMS và SPC/CPK
+- [x] Thêm icon phù hợp cho từng menu item
+
+### 4. Phân quyền theo Module
+- [x] Tạo cây quyền riêng cho MMS (Maintenance Management System)
+- [x] Tạo cây quyền riêng cho SPC/CPK
+- [x] Cập nhật schema permissions với system enum (mms/spc)
+- [x] Cập nhật trang Phân quyền với MODULES by system
+
+### 5. Cấu trúc Tổ chức
+- [x] Tạo bảng companies (công ty) - code, name, address, phone, email, taxCode
+- [x] Tạo bảng departments (phòng ban) - hỗ trợ cấu trúc cây với parentId
+- [x] Tạo bảng teams (nhóm thuộc phòng ban)
+- [x] Tạo bảng positions (chức vụ) - level, canApprove, approvalLimit
+- [x] Tạo bảng employee_profiles - liên kết user với tổ chức
+- [x] Tạo bảng approval_workflows - quy trình phê duyệt
+- [x] Tạo trang OrganizationManagement - 4 tabs: Công ty, Phòng ban, Nhóm, Chức vụ
+- [x] Thêm menu Cấu trúc Tổ chức vào sidebar

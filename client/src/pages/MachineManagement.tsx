@@ -53,6 +53,8 @@ export default function MachineManagement() {
   const [editingMachine, setEditingMachine] = useState<Machine | null>(null);
   const [selectedWorkstationId, setSelectedWorkstationId] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
   const [formData, setFormData] = useState({
     name: "",
     code: "",
@@ -217,6 +219,21 @@ export default function MachineManagement() {
     return matchesWorkstation && matchesSearch;
   });
 
+  // Pagination
+  const totalPages = Math.ceil((filteredMachines?.length || 0) / pageSize);
+  const paginatedMachines = filteredMachines?.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  // Reset page when filter changes
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+    setCurrentPage(1);
+  };
+
+  const handleWorkstationChange = (value: string) => {
+    setSelectedWorkstationId(value);
+    setCurrentPage(1);
+  };
+
   if (isLoading) {
     return (
       <DashboardLayout>
@@ -253,13 +270,13 @@ export default function MachineManagement() {
                   <Input
                     placeholder="Tìm kiếm theo tên hoặc mã..."
                     value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onChange={(e) => handleSearchChange(e.target.value)}
                     className="pl-10"
                   />
                 </div>
               </div>
               <div className="w-full sm:w-64">
-                <Select value={selectedWorkstationId} onValueChange={setSelectedWorkstationId}>
+                <Select value={selectedWorkstationId} onValueChange={handleWorkstationChange}>
                   <SelectTrigger>
                     <Filter className="mr-2 h-4 w-4" />
                     <SelectValue placeholder="Lọc theo công trạm" />
@@ -300,14 +317,14 @@ export default function MachineManagement() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredMachines?.length === 0 ? (
+                {paginatedMachines?.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                       Chưa có máy nào
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredMachines?.map((m: Machine) => (
+                  paginatedMachines?.map((m: Machine) => (
                     <TableRow key={m.id}>
                       <TableCell className="font-mono text-sm">{m.code}</TableCell>
                       <TableCell className="font-medium">{m.name}</TableCell>
@@ -332,6 +349,36 @@ export default function MachineManagement() {
                 )}
               </TableBody>
             </Table>
+            
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                <div className="text-sm text-muted-foreground">
+                  Hiển thị {((currentPage - 1) * pageSize) + 1} - {Math.min(currentPage * pageSize, filteredMachines?.length || 0)} / {filteredMachines?.length || 0} máy
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    Trước
+                  </Button>
+                  <span className="text-sm">
+                    Trang {currentPage} / {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage >= totalPages}
+                  >
+                    Sau
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 

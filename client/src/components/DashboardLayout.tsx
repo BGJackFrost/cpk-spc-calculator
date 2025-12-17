@@ -63,9 +63,10 @@ interface MenuGroup {
 }
 
 const menuGroups: MenuGroup[] = [
+  // ===== SPC/CPK SYSTEM =====
   {
-    id: "dashboard",
-    labelKey: "menuGroup.dashboard",
+    id: "spcDashboard",
+    labelKey: "menuGroup.spcDashboard",
     icon: Gauge,
     defaultOpen: true,
     items: [
@@ -75,12 +76,38 @@ const menuGroups: MenuGroup[] = [
       { icon: BarChart3, labelKey: "nav.machineStatusReport", path: "/machine-status-report" },
       { icon: Layers, labelKey: "nav.spcPlanOverview", path: "/spc-visualization" },
       { icon: Users, labelKey: "nav.supervisorDashboard", path: "/supervisor-dashboard" },
-      { icon: GitCompare, labelKey: "nav.machineComparison", path: "/machine-comparison" },
     ]
   },
   {
-    id: "dashboardConfig",
-    labelKey: "menuGroup.dashboardConfig",
+    id: "spcAnalysis",
+    labelKey: "menuGroup.spcAnalysis",
+    icon: TrendingUp,
+    defaultOpen: true,
+    items: [
+      { icon: TrendingUp, labelKey: "nav.analyze", path: "/analyze" },
+      { icon: GitCompare, labelKey: "nav.multiObjectAnalysis", path: "/multi-analysis" },
+      { icon: ArrowUpDown, labelKey: "nav.lineComparison", path: "/line-comparison" },
+      { icon: GitCompare, labelKey: "nav.machineComparison", path: "/machine-comparison" },
+      { icon: History, labelKey: "nav.history", path: "/history" },
+      { icon: BarChart3, labelKey: "nav.spcReport", path: "/spc-report" },
+    ]
+  },
+  {
+    id: "spcQuality",
+    labelKey: "menuGroup.spcQuality",
+    icon: ClipboardList,
+    items: [
+      { icon: AlertTriangle, labelKey: "nav.defectTracking", path: "/defects" },
+      { icon: BarChart3, labelKey: "nav.defectAnalysis", path: "/defect-statistics" },
+      { icon: BookOpen, labelKey: "nav.spcRulesConfig", path: "/rules" },
+      { icon: ShieldCheck, labelKey: "nav.customValidation", path: "/validation-rules", adminOnly: true },
+      { icon: BarChart3, labelKey: "nav.cpkBenchmark", path: "/cpk-comparison" },
+      { icon: Clock, labelKey: "nav.shiftAnalysis", path: "/shift-cpk-comparison" },
+    ]
+  },
+  {
+    id: "spcConfig",
+    labelKey: "menuGroup.spcConfig",
     icon: Settings,
     items: [
       { icon: Activity, labelKey: "nav.realtimeConveyor", path: "/production-lines" },
@@ -90,19 +117,36 @@ const menuGroups: MenuGroup[] = [
       { icon: Layers, labelKey: "nav.machineAreas", path: "/machine-areas", adminOnly: true },
     ]
   },
+  // ===== MMS SYSTEM =====
   {
-    id: "mms",
-    labelKey: "menuGroup.mms",
+    id: "mmsDashboard",
+    labelKey: "menuGroup.mmsDashboard",
     icon: HardHat,
     items: [
       { icon: Target, labelKey: "nav.oeeDashboard", path: "/oee-dashboard" },
       { icon: BarChart3, labelKey: "nav.plantKpi", path: "/plant-kpi" },
       { icon: TrendingUp, labelKey: "nav.advancedAnalytics", path: "/advanced-analytics" },
       { icon: ClipboardList, labelKey: "nav.maintenanceDashboard", path: "/maintenance-dashboard" },
+    ]
+  },
+  {
+    id: "mmsMaintenance",
+    labelKey: "menuGroup.mmsMaintenance",
+    icon: Wrench,
+    items: [
       { icon: Calendar, labelKey: "nav.maintenanceSchedule", path: "/maintenance-schedule" },
-      { icon: Boxes, labelKey: "nav.spareParts", path: "/spare-parts" },
       { icon: Brain, labelKey: "nav.predictiveMaintenance", path: "/predictive-maintenance" },
       { icon: Cpu, labelKey: "nav.equipmentQr", path: "/equipment-qr" },
+    ]
+  },
+  {
+    id: "mmsSpareParts",
+    labelKey: "menuGroup.mmsSpareParts",
+    icon: Boxes,
+    items: [
+      { icon: Boxes, labelKey: "nav.spareParts", path: "/spare-parts" },
+      { icon: BarChart3, labelKey: "nav.sparePartsCostReport", path: "/spare-parts-cost-report" },
+      { icon: BookOpen, labelKey: "nav.sparePartsGuide", path: "/spare-parts-guide" },
       { icon: Database, labelKey: "nav.mmsDataInit", path: "/mms-data-init", adminOnly: true },
     ]
   },
@@ -122,32 +166,7 @@ const menuGroups: MenuGroup[] = [
       { icon: FileSpreadsheet, labelKey: "nav.exportRealtime", path: "/export-realtime" },
     ]
   },
-  {
-    id: "analysis",
-    labelKey: "menuGroup.analysis",
-    icon: TrendingUp,
-    defaultOpen: true,
-    items: [
-      { icon: TrendingUp, labelKey: "nav.analyze", path: "/analyze" },
-      { icon: GitCompare, labelKey: "nav.multiObjectAnalysis", path: "/multi-analysis" },
-      { icon: ArrowUpDown, labelKey: "nav.lineComparison", path: "/line-comparison" },
-      { icon: History, labelKey: "nav.history", path: "/history" },
-      { icon: BarChart3, labelKey: "nav.spcReport", path: "/spc-report" },
-    ]
-  },
-  {
-    id: "quality",
-    labelKey: "menuGroup.quality",
-    icon: ClipboardList,
-    items: [
-      { icon: AlertTriangle, labelKey: "nav.defectTracking", path: "/defects" },
-      { icon: BarChart3, labelKey: "nav.defectAnalysis", path: "/defect-statistics" },
-      { icon: BookOpen, labelKey: "nav.spcRulesConfig", path: "/rules" },
-      { icon: ShieldCheck, labelKey: "nav.customValidation", path: "/validation-rules", adminOnly: true },
-      { icon: BarChart3, labelKey: "nav.cpkBenchmark", path: "/cpk-comparison" },
-      { icon: Clock, labelKey: "nav.shiftAnalysis", path: "/shift-cpk-comparison" },
-    ]
-  },
+  
   {
     id: "production",
     labelKey: "menuGroup.production",
@@ -183,6 +202,7 @@ const menuGroups: MenuGroup[] = [
       { icon: UserCog, labelKey: "nav.localUserManagement", path: "/local-users", adminOnly: true },
       { icon: Shield, labelKey: "permission", path: "/permissions" },
       { icon: History, labelKey: "nav.loginHistory", path: "/login-history", adminOnly: true },
+      { icon: Building2, labelKey: "nav.organization", path: "/organization", adminOnly: true },
     ]
   },
   {
@@ -240,17 +260,20 @@ const fallbackLabelsVi: Record<string, string> = {
   "nav.exportHistory": "Lịch sử Xuất",
   "nav.localUserManagement": "Người dùng Local",
   "nav.loginHistory": "Lịch sử Đăng nhập",
+  "nav.organization": "Cấu trúc Tổ chức",
   "nav.licensePortal": "Cổng License",
   "nav.licenseAdmin": "Quản trị License",
   "nav.licenseServer": "License Server",
   "nav.connectionManager": "Quản lý Kết nối",
   "nav.companyInfo": "Thông tin Công ty",
-  "menuGroup.dashboard": "Tổng quan",
-  "menuGroup.dashboardConfig": "Cấu hình Dashboard",
-  "menuGroup.mms": "MMS - Bảo trì",
-  "menuGroup.mmsConfig": "Cấu hình MMS",
-  "menuGroup.analysis": "Phân tích",
-  "menuGroup.quality": "Chất lượng",
+  "menuGroup.spcDashboard": "SPC - Tổng quan",
+  "menuGroup.spcAnalysis": "SPC - Phân tích",
+  "menuGroup.spcQuality": "SPC - Chất lượng",
+  "menuGroup.spcConfig": "SPC - Cấu hình",
+  "menuGroup.mmsDashboard": "MMS - Tổng quan",
+  "menuGroup.mmsMaintenance": "MMS - Bảo trì",
+  "menuGroup.mmsSpareParts": "MMS - Phụ tùng",
+  "menuGroup.mmsConfig": "MMS - Cấu hình",
   "menuGroup.production": "Sản xuất",
   "menuGroup.masterData": "Dữ liệu chính",
   "menuGroup.users": "Người dùng",
@@ -293,6 +316,8 @@ const fallbackLabelsVi: Record<string, string> = {
   "nav.advancedAnalytics": "Phân tích Nâng cao",
   "nav.exportReports": "Xuất Báo cáo",
   "nav.customReportBuilder": "Tạo Báo cáo Tùy chỉnh",
+  "nav.sparePartsCostReport": "Báo cáo Chi phí",
+  "nav.sparePartsGuide": "Hướng dẫn Sử dụng",
 };
 
 const fallbackLabelsEn: Record<string, string> = {
@@ -311,17 +336,20 @@ const fallbackLabelsEn: Record<string, string> = {
   "nav.exportHistory": "Export History",
   "nav.localUserManagement": "Local Users",
   "nav.loginHistory": "Login History",
+  "nav.organization": "Organization",
   "nav.licensePortal": "License Portal",
   "nav.licenseAdmin": "License Administration",
   "nav.licenseServer": "License Server",
   "nav.connectionManager": "Connection Manager",
   "nav.companyInfo": "Company Info",
-  "menuGroup.dashboard": "Overview",
-  "menuGroup.dashboardConfig": "Dashboard Config",
-  "menuGroup.mms": "MMS - Maintenance",
-  "menuGroup.mmsConfig": "MMS Config",
-  "menuGroup.analysis": "Analysis",
-  "menuGroup.quality": "Quality",
+  "menuGroup.spcDashboard": "SPC - Overview",
+  "menuGroup.spcAnalysis": "SPC - Analysis",
+  "menuGroup.spcQuality": "SPC - Quality",
+  "menuGroup.spcConfig": "SPC - Config",
+  "menuGroup.mmsDashboard": "MMS - Overview",
+  "menuGroup.mmsMaintenance": "MMS - Maintenance",
+  "menuGroup.mmsSpareParts": "MMS - Spare Parts",
+  "menuGroup.mmsConfig": "MMS - Config",
   "menuGroup.production": "Production",
   "menuGroup.masterData": "Master Data",
   "menuGroup.users": "Users",
@@ -360,6 +388,8 @@ const fallbackLabelsEn: Record<string, string> = {
   "nav.advancedAnalytics": "Advanced Analytics",
   "nav.exportReports": "Export Reports",
   "nav.customReportBuilder": "Custom Report Builder",
+  "nav.sparePartsCostReport": "Cost Report",
+  "nav.sparePartsGuide": "User Guide",
 };
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";

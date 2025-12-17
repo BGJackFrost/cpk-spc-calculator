@@ -601,6 +601,65 @@ export const sparePartsRouter = router({
       return { success: true };
     }),
 
+  // Receive entire purchase order (mark all items as received)
+  receivePurchaseOrder: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      // Get PO details
+      const [po] = await db.select().from(purchaseOrders).where(eq(purchaseOrders.id, input.id));
+      if (!po) throw new Error("Purchase order not found");
+      if (po.status !== "ordered") throw new Error("Chỉ có thể nhận hàng cho đơn ở trạng thái 'Đã đặt'");
+
+      // Get all items
+      const items = await db.select().from(purchaseOrderItems)
+        .where(eq(purchaseOrderItems.purchaseOrderId, input.id));
+
+      // Process each item
+      for (const item of items) {
+        const remainingQty = item.quantity - (item.receivedQuantity || 0);
+        if (remainingQty <= 0) continue;
+
+        // Update received quantity
+        await db.update(purchaseOrderItems).set({
+          receivedQuantity: item.quantity,
+        }).where(eq(purchaseOrderItems.id, item.id));
+
+        // Create inventory transaction
+        await db.insert(sparePartsTransactions).values({
+          sparePartId: item.sparePartId,
+          transactionType: "in",
+          quantity: remainingQty,
+          unitCost: item.unitPrice,
+          totalCost: String(remainingQty * Number(item.unitPrice)),
+          purchaseOrderId: input.id,
+          performedBy: ctx.user?.id,
+        });
+
+        // Update inventory
+        const [inv] = await db.select().from(sparePartsInventory)
+          .where(eq(sparePartsInventory.sparePartId, item.sparePartId));
+        if (inv) {
+          await db.update(sparePartsInventory).set({
+            quantity: (inv.quantity || 0) + remainingQty,
+            updatedAt: new Date(),
+          }).where(eq(sparePartsInventory.sparePartId, item.sparePartId));
+        }
+      }
+
+      // Update PO status to received
+      await db.update(purchaseOrders).set({
+        status: "received",
+        actualDeliveryDate: new Date(),
+      }).where(eq(purchaseOrders.id, input.id));
+
+      return { success: true };
+    }),
+
   // Statistics
   getStats: publicProcedure.query(async () => {
     const db = await getDb();

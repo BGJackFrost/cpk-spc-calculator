@@ -20,7 +20,8 @@ import {
   Package, Search, Plus, AlertTriangle, TrendingDown, 
   ShoppingCart, Truck, Building2, ArrowUpDown, FileText,
   CheckCircle2, Clock, XCircle, RefreshCw, Download, Bell,
-  MoreHorizontal, Pencil, Trash2, QrCode, BarChart3, Camera, Printer, ScanLine, Mail, BookOpen, HelpCircle
+  MoreHorizontal, Pencil, Trash2, QrCode, BarChart3, Camera, Printer, ScanLine, Mail, BookOpen, HelpCircle,
+  ChevronDown, FileSpreadsheet, PackageCheck
 } from "lucide-react";
 import QRCode from "qrcode";
 import QRScanner from "@/components/QRScanner";
@@ -238,6 +239,15 @@ export default function SparePartsManagement() {
     onSuccess: () => {
       toast.success("Đã gửi đơn đặt hàng");
       refetchPurchaseOrders();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const receivePOMutation = trpc.spareParts.receivePurchaseOrder.useMutation({
+    onSuccess: () => {
+      toast.success("Đã xác nhận nhận hàng");
+      refetchPurchaseOrders();
+      refetchParts();
     },
     onError: (err) => toast.error(err.message),
   });
@@ -1215,47 +1225,52 @@ export default function SparePartsManagement() {
                           <TrendingDown className="h-4 w-4 mr-1" />
                           Xuất kho
                         </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={exportSelectedToExcel}
-                        >
+                        </>
+                    )}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm">
                           <Download className="h-4 w-4 mr-1" />
                           Xuất Excel
+                          <ChevronDown className="h-3 w-3 ml-1" />
                         </Button>
-                      </>
-                    )}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        if (!parts || parts.length === 0) {
-                          toast.error("Không có dữ liệu để xuất");
-                          return;
-                        }
-                        const exportData = parts.map(part => ({
-                          "Mã PT": part.partNumber,
-                          "Tên phụ tùng": part.name,
-                          "Danh mục": part.category || "-",
-                          "Tồn kho": part.currentStock || 0,
-                          "Min": part.minStock || 0,
-                          "Max": part.maxStock || 0,
-                          "Đơn giá": part.unitPrice ? Number(part.unitPrice) : 0,
-                          "Giá trị tồn": (part.currentStock || 0) * (part.unitPrice ? Number(part.unitPrice) : 0),
-                          "Nhà cung cấp": part.supplierName || "-",
-                          "Đơn vị": part.unit || "pcs",
-                        }));
-                        const ws = XLSX.utils.json_to_sheet(exportData);
-                        const wb = XLSX.utils.book_new();
-                        XLSX.utils.book_append_sheet(wb, ws, "Tồn kho phụ tùng");
-                        const fileName = `ton-kho-phu-tung-${new Date().toISOString().split('T')[0]}.xlsx`;
-                        XLSX.writeFile(wb, fileName);
-                        toast.success(`Đã xuất file ${fileName}`);
-                      }}
-                    >
-                      <Download className="h-4 w-4 mr-1" />
-                      Xuất Excel
-                    </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {selectedPartsForQR.length > 0 && (
+                          <DropdownMenuItem onClick={exportSelectedToExcel}>
+                            <FileSpreadsheet className="h-4 w-4 mr-2" />
+                            Xuất {selectedPartsForQR.length} mục đã chọn
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuItem onClick={() => {
+                          if (!parts || parts.length === 0) {
+                            toast.error("Không có dữ liệu để xuất");
+                            return;
+                          }
+                          const exportData = parts.map(part => ({
+                            "Mã PT": part.partNumber,
+                            "Tên phụ tùng": part.name,
+                            "Danh mục": part.category || "-",
+                            "Tồn kho": part.currentStock || 0,
+                            "Min": part.minStock || 0,
+                            "Max": part.maxStock || 0,
+                            "Đơn giá": part.unitPrice ? Number(part.unitPrice) : 0,
+                            "Giá trị tồn": (part.currentStock || 0) * (part.unitPrice ? Number(part.unitPrice) : 0),
+                            "Nhà cung cấp": part.supplierName || "-",
+                            "Đơn vị": part.unit || "pcs",
+                          }));
+                          const ws = XLSX.utils.json_to_sheet(exportData);
+                          const wb = XLSX.utils.book_new();
+                          XLSX.utils.book_append_sheet(wb, ws, "Tồn kho phụ tùng");
+                          const fileName = `ton-kho-phu-tung-${new Date().toISOString().split('T')[0]}.xlsx`;
+                          XLSX.writeFile(wb, fileName);
+                          toast.success(`Đã xuất file ${fileName}`);
+                        }}>
+                          <FileSpreadsheet className="h-4 w-4 mr-2" />
+                          Xuất toàn bộ ({parts?.length || 0} mục)
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </div>
               </CardHeader>
@@ -1539,9 +1554,14 @@ export default function SparePartsManagement() {
                             )}
                             {/* Trạng thái đã đặt - chờ nhận hàng */}
                             {po.status === "ordered" && (
-                              <Badge variant="outline" className="text-blue-600">
-                                <Clock className="w-3 h-3 mr-1" />Đang chờ hàng
-                              </Badge>
+                              <Button
+                                size="sm"
+                                variant="default"
+                                className="bg-green-600 hover:bg-green-700"
+                                onClick={() => receivePOMutation.mutate({ id: po.id })}
+                              >
+                                <PackageCheck className="w-3 h-3 mr-1" />Đã nhận hàng
+                              </Button>
                             )}
                             {/* Trạng thái đã nhận */}
                             {(po.status === "received" || po.status === "partial_received") && (
