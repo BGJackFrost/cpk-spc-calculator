@@ -203,6 +203,7 @@ const menuGroups: MenuGroup[] = [
       { icon: Shield, labelKey: "permission", path: "/permissions" },
       { icon: History, labelKey: "nav.loginHistory", path: "/login-history", adminOnly: true },
       { icon: Building2, labelKey: "nav.organization", path: "/organization", adminOnly: true },
+      { icon: GitBranch, labelKey: "nav.approvalWorkflow", path: "/approval-workflow", adminOnly: true },
     ]
   },
   {
@@ -318,6 +319,7 @@ const fallbackLabelsVi: Record<string, string> = {
   "nav.customReportBuilder": "Tạo Báo cáo Tùy chỉnh",
   "nav.sparePartsCostReport": "Báo cáo Chi phí",
   "nav.sparePartsGuide": "Hướng dẫn Sử dụng",
+  "nav.approvalWorkflow": "Quy trình Phê duyệt",
 };
 
 const fallbackLabelsEn: Record<string, string> = {
@@ -390,6 +392,7 @@ const fallbackLabelsEn: Record<string, string> = {
   "nav.customReportBuilder": "Custom Report Builder",
   "nav.sparePartsCostReport": "Cost Report",
   "nav.sparePartsGuide": "User Guide",
+  "nav.approvalWorkflow": "Approval Workflow",
 };
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";

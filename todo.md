@@ -2621,3 +2621,20 @@
 - [x] Tạo bảng approval_workflows - quy trình phê duyệt
 - [x] Tạo trang OrganizationManagement - 4 tabs: Công ty, Phòng ban, Nhóm, Chức vụ
 - [x] Thêm menu Cấu trúc Tổ chức vào sidebar
+
+
+## Phase 127: Employee Profile và Approval Workflow
+
+### Gán nhân viên vào cấu trúc tổ chức
+- [x] Thêm tab "Nhân viên" vào trang Organization - Tab 5 trong OrganizationManagement
+- [x] Hiển thị danh sách users với thông tin tổ chức - Bảng employees với công ty/phòng ban/chức vụ
+- [x] Form gán user vào công ty/phòng ban/nhóm/chức vụ - Employee Dialog
+- [x] Chọn quản lý trực tiếp (managerId) - Select trong form
+- [x] upsertEmployeeProfile mutation - Tự động tạo hoặc cập nhật profile
+
+### Quy trình phê duyệt đơn hàng theo chức vụ
+- [x] Tạo trang cấu hình Approval Workflow - /approval-workflow
+- [x] Cấu hình các bước phê duyệt theo entity type - 4 loại: purchase_order, stock_export, maintenance_request, leave_request
+- [x] Xác định người phê duyệt theo chức vụ hoặc user cụ thể - approverType: position/user/manager/department_head
+- [x] Cấu hình giá trị tối thiểu/tối đa cho mỗi bước - minAmount/maxAmount
+- [x] Reorder steps - Di chuyển thứ tự bước phê duyệt

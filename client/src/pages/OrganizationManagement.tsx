@@ -60,6 +60,28 @@ interface Position {
   isActive: number;
 }
 
+interface EmployeeProfile {
+  id: number;
+  userId: number;
+  userType: string;
+  employeeCode?: string | null;
+  companyId?: number | null;
+  departmentId?: number | null;
+  teamId?: number | null;
+  positionId?: number | null;
+  managerId?: number | null;
+  phone?: string | null;
+  address?: string | null;
+}
+
+interface User {
+  id: number;
+  name: string;
+  email?: string | null;
+  role: string;
+  isActive: number;
+}
+
 export default function OrganizationManagement() {
   const [activeTab, setActiveTab] = useState("companies");
   const [searchTerm, setSearchTerm] = useState("");
@@ -109,6 +131,22 @@ export default function OrganizationManagement() {
     approvalLimit: "",
   });
 
+  // Employee Profile state
+  const [isEmployeeDialogOpen, setIsEmployeeDialogOpen] = useState(false);
+  const [editingEmployee, setEditingEmployee] = useState<any>(null);
+  const [employeeForm, setEmployeeForm] = useState({
+    userId: "",
+    userType: "local",
+    employeeCode: "",
+    companyId: "",
+    departmentId: "",
+    teamId: "",
+    positionId: "",
+    managerId: "",
+    phone: "",
+    address: "",
+  });
+
   // Queries
   const { data: companies, isLoading: loadingCompanies, refetch: refetchCompanies } = 
     trpc.organization.listCompanies.useQuery();
@@ -118,6 +156,9 @@ export default function OrganizationManagement() {
     trpc.organization.listTeams.useQuery();
   const { data: positions, isLoading: loadingPositions, refetch: refetchPositions } = 
     trpc.organization.listPositions.useQuery();
+  const { data: employeeProfiles, isLoading: loadingEmployees, refetch: refetchEmployees } = 
+    trpc.organization.listEmployeeProfiles.useQuery();
+  const { data: users } = trpc.user.list.useQuery();
 
   // Mutations
   const createCompanyMutation = trpc.organization.createCompany.useMutation({
@@ -200,11 +241,23 @@ export default function OrganizationManagement() {
     onError: (error) => toast.error(`Lỗi: ${error.message}`),
   });
 
+  const upsertEmployeeMutation = trpc.organization.upsertEmployeeProfile.useMutation({
+    onSuccess: () => {
+      toast.success(editingEmployee ? "Cập nhật thông tin nhân viên thành công" : "Gán nhân viên thành công");
+      refetchEmployees();
+      setIsEmployeeDialogOpen(false);
+      setEditingEmployee(null);
+      resetEmployeeForm();
+    },
+    onError: (error) => toast.error(`Lỗi: ${error.message}`),
+  });
+
   // Reset forms
   const resetCompanyForm = () => setCompanyForm({ code: "", name: "", address: "", phone: "", email: "", taxCode: "" });
   const resetDeptForm = () => setDeptForm({ companyId: "", code: "", name: "", description: "", parentId: "" });
   const resetTeamForm = () => setTeamForm({ departmentId: "", code: "", name: "", description: "" });
   const resetPositionForm = () => setPositionForm({ code: "", name: "", description: "", level: "5", canApprove: false, approvalLimit: "" });
+  const resetEmployeeForm = () => setEmployeeForm({ userId: "", userType: "local", employeeCode: "", companyId: "", departmentId: "", teamId: "", positionId: "", managerId: "", phone: "", address: "" });
 
   // Handlers
   const handleEditCompany = (company: any) => {
@@ -300,6 +353,49 @@ export default function OrganizationManagement() {
     }
   };
 
+  const handleEditEmployee = (profile: EmployeeProfile) => {
+    setEditingEmployee(profile);
+    setEmployeeForm({
+      userId: String(profile.userId),
+      userType: profile.userType,
+      employeeCode: profile.employeeCode || "",
+      companyId: profile.companyId ? String(profile.companyId) : "",
+      departmentId: profile.departmentId ? String(profile.departmentId) : "",
+      teamId: profile.teamId ? String(profile.teamId) : "",
+      positionId: profile.positionId ? String(profile.positionId) : "",
+      managerId: profile.managerId ? String(profile.managerId) : "",
+      phone: profile.phone || "",
+      address: profile.address || "",
+    });
+    setIsEmployeeDialogOpen(true);
+  };
+
+  const handleSaveEmployee = () => {
+    if (!employeeForm.userId) {
+      toast.error("Vui lòng chọn nhân viên");
+      return;
+    }
+    upsertEmployeeMutation.mutate({
+      userId: Number(employeeForm.userId),
+      userType: employeeForm.userType as "manus" | "local",
+      employeeCode: employeeForm.employeeCode || undefined,
+      companyId: employeeForm.companyId ? Number(employeeForm.companyId) : undefined,
+      departmentId: employeeForm.departmentId ? Number(employeeForm.departmentId) : undefined,
+      teamId: employeeForm.teamId ? Number(employeeForm.teamId) : undefined,
+      positionId: employeeForm.positionId ? Number(employeeForm.positionId) : undefined,
+      managerId: employeeForm.managerId ? Number(employeeForm.managerId) : undefined,
+      phone: employeeForm.phone || undefined,
+      address: employeeForm.address || undefined,
+    });
+  };
+
+  // Helper functions
+  const getCompanyName = (id: number | null | undefined) => companies?.find((c: Company) => c.id === id)?.name || "-";
+  const getDeptName = (id: number | null | undefined) => departments?.find((d: Department) => d.id === id)?.name || "-";
+  const getTeamName = (id: number | null | undefined) => teams?.find((t: Team) => t.id === id)?.name || "-";
+  const getPositionName = (id: number | null | undefined) => positions?.find((p: Position) => p.id === id)?.name || "-";
+  const getUserName = (id: number | null | undefined) => (users as User[] | undefined)?.find((u: User) => u.id === id)?.name || "-";
+
   return (
     <DashboardLayout>
       <div className="space-y-6 animate-fade-in">
@@ -369,6 +465,10 @@ export default function OrganizationManagement() {
             <TabsTrigger value="positions">
               <UserCog className="h-4 w-4 mr-2" />
               Chức vụ
+            </TabsTrigger>
+            <TabsTrigger value="employees">
+              <Users className="h-4 w-4 mr-2" />
+              Nhân viên
             </TabsTrigger>
           </TabsList>
 
@@ -632,6 +732,75 @@ export default function OrganizationManagement() {
                         <TableRow>
                           <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                             Chưa có chức vụ nào
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Employees Tab */}
+          <TabsContent value="employees">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Quản lý Nhân viên</CardTitle>
+                  <CardDescription>Gán nhân viên vào cấu trúc tổ chức</CardDescription>
+                </div>
+                <Button onClick={() => { resetEmployeeForm(); setEditingEmployee(null); setIsEmployeeDialogOpen(true); }}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Gán Nhân viên
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {loadingEmployees ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-8 w-8 animate-spin" />
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Nhân viên</TableHead>
+                        <TableHead>Mã NV</TableHead>
+                        <TableHead>Loại</TableHead>
+                        <TableHead>Công ty</TableHead>
+                        <TableHead>Phòng ban</TableHead>
+                        <TableHead>Nhóm</TableHead>
+                        <TableHead>Chức vụ</TableHead>
+                        <TableHead>Quản lý</TableHead>
+                        <TableHead className="text-right">Thao tác</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {employeeProfiles?.map((emp: EmployeeProfile) => (
+                        <TableRow key={emp.id}>
+                          <TableCell className="font-medium">{getUserName(emp.userId)}</TableCell>
+                          <TableCell>{emp.employeeCode || "-"}</TableCell>
+                          <TableCell>
+                            <Badge variant={emp.userType === "manus" ? "default" : "secondary"}>
+                              {emp.userType === "manus" ? "Manus" : "Local"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{getCompanyName(emp.companyId)}</TableCell>
+                          <TableCell>{getDeptName(emp.departmentId)}</TableCell>
+                          <TableCell>{getTeamName(emp.teamId)}</TableCell>
+                          <TableCell>{getPositionName(emp.positionId)}</TableCell>
+                          <TableCell>{getUserName(emp.managerId)}</TableCell>
+                          <TableCell className="text-right">
+                            <Button variant="ghost" size="icon" onClick={() => handleEditEmployee(emp)}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {(!employeeProfiles || employeeProfiles.length === 0) && (
+                        <TableRow>
+                          <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
+                            Chưa có nhân viên nào được gán vào tổ chức
                           </TableCell>
                         </TableRow>
                       )}
@@ -919,6 +1088,153 @@ export default function OrganizationManagement() {
               <Button variant="outline" onClick={() => setIsPositionDialogOpen(false)}>Hủy</Button>
               <Button onClick={handleSavePosition} disabled={createPositionMutation.isPending || updatePositionMutation.isPending}>
                 {(createPositionMutation.isPending || updatePositionMutation.isPending) && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                <Save className="h-4 w-4 mr-2" />
+                Lưu
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Employee Dialog */}
+        <Dialog open={isEmployeeDialogOpen} onOpenChange={setIsEmployeeDialogOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>{editingEmployee ? "Sửa Thông tin Nhân viên" : "Gán Nhân viên vào Tổ chức"}</DialogTitle>
+              <DialogDescription>Chọn nhân viên và gán vào cấu trúc tổ chức</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Nhân viên *</Label>
+                  <Select value={employeeForm.userId} onValueChange={(v) => setEmployeeForm({ ...employeeForm, userId: v })} disabled={!!editingEmployee}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Chọn nhân viên" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(users as User[] | undefined)?.map((u: User) => (
+                        <SelectItem key={u.id} value={String(u.id)}>{u.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Loại tài khoản</Label>
+                  <Select value={employeeForm.userType} onValueChange={(v) => setEmployeeForm({ ...employeeForm, userType: v })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="local">Local</SelectItem>
+                      <SelectItem value="manus">Manus</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Mã nhân viên</Label>
+                  <Input
+                    value={employeeForm.employeeCode}
+                    onChange={(e) => setEmployeeForm({ ...employeeForm, employeeCode: e.target.value })}
+                    placeholder="VD: NV001"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Số điện thoại</Label>
+                  <Input
+                    value={employeeForm.phone}
+                    onChange={(e) => setEmployeeForm({ ...employeeForm, phone: e.target.value })}
+                    placeholder="Số điện thoại"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Công ty</Label>
+                  <Select value={employeeForm.companyId} onValueChange={(v) => setEmployeeForm({ ...employeeForm, companyId: v, departmentId: "", teamId: "" })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Chọn công ty" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">-- Không chọn --</SelectItem>
+                      {companies?.map((c: Company) => (
+                        <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Phòng ban</Label>
+                  <Select value={employeeForm.departmentId} onValueChange={(v) => setEmployeeForm({ ...employeeForm, departmentId: v, teamId: "" })} disabled={!employeeForm.companyId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Chọn phòng ban" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">-- Không chọn --</SelectItem>
+                      {departments?.filter((d: Department) => d.companyId === Number(employeeForm.companyId)).map((d: Department) => (
+                        <SelectItem key={d.id} value={String(d.id)}>{d.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Nhóm/Tổ</Label>
+                  <Select value={employeeForm.teamId} onValueChange={(v) => setEmployeeForm({ ...employeeForm, teamId: v })} disabled={!employeeForm.departmentId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Chọn nhóm" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">-- Không chọn --</SelectItem>
+                      {teams?.filter((t: Team) => t.departmentId === Number(employeeForm.departmentId)).map((t: Team) => (
+                        <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Chức vụ</Label>
+                  <Select value={employeeForm.positionId} onValueChange={(v) => setEmployeeForm({ ...employeeForm, positionId: v })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Chọn chức vụ" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">-- Không chọn --</SelectItem>
+                      {positions?.map((p: Position) => (
+                        <SelectItem key={p.id} value={String(p.id)}>{p.name} (Cấp {p.level})</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Quản lý trực tiếp</Label>
+                <Select value={employeeForm.managerId} onValueChange={(v) => setEmployeeForm({ ...employeeForm, managerId: v })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Chọn quản lý" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">-- Không có --</SelectItem>
+                    {(users as User[] | undefined)?.filter((u: User) => String(u.id) !== employeeForm.userId).map((u: User) => (
+                      <SelectItem key={u.id} value={String(u.id)}>{u.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Địa chỉ</Label>
+                <Textarea
+                  value={employeeForm.address}
+                  onChange={(e) => setEmployeeForm({ ...employeeForm, address: e.target.value })}
+                  placeholder="Địa chỉ nhân viên"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsEmployeeDialogOpen(false)}>Hủy</Button>
+              <Button onClick={handleSaveEmployee} disabled={upsertEmployeeMutation.isPending}>
+                {upsertEmployeeMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 <Save className="h-4 w-4 mr-2" />
                 Lưu
               </Button>
