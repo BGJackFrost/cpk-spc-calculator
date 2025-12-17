@@ -18,7 +18,7 @@ export interface LocalAuthUser {
   username: string;
   name: string | null;
   email: string | null;
-  role: "user" | "admin";
+  role: "user" | "manager" | "admin";
   mustChangePassword?: boolean;
 }
 
@@ -252,7 +252,7 @@ export async function listLocalUsers(): Promise<LocalAuthUser[]> {
  */
 export async function updateLocalUser(
   id: number,
-  updates: { name?: string; email?: string; password?: string; role?: "user" | "admin" }
+  updates: { name?: string; email?: string; password?: string; role?: "user" | "manager" | "admin" }
 ): Promise<{ success: boolean; error?: string }> {
   const db = await getDb();
   if (!db) {

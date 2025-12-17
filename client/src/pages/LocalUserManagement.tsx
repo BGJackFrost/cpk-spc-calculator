@@ -17,7 +17,7 @@ interface LocalUser {
   username: string;
   name: string | null;
   email: string | null;
-  role: "user" | "admin";
+  role: "user" | "manager" | "admin";
 }
 
 export default function LocalUserManagement() {
@@ -30,13 +30,13 @@ export default function LocalUserManagement() {
   const [addPassword, setAddPassword] = useState("");
   const [addName, setAddName] = useState("");
   const [addEmail, setAddEmail] = useState("");
-  const [addRole, setAddRole] = useState<"user" | "admin">("user");
+  const [addRole, setAddRole] = useState<"user" | "manager" | "admin">("user");
 
   // Form states for edit
   const [editName, setEditName] = useState("");
   const [editEmail, setEditEmail] = useState("");
   const [editPassword, setEditPassword] = useState("");
-  const [editRole, setEditRole] = useState<"user" | "admin">("user");
+  const [editRole, setEditRole] = useState<"user" | "manager" | "admin">("user");
 
   const utils = trpc.useUtils();
 
@@ -122,7 +122,7 @@ export default function LocalUserManagement() {
       name?: string;
       email?: string;
       password?: string;
-      role?: "user" | "admin";
+      role?: "user" | "manager" | "admin";
     } = { id: selectedUser.id };
 
     if (editName !== (selectedUser.name || "")) {
@@ -234,12 +234,13 @@ export default function LocalUserManagement() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="add-role">Vai trò</Label>
-                    <Select value={addRole} onValueChange={(v) => setAddRole(v as "user" | "admin")}>
+                    <Select value={addRole} onValueChange={(v) => setAddRole(v as "user" | "manager" | "admin")}>
                       <SelectTrigger>
                         <SelectValue placeholder="Chọn vai trò" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="user">Người dùng</SelectItem>
+                        <SelectItem value="manager">Quản lý</SelectItem>
                         <SelectItem value="admin">Quản trị viên</SelectItem>
                       </SelectContent>
                     </Select>
@@ -413,12 +414,13 @@ export default function LocalUserManagement() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-role">Vai trò</Label>
-                <Select value={editRole} onValueChange={(v) => setEditRole(v as "user" | "admin")}>
+                <Select value={editRole} onValueChange={(v) => setEditRole(v as "user" | "manager" | "admin")}>
                   <SelectTrigger>
                     <SelectValue placeholder="Chọn vai trò" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="user">Người dùng</SelectItem>
+                    <SelectItem value="manager">Quản lý</SelectItem>
                     <SelectItem value="admin">Quản trị viên</SelectItem>
                   </SelectContent>
                 </Select>

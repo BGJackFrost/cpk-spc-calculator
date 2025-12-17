@@ -10,7 +10,7 @@ export const users = mysqlTable("users", {
   email: varchar("email", { length: 320 }),
   avatar: varchar("avatar", { length: 500 }), // URL ảnh đại diện
   loginMethod: varchar("loginMethod", { length: 64 }),
-  role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
+  role: mysqlEnum("role", ["user", "manager", "admin"]).default("user").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
@@ -29,7 +29,7 @@ export const localUsers = mysqlTable("local_users", {
   name: text("name"),
   email: varchar("email", { length: 320 }),
   avatar: varchar("avatar", { length: 500 }), // URL ảnh đại diện
-  role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
+  role: mysqlEnum("role", ["user", "manager", "admin"]).default("user").notNull(),
   isActive: int("isActive").notNull().default(1),
   mustChangePassword: int("mustChangePassword").notNull().default(1), // Force password change on first login
   createdAt: timestamp("createdAt").defaultNow().notNull(),

@@ -190,10 +190,12 @@ export default function UserManagement() {
                         <td className="px-4 py-3">
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                             user.role === "admin" 
-                              ? "bg-primary/10 text-primary" 
+                              ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200" 
+                              : user.role === "manager"
+                              ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
                               : "bg-muted text-muted-foreground"
                           }`}>
-                            {user.role === "admin" ? "Admin" : "User"}
+                            {user.role === "admin" ? "Admin" : user.role === "manager" ? "Manager" : "User"}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-sm text-muted-foreground">
@@ -235,8 +237,9 @@ export default function UserManagement() {
                                       <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
-                                      <SelectItem value="user">User</SelectItem>
-                                      <SelectItem value="admin">Admin</SelectItem>
+                                      <SelectItem value="user">User - Người dùng cơ bản</SelectItem>
+                                      <SelectItem value="manager">Manager - Quản lý</SelectItem>
+                                      <SelectItem value="admin">Admin - Quản trị viên</SelectItem>
                                     </SelectContent>
                                   </Select>
                                 </div>

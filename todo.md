@@ -2803,3 +2803,20 @@
 - [x] Nút "Áp dụng mẫu" trong tab Phân quyền Vai trò
 - [x] Dialog áp dụng mẫu với preview mô tả và cảnh báo
 - [x] Nút "Khởi tạo mẫu mặc định" để tạo 6 mẫu cơ bản
+
+
+## Phase 136: Mẫu vai trò tùy chỉnh & Gán vai trò cho người dùng
+
+### Cải tiến tạo mẫu vai trò tùy chỉnh
+- [x] Cập nhật dialog tạo mẫu với danh sách quyền có thể chọn
+- [x] Hiển thị quyền theo nhóm module (MMS, SPC, System)
+- [x] Checkbox chọn tất cả quyền của module
+- [x] Nút "Chọn tất cả" và "Bỏ chọn tất cả"
+- [x] Hiển thị số lượng quyền đã chọn cho mỗi module và tổng
+
+### Gán vai trò cho người dùng
+- [x] Thêm role Manager vào schema users và local_users
+- [x] Cập nhật LocalAuthUser interface và updateLocalUser function
+- [x] Hiển thị badge vai trò với màu sắc (Admin-đỏ, Manager-xanh, User-xám)
+- [x] Cập nhật dialog chỉnh sửa quyền với 3 options: User/Manager/Admin
+- [x] Cập nhật LocalUserManagement với Manager role

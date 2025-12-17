@@ -1245,21 +1245,21 @@ export default function ModulePermissionManagement() {
 
         {/* Template Dialog */}
         <Dialog open={templateDialogOpen} onOpenChange={setTemplateDialogOpen}>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
             <DialogHeader>
               <DialogTitle>{editingTemplate ? "Chỉnh sửa mẫu vai trò" : "Tạo mẫu vai trò mới"}</DialogTitle>
               <DialogDescription>
-                Cấu hình thông tin và quyền cho mẫu vai trò
+                Cấu hình thông tin và chọn quyền cho mẫu vai trò
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4">
+            <div className="space-y-4 flex-1 overflow-auto">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Mã mẫu</Label>
                   <Input
                     value={templateForm.code}
                     onChange={(e) => setTemplateForm({ ...templateForm, code: e.target.value })}
-                    placeholder="operator"
+                    placeholder="custom_role"
                     disabled={!!editingTemplate}
                   />
                 </div>
@@ -1268,44 +1268,136 @@ export default function ModulePermissionManagement() {
                   <Input
                     value={templateForm.name}
                     onChange={(e) => setTemplateForm({ ...templateForm, name: e.target.value })}
-                    placeholder="Công nhân vận hành"
+                    placeholder="Vai trò tùy chỉnh"
                   />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label>Mô tả</Label>
-                <Input
-                  value={templateForm.description}
-                  onChange={(e) => setTemplateForm({ ...templateForm, description: e.target.value })}
-                  placeholder="Mô tả chi tiết về mẫu vai trò"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Mô tả</Label>
+                  <Input
+                    value={templateForm.description}
+                    onChange={(e) => setTemplateForm({ ...templateForm, description: e.target.value })}
+                    placeholder="Mô tả chi tiết về mẫu vai trò"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Phân loại</Label>
+                  <Select
+                    value={templateForm.category}
+                    onValueChange={(v) => setTemplateForm({ ...templateForm, category: v as typeof templateForm.category })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="production">Sản xuất</SelectItem>
+                      <SelectItem value="quality">Chất lượng</SelectItem>
+                      <SelectItem value="maintenance">Bảo trì</SelectItem>
+                      <SelectItem value="management">Quản lý</SelectItem>
+                      <SelectItem value="system">Hệ thống</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label>Phân loại</Label>
-                <Select
-                  value={templateForm.category}
-                  onValueChange={(v) => setTemplateForm({ ...templateForm, category: v as typeof templateForm.category })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="production">Sản xuất</SelectItem>
-                    <SelectItem value="quality">Chất lượng</SelectItem>
-                    <SelectItem value="maintenance">Bảo trì</SelectItem>
-                    <SelectItem value="management">Quản lý</SelectItem>
-                    <SelectItem value="system">Hệ thống</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Đã chọn {templateForm.permissionIds.length} quyền</Label>
-                <p className="text-sm text-muted-foreground">Sử dụng tab "Phân quyền Vai trò" để chọn quyền, sau đó lưu thành mẫu.</p>
+              
+              {/* Permission Selection */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-base font-semibold">Chọn quyền cho mẫu ({templateForm.permissionIds.length} quyền)</Label>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const allIds = permissions.map(p => p.id);
+                        setTemplateForm({ ...templateForm, permissionIds: allIds });
+                      }}
+                    >
+                      Chọn tất cả
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setTemplateForm({ ...templateForm, permissionIds: [] })}
+                    >
+                      Bỏ chọn tất cả
+                    </Button>
+                  </div>
+                </div>
+                
+                <div className="border rounded-lg p-3 max-h-[300px] overflow-auto">
+                  {modulesWithPermissions && SYSTEM_TYPES.map((systemType) => {
+                    const systemModules = modulesWithPermissions[systemType.value as keyof typeof modulesWithPermissions] || [];
+                    if (systemModules.length === 0) return null;
+                    
+                    return (
+                      <div key={systemType.value} className="mb-4 last:mb-0">
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className={`p-1.5 rounded ${systemType.color}`}>
+                            <systemType.icon className="w-3 h-3 text-white" />
+                          </div>
+                          <span className="font-medium text-sm">{systemType.label}</span>
+                        </div>
+                        <div className="space-y-2 ml-6">
+                          {systemModules.map((module: ModuleWithPermissions) => {
+                            const modulePermIds = module.permissions.map(p => p.id);
+                            const allSelected = modulePermIds.length > 0 && modulePermIds.every(id => templateForm.permissionIds.includes(id));
+                            const someSelected = modulePermIds.some(id => templateForm.permissionIds.includes(id));
+                            
+                            return (
+                              <div key={module.id} className="border rounded p-2">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <Checkbox
+                                    checked={allSelected}
+                                    className={someSelected && !allSelected ? "data-[state=checked]:bg-primary/50" : ""}
+                                    onCheckedChange={() => {
+                                      let newIds = [...templateForm.permissionIds];
+                                      if (allSelected) {
+                                        newIds = newIds.filter(id => !modulePermIds.includes(id));
+                                      } else {
+                                        modulePermIds.forEach(id => {
+                                          if (!newIds.includes(id)) newIds.push(id);
+                                        });
+                                      }
+                                      setTemplateForm({ ...templateForm, permissionIds: newIds });
+                                    }}
+                                  />
+                                  <span className="font-medium text-sm">{module.name}</span>
+                                  <span className="text-xs text-muted-foreground">
+                                    ({modulePermIds.filter(id => templateForm.permissionIds.includes(id)).length}/{modulePermIds.length})
+                                  </span>
+                                </div>
+                                <div className="flex flex-wrap gap-2 ml-6">
+                                  {module.permissions.map((perm) => (
+                                    <label key={perm.id} className="flex items-center gap-1 text-xs cursor-pointer">
+                                      <Checkbox
+                                        checked={templateForm.permissionIds.includes(perm.id)}
+                                        onCheckedChange={() => {
+                                          const newIds = templateForm.permissionIds.includes(perm.id)
+                                            ? templateForm.permissionIds.filter(id => id !== perm.id)
+                                            : [...templateForm.permissionIds, perm.id];
+                                          setTemplateForm({ ...templateForm, permissionIds: newIds });
+                                        }}
+                                        className="w-3 h-3"
+                                      />
+                                      <span>{perm.name}</span>
+                                    </label>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setTemplateDialogOpen(false)}>Hủy</Button>
-              <Button onClick={handleSaveTemplate}>
+              <Button onClick={handleSaveTemplate} disabled={!templateForm.code || !templateForm.name}>
                 {editingTemplate ? "Cập nhật" : "Tạo mới"}
               </Button>
             </DialogFooter>
