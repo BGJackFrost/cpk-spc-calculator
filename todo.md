@@ -2772,3 +2772,34 @@
 - [x] Dialog chọn vai trò nguồn để sao chép
 - [x] Xác nhận trước khi ghi đè quyền hiện tại (cảnh báo màu vàng)
 - [x] API copyRolePermissions trong permissionRouter
+
+
+## Phase 135: Mẫu Vai trò (Role Templates)
+
+### Database Schema
+- [x] Tạo bảng role_templates (id, code, name, description, category, permissionIds JSON, isDefault, createdAt)
+- [x] API initializeDefaultTemplates để seed data các mẫu vai trò mặc định
+
+### Các mẫu vai trò định sẵn
+- [x] Operator (Công nhân vận hành): Xem dashboard, xem dữ liệu SPC
+- [x] QC Inspector (Kiểm tra chất lượng): Xem + tạo phân tích SPC, quản lý lỗi
+- [x] Maintenance Technician (Kỹ thuật bảo trì): Quản lý máy móc, bảo trì, phụ tùng
+- [x] Supervisor (Giám sát): Xem tất cả + phê duyệt
+- [x] Production Manager (Quản lý sản xuất): Full quyền SPC + MMS
+- [x] System Admin (Quản trị hệ thống): Full quyền hệ thống
+
+### API Endpoints
+- [x] listRoleTemplates - Danh sách mẫu vai trò
+- [x] getRoleTemplate - Lấy chi tiết mẫu
+- [x] createRoleTemplate - Tạo mẫu mới
+- [x] updateRoleTemplate - Cập nhật mẫu
+- [x] deleteRoleTemplate - Xóa mẫu (soft delete)
+- [x] applyRoleTemplate - Áp dụng mẫu cho vai trò
+- [x] initializeDefaultTemplates - Khởi tạo các mẫu mặc định
+
+### UI Components
+- [x] Tab "Mẫu Vai trò" trong trang Phân quyền với danh sách cards
+- [x] Dialog tạo/sửa mẫu vai trò
+- [x] Nút "Áp dụng mẫu" trong tab Phân quyền Vai trò
+- [x] Dialog áp dụng mẫu với preview mô tả và cảnh báo
+- [x] Nút "Khởi tạo mẫu mặc định" để tạo 6 mẫu cơ bản

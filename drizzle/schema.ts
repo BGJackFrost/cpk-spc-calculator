@@ -282,6 +282,26 @@ export type RoleModulePermission = typeof roleModulePermissions.$inferSelect;
 export type InsertRoleModulePermission = typeof roleModulePermissions.$inferInsert;
 
 /**
+ * Role templates - predefined permission sets for quick role assignment
+ */
+export const roleTemplates = mysqlTable("role_templates", {
+  id: int("id").autoincrement().primaryKey(),
+  code: varchar("code", { length: 100 }).notNull().unique(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  category: mysqlEnum("category", ["production", "quality", "maintenance", "management", "system"]).notNull().default("production"),
+  permissionIds: text("permissionIds").notNull(), // JSON array of permission IDs
+  isDefault: int("isDefault").notNull().default(0), // Built-in templates
+  isActive: int("isActive").notNull().default(1),
+  createdBy: int("createdBy"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type RoleTemplate = typeof roleTemplates.$inferSelect;
+export type InsertRoleTemplate = typeof roleTemplates.$inferInsert;
+
+/**
  * Database connections - stores external database connection strings
  * Supports multiple database types: mysql, sqlserver, oracle, postgres, access, excel
  */

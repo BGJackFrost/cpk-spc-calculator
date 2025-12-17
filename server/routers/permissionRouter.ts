@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { router, protectedProcedure } from "../_core/trpc";
 import { getDb } from "../db";
-import { systemModules, modulePermissions, roleModulePermissions } from "../../drizzle/schema";
+import { systemModules, modulePermissions, roleModulePermissions, roleTemplates } from "../../drizzle/schema";
 import { eq, and, sql } from "drizzle-orm";
 
 // Default modules to initialize
@@ -415,4 +415,210 @@ export const permissionRouter = router({
       // TODO: Implement proper role-based permission check when roleId is added to users
       return true;
     }),
+
+  // ===== ROLE TEMPLATES =====
+  listRoleTemplates: protectedProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) return [];
+    
+    return await db.select().from(roleTemplates).where(eq(roleTemplates.isActive, 1));
+  }),
+
+  getRoleTemplate: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return null;
+      
+      const [template] = await db.select().from(roleTemplates).where(eq(roleTemplates.id, input.id));
+      return template || null;
+    }),
+
+  createRoleTemplate: protectedProcedure
+    .input(z.object({
+      code: z.string(),
+      name: z.string(),
+      description: z.string().optional(),
+      category: z.enum(["production", "quality", "maintenance", "management", "system"]),
+      permissionIds: z.array(z.number()),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      
+      await db.insert(roleTemplates).values({
+        code: input.code,
+        name: input.name,
+        description: input.description || null,
+        category: input.category,
+        permissionIds: JSON.stringify(input.permissionIds),
+        isDefault: 0,
+        createdBy: ctx.user?.id || null,
+      });
+      
+      return { success: true };
+    }),
+
+  updateRoleTemplate: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      name: z.string().optional(),
+      description: z.string().optional(),
+      category: z.enum(["production", "quality", "maintenance", "management", "system"]).optional(),
+      permissionIds: z.array(z.number()).optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      
+      const updates: Record<string, unknown> = {};
+      if (input.name) updates.name = input.name;
+      if (input.description !== undefined) updates.description = input.description;
+      if (input.category) updates.category = input.category;
+      if (input.permissionIds) updates.permissionIds = JSON.stringify(input.permissionIds);
+      
+      await db.update(roleTemplates).set(updates).where(eq(roleTemplates.id, input.id));
+      
+      return { success: true };
+    }),
+
+  deleteRoleTemplate: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      
+      // Soft delete
+      await db.update(roleTemplates).set({ isActive: 0 }).where(eq(roleTemplates.id, input.id));
+      
+      return { success: true };
+    }),
+
+  applyRoleTemplate: protectedProcedure
+    .input(z.object({
+      templateId: z.number(),
+      roleId: z.number(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      
+      // Get template
+      const [template] = await db.select().from(roleTemplates).where(eq(roleTemplates.id, input.templateId));
+      if (!template) throw new Error("Template not found");
+      
+      const permissionIds: number[] = JSON.parse(template.permissionIds);
+      
+      // Delete existing permissions for this role
+      await db.delete(roleModulePermissions).where(eq(roleModulePermissions.roleId, input.roleId));
+      
+      // Insert new permissions from template
+      if (permissionIds.length > 0) {
+        await db.insert(roleModulePermissions).values(
+          permissionIds.map(permissionId => ({
+            roleId: input.roleId,
+            permissionId,
+          }))
+        );
+      }
+      
+      return { success: true, message: `Đã áp dụng mẫu "${template.name}" với ${permissionIds.length} quyền`, count: permissionIds.length };
+    }),
+
+  initializeDefaultTemplates: protectedProcedure.mutation(async () => {
+    const db = await getDb();
+    if (!db) throw new Error("Database not available");
+    
+    // Check if templates already exist
+    const existing = await db.select().from(roleTemplates);
+    if (existing.length > 0) {
+      return { success: true, message: "Mẫu vai trò đã được khởi tạo", count: existing.length };
+    }
+    
+    // Get all permissions for mapping
+    const allPermissions = await db.select().from(modulePermissions).where(eq(modulePermissions.isActive, 1));
+    const permByCode = new Map(allPermissions.map(p => [p.code, p.id]));
+    
+    // Helper to get permission IDs by patterns
+    const getPermIds = (patterns: string[]): number[] => {
+      const ids: number[] = [];
+      for (const pattern of patterns) {
+        if (pattern.endsWith('_*')) {
+          // Wildcard: all permissions for a module
+          const prefix = pattern.slice(0, -1);
+          allPermissions.filter(p => p.code.startsWith(prefix)).forEach(p => ids.push(p.id));
+        } else {
+          const id = permByCode.get(pattern);
+          if (id) ids.push(id);
+        }
+      }
+      // Remove duplicates
+      const uniqueIds: number[] = [];
+      for (const id of ids) {
+        if (!uniqueIds.includes(id)) uniqueIds.push(id);
+      }
+      return uniqueIds;
+    };
+    
+    // Default templates
+    const templates = [
+      {
+        code: "operator",
+        name: "Công nhân vận hành",
+        description: "Quyền cơ bản: xem dashboard, xem dữ liệu SPC",
+        category: "production" as const,
+        patterns: ["spc_dashboard_view", "spc_analyze_view", "spc_realtime_view", "spc_history_view"],
+      },
+      {
+        code: "qc_inspector",
+        name: "Kiểm tra chất lượng (QC)",
+        description: "Xem + tạo phân tích SPC, quản lý lỗi",
+        category: "quality" as const,
+        patterns: ["spc_dashboard_view", "spc_analyze_*", "spc_history_*", "spc_defects_*", "spc_reports_view", "spc_reports_export"],
+      },
+      {
+        code: "maintenance_tech",
+        name: "Kỹ thuật bảo trì",
+        description: "Quản lý máy móc, bảo trì, phụ tùng",
+        category: "maintenance" as const,
+        patterns: ["mms_dashboard_view", "mms_machines_*", "mms_machine_types_*", "mms_fixtures_*", "mms_maintenance_*", "mms_maintenance_schedule_*", "mms_spare_parts_*", "mms_work_orders_*"],
+      },
+      {
+        code: "supervisor",
+        name: "Giám sát",
+        description: "Xem tất cả + phê duyệt",
+        category: "management" as const,
+        patterns: ["spc_*", "mms_dashboard_view", "mms_machines_view", "mms_maintenance_view", "mms_spare_parts_view", "mms_work_orders_*", "sys_approval_*"],
+      },
+      {
+        code: "production_manager",
+        name: "Quản lý sản xuất",
+        description: "Full quyền SPC + MMS",
+        category: "management" as const,
+        patterns: ["spc_*", "mms_*"],
+      },
+      {
+        code: "system_admin",
+        name: "Quản trị hệ thống",
+        description: "Full quyền hệ thống",
+        category: "system" as const,
+        patterns: ["sys_*"],
+      },
+    ];
+    
+    for (const t of templates) {
+      const permIds = getPermIds(t.patterns);
+      await db.insert(roleTemplates).values({
+        code: t.code,
+        name: t.name,
+        description: t.description,
+        category: t.category,
+        permissionIds: JSON.stringify(permIds),
+        isDefault: 1,
+        createdBy: null,
+      });
+    }
+    
+    return { success: true, message: `Đã khởi tạo ${templates.length} mẫu vai trò`, count: templates.length };
+  }),
 });

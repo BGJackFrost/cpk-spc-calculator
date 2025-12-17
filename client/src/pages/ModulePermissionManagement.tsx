@@ -56,6 +56,17 @@ interface ModuleWithPermissions {
   }>;
 }
 
+interface RoleTemplate {
+  id: number;
+  code: string;
+  name: string;
+  description: string | null;
+  category: "production" | "quality" | "maintenance" | "management" | "system";
+  permissionIds: string;
+  isDefault: number;
+  isActive: number;
+}
+
 const SYSTEM_TYPES = [
   { value: "mms", label: "MMS - Bảo trì", icon: Wrench, color: "bg-blue-500" },
   { value: "spc", label: "SPC/CPK - Chất lượng", icon: BarChart3, color: "bg-green-500" },
@@ -131,6 +142,20 @@ export default function ModulePermissionManagement() {
     { roleId: selectedRoleId! },
     { enabled: !!selectedRoleId }
   );
+  const { data: roleTemplates = [], refetch: refetchTemplates } = trpc.permissionModule.listRoleTemplates.useQuery();
+
+  // Template state
+  const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<RoleTemplate | null>(null);
+  const [templateForm, setTemplateForm] = useState({
+    code: "",
+    name: "",
+    description: "",
+    category: "production" as "production" | "quality" | "maintenance" | "management" | "system",
+    permissionIds: [] as number[],
+  });
+  const [applyTemplateDialogOpen, setApplyTemplateDialogOpen] = useState(false);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<number | null>(null);
 
   // Mutations
   const createModuleMutation = trpc.permissionModule.createModule.useMutation({
@@ -226,6 +251,58 @@ export default function ModulePermissionManagement() {
     onError: (error) => toast.error(error.message),
   });
 
+  // Template mutations
+  const createTemplateMutation = trpc.permissionModule.createRoleTemplate.useMutation({
+    onSuccess: () => {
+      toast.success("Đã tạo mẫu vai trò");
+      refetchTemplates();
+      setTemplateDialogOpen(false);
+      resetTemplateForm();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const updateTemplateMutation = trpc.permissionModule.updateRoleTemplate.useMutation({
+    onSuccess: () => {
+      toast.success("Đã cập nhật mẫu vai trò");
+      refetchTemplates();
+      setTemplateDialogOpen(false);
+      resetTemplateForm();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const deleteTemplateMutation = trpc.permissionModule.deleteRoleTemplate.useMutation({
+    onSuccess: () => {
+      toast.success("Đã xóa mẫu vai trò");
+      refetchTemplates();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const initializeTemplatesMutation = trpc.permissionModule.initializeDefaultTemplates.useMutation({
+    onSuccess: (result) => {
+      toast.success(result.message);
+      refetchTemplates();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const applyTemplateMutation = trpc.permissionModule.applyRoleTemplate.useMutation({
+    onSuccess: (result) => {
+      toast.success(result.message);
+      setApplyTemplateDialogOpen(false);
+      setSelectedTemplateId(null);
+      // Reload permissions for current role
+      if (selectedRoleId) {
+        const currentRole = selectedRoleId;
+        setSelectedRoleId(null);
+        setTimeout(() => setSelectedRoleId(currentRole), 100);
+      }
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
   // Helpers
   const resetModuleForm = () => {
     setEditingModule(null);
@@ -248,6 +325,42 @@ export default function ModulePermissionManagement() {
       description: "",
       actionType: "view",
     });
+  };
+
+  const resetTemplateForm = () => {
+    setEditingTemplate(null);
+    setTemplateForm({
+      code: "",
+      name: "",
+      description: "",
+      category: "production",
+      permissionIds: [],
+    });
+  };
+
+  const handleEditTemplate = (template: RoleTemplate) => {
+    setEditingTemplate(template);
+    setTemplateForm({
+      code: template.code,
+      name: template.name,
+      description: template.description || "",
+      category: template.category,
+      permissionIds: JSON.parse(template.permissionIds || "[]"),
+    });
+    setTemplateDialogOpen(true);
+  };
+
+  const handleSaveTemplate = () => {
+    if (editingTemplate) {
+      updateTemplateMutation.mutate({ id: editingTemplate.id, ...templateForm });
+    } else {
+      createTemplateMutation.mutate(templateForm);
+    }
+  };
+
+  const handleApplyTemplate = () => {
+    if (!selectedRoleId || !selectedTemplateId) return;
+    applyTemplateMutation.mutate({ templateId: selectedTemplateId, roleId: selectedRoleId });
   };
 
   const handleEditModule = (module: Module) => {
@@ -423,6 +536,10 @@ export default function ModulePermissionManagement() {
             <TabsTrigger value="role-permissions">
               <Users className="w-4 h-4 mr-2" />
               Phân quyền Vai trò
+            </TabsTrigger>
+            <TabsTrigger value="templates">
+              <Package className="w-4 h-4 mr-2" />
+              Mẫu Vai trò
             </TabsTrigger>
           </TabsList>
 
@@ -683,6 +800,14 @@ export default function ModulePermissionManagement() {
               
               <Button
                 variant="outline"
+                onClick={() => setApplyTemplateDialogOpen(true)}
+                disabled={!selectedRoleId}
+              >
+                <Package className="w-4 h-4 mr-2" />
+                Áp dụng mẫu
+              </Button>
+              <Button
+                variant="outline"
                 onClick={() => setCopyDialogOpen(true)}
                 disabled={!selectedRoleId}
               >
@@ -769,6 +894,93 @@ export default function ModulePermissionManagement() {
                   );
                 })}
               </div>
+            )}
+          </TabsContent>
+
+          {/* Templates Tab */}
+          <TabsContent value="templates" className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <h3 className="text-lg font-semibold">Mẫu vai trò định sẵn</h3>
+                <Badge variant="secondary">{roleTemplates.length} mẫu</Badge>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => initializeTemplatesMutation.mutate()}>
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Khởi tạo mẫu mặc định
+                </Button>
+                <Button onClick={() => { resetTemplateForm(); setTemplateDialogOpen(true); }}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Tạo mẫu mới
+                </Button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {roleTemplates.map((template) => {
+                const permIds = JSON.parse(template.permissionIds || "[]");
+                const categoryColors: Record<string, string> = {
+                  production: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+                  quality: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+                  maintenance: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
+                  management: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
+                  system: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+                };
+                const categoryLabels: Record<string, string> = {
+                  production: "Sản xuất",
+                  quality: "Chất lượng",
+                  maintenance: "Bảo trì",
+                  management: "Quản lý",
+                  system: "Hệ thống",
+                };
+                return (
+                  <Card key={template.id} className="relative">
+                    {template.isDefault === 1 && (
+                      <Badge className="absolute top-2 right-2" variant="secondary">Mặc định</Badge>
+                    )}
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg">{template.name}</CardTitle>
+                      <CardDescription>{template.description}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2">
+                          <Badge className={categoryColors[template.category]}>
+                            {categoryLabels[template.category]}
+                          </Badge>
+                          <span className="text-sm text-muted-foreground">{permIds.length} quyền</span>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEditTemplate(template)}
+                          >
+                            <Edit className="w-4 h-4 mr-1" />
+                            Sửa
+                          </Button>
+                          {template.isDefault === 0 && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => deleteTemplateMutation.mutate({ id: template.id })}
+                            >
+                              <Trash2 className="w-4 h-4 mr-1" />
+                              Xóa
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+
+            {roleTemplates.length === 0 && (
+              <Card className="p-8 text-center">
+                <p className="text-muted-foreground mb-4">Chưa có mẫu vai trò nào. Click "Khởi tạo mẫu mặc định" để tạo các mẫu cơ bản.</p>
+              </Card>
             )}
           </TabsContent>
         </Tabs>
@@ -974,6 +1186,127 @@ export default function ModulePermissionManagement() {
               <Button onClick={handleCopyPermissions} disabled={!sourceRoleId}>
                 <Copy className="w-4 h-4 mr-2" />
                 Sao chép quyền
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Apply Template Dialog */}
+        <Dialog open={applyTemplateDialogOpen} onOpenChange={setApplyTemplateDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Áp dụng mẫu vai trò</DialogTitle>
+              <DialogDescription>
+                Chọn mẫu để áp dụng quyền cho vai trò "{roles.find(r => r.id === selectedRoleId)?.name}".
+                Lưu ý: Quyền hiện tại sẽ bị ghi đè hoàn toàn.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Chọn mẫu vai trò</Label>
+                <Select
+                  value={selectedTemplateId?.toString() || ""}
+                  onValueChange={(v) => setSelectedTemplateId(v ? Number(v) : null)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Chọn mẫu" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {roleTemplates.map((template) => (
+                      <SelectItem key={template.id} value={template.id.toString()}>
+                        {template.name} ({JSON.parse(template.permissionIds || "[]").length} quyền)
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {selectedTemplateId && (
+                <div className="bg-muted p-3 rounded-lg">
+                  <p className="text-sm">
+                    <strong>Mô tả:</strong> {roleTemplates.find(t => t.id === selectedTemplateId)?.description || "Không có mô tả"}
+                  </p>
+                </div>
+              )}
+              <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+                <p className="text-sm text-amber-800 dark:text-amber-200">
+                  <strong>Cảnh báo:</strong> Tất cả quyền hiện tại của vai trò sẽ bị thay thế bằng quyền của mẫu.
+                </p>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => { setApplyTemplateDialogOpen(false); setSelectedTemplateId(null); }}>Hủy</Button>
+              <Button onClick={handleApplyTemplate} disabled={!selectedTemplateId}>
+                <Package className="w-4 h-4 mr-2" />
+                Áp dụng mẫu
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Template Dialog */}
+        <Dialog open={templateDialogOpen} onOpenChange={setTemplateDialogOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>{editingTemplate ? "Chỉnh sửa mẫu vai trò" : "Tạo mẫu vai trò mới"}</DialogTitle>
+              <DialogDescription>
+                Cấu hình thông tin và quyền cho mẫu vai trò
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Mã mẫu</Label>
+                  <Input
+                    value={templateForm.code}
+                    onChange={(e) => setTemplateForm({ ...templateForm, code: e.target.value })}
+                    placeholder="operator"
+                    disabled={!!editingTemplate}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Tên mẫu</Label>
+                  <Input
+                    value={templateForm.name}
+                    onChange={(e) => setTemplateForm({ ...templateForm, name: e.target.value })}
+                    placeholder="Công nhân vận hành"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Mô tả</Label>
+                <Input
+                  value={templateForm.description}
+                  onChange={(e) => setTemplateForm({ ...templateForm, description: e.target.value })}
+                  placeholder="Mô tả chi tiết về mẫu vai trò"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Phân loại</Label>
+                <Select
+                  value={templateForm.category}
+                  onValueChange={(v) => setTemplateForm({ ...templateForm, category: v as typeof templateForm.category })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="production">Sản xuất</SelectItem>
+                    <SelectItem value="quality">Chất lượng</SelectItem>
+                    <SelectItem value="maintenance">Bảo trì</SelectItem>
+                    <SelectItem value="management">Quản lý</SelectItem>
+                    <SelectItem value="system">Hệ thống</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Đã chọn {templateForm.permissionIds.length} quyền</Label>
+                <p className="text-sm text-muted-foreground">Sử dụng tab "Phân quyền Vai trò" để chọn quyền, sau đó lưu thành mẫu.</p>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setTemplateDialogOpen(false)}>Hủy</Button>
+              <Button onClick={handleSaveTemplate}>
+                {editingTemplate ? "Cập nhật" : "Tạo mới"}
               </Button>
             </DialogFooter>
           </DialogContent>
