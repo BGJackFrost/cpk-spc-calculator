@@ -18,7 +18,7 @@ import ProductionLineManagement from "./pages/ProductionLineManagement";
 import SamplingMethodManagement from "./pages/SamplingMethodManagement";
 import SpcPlanManagement from "./pages/SpcPlanManagement";
 import EmailNotificationSettings from "./pages/EmailNotificationSettings";
-import RolePermissionManagement from "./pages/RolePermissionManagement";
+// import RolePermissionManagement from "./pages/RolePermissionManagement"; // Merged into ModulePermissionManagement
 import SmtpSettings from "./pages/SmtpSettings";
 import SeedDataPage from "./pages/SeedDataPage";
 import WorkstationManagement from "./pages/WorkstationManagement";
@@ -178,7 +178,7 @@ function Router() {
       <Route path="/mms-data-init" component={MMSDataInit} />
       <Route path="/alert-threshold-config" component={AlertThresholdConfig} />
       <Route path="/email-notifications" component={EmailNotificationSettings} />
-      <Route path="/permissions" component={RolePermissionManagement} />
+
       <Route path="/smtp-settings" component={SmtpSettings} />
       <Route path="/seed-data" component={SeedDataPage} />
       <Route path="/defects" component={DefectManagement} />

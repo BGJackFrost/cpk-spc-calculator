@@ -200,7 +200,7 @@ const menuGroups: MenuGroup[] = [
     items: [
       { icon: Users, labelKey: "nav.userManagement", path: "/users" },
       { icon: UserCog, labelKey: "nav.localUserManagement", path: "/local-users", adminOnly: true },
-      { icon: Shield, labelKey: "permission", path: "/permissions" },
+
       { icon: History, labelKey: "nav.loginHistory", path: "/login-history", adminOnly: true },
       { icon: Building2, labelKey: "nav.organization", path: "/organization", adminOnly: true },
       { icon: GitBranch, labelKey: "nav.approvalWorkflow", path: "/approval-workflow", adminOnly: true },
@@ -323,7 +323,7 @@ const fallbackLabelsVi: Record<string, string> = {
   "nav.sparePartsCostReport": "Báo cáo Chi phí",
   "nav.sparePartsGuide": "Hướng dẫn Sử dụng",
   "nav.approvalWorkflow": "Quy trình Phê duyệt",
-  "nav.modulePermissions": "Module & Quyền",
+  "nav.modulePermissions": "Phân quyền",
   "nav.pendingApprovals": "Phê duyệt",
   "nav.approvalReport": "Báo cáo Phê duyệt",
 };

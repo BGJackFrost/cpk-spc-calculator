@@ -2723,3 +2723,16 @@
 - [x] UI tạo phiếu kiểm kê mới
 - [x] UI cập nhật số lượng thực tế
 - [x] UI hoàn thành kiểm kê và điều chỉnh tồn kho
+
+
+## Phase 132: Chi tiết Đơn đặt hàng và Gộp trang Phân Quyền
+
+### Xem chi tiết đơn đặt hàng
+- [x] Thêm nút xem chi tiết cho mỗi đơn đặt hàng
+- [x] Dialog hiển thị thông tin đơn hàng đầy đủ
+- [x] Hiển thị danh sách items với số lượng đặt/đã nhận/còn lại
+
+### Gộp trang Phân Quyền với Module và Quyền
+- [x] Sửa lỗi React #301 trong trang Module và Quyền (useMemo -> useEffect)
+- [x] Gộp 2 trang thành 1 trang duy nhất với tabs
+- [x] Cập nhật menu sidebar - xóa route /permissions cũ

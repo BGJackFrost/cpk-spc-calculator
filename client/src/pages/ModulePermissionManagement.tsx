@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -296,7 +296,7 @@ export default function ModulePermissionManagement() {
   };
 
   // Load role permissions when role is selected
-  useMemo(() => {
+  useEffect(() => {
     if (rolePermissions.length > 0) {
       setSelectedPermissions(new Set(rolePermissions.map((rp: { permissionId: number }) => rp.permissionId)));
     } else {
@@ -330,8 +330,8 @@ export default function ModulePermissionManagement() {
       <div className="p-6 space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Quản lý Module & Quyền</h1>
-            <p className="text-muted-foreground">Cấu hình các module và quyền hạn trong hệ thống</p>
+            <h1 className="text-2xl font-bold">Phân quyền & Quản lý Module</h1>
+            <p className="text-muted-foreground">Quản lý phân quyền người dùng, cấu hình module và quyền hạn trong hệ thống</p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => initializeModulesMutation.mutate()}>

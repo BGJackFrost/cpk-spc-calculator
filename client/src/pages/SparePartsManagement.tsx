@@ -21,7 +21,7 @@ import {
   ShoppingCart, Truck, Building2, ArrowUpDown, FileText,
   CheckCircle2, Clock, XCircle, RefreshCw, Download, Bell,
   MoreHorizontal, Pencil, Trash2, QrCode, BarChart3, Camera, Printer, ScanLine, Mail, BookOpen, HelpCircle,
-  ChevronDown, FileSpreadsheet, PackageCheck
+  ChevronDown, FileSpreadsheet, PackageCheck, Eye
 } from "lucide-react";
 import QRCode from "qrcode";
 import QRScanner from "@/components/QRScanner";
@@ -116,6 +116,10 @@ export default function SparePartsManagement() {
   }>>([]);
   const [isReceiveHistoryOpen, setIsReceiveHistoryOpen] = useState(false);
   const [receiveHistoryPOId, setReceiveHistoryPOId] = useState<number | null>(null);
+  
+  // Xem chi tiết đơn hàng
+  const [isViewPODetailOpen, setIsViewPODetailOpen] = useState(false);
+  const [viewPODetailId, setViewPODetailId] = useState<number | null>(null);
 
   // Queries
   const { data: parts, refetch: refetchParts } = trpc.spareParts.listParts.useQuery({
@@ -1633,6 +1637,17 @@ export default function SparePartsManagement() {
                                 <Clock className="w-3 h-3 mr-1" />Nhận một phần
                               </Badge>
                             )}
+                            {/* Nút xem chi tiết */}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                setViewPODetailId(po.id);
+                                setIsViewPODetailOpen(true);
+                              }}
+                            >
+                              <Eye className="w-3 h-3 mr-1" />Chi tiết
+                            </Button>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -2749,8 +2764,164 @@ export default function SparePartsManagement() {
             </Table>
           </DialogContent>
         </Dialog>
+
+        {/* Dialog xem chi tiết đơn đặt hàng */}
+        <Dialog open={isViewPODetailOpen} onOpenChange={setIsViewPODetailOpen}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <PODetailView poId={viewPODetailId} />
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
+  );
+}
+
+// Component xem chi tiết đơn đặt hàng
+function PODetailView({ poId }: { poId: number | null }) {
+  const { data: poDetails } = trpc.spareParts.getPurchaseOrder.useQuery(
+    { id: poId || 0 },
+    { enabled: !!poId }
+  );
+
+  if (!poDetails) return <div className="text-center py-8">Loading...</div>;
+
+  const getPOStatusBadge = (status: string) => {
+    switch (status) {
+      case "draft": return <Badge variant="secondary">Nháp</Badge>;
+      case "pending": return <Badge variant="outline">Chờ duyệt</Badge>;
+      case "approved": return <Badge className="bg-blue-600">Đã duyệt</Badge>;
+      case "rejected": return <Badge variant="destructive">Từ chối</Badge>;
+      case "ordered": return <Badge className="bg-purple-600">Đã đặt hàng</Badge>;
+      case "partial_received": return <Badge className="bg-amber-600">Nhận một phần</Badge>;
+      case "received": return <Badge className="bg-green-600">Đã nhận đủ</Badge>;
+      case "cancelled": return <Badge variant="destructive">Đã hủy</Badge>;
+      default: return <Badge>{status}</Badge>;
+    }
+  };
+
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle className="flex items-center gap-2">
+          <FileText className="w-5 h-5" />
+          Chi tiết Đơn đặt hàng {poDetails.poNumber}
+        </DialogTitle>
+        <DialogDescription>
+          Thông tin chi tiết và danh sách phụ tùng trong đơn hàng
+        </DialogDescription>
+      </DialogHeader>
+
+      <div className="space-y-6">
+        {/* Thông tin chung */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="space-y-1">
+            <Label className="text-muted-foreground text-xs">Trạng thái</Label>
+            <div>{getPOStatusBadge(poDetails.status || "")}</div>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-muted-foreground text-xs">Nhà cung cấp</Label>
+            <div className="font-medium">{(poDetails as any).supplierName || "-"}</div>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-muted-foreground text-xs">Ngày đặt</Label>
+            <div>{poDetails.orderDate ? new Date(poDetails.orderDate).toLocaleDateString("vi-VN") : "-"}</div>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-muted-foreground text-xs">Dự kiến nhận</Label>
+            <div>{poDetails.expectedDeliveryDate ? new Date(poDetails.expectedDeliveryDate).toLocaleDateString("vi-VN") : "-"}</div>
+          </div>
+        </div>
+
+        {/* Tổng tiền */}
+        <div className="bg-muted/50 rounded-lg p-4">
+          <div className="flex justify-between items-center">
+            <span className="text-muted-foreground">Tổng giá trị đơn hàng</span>
+            <span className="text-2xl font-bold">
+              {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(Number((poDetails as any).totalAmount || poDetails.total) || 0)}
+            </span>
+          </div>
+        </div>
+
+        {/* Ghi chú */}
+        {poDetails.notes && (
+          <div className="space-y-1">
+            <Label className="text-muted-foreground text-xs">Ghi chú</Label>
+            <div className="text-sm bg-muted/30 p-3 rounded">{poDetails.notes}</div>
+          </div>
+        )}
+
+        {/* Danh sách phụ tùng */}
+        <div>
+          <Label className="text-muted-foreground text-xs mb-2 block">Danh sách phụ tùng ({poDetails.items?.length || 0} mục)</Label>
+          <div className="border rounded-lg">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Mã PT</TableHead>
+                  <TableHead>Tên phụ tùng</TableHead>
+                  <TableHead className="text-center">Số lượng đặt</TableHead>
+                  <TableHead className="text-center">Đã nhận</TableHead>
+                  <TableHead className="text-center">Còn lại</TableHead>
+                  <TableHead className="text-right">Đơn giá</TableHead>
+                  <TableHead className="text-right">Thành tiền</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {poDetails.items?.map((item: any) => {
+                  const remaining = item.quantity - (item.receivedQuantity || 0);
+                  return (
+                    <TableRow key={item.id}>
+                      <TableCell className="font-mono text-sm">{item.partNumber}</TableCell>
+                      <TableCell className="font-medium">{item.partName}</TableCell>
+                      <TableCell className="text-center">{item.quantity}</TableCell>
+                      <TableCell className="text-center">
+                        <Badge variant="secondary">{item.receivedQuantity || 0}</Badge>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Badge variant={remaining > 0 ? "destructive" : "default"}>{remaining}</Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {new Intl.NumberFormat('vi-VN').format(Number(item.unitPrice) || 0)}
+                      </TableCell>
+                      <TableCell className="text-right font-medium">
+                        {new Intl.NumberFormat('vi-VN').format((Number(item.unitPrice) || 0) * item.quantity)}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+
+        {/* Thông tin phê duyệt */}
+        {(poDetails.approvedBy || poDetails.rejectedBy) && (
+          <div className="border-t pt-4">
+            <Label className="text-muted-foreground text-xs mb-2 block">Thông tin phê duyệt</Label>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              {poDetails.approvedBy && (
+                <div>
+                  <span className="text-muted-foreground">Người duyệt: </span>
+                  <span className="font-medium">User #{poDetails.approvedBy}</span>
+                  {poDetails.approvedAt && (
+                    <span className="text-muted-foreground ml-2">({new Date(poDetails.approvedAt).toLocaleString("vi-VN")})</span>
+                  )}
+                </div>
+              )}
+              {poDetails.rejectedBy && (
+                <div>
+                  <span className="text-muted-foreground">Người từ chối: </span>
+                  <span className="font-medium">User #{poDetails.rejectedBy}</span>
+                  {poDetails.rejectionReason && (
+                    <div className="text-destructive mt-1">Lý do: {poDetails.rejectionReason}</div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </>
   );
 }
 
