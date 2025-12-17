@@ -231,6 +231,57 @@ export type ApprovalHistory = typeof approvalHistories.$inferSelect;
 export type InsertApprovalHistory = typeof approvalHistories.$inferInsert;
 
 /**
+ * System Modules - Lưu trữ các module trong hệ thống
+ */
+export const systemModules = mysqlTable("system_modules", {
+  id: int("id").autoincrement().primaryKey(),
+  code: varchar("code", { length: 100 }).notNull().unique(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  systemType: mysqlEnum("systemType", ["mms", "spc", "system", "common"]).notNull().default("common"),
+  parentId: int("parentId"), // Hỗ trợ cấu trúc cây module
+  icon: varchar("icon", { length: 100 }),
+  path: varchar("path", { length: 255 }), // Route path
+  sortOrder: int("sortOrder").notNull().default(0),
+  isActive: int("isActive").notNull().default(1),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type SystemModule = typeof systemModules.$inferSelect;
+export type InsertSystemModule = typeof systemModules.$inferInsert;
+
+/**
+ * Module Permissions - Các quyền của từng module
+ */
+export const modulePermissions = mysqlTable("module_permissions", {
+  id: int("id").autoincrement().primaryKey(),
+  moduleId: int("moduleId").notNull(),
+  code: varchar("code", { length: 100 }).notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  actionType: mysqlEnum("actionType", ["view", "create", "edit", "delete", "export", "import", "approve", "manage"]).notNull().default("view"),
+  isActive: int("isActive").notNull().default(1),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ModulePermission = typeof modulePermissions.$inferSelect;
+export type InsertModulePermission = typeof modulePermissions.$inferInsert;
+
+/**
+ * Role Module Permissions - Gán quyền cho vai trò theo module
+ */
+export const roleModulePermissions = mysqlTable("role_module_permissions", {
+  id: int("id").autoincrement().primaryKey(),
+  roleId: int("roleId").notNull(),
+  permissionId: int("permissionId").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type RoleModulePermission = typeof roleModulePermissions.$inferSelect;
+export type InsertRoleModulePermission = typeof roleModulePermissions.$inferInsert;
+
+/**
  * Database connections - stores external database connection strings
  * Supports multiple database types: mysql, sqlserver, oracle, postgres, access, excel
  */

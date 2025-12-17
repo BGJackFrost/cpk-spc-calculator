@@ -5,7 +5,9 @@ import { getDb } from "../db";
 import { 
   spareParts, sparePartsInventory, sparePartsTransactions,
   suppliers, purchaseOrders, purchaseOrderItems,
-  sparePartsInventoryChecks, sparePartsInventoryCheckItems, sparePartsStockMovements
+  sparePartsInventoryChecks, sparePartsInventoryCheckItems, sparePartsStockMovements,
+  approvalWorkflows, approvalSteps, approvalRequests, approvalHistories,
+  employeeProfiles, positions
 } from "../../drizzle/schema";
 import { eq, desc, and, gte, lte, sql, or } from "drizzle-orm";
 
@@ -1498,29 +1500,126 @@ export const sparePartsRouter = router({
       return { success: true, message: "Đã gửi đơn chờ duyệt" };
     }),
 
-  // Duyệt đơn hàng (Quản lý)
+  // Duyệt đơn hàng (Quản lý) - Tích hợp Approval Workflow
   approvePurchaseOrder: protectedProcedure
-    .input(z.object({ id: z.number() }))
+    .input(z.object({ 
+      id: z.number(),
+      comments: z.string().optional(),
+    }))
     .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
-
-      // TODO: Kiểm tra quyền quản lý
-      // if (ctx.user?.role !== 'admin' && ctx.user?.role !== 'manager') {
-      //   throw new Error("Bạn không có quyền duyệt đơn hàng");
-      // }
 
       const [po] = await db.select().from(purchaseOrders).where(eq(purchaseOrders.id, input.id));
       if (!po) throw new Error("Đơn hàng không tồn tại");
       if (po.status !== "pending") throw new Error("Đơn hàng không ở trạng thái chờ duyệt");
 
-      await db.update(purchaseOrders).set({
-        status: "approved",
-        approvedBy: ctx.user?.id,
-        approvedAt: new Date(),
-      }).where(eq(purchaseOrders.id, input.id));
+      // Kiểm tra xem có approval request không
+      const [approvalRequest] = await db.select().from(approvalRequests)
+        .where(and(
+          eq(approvalRequests.entityType, "purchase_order"),
+          eq(approvalRequests.entityId, input.id)
+        ));
 
-      return { success: true, message: "Đã duyệt đơn hàng" };
+      if (approvalRequest && approvalRequest.status === "pending" && approvalRequest.currentStepId) {
+        // Có workflow - kiểm tra quyền phê duyệt
+        const [currentStep] = await db.select().from(approvalSteps)
+          .where(eq(approvalSteps.id, approvalRequest.currentStepId));
+
+        if (!currentStep) throw new Error("Không tìm thấy bước phê duyệt");
+
+        // Kiểm tra quyền
+        let canApprove = false;
+        if (ctx.user?.role === "admin") {
+          canApprove = true;
+        } else if (currentStep.approverType === "user" && currentStep.approverId === ctx.user?.id) {
+          canApprove = true;
+        } else if (currentStep.approverType === "position") {
+          const [profile] = await db.select().from(employeeProfiles)
+            .where(eq(employeeProfiles.userId, ctx.user?.id || 0));
+          if (profile && profile.positionId === currentStep.approverId) {
+            canApprove = true;
+          }
+        } else if (currentStep.approverType === "manager") {
+          const [requesterProfile] = await db.select().from(employeeProfiles)
+            .where(eq(employeeProfiles.userId, approvalRequest.requesterId));
+          if (requesterProfile && requesterProfile.managerId === ctx.user?.id) {
+            canApprove = true;
+          }
+        } else if (currentStep.approverType === "department_head") {
+          const [userProfile] = await db.select().from(employeeProfiles)
+            .where(eq(employeeProfiles.userId, ctx.user?.id || 0));
+          if (userProfile && userProfile.positionId) {
+            const [position] = await db.select().from(positions)
+              .where(eq(positions.id, userProfile.positionId));
+            if (position && position.canApprove === 1) {
+              canApprove = true;
+            }
+          }
+        }
+
+        if (!canApprove) throw new Error("Bạn không có quyền phê duyệt bước này");
+
+        // Ghi lịch sử phê duyệt
+        await db.insert(approvalHistories).values({
+          requestId: approvalRequest.id,
+          stepId: approvalRequest.currentStepId,
+          approverId: ctx.user?.id || 0,
+          action: "approved",
+          comments: input.comments || null,
+        });
+
+        // Lấy các bước tiếp theo
+        const steps = await db.select().from(approvalSteps)
+          .where(eq(approvalSteps.workflowId, approvalRequest.workflowId))
+          .orderBy(approvalSteps.stepOrder);
+
+        const amount = approvalRequest.totalAmount ? Number(approvalRequest.totalAmount) : undefined;
+        const applicableSteps = amount !== undefined
+          ? steps.filter(step => {
+              const minOk = !step.minAmount || Number(step.minAmount) <= amount;
+              const maxOk = !step.maxAmount || Number(step.maxAmount) >= amount;
+              return minOk && maxOk;
+            })
+          : steps;
+
+        const currentIndex = applicableSteps.findIndex(s => s.id === approvalRequest.currentStepId);
+        const nextStep = applicableSteps[currentIndex + 1];
+
+        if (nextStep) {
+          // Còn bước tiếp theo
+          await db.update(approvalRequests)
+            .set({ currentStepId: nextStep.id })
+            .where(eq(approvalRequests.id, approvalRequest.id));
+          return { success: true, message: `Đã duyệt bước ${currentIndex + 1}. Chờ duyệt bước tiếp theo.`, nextStep: nextStep.name };
+        } else {
+          // Hoàn thành tất cả các bước
+          await db.update(approvalRequests)
+            .set({ status: "approved", currentStepId: null })
+            .where(eq(approvalRequests.id, approvalRequest.id));
+
+          await db.update(purchaseOrders).set({
+            status: "approved",
+            approvedBy: ctx.user?.id,
+            approvedAt: new Date(),
+          }).where(eq(purchaseOrders.id, input.id));
+
+          return { success: true, message: "Đã duyệt hoàn tất đơn hàng" };
+        }
+      } else {
+        // Không có workflow - duyệt trực tiếp (chỉ admin)
+        if (ctx.user?.role !== "admin") {
+          throw new Error("Bạn không có quyền duyệt đơn hàng");
+        }
+
+        await db.update(purchaseOrders).set({
+          status: "approved",
+          approvedBy: ctx.user?.id,
+          approvedAt: new Date(),
+        }).where(eq(purchaseOrders.id, input.id));
+
+        return { success: true, message: "Đã duyệt đơn hàng" };
+      }
     }),
 
   // Từ chối đơn hàng (Quản lý)

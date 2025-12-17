@@ -77,6 +77,7 @@ import ExportRealtimeData from "./pages/ExportRealtimeData";
 import SparePartsManagement from "./pages/SparePartsManagement";
 import OrganizationManagement from "./pages/OrganizationManagement";
 import ApprovalWorkflowManagement from "./pages/ApprovalWorkflowManagement";
+import ModulePermissionManagement from "./pages/ModulePermissionManagement";
 import SparePartsGuide from "./pages/SparePartsGuide";
 import SparePartsCostReport from "./pages/SparePartsCostReport";
 import StockMovements from "./pages/StockMovements";
@@ -147,6 +148,7 @@ function Router() {
       <Route path="/spare-parts" component={SparePartsManagement} />
       <Route path="/organization" component={OrganizationManagement} />
       <Route path="/approval-workflow" component={ApprovalWorkflowManagement} />
+      <Route path="/module-permissions" component={ModulePermissionManagement} />
       <Route path="/spare-parts-guide" component={SparePartsGuide} />
       <Route path="/spare-parts-cost-report" component={SparePartsCostReport} />
       <Route path="/stock-movements" component={StockMovements} />

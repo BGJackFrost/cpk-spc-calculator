@@ -5,6 +5,7 @@ import { maintenanceRouter } from "./routers/maintenanceRouter";
 import { sparePartsRouter } from "./routers/sparePartsRouter";
 import { organizationRouter } from "./routers/organizationRouter";
 import { approvalRouter } from "./routers/approvalRouter";
+import { permissionRouter as permissionModuleRouter } from "./routers/permissionRouter";
 import { predictiveRouter } from "./routers/predictiveRouter";
 import { reportRouter as mmsReportRouter } from "./routers/reportRouter";
 import { alertRouter as mmsAlertRouter } from "./routers/alertRouter";
@@ -5328,7 +5329,8 @@ export const appRouter = router({
   spareParts: sparePartsRouter,
 organization: organizationRouter,
    approval: approvalRouter,
-   predictive: predictiveRouter,
+    permissionModule: permissionModuleRouter,
+    predictive: predictiveRouter,
   mmsReport: mmsReportRouter,
   mmsAlert: mmsAlertRouter,
   machineArea: router({

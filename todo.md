@@ -2638,3 +2638,21 @@
 - [x] Xác định người phê duyệt theo chức vụ hoặc user cụ thể - approverType: position/user/manager/department_head
 - [x] Cấu hình giá trị tối thiểu/tối đa cho mỗi bước - minAmount/maxAmount
 - [x] Reorder steps - Di chuyển thứ tự bước phê duyệt
+
+
+## Phase 128: Tích hợp Approval Workflow và Nâng cấp Phân quyền
+
+### Tích hợp Approval Workflow vào Spare Parts
+- [x] Tự động xác định người phê duyệt khi tạo đơn hàng - approvalRouter.createRequest
+- [x] Hiển thị trạng thái phê duyệt trong danh sách đơn hàng - approval_requests table
+- [x] Thêm nút Phê duyệt/Từ chối cho người có quyền - processApproval mutation
+- [x] Lưu lịch sử phê duyệt vào database - approval_histories table
+- [x] Gửi thông báo khi có đơn cần phê duyệt - notifyOwner integration
+
+### Nâng cấp hệ thống Phân quyền động
+- [x] Tạo bảng system_modules (lưu trữ các module trong hệ thống) - code, name, systemType, parentId
+- [x] Tạo bảng module_permissions (lưu trữ các quyền của từng module) - actionType: view/create/edit/delete/export/import/approve/manage
+- [x] Tách modules theo nhóm hệ thống (MMS/SPC/System/Common) - systemType enum
+- [x] Cho phép thêm/sửa/xóa module và permission động - permissionRouter CRUD
+- [x] Tạo trang Module & Quyền - /module-permissions
+- [x] Tự động khởi tạo modules mặc định khi chưa có dữ liệu - initializeDefaultModules mutation
