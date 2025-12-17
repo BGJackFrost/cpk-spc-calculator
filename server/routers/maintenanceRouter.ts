@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { router, publicProcedure, protectedProcedure } from "../_core/trpc";
+import { checkPermission, MODULE_CODES } from "../_core/permissionMiddleware";
 import { getDb } from "../db";
 import { 
   maintenanceTypes, maintenanceSchedules, workOrders, workOrderParts,
@@ -113,7 +114,12 @@ export const maintenanceRouter = router({
       estimatedDuration: z.number().optional(),
       priority: z.enum(["low", "medium", "high", "critical"]).optional(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      // Permission check
+      const permResult = await checkPermission(String(ctx.user.id), MODULE_CODES.MAINTENANCE, "create", ctx.user.role === "admin");
+      if (!permResult.hasPermission) {
+        throw new Error(permResult.reason || "Không có quyền tạo lịch bảo trì");
+      }
       const db = await getDb();
       if (!db) throw new Error("Database not available");
       const [result] = await db.insert(maintenanceSchedules).values({
@@ -135,7 +141,12 @@ export const maintenanceRouter = router({
       priority: z.enum(["low", "medium", "high", "critical"]).optional(),
       isActive: z.boolean().optional(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      // Permission check
+      const permResult = await checkPermission(String(ctx.user.id), MODULE_CODES.MAINTENANCE, "edit", ctx.user.role === "admin");
+      if (!permResult.hasPermission) {
+        throw new Error(permResult.reason || "Không có quyền sửa lịch bảo trì");
+      }
       const db = await getDb();
       if (!db) throw new Error("Database not available");
       const { id, nextDueAt, isActive, ...data } = input;
@@ -149,7 +160,12 @@ export const maintenanceRouter = router({
 
   deleteSchedule: protectedProcedure
     .input(z.object({ id: z.number() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      // Permission check
+      const permResult = await checkPermission(String(ctx.user.id), MODULE_CODES.MAINTENANCE, "delete", ctx.user.role === "admin");
+      if (!permResult.hasPermission) {
+        throw new Error(permResult.reason || "Không có quyền xóa lịch bảo trì");
+      }
       const db = await getDb();
       if (!db) throw new Error("Database not available");
       await db.update(maintenanceSchedules).set({ isActive: 0 }).where(eq(maintenanceSchedules.id, input.id));
@@ -234,6 +250,11 @@ export const maintenanceRouter = router({
       scheduledStartAt: z.string().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
+      // Permission check
+      const permResult = await checkPermission(String(ctx.user.id), MODULE_CODES.WORK_ORDERS, "create", ctx.user.role === "admin");
+      if (!permResult.hasPermission) {
+        throw new Error(permResult.reason || "Không có quyền tạo lệnh công việc");
+      }
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -276,7 +297,12 @@ export const maintenanceRouter = router({
       laborHours: z.number().optional(),
       notes: z.string().optional(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      // Permission check
+      const permResult = await checkPermission(String(ctx.user.id), MODULE_CODES.WORK_ORDERS, "edit", ctx.user.role === "admin");
+      if (!permResult.hasPermission) {
+        throw new Error(permResult.reason || "Không có quyền sửa lệnh công việc");
+      }
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -441,6 +467,11 @@ export const maintenanceRouter = router({
       force: z.boolean().optional(), // Admin only: force delete even if in_progress/completed
     }))
     .mutation(async ({ input, ctx }) => {
+      // Permission check
+      const permResult = await checkPermission(String(ctx.user.id), MODULE_CODES.WORK_ORDERS, "delete", ctx.user.role === "admin");
+      if (!permResult.hasPermission) {
+        throw new Error(permResult.reason || "Không có quyền xóa lệnh công việc");
+      }
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 

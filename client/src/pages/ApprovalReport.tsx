@@ -11,13 +11,28 @@ import {
   Calendar, FileText, Package, Wrench, RefreshCw
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell,
+} from "recharts";
 
 interface ApprovalStats {
   total: number;
   pending: number;
   approved: number;
   rejected: number;
-  avgProcessingTime: number; // in hours
+  avgProcessingTime: number;
   byEntityType: Record<string, { total: number; approved: number; rejected: number }>;
   byMonth: { month: string; approved: number; rejected: number; pending: number }[];
   topApprovers: { name: string; count: number }[];
@@ -37,22 +52,21 @@ const entityTypeIcons: Record<string, React.ReactNode> = {
   leave_request: <Calendar className="h-4 w-4" />,
 };
 
+const COLORS = ["#22c55e", "#ef4444", "#eab308"];
+
 export default function ApprovalReport() {
   const [timeRange, setTimeRange] = useState<string>("30");
   const [entityTypeFilter, setEntityTypeFilter] = useState<string>("all");
 
-  // Query all requests
   const { data: requests = [], refetch, isLoading } = trpc.approval.listRequests.useQuery({
     entityType: entityTypeFilter === "all" ? undefined : entityTypeFilter,
   });
 
-  // Calculate stats
   const stats = useMemo<ApprovalStats>(() => {
     const now = new Date();
     const daysAgo = parseInt(timeRange);
     const cutoffDate = new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000);
 
-    // Filter by time range
     const filteredRequests = requests.filter((r: any) => {
       const createdAt = new Date(r.createdAt);
       return createdAt >= cutoffDate;
@@ -63,20 +77,18 @@ export default function ApprovalReport() {
     const approved = filteredRequests.filter((r: any) => r.status === "approved").length;
     const rejected = filteredRequests.filter((r: any) => r.status === "rejected").length;
 
-    // Calculate average processing time (for approved/rejected)
     let totalProcessingTime = 0;
     let processedCount = 0;
     filteredRequests.forEach((r: any) => {
       if (r.status === "approved" || r.status === "rejected") {
         const created = new Date(r.createdAt).getTime();
         const updated = new Date(r.updatedAt).getTime();
-        totalProcessingTime += (updated - created) / (1000 * 60 * 60); // hours
+        totalProcessingTime += (updated - created) / (1000 * 60 * 60);
         processedCount++;
       }
     });
     const avgProcessingTime = processedCount > 0 ? totalProcessingTime / processedCount : 0;
 
-    // By entity type
     const byEntityType: Record<string, { total: number; approved: number; rejected: number }> = {};
     filteredRequests.forEach((r: any) => {
       if (!byEntityType[r.entityType]) {
@@ -87,11 +99,9 @@ export default function ApprovalReport() {
       if (r.status === "rejected") byEntityType[r.entityType].rejected++;
     });
 
-    // By month (last 6 months)
     const byMonth: { month: string; approved: number; rejected: number; pending: number }[] = [];
     for (let i = 5; i >= 0; i--) {
       const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
       const monthLabel = date.toLocaleDateString("vi-VN", { month: "short", year: "numeric" });
       
       const monthRequests = requests.filter((r: any) => {
@@ -107,7 +117,6 @@ export default function ApprovalReport() {
       });
     }
 
-    // Top approvers (placeholder - would need approval history)
     const topApprovers: { name: string; count: number }[] = [];
 
     return {
@@ -125,6 +134,20 @@ export default function ApprovalReport() {
   const approvalRate = stats.total > 0 
     ? ((stats.approved / (stats.approved + stats.rejected)) * 100).toFixed(1) 
     : "0";
+
+  // Prepare chart data
+  const pieData = [
+    { name: "Đã duyệt", value: stats.approved, color: "#22c55e" },
+    { name: "Từ chối", value: stats.rejected, color: "#ef4444" },
+    { name: "Chờ duyệt", value: stats.pending, color: "#eab308" },
+  ].filter(d => d.value > 0);
+
+  const entityTypeChartData = Object.entries(stats.byEntityType).map(([type, data]) => ({
+    name: entityTypeLabels[type] || type,
+    "Đã duyệt": data.approved,
+    "Từ chối": data.rejected,
+    "Tổng": data.total,
+  }));
 
   return (
     <DashboardLayout>
@@ -233,6 +256,118 @@ export default function ApprovalReport() {
           </Card>
         </div>
 
+        {/* Charts Row */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Pie Chart - Status Distribution */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Phân bố trạng thái</CardTitle>
+              <CardDescription>Tỷ lệ các trạng thái phê duyệt</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {pieData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={pieData}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                      outerRadius={100}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {pieData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                  Không có dữ liệu
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Bar Chart - By Entity Type */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Thống kê theo loại đơn</CardTitle>
+              <CardDescription>So sánh số lượng đã duyệt và từ chối</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {entityTypeChartData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={entityTypeChartData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" fontSize={12} />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey="Đã duyệt" fill="#22c55e" />
+                    <Bar dataKey="Từ chối" fill="#ef4444" />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                  Không có dữ liệu
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Line Chart - Monthly Trend */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5" />
+              Xu hướng theo tháng (6 tháng gần nhất)
+            </CardTitle>
+            <CardDescription>Biểu đồ đường thể hiện xu hướng phê duyệt theo thời gian</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={350}>
+              <LineChart data={stats.byMonth}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" fontSize={12} />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Line 
+                  type="monotone" 
+                  dataKey="approved" 
+                  name="Đã duyệt"
+                  stroke="#22c55e" 
+                  strokeWidth={2}
+                  dot={{ fill: "#22c55e" }}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="rejected" 
+                  name="Từ chối"
+                  stroke="#ef4444" 
+                  strokeWidth={2}
+                  dot={{ fill: "#ef4444" }}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="pending" 
+                  name="Chờ duyệt"
+                  stroke="#eab308" 
+                  strokeWidth={2}
+                  dot={{ fill: "#eab308" }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
         {/* Processing Time */}
         <Card>
           <CardHeader>
@@ -251,10 +386,10 @@ export default function ApprovalReport() {
           </CardContent>
         </Card>
 
-        {/* By Entity Type */}
+        {/* Detailed Table - By Entity Type */}
         <Card>
           <CardHeader>
-            <CardTitle>Thống kê theo loại đơn</CardTitle>
+            <CardTitle>Chi tiết theo loại đơn</CardTitle>
           </CardHeader>
           <CardContent>
             {isLoading ? (
@@ -307,13 +442,10 @@ export default function ApprovalReport() {
           </CardContent>
         </Card>
 
-        {/* Monthly Trend */}
+        {/* Monthly Trend Table */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5" />
-              Xu hướng theo tháng (6 tháng gần nhất)
-            </CardTitle>
+            <CardTitle>Chi tiết theo tháng</CardTitle>
           </CardHeader>
           <CardContent>
             <Table>
@@ -340,24 +472,6 @@ export default function ApprovalReport() {
                 ))}
               </TableBody>
             </Table>
-          </CardContent>
-        </Card>
-
-        {/* Top Approvers */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              Top người phê duyệt
-            </CardTitle>
-            <CardDescription>
-              Danh sách người phê duyệt nhiều nhất (cần tích hợp approval history)
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-center py-8 text-muted-foreground">
-              Tính năng đang phát triển - cần tích hợp với approval_histories
-            </div>
           </CardContent>
         </Card>
       </div>

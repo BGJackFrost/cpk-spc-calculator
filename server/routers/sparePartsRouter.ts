@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { router, publicProcedure, protectedProcedure } from "../_core/trpc";
 import { notifyOwner } from "../_core/notification";
+import { checkPermission, MODULE_CODES, ActionType } from "../_core/permissionMiddleware";
 import { getDb } from "../db";
 import { 
   spareParts, sparePartsInventory, sparePartsTransactions,
@@ -100,7 +101,12 @@ export const sparePartsRouter = router({
       unitPrice: z.number().optional(),
       supplierId: z.number().optional(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      // Permission check
+      const permResult = await checkPermission(String(ctx.user.id), MODULE_CODES.SPARE_PARTS, "create", ctx.user.role === "admin");
+      if (!permResult.hasPermission) {
+        throw new Error(permResult.reason || "Không có quyền tạo phụ tùng");
+      }
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -133,7 +139,12 @@ export const sparePartsRouter = router({
       unitPrice: z.number().optional(),
       supplierId: z.number().optional(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      // Permission check
+      const permResult = await checkPermission(String(ctx.user.id), MODULE_CODES.SPARE_PARTS, "edit", ctx.user.role === "admin");
+      if (!permResult.hasPermission) {
+        throw new Error(permResult.reason || "Không có quyền sửa phụ tùng");
+      }
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -148,7 +159,12 @@ export const sparePartsRouter = router({
 
   deletePart: protectedProcedure
     .input(z.object({ id: z.number() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      // Permission check
+      const permResult = await checkPermission(String(ctx.user.id), MODULE_CODES.SPARE_PARTS, "delete", ctx.user.role === "admin");
+      if (!permResult.hasPermission) {
+        throw new Error(permResult.reason || "Không có quyền xóa phụ tùng");
+      }
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -479,6 +495,11 @@ export const sparePartsRouter = router({
       })),
     }))
     .mutation(async ({ input, ctx }) => {
+      // Permission check
+      const permResult = await checkPermission(String(ctx.user.id), MODULE_CODES.SPARE_PARTS, "create", ctx.user.role === "admin");
+      if (!permResult.hasPermission) {
+        throw new Error(permResult.reason || "Không có quyền tạo đơn đặt hàng");
+      }
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -832,6 +853,11 @@ export const sparePartsRouter = router({
       reason: z.string().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
+      // Permission check
+      const permResult = await checkPermission(String(ctx.user.id), MODULE_CODES.SPARE_PARTS, "export", ctx.user.role === "admin");
+      if (!permResult.hasPermission) {
+        throw new Error(permResult.reason || "Không có quyền xuất kho");
+      }
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -1507,6 +1533,11 @@ export const sparePartsRouter = router({
       comments: z.string().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
+      // Permission check
+      const permResult = await checkPermission(String(ctx.user.id), MODULE_CODES.APPROVAL, "approve", ctx.user.role === "admin");
+      if (!permResult.hasPermission) {
+        throw new Error(permResult.reason || "Không có quyền phê duyệt đơn hàng");
+      }
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
@@ -1682,6 +1713,11 @@ export const sparePartsRouter = router({
       workOrderId: z.number().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
+      // Permission check
+      const permResult = await checkPermission(String(ctx.user.id), MODULE_CODES.SPARE_PARTS, "export", ctx.user.role === "admin");
+      if (!permResult.hasPermission) {
+        throw new Error(permResult.reason || "Không có quyền xuất kho");
+      }
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 

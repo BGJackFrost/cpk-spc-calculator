@@ -2679,3 +2679,24 @@
 - [x] Thống kê theo loại đơn và trạng thái - Table với tỷ lệ duyệt
 - [x] Xu hướng theo tháng (6 tháng gần nhất) - Monthly trend table
 - [x] Thời gian phê duyệt trung bình - avgProcessingTime
+
+
+## Phase 130: Middleware Quyền, Biểu đồ Phê duyệt và Email Thông báo
+
+### Tích hợp middleware quyền vào procedures
+- [x] Tích hợp vào sparePartsRouter (create, update, delete, export) - checkPermission với MODULE_CODES
+- [x] Tích hợp vào maintenanceRouter (create, update, delete work orders) - MODULE_CODES.WORK_ORDERS
+- [x] Tích hợp vào approvalRouter (approve, reject) - permission check
+- [x] Tích hợp vào organizationRouter (manage companies, departments) - permission check
+
+### Biểu đồ trực quan cho báo cáo phê duyệt
+- [x] Bar chart thống kê theo loại đơn - Recharts BarChart
+- [x] Line chart xu hướng phê duyệt theo tháng - Recharts LineChart
+- [x] Pie chart tỷ lệ trạng thái (pending/approved/rejected) - Recharts PieChart
+- [x] ResponsiveContainer cho responsive charts
+
+### Email thông báo khi có đơn mới cần phê duyệt
+- [x] Gửi email khi tạo đơn mới cần phê duyệt - notifyOwner trong createApprovalRequest
+- [x] Gửi email khi đơn được duyệt - processApproval approved
+- [x] Gửi email khi đơn bị từ chối - processApproval rejected
+- [x] Gửi email khi đơn được trả lại - processApproval returned

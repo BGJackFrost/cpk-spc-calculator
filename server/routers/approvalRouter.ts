@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { router, protectedProcedure } from "../_core/trpc";
 import { getDb } from "../db";
+import { notifyOwner } from "../_core/notification";
 import { approvalWorkflows, approvalSteps, approvalRequests, approvalHistories, employeeProfiles, positions, users } from "../../drizzle/schema";
 import { eq, and, gt, lt, sql } from "drizzle-orm";
 
@@ -283,6 +284,25 @@ export const approvalRouter = router({
         notes: input.notes || null,
       });
       
+      // Send email notification to approvers
+      try {
+        const entityTypeLabels: Record<string, string> = {
+          purchase_order: "Đơn đặt hàng",
+          stock_export: "Xuất kho",
+          maintenance_request: "Yêu cầu bảo trì",
+          leave_request: "Đơn nghỉ phép",
+        };
+        const entityLabel = entityTypeLabels[input.entityType] || input.entityType;
+        const amountInfo = input.totalAmount ? ` - Giá trị: ${input.totalAmount.toLocaleString("vi-VN")} VNĐ` : "";
+        
+        await notifyOwner({
+          title: `[Đơn mới cần phê duyệt] ${entityLabel} #${input.entityId}`,
+          content: `Có đơn mới cần phê duyệt:\n\n- Loại: ${entityLabel}\n- Mã đơn: #${input.entityId}${amountInfo}\n- Người yêu cầu: ${ctx.user.name || ctx.user.openId}\n- Ghi chú: ${input.notes || "Không có"}\n\nVui lòng truy cập hệ thống để phê duyệt.`,
+        });
+      } catch (e) {
+        console.error("Failed to send approval notification:", e);
+      }
+      
       return { id: result.insertId, workflowId: workflow.id, currentStepId: firstStep?.id };
     }),
 
@@ -433,6 +453,25 @@ export const approvalRouter = router({
           .set({ status: input.action === "rejected" ? "rejected" : "pending" })
           .where(eq(approvalRequests.id, request.id));
         
+        // Send notification to requester
+        try {
+          const entityTypeLabels: Record<string, string> = {
+            purchase_order: "Đơn đặt hàng",
+            stock_export: "Xuất kho",
+            maintenance_request: "Yêu cầu bảo trì",
+            leave_request: "Đơn nghỉ phép",
+          };
+          const entityLabel = entityTypeLabels[input.entityType] || input.entityType;
+          const actionLabel = input.action === "rejected" ? "bị từ chối" : "được trả lại";
+          
+          await notifyOwner({
+            title: `[${entityLabel} #${input.entityId}] Đã ${actionLabel}`,
+            content: `${entityLabel} #${input.entityId} đã ${actionLabel}.\n\n- Người xử lý: ${ctx.user.name || ctx.user.openId}\n- Lý do: ${input.comments || "Không có"}`,
+          });
+        } catch (e) {
+          console.error("Failed to send rejection notification:", e);
+        }
+        
         return { success: true, status: input.action === "rejected" ? "rejected" : "returned" };
       }
       
@@ -467,6 +506,24 @@ export const approvalRouter = router({
         await db.update(approvalRequests)
           .set({ status: "approved", currentStepId: null })
           .where(eq(approvalRequests.id, request.id));
+        
+        // Send notification to requester
+        try {
+          const entityTypeLabels: Record<string, string> = {
+            purchase_order: "Đơn đặt hàng",
+            stock_export: "Xuất kho",
+            maintenance_request: "Yêu cầu bảo trì",
+            leave_request: "Đơn nghỉ phép",
+          };
+          const entityLabel = entityTypeLabels[input.entityType] || input.entityType;
+          
+          await notifyOwner({
+            title: `[${entityLabel} #${input.entityId}] Đã được phê duyệt`,
+            content: `${entityLabel} #${input.entityId} đã được phê duyệt hoàn tất.\n\n- Người phê duyệt cuối: ${ctx.user.name || ctx.user.openId}\n- Ghi chú: ${input.comments || "Không có"}`,
+          });
+        } catch (e) {
+          console.error("Failed to send approval notification:", e);
+        }
         
         return { success: true, status: "approved" };
       }
