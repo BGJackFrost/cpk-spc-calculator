@@ -441,4 +441,271 @@ export const oeeRouter = router({
         .groupBy(oeeLossRecords.lossCategoryId, oeeLossCategories.name, oeeLossCategories.type)
         .orderBy(sql`SUM(${oeeLossRecords.durationMinutes}) DESC`);
     }),
+
+  // OEE Comparison API
+  getComparison: publicProcedure
+    .input(z.object({
+      type: z.enum(["machines", "lines"]),
+      days: z.number().default(30),
+    }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return { items: [], summary: {}, trendData: [] };
+
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - input.days);
+
+      // Get comparison data by machine
+      const comparisonData = await db
+        .select({
+          id: oeeRecords.machineId,
+          name: machines.name,
+          oee: sql<number>`AVG(${oeeRecords.oee})`,
+          availability: sql<number>`AVG(${oeeRecords.availability})`,
+          performance: sql<number>`AVG(${oeeRecords.performance})`,
+          quality: sql<number>`AVG(${oeeRecords.quality})`,
+          recordCount: sql<number>`COUNT(*)`,
+        })
+        .from(oeeRecords)
+        .leftJoin(machines, eq(oeeRecords.machineId, machines.id))
+        .where(gte(oeeRecords.recordDate, startDate))
+        .groupBy(oeeRecords.machineId, machines.name)
+        .orderBy(sql`AVG(${oeeRecords.oee}) DESC`);
+
+      // Calculate trend for each machine (compare last 7 days vs previous 7 days)
+      const trendStartDate = new Date();
+      trendStartDate.setDate(trendStartDate.getDate() - 14);
+      const midDate = new Date();
+      midDate.setDate(midDate.getDate() - 7);
+
+      const items = await Promise.all(comparisonData.map(async (item) => {
+        // Get previous period OEE
+        const [prevPeriod] = await db
+          .select({ avgOee: sql<number>`AVG(${oeeRecords.oee})` })
+          .from(oeeRecords)
+          .where(and(
+            eq(oeeRecords.machineId, item.id!),
+            gte(oeeRecords.recordDate, trendStartDate),
+            lte(oeeRecords.recordDate, midDate)
+          ));
+
+        const [currPeriod] = await db
+          .select({ avgOee: sql<number>`AVG(${oeeRecords.oee})` })
+          .from(oeeRecords)
+          .where(and(
+            eq(oeeRecords.machineId, item.id!),
+            gte(oeeRecords.recordDate, midDate)
+          ));
+
+        const trend = (currPeriod?.avgOee || 0) - (prevPeriod?.avgOee || 0);
+
+        return {
+          ...item,
+          oee: Number(item.oee) || 0,
+          availability: Number(item.availability) || 0,
+          performance: Number(item.performance) || 0,
+          quality: Number(item.quality) || 0,
+          trend,
+        };
+      }));
+
+      // Get trend data for chart
+      const trendData = await db
+        .select({
+          date: sql<string>`DATE(${oeeRecords.recordDate})`,
+          machineId: oeeRecords.machineId,
+          machineName: machines.name,
+          avgOee: sql<number>`AVG(${oeeRecords.oee})`,
+        })
+        .from(oeeRecords)
+        .leftJoin(machines, eq(oeeRecords.machineId, machines.id))
+        .where(gte(oeeRecords.recordDate, startDate))
+        .groupBy(sql`DATE(${oeeRecords.recordDate})`, oeeRecords.machineId, machines.name)
+        .orderBy(sql`DATE(${oeeRecords.recordDate})`);
+
+      // Transform trend data for chart
+      const trendByDate: Record<string, any> = {};
+      trendData.forEach((d) => {
+        if (!trendByDate[d.date]) {
+          trendByDate[d.date] = { date: d.date };
+        }
+        if (d.machineName) {
+          trendByDate[d.date][d.machineName] = Number(d.avgOee) || 0;
+        }
+      });
+
+      // Calculate summary
+      const oeeValues = items.map(i => i.oee);
+      const summary = {
+        avgOee: oeeValues.reduce((a, b) => a + b, 0) / oeeValues.length || 0,
+        maxOee: Math.max(...oeeValues) || 0,
+        minOee: Math.min(...oeeValues) || 0,
+        topPerformer: items[0]?.name || "N/A",
+        bottomPerformer: items[items.length - 1]?.name || "N/A",
+        achievedTarget: items.filter(i => i.oee >= 85).length,
+        totalItems: items.length,
+      };
+
+      return {
+        items,
+        summary,
+        trendData: Object.values(trendByDate),
+      };
+    }),
+
+  // OEE Prediction API with Linear Regression
+  getPrediction: publicProcedure
+    .input(z.object({
+      days: z.number().default(30),
+    }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return { chartData: [], predictions: [], alerts: [] };
+
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - input.days);
+
+      // Get historical OEE data by machine
+      const historicalData = await db
+        .select({
+          machineId: oeeRecords.machineId,
+          machineName: machines.name,
+          date: sql<string>`DATE(${oeeRecords.recordDate})`,
+          avgOee: sql<number>`AVG(${oeeRecords.oee})`,
+        })
+        .from(oeeRecords)
+        .leftJoin(machines, eq(oeeRecords.machineId, machines.id))
+        .where(gte(oeeRecords.recordDate, startDate))
+        .groupBy(oeeRecords.machineId, machines.name, sql`DATE(${oeeRecords.recordDate})`)
+        .orderBy(sql`DATE(${oeeRecords.recordDate})`);
+
+      // Group by machine
+      const machineData: Record<number, { name: string; data: { date: string; oee: number }[] }> = {};
+      historicalData.forEach((d) => {
+        if (!d.machineId) return;
+        if (!machineData[d.machineId]) {
+          machineData[d.machineId] = { name: d.machineName || `Machine ${d.machineId}`, data: [] };
+        }
+        machineData[d.machineId].data.push({ date: d.date, oee: Number(d.avgOee) || 0 });
+      });
+
+      // Linear regression function
+      const linearRegression = (data: { x: number; y: number }[]) => {
+        const n = data.length;
+        if (n < 2) return { slope: 0, intercept: 0, r2: 0 };
+
+        const sumX = data.reduce((a, b) => a + b.x, 0);
+        const sumY = data.reduce((a, b) => a + b.y, 0);
+        const sumXY = data.reduce((a, b) => a + b.x * b.y, 0);
+        const sumX2 = data.reduce((a, b) => a + b.x * b.x, 0);
+        const sumY2 = data.reduce((a, b) => a + b.y * b.y, 0);
+
+        const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+        const intercept = (sumY - slope * sumX) / n;
+
+        // R-squared
+        const yMean = sumY / n;
+        const ssTotal = data.reduce((a, b) => a + Math.pow(b.y - yMean, 2), 0);
+        const ssRes = data.reduce((a, b) => a + Math.pow(b.y - (slope * b.x + intercept), 2), 0);
+        const r2 = 1 - ssRes / ssTotal;
+
+        return { slope, intercept, r2: Math.max(0, r2) };
+      };
+
+      // Generate predictions for each machine
+      const predictions: any[] = [];
+      const alerts: any[] = [];
+
+      Object.entries(machineData).forEach(([machineId, { name, data }]) => {
+        if (data.length < 7) return; // Need at least 7 days of data
+
+        // Prepare data for regression
+        const regressionData = data.map((d, i) => ({ x: i, y: d.oee }));
+        const { slope, intercept, r2 } = linearRegression(regressionData);
+
+        // Current OEE (last data point)
+        const currentOee = data[data.length - 1].oee;
+
+        // Predict 7 days ahead
+        const predictedOee = slope * (data.length + 7) + intercept;
+        const change = predictedOee - currentOee;
+
+        // Confidence based on R2
+        const confidence = r2 * 100;
+
+        // Recommendation
+        let recommendation = "Duy trì hiệu suất hiện tại";
+        if (change < -5) {
+          recommendation = "Cần kiểm tra và bảo trì thiết bị";
+        } else if (change < -2) {
+          recommendation = "Theo dõi chặt chẽ xu hướng giảm";
+        } else if (change > 5) {
+          recommendation = "Xu hướng tích cực, tiếp tục phát huy";
+        }
+
+        predictions.push({
+          id: Number(machineId),
+          name,
+          currentOee,
+          predictedOee: Math.max(0, Math.min(100, predictedOee)),
+          change,
+          confidence,
+          recommendation,
+        });
+
+        // Generate alerts
+        if (predictedOee < 65 || change < -10) {
+          alerts.push({
+            name,
+            severity: predictedOee < 50 || change < -15 ? "high" : change < -10 ? "medium" : "low",
+            message: `Dự báo OEE giảm ${Math.abs(change).toFixed(1)}% trong 7 ngày tới`,
+            currentOee,
+            predictedOee: Math.max(0, Math.min(100, predictedOee)),
+          });
+        }
+      });
+
+      // Generate chart data (aggregate)
+      const chartData: any[] = [];
+      const allDates = [...new Set(historicalData.map(d => d.date))].sort();
+      
+      // Add historical data
+      allDates.forEach((date) => {
+        const dayData = historicalData.filter(d => d.date === date);
+        const avgOee = dayData.reduce((a, b) => a + (Number(b.avgOee) || 0), 0) / dayData.length;
+        chartData.push({
+          date,
+          actual: avgOee,
+          predicted: null,
+          upperBound: null,
+          lowerBound: null,
+        });
+      });
+
+      // Add predictions for next 14 days
+      const allData = historicalData.map((d, i) => ({ x: i, y: Number(d.avgOee) || 0 }));
+      const { slope, intercept } = linearRegression(allData);
+      const stdDev = Math.sqrt(allData.reduce((a, b) => a + Math.pow(b.y - (slope * b.x + intercept), 2), 0) / allData.length);
+
+      for (let i = 1; i <= 14; i++) {
+        const futureDate = new Date();
+        futureDate.setDate(futureDate.getDate() + i);
+        const dateStr = futureDate.toISOString().split('T')[0];
+        const predicted = slope * (allData.length + i) + intercept;
+        
+        chartData.push({
+          date: dateStr,
+          actual: null,
+          predicted: Math.max(0, Math.min(100, predicted)),
+          upperBound: Math.min(100, predicted + 1.96 * stdDev),
+          lowerBound: Math.max(0, predicted - 1.96 * stdDev),
+        });
+      }
+
+      return {
+        chartData,
+        predictions: predictions.sort((a, b) => a.predictedOee - b.predictedOee),
+        alerts: alerts.sort((a, b) => (a.severity === "high" ? -1 : b.severity === "high" ? 1 : 0)),
+      };
+    }),
 });

@@ -3221,3 +3221,20 @@
 - [x] Tạo tài liệu kế hoạch migration MySQL -> PostgreSQL (docs/postgresql-migration-plan.md)
 - [x] Phân tích các thay đổi cần thiết (kiểu dữ liệu, cú pháp SQL, Drizzle config)
 - [x] Đề xuất timeline 8 tuần và checklist chi tiết
+
+
+## Phase 152 - OEE Comparison Dashboard & Predictive Analytics
+
+### Dashboard so sánh OEE
+- [x] Tạo trang OEEComparisonDashboard.tsx
+- [x] API so sánh OEE giữa các máy/dây chuyền (getComparison)
+- [x] Biểu đồ Radar so sánh đa chiều (OEE, Availability, Performance, Quality)
+- [x] Bảng ranking máy/dây chuyền theo OEE với trạng thái và xu hướng
+- [x] Bộ lọc theo thời gian (7/14/30/90 ngày) và loại (máy/dây chuyền)
+
+### Dự báo xu hướng CPK/OEE
+- [x] API dự báo với linear regression (getPrediction)
+- [x] Tính toán trend và dự báo 7/14 ngày với R-squared
+- [x] Phát hiện anomaly và cảnh báo sớm (severity: high/medium/low)
+- [x] Biểu đồ dự báo với confidence interval (95%)
+- [x] Bảng tổng hợp dự báo với khuyến nghị cho từng máy

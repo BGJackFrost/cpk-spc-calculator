@@ -71,6 +71,7 @@ import MachineOverviewDashboard from "./pages/MachineOverviewDashboard";
 import MachineAreaManagement from "./pages/MachineAreaManagement";
 import MachineStatusReport from "./pages/MachineStatusReport";
 import OEEDashboard from "./pages/OEEDashboard";
+import OEEComparisonDashboard from "./pages/OEEComparisonDashboard";
 import MaintenanceDashboard from "./pages/MaintenanceDashboard";
 import MachineDetail from "./pages/MachineDetail";
 import ExportRealtimeData from "./pages/ExportRealtimeData";
@@ -156,6 +157,7 @@ function Router() {
       <Route path="/machine-areas" component={MachineAreaManagement} />
       <Route path="/machine-status-report" component={MachineStatusReport} />
       <Route path="/oee-dashboard" component={OEEDashboard} />
+      <Route path="/oee-comparison" component={OEEComparisonDashboard} />
       <Route path="/maintenance-dashboard" component={MaintenanceDashboard} />
       <Route path="/machine/:id" component={MachineDetail} />
       <Route path="/export-realtime" component={ExportRealtimeData} />
