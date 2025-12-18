@@ -1,0 +1,38 @@
+{
+  "query": "SHOW CREATE TABLE scheduled_reports;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute SHOW CREATE TABLE scheduled_reports;",
+  "rows": [
+    {
+      "Table": "scheduled_reports",
+      "Create Table": "CREATE TABLE `scheduled_reports` ("
+    }
+  ],
+  "messages": [
+    "  `id` int(11) NOT NULL AUTO_INCREMENT,",
+    "  `name` varchar(200) NOT NULL,",
+    "  `reportType` enum('oee','cpk','oee_cpk_combined','production_summary') NOT NULL,",
+    "  `frequency` enum('daily','weekly','monthly') NOT NULL,",
+    "  `dayOfWeek` int(11) DEFAULT NULL,",
+    "  `dayOfMonth` int(11) DEFAULT NULL,",
+    "  `timeOfDay` varchar(5) NOT NULL DEFAULT '08:00',",
+    "  `recipients` text NOT NULL,",
+    "  `machineIds` text DEFAULT NULL,",
+    "  `productionLineIds` text DEFAULT NULL,",
+    "  `includeCharts` int(11) NOT NULL DEFAULT '1',",
+    "  `includeTrends` int(11) NOT NULL DEFAULT '1',",
+    "  `includeAlerts` int(11) NOT NULL DEFAULT '1',",
+    "  `format` enum('html','excel','pdf') NOT NULL DEFAULT 'html',",
+    "  `lastSentAt` timestamp NULL DEFAULT NULL,",
+    "  `lastSentStatus` enum('success','failed','pending') DEFAULT NULL,",
+    "  `lastSentError` text DEFAULT NULL,",
+    "  `isActive` int(11) NOT NULL DEFAULT '1',",
+    "  `createdBy` int(11) DEFAULT NULL,",
+    "  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,",
+    "  `updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,",
+    "  PRIMARY KEY (`id`) /*T![clustered_index] CLUSTERED */",
+    ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin"
+  ],
+  "stdout": "Table\tCreate Table\nscheduled_reports\tCREATE TABLE `scheduled_reports` (\n  `id` int(11) NOT NULL AUTO_INCREMENT,\n  `name` varchar(200) NOT NULL,\n  `reportType` enum('oee','cpk','oee_cpk_combined','production_summary') NOT NULL,\n  `frequency` enum('daily','weekly','monthly') NOT NULL,\n  `dayOfWeek` int(11) DEFAULT NULL,\n  `dayOfMonth` int(11) DEFAULT NULL,\n  `timeOfDay` varchar(5) NOT NULL DEFAULT '08:00',\n  `recipients` text NOT NULL,\n  `machineIds` text DEFAULT NULL,\n  `productionLineIds` text DEFAULT NULL,\n  `includeCharts` int(11) NOT NULL DEFAULT '1',\n  `includeTrends` int(11) NOT NULL DEFAULT '1',\n  `includeAlerts` int(11) NOT NULL DEFAULT '1',\n  `format` enum('html','excel','pdf') NOT NULL DEFAULT 'html',\n  `lastSentAt` timestamp NULL DEFAULT NULL,\n  `lastSentStatus` enum('success','failed','pending') DEFAULT NULL,\n  `lastSentError` text DEFAULT NULL,\n  `isActive` int(11) NOT NULL DEFAULT '1',\n  `createdBy` int(11) DEFAULT NULL,\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  `updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`) /*T![clustered_index] CLUSTERED */\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin\n",
+  "stderr": "",
+  "execution_time_ms": 1560
+}

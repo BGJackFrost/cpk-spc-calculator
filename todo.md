@@ -3682,3 +3682,34 @@
 - [ ] Còn 102 lỗi chủ yếu trong frontend components (cần sửa tiếp)
 
 **Ghi chú:** Các lỗi còn lại chủ yếu là lỗi type trong frontend components, không ảnh hưởng runtime.
+
+
+## Phase 169 - TypeScript Fixes, PostgreSQL Module 1 Migration & Database Sync
+
+### Sửa lỗi TypeScript Frontend (102 → 69 lỗi, giảm 33 lỗi)
+- [x] Sửa lỗi trong MachineIntegrationDashboard.tsx (19 → 2 lỗi)
+- [x] Sửa lỗi trong OeeAlertThresholdSettings.tsx (13 → 0 lỗi)
+- [ ] Sửa lỗi trong UnifiedSummaryWidget.tsx (13 lỗi)
+- [ ] Sửa lỗi trong UnifiedDashboard.tsx (6 lỗi)
+- [ ] Sửa lỗi trong OEEComparisonDashboard.tsx (9 lỗi)
+- [ ] Sửa lỗi trong ScheduledReportManagement.tsx (6 lỗi)
+- [ ] Sửa lỗi trong các file còn lại
+
+### Sửa lỗi Database scheduled_reports
+- [x] Kiểm tra schema scheduled_reports trong database thực tế
+- [x] Đồng bộ schema với drizzle/schema.ts (userId → createdBy, schedule → frequency, hour → timeOfDay)
+- [x] Cập nhật scheduledJobs.ts, scheduledReportJob.ts, dashboardConfigRouter.ts
+- [x] Server không còn lỗi "Unknown column 'userid'"
+
+### Migration Module 1 - Core Authentication (3 bảng)
+- [x] Tạo PostgreSQL schema cho Module 1 (scripts/migration/module1-postgresql.sql)
+- [x] Tạo Drizzle schema cho PostgreSQL (drizzle/schema-postgresql-module1.ts)
+- [x] Tạo hướng dẫn migration chi tiết (docs/POSTGRESQL_MIGRATION_GUIDE.md)
+- [ ] Chạy migration script trên PostgreSQL server
+- [ ] Migrate data từ MySQL sang PostgreSQL
+- [ ] Verify data integrity
+- [ ] Migrate bảng smtp_config
+- [ ] Migrate bảng database_connections
+- [ ] Migrate bảng database_mappings
+- [ ] Migrate các bảng cấu hình còn lại
+- [ ] Test các API liên quan đến Module 1

@@ -2122,14 +2122,15 @@ export async function processScheduledReports(): Promise<{ processed: number; se
       // Check if report should run now
       let shouldRun = false;
       
-      // Use schedule field instead of frequency, and hour instead of timeOfDay
-      const reportHour = report.hour;
+      // Use frequency and timeOfDay from schema
+      const reportTimeOfDay = report.timeOfDay || '08:00';
+      const reportHour = parseInt(reportTimeOfDay.split(':')[0], 10);
       if (reportHour === currentHour) {
-        if (report.schedule === 'daily') {
+        if (report.frequency === 'daily') {
           shouldRun = true;
-        } else if (report.schedule === 'weekly' && report.dayOfWeek === currentDayOfWeek) {
+        } else if (report.frequency === 'weekly' && report.dayOfWeek === currentDayOfWeek) {
           shouldRun = true;
-        } else if (report.schedule === 'monthly' && report.dayOfMonth === currentDayOfMonth) {
+        } else if (report.frequency === 'monthly' && report.dayOfMonth === currentDayOfMonth) {
           shouldRun = true;
         }
       }

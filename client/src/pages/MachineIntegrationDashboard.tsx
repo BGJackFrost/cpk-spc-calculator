@@ -39,7 +39,9 @@ import {
   Calendar,
   TrendingDown,
   Edit,
+  FileText,
 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import {
   LineChart,
   Line,
@@ -1393,8 +1395,8 @@ function RealtimeTab() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Tất cả máy</SelectItem>
-              {machines?.map((machine) => (
-                <SelectItem key={machine.id} value={machine.id.toString()}>
+              {machines?.filter(m => m.id !== null).map((machine) => (
+                <SelectItem key={machine.id!} value={machine.id!.toString()}>
                   {machine.name}
                 </SelectItem>
               ))}
@@ -1466,8 +1468,8 @@ function RealtimeTab() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tất cả máy</SelectItem>
-                  {machines?.map((machine) => (
-                    <SelectItem key={machine.id} value={machine.id.toString()}>
+                  {machines?.filter(m => m.id !== null).map((machine) => (
+                    <SelectItem key={machine.id!} value={machine.id!.toString()}>
                       {machine.name}
                     </SelectItem>
                   ))}
@@ -1533,8 +1535,8 @@ function RealtimeTab() {
                           )}
                         </div>
                         <div className="text-sm mt-1">
-                          {eventData.type && <span className="font-medium">{String(eventData.type)}: </span>}
-                          {eventData.message && <span>{String(eventData.message)}</span>}
+                          {eventData.type && <span className="font-medium">{eventData.type as string}: </span>}
+                          {eventData.message && <span>{eventData.message as string}</span>}
                           {eventData.failedCount !== undefined && (
                             <span>Failed: {String(eventData.failedCount)}/{String(eventData.totalCount)}</span>
                           )}
@@ -1795,6 +1797,7 @@ function OeeDashboardTab() {
   
   const exportOeeMutation = trpc.machineIntegration.exportOeeData.useMutation({
     onSuccess: (data) => {
+      if (!data) return;
       const blob = new Blob([data.data], { type: data.mimeType });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -2221,6 +2224,7 @@ function OeeAlertsTab() {
 
   const testEmailMutation = trpc.machineIntegration.testSendOeeAlert.useMutation({
     onSuccess: (data) => {
+      if (!data) return;
       if (data.success) {
         toast.success('Gửi email test thành công!');
       } else {
@@ -2417,8 +2421,8 @@ function OeeAlertsTab() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tất cả máy</SelectItem>
-                  {machines?.map((m) => (
-                    <SelectItem key={m.id} value={m.id.toString()}>{m.name}</SelectItem>
+                  {machines?.filter(m => m.id !== null).map((m) => (
+                    <SelectItem key={m.id!} value={m.id!.toString()}>{m.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -2566,6 +2570,7 @@ function OeeReportsTab() {
 
   const testEmailMutation = trpc.machineIntegration.testSendOeeReport.useMutation({
     onSuccess: (data) => {
+      if (!data) return;
       if (data.success) {
         toast.success('Gửi email test thành công!');
       } else {
@@ -2983,8 +2988,8 @@ function DowntimeAnalysisTab() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Tất cả máy</SelectItem>
-              {machines?.map((m) => (
-                <SelectItem key={m.id} value={m.id.toString()}>{m.name}</SelectItem>
+              {machines?.filter(m => m.id !== null).map((m) => (
+                <SelectItem key={m.id!} value={m.id!.toString()}>{m.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -3201,8 +3206,8 @@ function DowntimeAnalysisTab() {
                   <SelectValue placeholder="Chọn máy" />
                 </SelectTrigger>
                 <SelectContent>
-                  {machines?.map((m) => (
-                    <SelectItem key={m.id} value={m.id.toString()}>{m.name}</SelectItem>
+                  {machines?.filter(m => m.id !== null).map((m) => (
+                    <SelectItem key={m.id!} value={m.id!.toString()}>{m.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -3327,8 +3332,8 @@ function OeeHourlyTrendTab() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tất cả máy</SelectItem>
-                  {machines?.map((m) => (
-                    <SelectItem key={m.machineId} value={String(m.machineId)}>
+                  {machines?.filter(m => m.id !== null).map((m) => (
+                    <SelectItem key={m.id!} value={String(m.id!)}>
                       {m.name}
                     </SelectItem>
                   ))}

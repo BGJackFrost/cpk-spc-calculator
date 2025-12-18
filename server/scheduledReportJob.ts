@@ -1,6 +1,6 @@
 import { getDb } from "./db";
 import { scheduledReports, scheduledReportLogs } from "../drizzle/schema";
-import { eq, lte, and } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { generateOEEReportData, generateMaintenanceReportData, generateCombinedReportData, generateHTMLReport } from "./pdfReportService";
 import { sendEmail } from "./emailService";
 
@@ -13,17 +13,29 @@ export async function processScheduledReports(): Promise<{ processed: number; su
   }
 
   const now = new Date();
+  const currentHour = now.getHours();
+  const currentTimeOfDay = `${String(currentHour).padStart(2, '0')}:00`;
+  const currentDayOfWeek = now.getDay();
+  const currentDayOfMonth = now.getDate();
   
-  // Get all active reports that are due
-  const dueReports = await db
+  // Get all active reports
+  const activeReports = await db
     .select()
     .from(scheduledReports)
-    .where(
-      and(
-        eq(scheduledReports.isActive, 1),
-        lte(scheduledReports.nextScheduledAt, now)
-      )
-    );
+    .where(eq(scheduledReports.isActive, 1));
+
+  // Filter reports that should run now
+  const dueReports = activeReports.filter(report => {
+    // Check if it's the right time
+    if (report.timeOfDay !== currentTimeOfDay) return false;
+    
+    // Check frequency
+    if (report.frequency === 'daily') return true;
+    if (report.frequency === 'weekly' && report.dayOfWeek === currentDayOfWeek) return true;
+    if (report.frequency === 'monthly' && report.dayOfMonth === currentDayOfMonth) return true;
+    
+    return false;
+  });
 
   console.log(`[ScheduledReport] Found ${dueReports.length} reports due for processing`);
 
@@ -34,76 +46,82 @@ export async function processScheduledReports(): Promise<{ processed: number; su
     try {
       console.log(`[ScheduledReport] Processing report: ${report.name} (ID: ${report.id})`);
       
-      // Calculate date range based on report type
-      const { startDate, endDate } = getReportDateRange(report.reportType);
+      // Calculate date range based on frequency
+      const { startDate, endDate } = getReportDateRange(report.frequency);
+      
+      // Parse machine and production line IDs
+      let machineIds: number[] | undefined;
+      let productionLineIds: number[] | undefined;
+      
+      try {
+        if (report.machineIds) {
+          machineIds = JSON.parse(report.machineIds);
+        }
+        if (report.productionLineIds) {
+          productionLineIds = JSON.parse(report.productionLineIds);
+        }
+      } catch {}
       
       // Generate report data
       let reportData: any;
       let reportType: string;
       
-      if (report.reportType.startsWith('oee_')) {
-        reportData = await generateOEEReportData(
-          startDate,
-          endDate,
-          report.machineIds as number[] | undefined,
-          report.productionLineIds as number[] | undefined
-        );
+      if (report.reportType === 'oee') {
+        reportData = await generateOEEReportData(startDate, endDate, machineIds, productionLineIds);
         reportType = 'OEE';
-      } else if (report.reportType.startsWith('maintenance_')) {
-        reportData = await generateMaintenanceReportData(
-          startDate,
-          endDate,
-          report.machineIds as number[] | undefined,
-          report.productionLineIds as number[] | undefined
-        );
-        reportType = 'Maintenance';
+      } else if (report.reportType === 'cpk') {
+        reportData = await generateMaintenanceReportData(startDate, endDate, machineIds, productionLineIds);
+        reportType = 'CPK';
+      } else if (report.reportType === 'oee_cpk_combined') {
+        reportData = await generateCombinedReportData(startDate, endDate, machineIds, productionLineIds);
+        reportType = 'OEE + CPK';
       } else {
-        reportData = await generateCombinedReportData(
-          startDate,
-          endDate,
-          report.machineIds as number[] | undefined,
-          report.productionLineIds as number[] | undefined
-        );
-        reportType = 'Combined';
+        reportData = await generateCombinedReportData(startDate, endDate, machineIds, productionLineIds);
+        reportType = 'Production Summary';
       }
       
       // Generate HTML report
       const htmlContent = generateHTMLReport(reportData, reportType);
       
-      // Send email to recipients
-      const recipients = report.recipients.split(',').map(e => e.trim());
+      // Parse recipients
+      let recipients: string[] = [];
+      try {
+        recipients = JSON.parse(report.recipients);
+      } catch {
+        recipients = report.recipients.split(',').map(e => e.trim());
+      }
+      
       const subject = `[Báo cáo ${reportType}] ${report.name} - ${formatDateRange(startDate, endDate)}`;
+      
+      let successCount = 0;
+      let failedCount = 0;
       
       for (const recipient of recipients) {
         try {
           await sendEmail(recipient, subject, htmlContent);
+          successCount++;
           console.log(`[ScheduledReport] Email sent to ${recipient}`);
         } catch (emailError) {
+          failedCount++;
           console.error(`[ScheduledReport] Failed to send email to ${recipient}:`, emailError);
         }
       }
       
-      // Log success
+      // Log result
       await db.insert(scheduledReportLogs).values({
         reportId: report.id,
-        status: 'success',
+        status: failedCount === 0 ? 'success' : (successCount > 0 ? 'partial' : 'failed'),
         recipientCount: recipients.length,
-        successCount: recipients.length,
-        failedCount: 0,
+        successCount,
+        failedCount,
       });
       
-      // Update next scheduled time
-      const nextScheduledAt = calculateNextScheduledTime(
-        report.schedule,
-        report.dayOfWeek,
-        report.dayOfMonth,
-        report.hour
-      );
-      
+      // Update last sent info
       await db.update(scheduledReports)
         .set({ 
-          nextScheduledAt,
           lastSentAt: now,
+          lastSentStatus: failedCount === 0 ? 'success' : 'failed',
+          lastSentError: failedCount > 0 ? `${failedCount} emails failed` : null,
         })
         .where(eq(scheduledReports.id, report.id));
       
@@ -123,6 +141,14 @@ export async function processScheduledReports(): Promise<{ processed: number; su
         errorMessage: error instanceof Error ? error.message : 'Unknown error',
       });
       
+      // Update last sent error
+      await db.update(scheduledReports)
+        .set({ 
+          lastSentStatus: 'failed',
+          lastSentError: error instanceof Error ? error.message : 'Unknown error',
+        })
+        .where(eq(scheduledReports.id, report.id));
+      
       failed++;
     }
   }
@@ -130,18 +156,18 @@ export async function processScheduledReports(): Promise<{ processed: number; su
   return { processed: dueReports.length, succeeded, failed };
 }
 
-// Get date range based on report type
-function getReportDateRange(reportType: string): { startDate: Date; endDate: Date } {
+// Get date range based on frequency
+function getReportDateRange(frequency: string): { startDate: Date; endDate: Date } {
   const now = new Date();
   const endDate = new Date(now);
   endDate.setHours(23, 59, 59, 999);
   
   let startDate: Date;
   
-  if (reportType.includes('daily')) {
+  if (frequency === 'daily') {
     startDate = new Date(now);
     startDate.setHours(0, 0, 0, 0);
-  } else if (reportType.includes('weekly')) {
+  } else if (frequency === 'weekly') {
     startDate = new Date(now);
     startDate.setDate(startDate.getDate() - 7);
     startDate.setHours(0, 0, 0, 0);
@@ -152,44 +178,6 @@ function getReportDateRange(reportType: string): { startDate: Date; endDate: Dat
   }
   
   return { startDate, endDate };
-}
-
-// Calculate next scheduled time
-function calculateNextScheduledTime(
-  schedule: string,
-  dayOfWeek: number | null,
-  dayOfMonth: number | null,
-  hour: number
-): Date {
-  const now = new Date();
-  const next = new Date();
-  next.setHours(hour, 0, 0, 0);
-  
-  switch (schedule) {
-    case "daily":
-      if (next <= now) {
-        next.setDate(next.getDate() + 1);
-      }
-      break;
-    case "weekly":
-      const targetDay = dayOfWeek ?? 1;
-      const currentDay = next.getDay();
-      let daysUntilTarget = targetDay - currentDay;
-      if (daysUntilTarget < 0 || (daysUntilTarget === 0 && next <= now)) {
-        daysUntilTarget += 7;
-      }
-      next.setDate(next.getDate() + daysUntilTarget);
-      break;
-    case "monthly":
-      const targetDate = dayOfMonth ?? 1;
-      next.setDate(targetDate);
-      if (next <= now) {
-        next.setMonth(next.getMonth() + 1);
-      }
-      break;
-  }
-  
-  return next;
 }
 
 // Format date range for email subject
@@ -213,7 +201,7 @@ export function initScheduledReportJob() {
     }
   }, 60 * 60 * 1000); // Every hour
   
-  // Also run once on startup
+  // Also run once on startup (delayed)
   setTimeout(async () => {
     console.log("[ScheduledReport] Initial check for due reports...");
     try {
@@ -221,7 +209,7 @@ export function initScheduledReportJob() {
     } catch (error) {
       console.error("[ScheduledReport] Error in initial check:", error);
     }
-  }, 5000); // 5 seconds after startup
+  }, 30000); // 30 seconds after startup
   
   console.log("[ScheduledReport] Scheduled report job initialized");
 }

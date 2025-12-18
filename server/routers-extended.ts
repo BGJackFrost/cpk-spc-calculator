@@ -185,6 +185,11 @@ export const workstationRouter = router({
 
 // Machine Router
 export const machineRouter = router({
+  list: protectedProcedure.query(async () => {
+    const { getAllMachines } = await import("./db");
+    return await getAllMachines();
+  }),
+
   listAll: protectedProcedure.query(async () => {
     const { getAllMachines } = await import("./db");
     return await getAllMachines();

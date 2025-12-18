@@ -2371,22 +2371,24 @@ export type InsertMmsDashboardWidget = typeof mmsDashboardWidgets.$inferInsert;
  */
 export const scheduledReports = mysqlTable("scheduled_reports", {
   id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(),
-  name: varchar("name", { length: 255 }).notNull(),
-  reportType: mysqlEnum("reportType", ["oee_daily", "oee_weekly", "oee_monthly", "maintenance_daily", "maintenance_weekly", "maintenance_monthly", "combined_weekly", "combined_monthly"]).notNull(),
-  schedule: mysqlEnum("schedule", ["daily", "weekly", "monthly"]).notNull().default("weekly"),
-  dayOfWeek: int("dayOfWeek").default(1), // 0-6 for weekly (0=Sunday)
-  dayOfMonth: int("dayOfMonth").default(1), // 1-31 for monthly
-  hour: int("hour").notNull().default(8), // Hour to send (0-23)
-  recipients: text("recipients").notNull(), // Comma-separated emails
+  name: varchar("name", { length: 200 }).notNull(),
+  reportType: mysqlEnum("reportType", ["oee", "cpk", "oee_cpk_combined", "production_summary"]).notNull(),
+  frequency: mysqlEnum("frequency", ["daily", "weekly", "monthly"]).notNull(),
+  dayOfWeek: int("dayOfWeek"), // 0-6 for weekly (0=Sunday)
+  dayOfMonth: int("dayOfMonth"), // 1-31 for monthly
+  timeOfDay: varchar("timeOfDay", { length: 5 }).notNull().default("08:00"),
+  recipients: text("recipients").notNull(), // JSON array of emails
+  machineIds: text("machineIds"), // JSON array of machine IDs, null = all
+  productionLineIds: text("productionLineIds"), // JSON array of line IDs, null = all
   includeCharts: int("includeCharts").notNull().default(1),
-  includeTables: int("includeTables").notNull().default(1),
-  includeRecommendations: int("includeRecommendations").notNull().default(1),
-  machineIds: json("machineIds"), // Array of machine IDs to include, null = all
-  productionLineIds: json("productionLineIds"), // Array of line IDs, null = all
-  isActive: int("isActive").notNull().default(1),
+  includeTrends: int("includeTrends").notNull().default(1),
+  includeAlerts: int("includeAlerts").notNull().default(1),
+  format: mysqlEnum("format", ["html", "excel", "pdf"]).notNull().default("html"),
   lastSentAt: timestamp("lastSentAt"),
-  nextScheduledAt: timestamp("nextScheduledAt"),
+  lastSentStatus: mysqlEnum("lastSentStatus", ["success", "failed", "pending"]),
+  lastSentError: text("lastSentError"),
+  isActive: int("isActive").notNull().default(1),
+  createdBy: int("createdBy"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

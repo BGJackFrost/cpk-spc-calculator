@@ -101,7 +101,7 @@ export const mmsDashboardConfigRouter = router({
 
   // ============ Scheduled Reports ============
 
-  // List scheduled reports for current user
+  // List scheduled reports for current user (filter by createdBy)
   listScheduledReports: protectedProcedure.query(async ({ ctx }) => {
     const db = await getDb();
     if (!db) return [];
@@ -109,7 +109,7 @@ export const mmsDashboardConfigRouter = router({
     const reports = await db
       .select()
       .from(scheduledReports)
-      .where(eq(scheduledReports.userId, ctx.user.id))
+      .where(eq(scheduledReports.createdBy, ctx.user.id))
       .orderBy(desc(scheduledReports.createdAt));
     
     return reports;
@@ -119,15 +119,16 @@ export const mmsDashboardConfigRouter = router({
   createScheduledReport: protectedProcedure
     .input(z.object({
       name: z.string().min(1),
-      reportType: z.enum(["oee_daily", "oee_weekly", "oee_monthly", "maintenance_daily", "maintenance_weekly", "maintenance_monthly", "combined_weekly", "combined_monthly"]),
-      schedule: z.enum(["daily", "weekly", "monthly"]),
+      reportType: z.enum(["oee", "cpk", "oee_cpk_combined", "production_summary"]),
+      frequency: z.enum(["daily", "weekly", "monthly"]),
       dayOfWeek: z.number().min(0).max(6).optional(),
       dayOfMonth: z.number().min(1).max(31).optional(),
-      hour: z.number().min(0).max(23),
+      timeOfDay: z.string().default("08:00"),
       recipients: z.string().min(1),
       includeCharts: z.boolean().default(true),
-      includeTables: z.boolean().default(true),
-      includeRecommendations: z.boolean().default(true),
+      includeTrends: z.boolean().default(true),
+      includeAlerts: z.boolean().default(true),
+      format: z.enum(["html", "excel", "pdf"]).default("html"),
       machineIds: z.array(z.number()).optional(),
       productionLineIds: z.array(z.number()).optional(),
     }))
@@ -135,24 +136,21 @@ export const mmsDashboardConfigRouter = router({
       const db = await getDb();
       if (!db) throw new Error("Database not available");
       
-      // Calculate next scheduled time
-      const nextScheduledAt = calculateNextScheduledTime(input.schedule, input.dayOfWeek, input.dayOfMonth, input.hour);
-      
       const result = await db.insert(scheduledReports).values({
-        userId: ctx.user.id,
         name: input.name,
         reportType: input.reportType,
-        schedule: input.schedule,
+        frequency: input.frequency,
         dayOfWeek: input.dayOfWeek ?? 1,
         dayOfMonth: input.dayOfMonth ?? 1,
-        hour: input.hour,
-        recipients: input.recipients,
+        timeOfDay: input.timeOfDay,
+        recipients: JSON.stringify(input.recipients.split(',').map(e => e.trim())),
         includeCharts: input.includeCharts ? 1 : 0,
-        includeTables: input.includeTables ? 1 : 0,
-        includeRecommendations: input.includeRecommendations ? 1 : 0,
-        machineIds: input.machineIds || null,
-        productionLineIds: input.productionLineIds || null,
-        nextScheduledAt,
+        includeTrends: input.includeTrends ? 1 : 0,
+        includeAlerts: input.includeAlerts ? 1 : 0,
+        format: input.format,
+        machineIds: input.machineIds ? JSON.stringify(input.machineIds) : null,
+        productionLineIds: input.productionLineIds ? JSON.stringify(input.productionLineIds) : null,
+        createdBy: ctx.user.id,
       });
       
       return { id: result[0].insertId };
@@ -163,14 +161,15 @@ export const mmsDashboardConfigRouter = router({
     .input(z.object({
       id: z.number(),
       name: z.string().optional(),
-      schedule: z.enum(["daily", "weekly", "monthly"]).optional(),
+      frequency: z.enum(["daily", "weekly", "monthly"]).optional(),
       dayOfWeek: z.number().min(0).max(6).optional(),
       dayOfMonth: z.number().min(1).max(31).optional(),
-      hour: z.number().min(0).max(23).optional(),
+      timeOfDay: z.string().optional(),
       recipients: z.string().optional(),
       includeCharts: z.boolean().optional(),
-      includeTables: z.boolean().optional(),
-      includeRecommendations: z.boolean().optional(),
+      includeTrends: z.boolean().optional(),
+      includeAlerts: z.boolean().optional(),
+      format: z.enum(["html", "excel", "pdf"]).optional(),
       machineIds: z.array(z.number()).optional(),
       productionLineIds: z.array(z.number()).optional(),
       isActive: z.boolean().optional(),
@@ -183,33 +182,22 @@ export const mmsDashboardConfigRouter = router({
       const updateData: Record<string, unknown> = {};
       
       if (updates.name !== undefined) updateData.name = updates.name;
-      if (updates.schedule !== undefined) updateData.schedule = updates.schedule;
+      if (updates.frequency !== undefined) updateData.frequency = updates.frequency;
       if (updates.dayOfWeek !== undefined) updateData.dayOfWeek = updates.dayOfWeek;
       if (updates.dayOfMonth !== undefined) updateData.dayOfMonth = updates.dayOfMonth;
-      if (updates.hour !== undefined) updateData.hour = updates.hour;
-      if (updates.recipients !== undefined) updateData.recipients = updates.recipients;
+      if (updates.timeOfDay !== undefined) updateData.timeOfDay = updates.timeOfDay;
+      if (updates.recipients !== undefined) updateData.recipients = JSON.stringify(updates.recipients.split(',').map(e => e.trim()));
       if (updates.includeCharts !== undefined) updateData.includeCharts = updates.includeCharts ? 1 : 0;
-      if (updates.includeTables !== undefined) updateData.includeTables = updates.includeTables ? 1 : 0;
-      if (updates.includeRecommendations !== undefined) updateData.includeRecommendations = updates.includeRecommendations ? 1 : 0;
-      if (updates.machineIds !== undefined) updateData.machineIds = updates.machineIds;
-      if (updates.productionLineIds !== undefined) updateData.productionLineIds = updates.productionLineIds;
+      if (updates.includeTrends !== undefined) updateData.includeTrends = updates.includeTrends ? 1 : 0;
+      if (updates.includeAlerts !== undefined) updateData.includeAlerts = updates.includeAlerts ? 1 : 0;
+      if (updates.format !== undefined) updateData.format = updates.format;
+      if (updates.machineIds !== undefined) updateData.machineIds = JSON.stringify(updates.machineIds);
+      if (updates.productionLineIds !== undefined) updateData.productionLineIds = JSON.stringify(updates.productionLineIds);
       if (updates.isActive !== undefined) updateData.isActive = updates.isActive ? 1 : 0;
-      
-      // Recalculate next scheduled time if schedule changed
-      if (updates.schedule || updates.dayOfWeek !== undefined || updates.dayOfMonth !== undefined || updates.hour !== undefined) {
-        const report = await db.select().from(scheduledReports).where(eq(scheduledReports.id, id)).limit(1);
-        if (report.length > 0) {
-          const schedule = updates.schedule || report[0].schedule;
-          const dayOfWeek = updates.dayOfWeek ?? report[0].dayOfWeek;
-          const dayOfMonth = updates.dayOfMonth ?? report[0].dayOfMonth;
-          const hour = updates.hour ?? report[0].hour;
-          updateData.nextScheduledAt = calculateNextScheduledTime(schedule, dayOfWeek ?? 1, dayOfMonth ?? 1, hour);
-        }
-      }
       
       await db.update(scheduledReports)
         .set(updateData)
-        .where(and(eq(scheduledReports.id, id), eq(scheduledReports.userId, ctx.user.id)));
+        .where(and(eq(scheduledReports.id, id), eq(scheduledReports.createdBy, ctx.user.id)));
       
       return { success: true };
     }),
@@ -222,7 +210,7 @@ export const mmsDashboardConfigRouter = router({
       if (!db) throw new Error("Database not available");
       
       await db.delete(scheduledReports)
-        .where(and(eq(scheduledReports.id, input.id), eq(scheduledReports.userId, ctx.user.id)));
+        .where(and(eq(scheduledReports.id, input.id), eq(scheduledReports.createdBy, ctx.user.id)));
       
       return { success: true };
     }),
@@ -236,7 +224,7 @@ export const mmsDashboardConfigRouter = router({
       
       // Verify ownership
       const report = await db.select().from(scheduledReports)
-        .where(and(eq(scheduledReports.id, input.reportId), eq(scheduledReports.userId, ctx.user.id)))
+        .where(and(eq(scheduledReports.id, input.reportId), eq(scheduledReports.createdBy, ctx.user.id)))
         .limit(1);
       
       if (report.length === 0) return [];
