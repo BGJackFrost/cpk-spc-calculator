@@ -3555,3 +3555,31 @@
 - [x] Bảng chi tiết với tỷ lệ tích lũy
 - [x] Form thêm downtime thủ công
 - [x] UI tab Pareto Downtime trong Machine Integration
+
+
+## Phase 164 - OEE Scheduled Jobs & Email Integration
+
+### Scheduled job tự động kiểm tra và gửi cảnh báo/báo cáo OEE
+- [x] Tạo scheduled job checkMachineOeeAlerts chạy hàng ngày lúc 7:00 AM
+- [x] Logic kiểm tra OEE dưới ngưỡng N ngày liên tiếp
+- [x] Ghi log vào oee_alert_history khi trigger cảnh báo
+- [x] Tạo scheduled job processMachineOeeReports chạy mỗi giờ
+- [x] Logic kiểm tra schedule (weekly/monthly) và gửi báo cáo
+- [x] Cập nhật last_sent_at và next_scheduled_at sau khi gửi
+
+### Tích hợp gửi email thực với SMTP
+- [x] Sử dụng SMTP config đã có trong hệ thống (sendEmail service)
+- [x] Tạo email template cho OEE alert (generateOeeAlertEmail)
+- [x] Tạo email template cho OEE report (generateOeeReportEmail)
+- [x] Gửi email thực khi trigger cảnh báo
+- [x] Gửi email thực khi đến lịch báo cáo
+- [x] Cập nhật email_sent và email_sent_at trong history
+
+### Biểu đồ OEE trend theo giờ trong ngày
+- [x] API getOeeHourlyTrend trả về OEE theo giờ
+- [x] Biểu đồ heatmap OEE theo giờ x ngày trong tuần
+- [x] Biểu đồ Area chart OEE theo giờ trung bình
+- [x] Highlight giờ có OEE thấp nhất và cao nhất
+- [x] Thống kê OEE theo ca (sáng/chiều/đêm)
+- [x] Khuyến nghị tự động dựa trên dữ liệu
+- [x] Tab OEE Theo Giờ mới trong Machine Integration

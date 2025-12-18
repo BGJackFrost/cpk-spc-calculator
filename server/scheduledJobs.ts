@@ -6,7 +6,7 @@
 import cron from 'node-cron';
 import { getLicensesExpiringSoon, getExpiredLicenses, getDb } from './db';
 import { generateShiftReport, sendShiftReportEmail, getCurrentShift } from './services/shiftReportService';
-import { realtimeAlerts, machines, machineOnlineStatus, oeeRecords, oeeTargets, emailNotificationSettings, scheduledReports, scheduledReportLogs, oeeAlertThresholds, spcAnalysisHistory, productionLines } from '../drizzle/schema';
+import { realtimeAlerts, machines, machineOnlineStatus, oeeRecords, oeeTargets, emailNotificationSettings, scheduledReports, scheduledReportLogs, oeeAlertThresholds, spcAnalysisHistory, productionLines, oeeAlertConfigs, oeeAlertHistory, oeeReportSchedules, oeeReportHistory, machineOeeData, machineApiKeys } from '../drizzle/schema';
 import { eq, and, gte, lte, desc, sql } from 'drizzle-orm';
 import { triggerWebhooks } from './webhookService';
 import { notifyOwner } from './_core/notification';
@@ -369,6 +369,26 @@ export function initScheduledJobs(): void {
   });
   
   console.log('[ScheduledJob] Scheduled: Report processor every minute (Asia/Ho_Chi_Minh)');
+  
+  // Machine Integration OEE Alert check - runs daily at 7:00 AM
+  cron.schedule('0 0 7 * * *', async () => {
+    console.log('[ScheduledJob] Triggered: Machine Integration OEE alert check');
+    await checkMachineOeeAlerts();
+  }, {
+    timezone: 'Asia/Ho_Chi_Minh'
+  });
+  
+  console.log('[ScheduledJob] Scheduled: Machine Integration OEE alert at 7:00 AM daily (Asia/Ho_Chi_Minh)');
+  
+  // Machine Integration OEE Report processor - runs every hour
+  cron.schedule('0 0 * * * *', async () => {
+    console.log('[ScheduledJob] Triggered: Machine Integration OEE report processor');
+    await processMachineOeeReports();
+  }, {
+    timezone: 'Asia/Ho_Chi_Minh'
+  });
+  
+  console.log('[ScheduledJob] Scheduled: Machine Integration OEE report processor every hour (Asia/Ho_Chi_Minh)');
   
   jobsInitialized = true;
   console.log('[ScheduledJob] All scheduled jobs initialized successfully');
@@ -2130,4 +2150,595 @@ export async function processScheduledReports(): Promise<{ processed: number; se
     console.error('[ScheduledJob] Error processing scheduled reports:', error);
     return { processed: 0, sent: 0, failed: 0 };
   }
+}
+
+
+// ==================== Machine Integration OEE Scheduled Jobs ====================
+
+/**
+ * Check Machine OEE alerts and send email notifications
+ * Runs daily to check if OEE is below threshold for consecutive days
+ */
+async function checkMachineOeeAlerts(): Promise<{ processed: number; triggered: number; sent: number; failed: number }> {
+  console.log('[ScheduledJob] Checking Machine Integration OEE alerts...');
+  
+  let processed = 0;
+  let triggered = 0;
+  let sent = 0;
+  let failed = 0;
+  
+  try {
+    const db = await getDb();
+    if (!db) {
+      console.log('[ScheduledJob] Database not available');
+      return { processed: 0, triggered: 0, sent: 0, failed: 0 };
+    }
+    
+    // Get all active alert configs
+    const alertConfigs = await db
+      .select()
+      .from(oeeAlertConfigs)
+      .where(eq(oeeAlertConfigs.isActive, 1));
+    
+    console.log(`[ScheduledJob] Found ${alertConfigs.length} active OEE alert configs`);
+    
+    // Get machine names for reference
+    const machineNames = await db
+      .select({ machineId: machineApiKeys.machineId, name: machineApiKeys.name })
+      .from(machineApiKeys)
+      .groupBy(machineApiKeys.machineId);
+    const nameMap = new Map(machineNames.map(m => [m.machineId, m.name]));
+    
+    for (const config of alertConfigs) {
+      processed++;
+      
+      try {
+        const threshold = parseFloat(config.oeeThreshold as string) || 85;
+        const consecutiveDays = config.consecutiveDays || 3;
+        
+        // Get OEE data for the last N days
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - consecutiveDays);
+        
+        const conditions = [gte(machineOeeData.recordedAt, startDate)];
+        if (config.machineId) {
+          conditions.push(eq(machineOeeData.machineId, config.machineId));
+        }
+        
+        // Get daily OEE averages
+        const oeeData = await db
+          .select({
+            machineId: machineOeeData.machineId,
+            date: sql<string>`DATE(${machineOeeData.recordedAt})`,
+            avgOee: sql<number>`AVG(${machineOeeData.oee})`,
+          })
+          .from(machineOeeData)
+          .where(and(...conditions))
+          .groupBy(machineOeeData.machineId, sql`DATE(${machineOeeData.recordedAt})`)
+          .orderBy(machineOeeData.machineId, sql`DATE(${machineOeeData.recordedAt})`);
+        
+        // Group by machine and check consecutive days
+        const machineOeeMap = new Map<number, { date: string; oee: number }[]>();
+        for (const row of oeeData) {
+          if (!row.machineId) continue;
+          if (!machineOeeMap.has(row.machineId)) {
+            machineOeeMap.set(row.machineId, []);
+          }
+          machineOeeMap.get(row.machineId)!.push({
+            date: row.date,
+            oee: row.avgOee || 0,
+          });
+        }
+        
+        // Check each machine for consecutive days below threshold
+        for (const [machineId, oeeHistory] of machineOeeMap) {
+          // Count consecutive days below threshold (from most recent)
+          let consecutiveBelowThreshold = 0;
+          let latestOee = 0;
+          
+          // Sort by date descending
+          oeeHistory.sort((a, b) => b.date.localeCompare(a.date));
+          
+          for (const day of oeeHistory) {
+            if (day.oee < threshold) {
+              consecutiveBelowThreshold++;
+              if (latestOee === 0) latestOee = day.oee;
+            } else {
+              break; // Stop counting when we hit a day above threshold
+            }
+          }
+          
+          // Trigger alert if consecutive days >= configured threshold
+          if (consecutiveBelowThreshold >= consecutiveDays) {
+            triggered++;
+            
+            const machineName = nameMap.get(machineId) || `Machine ${machineId}`;
+            const recipients = JSON.parse(config.recipients || '[]') as string[];
+            
+            // Insert alert history
+            await db.insert(oeeAlertHistory).values({
+              alertConfigId: config.id,
+              machineId,
+              machineName,
+              oeeValue: String(latestOee.toFixed(2)),
+              consecutiveDaysBelow: consecutiveBelowThreshold,
+              recipients: JSON.stringify(recipients),
+              emailSent: 0,
+            });
+            
+            // Send email to recipients
+            if (recipients.length > 0) {
+              const emailHtml = generateOeeAlertEmail({
+                configName: config.name,
+                machineName,
+                machineId,
+                currentOee: latestOee,
+                threshold,
+                consecutiveDays: consecutiveBelowThreshold,
+                oeeHistory: oeeHistory.slice(0, consecutiveDays),
+              });
+              
+              for (const email of recipients) {
+                try {
+                  const result = await sendEmail(
+                    email,
+                    `⚠️ Cảnh báo OEE: ${machineName} dưới ${threshold}% trong ${consecutiveBelowThreshold} ngày liên tiếp`,
+                    emailHtml
+                  );
+                  
+                  if (result.success) {
+                    sent++;
+                    // Update email_sent status
+                    await db.update(oeeAlertHistory)
+                      .set({ emailSent: 1, emailSentAt: new Date() })
+                      .where(and(
+                        eq(oeeAlertHistory.alertConfigId, config.id),
+                        eq(oeeAlertHistory.machineId, machineId)
+                      ));
+                  } else {
+                    failed++;
+                  }
+                } catch (err) {
+                  console.error(`[ScheduledJob] Failed to send OEE alert to ${email}:`, err);
+                  failed++;
+                }
+              }
+            }
+            
+            // Update last triggered time
+            await db.update(oeeAlertConfigs)
+              .set({ lastTriggeredAt: new Date() })
+              .where(eq(oeeAlertConfigs.id, config.id));
+          }
+        }
+      } catch (err) {
+        console.error(`[ScheduledJob] Error processing alert config ${config.id}:`, err);
+      }
+    }
+    
+    console.log(`[ScheduledJob] Machine OEE alerts: processed=${processed}, triggered=${triggered}, sent=${sent}, failed=${failed}`);
+    return { processed, triggered, sent, failed };
+    
+  } catch (error) {
+    console.error('[ScheduledJob] Error checking Machine OEE alerts:', error);
+    return { processed: 0, triggered: 0, sent: 0, failed: 0 };
+  }
+}
+
+/**
+ * Generate OEE alert email HTML
+ */
+function generateOeeAlertEmail(data: {
+  configName: string;
+  machineName: string;
+  machineId: number;
+  currentOee: number;
+  threshold: number;
+  consecutiveDays: number;
+  oeeHistory: { date: string; oee: number }[];
+}): string {
+  const oeeColor = data.currentOee < 60 ? '#dc2626' : data.currentOee < 75 ? '#f59e0b' : '#22c55e';
+  
+  return `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f8fafc; border-radius: 10px; overflow: hidden;">
+      <div style="background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); color: white; padding: 20px; text-align: center;">
+        <h1 style="margin: 0; font-size: 24px;">⚠️ Cảnh báo OEE</h1>
+        <p style="margin: 10px 0 0 0; opacity: 0.9;">${data.configName}</p>
+      </div>
+      
+      <div style="padding: 20px;">
+        <div style="background: white; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+          <h2 style="margin: 0 0 15px 0; color: #1e293b; font-size: 18px;">
+            🏭 ${data.machineName}
+          </h2>
+          
+          <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
+            <div style="text-align: center; flex: 1;">
+              <div style="font-size: 36px; font-weight: bold; color: ${oeeColor};">${data.currentOee.toFixed(1)}%</div>
+              <div style="font-size: 12px; color: #64748b;">OEE hiện tại</div>
+            </div>
+            <div style="text-align: center; flex: 1;">
+              <div style="font-size: 36px; font-weight: bold; color: #3b82f6;">${data.threshold}%</div>
+              <div style="font-size: 12px; color: #64748b;">Ngưỡng cảnh báo</div>
+            </div>
+            <div style="text-align: center; flex: 1;">
+              <div style="font-size: 36px; font-weight: bold; color: #dc2626;">${data.consecutiveDays}</div>
+              <div style="font-size: 12px; color: #64748b;">Ngày liên tiếp</div>
+            </div>
+          </div>
+          
+          <div style="background: #fef2f2; border-left: 4px solid #dc2626; padding: 12px; border-radius: 4px;">
+            <p style="margin: 0; color: #991b1b; font-size: 14px;">
+              <strong>⚠️ Cảnh báo:</strong> OEE của máy ${data.machineName} đã dưới ngưỡng ${data.threshold}% trong ${data.consecutiveDays} ngày liên tiếp.
+            </p>
+          </div>
+        </div>
+        
+        <div style="background: white; border-radius: 8px; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+          <h3 style="margin: 0 0 15px 0; color: #1e293b; font-size: 16px;">📊 Lịch sử OEE gần đây</h3>
+          <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+              <tr style="background: #f1f5f9;">
+                <th style="padding: 10px; text-align: left; border-bottom: 2px solid #e2e8f0;">Ngày</th>
+                <th style="padding: 10px; text-align: center; border-bottom: 2px solid #e2e8f0;">OEE</th>
+                <th style="padding: 10px; text-align: center; border-bottom: 2px solid #e2e8f0;">Trạng thái</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${data.oeeHistory.map(day => `
+                <tr>
+                  <td style="padding: 10px; border-bottom: 1px solid #e2e8f0;">${day.date}</td>
+                  <td style="padding: 10px; text-align: center; border-bottom: 1px solid #e2e8f0; font-weight: bold; color: ${day.oee < data.threshold ? '#dc2626' : '#22c55e'};">
+                    ${day.oee.toFixed(1)}%
+                  </td>
+                  <td style="padding: 10px; text-align: center; border-bottom: 1px solid #e2e8f0;">
+                    ${day.oee < data.threshold 
+                      ? '<span style="background: #fef2f2; color: #dc2626; padding: 2px 8px; border-radius: 4px; font-size: 12px;">Dưới ngưỡng</span>'
+                      : '<span style="background: #f0fdf4; color: #22c55e; padding: 2px 8px; border-radius: 4px; font-size: 12px;">Đạt</span>'
+                    }
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+        
+        <div style="margin-top: 20px; padding: 15px; background: #fef3c7; border-radius: 8px; border-left: 4px solid #f59e0b;">
+          <p style="margin: 0; color: #92400e; font-size: 14px;">
+            <strong>💡 Khuyến nghị:</strong> Vui lòng kiểm tra máy ${data.machineName} để xác định nguyên nhân OEE thấp và có biện pháp khắc phục kịp thời.
+          </p>
+        </div>
+      </div>
+      
+      <div style="background: #1e293b; color: white; padding: 15px; text-align: center; font-size: 12px;">
+        <p style="margin: 0;">Email này được gửi tự động từ hệ thống SPC/CPK Calculator</p>
+        <p style="margin: 5px 0 0 0; opacity: 0.7;">Thời gian: ${new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}</p>
+      </div>
+    </div>
+  `;
+}
+
+/**
+ * Process Machine OEE scheduled reports
+ * Runs hourly to check for due reports and send them
+ */
+async function processMachineOeeReports(): Promise<{ processed: number; sent: number; failed: number }> {
+  console.log('[ScheduledJob] Processing Machine Integration OEE reports...');
+  
+  let processed = 0;
+  let sent = 0;
+  let failed = 0;
+  
+  try {
+    const db = await getDb();
+    if (!db) {
+      console.log('[ScheduledJob] Database not available');
+      return { processed: 0, sent: 0, failed: 0 };
+    }
+    
+    const now = new Date();
+    const currentHour = now.getHours();
+    const currentDayOfWeek = now.getDay();
+    const currentDayOfMonth = now.getDate();
+    
+    // Get all active report schedules
+    const schedules = await db
+      .select()
+      .from(oeeReportSchedules)
+      .where(eq(oeeReportSchedules.isActive, 1));
+    
+    console.log(`[ScheduledJob] Found ${schedules.length} active OEE report schedules`);
+    
+    // Get machine names for reference
+    const machineNames = await db
+      .select({ machineId: machineApiKeys.machineId, name: machineApiKeys.name })
+      .from(machineApiKeys)
+      .groupBy(machineApiKeys.machineId);
+    const nameMap = new Map(machineNames.map(m => [m.machineId, m.name]));
+    
+    for (const schedule of schedules) {
+      // Check if this schedule should run now
+      let shouldRun = false;
+      
+      if (schedule.hour === currentHour) {
+        if (schedule.frequency === 'weekly' && schedule.dayOfWeek === currentDayOfWeek) {
+          shouldRun = true;
+        } else if (schedule.frequency === 'monthly' && schedule.dayOfMonth === currentDayOfMonth) {
+          shouldRun = true;
+        }
+      }
+      
+      if (!shouldRun) continue;
+      
+      processed++;
+      
+      try {
+        const recipients = JSON.parse(schedule.recipients || '[]') as string[];
+        if (recipients.length === 0) continue;
+        
+        const machineIds = schedule.machineIds ? JSON.parse(schedule.machineIds) as number[] : null;
+        
+        // Calculate report period
+        const periodEnd = new Date();
+        const periodStart = new Date();
+        if (schedule.frequency === 'weekly') {
+          periodStart.setDate(periodStart.getDate() - 7);
+        } else {
+          periodStart.setMonth(periodStart.getMonth() - 1);
+        }
+        
+        // Get OEE data for the period
+        const conditions = [
+          gte(machineOeeData.recordedAt, periodStart),
+          lte(machineOeeData.recordedAt, periodEnd),
+        ];
+        if (machineIds && machineIds.length > 0) {
+          conditions.push(sql`${machineOeeData.machineId} IN (${sql.raw(machineIds.join(','))})`);
+        }
+        
+        const oeeData = await db
+          .select({
+            machineId: machineOeeData.machineId,
+            avgOee: sql<number>`AVG(${machineOeeData.oee})`,
+            avgAvailability: sql<number>`AVG(${machineOeeData.availability})`,
+            avgPerformance: sql<number>`AVG(${machineOeeData.performance})`,
+            avgQuality: sql<number>`AVG(${machineOeeData.quality})`,
+            totalDowntime: sql<number>`SUM(${machineOeeData.plannedDowntime} + ${machineOeeData.unplannedDowntime})`,
+            recordCount: sql<number>`COUNT(*)`,
+          })
+          .from(machineOeeData)
+          .where(and(...conditions))
+          .groupBy(machineOeeData.machineId);
+        
+        // Get daily trend
+        const dailyTrend = await db
+          .select({
+            date: sql<string>`DATE(${machineOeeData.recordedAt})`,
+            avgOee: sql<number>`AVG(${machineOeeData.oee})`,
+          })
+          .from(machineOeeData)
+          .where(and(...conditions))
+          .groupBy(sql`DATE(${machineOeeData.recordedAt})`)
+          .orderBy(sql`DATE(${machineOeeData.recordedAt})`);
+        
+        // Generate report email
+        const reportData = oeeData.map(row => ({
+          machineId: row.machineId,
+          machineName: nameMap.get(row.machineId!) || `Machine ${row.machineId}`,
+          avgOee: row.avgOee || 0,
+          avgAvailability: row.avgAvailability || 0,
+          avgPerformance: row.avgPerformance || 0,
+          avgQuality: row.avgQuality || 0,
+          totalDowntime: row.totalDowntime || 0,
+          recordCount: row.recordCount || 0,
+        }));
+        
+        const emailHtml = generateOeeReportEmail({
+          scheduleName: schedule.name,
+          frequency: schedule.frequency,
+          periodStart,
+          periodEnd,
+          machines: reportData,
+          dailyTrend: dailyTrend.map(d => ({ date: d.date, oee: d.avgOee || 0 })),
+          includeCharts: !!schedule.includeCharts,
+          includeTrend: !!schedule.includeTrend,
+          includeComparison: !!schedule.includeComparison,
+        });
+        
+        // Insert report history
+        const [historyResult] = await db.insert(oeeReportHistory).values({
+          scheduleId: schedule.id,
+          reportPeriodStart: periodStart,
+          reportPeriodEnd: periodEnd,
+          recipients: JSON.stringify(recipients),
+          reportData: JSON.stringify({ machines: reportData, dailyTrend }),
+          emailSent: 0,
+        });
+        
+        // Send email to recipients
+        let reportSent = 0;
+        let reportFailed = 0;
+        
+        for (const email of recipients) {
+          try {
+            const result = await sendEmail(
+              email,
+              `📊 Báo cáo OEE ${schedule.frequency === 'weekly' ? 'tuần' : 'tháng'}: ${schedule.name}`,
+              emailHtml
+            );
+            
+            if (result.success) {
+              reportSent++;
+              sent++;
+            } else {
+              reportFailed++;
+              failed++;
+            }
+          } catch (err) {
+            console.error(`[ScheduledJob] Failed to send OEE report to ${email}:`, err);
+            reportFailed++;
+            failed++;
+          }
+        }
+        
+        // Update history with email status
+        if (reportSent > 0) {
+          await db.update(oeeReportHistory)
+            .set({ emailSent: 1, emailSentAt: new Date() })
+            .where(eq(oeeReportHistory.id, historyResult.insertId));
+        }
+        
+        // Calculate next scheduled time
+        const nextScheduledAt = new Date();
+        if (schedule.frequency === 'weekly') {
+          nextScheduledAt.setDate(nextScheduledAt.getDate() + 7);
+        } else {
+          nextScheduledAt.setMonth(nextScheduledAt.getMonth() + 1);
+        }
+        nextScheduledAt.setHours(schedule.hour, 0, 0, 0);
+        
+        // Update schedule
+        await db.update(oeeReportSchedules)
+          .set({ lastSentAt: new Date(), nextScheduledAt })
+          .where(eq(oeeReportSchedules.id, schedule.id));
+        
+        console.log(`[ScheduledJob] Sent OEE report "${schedule.name}": ${reportSent} success, ${reportFailed} failed`);
+        
+      } catch (err) {
+        console.error(`[ScheduledJob] Error processing OEE report schedule ${schedule.id}:`, err);
+        failed++;
+      }
+    }
+    
+    console.log(`[ScheduledJob] Machine OEE reports: processed=${processed}, sent=${sent}, failed=${failed}`);
+    return { processed, sent, failed };
+    
+  } catch (error) {
+    console.error('[ScheduledJob] Error processing Machine OEE reports:', error);
+    return { processed: 0, sent: 0, failed: 0 };
+  }
+}
+
+/**
+ * Generate OEE report email HTML
+ */
+function generateOeeReportEmail(data: {
+  scheduleName: string;
+  frequency: string;
+  periodStart: Date;
+  periodEnd: Date;
+  machines: {
+    machineId: number | null;
+    machineName: string;
+    avgOee: number;
+    avgAvailability: number;
+    avgPerformance: number;
+    avgQuality: number;
+    totalDowntime: number;
+    recordCount: number;
+  }[];
+  dailyTrend: { date: string; oee: number }[];
+  includeCharts: boolean;
+  includeTrend: boolean;
+  includeComparison: boolean;
+}): string {
+  const overallOee = data.machines.length > 0
+    ? data.machines.reduce((sum, m) => sum + m.avgOee, 0) / data.machines.length
+    : 0;
+  
+  const getOeeColor = (oee: number) => oee >= 85 ? '#22c55e' : oee >= 70 ? '#f59e0b' : '#dc2626';
+  
+  return `
+    <div style="font-family: Arial, sans-serif; max-width: 700px; margin: 0 auto; background: #f8fafc; border-radius: 10px; overflow: hidden;">
+      <div style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; padding: 20px; text-align: center;">
+        <h1 style="margin: 0; font-size: 24px;">📊 Báo cáo OEE ${data.frequency === 'weekly' ? 'Tuần' : 'Tháng'}</h1>
+        <p style="margin: 10px 0 0 0; opacity: 0.9;">${data.scheduleName}</p>
+        <p style="margin: 5px 0 0 0; opacity: 0.7; font-size: 14px;">
+          ${data.periodStart.toLocaleDateString('vi-VN')} - ${data.periodEnd.toLocaleDateString('vi-VN')}
+        </p>
+      </div>
+      
+      <div style="padding: 20px;">
+        <!-- Summary Card -->
+        <div style="background: white; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); text-align: center;">
+          <div style="font-size: 48px; font-weight: bold; color: ${getOeeColor(overallOee)};">${overallOee.toFixed(1)}%</div>
+          <div style="font-size: 14px; color: #64748b;">OEE Trung bình</div>
+          <div style="margin-top: 10px; font-size: 12px; color: #94a3b8;">${data.machines.length} máy | ${data.machines.reduce((sum, m) => sum + m.recordCount, 0)} bản ghi</div>
+        </div>
+        
+        ${data.includeComparison ? `
+        <!-- Machine Comparison Table -->
+        <div style="background: white; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+          <h3 style="margin: 0 0 15px 0; color: #1e293b; font-size: 16px;">🏭 So sánh theo máy</h3>
+          <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+            <thead>
+              <tr style="background: #f1f5f9;">
+                <th style="padding: 10px; text-align: left; border-bottom: 2px solid #e2e8f0;">Máy</th>
+                <th style="padding: 10px; text-align: center; border-bottom: 2px solid #e2e8f0;">OEE</th>
+                <th style="padding: 10px; text-align: center; border-bottom: 2px solid #e2e8f0;">A</th>
+                <th style="padding: 10px; text-align: center; border-bottom: 2px solid #e2e8f0;">P</th>
+                <th style="padding: 10px; text-align: center; border-bottom: 2px solid #e2e8f0;">Q</th>
+                <th style="padding: 10px; text-align: center; border-bottom: 2px solid #e2e8f0;">Downtime</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${data.machines.sort((a, b) => b.avgOee - a.avgOee).map(m => `
+                <tr>
+                  <td style="padding: 10px; border-bottom: 1px solid #e2e8f0;">${m.machineName}</td>
+                  <td style="padding: 10px; text-align: center; border-bottom: 1px solid #e2e8f0; font-weight: bold; color: ${getOeeColor(m.avgOee)};">
+                    ${m.avgOee.toFixed(1)}%
+                  </td>
+                  <td style="padding: 10px; text-align: center; border-bottom: 1px solid #e2e8f0;">${m.avgAvailability.toFixed(1)}%</td>
+                  <td style="padding: 10px; text-align: center; border-bottom: 1px solid #e2e8f0;">${m.avgPerformance.toFixed(1)}%</td>
+                  <td style="padding: 10px; text-align: center; border-bottom: 1px solid #e2e8f0;">${m.avgQuality.toFixed(1)}%</td>
+                  <td style="padding: 10px; text-align: center; border-bottom: 1px solid #e2e8f0;">${m.totalDowntime} phút</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+        ` : ''}
+        
+        ${data.includeTrend && data.dailyTrend.length > 0 ? `
+        <!-- Daily Trend -->
+        <div style="background: white; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+          <h3 style="margin: 0 0 15px 0; color: #1e293b; font-size: 16px;">📈 Xu hướng OEE theo ngày</h3>
+          <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+            ${data.dailyTrend.map(d => `
+              <div style="flex: 1; min-width: 60px; text-align: center; padding: 8px; background: ${getOeeColor(d.oee)}20; border-radius: 4px;">
+                <div style="font-size: 11px; color: #64748b;">${d.date.slice(5)}</div>
+                <div style="font-size: 14px; font-weight: bold; color: ${getOeeColor(d.oee)};">${d.oee.toFixed(0)}%</div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+        ` : ''}
+        
+        <div style="margin-top: 20px; padding: 15px; background: #eff6ff; border-radius: 8px; border-left: 4px solid #3b82f6;">
+          <p style="margin: 0; color: #1e40af; font-size: 14px;">
+            <strong>📋 Ghi chú:</strong> Báo cáo này được tạo tự động theo lịch đã cấu hình. Vui lòng kiểm tra các máy có OEE thấp để có biện pháp cải thiện.
+          </p>
+        </div>
+      </div>
+      
+      <div style="background: #1e293b; color: white; padding: 15px; text-align: center; font-size: 12px;">
+        <p style="margin: 0;">Email này được gửi tự động từ hệ thống SPC/CPK Calculator</p>
+        <p style="margin: 5px 0 0 0; opacity: 0.7;">Thời gian: ${new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}</p>
+      </div>
+    </div>
+  `;
+}
+
+/**
+ * Manually trigger Machine OEE alert check (for testing)
+ */
+export async function triggerMachineOeeAlertCheck(): Promise<{ processed: number; triggered: number; sent: number; failed: number }> {
+  return await checkMachineOeeAlerts();
+}
+
+/**
+ * Manually trigger Machine OEE report processing (for testing)
+ */
+export async function triggerMachineOeeReportProcess(): Promise<{ processed: number; sent: number; failed: number }> {
+  return await processMachineOeeReports();
 }

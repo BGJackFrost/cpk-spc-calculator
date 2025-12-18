@@ -55,6 +55,9 @@ import {
   Cell,
   PieChart,
   Pie,
+  AreaChart,
+  Area,
+  ReferenceLine,
 } from "recharts";
 
 export default function MachineIntegrationDashboard() {
@@ -217,6 +220,7 @@ export default function MachineIntegrationDashboard() {
           <TabsTrigger value="field-mapping"><ArrowRightLeft className="h-4 w-4 mr-1" />Field Mapping</TabsTrigger>
           <TabsTrigger value="realtime"><Radio className="h-4 w-4 mr-1" />Realtime</TabsTrigger>
           <TabsTrigger value="oee-dashboard"><BarChart3 className="h-4 w-4 mr-1" />OEE Dashboard</TabsTrigger>
+          <TabsTrigger value="oee-hourly"><Clock className="h-4 w-4 mr-1" />OEE Theo Giờ</TabsTrigger>
           <TabsTrigger value="oee-alerts"><Bell className="h-4 w-4 mr-1" />Cảnh báo OEE</TabsTrigger>
           <TabsTrigger value="oee-reports"><Mail className="h-4 w-4 mr-1" />Báo cáo OEE</TabsTrigger>
           <TabsTrigger value="downtime-analysis"><TrendingDown className="h-4 w-4 mr-1" />Pareto Downtime</TabsTrigger>
@@ -609,6 +613,10 @@ Error Codes:
 
         <TabsContent value="oee-dashboard" className="space-y-4">
           <OeeDashboardTab />
+        </TabsContent>
+
+        <TabsContent value="oee-hourly" className="space-y-4">
+          <OeeHourlyTrendTab />
         </TabsContent>
 
         <TabsContent value="oee-alerts" className="space-y-4">
@@ -2981,6 +2989,347 @@ function DowntimeAnalysisTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+
+// OEE Hourly Trend Tab Component
+function OeeHourlyTrendTab() {
+  const [selectedMachine, setSelectedMachine] = useState<string>("all");
+  const [days, setDays] = useState<number>(7);
+
+  const { data: machines } = trpc.machineIntegration.listMachines.useQuery();
+  const { data: hourlyData, isLoading } = trpc.machineIntegration.getOeeHourlyTrend.useQuery({
+    machineId: selectedMachine !== "all" ? parseInt(selectedMachine) : undefined,
+    days,
+  });
+
+  const getOeeColor = (oee: number) => {
+    if (oee >= 85) return "#22c55e";
+    if (oee >= 70) return "#f59e0b";
+    return "#dc2626";
+  };
+
+  const dayNames = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
+
+  // Generate heatmap data for all hours and days
+  const generateHeatmapGrid = () => {
+    const grid: { dayOfWeek: number; hour: number; avgOee: number; recordCount: number }[][] = [];
+    for (let day = 1; day <= 7; day++) {
+      const dayData: { dayOfWeek: number; hour: number; avgOee: number; recordCount: number }[] = [];
+      for (let hour = 0; hour < 24; hour++) {
+        const found = hourlyData?.heatmapData.find(h => h.dayOfWeek === day && h.hour === hour);
+        dayData.push({
+          dayOfWeek: day,
+          hour,
+          avgOee: found?.avgOee || 0,
+          recordCount: found?.recordCount || 0,
+        });
+      }
+      grid.push(dayData);
+    }
+    return grid;
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Filters */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Clock className="h-5 w-5" />
+            OEE Trend Theo Giờ Trong Ngày
+          </CardTitle>
+          <CardDescription>
+            Phân tích pattern OEE theo giờ để phát hiện thời điểm có hiệu suất thấp
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex gap-4 flex-wrap">
+            <div className="flex-1 min-w-[200px]">
+              <Label>Máy</Label>
+              <Select value={selectedMachine} onValueChange={setSelectedMachine}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Chọn máy" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tất cả máy</SelectItem>
+                  {machines?.map((m) => (
+                    <SelectItem key={m.machineId} value={String(m.machineId)}>
+                      {m.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="w-[150px]">
+              <Label>Khoảng thời gian</Label>
+              <Select value={String(days)} onValueChange={(v) => setDays(parseInt(v))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="7">7 ngày</SelectItem>
+                  <SelectItem value="14">14 ngày</SelectItem>
+                  <SelectItem value="30">30 ngày</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {isLoading ? (
+        <div className="flex items-center justify-center h-64">
+          <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      ) : !hourlyData || hourlyData.hourlyData.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center text-muted-foreground">
+            Không có dữ liệu OEE trong khoảng thời gian đã chọn
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          {/* Summary Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Ca Sáng (6:00-14:00)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold" style={{ color: getOeeColor(hourlyData.shiftAverages.morning) }}>
+                  {hourlyData.shiftAverages.morning.toFixed(1)}%
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Ca Chiều (14:00-22:00)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold" style={{ color: getOeeColor(hourlyData.shiftAverages.afternoon) }}>
+                  {hourlyData.shiftAverages.afternoon.toFixed(1)}%
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Ca Đêm (22:00-6:00)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold" style={{ color: getOeeColor(hourlyData.shiftAverages.night) }}>
+                  {hourlyData.shiftAverages.night.toFixed(1)}%
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Hourly Line Chart */}
+          <Card>
+            <CardHeader>
+              <CardTitle>OEE Trung Bình Theo Giờ</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <AreaChart data={hourlyData.hourlyData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis 
+                    dataKey="hour" 
+                    tickFormatter={(h) => `${String(h).padStart(2, '0')}:00`}
+                  />
+                  <YAxis domain={[0, 100]} />
+                  <Tooltip 
+                    formatter={(value: number) => [`${value.toFixed(1)}%`, 'OEE']}
+                    labelFormatter={(h) => `${String(h).padStart(2, '0')}:00 - ${String(h + 1).padStart(2, '0')}:00`}
+                  />
+                  <Legend />
+                  <Area 
+                    type="monotone" 
+                    dataKey="avgOee" 
+                    name="OEE" 
+                    stroke="#3b82f6" 
+                    fill="#3b82f6" 
+                    fillOpacity={0.3}
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="avgAvailability" 
+                    name="Availability" 
+                    stroke="#22c55e" 
+                    fill="#22c55e" 
+                    fillOpacity={0.2}
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="avgPerformance" 
+                    name="Performance" 
+                    stroke="#f59e0b" 
+                    fill="#f59e0b" 
+                    fillOpacity={0.2}
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="avgQuality" 
+                    name="Quality" 
+                    stroke="#8b5cf6" 
+                    fill="#8b5cf6" 
+                    fillOpacity={0.2}
+                  />
+                  {/* Reference line for target */}
+                  <ReferenceLine y={85} stroke="#dc2626" strokeDasharray="5 5" label="Target 85%" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          {/* Heatmap */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Heatmap OEE (Giờ x Ngày trong tuần)</CardTitle>
+              <CardDescription>
+                Màu đậm = OEE cao, màu nhạt = OEE thấp
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr>
+                      <th className="p-1 text-left">Ngày</th>
+                      {Array.from({ length: 24 }, (_, i) => (
+                        <th key={i} className="p-1 text-center w-8">
+                          {String(i).padStart(2, '0')}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {generateHeatmapGrid().map((dayRow, dayIndex) => (
+                      <tr key={dayIndex}>
+                        <td className="p-1 font-medium">{dayNames[dayIndex]}</td>
+                        {dayRow.map((cell, hourIndex) => (
+                          <td 
+                            key={hourIndex} 
+                            className="p-0.5"
+                            title={`${dayNames[dayIndex]} ${String(cell.hour).padStart(2, '0')}:00 - OEE: ${cell.avgOee.toFixed(1)}% (${cell.recordCount} bản ghi)`}
+                          >
+                            <div 
+                              className="w-6 h-6 rounded-sm flex items-center justify-center text-[10px] font-medium"
+                              style={{
+                                backgroundColor: cell.recordCount > 0 
+                                  ? `rgba(${cell.avgOee >= 85 ? '34,197,94' : cell.avgOee >= 70 ? '245,158,11' : '220,38,38'}, ${Math.max(0.2, cell.avgOee / 100)})`
+                                  : '#f1f5f9',
+                                color: cell.recordCount > 0 && cell.avgOee > 50 ? 'white' : '#64748b',
+                              }}
+                            >
+                              {cell.recordCount > 0 ? Math.round(cell.avgOee) : '-'}
+                            </div>
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Insights */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-red-600 flex items-center gap-2">
+                  <TrendingDown className="h-5 w-5" />
+                  Giờ OEE Thấp Nhất
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {hourlyData.lowestHours.map((h, i) => (
+                    <div key={i} className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
+                      <div>
+                        <div className="font-medium">{h.timeRange}</div>
+                        <div className="text-sm text-muted-foreground">Cần cải thiện</div>
+                      </div>
+                      <div className="text-2xl font-bold text-red-600">{h.avgOee.toFixed(1)}%</div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-green-600 flex items-center gap-2">
+                  <CheckCircle className="h-5 w-5" />
+                  Giờ OEE Cao Nhất
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {hourlyData.highestHours.map((h, i) => (
+                    <div key={i} className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                      <div>
+                        <div className="font-medium">{h.timeRange}</div>
+                        <div className="text-sm text-muted-foreground">Hiệu suất tốt</div>
+                      </div>
+                      <div className="text-2xl font-bold text-green-600">{h.avgOee.toFixed(1)}%</div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Recommendations */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-amber-500" />
+                Khuyến nghị
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {hourlyData.lowestHours.length > 0 && (
+                  <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                    <p className="font-medium text-amber-800">
+                      ⚠️ OEE thấp nhất vào lúc {hourlyData.lowestHours[0].timeRange} ({hourlyData.lowestHours[0].avgOee.toFixed(1)}%)
+                    </p>
+                    <p className="text-sm text-amber-700 mt-1">
+                      Kiểm tra các yếu tố: thay ca, nghỉ giải lao, thiếu nguyên liệu, hoặc vấn đề thiết bị trong khung giờ này.
+                    </p>
+                  </div>
+                )}
+                {hourlyData.shiftAverages.night < hourlyData.shiftAverages.morning && 
+                 hourlyData.shiftAverages.night < hourlyData.shiftAverages.afternoon && (
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="font-medium text-blue-800">
+                      🌙 Ca đêm có OEE thấp hơn các ca khác
+                    </p>
+                    <p className="text-sm text-blue-700 mt-1">
+                      Xem xét tăng cường giám sát, đào tạo nhân viên ca đêm, hoặc điều chỉnh lịch bảo trì.
+                    </p>
+                  </div>
+                )}
+                {Math.max(...hourlyData.hourlyData.map(h => h.avgOee)) - 
+                 Math.min(...hourlyData.hourlyData.map(h => h.avgOee)) > 20 && (
+                  <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                    <p className="font-medium text-purple-800">
+                      📊 Biến động OEE lớn giữa các giờ ({">"} 20%)
+                    </p>
+                    <p className="text-sm text-purple-700 mt-1">
+                      Cần chuẩn hóa quy trình để giảm biến động, đảm bảo hiệu suất ổn định trong ngày.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      )}
     </div>
   );
 }

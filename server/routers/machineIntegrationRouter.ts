@@ -1997,6 +1997,111 @@ export const machineIntegrationRouter = router({
       return { id: result.insertId };
     }),
 
+  // Get OEE hourly trend for pattern analysis
+  getOeeHourlyTrend: protectedProcedure
+    .input(z.object({
+      machineId: z.number().optional(),
+      days: z.number().default(7),
+    }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - input.days);
+      
+      const conditions = [gte(machineOeeData.recordedAt, startDate)];
+      if (input.machineId) {
+        conditions.push(eq(machineOeeData.machineId, input.machineId));
+      }
+      
+      // Get OEE by hour of day
+      const hourlyData = await db
+        .select({
+          hour: sql<number>`HOUR(${machineOeeData.recordedAt})`,
+          avgOee: sql<number>`AVG(${machineOeeData.oee})`,
+          avgAvailability: sql<number>`AVG(${machineOeeData.availability})`,
+          avgPerformance: sql<number>`AVG(${machineOeeData.performance})`,
+          avgQuality: sql<number>`AVG(${machineOeeData.quality})`,
+          recordCount: sql<number>`COUNT(*)`,
+        })
+        .from(machineOeeData)
+        .where(and(...conditions))
+        .groupBy(sql`HOUR(${machineOeeData.recordedAt})`)
+        .orderBy(sql`HOUR(${machineOeeData.recordedAt})`);
+      
+      // Get OEE heatmap (hour x day of week)
+      const heatmapData = await db
+        .select({
+          dayOfWeek: sql<number>`DAYOFWEEK(${machineOeeData.recordedAt})`,
+          hour: sql<number>`HOUR(${machineOeeData.recordedAt})`,
+          avgOee: sql<number>`AVG(${machineOeeData.oee})`,
+          recordCount: sql<number>`COUNT(*)`,
+        })
+        .from(machineOeeData)
+        .where(and(...conditions))
+        .groupBy(sql`DAYOFWEEK(${machineOeeData.recordedAt})`, sql`HOUR(${machineOeeData.recordedAt})`)
+        .orderBy(sql`DAYOFWEEK(${machineOeeData.recordedAt})`, sql`HOUR(${machineOeeData.recordedAt})`);
+      
+      // Find lowest OEE hours
+      const lowestHours = [...hourlyData]
+        .sort((a, b) => (a.avgOee || 0) - (b.avgOee || 0))
+        .slice(0, 3)
+        .map(h => ({
+          hour: h.hour,
+          avgOee: h.avgOee || 0,
+          timeRange: `${String(h.hour).padStart(2, '0')}:00 - ${String(h.hour + 1).padStart(2, '0')}:00`,
+        }));
+      
+      // Find highest OEE hours
+      const highestHours = [...hourlyData]
+        .sort((a, b) => (b.avgOee || 0) - (a.avgOee || 0))
+        .slice(0, 3)
+        .map(h => ({
+          hour: h.hour,
+          avgOee: h.avgOee || 0,
+          timeRange: `${String(h.hour).padStart(2, '0')}:00 - ${String(h.hour + 1).padStart(2, '0')}:00`,
+        }));
+      
+      // Calculate shift averages (morning: 6-14, afternoon: 14-22, night: 22-6)
+      const shiftData = {
+        morning: hourlyData.filter(h => h.hour >= 6 && h.hour < 14),
+        afternoon: hourlyData.filter(h => h.hour >= 14 && h.hour < 22),
+        night: hourlyData.filter(h => h.hour >= 22 || h.hour < 6),
+      };
+      
+      const shiftAverages = {
+        morning: shiftData.morning.length > 0
+          ? shiftData.morning.reduce((sum, h) => sum + (h.avgOee || 0), 0) / shiftData.morning.length
+          : 0,
+        afternoon: shiftData.afternoon.length > 0
+          ? shiftData.afternoon.reduce((sum, h) => sum + (h.avgOee || 0), 0) / shiftData.afternoon.length
+          : 0,
+        night: shiftData.night.length > 0
+          ? shiftData.night.reduce((sum, h) => sum + (h.avgOee || 0), 0) / shiftData.night.length
+          : 0,
+      };
+      
+      return {
+        hourlyData: hourlyData.map(h => ({
+          hour: h.hour,
+          avgOee: h.avgOee || 0,
+          avgAvailability: h.avgAvailability || 0,
+          avgPerformance: h.avgPerformance || 0,
+          avgQuality: h.avgQuality || 0,
+          recordCount: h.recordCount || 0,
+        })),
+        heatmapData: heatmapData.map(h => ({
+          dayOfWeek: h.dayOfWeek,
+          hour: h.hour,
+          avgOee: h.avgOee || 0,
+          recordCount: h.recordCount || 0,
+        })),
+        lowestHours,
+        highestHours,
+        shiftAverages,
+      };
+    }),
+
   // Get predefined downtime reason codes
   getDowntimeReasonCodes: protectedProcedure
     .query(async () => {
