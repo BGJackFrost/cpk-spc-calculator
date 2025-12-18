@@ -81,7 +81,7 @@ export default function MachineIntegrationDashboard() {
   // Mutations
   const createApiKeyMutation = trpc.machineIntegration.createApiKey.useMutation({
     onSuccess: (data) => {
-      setCreatedApiKey(data.apiKey);
+      setCreatedApiKey(data?.apiKey || '');
       toast.success("API Key đã được tạo thành công!");
       refetchKeys();
     },
@@ -106,7 +106,7 @@ export default function MachineIntegrationDashboard() {
 
   const regenerateApiKeyMutation = trpc.machineIntegration.regenerateApiKey.useMutation({
     onSuccess: (data) => {
-      setCreatedApiKey(data.apiKey);
+      setCreatedApiKey(data?.apiKey || '');
       toast.success("API Key đã được tạo lại!");
     },
   });
@@ -788,10 +788,10 @@ function WebhooksTab() {
 
   const testMutation = trpc.machineIntegration.testWebhook.useMutation({
     onSuccess: (data) => {
-      if (data.success) {
-        toast.success(`Test thành công! Status: ${data.status}, Time: ${data.responseTime}ms`);
+      if (data?.success) {
+        toast.success(`Test thành công! Status: ${data?.status || 'N/A'}, Time: ${data?.responseTime || 0}ms`);
       } else {
-        toast.error(`Test thất bại! Status: ${data.status}`);
+        toast.error(`Test thất bại! Status: ${data?.status || 'N/A'}`);
       }
     },
     onError: (err) => toast.error(err.message),
@@ -1255,6 +1255,7 @@ function RealtimeTab() {
 
   const exportInspectionMutation = trpc.machineIntegration.exportInspectionData.useMutation({
     onSuccess: (data) => {
+      if (!data) return;
       const blob = new Blob([data.data], { type: data.mimeType });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -1270,6 +1271,7 @@ function RealtimeTab() {
 
   const exportMeasurementMutation = trpc.machineIntegration.exportMeasurementData.useMutation({
     onSuccess: (data) => {
+      if (!data) return;
       const blob = new Blob([data.data], { type: data.mimeType });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');

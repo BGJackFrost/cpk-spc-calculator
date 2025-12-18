@@ -719,7 +719,7 @@ export const oeeRouter = router({
 
       // Generate chart data (aggregate)
       const chartData: any[] = [];
-      const allDates = [...new Set(historicalData.map(d => d.date))].sort();
+      const allDates = Array.from(new Set(historicalData.map(d => d.date))).sort();
       
       // Add historical data
       allDates.forEach((date) => {
@@ -1144,11 +1144,11 @@ export const oeeRouter = router({
       `;
 
       for (const recipient of input.recipients) {
-        await sendEmail({
-          to: recipient,
-          subject: `[CẢNH BÁO OEE - ${severityText}] ${input.machineName}`,
-          html,
-        });
+        await sendEmail(
+          recipient,
+          `[CẢNH BÁO OEE - ${severityText}] ${input.machineName}`,
+          html
+        );
       }
 
       return { success: true, sentTo: input.recipients.length };
@@ -1703,9 +1703,9 @@ export const oeeRouter = router({
 
       return reports.map(r => ({
         ...r,
-        recipients: JSON.parse(r.recipients || '[]'),
-        machineIds: r.machineIds ? JSON.parse(r.machineIds) : null,
-        productionLineIds: r.productionLineIds ? JSON.parse(r.productionLineIds) : null,
+        recipients: typeof r.recipients === 'string' ? JSON.parse(r.recipients || '[]') : r.recipients,
+        machineIds: typeof r.machineIds === 'string' ? JSON.parse(r.machineIds) : r.machineIds,
+        productionLineIds: typeof r.productionLineIds === 'string' ? JSON.parse(r.productionLineIds) : r.productionLineIds,
       }));
     }),
 
@@ -1894,11 +1894,11 @@ export const oeeRouter = router({
 
       for (const email of emails) {
         try {
-          await sendEmail({
-            to: email,
-            subject: testSubject,
-            html: testContent,
-          });
+          await sendEmail(
+            email,
+            testSubject,
+            testContent
+          );
           sent++;
         } catch (error) {
           failed++;

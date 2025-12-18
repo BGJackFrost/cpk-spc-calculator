@@ -498,9 +498,7 @@ export const maintenanceRouter = router({
         // Delete maintenance history
         await db.delete(maintenanceHistory).where(eq(maintenanceHistory.workOrderId, input.id));
         
-        // Delete any scheduled tasks related to this work order
-        const { scheduledMaintenanceTasks } = await import('../../drizzle/schema');
-        await db.delete(scheduledMaintenanceTasks).where(eq(scheduledMaintenanceTasks.workOrderId, input.id)).catch(() => {});
+        // Note: scheduledMaintenanceTasks table was removed, skip this step
         
         // Delete the work order
         await db.delete(workOrders).where(eq(workOrders.id, input.id));

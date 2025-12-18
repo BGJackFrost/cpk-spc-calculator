@@ -34,6 +34,9 @@ function hashApiKey(apiKey: string): string {
 // Validate API key and return key info
 async function validateApiKey(apiKey: string) {
   const db = await getDb();
+ if (!db) return;
+  if (!db) return null;
+  
   const apiKeyHash = hashApiKey(apiKey);
   const [keyInfo] = await db
     .select()
@@ -76,6 +79,9 @@ async function logRequest(
   errorMessage: string | null
 ) {
   const db = await getDb();
+ if (!db) return;
+  if (!db) return;
+  
   await db.insert(machineDataLogs).values({
     apiKeyId,
     endpoint,
@@ -138,6 +144,7 @@ async function applyFieldMappings(
   rawData: Record<string, unknown>
 ): Promise<{ success: boolean; transformedData: Record<string, unknown>; mappingsApplied: number }> {
   const db = await getDb();
+  if (!db) return { success: false, transformedData: rawData, mappingsApplied: 0 };
   
   // Get active mappings for this API key or machine type
   const mappings = await db
@@ -186,6 +193,9 @@ async function logMappingResult(
   errorMessage?: string
 ) {
   const db = await getDb();
+ if (!db) return;
+  if (!db) return;
+  
   await db.insert(machineRealtimeEvents).values({
     eventType: 'status',
     apiKeyId,
@@ -211,6 +221,8 @@ async function checkAndTriggerOeeWebhooks(
   oeeData: Record<string, unknown>
 ) {
   const db = await getDb();
+ if (!db) return;
+  if (!db) return;
   
   // Get webhooks configured for OEE low or all
   const webhooks = await db.select().from(machineWebhookConfigs)
@@ -269,6 +281,8 @@ async function checkAndTriggerMeasurementWebhooks(
   if (outOfSpecMeasurements.length === 0) return;
 
   const db = await getDb();
+ if (!db) return;
+  if (!db) return;
   
   // Get webhooks configured for measurement out of spec or all
   const webhooks = await db.select().from(machineWebhookConfigs)
@@ -314,6 +328,8 @@ async function triggerWebhook(
   attempt = 1
 ) {
   const db = await getDb();
+ if (!db) return;
+  if (!db) return;
   
   try {
     const headers: Record<string, string> = {
@@ -380,25 +396,25 @@ export const machineIntegrationRouter = router({
     .input(z.object({ machineId: z.number().optional() }))
     .query(async ({ input }) => {
       const db = await getDb();
+      if (!db) return;
       const now = new Date();
       const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-      let query = db
+      const conditions = [gte(machineOeeData.recordedAt, todayStart)];
+      if (input.machineId) {
+        conditions.push(eq(machineOeeData.machineId, input.machineId));
+      }
+
+      const [result] = await db
         .select({
           oee: sql<number>`AVG(${machineOeeData.oee})`,
           availability: sql<number>`AVG(${machineOeeData.availability})`,
           performance: sql<number>`AVG(${machineOeeData.performance})`,
           quality: sql<number>`AVG(${machineOeeData.quality})`,
-          machineName: machineOeeData.machineName,
+          machineId: machineOeeData.machineId,
         })
         .from(machineOeeData)
-        .where(gte(machineOeeData.recordedAt, todayStart));
-
-      if (input.machineId) {
-        query = query.where(eq(machineOeeData.machineId, input.machineId)) as any;
-      }
-
-      const [result] = await query;
+        .where(and(...conditions));
 
       if (!result || result.oee === null) {
         // Return mock data if no real data
@@ -416,7 +432,7 @@ export const machineIntegrationRouter = router({
         availability: Number(result.availability) || 0,
         performance: Number(result.performance) || 0,
         quality: Number(result.quality) || 0,
-        machineName: result.machineName || (input.machineId ? `Machine ${input.machineId}` : 'Tổng hợp'),
+        machineName: result.machineId ? `Machine ${result.machineId}` : 'Tổng hợp',
       };
     }),
 
@@ -425,6 +441,7 @@ export const machineIntegrationRouter = router({
   getDashboardOverview: protectedProcedure
     .query(async () => {
       const db = await getDb();
+      if (!db) return;
       const now = new Date();
       const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -574,6 +591,8 @@ export const machineIntegrationRouter = router({
     .mutation(async ({ input }) => {
       const db = await getDb();
       
+      if (!db) return;
+      
       // Get alert config
       const [config] = await db.select().from(oeeAlertConfigs).where(eq(oeeAlertConfigs.id, input.alertConfigId));
       if (!config) {
@@ -627,6 +646,8 @@ export const machineIntegrationRouter = router({
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();
+      
+      if (!db) return;
       
       // Get report schedule
       const [schedule] = await db.select().from(oeeReportSchedules).where(eq(oeeReportSchedules.id, input.scheduleId));
@@ -682,6 +703,8 @@ export const machineIntegrationRouter = router({
     .query(async ({ input }) => {
       const db = await getDb();
       
+      if (!db) return;
+      
       const now = new Date();
       const startDate = input.period === 'week'
         ? new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
@@ -705,7 +728,7 @@ export const machineIntegrationRouter = router({
           avgPerformance: sql<number>`AVG(${machineOeeData.performance})`,
           avgQuality: sql<number>`AVG(${machineOeeData.quality})`,
           recordCount: sql<number>`COUNT(*)`,
-          totalDowntime: sql<number>`SUM(${machineOeeData.plannedDowntime} + ${machineOeeData.unplannedDowntime})`,
+          totalDowntime: sql<number>`SUM(COALESCE(${machineOeeData.downtime}, 0))`,
         })
         .from(machineOeeData)
         .where(and(...conditions))
@@ -792,6 +815,7 @@ export const machineIntegrationRouter = router({
     }))
     .query(async ({ input }) => {
       const db = await getDb();
+      if (!db) return;
       const now = new Date();
       const startDate = new Date(now.getTime() - input.days * 24 * 60 * 60 * 1000);
 
@@ -833,7 +857,6 @@ export const machineIntegrationRouter = router({
       const machineComparison = await db
         .select({
           machineId: machineOeeData.machineId,
-          machineName: machineOeeData.machineName,
           avgOee: sql<number>`AVG(${machineOeeData.oee})`,
           avgAvailability: sql<number>`AVG(${machineOeeData.availability})`,
           avgPerformance: sql<number>`AVG(${machineOeeData.performance})`,
@@ -842,7 +865,7 @@ export const machineIntegrationRouter = router({
         })
         .from(machineOeeData)
         .where(and(...conditions))
-        .groupBy(machineOeeData.machineId, machineOeeData.machineName)
+        .groupBy(machineOeeData.machineId)
         .orderBy(desc(sql`AVG(${machineOeeData.oee})`));
 
       // Shift comparison
@@ -893,7 +916,7 @@ export const machineIntegrationRouter = router({
         })),
         machineComparison: machineComparison.map(m => ({
           machineId: m.machineId,
-          machineName: m.machineName || `Machine ${m.machineId}`,
+          machineName: `Machine ${m.machineId}`,
           oee: Number(m.avgOee) || 0,
           availability: Number(m.avgAvailability) || 0,
           performance: Number(m.avgPerformance) || 0,
@@ -926,6 +949,7 @@ export const machineIntegrationRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       const db = await getDb();
+      if (!db) return;
       const apiKey = generateApiKey();
       const apiKeyHash = hashApiKey(apiKey);
 
@@ -953,6 +977,7 @@ export const machineIntegrationRouter = router({
   listApiKeys: protectedProcedure
     .query(async () => {
       const db = await getDb();
+      if (!db) return;
       const keys = await db
         .select()
         .from(machineApiKeys)
@@ -975,6 +1000,7 @@ export const machineIntegrationRouter = router({
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();
+      if (!db) return;
       const { id, permissions, expiresAt, ...rest } = input;
       await db
         .update(machineApiKeys)
@@ -991,6 +1017,7 @@ export const machineIntegrationRouter = router({
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input }) => {
       const db = await getDb();
+      if (!db) return;
       const apiKey = generateApiKey();
       const apiKeyHash = hashApiKey(apiKey);
 
@@ -1012,6 +1039,7 @@ export const machineIntegrationRouter = router({
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input }) => {
       const db = await getDb();
+      if (!db) return;
       await db.delete(machineApiKeys).where(eq(machineApiKeys.id, input.id));
       return { success: true };
     }),
@@ -1027,6 +1055,7 @@ export const machineIntegrationRouter = router({
     }))
     .query(async ({ input }) => {
       const db = await getDb();
+      if (!db) return;
       let query = db.select().from(machineDataLogs);
       
       const conditions = [];
@@ -1058,6 +1087,7 @@ export const machineIntegrationRouter = router({
     }))
     .query(async ({ input }) => {
       const db = await getDb();
+      if (!db) return;
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - input.days);
 
@@ -1093,6 +1123,7 @@ export const machineIntegrationRouter = router({
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();
+      if (!db) return;
       // Check if config exists
       const [existing] = await db
         .select()
@@ -1120,6 +1151,7 @@ export const machineIntegrationRouter = router({
     .input(z.object({ apiKeyId: z.number() }))
     .query(async ({ input }) => {
       const db = await getDb();
+      if (!db) return;
       const configs = await db
         .select()
         .from(machineIntegrationConfigs)
@@ -1139,6 +1171,7 @@ export const machineIntegrationRouter = router({
     }))
     .query(async ({ input }) => {
       const db = await getDb();
+      if (!db) return;
       const conditions = [];
       if (input.apiKeyId) {
         conditions.push(eq(machineInspectionData.apiKeyId, input.apiKeyId));
@@ -1176,6 +1209,7 @@ export const machineIntegrationRouter = router({
     }))
     .query(async ({ input }) => {
       const db = await getDb();
+      if (!db) return;
       const conditions = [];
       if (input.apiKeyId) {
         conditions.push(eq(machineMeasurementData.apiKeyId, input.apiKeyId));
@@ -1212,6 +1246,7 @@ export const machineIntegrationRouter = router({
     }))
     .query(async ({ input }) => {
       const db = await getDb();
+      if (!db) return;
       const conditions = [];
       if (input.apiKeyId) {
         conditions.push(eq(machineOeeData.apiKeyId, input.apiKeyId));
@@ -1242,6 +1277,7 @@ export const machineIntegrationRouter = router({
   listWebhookConfigs: protectedProcedure
     .query(async () => {
       const db = await getDb();
+      if (!db) return;
       return db.select().from(machineWebhookConfigs).orderBy(desc(machineWebhookConfigs.createdAt));
     }),
 
@@ -1259,7 +1295,8 @@ export const machineIntegrationRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       const db = await getDb();
-      const [result] = await db.insert(machineWebhookConfigs).values({
+      if (!db) return;
+      const result = await db.insert(machineWebhookConfigs).values({
         name: input.name,
         webhookUrl: input.webhookUrl,
         webhookSecret: input.webhookSecret || null,
@@ -1271,7 +1308,7 @@ export const machineIntegrationRouter = router({
         headers: input.headers ? JSON.stringify(input.headers) : null,
         createdBy: ctx.user.id,
       });
-      return { id: result.insertId };
+      return { id: Number((result as any).insertId || 0) };
     }),
 
   updateWebhookConfig: protectedProcedure
@@ -1290,6 +1327,7 @@ export const machineIntegrationRouter = router({
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();
+      if (!db) return;
       const updateData: Record<string, unknown> = {};
       if (input.name !== undefined) updateData.name = input.name;
       if (input.webhookUrl !== undefined) updateData.webhookUrl = input.webhookUrl;
@@ -1310,6 +1348,7 @@ export const machineIntegrationRouter = router({
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input }) => {
       const db = await getDb();
+      if (!db) return;
       await db.delete(machineWebhookConfigs).where(eq(machineWebhookConfigs.id, input.id));
       return { success: true };
     }),
@@ -1322,6 +1361,7 @@ export const machineIntegrationRouter = router({
     }))
     .query(async ({ input }) => {
       const db = await getDb();
+      if (!db) return;
       const conditions = [];
       if (input.webhookConfigId) conditions.push(eq(machineWebhookLogs.webhookConfigId, input.webhookConfigId));
       if (input.status) conditions.push(eq(machineWebhookLogs.status, input.status));
@@ -1339,6 +1379,7 @@ export const machineIntegrationRouter = router({
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input }) => {
       const db = await getDb();
+      if (!db) return;
       const [config] = await db.select().from(machineWebhookConfigs).where(eq(machineWebhookConfigs.id, input.id));
       if (!config) throw new Error("Webhook config not found");
 
@@ -1404,6 +1445,7 @@ export const machineIntegrationRouter = router({
     }))
     .query(async ({ input }) => {
       const db = await getDb();
+      if (!db) return;
       const conditions = [];
       if (input.apiKeyId) conditions.push(eq(machineFieldMappings.apiKeyId, input.apiKeyId));
       if (input.machineType) conditions.push(eq(machineFieldMappings.machineType, input.machineType));
@@ -1432,6 +1474,7 @@ export const machineIntegrationRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       const db = await getDb();
+      if (!db) return;
       const [result] = await db.insert(machineFieldMappings).values({
         name: input.name,
         apiKeyId: input.apiKeyId || null,
@@ -1464,6 +1507,7 @@ export const machineIntegrationRouter = router({
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();
+      if (!db) return;
       const updateData: Record<string, unknown> = {};
       if (input.name !== undefined) updateData.name = input.name;
       if (input.sourceField !== undefined) updateData.sourceField = input.sourceField;
@@ -1483,6 +1527,7 @@ export const machineIntegrationRouter = router({
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input }) => {
       const db = await getDb();
+      if (!db) return;
       await db.delete(machineFieldMappings).where(eq(machineFieldMappings.id, input.id));
       return { success: true };
     }),
@@ -1521,6 +1566,7 @@ export const machineIntegrationRouter = router({
     }))
     .query(async ({ input }) => {
       const db = await getDb();
+      if (!db) return;
       const conditions = [];
       if (input.eventType) conditions.push(eq(machineRealtimeEvents.eventType, input.eventType));
       if (input.machineId) conditions.push(eq(machineRealtimeEvents.machineId, input.machineId));
@@ -1536,6 +1582,7 @@ export const machineIntegrationRouter = router({
   getRealtimeStats: protectedProcedure
     .query(async () => {
       const db = await getDb();
+      if (!db) return;
       const now = new Date();
       const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
 
@@ -1564,6 +1611,7 @@ export const machineIntegrationRouter = router({
     }))
     .query(async ({ input }) => {
       const db = await getDb();
+      if (!db) return;
       const now = new Date();
       
       // Calculate time range
@@ -1646,6 +1694,7 @@ export const machineIntegrationRouter = router({
     }))
     .query(async ({ input }) => {
       const db = await getDb();
+      if (!db) return;
       const now = new Date();
       
       const hours = input.timeRange === '1h' ? 1 : input.timeRange === '4h' ? 4 : input.timeRange === '8h' ? 8 : 24;
@@ -1712,6 +1761,7 @@ export const machineIntegrationRouter = router({
     }))
     .query(async ({ input }) => {
       const db = await getDb();
+      if (!db) return;
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - input.days);
       
@@ -1784,6 +1834,8 @@ export const machineIntegrationRouter = router({
     .query(async () => {
       const db = await getDb();
       
+      if (!db) return;
+      
       // Get unique machines from API keys
       const machines = await db
         .select({
@@ -1811,6 +1863,7 @@ export const machineIntegrationRouter = router({
     }))
     .query(async ({ input }) => {
       const db = await getDb();
+      if (!db) return;
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - input.days);
 
@@ -1930,6 +1983,8 @@ export const machineIntegrationRouter = router({
     .mutation(async ({ input }) => {
       const db = await getDb();
       
+      if (!db) return;
+      
       const conditions = [];
       if (input.machineId) {
         conditions.push(eq(machineInspectionData.machineId, input.machineId));
@@ -2000,6 +2055,8 @@ export const machineIntegrationRouter = router({
     .mutation(async ({ input }) => {
       const db = await getDb();
       
+      if (!db) return;
+      
       const conditions = [];
       if (input.machineId) {
         conditions.push(eq(machineMeasurementData.machineId, input.machineId));
@@ -2035,7 +2092,7 @@ export const machineIntegrationRouter = router({
         parameterName: row.parameterName,
         measuredValue: row.measuredValue,
         unit: row.unit || '',
-        nominalValue: row.nominalValue || '',
+        nominalValue: row.target?.toString() || '',
         usl: row.usl || '',
         lsl: row.lsl || '',
         isWithinSpec: row.isWithinSpec,
@@ -2071,6 +2128,8 @@ export const machineIntegrationRouter = router({
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();
+      
+      if (!db) return;
       
       const conditions = [];
       if (input.machineId) {
@@ -2139,6 +2198,7 @@ export const machineIntegrationRouter = router({
   listOeeAlertConfigs: protectedProcedure
     .query(async ({ ctx }) => {
       const db = await getDb();
+      if (!db) return;
       const configs = await db
         .select()
         .from(oeeAlertConfigs)
@@ -2170,6 +2230,7 @@ export const machineIntegrationRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
+      if (!db) return;
       const [result] = await db.insert(oeeAlertConfigs).values({
         userId: ctx.user.id,
         name: input.name,
@@ -2194,6 +2255,7 @@ export const machineIntegrationRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
+      if (!db) return;
       const updates: Record<string, any> = {};
       if (input.name !== undefined) updates.name = input.name;
       if (input.machineId !== undefined) updates.machineId = input.machineId;
@@ -2216,6 +2278,7 @@ export const machineIntegrationRouter = router({
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
+      if (!db) return;
       await db.delete(oeeAlertConfigs)
         .where(and(
           eq(oeeAlertConfigs.id, input.id),
@@ -2229,6 +2292,8 @@ export const machineIntegrationRouter = router({
     .input(z.object({ limit: z.number().default(50) }))
     .query(async ({ ctx, input }) => {
       const db = await getDb();
+      
+      if (!db) return;
       
       // Get user's alert config IDs
       const userConfigs = await db
@@ -2257,6 +2322,7 @@ export const machineIntegrationRouter = router({
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
+      if (!db) return;
       await db.update(oeeAlertHistory)
         .set({
           acknowledged: 1,
@@ -2275,6 +2341,7 @@ export const machineIntegrationRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
+      if (!db) return;
       await db.update(oeeAlertHistory)
         .set({
           acknowledged: 1,
@@ -2293,6 +2360,8 @@ export const machineIntegrationRouter = router({
   getPendingAlerts: protectedProcedure
     .query(async ({ ctx }) => {
       const db = await getDb();
+      
+      if (!db) return;
       
       // Get user's alert config IDs
       const userConfigs = await db
@@ -2325,6 +2394,7 @@ export const machineIntegrationRouter = router({
   listOeeReportSchedules: protectedProcedure
     .query(async ({ ctx }) => {
       const db = await getDb();
+      if (!db) return;
       const schedules = await db
         .select()
         .from(oeeReportSchedules)
@@ -2354,6 +2424,8 @@ export const machineIntegrationRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
+      
+      if (!db) return;
       
       // Calculate next scheduled time
       const now = new Date();
@@ -2405,6 +2477,7 @@ export const machineIntegrationRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
+      if (!db) return;
       const updates: Record<string, any> = {};
       if (input.name !== undefined) updates.name = input.name;
       if (input.frequency !== undefined) updates.frequency = input.frequency;
@@ -2432,6 +2505,7 @@ export const machineIntegrationRouter = router({
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
+      if (!db) return;
       await db.delete(oeeReportSchedules)
         .where(and(
           eq(oeeReportSchedules.id, input.id),
@@ -2445,6 +2519,8 @@ export const machineIntegrationRouter = router({
     .input(z.object({ limit: z.number().default(50) }))
     .query(async ({ ctx, input }) => {
       const db = await getDb();
+      
+      if (!db) return;
       
       // Get user's schedule IDs
       const userSchedules = await db
@@ -2479,6 +2555,7 @@ export const machineIntegrationRouter = router({
     }))
     .query(async ({ input }) => {
       const db = await getDb();
+      if (!db) return;
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - input.days);
 
@@ -2589,6 +2666,7 @@ export const machineIntegrationRouter = router({
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();
+      if (!db) return;
       const [result] = await db.insert(downtimeReasons).values({
         machineId: input.machineId,
         oeeDataId: input.oeeDataId,
@@ -2609,6 +2687,8 @@ export const machineIntegrationRouter = router({
     }))
     .query(async ({ input }) => {
       const db = await getDb();
+      
+      if (!db) return;
       
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - input.days);
@@ -2771,6 +2851,8 @@ export const machinePublicRouter = router({
       try {
         const db = await getDb();
         
+        if (!db) return;
+        
         // Apply field mappings to each data item
         const processedData = await Promise.all(input.data.map(async (item) => {
           const { transformedData, mappingsApplied } = await applyFieldMappings(
@@ -2932,6 +3014,8 @@ export const machinePublicRouter = router({
 
       try {
         const db = await getDb();
+        
+        if (!db) return;
         
         // Apply field mappings to each data item
         const processedData = await Promise.all(input.data.map(async (item) => {
@@ -3101,6 +3185,8 @@ export const machinePublicRouter = router({
 
       try {
         const db = await getDb();
+        
+        if (!db) return;
         
         // Apply field mappings to each data item
         const processedData = await Promise.all(input.data.map(async (item) => {

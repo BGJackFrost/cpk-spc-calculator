@@ -194,45 +194,47 @@ export default function TimePeriodComparison() {
 
   // Calculate OEE statistics
   const oeeStats = useMemo(() => {
-    const calcStats = (data: typeof currentOeeData) => {
+    type OeeRecord = { oee: number | string | null; availability: number | string | null; performance: number | string | null; quality: number | string | null };
+    const calcStats = (data: OeeRecord[] | undefined) => {
       if (!data || data.length === 0) return { oee: 0, availability: 0, performance: 0, quality: 0, count: 0 };
-      const oeeValues = data.map(r => Number(r.oee));
-      const availValues = data.map(r => Number(r.availability));
-      const perfValues = data.map(r => Number(r.performance));
-      const qualValues = data.map(r => Number(r.quality));
+      const oeeValues = data.map((r: OeeRecord) => Number(r.oee));
+      const availValues = data.map((r: OeeRecord) => Number(r.availability));
+      const perfValues = data.map((r: OeeRecord) => Number(r.performance));
+      const qualValues = data.map((r: OeeRecord) => Number(r.quality));
       return {
-        oee: oeeValues.reduce((a, b) => a + b, 0) / oeeValues.length,
-        availability: availValues.reduce((a, b) => a + b, 0) / availValues.length,
-        performance: perfValues.reduce((a, b) => a + b, 0) / perfValues.length,
-        quality: qualValues.reduce((a, b) => a + b, 0) / qualValues.length,
+        oee: oeeValues.reduce((a: number, b: number) => a + b, 0) / oeeValues.length,
+        availability: availValues.reduce((a: number, b: number) => a + b, 0) / availValues.length,
+        performance: perfValues.reduce((a: number, b: number) => a + b, 0) / perfValues.length,
+        quality: qualValues.reduce((a: number, b: number) => a + b, 0) / qualValues.length,
         count: data.length,
       };
     };
 
     return {
-      current: calcStats(currentOeeData),
-      previous: calcStats(previousOeeData),
+      current: calcStats(currentOeeData as OeeRecord[] | undefined),
+      previous: calcStats(previousOeeData as OeeRecord[] | undefined),
     };
   }, [currentOeeData, previousOeeData]);
 
   // Calculate CPK statistics
   const cpkStats = useMemo(() => {
-    const calcStats = (data: typeof currentCpkData) => {
+    type CpkRecord = { cpk: number | string | null; cp: number | string | null; ppk: number | string | null };
+    const calcStats = (data: CpkRecord[] | undefined) => {
       if (!data || data.length === 0) return { cpk: 0, cp: 0, ppk: 0, count: 0 };
-      const cpkValues = data.map(r => Number(r.cpk)).filter(v => !isNaN(v));
-      const cpValues = data.map(r => Number(r.cp)).filter(v => !isNaN(v));
-      const ppkValues = data.map(r => Number(r.ppk)).filter(v => !isNaN(v));
+      const cpkValues = data.map((r: CpkRecord) => Number(r.cpk)).filter((v: number) => !isNaN(v));
+      const cpValues = data.map((r: CpkRecord) => Number(r.cp)).filter((v: number) => !isNaN(v));
+      const ppkValues = data.map((r: CpkRecord) => Number(r.ppk)).filter((v: number) => !isNaN(v));
       return {
-        cpk: cpkValues.length > 0 ? cpkValues.reduce((a, b) => a + b, 0) / cpkValues.length : 0,
-        cp: cpValues.length > 0 ? cpValues.reduce((a, b) => a + b, 0) / cpValues.length : 0,
-        ppk: ppkValues.length > 0 ? ppkValues.reduce((a, b) => a + b, 0) / ppkValues.length : 0,
+        cpk: cpkValues.length > 0 ? cpkValues.reduce((a: number, b: number) => a + b, 0) / cpkValues.length : 0,
+        cp: cpValues.length > 0 ? cpValues.reduce((a: number, b: number) => a + b, 0) / cpValues.length : 0,
+        ppk: ppkValues.length > 0 ? ppkValues.reduce((a: number, b: number) => a + b, 0) / ppkValues.length : 0,
         count: data.length,
       };
     };
 
     return {
-      current: calcStats(currentCpkData),
-      previous: calcStats(previousCpkData),
+      current: calcStats(currentCpkData as CpkRecord[] | undefined),
+      previous: calcStats(previousCpkData as CpkRecord[] | undefined),
     };
   }, [currentCpkData, previousCpkData]);
 

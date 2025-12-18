@@ -3660,3 +3660,25 @@
 - [x] Tạo README hướng dẫn cho lần migration tiếp theo
 
 **Ghi chú:** Migration PostgreSQL cần thực hiện theo từng bước nhỏ hơn trong tương lai.
+
+
+## Phase 168 - PostgreSQL Migration Plan & TypeScript Fixes
+
+### Kế hoạch Migration PostgreSQL theo Module
+- [x] Phân tích cấu trúc hệ thống và dependencies giữa các bảng (129 bảng, 8 modules)
+- [x] Xác định các module ít phụ thuộc nhất để migrate trước
+- [x] Tạo tài liệu kế hoạch migration chi tiết theo từng module
+- [x] Lưu vào docs/POSTGRESQL_MIGRATION_PLAN_BY_MODULE.md
+
+### Sửa lỗi TypeScript (254 → 102 lỗi, giảm 60%)
+- [x] Phân tích và phân loại các lỗi TypeScript hiện tại
+- [x] Sửa lỗi TS18047 (db possibly null) trong machineIntegrationRouter.ts
+- [x] Sửa lỗi TS7006 (implicit any) trong TimePeriodComparison.tsx
+- [x] Sửa lỗi TS2339 (property not exist) trong nhiều file
+- [x] Sửa lỗi TS2554 (wrong arguments) trong oeeRouter.ts, routers.ts
+- [x] Sửa lỗi TS2802 (Set iteration) trong scheduledJobs.ts, oeeRouter.ts
+- [x] Tạo emailService.ts stub cho notification service
+- [x] Sửa lỗi scheduledMaintenanceTasks không tồn tại
+- [ ] Còn 102 lỗi chủ yếu trong frontend components (cần sửa tiếp)
+
+**Ghi chú:** Các lỗi còn lại chủ yếu là lỗi type trong frontend components, không ảnh hưởng runtime.

@@ -45,8 +45,8 @@ import {
 import { notifyOwner } from "./_core/notification";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { spcDefectRecords } from "../drizzle/schema";
-import { eq, and, gte, lte, desc } from "drizzle-orm";
+import { spcDefectRecords, spcAnalysisHistory } from "../drizzle/schema";
+import { eq, and, gte, lte, desc, or } from "drizzle-orm";
 import {
   createDatabaseConnection,
   getDatabaseConnections,
@@ -7277,7 +7277,8 @@ Hãy trả về JSON với format:
             response_format: { type: 'json_object' },
           });
           
-          const content = response.choices[0]?.message?.content || '{}';
+          const rawContent = response.choices[0]?.message?.content || '{}';
+          const content = typeof rawContent === 'string' ? rawContent : JSON.stringify(rawContent);
           const prediction = JSON.parse(content);
           
           return {
@@ -7724,7 +7725,8 @@ Hãy trả về JSON với format:
               ],
               response_format: { type: 'json_object' },
             });
-            aiAnalysis = JSON.parse(response.choices[0]?.message?.content || '{}');
+            const rawContent = response.choices[0]?.message?.content || '{}';
+            aiAnalysis = JSON.parse(typeof rawContent === 'string' ? rawContent : JSON.stringify(rawContent));
           } catch (e) {
             console.error('[NTF Monitor] AI error:', e);
           }

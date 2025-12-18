@@ -1272,7 +1272,7 @@ async function sendNtfMonthlyManagementReport(): Promise<{ sent: number; failed:
     if (alertConfig?.configValue) {
       try {
         const alertEmails = JSON.parse(alertConfig.configValue);
-        managementEmails = [...new Set([...managementEmails, ...alertEmails])];
+        managementEmails = Array.from(new Set([...managementEmails, ...alertEmails]));
       } catch {}
     }
     
@@ -1762,10 +1762,9 @@ export async function checkOeeAndSendAlerts(period: 'daily' | 'weekly' = 'daily'
     const emailSettings = await db.select().from(emailNotificationSettings).limit(1);
     let recipients: string[] = [];
     
-    if (emailSettings.length > 0 && emailSettings[0].recipients) {
-      try {
-        recipients = JSON.parse(emailSettings[0].recipients);
-      } catch {}
+    if (emailSettings.length > 0 && emailSettings[0].email) {
+      // Use email field directly as recipient
+      recipients = [emailSettings[0].email];
     }
     
     // Fallback to owner notification if no recipients configured
@@ -2231,13 +2230,13 @@ async function checkMachineOeeAlerts(): Promise<{ processed: number; triggered: 
         }
         
         // Check each machine for consecutive days below threshold
-        for (const [machineId, oeeHistory] of machineOeeMap) {
+        for (const [machineId, oeeHistory] of Array.from(machineOeeMap.entries())) {
           // Count consecutive days below threshold (from most recent)
           let consecutiveBelowThreshold = 0;
           let latestOee = 0;
           
           // Sort by date descending
-          oeeHistory.sort((a, b) => b.date.localeCompare(a.date));
+          oeeHistory.sort((a: { date: string; oee: number }, b: { date: string; oee: number }) => b.date.localeCompare(a.date));
           
           for (const day of oeeHistory) {
             if (day.oee < threshold) {
@@ -2503,7 +2502,7 @@ async function processMachineOeeReports(): Promise<{ processed: number; sent: nu
             avgAvailability: sql<number>`AVG(${machineOeeData.availability})`,
             avgPerformance: sql<number>`AVG(${machineOeeData.performance})`,
             avgQuality: sql<number>`AVG(${machineOeeData.quality})`,
-            totalDowntime: sql<number>`SUM(${machineOeeData.plannedDowntime} + ${machineOeeData.unplannedDowntime})`,
+            totalDowntime: sql<number>`SUM(COALESCE(${machineOeeData.downtime}, 0))`,
             recordCount: sql<number>`COUNT(*)`,
           })
           .from(machineOeeData)
