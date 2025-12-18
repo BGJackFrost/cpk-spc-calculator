@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `work_order_parts` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `workOrderId` int NOT NULL,\n  `sparePartId` int NOT NULL,\n  `quantity` int NOT NULL,\n  `unitCost` decimal(12,2),\n  `totalCost` decimal(12,2),\n  `createdAt` timestamp NOT NULL DEFAULT (now()),\n  CONSTRAINT `work_order_parts_id` PRIMARY KEY(`id`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute CREATE TABLE IF NOT EXISTS `work_order_parts` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `workOrderId` int NOT NULL,\n  `sparePartId` int NOT NULL,\n  `quantity` int NOT NULL,\n  `unitCost` decimal(12,2),\n  `totalCost` decimal(12,2),\n  `createdAt` timestamp NOT NULL DEFAULT (now()),\n  CONSTRAINT `work_order_parts_id` PRIMARY KEY(`id`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1669
+}

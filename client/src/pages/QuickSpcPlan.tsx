@@ -26,8 +26,13 @@ import {
   Info,
   Sparkles,
   Clock,
-  Mail
+  Mail,
+  Save,
+  FileText,
+  Trash2,
+  Copy
 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { useLocation } from "wouter";
 
 interface MeasurementStandard {
@@ -105,6 +110,14 @@ export default function QuickSpcPlan() {
   const { data: spcRules = [] } = trpc.rules.getSpcRules.useQuery();
   const { data: cpkRules = [] } = trpc.rules.getCpkRules.useQuery();
   const { data: caRules = [] } = trpc.rules.getCaRules.useQuery();
+  const { data: templates = [], refetch: refetchTemplates } = trpc.spcPlan.listTemplates.useQuery();
+  
+  // Template states
+  const [showSaveTemplateDialog, setShowSaveTemplateDialog] = useState(false);
+  const [showLoadTemplateDialog, setShowLoadTemplateDialog] = useState(false);
+  const [templateName, setTemplateName] = useState("");
+  const [templateDescription, setTemplateDescription] = useState("");
+  const [templateIsPublic, setTemplateIsPublic] = useState(false);
 
   // Create mutation
   const createMutation = trpc.spcPlan.create.useMutation({
@@ -114,6 +127,70 @@ export default function QuickSpcPlan() {
     },
     onError: (err) => toast.error(`Lỗi: ${err.message}`),
   });
+  
+  // Template mutations
+  const createTemplateMutation = trpc.spcPlan.createTemplate.useMutation({
+    onSuccess: () => {
+      toast.success("Lưu template thành công!");
+      setShowSaveTemplateDialog(false);
+      setTemplateName("");
+      setTemplateDescription("");
+      refetchTemplates();
+    },
+    onError: (err) => toast.error(`Lỗi: ${err.message}`),
+  });
+  
+  const deleteTemplateMutation = trpc.spcPlan.deleteTemplate.useMutation({
+    onSuccess: () => {
+      toast.success("Xóa template thành công!");
+      refetchTemplates();
+    },
+    onError: (err) => toast.error(`Lỗi: ${err.message}`),
+  });
+  
+  // Save current manual form as template
+  const handleSaveTemplate = () => {
+    if (!templateName.trim()) {
+      toast.error("Vui lòng nhập tên template");
+      return;
+    }
+    createTemplateMutation.mutate({
+      name: templateName,
+      description: templateDescription,
+      measurementName: manualFormData.measurementName,
+      usl: manualFormData.usl ? parseFloat(manualFormData.usl) : undefined,
+      lsl: manualFormData.lsl ? parseFloat(manualFormData.lsl) : undefined,
+      target: manualFormData.target ? parseFloat(manualFormData.target) : undefined,
+      unit: manualFormData.unit,
+      sampleSize: manualFormData.sampleSize,
+      sampleFrequency: manualFormData.sampleFrequency,
+      enabledSpcRules: JSON.stringify(manualFormData.enabledSpcRules),
+      enabledCpkRules: JSON.stringify(manualFormData.enabledCpkRules),
+      isRecurring: manualFormData.isRecurring,
+      notifyOnViolation: manualFormData.notifyOnViolation,
+      isPublic: templateIsPublic,
+    });
+  };
+  
+  // Load template into manual form
+  const handleLoadTemplate = (template: any) => {
+    setManualFormData(prev => ({
+      ...prev,
+      measurementName: template.measurementName || "",
+      usl: template.usl ? String(parseFloat(template.usl) / 10000) : "",
+      lsl: template.lsl ? String(parseFloat(template.lsl) / 10000) : "",
+      target: template.target ? String(parseFloat(template.target) / 10000) : "",
+      unit: template.unit || "",
+      sampleSize: template.sampleSize || 5,
+      sampleFrequency: template.sampleFrequency || 60,
+      enabledSpcRules: template.enabledSpcRules ? JSON.parse(template.enabledSpcRules) : [],
+      enabledCpkRules: template.enabledCpkRules ? JSON.parse(template.enabledCpkRules) : [],
+      isRecurring: template.isRecurring === 1,
+      notifyOnViolation: template.notifyOnViolation === 1,
+    }));
+    setShowLoadTemplateDialog(false);
+    toast.success(`Đã tải template "${template.name}"`);
+  };
 
   // Filter standards
   const filteredStandards = useMemo(() => {
@@ -1136,7 +1213,17 @@ export default function QuickSpcPlan() {
                 </ul>
               </div>
               
-              <div className="flex justify-end">
+              <div className="flex justify-between">
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => setShowLoadTemplateDialog(true)}>
+                    <FileText className="h-4 w-4 mr-2" />
+                    Tải Template
+                  </Button>
+                  <Button variant="outline" onClick={() => setShowSaveTemplateDialog(true)}>
+                    <Save className="h-4 w-4 mr-2" />
+                    Lưu Template
+                  </Button>
+                </div>
                 <Button
                   onClick={handleManualCreate}
                   disabled={createMutation.isPending}
@@ -1157,6 +1244,126 @@ export default function QuickSpcPlan() {
             </CardContent>
           </Card>
         )}
+        
+        {/* Save Template Dialog */}
+        <Dialog open={showSaveTemplateDialog} onOpenChange={setShowSaveTemplateDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Save className="h-5 w-5" />
+                Lưu Template SPC Plan
+              </DialogTitle>
+              <DialogDescription>
+                Lưu cấu hình hiện tại để tái sử dụng cho các sản phẩm tương tự
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Tên Template *</Label>
+                <Input
+                  value={templateName}
+                  onChange={(e) => setTemplateName(e.target.value)}
+                  placeholder="VD: Template đo đường kính trục"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Mô tả</Label>
+                <Input
+                  value={templateDescription}
+                  onChange={(e) => setTemplateDescription(e.target.value)}
+                  placeholder="Mô tả ngắn gọn về template"
+                />
+              </div>
+              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                <div className="space-y-0.5">
+                  <Label>Chia sẻ công khai</Label>
+                  <p className="text-xs text-muted-foreground">Cho phép người dùng khác sử dụng template này</p>
+                </div>
+                <Switch
+                  checked={templateIsPublic}
+                  onCheckedChange={setTemplateIsPublic}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowSaveTemplateDialog(false)}>
+                Hủy
+              </Button>
+              <Button onClick={handleSaveTemplate} disabled={createTemplateMutation.isPending}>
+                {createTemplateMutation.isPending ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Đang lưu...</>
+                ) : (
+                  <><Save className="h-4 w-4 mr-2" /> Lưu Template</>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        
+        {/* Load Template Dialog */}
+        <Dialog open={showLoadTemplateDialog} onOpenChange={setShowLoadTemplateDialog}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Chọn Template SPC Plan
+              </DialogTitle>
+              <DialogDescription>
+                Chọn một template để tải cấu hình vào form
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+              {templates.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>Chưa có template nào</p>
+                  <p className="text-sm">Hãy tạo template đầu tiên bằng cách nhập thông tin và nhấn "Lưu Template"</p>
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  {templates.map((template: any) => (
+                    <div
+                      key={template.id}
+                      className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-medium">{template.name}</h4>
+                          {template.isPublic === 1 && (
+                            <Badge variant="secondary" className="text-xs">Công khai</Badge>
+                          )}
+                        </div>
+                        {template.description && (
+                          <p className="text-sm text-muted-foreground mt-1">{template.description}</p>
+                        )}
+                        <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
+                          {template.measurementName && <span>Phép đo: {template.measurementName}</span>}
+                          {template.usl && template.lsl && (
+                            <span>Giới hạn: {parseFloat(template.lsl)/10000} - {parseFloat(template.usl)/10000}</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button size="sm" onClick={() => handleLoadTemplate(template)}>
+                          <Copy className="h-4 w-4 mr-1" />
+                          Sử dụng
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => deleteTemplateMutation.mutate({ id: template.id })}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );

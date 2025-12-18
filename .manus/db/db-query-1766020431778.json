@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `spc_plan_templates` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `name` varchar(255) NOT NULL,\n  `description` text,\n  `measurementName` varchar(255),\n  `usl` decimal(15,6),\n  `lsl` decimal(15,6),\n  `target` decimal(15,6),\n  `unit` varchar(50),\n  `sampleSize` int DEFAULT 5,\n  `sampleFrequency` int DEFAULT 60,\n  `enabledSpcRules` text,\n  `enabledCpkRules` text,\n  `enabledCaRules` text,\n  `isRecurring` int DEFAULT 1,\n  `notifyOnViolation` int DEFAULT 1,\n  `createdBy` int,\n  `isPublic` int DEFAULT 0,\n  `createdAt` timestamp NOT NULL DEFAULT (now()),\n  `updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n  CONSTRAINT `spc_plan_templates_id` PRIMARY KEY(`id`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute CREATE TABLE IF NOT EXISTS `spc_plan_templates` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `name` varchar(255) NOT NULL,\n  `description` text,\n  `measurementName` varchar(255),\n  `usl` decimal(15,6),\n  `lsl` decimal(15,6),\n  `target` decimal(15,6),\n  `unit` varchar(50),\n  `sampleSize` int DEFAULT 5,\n  `sampleFrequency` int DEFAULT 60,\n  `enabledSpcRules` text,\n  `enabledCpkRules` text,\n  `enabledCaRules` text,\n  `isRecurring` int DEFAULT 1,\n  `notifyOnViolation` int DEFAULT 1,\n  `createdBy` int,\n  `isPublic` int DEFAULT 0,\n  `createdAt` timestamp NOT NULL DEFAULT (now()),\n  `updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n  CONSTRAINT `spc_plan_templates_id` PRIMARY KEY(`id`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1670
+}

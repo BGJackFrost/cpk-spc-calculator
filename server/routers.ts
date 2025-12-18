@@ -2174,6 +2174,71 @@ const spcPlanRouter = router({
         planName: plan.name,
       };
     }),
+    
+  // Template APIs
+  listTemplates: protectedProcedure.query(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) return [];
+    const { spcPlanTemplates } = await import('../drizzle/schema');
+    const templates = await db.select().from(spcPlanTemplates)
+      .where(or(
+        eq(spcPlanTemplates.isPublic, 1),
+        eq(spcPlanTemplates.createdBy, ctx.user.id)
+      ))
+      .orderBy(desc(spcPlanTemplates.createdAt));
+    return templates;
+  }),
+  
+  createTemplate: protectedProcedure
+    .input(z.object({
+      name: z.string(),
+      description: z.string().optional(),
+      measurementName: z.string().optional(),
+      usl: z.number().optional(),
+      lsl: z.number().optional(),
+      target: z.number().optional(),
+      unit: z.string().optional(),
+      sampleSize: z.number().optional(),
+      sampleFrequency: z.number().optional(),
+      enabledSpcRules: z.string().optional(),
+      enabledCpkRules: z.string().optional(),
+      enabledCaRules: z.string().optional(),
+      isRecurring: z.boolean().optional(),
+      notifyOnViolation: z.boolean().optional(),
+      isPublic: z.boolean().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+      const { spcPlanTemplates } = await import('../drizzle/schema');
+      const [result] = await db.insert(spcPlanTemplates).values({
+        ...input,
+        usl: input.usl ? String(input.usl * 10000) : null,
+        lsl: input.lsl ? String(input.lsl * 10000) : null,
+        target: input.target ? String(input.target * 10000) : null,
+        isRecurring: input.isRecurring ? 1 : 0,
+        notifyOnViolation: input.notifyOnViolation ? 1 : 0,
+        isPublic: input.isPublic ? 1 : 0,
+        createdBy: ctx.user.id,
+      });
+      return { id: result.insertId };
+    }),
+    
+  deleteTemplate: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+      const { spcPlanTemplates } = await import('../drizzle/schema');
+      // Only allow delete own templates or admin
+      const [template] = await db.select().from(spcPlanTemplates).where(eq(spcPlanTemplates.id, input.id));
+      if (!template) throw new TRPCError({ code: 'NOT_FOUND', message: 'Template not found' });
+      if (template.createdBy !== ctx.user.id && ctx.user.role !== 'admin') {
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'Cannot delete this template' });
+      }
+      await db.delete(spcPlanTemplates).where(eq(spcPlanTemplates.id, input.id));
+      return { success: true };
+    }),
 });
 
 // User Line Assignment Router

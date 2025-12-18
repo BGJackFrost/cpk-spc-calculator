@@ -2742,3 +2742,32 @@ export const ntfReportSchedule = mysqlTable("ntf_report_schedule", {
 
 export type NtfReportSchedule = typeof ntfReportSchedule.$inferSelect;
 export type InsertNtfReportSchedule = typeof ntfReportSchedule.$inferInsert;
+
+
+/**
+ * SPC Plan Templates - mẫu kế hoạch SPC để tái sử dụng
+ */
+export const spcPlanTemplates = mysqlTable("spc_plan_templates", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  measurementName: varchar("measurementName", { length: 255 }),
+  usl: decimal("usl", { precision: 15, scale: 6 }),
+  lsl: decimal("lsl", { precision: 15, scale: 6 }),
+  target: decimal("target", { precision: 15, scale: 6 }),
+  unit: varchar("unit", { length: 50 }),
+  sampleSize: int("sampleSize").default(5),
+  sampleFrequency: int("sampleFrequency").default(60),
+  enabledSpcRules: text("enabledSpcRules"),
+  enabledCpkRules: text("enabledCpkRules"),
+  enabledCaRules: text("enabledCaRules"),
+  isRecurring: int("isRecurring").default(1),
+  notifyOnViolation: int("notifyOnViolation").default(1),
+  createdBy: int("createdBy"),
+  isPublic: int("isPublic").default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type SpcPlanTemplate = typeof spcPlanTemplates.$inferSelect;
+export type InsertSpcPlanTemplate = typeof spcPlanTemplates.$inferInsert;

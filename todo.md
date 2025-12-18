@@ -3191,3 +3191,16 @@
 - [x] Chế độ 2: Nhập thủ công thông tin SPC Plan
 - [x] UI chọn chế độ tạo
 - [x] Form nhập thủ công đầy đủ các trường
+
+
+## Phase 150 - Fix Work Order Delete & SPC Plan Templates
+
+### Sửa lỗi xóa Work Order
+- [x] Xóa work_order_parts trước khi xóa work_orders - Đã tạo bảng work_order_parts và maintenance_history
+- [x] Test xóa work order từ Gantt
+
+### Template SPC Plan
+- [x] Tạo bảng spc_plan_templates
+- [x] API CRUD cho templates (listTemplates, createTemplate, deleteTemplate)
+- [x] UI lưu template từ SPC Plan hiện tại - nút "Lưu Template"
+- [x] UI chọn template khi tạo SPC Plan mới - nút "Tải Template"

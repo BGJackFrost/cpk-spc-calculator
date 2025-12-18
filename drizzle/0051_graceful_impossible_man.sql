@@ -1,0 +1,22 @@
+CREATE TABLE `spc_plan_templates` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`name` varchar(255) NOT NULL,
+	`description` text,
+	`measurementName` varchar(255),
+	`usl` decimal(15,6),
+	`lsl` decimal(15,6),
+	`target` decimal(15,6),
+	`unit` varchar(50),
+	`sampleSize` int DEFAULT 5,
+	`sampleFrequency` int DEFAULT 60,
+	`enabledSpcRules` text,
+	`enabledCpkRules` text,
+	`enabledCaRules` text,
+	`isRecurring` int DEFAULT 1,
+	`notifyOnViolation` int DEFAULT 1,
+	`createdBy` int,
+	`isPublic` int DEFAULT 0,
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `spc_plan_templates_id` PRIMARY KEY(`id`)
+);
