@@ -553,14 +553,20 @@ export const oeeRouter = router({
       };
     }),
 
-  // OEE Prediction API with Linear Regression
+  // OEE Prediction API with Multiple Algorithms
   getPrediction: publicProcedure
     .input(z.object({
       days: z.number().default(30),
+      predictionDays: z.number().default(14),
+      algorithm: z.enum(["linear", "moving_avg", "exp_smoothing"]).default("linear"),
+      confidenceLevel: z.number().default(95),
+      alertThreshold: z.number().default(65),
+      movingAvgWindow: z.number().optional(),
+      smoothingFactor: z.number().optional(),
     }))
     .query(async ({ input }) => {
       const db = await getDb();
-      if (!db) return { chartData: [], predictions: [], alerts: [] };
+      if (!db) return { chartData: [], predictions: [], alerts: [], settings: input };
 
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - input.days);
@@ -612,6 +618,33 @@ export const oeeRouter = router({
         return { slope, intercept, r2: Math.max(0, r2) };
       };
 
+      // Moving Average function
+      const movingAverage = (data: number[], window: number) => {
+        if (data.length < window) return data[data.length - 1] || 0;
+        const lastWindow = data.slice(-window);
+        return lastWindow.reduce((a, b) => a + b, 0) / window;
+      };
+
+      // Exponential Smoothing function
+      const exponentialSmoothing = (data: number[], alpha: number, periods: number) => {
+        if (data.length === 0) return 0;
+        let forecast = data[0];
+        for (let i = 1; i < data.length; i++) {
+          forecast = alpha * data[i] + (1 - alpha) * forecast;
+        }
+        // Predict future
+        return forecast;
+      };
+
+      // Confidence interval multiplier based on confidence level
+      const getZScore = (confidenceLevel: number) => {
+        if (confidenceLevel >= 99) return 2.576;
+        if (confidenceLevel >= 95) return 1.96;
+        if (confidenceLevel >= 90) return 1.645;
+        return 1.28;
+      };
+      const zScore = getZScore(input.confidenceLevel);
+
       // Generate predictions for each machine
       const predictions: any[] = [];
       const alerts: any[] = [];
@@ -619,19 +652,34 @@ export const oeeRouter = router({
       Object.entries(machineData).forEach(([machineId, { name, data }]) => {
         if (data.length < 7) return; // Need at least 7 days of data
 
-        // Prepare data for regression
-        const regressionData = data.map((d, i) => ({ x: i, y: d.oee }));
-        const { slope, intercept, r2 } = linearRegression(regressionData);
+        const oeeValues = data.map(d => d.oee);
+        const currentOee = oeeValues[oeeValues.length - 1];
+        let predictedOee: number;
+        let confidence: number;
 
-        // Current OEE (last data point)
-        const currentOee = data[data.length - 1].oee;
+        if (input.algorithm === "linear") {
+          // Linear Regression
+          const regressionData = data.map((d, i) => ({ x: i, y: d.oee }));
+          const { slope, intercept, r2 } = linearRegression(regressionData);
+          predictedOee = slope * (data.length + input.predictionDays) + intercept;
+          confidence = r2 * 100;
+        } else if (input.algorithm === "moving_avg") {
+          // Moving Average
+          const window = input.movingAvgWindow || 7;
+          predictedOee = movingAverage(oeeValues, window);
+          // Confidence based on variance
+          const mean = oeeValues.reduce((a, b) => a + b, 0) / oeeValues.length;
+          const variance = oeeValues.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / oeeValues.length;
+          confidence = Math.max(0, 100 - variance);
+        } else {
+          // Exponential Smoothing
+          const alpha = input.smoothingFactor || 0.3;
+          predictedOee = exponentialSmoothing(oeeValues, alpha, input.predictionDays);
+          // Confidence based on smoothing factor
+          confidence = 70 + alpha * 30;
+        }
 
-        // Predict 7 days ahead
-        const predictedOee = slope * (data.length + 7) + intercept;
         const change = predictedOee - currentOee;
-
-        // Confidence based on R2
-        const confidence = r2 * 100;
 
         // Recommendation
         let recommendation = "Duy trì hiệu suất hiện tại";
@@ -653,12 +701,12 @@ export const oeeRouter = router({
           recommendation,
         });
 
-        // Generate alerts
-        if (predictedOee < 65 || change < -10) {
+        // Generate alerts using custom threshold
+        if (predictedOee < input.alertThreshold || change < -10) {
           alerts.push({
             name,
-            severity: predictedOee < 50 || change < -15 ? "high" : change < -10 ? "medium" : "low",
-            message: `Dự báo OEE giảm ${Math.abs(change).toFixed(1)}% trong 7 ngày tới`,
+            severity: predictedOee < (input.alertThreshold - 15) || change < -15 ? "high" : change < -10 ? "medium" : "low",
+            message: `Dự báo OEE giảm ${Math.abs(change).toFixed(1)}% trong ${input.predictionDays} ngày tới`,
             currentOee,
             predictedOee: Math.max(0, Math.min(100, predictedOee)),
           });
@@ -682,23 +730,48 @@ export const oeeRouter = router({
         });
       });
 
-      // Add predictions for next 14 days
+      // Add predictions based on selected algorithm
       const allData = historicalData.map((d, i) => ({ x: i, y: Number(d.avgOee) || 0 }));
-      const { slope, intercept } = linearRegression(allData);
-      const stdDev = Math.sqrt(allData.reduce((a, b) => a + Math.pow(b.y - (slope * b.x + intercept), 2), 0) / allData.length);
+      const allOeeValues = allData.map(d => d.y);
+      
+      let chartPredictions: number[] = [];
+      let stdDev: number;
 
-      for (let i = 1; i <= 14; i++) {
+      if (input.algorithm === "linear") {
+        const { slope, intercept } = linearRegression(allData);
+        stdDev = Math.sqrt(allData.reduce((a, b) => a + Math.pow(b.y - (slope * b.x + intercept), 2), 0) / allData.length);
+        for (let i = 1; i <= input.predictionDays; i++) {
+          chartPredictions.push(slope * (allData.length + i) + intercept);
+        }
+      } else if (input.algorithm === "moving_avg") {
+        const window = input.movingAvgWindow || 7;
+        const baseValue = movingAverage(allOeeValues, window);
+        stdDev = Math.sqrt(allOeeValues.slice(-window).reduce((a, b) => a + Math.pow(b - baseValue, 2), 0) / window);
+        for (let i = 1; i <= input.predictionDays; i++) {
+          chartPredictions.push(baseValue);
+        }
+      } else {
+        const alpha = input.smoothingFactor || 0.3;
+        const baseValue = exponentialSmoothing(allOeeValues, alpha, 1);
+        const mean = allOeeValues.reduce((a, b) => a + b, 0) / allOeeValues.length;
+        stdDev = Math.sqrt(allOeeValues.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / allOeeValues.length) * (1 - alpha);
+        for (let i = 1; i <= input.predictionDays; i++) {
+          chartPredictions.push(baseValue);
+        }
+      }
+
+      for (let i = 0; i < input.predictionDays; i++) {
         const futureDate = new Date();
-        futureDate.setDate(futureDate.getDate() + i);
+        futureDate.setDate(futureDate.getDate() + i + 1);
         const dateStr = futureDate.toISOString().split('T')[0];
-        const predicted = slope * (allData.length + i) + intercept;
+        const predicted = chartPredictions[i];
         
         chartData.push({
           date: dateStr,
           actual: null,
           predicted: Math.max(0, Math.min(100, predicted)),
-          upperBound: Math.min(100, predicted + 1.96 * stdDev),
-          lowerBound: Math.max(0, predicted - 1.96 * stdDev),
+          upperBound: Math.min(100, predicted + zScore * stdDev),
+          lowerBound: Math.max(0, predicted - zScore * stdDev),
         });
       }
 
@@ -706,6 +779,14 @@ export const oeeRouter = router({
         chartData,
         predictions: predictions.sort((a, b) => a.predictedOee - b.predictedOee),
         alerts: alerts.sort((a, b) => (a.severity === "high" ? -1 : b.severity === "high" ? 1 : 0)),
+        settings: {
+          algorithm: input.algorithm,
+          predictionDays: input.predictionDays,
+          confidenceLevel: input.confidenceLevel,
+          alertThreshold: input.alertThreshold,
+          movingAvgWindow: input.movingAvgWindow,
+          smoothingFactor: input.smoothingFactor,
+        },
       };
     }),
 });

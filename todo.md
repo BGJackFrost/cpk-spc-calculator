@@ -3238,3 +3238,22 @@
 - [x] Phát hiện anomaly và cảnh báo sớm (severity: high/medium/low)
 - [x] Biểu đồ dự báo với confidence interval (95%)
 - [x] Bảng tổng hợp dự báo với khuyến nghị cho từng máy
+
+
+## Phase 153 - Customizable OEE Prediction Parameters
+
+### UI tùy chỉnh tham số
+- [x] Dialog/Panel cấu hình tham số dự báo (nút "Cấu hình" trong tab Dự báo)
+- [x] Chọn khoảng thời gian dự báo (7-60 ngày với slider)
+- [x] Chọn thuật toán dự báo (Linear Regression, Moving Average, Exponential Smoothing)
+- [x] Tùy chỉnh confidence level (80-99% với slider)
+- [x] Tùy chỉnh ngưỡng cảnh báo OEE (50-85% với slider)
+- [x] Tham số riêng cho Moving Average (cửa sổ 3-14 ngày)
+- [x] Tham số riêng cho Exponential Smoothing (hệ số α 0.1-0.9)
+
+### API hỗ trợ nhiều thuật toán
+- [x] Implement Moving Average algorithm
+- [x] Implement Exponential Smoothing algorithm
+- [x] Cập nhật getPrediction API với các tham số mới
+- [x] Tính confidence interval theo z-score (80%/90%/95%/99%)
+- [x] Trả về settings đã áp dụng trong response

@@ -7,9 +7,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { trpc } from "@/lib/trpc";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
+import { Input } from "@/components/ui/input";
 import { 
   BarChart3, TrendingUp, TrendingDown, Award, Target, AlertTriangle,
-  RefreshCw, Download, Gauge, Activity, Zap, CheckCircle
+  RefreshCw, Download, Gauge, Activity, Zap, CheckCircle, Settings, Info
 } from "lucide-react";
 import {
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
@@ -23,6 +27,15 @@ export default function OEEComparisonDashboard() {
   const [selectedPeriod, setSelectedPeriod] = useState("30");
   const [comparisonType, setComparisonType] = useState<"machines" | "lines">("machines");
   
+  // Prediction settings state
+  const [predictionSettingsOpen, setPredictionSettingsOpen] = useState(false);
+  const [predictionDays, setPredictionDays] = useState(14);
+  const [algorithm, setAlgorithm] = useState<"linear" | "moving_avg" | "exp_smoothing">("linear");
+  const [confidenceLevel, setConfidenceLevel] = useState(95);
+  const [alertThreshold, setAlertThreshold] = useState(65);
+  const [movingAvgWindow, setMovingAvgWindow] = useState(7);
+  const [smoothingFactor, setSmoothingFactor] = useState(0.3);
+  
   // Queries
   const { data: machines } = trpc.machine.listAll.useQuery();
   const { data: productionLines } = trpc.productionLine.list.useQuery();
@@ -30,8 +43,14 @@ export default function OEEComparisonDashboard() {
     type: comparisonType,
     days: Number(selectedPeriod),
   });
-  const { data: oeePrediction } = trpc.oee.getPrediction.useQuery({
+  const { data: oeePrediction, refetch: refetchPrediction } = trpc.oee.getPrediction.useQuery({
     days: Number(selectedPeriod),
+    predictionDays,
+    algorithm,
+    confidenceLevel,
+    alertThreshold,
+    movingAvgWindow: algorithm === "moving_avg" ? movingAvgWindow : undefined,
+    smoothingFactor: algorithm === "exp_smoothing" ? smoothingFactor : undefined,
   });
 
   // Prepare radar chart data
@@ -354,13 +373,143 @@ export default function OEEComparisonDashboard() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <TrendingUp className="h-5 w-5" />
-                    Dự báo OEE
-                  </CardTitle>
-                  <CardDescription>
-                    Dự báo xu hướng OEE trong 14 ngày tới dựa trên dữ liệu lịch sử
-                  </CardDescription>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        <TrendingUp className="h-5 w-5" />
+                        Dự báo OEE
+                      </CardTitle>
+                      <CardDescription>
+                        Dự báo xu hướng OEE trong {predictionDays} ngày tới ({algorithm === "linear" ? "Linear Regression" : algorithm === "moving_avg" ? "Moving Average" : "Exponential Smoothing"})
+                      </CardDescription>
+                    </div>
+                    <Dialog open={predictionSettingsOpen} onOpenChange={setPredictionSettingsOpen}>
+                      <DialogTrigger asChild>
+                        <Button variant="outline" size="sm">
+                          <Settings className="h-4 w-4 mr-2" />
+                          Cấu hình
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-lg">
+                        <DialogHeader>
+                          <DialogTitle>Cấu hình mô hình dự báo</DialogTitle>
+                          <DialogDescription>
+                            Tùy chỉnh các tham số của mô hình dự báo OEE
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-6 py-4">
+                          {/* Thuật toán */}
+                          <div className="space-y-2">
+                            <Label>Thuật toán dự báo</Label>
+                            <Select value={algorithm} onValueChange={(v: any) => setAlgorithm(v)}>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="linear">Linear Regression</SelectItem>
+                                <SelectItem value="moving_avg">Moving Average</SelectItem>
+                                <SelectItem value="exp_smoothing">Exponential Smoothing</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <p className="text-xs text-muted-foreground">
+                              {algorithm === "linear" && "Phù hợp khi dữ liệu có xu hướng tuyến tính rõ ràng"}
+                              {algorithm === "moving_avg" && "Phù hợp khi dữ liệu có nhiều biến động ngắn hạn"}
+                              {algorithm === "exp_smoothing" && "Phù hợp khi dữ liệu gần đây quan trọng hơn"}
+                            </p>
+                          </div>
+
+                          {/* Khoảng thời gian dự báo */}
+                          <div className="space-y-2">
+                            <Label>Khoảng thời gian dự báo: {predictionDays} ngày</Label>
+                            <Slider
+                              value={[predictionDays]}
+                              onValueChange={(v) => setPredictionDays(v[0])}
+                              min={7}
+                              max={60}
+                              step={1}
+                            />
+                            <div className="flex justify-between text-xs text-muted-foreground">
+                              <span>7 ngày</span>
+                              <span>60 ngày</span>
+                            </div>
+                          </div>
+
+                          {/* Confidence Level */}
+                          <div className="space-y-2">
+                            <Label>Độ tin cậy: {confidenceLevel}%</Label>
+                            <Slider
+                              value={[confidenceLevel]}
+                              onValueChange={(v) => setConfidenceLevel(v[0])}
+                              min={80}
+                              max={99}
+                              step={1}
+                            />
+                            <div className="flex justify-between text-xs text-muted-foreground">
+                              <span>80%</span>
+                              <span>99%</span>
+                            </div>
+                          </div>
+
+                          {/* Ngưỡng cảnh báo */}
+                          <div className="space-y-2">
+                            <Label>Ngưỡng cảnh báo OEE: {alertThreshold}%</Label>
+                            <Slider
+                              value={[alertThreshold]}
+                              onValueChange={(v) => setAlertThreshold(v[0])}
+                              min={50}
+                              max={85}
+                              step={1}
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              Cảnh báo khi OEE dự báo thấp hơn ngưỡng này
+                            </p>
+                          </div>
+
+                          {/* Moving Average Window */}
+                          {algorithm === "moving_avg" && (
+                            <div className="space-y-2">
+                              <Label>Cửa sổ Moving Average: {movingAvgWindow} ngày</Label>
+                              <Slider
+                                value={[movingAvgWindow]}
+                                onValueChange={(v) => setMovingAvgWindow(v[0])}
+                                min={3}
+                                max={14}
+                                step={1}
+                              />
+                            </div>
+                          )}
+
+                          {/* Smoothing Factor */}
+                          {algorithm === "exp_smoothing" && (
+                            <div className="space-y-2">
+                              <Label>Hệ số làm mịn (α): {smoothingFactor.toFixed(2)}</Label>
+                              <Slider
+                                value={[smoothingFactor * 100]}
+                                onValueChange={(v) => setSmoothingFactor(v[0] / 100)}
+                                min={10}
+                                max={90}
+                                step={5}
+                              />
+                              <p className="text-xs text-muted-foreground">
+                                Giá trị cao hơn = ưu tiên dữ liệu gần đây hơn
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                        <DialogFooter>
+                          <Button variant="outline" onClick={() => setPredictionSettingsOpen(false)}>
+                            Hủy
+                          </Button>
+                          <Button onClick={() => {
+                            refetchPrediction();
+                            setPredictionSettingsOpen(false);
+                          }}>
+                            Áp dụng
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <div className="h-[350px]">
