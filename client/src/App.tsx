@@ -123,6 +123,7 @@ import NtfCeoDashboard from "./pages/NtfCeoDashboard";
 import UnifiedDashboard from "./pages/UnifiedDashboard";
 import OeeAlertThresholdSettings from "./pages/OeeAlertThresholdSettings";
 import ScheduledReportManagement from "./pages/ScheduledReportManagement";
+import MachineIntegrationDashboard from "./pages/MachineIntegrationDashboard";
 
 function Router() {
   return (
@@ -185,6 +186,7 @@ function Router() {
       <Route path="/alert-config" component={AlertConfiguration} />
       <Route path="/oee-alert-thresholds" component={OeeAlertThresholdSettings} />
       <Route path="/scheduled-reports" component={ScheduledReportManagement} />
+      <Route path="/machine-integration" component={MachineIntegrationDashboard} />
       <Route path="/ntf-config" component={NtfAlertConfig} />
       <Route path="/ntf-comparison" component={NtfComparison} />
       <Route path="/ntf-dashboard" component={NtfDashboard} />

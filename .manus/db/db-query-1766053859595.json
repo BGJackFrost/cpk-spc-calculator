@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS machine_measurement_data (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  apiKeyId INT NOT NULL,\n  machineId INT,\n  productionLineId INT,\n  batchId VARCHAR(100),\n  productCode VARCHAR(100),\n  serialNumber VARCHAR(100),\n  parameterName VARCHAR(255) NOT NULL,\n  parameterCode VARCHAR(100),\n  measuredValue DECIMAL(15,6) NOT NULL,\n  unit VARCHAR(50),\n  lsl DECIMAL(15,6),\n  usl DECIMAL(15,6),\n  target DECIMAL(15,6),\n  isWithinSpec INT,\n  measuredAt TIMESTAMP NOT NULL,\n  operatorId VARCHAR(50),\n  shiftId VARCHAR(50),\n  rawData TEXT,\n  createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP\n)",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute CREATE TABLE IF NOT EXISTS machine_measurement_data (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  apiKeyId INT NOT NULL,\n  machineId INT,\n  productionLineId INT,\n  batchId VARCHAR(100),\n  productCode VARCHAR(100),\n  serialNumber VARCHAR(100),\n  parameterName VARCHAR(255) NOT NULL,\n  parameterCode VARCHAR(100),\n  measuredValue DECIMAL(15,6) NOT NULL,\n  unit VARCHAR(50),\n  lsl DECIMAL(15,6),\n  usl DECIMAL(15,6),\n  target DECIMAL(15,6),\n  isWithinSpec INT,\n  measuredAt TIMESTAMP NOT NULL,\n  operatorId VARCHAR(50),\n  shiftId VARCHAR(50),\n  rawData TEXT,\n  createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP\n)",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1685
+}

@@ -10,6 +10,7 @@ import { predictiveRouter } from "./routers/predictiveRouter";
 import { reportRouter as mmsReportRouter } from "./routers/reportRouter";
 import { alertRouter as mmsAlertRouter } from "./routers/alertRouter";
 import { mmsDashboardConfigRouter } from "./routers/dashboardConfigRouter";
+import { machineIntegrationRouter, machinePublicRouter } from "./routers/machineIntegrationRouter";
 import { systemRouter } from "./_core/systemRouter";
 import { triggerLicenseExpiryCheck } from "./scheduledJobs";
 import { triggerWebhooks, testWebhook } from "./webhookService";
@@ -3214,6 +3215,8 @@ const emailNotificationRouter = router({
 
 export const appRouter = router({
   system: systemRouter,
+  machineIntegration: machineIntegrationRouter,
+  machineApi: machinePublicRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {

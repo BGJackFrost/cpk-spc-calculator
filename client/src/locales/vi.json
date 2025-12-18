@@ -67,6 +67,7 @@
     "alertConfig": "Cấu hình Cảnh báo",
     "oeeAlertThresholds": "Ngưỡng Cảnh báo OEE",
     "scheduledReportManagement": "Quản lý Báo cáo Định kỳ",
+    "machineIntegration": "Tích hợp Máy",
     "alertThresholdConfig": "Ngưỡng Cảnh báo",
     "scheduledReports": "Báo cáo Tự động",
     "exportRealtime": "Xuất dữ liệu Realtime",

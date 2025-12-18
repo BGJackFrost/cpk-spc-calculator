@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
+import TimePeriodComparison from "@/components/TimePeriodComparison";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -363,6 +364,7 @@ export default function UnifiedDashboard() {
       <Tabs value={selectedTab} onValueChange={setSelectedTab}>
         <TabsList>
           <TabsTrigger value="overview">Tổng quan</TabsTrigger>
+          <TabsTrigger value="comparison">So sánh</TabsTrigger>
           <TabsTrigger value="correlation">Tương quan</TabsTrigger>
           <TabsTrigger value="ranking">Xếp hạng</TabsTrigger>
           <TabsTrigger value="alerts">Cảnh báo</TabsTrigger>
@@ -438,6 +440,10 @@ export default function UnifiedDashboard() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="comparison" className="space-y-4">
+          <TimePeriodComparison />
         </TabsContent>
 
         <TabsContent value="correlation" className="space-y-4">

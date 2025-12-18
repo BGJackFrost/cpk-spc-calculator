@@ -3415,3 +3415,38 @@
 - [x] Nút export trong trang OeeAlertThresholdSettings
 - [x] Bao gồm tất cả thông tin ngưỡng
 - [x] Tên file có timestamp
+
+
+## Phase 159 - Time Period Comparison & Machine Integration API
+
+### So sánh OEE/CPK theo khoảng thời gian
+- [x] Component TimePeriodComparison với selector tuần/tháng
+- [x] API getOeeComparison so sánh 2 khoảng thời gian
+- [x] API getCpkComparison so sánh 2 khoảng thời gian
+- [x] Biểu đồ bar chart so sánh trực quan
+- [x] Bảng thống kê % thay đổi
+- [x] Tab "So sánh" trong UnifiedDashboard
+
+### Machine Integration API (AOI/AVI)
+- [x] Bảng machine_api_keys lưu API key cho từng máy/nhà cung cấp
+- [x] Bảng machine_data_logs lưu log dữ liệu nhận được
+- [x] Bảng machine_integration_configs cấu hình tích hợp
+- [x] Bảng machine_inspection_data lưu dữ liệu kiểm tra
+- [x] Bảng machine_measurement_data lưu dữ liệu đo lường
+- [x] Bảng machine_oee_data lưu dữ liệu OEE
+- [x] API pushInspectionData nhận dữ liệu kiểm tra AOI/AVI
+- [x] API pushOeeData nhận dữ liệu OEE
+- [x] API pushMeasurementData nhận dữ liệu đo lường SPC
+- [x] API healthCheck kiểm tra kết nối và API key
+- [x] Authentication bằng API Key trong body
+- [x] Rate limiting và validation dữ liệu
+- [x] Logging tất cả requests
+
+### Dashboard quản lý tích hợp máy
+- [x] Trang MachineIntegrationDashboard
+- [x] Quản lý API keys (tạo, xóa, regenerate, toggle active)
+- [x] Xem log dữ liệu nhận được (50 gần nhất)
+- [x] Thống kê số lượng request theo ngày (biểu đồ)
+- [x] Biểu đồ thời gian xử lý trung bình
+- [x] Tài liệu API đầy đủ cho nhà cung cấp
+- [x] Route và menu trong sidebar

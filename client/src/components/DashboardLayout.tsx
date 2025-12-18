@@ -163,6 +163,7 @@ const menuGroups: MenuGroup[] = [
       { icon: AlertTriangle, labelKey: "nav.alertConfig", path: "/alert-config", adminOnly: true },
       { icon: Target, labelKey: "nav.oeeAlertThresholds", path: "/oee-alert-thresholds", adminOnly: true },
       { icon: Calendar, labelKey: "nav.scheduledReportManagement", path: "/scheduled-reports", adminOnly: true },
+      { icon: Server, labelKey: "nav.machineIntegration", path: "/machine-integration", adminOnly: true },
       { icon: Bell, labelKey: "nav.ntfConfig", path: "/ntf-config", adminOnly: true },
       { icon: BarChart3, labelKey: "nav.ntfDashboard", path: "/ntf-dashboard", adminOnly: true },
       { icon: GitCompare, labelKey: "nav.ntfComparison", path: "/ntf-comparison", adminOnly: true },

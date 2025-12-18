@@ -2821,3 +2821,158 @@ export const oeeAlertThresholds = mysqlTable("oee_alert_thresholds", {
 
 export type OeeAlertThreshold = typeof oeeAlertThresholds.$inferSelect;
 export type InsertOeeAlertThreshold = typeof oeeAlertThresholds.$inferInsert;
+
+
+// ==================== Machine Integration API ====================
+
+/**
+ * API Keys for machine vendors to push data
+ */
+export const machineApiKeys = mysqlTable("machine_api_keys", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  apiKey: varchar("apiKey", { length: 64 }).notNull().unique(),
+  apiKeyHash: varchar("apiKeyHash", { length: 255 }).notNull(), // Hashed version for security
+  vendorName: varchar("vendorName", { length: 255 }).notNull(), // AOI, AVI, etc.
+  machineType: varchar("machineType", { length: 100 }).notNull(), // aoi, avi, spi, etc.
+  machineId: int("machineId"), // Link to specific machine if applicable
+  productionLineId: int("productionLineId"), // Link to production line
+  permissions: text("permissions"), // JSON array of allowed endpoints
+  rateLimit: int("rateLimit").notNull().default(100), // Requests per minute
+  isActive: int("isActive").notNull().default(1),
+  expiresAt: timestamp("expiresAt"), // Optional expiration
+  lastUsedAt: timestamp("lastUsedAt"),
+  createdBy: int("createdBy").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type MachineApiKey = typeof machineApiKeys.$inferSelect;
+export type InsertMachineApiKey = typeof machineApiKeys.$inferInsert;
+
+/**
+ * Log all API requests from machines
+ */
+export const machineDataLogs = mysqlTable("machine_data_logs", {
+  id: int("id").autoincrement().primaryKey(),
+  apiKeyId: int("apiKeyId").notNull(),
+  endpoint: varchar("endpoint", { length: 255 }).notNull(),
+  method: varchar("method", { length: 10 }).notNull(),
+  requestBody: text("requestBody"), // JSON request payload
+  responseStatus: int("responseStatus").notNull(),
+  responseBody: text("responseBody"), // JSON response
+  processingTimeMs: int("processingTimeMs"),
+  ipAddress: varchar("ipAddress", { length: 45 }),
+  userAgent: varchar("userAgent", { length: 500 }),
+  errorMessage: text("errorMessage"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type MachineDataLog = typeof machineDataLogs.$inferSelect;
+export type InsertMachineDataLog = typeof machineDataLogs.$inferInsert;
+
+/**
+ * Machine integration configurations
+ */
+export const machineIntegrationConfigs = mysqlTable("machine_integration_configs", {
+  id: int("id").autoincrement().primaryKey(),
+  apiKeyId: int("apiKeyId").notNull(),
+  configType: varchar("configType", { length: 50 }).notNull(), // field_mapping, webhook, etc.
+  configName: varchar("configName", { length: 255 }).notNull(),
+  configValue: text("configValue").notNull(), // JSON configuration
+  isActive: int("isActive").notNull().default(1),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type MachineIntegrationConfig = typeof machineIntegrationConfigs.$inferSelect;
+export type InsertMachineIntegrationConfig = typeof machineIntegrationConfigs.$inferInsert;
+
+/**
+ * Inspection data from AOI/AVI machines
+ */
+export const machineInspectionData = mysqlTable("machine_inspection_data", {
+  id: int("id").autoincrement().primaryKey(),
+  apiKeyId: int("apiKeyId").notNull(),
+  machineId: int("machineId"),
+  productionLineId: int("productionLineId"),
+  batchId: varchar("batchId", { length: 100 }),
+  productCode: varchar("productCode", { length: 100 }),
+  serialNumber: varchar("serialNumber", { length: 100 }),
+  inspectionType: varchar("inspectionType", { length: 50 }).notNull(), // aoi, avi, spi, etc.
+  inspectionResult: varchar("inspectionResult", { length: 20 }).notNull(), // pass, fail, rework
+  defectCount: int("defectCount").default(0),
+  defectTypes: text("defectTypes"), // JSON array of defect types
+  defectDetails: text("defectDetails"), // JSON detailed defect info
+  imageUrls: text("imageUrls"), // JSON array of image URLs
+  inspectedAt: timestamp("inspectedAt").notNull(),
+  cycleTimeMs: int("cycleTimeMs"),
+  operatorId: varchar("operatorId", { length: 50 }),
+  shiftId: varchar("shiftId", { length: 50 }),
+  rawData: text("rawData"), // Original JSON from machine
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type MachineInspectionData = typeof machineInspectionData.$inferSelect;
+export type InsertMachineInspectionData = typeof machineInspectionData.$inferInsert;
+
+/**
+ * Measurement data from machines (for SPC)
+ */
+export const machineMeasurementData = mysqlTable("machine_measurement_data", {
+  id: int("id").autoincrement().primaryKey(),
+  apiKeyId: int("apiKeyId").notNull(),
+  machineId: int("machineId"),
+  productionLineId: int("productionLineId"),
+  batchId: varchar("batchId", { length: 100 }),
+  productCode: varchar("productCode", { length: 100 }),
+  serialNumber: varchar("serialNumber", { length: 100 }),
+  parameterName: varchar("parameterName", { length: 255 }).notNull(),
+  parameterCode: varchar("parameterCode", { length: 100 }),
+  measuredValue: decimal("measuredValue", { precision: 15, scale: 6 }).notNull(),
+  unit: varchar("unit", { length: 50 }),
+  lsl: decimal("lsl", { precision: 15, scale: 6 }), // Lower Spec Limit
+  usl: decimal("usl", { precision: 15, scale: 6 }), // Upper Spec Limit
+  target: decimal("target", { precision: 15, scale: 6 }),
+  isWithinSpec: int("isWithinSpec"),
+  measuredAt: timestamp("measuredAt").notNull(),
+  operatorId: varchar("operatorId", { length: 50 }),
+  shiftId: varchar("shiftId", { length: 50 }),
+  rawData: text("rawData"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type MachineMeasurementData = typeof machineMeasurementData.$inferSelect;
+export type InsertMachineMeasurementData = typeof machineMeasurementData.$inferInsert;
+
+/**
+ * OEE data from machines
+ */
+export const machineOeeData = mysqlTable("machine_oee_data", {
+  id: int("id").autoincrement().primaryKey(),
+  apiKeyId: int("apiKeyId").notNull(),
+  machineId: int("machineId"),
+  productionLineId: int("productionLineId"),
+  shiftId: varchar("shiftId", { length: 50 }),
+  recordDate: varchar("recordDate", { length: 10 }).notNull(), // YYYY-MM-DD
+  plannedProductionTime: int("plannedProductionTime"), // minutes
+  actualProductionTime: int("actualProductionTime"), // minutes
+  downtime: int("downtime"), // minutes
+  downtimeReasons: text("downtimeReasons"), // JSON array
+  idealCycleTime: decimal("idealCycleTime", { precision: 10, scale: 4 }), // seconds
+  actualCycleTime: decimal("actualCycleTime", { precision: 10, scale: 4 }),
+  totalCount: int("totalCount"),
+  goodCount: int("goodCount"),
+  rejectCount: int("rejectCount"),
+  reworkCount: int("reworkCount"),
+  availability: decimal("availability", { precision: 5, scale: 2 }),
+  performance: decimal("performance", { precision: 5, scale: 2 }),
+  quality: decimal("quality", { precision: 5, scale: 2 }),
+  oee: decimal("oee", { precision: 5, scale: 2 }),
+  recordedAt: timestamp("recordedAt").notNull(),
+  rawData: text("rawData"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type MachineOeeData = typeof machineOeeData.$inferSelect;
+export type InsertMachineOeeData = typeof machineOeeData.$inferInsert;
