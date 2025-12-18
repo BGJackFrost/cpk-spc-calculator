@@ -19,6 +19,7 @@ import {
   Cpu,
   Search,
   RefreshCw,
+  Download,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -102,6 +103,16 @@ export default function OeeAlertThresholdSettings() {
     },
     onError: (error) => {
       toast.error("Lỗi: " + error.message);
+    },
+  });
+
+  const exportMutation = trpc.oee.exportAlertThresholds.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Đã xuất ${data.count} ngưỡng cảnh báo`);
+      window.open(data.url, "_blank");
+    },
+    onError: (error) => {
+      toast.error("Lỗi xuất file: " + error.message);
     },
   });
 
@@ -282,10 +293,27 @@ export default function OeeAlertThresholdSettings() {
       {/* Thresholds List */}
       <Card>
         <CardHeader>
-          <CardTitle>Danh sách ngưỡng cảnh báo</CardTitle>
-          <CardDescription>
-            {filteredThresholds?.length || 0} ngưỡng được cấu hình
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Danh sách ngưỡng cảnh báo</CardTitle>
+              <CardDescription>
+                {filteredThresholds?.length || 0} ngưỡng được cấu hình
+              </CardDescription>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => exportMutation.mutate()}
+              disabled={exportMutation.isPending || !thresholds?.length}
+            >
+              {exportMutation.isPending ? (
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4 mr-2" />
+              )}
+              Xuất Excel
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (

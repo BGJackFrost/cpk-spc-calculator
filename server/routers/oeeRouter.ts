@@ -1849,4 +1849,170 @@ export const oeeRouter = router({
 
       return result;
     }),
+
+  // Send test email to verify SMTP configuration
+  sendTestEmail: protectedProcedure
+    .input(z.object({
+      recipients: z.string().min(1, "Email là bắt buộc"),
+    }))
+    .mutation(async ({ input }) => {
+      const emails = input.recipients.split(",").map(e => e.trim()).filter(e => e);
+      
+      if (emails.length === 0) {
+        throw new Error("Vui lòng nhập ít nhất một email");
+      }
+
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      for (const email of emails) {
+        if (!emailRegex.test(email)) {
+          throw new Error(`Email không hợp lệ: ${email}`);
+        }
+      }
+
+      const smtpConfig = await getSmtpConfig();
+      if (!smtpConfig) {
+        throw new Error("Chưa cấu hình SMTP. Vui lòng cấu hình trong Settings.");
+      }
+
+      const testSubject = "[Test] Kiểm tra cấu hình SMTP - Hệ thống CPK/SPC";
+      const testContent = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #2563eb;">✅ Test Email Thành Công!</h2>
+          <p>Email này xác nhận rằng cấu hình SMTP của bạn đang hoạt động bình thường.</p>
+          <div style="background: #f3f4f6; padding: 16px; border-radius: 8px; margin: 16px 0;">
+            <p style="margin: 0;"><strong>Thời gian:</strong> ${new Date().toLocaleString("vi-VN")}</p>
+            <p style="margin: 8px 0 0;"><strong>SMTP Server:</strong> ${smtpConfig.host}:${smtpConfig.port}</p>
+          </div>
+          <p style="color: #6b7280; font-size: 14px;">Bạn có thể sử dụng cấu hình này cho báo cáo định kỳ.</p>
+        </div>
+      `;
+
+      let sent = 0;
+      let failed = 0;
+      const errors: string[] = [];
+
+      for (const email of emails) {
+        try {
+          await sendEmail({
+            to: email,
+            subject: testSubject,
+            html: testContent,
+          });
+          sent++;
+        } catch (error) {
+          failed++;
+          errors.push(`${email}: ${String(error)}`);
+        }
+      }
+
+      return {
+        success: failed === 0,
+        sent,
+        failed,
+        message: failed === 0 
+          ? `Đã gửi thành công ${sent} email test`
+          : `Gửi ${sent} thành công, ${failed} thất bại`,
+        errors: errors.length > 0 ? errors : undefined,
+      };
+    }),
+
+  // Export alert thresholds to Excel
+  exportAlertThresholds: protectedProcedure
+    .mutation(async () => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not connected");
+
+      const thresholds = await db.select({
+        id: oeeAlertThresholds.id,
+        machineId: oeeAlertThresholds.machineId,
+        machineName: machines.name,
+        productionLineId: oeeAlertThresholds.productionLineId,
+        lineName: productionLines.name,
+        targetOee: oeeAlertThresholds.targetOee,
+        warningThreshold: oeeAlertThresholds.warningThreshold,
+        criticalThreshold: oeeAlertThresholds.criticalThreshold,
+        dropAlertThreshold: oeeAlertThresholds.dropAlertThreshold,
+        relativeDropThreshold: oeeAlertThresholds.relativeDropThreshold,
+        availabilityTarget: oeeAlertThresholds.availabilityTarget,
+        performanceTarget: oeeAlertThresholds.performanceTarget,
+        qualityTarget: oeeAlertThresholds.qualityTarget,
+        isActive: oeeAlertThresholds.isActive,
+        createdAt: oeeAlertThresholds.createdAt,
+        updatedAt: oeeAlertThresholds.updatedAt,
+      })
+      .from(oeeAlertThresholds)
+      .leftJoin(machines, eq(oeeAlertThresholds.machineId, machines.id))
+      .leftJoin(productionLines, eq(oeeAlertThresholds.productionLineId, productionLines.id))
+      .orderBy(asc(oeeAlertThresholds.id));
+
+      const workbook = new ExcelJS.Workbook();
+      const sheet = workbook.addWorksheet("Ngưỡng Cảnh báo OEE");
+
+      // Header row
+      sheet.columns = [
+        { header: "ID", key: "id", width: 8 },
+        { header: "Máy", key: "machineName", width: 20 },
+        { header: "Dây chuyền", key: "lineName", width: 20 },
+        { header: "Mục tiêu OEE (%)", key: "targetOee", width: 15 },
+        { header: "Ngưỡng cảnh báo (%)", key: "warningThreshold", width: 18 },
+        { header: "Ngưỡng nghiêm trọng (%)", key: "criticalThreshold", width: 20 },
+        { header: "Ngưỡng giảm (%)", key: "dropAlertThreshold", width: 15 },
+        { header: "Giảm tương đối (%)", key: "relativeDropThreshold", width: 18 },
+        { header: "Availability (%)", key: "availabilityTarget", width: 15 },
+        { header: "Performance (%)", key: "performanceTarget", width: 15 },
+        { header: "Quality (%)", key: "qualityTarget", width: 12 },
+        { header: "Trạng thái", key: "isActive", width: 12 },
+        { header: "Ngày tạo", key: "createdAt", width: 18 },
+        { header: "Ngày cập nhật", key: "updatedAt", width: 18 },
+      ];
+
+      // Style header
+      sheet.getRow(1).font = { bold: true };
+      sheet.getRow(1).fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FF2563EB" },
+      };
+      sheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
+
+      // Add data rows
+      thresholds.forEach(t => {
+        sheet.addRow({
+          id: t.id,
+          machineName: t.machineName || "Tất cả",
+          lineName: t.lineName || "Tất cả",
+          targetOee: Number(t.targetOee),
+          warningThreshold: Number(t.warningThreshold),
+          criticalThreshold: Number(t.criticalThreshold),
+          dropAlertThreshold: Number(t.dropAlertThreshold),
+          relativeDropThreshold: Number(t.relativeDropThreshold),
+          availabilityTarget: t.availabilityTarget ? Number(t.availabilityTarget) : null,
+          performanceTarget: t.performanceTarget ? Number(t.performanceTarget) : null,
+          qualityTarget: t.qualityTarget ? Number(t.qualityTarget) : null,
+          isActive: t.isActive === 1 ? "Hoạt động" : "Tạm dừng",
+          createdAt: t.createdAt ? new Date(t.createdAt).toLocaleString("vi-VN") : "",
+          updatedAt: t.updatedAt ? new Date(t.updatedAt).toLocaleString("vi-VN") : "",
+        });
+      });
+
+      // Generate buffer
+      const buffer = await workbook.xlsx.writeBuffer();
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+      const filename = `oee-alert-thresholds-${timestamp}.xlsx`;
+
+      // Upload to S3
+      const { url } = await storagePut(
+        `exports/${filename}`,
+        Buffer.from(buffer),
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+
+      return {
+        success: true,
+        url,
+        filename,
+        count: thresholds.length,
+      };
+    }),
 });

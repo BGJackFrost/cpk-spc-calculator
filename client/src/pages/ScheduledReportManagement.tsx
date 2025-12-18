@@ -101,6 +101,22 @@ export default function ScheduledReportManagement() {
   const { data: machines } = trpc.machine.list.useQuery();
 
   // Mutations
+  const sendTestEmailMutation = trpc.oee.sendTestEmail.useMutation({
+    onSuccess: (data) => {
+      if (data.success) {
+        toast.success(data.message);
+      } else {
+        toast.warning(data.message);
+        if (data.errors) {
+          data.errors.forEach(err => toast.error(err));
+        }
+      }
+    },
+    onError: (error) => {
+      toast.error("Lỗi gửi test email: " + error.message);
+    },
+  });
+
   const createMutation = trpc.oee.createScheduledReport.useMutation({
     onSuccess: () => {
       toast.success("Đã tạo lịch báo cáo mới");
@@ -538,11 +554,35 @@ export default function ScheduledReportManagement() {
 
             <div className="space-y-2">
               <Label>Email người nhận * (cách nhau bởi dấu phẩy)</Label>
-              <Input
-                value={formData.recipients}
-                onChange={(e) => setFormData({ ...formData, recipients: e.target.value })}
-                placeholder="email1@example.com, email2@example.com"
-              />
+              <div className="flex gap-2">
+                <Input
+                  value={formData.recipients}
+                  onChange={(e) => setFormData({ ...formData, recipients: e.target.value })}
+                  placeholder="email1@example.com, email2@example.com"
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    if (!formData.recipients) {
+                      toast.error("Vui lòng nhập email trước khi gửi test");
+                      return;
+                    }
+                    sendTestEmailMutation.mutate({ recipients: formData.recipients });
+                  }}
+                  disabled={sendTestEmailMutation.isPending}
+                >
+                  {sendTestEmailMutation.isPending ? (
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
+                  <span className="ml-1">Test</span>
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">Nhấn "Test" để gửi email kiểm tra cấu hình SMTP</p>
             </div>
 
             <div className="space-y-3">

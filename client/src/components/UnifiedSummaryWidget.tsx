@@ -266,7 +266,163 @@ export default function UnifiedSummaryWidget() {
             </Button>
           </div>
         </div>
+
+        {/* Comparison Chart */}
+        {(stats.oeeDaily.length > 1 || stats.cpkDaily.length > 1) && (
+          <div className="mt-6 pt-4 border-t">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-medium">So sánh xu hướng OEE & CPK (7 ngày)</span>
+              <div className="flex items-center gap-4 text-xs">
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-0.5 bg-blue-500"></div>
+                  <span className="text-muted-foreground">OEE (%)</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-0.5 bg-purple-500"></div>
+                  <span className="text-muted-foreground">CPK</span>
+                </div>
+              </div>
+            </div>
+            <DualAxisChart 
+              oeeData={stats.oeeDaily} 
+              cpkData={stats.cpkDaily} 
+            />
+          </div>
+        )}
       </CardContent>
     </Card>
+  );
+}
+
+// Dual Axis Chart Component
+interface DualAxisChartProps {
+  oeeData: number[];
+  cpkData: number[];
+}
+
+function DualAxisChart({ oeeData, cpkData }: DualAxisChartProps) {
+  const height = 120;
+  const width = 100; // percentage
+  const padding = { top: 10, right: 40, bottom: 20, left: 40 };
+
+  // Calculate scales
+  const oeeMin = Math.min(...oeeData, 0);
+  const oeeMax = Math.max(...oeeData, 100);
+  const cpkMin = Math.min(...cpkData, 0);
+  const cpkMax = Math.max(...cpkData, 2);
+
+  const oeeRange = oeeMax - oeeMin || 1;
+  const cpkRange = cpkMax - cpkMin || 1;
+
+  const chartHeight = height - padding.top - padding.bottom;
+  const maxPoints = Math.max(oeeData.length, cpkData.length);
+
+  // Generate OEE points
+  const oeePoints = oeeData.map((value, index) => {
+    const x = padding.left + (index / (maxPoints - 1 || 1)) * (width - padding.left - padding.right);
+    const y = padding.top + chartHeight - ((value - oeeMin) / oeeRange) * chartHeight;
+    return `${x}%,${y}`;
+  }).join(" ");
+
+  // Generate CPK points (scaled to same visual range)
+  const cpkPoints = cpkData.map((value, index) => {
+    const x = padding.left + (index / (maxPoints - 1 || 1)) * (width - padding.left - padding.right);
+    const y = padding.top + chartHeight - ((value - cpkMin) / cpkRange) * chartHeight;
+    return `${x}%,${y}`;
+  }).join(" ");
+
+  // Y-axis labels
+  const oeeLabels = [oeeMin, (oeeMin + oeeMax) / 2, oeeMax].map(v => v.toFixed(0));
+  const cpkLabels = [cpkMin, (cpkMin + cpkMax) / 2, cpkMax].map(v => v.toFixed(1));
+
+  return (
+    <div className="relative" style={{ height }}>
+      <svg width="100%" height={height} className="overflow-visible">
+        {/* Grid lines */}
+        {[0, 0.5, 1].map((ratio, i) => (
+          <line
+            key={i}
+            x1={`${padding.left}%`}
+            y1={padding.top + chartHeight * (1 - ratio)}
+            x2={`${width - padding.right}%`}
+            y2={padding.top + chartHeight * (1 - ratio)}
+            stroke="#e5e7eb"
+            strokeDasharray="4,4"
+          />
+        ))}
+
+        {/* OEE line */}
+        {oeeData.length > 0 && (
+          <polyline
+            fill="none"
+            stroke="#3b82f6"
+            strokeWidth="2"
+            points={oeePoints}
+          />
+        )}
+
+        {/* CPK line */}
+        {cpkData.length > 0 && (
+          <polyline
+            fill="none"
+            stroke="#8b5cf6"
+            strokeWidth="2"
+            points={cpkPoints}
+          />
+        )}
+
+        {/* OEE points */}
+        {oeeData.map((value, index) => {
+          const x = padding.left + (index / (maxPoints - 1 || 1)) * (width - padding.left - padding.right);
+          const y = padding.top + chartHeight - ((value - oeeMin) / oeeRange) * chartHeight;
+          return (
+            <g key={`oee-${index}`}>
+              <circle cx={`${x}%`} cy={y} r="4" fill="#3b82f6" />
+              <title>OEE: {value.toFixed(1)}%</title>
+            </g>
+          );
+        })}
+
+        {/* CPK points */}
+        {cpkData.map((value, index) => {
+          const x = padding.left + (index / (maxPoints - 1 || 1)) * (width - padding.left - padding.right);
+          const y = padding.top + chartHeight - ((value - cpkMin) / cpkRange) * chartHeight;
+          return (
+            <g key={`cpk-${index}`}>
+              <circle cx={`${x}%`} cy={y} r="4" fill="#8b5cf6" />
+              <title>CPK: {value.toFixed(2)}</title>
+            </g>
+          );
+        })}
+
+        {/* Left Y-axis labels (OEE) */}
+        {oeeLabels.map((label, i) => (
+          <text
+            key={`oee-label-${i}`}
+            x="2%"
+            y={padding.top + chartHeight * (1 - i / 2) + 4}
+            fontSize="10"
+            fill="#3b82f6"
+            textAnchor="start"
+          >
+            {label}%
+          </text>
+        ))}
+
+        {/* Right Y-axis labels (CPK) */}
+        {cpkLabels.map((label, i) => (
+          <text
+            key={`cpk-label-${i}`}
+            x="98%"
+            y={padding.top + chartHeight * (1 - i / 2) + 4}
+            fontSize="10"
+            fill="#8b5cf6"
+            textAnchor="end"
+          >
+            {label}
+          </text>
+        ))}
+      </svg>
+    </div>
   );
 }

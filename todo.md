@@ -3394,3 +3394,24 @@
 - [x] Biểu đồ mini xu hướng 7 ngày
 - [x] Số lượng cảnh báo hiện tại
 - [x] Link đến UnifiedDashboard
+
+
+## Phase 158 - SMTP Test, Widget Chart & Export
+
+### Test email SMTP
+- [x] API sendTestEmail để gửi email test
+- [x] Nút "Gửi test" trong form tạo lịch báo cáo
+- [x] Hiển thị kết quả test (thành công/thất bại)
+- [x] Validate email trước khi gửi test
+
+### Biểu đồ so sánh OEE/CPK trong widget
+- [x] Thêm biểu đồ line chart so sánh OEE và CPK (DualAxisChart)
+- [x] Hiển thị 2 trục Y (OEE % và CPK)
+- [x] Tooltip hiển thị giá trị khi hover (SVG title)
+- [x] Responsive cho mobile (SVG width 100%)
+
+### Export ngưỡng cảnh báo ra Excel
+- [x] API exportAlertThresholds tạo file Excel
+- [x] Nút export trong trang OeeAlertThresholdSettings
+- [x] Bao gồm tất cả thông tin ngưỡng
+- [x] Tên file có timestamp
