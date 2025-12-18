@@ -3089,6 +3089,13 @@ export const oeeAlertHistory = mysqlTable("oee_alert_history", {
   recipients: text("recipients").notNull(),
   emailSent: int("email_sent").notNull().default(0),
   emailSentAt: timestamp("email_sent_at"),
+  acknowledged: int("acknowledged").notNull().default(0),
+  acknowledgedAt: timestamp("acknowledged_at"),
+  acknowledgedBy: varchar("acknowledged_by", { length: 255 }),
+  resolved: int("resolved").notNull().default(0),
+  resolvedAt: timestamp("resolved_at"),
+  resolvedBy: varchar("resolved_by", { length: 255 }),
+  resolution: text("resolution"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

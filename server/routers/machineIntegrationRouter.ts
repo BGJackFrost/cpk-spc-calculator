@@ -374,6 +374,52 @@ async function triggerWebhook(
 }
 
 export const machineIntegrationRouter = router({
+  // ==================== OEE Widget ====================
+  
+  getLatestOee: publicProcedure
+    .input(z.object({ machineId: z.number().optional() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      const now = new Date();
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+      let query = db
+        .select({
+          oee: sql<number>`AVG(${machineOeeData.oee})`,
+          availability: sql<number>`AVG(${machineOeeData.availability})`,
+          performance: sql<number>`AVG(${machineOeeData.performance})`,
+          quality: sql<number>`AVG(${machineOeeData.quality})`,
+          machineName: machineOeeData.machineName,
+        })
+        .from(machineOeeData)
+        .where(gte(machineOeeData.recordedAt, todayStart));
+
+      if (input.machineId) {
+        query = query.where(eq(machineOeeData.machineId, input.machineId)) as any;
+      }
+
+      const [result] = await query;
+
+      if (!result || result.oee === null) {
+        // Return mock data if no real data
+        return {
+          oee: 0,
+          availability: 0,
+          performance: 0,
+          quality: 0,
+          machineName: input.machineId ? `Machine ${input.machineId}` : 'Tổng hợp',
+        };
+      }
+
+      return {
+        oee: Number(result.oee) || 0,
+        availability: Number(result.availability) || 0,
+        performance: Number(result.performance) || 0,
+        quality: Number(result.quality) || 0,
+        machineName: result.machineName || (input.machineId ? `Machine ${input.machineId}` : 'Tổng hợp'),
+      };
+    }),
+
   // ==================== Dashboard Overview ====================
   
   getDashboardOverview: protectedProcedure
@@ -412,11 +458,13 @@ export const machineIntegrationRouter = router({
         .from(machineOeeData)
         .where(gte(machineOeeData.recordedAt, monthStart));
 
-      // Pending alerts (not acknowledged)
+      // Pending alerts (not acknowledged or not resolved)
       const [pendingAlerts] = await db
         .select({ count: sql<number>`COUNT(*)` })
         .from(oeeAlertHistory)
-        .where(eq(oeeAlertHistory.emailSent, 0));
+        .where(and(
+          eq(oeeAlertHistory.resolved, 0)
+        ));
 
       // Reports sent this week
       const [reportsSent] = await db
@@ -733,6 +781,133 @@ export const machineIntegrationRouter = router({
         oeeGap: bestShift.avgOee > 0 && worstShift.avgOee > 0 
           ? bestShift.avgOee - worstShift.avgOee 
           : 0,
+      };
+    }),
+
+  // Generate OEE Report Data for PDF export
+  generateOeeReportData: protectedProcedure
+    .input(z.object({
+      days: z.number().min(1).max(90).default(30),
+      machineId: z.number().optional(),
+    }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      const now = new Date();
+      const startDate = new Date(now.getTime() - input.days * 24 * 60 * 60 * 1000);
+
+      const conditions = [gte(machineOeeData.recordedAt, startDate)];
+      if (input.machineId) {
+        conditions.push(eq(machineOeeData.machineId, input.machineId));
+      }
+
+      // Summary stats
+      const [summary] = await db
+        .select({
+          avgOee: sql<number>`AVG(${machineOeeData.oee})`,
+          avgAvailability: sql<number>`AVG(${machineOeeData.availability})`,
+          avgPerformance: sql<number>`AVG(${machineOeeData.performance})`,
+          avgQuality: sql<number>`AVG(${machineOeeData.quality})`,
+          totalRecords: sql<number>`COUNT(*)`,
+          minOee: sql<number>`MIN(${machineOeeData.oee})`,
+          maxOee: sql<number>`MAX(${machineOeeData.oee})`,
+        })
+        .from(machineOeeData)
+        .where(and(...conditions));
+
+      // Daily trend
+      const dailyTrend = await db
+        .select({
+          date: sql<string>`DATE(${machineOeeData.recordedAt})`,
+          avgOee: sql<number>`AVG(${machineOeeData.oee})`,
+          avgAvailability: sql<number>`AVG(${machineOeeData.availability})`,
+          avgPerformance: sql<number>`AVG(${machineOeeData.performance})`,
+          avgQuality: sql<number>`AVG(${machineOeeData.quality})`,
+          recordCount: sql<number>`COUNT(*)`,
+        })
+        .from(machineOeeData)
+        .where(and(...conditions))
+        .groupBy(sql`DATE(${machineOeeData.recordedAt})`)
+        .orderBy(sql`DATE(${machineOeeData.recordedAt})`);
+
+      // Machine comparison
+      const machineComparison = await db
+        .select({
+          machineId: machineOeeData.machineId,
+          machineName: machineOeeData.machineName,
+          avgOee: sql<number>`AVG(${machineOeeData.oee})`,
+          avgAvailability: sql<number>`AVG(${machineOeeData.availability})`,
+          avgPerformance: sql<number>`AVG(${machineOeeData.performance})`,
+          avgQuality: sql<number>`AVG(${machineOeeData.quality})`,
+          recordCount: sql<number>`COUNT(*)`,
+        })
+        .from(machineOeeData)
+        .where(and(...conditions))
+        .groupBy(machineOeeData.machineId, machineOeeData.machineName)
+        .orderBy(desc(sql`AVG(${machineOeeData.oee})`));
+
+      // Shift comparison
+      const shiftComparison = await db
+        .select({
+          shift: sql<string>`CASE 
+            WHEN HOUR(${machineOeeData.recordedAt}) >= 6 AND HOUR(${machineOeeData.recordedAt}) < 14 THEN 'Ca Sáng'
+            WHEN HOUR(${machineOeeData.recordedAt}) >= 14 AND HOUR(${machineOeeData.recordedAt}) < 22 THEN 'Ca Chiều'
+            ELSE 'Ca Đêm'
+          END`,
+          avgOee: sql<number>`AVG(${machineOeeData.oee})`,
+          avgAvailability: sql<number>`AVG(${machineOeeData.availability})`,
+          avgPerformance: sql<number>`AVG(${machineOeeData.performance})`,
+          avgQuality: sql<number>`AVG(${machineOeeData.quality})`,
+          recordCount: sql<number>`COUNT(*)`,
+        })
+        .from(machineOeeData)
+        .where(and(...conditions))
+        .groupBy(sql`CASE 
+          WHEN HOUR(${machineOeeData.recordedAt}) >= 6 AND HOUR(${machineOeeData.recordedAt}) < 14 THEN 'Ca Sáng'
+          WHEN HOUR(${machineOeeData.recordedAt}) >= 14 AND HOUR(${machineOeeData.recordedAt}) < 22 THEN 'Ca Chiều'
+          ELSE 'Ca Đêm'
+        END`);
+
+      return {
+        reportDate: now.toISOString(),
+        period: {
+          from: startDate.toISOString(),
+          to: now.toISOString(),
+          days: input.days,
+        },
+        summary: {
+          avgOee: summary?.avgOee || 0,
+          avgAvailability: summary?.avgAvailability || 0,
+          avgPerformance: summary?.avgPerformance || 0,
+          avgQuality: summary?.avgQuality || 0,
+          totalRecords: summary?.totalRecords || 0,
+          minOee: summary?.minOee || 0,
+          maxOee: summary?.maxOee || 0,
+        },
+        dailyTrend: dailyTrend.map(d => ({
+          date: d.date,
+          oee: Number(d.avgOee) || 0,
+          availability: Number(d.avgAvailability) || 0,
+          performance: Number(d.avgPerformance) || 0,
+          quality: Number(d.avgQuality) || 0,
+          records: d.recordCount,
+        })),
+        machineComparison: machineComparison.map(m => ({
+          machineId: m.machineId,
+          machineName: m.machineName || `Machine ${m.machineId}`,
+          oee: Number(m.avgOee) || 0,
+          availability: Number(m.avgAvailability) || 0,
+          performance: Number(m.avgPerformance) || 0,
+          quality: Number(m.avgQuality) || 0,
+          records: m.recordCount,
+        })),
+        shiftComparison: shiftComparison.map(s => ({
+          shift: s.shift,
+          oee: Number(s.avgOee) || 0,
+          availability: Number(s.avgAvailability) || 0,
+          performance: Number(s.avgPerformance) || 0,
+          quality: Number(s.avgQuality) || 0,
+          records: s.recordCount,
+        })),
       };
     }),
 
@@ -2074,6 +2249,73 @@ export const machineIntegrationRouter = router({
       return history.map(h => ({
         ...h,
         recipients: JSON.parse(h.recipients || '[]'),
+      }));
+    }),
+
+  // Acknowledge an alert
+  acknowledgeAlert: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      await db.update(oeeAlertHistory)
+        .set({
+          acknowledged: 1,
+          acknowledgedAt: new Date(),
+          acknowledgedBy: ctx.user.name || ctx.user.email || `User ${ctx.user.id}`,
+        })
+        .where(eq(oeeAlertHistory.id, input.id));
+      return { success: true };
+    }),
+
+  // Resolve an alert
+  resolveAlert: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      resolution: z.string().min(1),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      await db.update(oeeAlertHistory)
+        .set({
+          acknowledged: 1,
+          acknowledgedAt: sql`COALESCE(${oeeAlertHistory.acknowledgedAt}, NOW())`,
+          acknowledgedBy: sql`COALESCE(${oeeAlertHistory.acknowledgedBy}, ${ctx.user.name || ctx.user.email || `User ${ctx.user.id}`})`,
+          resolved: 1,
+          resolvedAt: new Date(),
+          resolvedBy: ctx.user.name || ctx.user.email || `User ${ctx.user.id}`,
+          resolution: input.resolution,
+        })
+        .where(eq(oeeAlertHistory.id, input.id));
+      return { success: true };
+    }),
+
+  // Get pending alerts for dashboard
+  getPendingAlerts: protectedProcedure
+    .query(async ({ ctx }) => {
+      const db = await getDb();
+      
+      // Get user's alert config IDs
+      const userConfigs = await db
+        .select({ id: oeeAlertConfigs.id })
+        .from(oeeAlertConfigs)
+        .where(eq(oeeAlertConfigs.userId, ctx.user.id));
+      const configIds = userConfigs.map(c => c.id);
+
+      if (configIds.length === 0) return [];
+
+      const alerts = await db
+        .select()
+        .from(oeeAlertHistory)
+        .where(and(
+          sql`${oeeAlertHistory.alertConfigId} IN (${sql.raw(configIds.join(','))})`,
+          eq(oeeAlertHistory.resolved, 0)
+        ))
+        .orderBy(desc(oeeAlertHistory.createdAt))
+        .limit(20);
+
+      return alerts.map(a => ({
+        ...a,
+        recipients: JSON.parse(a.recipients || '[]'),
       }));
     }),
 

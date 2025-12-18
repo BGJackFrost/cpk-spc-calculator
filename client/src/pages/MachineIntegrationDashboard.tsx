@@ -1783,8 +1783,13 @@ function RealtimeTab() {
 function OeeDashboardTab() {
   const [days, setDays] = useState<7 | 14 | 30>(7);
   const [exportFormat, setExportFormat] = useState<'csv' | 'json'>('csv');
+  const [showPdfExport, setShowPdfExport] = useState(false);
   
   const { data: dashboard, isLoading, refetch } = trpc.machineIntegration.getOeeDashboard.useQuery({ days });
+  const { data: reportData } = trpc.machineIntegration.generateOeeReportData.useQuery(
+    { days },
+    { enabled: showPdfExport }
+  );
   
   const exportOeeMutation = trpc.machineIntegration.exportOeeData.useMutation({
     onSuccess: (data) => {
@@ -1799,6 +1804,135 @@ function OeeDashboardTab() {
     },
     onError: (err) => toast.error(err.message),
   });
+
+  const generatePdf = async () => {
+    if (!reportData) return;
+    
+    // Create HTML content for PDF
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Báo cáo OEE</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 20px; }
+          h1 { color: #1f2937; border-bottom: 2px solid #3b82f6; padding-bottom: 10px; }
+          h2 { color: #374151; margin-top: 30px; }
+          table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+          th, td { border: 1px solid #d1d5db; padding: 10px; text-align: left; }
+          th { background: #f3f4f6; font-weight: bold; }
+          .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin: 20px 0; }
+          .summary-card { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 15px; text-align: center; }
+          .summary-value { font-size: 24px; font-weight: bold; color: #3b82f6; }
+          .summary-label { color: #6b7280; font-size: 14px; }
+          .good { color: #22c55e; }
+          .warning { color: #f59e0b; }
+          .bad { color: #ef4444; }
+          .footer { margin-top: 30px; text-align: center; color: #9ca3af; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <h1>Báo cáo OEE</h1>
+        <p><strong>Thời gian:</strong> ${new Date(reportData.period.from).toLocaleDateString('vi-VN')} - ${new Date(reportData.period.to).toLocaleDateString('vi-VN')} (${reportData.period.days} ngày)</p>
+        <p><strong>Ngày xuất báo cáo:</strong> ${new Date().toLocaleString('vi-VN')}</p>
+        
+        <h2>Tổng quan</h2>
+        <div class="summary-grid">
+          <div class="summary-card">
+            <div class="summary-value ${reportData.summary.avgOee >= 85 ? 'good' : reportData.summary.avgOee >= 70 ? 'warning' : 'bad'}">
+              ${Number(reportData.summary.avgOee).toFixed(1)}%
+            </div>
+            <div class="summary-label">OEE Trung bình</div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-value">${Number(reportData.summary.avgAvailability).toFixed(1)}%</div>
+            <div class="summary-label">Availability</div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-value">${Number(reportData.summary.avgPerformance).toFixed(1)}%</div>
+            <div class="summary-label">Performance</div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-value">${Number(reportData.summary.avgQuality).toFixed(1)}%</div>
+            <div class="summary-label">Quality</div>
+          </div>
+        </div>
+        <p><strong>OEE thấp nhất:</strong> ${Number(reportData.summary.minOee).toFixed(1)}% | <strong>OEE cao nhất:</strong> ${Number(reportData.summary.maxOee).toFixed(1)}% | <strong>Tổng bản ghi:</strong> ${reportData.summary.totalRecords}</p>
+
+        <h2>So sánh theo máy</h2>
+        <table>
+          <thead>
+            <tr><th>Máy</th><th>OEE</th><th>Availability</th><th>Performance</th><th>Quality</th><th>Số bản ghi</th></tr>
+          </thead>
+          <tbody>
+            ${reportData.machineComparison.map(m => `
+              <tr>
+                <td>${m.machineName}</td>
+                <td class="${m.oee >= 85 ? 'good' : m.oee >= 70 ? 'warning' : 'bad'}">${m.oee.toFixed(1)}%</td>
+                <td>${m.availability.toFixed(1)}%</td>
+                <td>${m.performance.toFixed(1)}%</td>
+                <td>${m.quality.toFixed(1)}%</td>
+                <td>${m.records}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+
+        <h2>So sánh theo ca</h2>
+        <table>
+          <thead>
+            <tr><th>Ca</th><th>OEE</th><th>Availability</th><th>Performance</th><th>Quality</th><th>Số bản ghi</th></tr>
+          </thead>
+          <tbody>
+            ${reportData.shiftComparison.map(s => `
+              <tr>
+                <td>${s.shift}</td>
+                <td class="${s.oee >= 85 ? 'good' : s.oee >= 70 ? 'warning' : 'bad'}">${s.oee.toFixed(1)}%</td>
+                <td>${s.availability.toFixed(1)}%</td>
+                <td>${s.performance.toFixed(1)}%</td>
+                <td>${s.quality.toFixed(1)}%</td>
+                <td>${s.records}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+
+        <h2>Trend theo ngày</h2>
+        <table>
+          <thead>
+            <tr><th>Ngày</th><th>OEE</th><th>Availability</th><th>Performance</th><th>Quality</th></tr>
+          </thead>
+          <tbody>
+            ${reportData.dailyTrend.map(d => `
+              <tr>
+                <td>${d.date}</td>
+                <td class="${d.oee >= 85 ? 'good' : d.oee >= 70 ? 'warning' : 'bad'}">${d.oee.toFixed(1)}%</td>
+                <td>${d.availability.toFixed(1)}%</td>
+                <td>${d.performance.toFixed(1)}%</td>
+                <td>${d.quality.toFixed(1)}%</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+
+        <div class="footer">
+          <p>Báo cáo được tạo tự động bởi Hệ thống CPK/SPC</p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    // Open print dialog
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(htmlContent);
+      printWindow.document.close();
+      printWindow.print();
+    }
+    setShowPdfExport(false);
+    toast.success('Báo cáo đã sẵn sàng để in/lưu PDF!');
+  };
 
   const getOeeColor = (oee: number) => {
     if (oee >= 85) return 'text-green-500';
@@ -1842,6 +1976,16 @@ function OeeDashboardTab() {
           >
             <Download className="h-4 w-4 mr-1" />
             Export
+          </Button>
+          <Button 
+            variant="default" 
+            onClick={() => {
+              setShowPdfExport(true);
+              setTimeout(() => generatePdf(), 500);
+            }}
+          >
+            <FileText className="h-4 w-4 mr-1" />
+            Xuất PDF
           </Button>
         </div>
       </div>
@@ -3685,9 +3829,132 @@ function OverviewTab() {
         </Card>
       </div>
 
+      {/* Pending Alerts */}
+      <PendingAlertsCard />
+
       {/* Shift Comparison */}
       <ShiftComparisonCard />
     </div>
+  );
+}
+
+// Pending Alerts Card Component
+function PendingAlertsCard() {
+  const { data: pendingAlerts, refetch } = trpc.machineIntegration.getPendingAlerts.useQuery();
+  const [resolveDialog, setResolveDialog] = useState<{ id: number; machineName: string } | null>(null);
+  const [resolution, setResolution] = useState('');
+
+  const acknowledgeMutation = trpc.machineIntegration.acknowledgeAlert.useMutation({
+    onSuccess: () => {
+      toast.success('Đã xác nhận cảnh báo!');
+      refetch();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const resolveMutation = trpc.machineIntegration.resolveAlert.useMutation({
+    onSuccess: () => {
+      toast.success('Đã xử lý cảnh báo!');
+      setResolveDialog(null);
+      setResolution('');
+      refetch();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  if (!pendingAlerts || pendingAlerts.length === 0) {
+    return null;
+  }
+
+  return (
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-red-500" />
+            Cảnh báo chưa xử lý ({pendingAlerts.length})
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {pendingAlerts.map((alert) => (
+              <div key={alert.id} className="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded-lg">
+                <div className="flex-1">
+                  <div className="font-medium text-red-800">
+                    {alert.machineName || 'Tất cả máy'}: OEE {Number(alert.oeeValue).toFixed(1)}%
+                  </div>
+                  <div className="text-xs text-red-600">
+                    Dưới ngưỡng {alert.consecutiveDaysBelow} ngày liên tiếp • {new Date(alert.createdAt).toLocaleString('vi-VN')}
+                  </div>
+                  {alert.acknowledged === 1 && (
+                    <div className="text-xs text-amber-600 mt-1">
+                      Đã xác nhận bởi {alert.acknowledgedBy} lúc {alert.acknowledgedAt ? new Date(alert.acknowledgedAt).toLocaleString('vi-VN') : ''}
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  {!alert.acknowledged && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => acknowledgeMutation.mutate({ id: alert.id })}
+                      disabled={acknowledgeMutation.isPending}
+                    >
+                      <Eye className="h-4 w-4 mr-1" />
+                      Xác nhận
+                    </Button>
+                  )}
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => setResolveDialog({ id: alert.id, machineName: alert.machineName || 'Tất cả máy' })}
+                  >
+                    <CheckCircle className="h-4 w-4 mr-1" />
+                    Xử lý
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Resolve Dialog */}
+      <Dialog open={!!resolveDialog} onOpenChange={() => setResolveDialog(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Xử lý cảnh báo OEE</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Máy: <strong>{resolveDialog?.machineName}</strong>
+            </p>
+            <div>
+              <Label>Ghi chú xử lý *</Label>
+              <Textarea
+                value={resolution}
+                onChange={(e) => setResolution(e.target.value)}
+                placeholder="Mô tả cách xử lý vấn đề OEE thấp..."
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setResolveDialog(null)}>Hủy</Button>
+            <Button
+              onClick={() => {
+                if (resolveDialog && resolution.trim()) {
+                  resolveMutation.mutate({ id: resolveDialog.id, resolution });
+                }
+              }}
+              disabled={!resolution.trim() || resolveMutation.isPending}
+            >
+              {resolveMutation.isPending ? 'Xử lý...' : 'Xác nhận xử lý'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 

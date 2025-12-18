@@ -3609,3 +3609,33 @@
 - [x] Biểu đồ trend OEE theo ca theo tuần/tháng
 - [x] Bảng thống kê chi tiết theo ca (A/P/Q)
 - [x] Tích hợp vào tab Tổng quan (Overview)
+
+
+## Phase 166 - Alerts Management, OEE Widget & PDF Export
+
+### Acknowledge/resolve cho alerts pending
+- [x] Thêm cột acknowledged, acknowledgedAt, acknowledgedBy vào oee_alert_history
+- [x] Thêm cột resolved, resolvedAt, resolvedBy, resolution vào oee_alert_history
+- [x] API acknowledgeAlert để đánh dấu đã xem
+- [x] API resolveAlert để đánh dấu đã xử lý với ghi chú
+- [x] UI buttons acknowledge/resolve trong dashboard
+- [x] Hiển thị trạng thái và lịch sử xử lý
+- [x] Card Pending Alerts trong Overview tab
+
+### Widget nhúng OEE realtime
+- [x] Trang /embed/oee/:machineId hiển thị OEE realtime
+- [x] Thiết kế tối giản cho màn hình nhà máy
+- [x] Gauge chart OEE với màu sắc theo ngưỡng
+- [x] Hiển thị A/P/Q breakdown với progress bars
+- [x] Auto-refresh cấu hình được (mặc định 30 giây)
+- [x] Hỗ trợ dark/light theme qua query param
+- [x] Trang /oee-widget-config cấu hình embed với iframe code
+- [x] API getLatestOee cho widget
+
+### Export PDF báo cáo OEE
+- [x] API generateOeeReportData với filter
+- [x] Template HTML/PDF với header, bảng thống kê
+- [x] Bảng OEE trend theo ngày trong PDF
+- [x] Bảng so sánh máy/ca trong PDF
+- [x] Button Xuất PDF trong OEE Dashboard
+- [x] In/Lưu PDF qua browser print dialog
