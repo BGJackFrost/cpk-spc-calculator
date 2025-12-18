@@ -3480,3 +3480,27 @@
 - [x] Event stream với auto-refresh 5s
 - [x] Stats cards: total, critical, error, warning
 - [x] Cảnh báo realtime khi có lỗi (severity badges)
+
+
+## Phase 161 - Machine Integration Enhancement
+
+### Auto-apply field mapping khi nhận dữ liệu
+- [x] Hàm applyFieldMapping transform dữ liệu theo mapping rules
+- [x] Tích hợp vào API /inspection để tự động tạo measurement records
+- [x] Tích hợp vào API /measurement để transform và lưu dữ liệu
+- [x] Tích hợp vào API /oee để transform và lưu OEE records
+- [x] Log kết quả mapping (success/failed)
+
+### Webhook triggers cho OEE thấp và measurement out of spec
+- [x] Trigger webhook khi OEE dưới ngưỡng cấu hình
+- [x] Trigger webhook khi measurement vượt USL/LSL
+- [x] Thêm event types: oee_low, measurement_out_of_spec
+- [x] Cấu hình ngưỡng OEE và USL/LSL trong webhook config
+- [x] Log webhook triggers với event details
+
+### Biểu đồ live chart inspection pass/fail rate
+- [x] API getInspectionStats trả về pass/fail theo thời gian
+- [x] Component LiveInspectionChart với auto-refresh
+- [x] Biểu đồ Line/Area hiển thị pass rate theo phút/giờ
+- [x] Biểu đồ Pie hiển thị tỷ lệ pass/fail tổng
+- [x] Tích hợp vào tab Realtime trong Dashboard

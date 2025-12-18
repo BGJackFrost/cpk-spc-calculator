@@ -85,6 +85,222 @@ async function logRequest(
   });
 }
 
+// ==================== Field Mapping Helper ====================
+
+// Get value from nested object using dot notation (e.g., "data.value")
+function getNestedValue(obj: Record<string, unknown>, path: string): unknown {
+  return path.split('.').reduce((current: unknown, key: string) => {
+    if (current && typeof current === 'object' && key in current) {
+      return (current as Record<string, unknown>)[key];
+    }
+    return undefined;
+  }, obj);
+}
+
+// Apply transform to value
+function applyTransform(
+  value: unknown,
+  transformType: string,
+  transformValue: string | null
+): unknown {
+  if (value === undefined || value === null) return value;
+  
+  const numValue = typeof value === 'number' ? value : parseFloat(String(value));
+  if (isNaN(numValue)) return value;
+  
+  const transformNum = transformValue ? parseFloat(transformValue) : 0;
+  
+  switch (transformType) {
+    case 'multiply':
+      return numValue * transformNum;
+    case 'divide':
+      return transformNum !== 0 ? numValue / transformNum : numValue;
+    case 'add':
+      return numValue + transformNum;
+    case 'subtract':
+      return numValue - transformNum;
+    case 'direct':
+    default:
+      return value;
+  }
+}
+
+// Apply field mappings to transform machine data
+async function applyFieldMappings(
+  apiKeyId: number,
+  machineType: string,
+  targetTable: 'measurements' | 'inspection_data' | 'oee_records',
+  rawData: Record<string, unknown>
+): Promise<{ success: boolean; transformedData: Record<string, unknown>; mappingsApplied: number }> {
+  const db = await getDb();
+  
+  // Get active mappings for this API key or machine type
+  const mappings = await db
+    .select()
+    .from(machineFieldMappings)
+    .where(and(
+      eq(machineFieldMappings.isActive, 1),
+      eq(machineFieldMappings.targetTable, targetTable),
+      sql`(${machineFieldMappings.apiKeyId} = ${apiKeyId} OR ${machineFieldMappings.apiKeyId} IS NULL)`,
+      sql`(${machineFieldMappings.machineType} = ${machineType} OR ${machineFieldMappings.machineType} IS NULL)`
+    ));
+
+  if (mappings.length === 0) {
+    return { success: true, transformedData: rawData, mappingsApplied: 0 };
+  }
+
+  const transformedData: Record<string, unknown> = { ...rawData };
+  let mappingsApplied = 0;
+
+  for (const mapping of mappings) {
+    const sourceValue = getNestedValue(rawData, mapping.sourceField);
+    
+    if (sourceValue !== undefined) {
+      const transformedValue = applyTransform(
+        sourceValue,
+        mapping.transformType,
+        mapping.transformValue
+      );
+      transformedData[mapping.targetField] = transformedValue;
+      mappingsApplied++;
+    } else if (mapping.isRequired && mapping.defaultValue) {
+      transformedData[mapping.targetField] = mapping.defaultValue;
+      mappingsApplied++;
+    }
+  }
+
+  return { success: true, transformedData, mappingsApplied };
+}
+
+// Log field mapping result
+async function logMappingResult(
+  apiKeyId: number,
+  targetTable: string,
+  mappingsApplied: number,
+  success: boolean,
+  errorMessage?: string
+) {
+  const db = await getDb();
+  await db.insert(machineRealtimeEvents).values({
+    eventType: 'status',
+    apiKeyId,
+    eventData: JSON.stringify({
+      type: 'field_mapping',
+      targetTable,
+      mappingsApplied,
+      success,
+      errorMessage,
+    }),
+    severity: success ? 'info' : 'warning',
+  });
+}
+
+// ==================== Webhook Trigger Helpers ====================
+
+// Check and trigger webhooks for OEE low
+async function checkAndTriggerOeeWebhooks(
+  apiKeyId: number,
+  machineId: number | null,
+  machineName: string,
+  oeeValue: number,
+  oeeData: Record<string, unknown>
+) {
+  const db = await getDb();
+  
+  // Get webhooks configured for OEE low or all
+  const webhooks = await db.select().from(machineWebhookConfigs)
+    .where(and(
+      eq(machineWebhookConfigs.isActive, 1),
+      sql`${machineWebhookConfigs.triggerType} IN ('oee_low', 'all')`
+    ));
+
+  for (const webhook of webhooks) {
+    // Check if machine is in the configured list
+    const machineIds = webhook.machineIds ? JSON.parse(webhook.machineIds) : null;
+    if (machineIds && machineId && !machineIds.includes(machineId)) continue;
+
+    // Check if OEE is below threshold
+    const threshold = webhook.oeeThreshold ? parseFloat(webhook.oeeThreshold) : 85;
+    if (oeeValue >= threshold) continue;
+
+    const payload = {
+      type: 'oee_low',
+      timestamp: new Date().toISOString(),
+      machineId,
+      machineName,
+      oeeValue: oeeValue.toFixed(2),
+      threshold,
+      difference: (threshold - oeeValue).toFixed(2),
+      details: oeeData,
+    };
+
+    // Create realtime event
+    await db.insert(machineRealtimeEvents).values({
+      eventType: 'alert',
+      machineId,
+      machineName,
+      apiKeyId,
+      eventData: JSON.stringify(payload),
+      severity: oeeValue < threshold - 20 ? 'critical' : 'warning',
+    });
+
+    // Trigger webhook
+    triggerWebhook(webhook, payload, 'oee_low').catch(console.error);
+  }
+}
+
+// Check and trigger webhooks for measurement out of spec
+async function checkAndTriggerMeasurementWebhooks(
+  apiKeyId: number,
+  machineId: number | null,
+  machineName: string,
+  outOfSpecMeasurements: Array<{
+    parameterName: string;
+    measuredValue: number;
+    lsl?: number;
+    usl?: number;
+  }>
+) {
+  if (outOfSpecMeasurements.length === 0) return;
+
+  const db = await getDb();
+  
+  // Get webhooks configured for measurement out of spec or all
+  const webhooks = await db.select().from(machineWebhookConfigs)
+    .where(and(
+      eq(machineWebhookConfigs.isActive, 1),
+      sql`${machineWebhookConfigs.triggerType} IN ('measurement_out_of_spec', 'all')`
+    ));
+
+  for (const webhook of webhooks) {
+    // Check if machine is in the configured list
+    const machineIds = webhook.machineIds ? JSON.parse(webhook.machineIds) : null;
+    if (machineIds && machineId && !machineIds.includes(machineId)) continue;
+
+    const payload = {
+      type: 'measurement_out_of_spec',
+      timestamp: new Date().toISOString(),
+      machineId,
+      machineName,
+      outOfSpecCount: outOfSpecMeasurements.length,
+      measurements: outOfSpecMeasurements,
+    };
+
+    // Create realtime event
+    await db.insert(machineRealtimeEvents).values({
+      eventType: 'alert',
+      machineId,
+      machineName,
+      apiKeyId,
+      eventData: JSON.stringify(payload),
+      severity: outOfSpecMeasurements.length > 5 ? 'critical' : 'error',
+    });
+
+    // Trigger webhook
+    triggerWebhook(webhook, payload, 'measurement_out_of_spec').catch(console.error);
+  }
+}
+
 // Trigger webhook with retry logic
 async function triggerWebhook(
   webhook: typeof machineWebhookConfigs.$inferSelect,
@@ -797,6 +1013,229 @@ export const machineIntegrationRouter = router({
 
       return stats;
     }),
+
+  // Get inspection pass/fail statistics for live chart
+  getInspectionStats: protectedProcedure
+    .input(z.object({
+      timeRange: z.enum(['1h', '4h', '8h', '24h']).default('1h'),
+      machineId: z.number().optional(),
+    }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      const now = new Date();
+      
+      // Calculate time range
+      const hours = input.timeRange === '1h' ? 1 : input.timeRange === '4h' ? 4 : input.timeRange === '8h' ? 8 : 24;
+      const startTime = new Date(now.getTime() - hours * 60 * 60 * 1000);
+      
+      // Determine grouping interval based on time range
+      const intervalMinutes = hours <= 1 ? 5 : hours <= 4 ? 15 : hours <= 8 ? 30 : 60;
+      
+      const conditions = [
+        gte(machineInspectionData.inspectedAt, startTime),
+      ];
+      if (input.machineId) {
+        conditions.push(eq(machineInspectionData.machineId, input.machineId));
+      }
+
+      // Get time-series data grouped by interval
+      const timeSeriesData = await db
+        .select({
+          timeSlot: sql<string>`DATE_FORMAT(${machineInspectionData.inspectedAt}, '%Y-%m-%d %H:%i')`,
+          passCount: sql<number>`SUM(CASE WHEN ${machineInspectionData.inspectionResult} = 'pass' THEN 1 ELSE 0 END)`,
+          failCount: sql<number>`SUM(CASE WHEN ${machineInspectionData.inspectionResult} = 'fail' THEN 1 ELSE 0 END)`,
+          reworkCount: sql<number>`SUM(CASE WHEN ${machineInspectionData.inspectionResult} = 'rework' THEN 1 ELSE 0 END)`,
+          totalCount: sql<number>`COUNT(*)`,
+        })
+        .from(machineInspectionData)
+        .where(and(...conditions))
+        .groupBy(sql`FLOOR(UNIX_TIMESTAMP(${machineInspectionData.inspectedAt}) / ${intervalMinutes * 60})`)
+        .orderBy(sql`${machineInspectionData.inspectedAt}`);
+
+      // Get overall summary
+      const [summary] = await db
+        .select({
+          totalPass: sql<number>`SUM(CASE WHEN ${machineInspectionData.inspectionResult} = 'pass' THEN 1 ELSE 0 END)`,
+          totalFail: sql<number>`SUM(CASE WHEN ${machineInspectionData.inspectionResult} = 'fail' THEN 1 ELSE 0 END)`,
+          totalRework: sql<number>`SUM(CASE WHEN ${machineInspectionData.inspectionResult} = 'rework' THEN 1 ELSE 0 END)`,
+          totalInspections: sql<number>`COUNT(*)`,
+          avgCycleTime: sql<number>`AVG(${machineInspectionData.cycleTimeMs})`,
+          totalDefects: sql<number>`SUM(${machineInspectionData.defectCount})`,
+        })
+        .from(machineInspectionData)
+        .where(and(...conditions));
+
+      // Calculate pass rate
+      const passRate = summary.totalInspections > 0 
+        ? (summary.totalPass / summary.totalInspections * 100).toFixed(2)
+        : '0.00';
+
+      // Format time series for chart
+      const chartData = timeSeriesData.map(row => ({
+        time: row.timeSlot,
+        pass: row.passCount || 0,
+        fail: row.failCount || 0,
+        rework: row.reworkCount || 0,
+        total: row.totalCount || 0,
+        passRate: row.totalCount > 0 ? ((row.passCount || 0) / row.totalCount * 100).toFixed(1) : '0.0',
+      }));
+
+      return {
+        chartData,
+        summary: {
+          totalPass: summary.totalPass || 0,
+          totalFail: summary.totalFail || 0,
+          totalRework: summary.totalRework || 0,
+          totalInspections: summary.totalInspections || 0,
+          passRate,
+          avgCycleTime: summary.avgCycleTime ? Math.round(summary.avgCycleTime) : 0,
+          totalDefects: summary.totalDefects || 0,
+        },
+        timeRange: input.timeRange,
+        intervalMinutes,
+      };
+    }),
+
+  // Get measurement out-of-spec statistics
+  getMeasurementStats: protectedProcedure
+    .input(z.object({
+      timeRange: z.enum(['1h', '4h', '8h', '24h']).default('1h'),
+      machineId: z.number().optional(),
+    }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      const now = new Date();
+      
+      const hours = input.timeRange === '1h' ? 1 : input.timeRange === '4h' ? 4 : input.timeRange === '8h' ? 8 : 24;
+      const startTime = new Date(now.getTime() - hours * 60 * 60 * 1000);
+      
+      const conditions = [
+        gte(machineMeasurementData.measuredAt, startTime),
+      ];
+      if (input.machineId) {
+        conditions.push(eq(machineMeasurementData.machineId, input.machineId));
+      }
+
+      // Get summary statistics
+      const [summary] = await db
+        .select({
+          totalMeasurements: sql<number>`COUNT(*)`,
+          inSpecCount: sql<number>`SUM(CASE WHEN ${machineMeasurementData.isWithinSpec} = 1 THEN 1 ELSE 0 END)`,
+          outOfSpecCount: sql<number>`SUM(CASE WHEN ${machineMeasurementData.isWithinSpec} = 0 THEN 1 ELSE 0 END)`,
+          unknownSpecCount: sql<number>`SUM(CASE WHEN ${machineMeasurementData.isWithinSpec} IS NULL THEN 1 ELSE 0 END)`,
+        })
+        .from(machineMeasurementData)
+        .where(and(...conditions));
+
+      // Get out-of-spec by parameter
+      const byParameter = await db
+        .select({
+          parameterName: machineMeasurementData.parameterName,
+          totalCount: sql<number>`COUNT(*)`,
+          outOfSpecCount: sql<number>`SUM(CASE WHEN ${machineMeasurementData.isWithinSpec} = 0 THEN 1 ELSE 0 END)`,
+        })
+        .from(machineMeasurementData)
+        .where(and(...conditions))
+        .groupBy(machineMeasurementData.parameterName)
+        .orderBy(sql`SUM(CASE WHEN ${machineMeasurementData.isWithinSpec} = 0 THEN 1 ELSE 0 END) DESC`)
+        .limit(10);
+
+      return {
+        summary: {
+          totalMeasurements: summary.totalMeasurements || 0,
+          inSpecCount: summary.inSpecCount || 0,
+          outOfSpecCount: summary.outOfSpecCount || 0,
+          unknownSpecCount: summary.unknownSpecCount || 0,
+          inSpecRate: summary.totalMeasurements > 0 
+            ? ((summary.inSpecCount || 0) / summary.totalMeasurements * 100).toFixed(2)
+            : '0.00',
+        },
+        byParameter: byParameter.map(p => ({
+          parameterName: p.parameterName,
+          totalCount: p.totalCount || 0,
+          outOfSpecCount: p.outOfSpecCount || 0,
+          outOfSpecRate: p.totalCount > 0 
+            ? ((p.outOfSpecCount || 0) / p.totalCount * 100).toFixed(1)
+            : '0.0',
+        })),
+        timeRange: input.timeRange,
+      };
+    }),
+
+  // Get OEE statistics
+  getOeeStats: protectedProcedure
+    .input(z.object({
+      days: z.number().min(1).max(30).default(7),
+      machineId: z.number().optional(),
+    }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - input.days);
+      
+      const conditions = [
+        gte(machineOeeData.recordedAt, startDate),
+      ];
+      if (input.machineId) {
+        conditions.push(eq(machineOeeData.machineId, input.machineId));
+      }
+
+      // Get daily OEE averages
+      const dailyOee = await db
+        .select({
+          date: machineOeeData.recordDate,
+          avgOee: sql<number>`AVG(CAST(${machineOeeData.oee} AS DECIMAL(10,2)))`,
+          avgAvailability: sql<number>`AVG(CAST(${machineOeeData.availability} AS DECIMAL(10,2)))`,
+          avgPerformance: sql<number>`AVG(CAST(${machineOeeData.performance} AS DECIMAL(10,2)))`,
+          avgQuality: sql<number>`AVG(CAST(${machineOeeData.quality} AS DECIMAL(10,2)))`,
+          totalDowntime: sql<number>`SUM(${machineOeeData.downtime})`,
+          totalGood: sql<number>`SUM(${machineOeeData.goodCount})`,
+          totalReject: sql<number>`SUM(${machineOeeData.rejectCount})`,
+        })
+        .from(machineOeeData)
+        .where(and(...conditions))
+        .groupBy(machineOeeData.recordDate)
+        .orderBy(machineOeeData.recordDate);
+
+      // Get overall summary
+      const [summary] = await db
+        .select({
+          avgOee: sql<number>`AVG(CAST(${machineOeeData.oee} AS DECIMAL(10,2)))`,
+          minOee: sql<number>`MIN(CAST(${machineOeeData.oee} AS DECIMAL(10,2)))`,
+          maxOee: sql<number>`MAX(CAST(${machineOeeData.oee} AS DECIMAL(10,2)))`,
+          avgAvailability: sql<number>`AVG(CAST(${machineOeeData.availability} AS DECIMAL(10,2)))`,
+          avgPerformance: sql<number>`AVG(CAST(${machineOeeData.performance} AS DECIMAL(10,2)))`,
+          avgQuality: sql<number>`AVG(CAST(${machineOeeData.quality} AS DECIMAL(10,2)))`,
+          totalDowntime: sql<number>`SUM(${machineOeeData.downtime})`,
+          recordCount: sql<number>`COUNT(*)`,
+        })
+        .from(machineOeeData)
+        .where(and(...conditions));
+
+      return {
+        chartData: dailyOee.map(row => ({
+          date: row.date,
+          oee: row.avgOee ? parseFloat(row.avgOee.toFixed(1)) : 0,
+          availability: row.avgAvailability ? parseFloat(row.avgAvailability.toFixed(1)) : 0,
+          performance: row.avgPerformance ? parseFloat(row.avgPerformance.toFixed(1)) : 0,
+          quality: row.avgQuality ? parseFloat(row.avgQuality.toFixed(1)) : 0,
+          downtime: row.totalDowntime || 0,
+          goodCount: row.totalGood || 0,
+          rejectCount: row.totalReject || 0,
+        })),
+        summary: {
+          avgOee: summary.avgOee ? parseFloat(summary.avgOee.toFixed(1)) : 0,
+          minOee: summary.minOee ? parseFloat(summary.minOee.toFixed(1)) : 0,
+          maxOee: summary.maxOee ? parseFloat(summary.maxOee.toFixed(1)) : 0,
+          avgAvailability: summary.avgAvailability ? parseFloat(summary.avgAvailability.toFixed(1)) : 0,
+          avgPerformance: summary.avgPerformance ? parseFloat(summary.avgPerformance.toFixed(1)) : 0,
+          avgQuality: summary.avgQuality ? parseFloat(summary.avgQuality.toFixed(1)) : 0,
+          totalDowntime: summary.totalDowntime || 0,
+          recordCount: summary.recordCount || 0,
+        },
+        days: input.days,
+      };
+    }),
 });
 
 // ==================== Public API Endpoints (for machine vendors) ====================
@@ -837,8 +1276,26 @@ export const machinePublicRouter = router({
 
       try {
         const db = await getDb();
+        
+        // Apply field mappings to each data item
+        const processedData = await Promise.all(input.data.map(async (item) => {
+          const { transformedData, mappingsApplied } = await applyFieldMappings(
+            keyInfo.id,
+            keyInfo.machineType,
+            'inspection_data',
+            item as Record<string, unknown>
+          );
+          
+          // Log mapping result if mappings were applied
+          if (mappingsApplied > 0) {
+            await logMappingResult(keyInfo.id, 'inspection_data', mappingsApplied, true);
+          }
+          
+          return { ...item, ...transformedData };
+        }));
+        
         // Insert inspection data
-        const insertData = input.data.map(item => ({
+        const insertData = processedData.map(item => ({
           apiKeyId: keyInfo.id,
           machineId: keyInfo.machineId,
           productionLineId: keyInfo.productionLineId,
@@ -861,7 +1318,7 @@ export const machinePublicRouter = router({
         await db.insert(machineInspectionData).values(insertData);
 
         // Check for failed inspections and trigger webhooks
-        const failedInspections = input.data.filter(d => d.inspectionResult === "fail" || d.inspectionResult === "ng");
+        const failedInspections = processedData.filter(d => d.inspectionResult === "fail" || (d.inspectionResult as string) === "ng");
         if (failedInspections.length > 0) {
           // Create realtime event for failed inspections
           await db.insert(machineRealtimeEvents).values({
@@ -981,7 +1438,25 @@ export const machinePublicRouter = router({
 
       try {
         const db = await getDb();
-        const insertData = input.data.map(item => {
+        
+        // Apply field mappings to each data item
+        const processedData = await Promise.all(input.data.map(async (item) => {
+          const { transformedData, mappingsApplied } = await applyFieldMappings(
+            keyInfo.id,
+            keyInfo.machineType,
+            'measurements',
+            item as Record<string, unknown>
+          );
+          
+          // Log mapping result if mappings were applied
+          if (mappingsApplied > 0) {
+            await logMappingResult(keyInfo.id, 'measurements', mappingsApplied, true);
+          }
+          
+          return { ...item, ...transformedData };
+        }));
+        
+        const insertData = processedData.map(item => {
           const isWithinSpec = item.lsl !== undefined && item.usl !== undefined
             ? (item.measuredValue >= item.lsl && item.measuredValue <= item.usl ? 1 : 0)
             : null;
@@ -1010,6 +1485,44 @@ export const machinePublicRouter = router({
 
         await db.insert(machineMeasurementData).values(insertData);
 
+        // Check for out-of-spec measurements and trigger webhooks
+        const outOfSpecMeasurements = processedData.filter(item => {
+          if (item.lsl !== undefined && item.usl !== undefined) {
+            return item.measuredValue < item.lsl || item.measuredValue > item.usl;
+          }
+          return false;
+        }).map(item => ({
+          parameterName: item.parameterName,
+          measuredValue: item.measuredValue,
+          lsl: item.lsl,
+          usl: item.usl,
+        }));
+
+        if (outOfSpecMeasurements.length > 0) {
+          // Create realtime event for out-of-spec measurements
+          await db.insert(machineRealtimeEvents).values({
+            eventType: 'measurement',
+            machineId: keyInfo.machineId,
+            machineName: keyInfo.name,
+            apiKeyId: keyInfo.id,
+            eventData: JSON.stringify({
+              type: 'measurement_out_of_spec',
+              outOfSpecCount: outOfSpecMeasurements.length,
+              totalCount: input.data.length,
+              samples: outOfSpecMeasurements.slice(0, 5),
+            }),
+            severity: outOfSpecMeasurements.length > 5 ? 'critical' : 'error',
+          });
+
+          // Trigger webhooks for out-of-spec measurements
+          await checkAndTriggerMeasurementWebhooks(
+            keyInfo.id,
+            keyInfo.machineId,
+            keyInfo.name,
+            outOfSpecMeasurements
+          );
+        }
+
         const processingTime = Date.now() - startTime;
         await logRequest(
           keyInfo.id,
@@ -1017,7 +1530,7 @@ export const machinePublicRouter = router({
           "POST",
           JSON.stringify({ count: input.data.length }),
           200,
-          JSON.stringify({ success: true, count: input.data.length }),
+          JSON.stringify({ success: true, count: input.data.length, outOfSpec: outOfSpecMeasurements.length }),
           processingTime,
           null,
           null,
@@ -1028,6 +1541,7 @@ export const machinePublicRouter = router({
           success: true,
           message: `Successfully received ${input.data.length} measurement records`,
           count: input.data.length,
+          outOfSpecCount: outOfSpecMeasurements.length,
         };
       } catch (error: any) {
         const processingTime = Date.now() - startTime;
@@ -1093,7 +1607,25 @@ export const machinePublicRouter = router({
 
       try {
         const db = await getDb();
-        const insertData = input.data.map(item => ({
+        
+        // Apply field mappings to each data item
+        const processedData = await Promise.all(input.data.map(async (item) => {
+          const { transformedData, mappingsApplied } = await applyFieldMappings(
+            keyInfo.id,
+            keyInfo.machineType,
+            'oee_records',
+            item as Record<string, unknown>
+          );
+          
+          // Log mapping result if mappings were applied
+          if (mappingsApplied > 0) {
+            await logMappingResult(keyInfo.id, 'oee_records', mappingsApplied, true);
+          }
+          
+          return { ...item, ...transformedData };
+        }));
+        
+        const insertData = processedData.map(item => ({
           apiKeyId: keyInfo.id,
           machineId: keyInfo.machineId,
           productionLineId: keyInfo.productionLineId,
@@ -1119,6 +1651,49 @@ export const machinePublicRouter = router({
 
         await db.insert(machineOeeData).values(insertData);
 
+        // Check for low OEE values and trigger webhooks
+        let lowOeeCount = 0;
+        for (const item of processedData) {
+          if (item.oee !== undefined) {
+            // Create realtime event for OEE data
+            await db.insert(machineRealtimeEvents).values({
+              eventType: 'oee',
+              machineId: keyInfo.machineId,
+              machineName: keyInfo.name,
+              apiKeyId: keyInfo.id,
+              eventData: JSON.stringify({
+                type: 'oee_update',
+                oee: item.oee,
+                availability: item.availability,
+                performance: item.performance,
+                quality: item.quality,
+                recordDate: item.recordDate,
+              }),
+              severity: item.oee < 60 ? 'critical' : item.oee < 85 ? 'warning' : 'info',
+            });
+
+            // Trigger webhook if OEE is low
+            await checkAndTriggerOeeWebhooks(
+              keyInfo.id,
+              keyInfo.machineId,
+              keyInfo.name,
+              item.oee,
+              {
+                availability: item.availability,
+                performance: item.performance,
+                quality: item.quality,
+                recordDate: item.recordDate,
+                downtime: item.downtime,
+                totalCount: item.totalCount,
+                goodCount: item.goodCount,
+                rejectCount: item.rejectCount,
+              }
+            );
+            
+            if (item.oee < 85) lowOeeCount++;
+          }
+        }
+
         const processingTime = Date.now() - startTime;
         await logRequest(
           keyInfo.id,
@@ -1126,7 +1701,7 @@ export const machinePublicRouter = router({
           "POST",
           JSON.stringify({ count: input.data.length }),
           200,
-          JSON.stringify({ success: true, count: input.data.length }),
+          JSON.stringify({ success: true, count: input.data.length, lowOeeCount }),
           processingTime,
           null,
           null,
@@ -1137,6 +1712,7 @@ export const machinePublicRouter = router({
           success: true,
           message: `Successfully received ${input.data.length} OEE records`,
           count: input.data.length,
+          lowOeeCount,
         };
       } catch (error: any) {
         const processingTime = Date.now() - startTime;

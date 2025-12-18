@@ -706,11 +706,19 @@ Error Codes:
 // ==================== Webhooks Tab ====================
 function WebhooksTab() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [newWebhook, setNewWebhook] = useState({
+  const [newWebhook, setNewWebhook] = useState<{
+    name: string;
+    webhookUrl: string;
+    webhookSecret: string;
+    triggerType: "inspection_fail" | "oee_low" | "measurement_out_of_spec" | "all";
+    oeeThreshold: number;
+    retryCount: number;
+    retryDelaySeconds: number;
+  }>({
     name: "",
     webhookUrl: "",
     webhookSecret: "",
-    triggerType: "all" as const,
+    triggerType: "all",
     oeeThreshold: 85,
     retryCount: 3,
     retryDelaySeconds: 60,
@@ -1183,14 +1191,23 @@ function FieldMappingTab() {
 
 // ==================== Realtime Tab ====================
 function RealtimeTab() {
+  const [timeRange, setTimeRange] = useState<'1h' | '4h' | '8h' | '24h'>('1h');
+  const [activeSubTab, setActiveSubTab] = useState<'events' | 'inspection' | 'measurement'>('events');
+  
   const { data: events, isLoading, refetch } = trpc.machineIntegration.listRealtimeEvents.useQuery({ limit: 50 });
   const { data: stats } = trpc.machineIntegration.getRealtimeStats.useQuery();
+  const { data: inspectionStats, refetch: refetchInspection } = trpc.machineIntegration.getInspectionStats.useQuery({ timeRange });
+  const { data: measurementStats, refetch: refetchMeasurement } = trpc.machineIntegration.getMeasurementStats.useQuery({ timeRange });
 
   // Auto-refresh every 5 seconds
   useEffect(() => {
-    const interval = setInterval(() => refetch(), 5000);
+    const interval = setInterval(() => {
+      refetch();
+      refetchInspection();
+      refetchMeasurement();
+    }, 5000);
     return () => clearInterval(interval);
-  }, [refetch]);
+  }, [refetch, refetchInspection, refetchMeasurement]);
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
@@ -1241,68 +1258,336 @@ function RealtimeTab() {
         </Card>
       </div>
 
-      {/* Event Stream */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <Radio className="h-5 w-5 text-green-500 animate-pulse" />
-              Realtime Event Stream
-            </CardTitle>
-            <CardDescription>Dữ liệu từ máy được cập nhật tự động mỗi 5 giây</CardDescription>
-          </div>
-          <Button variant="outline" onClick={() => refetch()}>
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
-          </Button>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="text-center py-8">Đang tải...</div>
-          ) : events?.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              Chưa có sự kiện nào. Dữ liệu sẽ xuất hiện khi máy gửi dữ liệu qua API.
-            </div>
-          ) : (
-            <div className="space-y-2 max-h-[500px] overflow-y-auto">
-              {events?.map((event) => {
-                let eventData: Record<string, unknown> = {};
-                try {
-                  eventData = JSON.parse(event.eventData);
-                } catch {}
+      {/* Sub-tabs for different views */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <Button
+          variant={activeSubTab === 'events' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setActiveSubTab('events')}
+        >
+          <Radio className="h-4 w-4 mr-1" />
+          Event Stream
+        </Button>
+        <Button
+          variant={activeSubTab === 'inspection' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setActiveSubTab('inspection')}
+        >
+          <Eye className="h-4 w-4 mr-1" />
+          Inspection Chart
+        </Button>
+        <Button
+          variant={activeSubTab === 'measurement' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setActiveSubTab('measurement')}
+        >
+          <Activity className="h-4 w-4 mr-1" />
+          Measurement Stats
+        </Button>
+        <div className="ml-auto">
+          <Select value={timeRange} onValueChange={(v: any) => setTimeRange(v)}>
+            <SelectTrigger className="w-[120px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="1h">1 giờ</SelectItem>
+              <SelectItem value="4h">4 giờ</SelectItem>
+              <SelectItem value="8h">8 giờ</SelectItem>
+              <SelectItem value="24h">24 giờ</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
 
-                return (
-                  <div
-                    key={event.id}
-                    className="flex items-start gap-3 p-3 border rounded-lg hover:bg-muted/50"
-                  >
-                    <div className="mt-1">{getEventIcon(event.eventType)}</div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <Badge variant={getSeverityColor(event.severity)}>{event.severity}</Badge>
-                        <Badge variant="outline">{event.eventType}</Badge>
-                        {event.machineName && (
-                          <span className="text-sm text-muted-foreground">{event.machineName}</span>
-                        )}
-                      </div>
-                      <div className="text-sm mt-1">
-                        {eventData.type && <span className="font-medium">{String(eventData.type)}: </span>}
-                        {eventData.message && <span>{String(eventData.message)}</span>}
-                        {eventData.failedCount !== undefined && (
-                          <span>Failed: {String(eventData.failedCount)}/{String(eventData.totalCount)}</span>
-                        )}
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {new Date(event.createdAt).toLocaleString("vi-VN")}
+      {/* Event Stream */}
+      {activeSubTab === 'events' && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Radio className="h-5 w-5 text-green-500 animate-pulse" />
+                Realtime Event Stream
+              </CardTitle>
+              <CardDescription>Dữ liệu từ máy được cập nhật tự động mỗi 5 giây</CardDescription>
+            </div>
+            <Button variant="outline" onClick={() => refetch()}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="text-center py-8">Đang tải...</div>
+            ) : events?.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                Chưa có sự kiện nào. Dữ liệu sẽ xuất hiện khi máy gửi dữ liệu qua API.
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-[500px] overflow-y-auto">
+                {events?.map((event) => {
+                  let eventData: Record<string, unknown> = {};
+                  try {
+                    eventData = JSON.parse(event.eventData);
+                  } catch {}
+
+                  return (
+                    <div
+                      key={event.id}
+                      className="flex items-start gap-3 p-3 border rounded-lg hover:bg-muted/50"
+                    >
+                      <div className="mt-1">{getEventIcon(event.eventType)}</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <Badge variant={getSeverityColor(event.severity)}>{event.severity}</Badge>
+                          <Badge variant="outline">{event.eventType}</Badge>
+                          {event.machineName && (
+                            <span className="text-sm text-muted-foreground">{event.machineName}</span>
+                          )}
+                        </div>
+                        <div className="text-sm mt-1">
+                          {eventData.type && <span className="font-medium">{String(eventData.type)}: </span>}
+                          {eventData.message && <span>{String(eventData.message)}</span>}
+                          {eventData.failedCount !== undefined && (
+                            <span>Failed: {String(eventData.failedCount)}/{String(eventData.totalCount)}</span>
+                          )}
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {new Date(event.createdAt).toLocaleString("vi-VN")}
+                        </div>
                       </div>
                     </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Inspection Live Chart */}
+      {activeSubTab === 'inspection' && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Summary Cards */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg">Tổng quan Inspection</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Tổng kiểm tra</span>
+                  <span className="text-2xl font-bold">{inspectionStats?.summary.totalInspections || 0}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Pass Rate</span>
+                  <span className="text-2xl font-bold text-green-500">{inspectionStats?.summary.passRate || 0}%</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 pt-2 border-t">
+                  <div className="text-center">
+                    <div className="text-lg font-semibold text-green-500">{inspectionStats?.summary.totalPass || 0}</div>
+                    <div className="text-xs text-muted-foreground">Pass</div>
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                  <div className="text-center">
+                    <div className="text-lg font-semibold text-red-500">{inspectionStats?.summary.totalFail || 0}</div>
+                    <div className="text-xs text-muted-foreground">Fail</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-lg font-semibold text-yellow-500">{inspectionStats?.summary.totalRework || 0}</div>
+                    <div className="text-xs text-muted-foreground">Rework</div>
+                  </div>
+                </div>
+                <div className="pt-2 border-t">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Avg Cycle Time</span>
+                    <span>{inspectionStats?.summary.avgCycleTime || 0} ms</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Total Defects</span>
+                    <span>{inspectionStats?.summary.totalDefects || 0}</span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Pass/Fail Pie Chart */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg">Tỷ lệ Pass/Fail</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart
+                  data={[
+                    { name: 'Pass', value: inspectionStats?.summary.totalPass || 0, fill: '#22c55e' },
+                    { name: 'Fail', value: inspectionStats?.summary.totalFail || 0, fill: '#ef4444' },
+                    { name: 'Rework', value: inspectionStats?.summary.totalRework || 0, fill: '#eab308' },
+                  ]}
+                  layout="vertical"
+                >
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis type="number" />
+                  <YAxis type="category" dataKey="name" width={60} />
+                  <Tooltip />
+                  <Bar dataKey="value" />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          {/* Pass Rate Gauge */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg">Pass Rate Gauge</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col items-center justify-center">
+              <div className="relative w-40 h-40">
+                <svg className="w-full h-full transform -rotate-90">
+                  <circle
+                    cx="80"
+                    cy="80"
+                    r="70"
+                    fill="none"
+                    stroke="#e5e7eb"
+                    strokeWidth="12"
+                  />
+                  <circle
+                    cx="80"
+                    cy="80"
+                    r="70"
+                    fill="none"
+                    stroke={parseFloat(inspectionStats?.summary.passRate || '0') >= 95 ? '#22c55e' : parseFloat(inspectionStats?.summary.passRate || '0') >= 85 ? '#eab308' : '#ef4444'}
+                    strokeWidth="12"
+                    strokeDasharray={`${(parseFloat(inspectionStats?.summary.passRate || '0') / 100) * 440} 440`}
+                    strokeLinecap="round"
+                  />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-3xl font-bold">{inspectionStats?.summary.passRate || 0}%</span>
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground mt-2">Pass Rate ({timeRange})</p>
+            </CardContent>
+          </Card>
+
+          {/* Time Series Chart */}
+          <Card className="lg:col-span-3">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <div>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Radio className="h-4 w-4 text-green-500 animate-pulse" />
+                  Live Inspection Pass/Fail Rate
+                </CardTitle>
+                <CardDescription>Cập nhật tự động mỗi 5 giây</CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {!inspectionStats?.chartData || inspectionStats.chartData.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  Chưa có dữ liệu inspection trong khoảng thời gian này
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={inspectionStats.chartData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis 
+                      dataKey="time" 
+                      tick={{ fontSize: 11 }}
+                      tickFormatter={(value) => value.split(' ')[1] || value}
+                    />
+                    <YAxis yAxisId="left" />
+                    <YAxis yAxisId="right" orientation="right" domain={[0, 100]} />
+                    <Tooltip 
+                      labelFormatter={(value) => `Thời gian: ${value}`}
+                      formatter={(value: number, name: string) => {
+                        if (name === 'passRate') return [`${value}%`, 'Pass Rate'];
+                        return [value, name === 'pass' ? 'Pass' : name === 'fail' ? 'Fail' : 'Rework'];
+                      }}
+                    />
+                    <Legend />
+                    <Line yAxisId="left" type="monotone" dataKey="pass" stroke="#22c55e" strokeWidth={2} name="Pass" dot={false} />
+                    <Line yAxisId="left" type="monotone" dataKey="fail" stroke="#ef4444" strokeWidth={2} name="Fail" dot={false} />
+                    <Line yAxisId="left" type="monotone" dataKey="rework" stroke="#eab308" strokeWidth={2} name="Rework" dot={false} />
+                    <Line yAxisId="right" type="monotone" dataKey="passRate" stroke="#3b82f6" strokeWidth={2} strokeDasharray="5 5" name="Pass Rate %" dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Measurement Stats */}
+      {activeSubTab === 'measurement' && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* Summary */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg">Tổng quan Measurement</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Tổng đo lường</span>
+                  <span className="text-2xl font-bold">{measurementStats?.summary.totalMeasurements || 0}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">In-Spec Rate</span>
+                  <span className="text-2xl font-bold text-green-500">{measurementStats?.summary.inSpecRate || 0}%</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 pt-2 border-t">
+                  <div className="text-center">
+                    <div className="text-lg font-semibold text-green-500">{measurementStats?.summary.inSpecCount || 0}</div>
+                    <div className="text-xs text-muted-foreground">In Spec</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-lg font-semibold text-red-500">{measurementStats?.summary.outOfSpecCount || 0}</div>
+                    <div className="text-xs text-muted-foreground">Out of Spec</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-lg font-semibold text-gray-500">{measurementStats?.summary.unknownSpecCount || 0}</div>
+                    <div className="text-xs text-muted-foreground">Unknown</div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Out of Spec by Parameter */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg">Out-of-Spec by Parameter</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {!measurementStats?.byParameter || measurementStats.byParameter.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  Không có dữ liệu out-of-spec
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-[250px] overflow-y-auto">
+                  {measurementStats.byParameter.map((param, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <div className="flex-1">
+                        <div className="flex justify-between text-sm">
+                          <span className="font-medium truncate max-w-[200px]">{param.parameterName}</span>
+                          <span className="text-red-500">{param.outOfSpecCount}/{param.totalCount}</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
+                          <div 
+                            className="bg-red-500 h-2 rounded-full" 
+                            style={{ width: `${param.outOfSpecRate}%` }}
+                          />
+                        </div>
+                      </div>
+                      <span className="text-xs text-muted-foreground w-12 text-right">{param.outOfSpecRate}%</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
