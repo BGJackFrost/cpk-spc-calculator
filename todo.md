@@ -3527,3 +3527,31 @@
 - [x] Button Export trong Realtime tab
 - [x] Chọn định dạng: CSV hoặc JSON
 - [x] Download file với tên có timestamp
+
+
+## Phase 163 - OEE Alerts & Reports
+
+### Cảnh báo email tự động khi OEE thấp
+- [x] Schema bảng oee_alert_configs (ngưỡng, số ngày liên tiếp, recipients)
+- [x] API CRUD cho OEE alert configs
+- [x] Logic kiểm tra OEE nhiều ngày liên tiếp
+- [x] Bảng oee_alert_history lưu lịch sử cảnh báo
+- [x] UI tab Cảnh báo OEE trong Machine Integration
+
+### Báo cáo OEE định kỳ (hàng tuần/tháng)
+- [x] Schema bảng oee_report_schedules (frequency, recipients, machines)
+- [x] API CRUD cho OEE report schedules
+- [x] Tính toán next_scheduled_at tự động
+- [x] Bảng oee_report_history lưu lịch sử gửi
+- [x] UI tab Báo cáo OEE trong Machine Integration
+
+### Biểu đồ Pareto phân tích nguyên nhân downtime
+- [x] Bảng downtime_reasons lưu nguyên nhân downtime
+- [x] API getDowntimeAnalysis trả về dữ liệu Pareto
+- [x] Danh sách mã lỗi chuẩn (17 reason codes theo 5M1E)
+- [x] Biểu đồ Pareto (bar + line tích lũy)
+- [x] Biểu đồ Pie theo danh mục
+- [x] Biểu đồ Bar theo máy
+- [x] Bảng chi tiết với tỷ lệ tích lũy
+- [x] Form thêm downtime thủ công
+- [x] UI tab Pareto Downtime trong Machine Integration

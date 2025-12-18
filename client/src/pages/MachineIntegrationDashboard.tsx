@@ -34,6 +34,11 @@ import {
   Play,
   Zap,
   Radio,
+  Bell,
+  Mail,
+  Calendar,
+  TrendingDown,
+  Edit,
 } from "lucide-react";
 import {
   LineChart,
@@ -46,6 +51,10 @@ import {
   ResponsiveContainer,
   BarChart,
   Bar,
+  ComposedChart,
+  Cell,
+  PieChart,
+  Pie,
 } from "recharts";
 
 export default function MachineIntegrationDashboard() {
@@ -208,6 +217,9 @@ export default function MachineIntegrationDashboard() {
           <TabsTrigger value="field-mapping"><ArrowRightLeft className="h-4 w-4 mr-1" />Field Mapping</TabsTrigger>
           <TabsTrigger value="realtime"><Radio className="h-4 w-4 mr-1" />Realtime</TabsTrigger>
           <TabsTrigger value="oee-dashboard"><BarChart3 className="h-4 w-4 mr-1" />OEE Dashboard</TabsTrigger>
+          <TabsTrigger value="oee-alerts"><Bell className="h-4 w-4 mr-1" />Cảnh báo OEE</TabsTrigger>
+          <TabsTrigger value="oee-reports"><Mail className="h-4 w-4 mr-1" />Báo cáo OEE</TabsTrigger>
+          <TabsTrigger value="downtime-analysis"><TrendingDown className="h-4 w-4 mr-1" />Pareto Downtime</TabsTrigger>
           <TabsTrigger value="statistics"><Activity className="h-4 w-4 mr-1" />Thống kê</TabsTrigger>
           <TabsTrigger value="logs"><Database className="h-4 w-4 mr-1" />Logs</TabsTrigger>
           <TabsTrigger value="documentation"><FileJson className="h-4 w-4 mr-1" />Tài liệu API</TabsTrigger>
@@ -597,6 +609,18 @@ Error Codes:
 
         <TabsContent value="oee-dashboard" className="space-y-4">
           <OeeDashboardTab />
+        </TabsContent>
+
+        <TabsContent value="oee-alerts" className="space-y-4">
+          <OeeAlertsTab />
+        </TabsContent>
+
+        <TabsContent value="oee-reports" className="space-y-4">
+          <OeeReportsTab />
+        </TabsContent>
+
+        <TabsContent value="downtime-analysis" className="space-y-4">
+          <DowntimeAnalysisTab />
         </TabsContent>
       </Tabs>
 
@@ -1986,6 +2010,977 @@ function OeeDashboardTab() {
           </Card>
         </>
       )}
+    </div>
+  );
+}
+
+
+// ==================== OEE Alerts Tab ====================
+function OeeAlertsTab() {
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [editingAlert, setEditingAlert] = useState<any>(null);
+  const [newAlert, setNewAlert] = useState({
+    name: '',
+    machineId: undefined as number | undefined,
+    oeeThreshold: 85,
+    consecutiveDays: 3,
+    recipients: [] as string[],
+    recipientInput: '',
+  });
+
+  const { data: machines } = trpc.machineIntegration.listMachines.useQuery();
+  const { data: alerts, refetch } = trpc.machineIntegration.listOeeAlertConfigs.useQuery();
+  const { data: alertHistory } = trpc.machineIntegration.getOeeAlertHistory.useQuery({ limit: 20 });
+
+  const createMutation = trpc.machineIntegration.createOeeAlertConfig.useMutation({
+    onSuccess: () => {
+      toast.success('Tạo cảnh báo thành công!');
+      setShowCreateDialog(false);
+      setNewAlert({ name: '', machineId: undefined, oeeThreshold: 85, consecutiveDays: 3, recipients: [], recipientInput: '' });
+      refetch();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const updateMutation = trpc.machineIntegration.updateOeeAlertConfig.useMutation({
+    onSuccess: () => {
+      toast.success('Cập nhật thành công!');
+      setEditingAlert(null);
+      refetch();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const deleteMutation = trpc.machineIntegration.deleteOeeAlertConfig.useMutation({
+    onSuccess: () => {
+      toast.success('Xóa thành công!');
+      refetch();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const handleAddRecipient = () => {
+    if (newAlert.recipientInput && newAlert.recipientInput.includes('@')) {
+      setNewAlert({
+        ...newAlert,
+        recipients: [...newAlert.recipients, newAlert.recipientInput],
+        recipientInput: '',
+      });
+    }
+  };
+
+  const handleCreate = () => {
+    if (!newAlert.name || newAlert.recipients.length === 0) {
+      toast.error('Vui lòng điền đầy đủ thông tin');
+      return;
+    }
+    createMutation.mutate({
+      name: newAlert.name,
+      machineId: newAlert.machineId,
+      oeeThreshold: newAlert.oeeThreshold,
+      consecutiveDays: newAlert.consecutiveDays,
+      recipients: newAlert.recipients,
+    });
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-bold">Cảnh báo OEE</h2>
+          <p className="text-muted-foreground">Tự động gửi email khi OEE dưới ngưỡng nhiều ngày liên tiếp</p>
+        </div>
+        <Button onClick={() => setShowCreateDialog(true)}>
+          <Plus className="h-4 w-4 mr-1" />
+          Tạo cảnh báo
+        </Button>
+      </div>
+
+      {/* Alert Configs List */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Danh sách cảnh báo</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {!alerts || alerts.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              Chưa có cảnh báo nào. Nhấn "Tạo cảnh báo" để bắt đầu.
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Tên</TableHead>
+                  <TableHead>Máy</TableHead>
+                  <TableHead>Ngưỡng OEE</TableHead>
+                  <TableHead>Số ngày</TableHead>
+                  <TableHead>Người nhận</TableHead>
+                  <TableHead>Trạng thái</TableHead>
+                  <TableHead>Hành động</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {alerts.map((alert) => (
+                  <TableRow key={alert.id}>
+                    <TableCell className="font-medium">{alert.name}</TableCell>
+                    <TableCell>{alert.machineName}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline">&lt; {alert.oeeThreshold}%</Badge>
+                    </TableCell>
+                    <TableCell>{alert.consecutiveDays} ngày</TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {(alert.recipients as string[]).slice(0, 2).map((r, i) => (
+                          <Badge key={i} variant="secondary" className="text-xs">{r}</Badge>
+                        ))}
+                        {(alert.recipients as string[]).length > 2 && (
+                          <Badge variant="secondary" className="text-xs">+{(alert.recipients as string[]).length - 2}</Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={alert.isActive ? "default" : "secondary"}>
+                        {alert.isActive ? "Hoạt động" : "Tắt"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          checked={!!alert.isActive}
+                          onCheckedChange={(checked) => updateMutation.mutate({ id: alert.id, isActive: checked })}
+                        />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => deleteMutation.mutate({ id: alert.id })}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Alert History */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Lịch sử cảnh báo</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {!alertHistory || alertHistory.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              Chưa có cảnh báo nào được gửi
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Thời gian</TableHead>
+                  <TableHead>Máy</TableHead>
+                  <TableHead>OEE</TableHead>
+                  <TableHead>Số ngày dưới ngưỡng</TableHead>
+                  <TableHead>Email</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {alertHistory.map((h) => (
+                  <TableRow key={h.id}>
+                    <TableCell>{new Date(h.createdAt).toLocaleString('vi-VN')}</TableCell>
+                    <TableCell>{h.machineName || `Machine ${h.machineId}`}</TableCell>
+                    <TableCell>
+                      <Badge variant="destructive">{h.oeeValue}%</Badge>
+                    </TableCell>
+                    <TableCell>{h.consecutiveDaysBelow} ngày</TableCell>
+                    <TableCell>
+                      <Badge variant={h.emailSent ? "default" : "secondary"}>
+                        {h.emailSent ? "Đã gửi" : "Chưa gửi"}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Create Dialog */}
+      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Tạo cảnh báo OEE mới</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Tên cảnh báo</Label>
+              <Input
+                value={newAlert.name}
+                onChange={(e) => setNewAlert({ ...newAlert, name: e.target.value })}
+                placeholder="VD: Cảnh báo OEE thấp - Line 1"
+              />
+            </div>
+            <div>
+              <Label>Máy (để trống = tất cả máy)</Label>
+              <Select
+                value={newAlert.machineId?.toString() || 'all'}
+                onValueChange={(v) => setNewAlert({ ...newAlert, machineId: v === 'all' ? undefined : Number(v) })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Chọn máy" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tất cả máy</SelectItem>
+                  {machines?.map((m) => (
+                    <SelectItem key={m.id} value={m.id.toString()}>{m.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Ngưỡng OEE (%)</Label>
+                <Input
+                  type="number"
+                  value={newAlert.oeeThreshold}
+                  onChange={(e) => setNewAlert({ ...newAlert, oeeThreshold: Number(e.target.value) })}
+                  min={0}
+                  max={100}
+                />
+              </div>
+              <div>
+                <Label>Số ngày liên tiếp</Label>
+                <Input
+                  type="number"
+                  value={newAlert.consecutiveDays}
+                  onChange={(e) => setNewAlert({ ...newAlert, consecutiveDays: Number(e.target.value) })}
+                  min={1}
+                  max={30}
+                />
+              </div>
+            </div>
+            <div>
+              <Label>Email người nhận</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={newAlert.recipientInput}
+                  onChange={(e) => setNewAlert({ ...newAlert, recipientInput: e.target.value })}
+                  placeholder="email@example.com"
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddRecipient()}
+                />
+                <Button type="button" onClick={handleAddRecipient}>Thêm</Button>
+              </div>
+              <div className="flex flex-wrap gap-1 mt-2">
+                {newAlert.recipients.map((r, i) => (
+                  <Badge key={i} variant="secondary" className="cursor-pointer" onClick={() => setNewAlert({
+                    ...newAlert,
+                    recipients: newAlert.recipients.filter((_, idx) => idx !== i)
+                  })}>
+                    {r} ×
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCreateDialog(false)}>Hủy</Button>
+            <Button onClick={handleCreate} disabled={createMutation.isPending}>
+              {createMutation.isPending ? 'Đang tạo...' : 'Tạo cảnh báo'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+// ==================== OEE Reports Tab ====================
+function OeeReportsTab() {
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [newSchedule, setNewSchedule] = useState({
+    name: '',
+    frequency: 'weekly' as 'weekly' | 'monthly',
+    dayOfWeek: 1,
+    dayOfMonth: 1,
+    hour: 8,
+    machineIds: [] as number[],
+    recipients: [] as string[],
+    recipientInput: '',
+    includeCharts: true,
+    includeTrend: true,
+    includeComparison: true,
+  });
+
+  const { data: machines } = trpc.machineIntegration.listMachines.useQuery();
+  const { data: schedules, refetch } = trpc.machineIntegration.listOeeReportSchedules.useQuery();
+  const { data: reportHistory } = trpc.machineIntegration.getOeeReportHistory.useQuery({ limit: 20 });
+
+  const createMutation = trpc.machineIntegration.createOeeReportSchedule.useMutation({
+    onSuccess: () => {
+      toast.success('Tạo lịch báo cáo thành công!');
+      setShowCreateDialog(false);
+      refetch();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const updateMutation = trpc.machineIntegration.updateOeeReportSchedule.useMutation({
+    onSuccess: () => {
+      toast.success('Cập nhật thành công!');
+      refetch();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const deleteMutation = trpc.machineIntegration.deleteOeeReportSchedule.useMutation({
+    onSuccess: () => {
+      toast.success('Xóa thành công!');
+      refetch();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const handleAddRecipient = () => {
+    if (newSchedule.recipientInput && newSchedule.recipientInput.includes('@')) {
+      setNewSchedule({
+        ...newSchedule,
+        recipients: [...newSchedule.recipients, newSchedule.recipientInput],
+        recipientInput: '',
+      });
+    }
+  };
+
+  const handleCreate = () => {
+    if (!newSchedule.name || newSchedule.recipients.length === 0) {
+      toast.error('Vui lòng điền đầy đủ thông tin');
+      return;
+    }
+    createMutation.mutate({
+      name: newSchedule.name,
+      frequency: newSchedule.frequency,
+      dayOfWeek: newSchedule.frequency === 'weekly' ? newSchedule.dayOfWeek : undefined,
+      dayOfMonth: newSchedule.frequency === 'monthly' ? newSchedule.dayOfMonth : undefined,
+      hour: newSchedule.hour,
+      machineIds: newSchedule.machineIds.length > 0 ? newSchedule.machineIds : undefined,
+      recipients: newSchedule.recipients,
+      includeCharts: newSchedule.includeCharts,
+      includeTrend: newSchedule.includeTrend,
+      includeComparison: newSchedule.includeComparison,
+    });
+  };
+
+  const dayNames = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-bold">Báo cáo OEE định kỳ</h2>
+          <p className="text-muted-foreground">Tự động gửi báo cáo OEE hàng tuần hoặc hàng tháng</p>
+        </div>
+        <Button onClick={() => setShowCreateDialog(true)}>
+          <Plus className="h-4 w-4 mr-1" />
+          Tạo lịch báo cáo
+        </Button>
+      </div>
+
+      {/* Schedules List */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Danh sách lịch báo cáo</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {!schedules || schedules.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              Chưa có lịch báo cáo nào. Nhấn "Tạo lịch báo cáo" để bắt đầu.
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Tên</TableHead>
+                  <TableHead>Tần suất</TableHead>
+                  <TableHead>Thời gian</TableHead>
+                  <TableHead>Người nhận</TableHead>
+                  <TableHead>Lần gửi tiếp</TableHead>
+                  <TableHead>Trạng thái</TableHead>
+                  <TableHead>Hành động</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {schedules.map((schedule) => (
+                  <TableRow key={schedule.id}>
+                    <TableCell className="font-medium">{schedule.name}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline">
+                        {schedule.frequency === 'weekly' ? 'Hàng tuần' : 'Hàng tháng'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {schedule.frequency === 'weekly'
+                        ? `${dayNames[schedule.dayOfWeek || 0]}, ${schedule.hour}:00`
+                        : `Ngày ${schedule.dayOfMonth}, ${schedule.hour}:00`}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {(schedule.recipients as string[]).slice(0, 2).map((r, i) => (
+                          <Badge key={i} variant="secondary" className="text-xs">{r}</Badge>
+                        ))}
+                        {(schedule.recipients as string[]).length > 2 && (
+                          <Badge variant="secondary" className="text-xs">+{(schedule.recipients as string[]).length - 2}</Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {schedule.nextScheduledAt
+                        ? new Date(schedule.nextScheduledAt).toLocaleString('vi-VN')
+                        : '-'}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={schedule.isActive ? "default" : "secondary"}>
+                        {schedule.isActive ? "Hoạt động" : "Tắt"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          checked={!!schedule.isActive}
+                          onCheckedChange={(checked) => updateMutation.mutate({ id: schedule.id, isActive: checked })}
+                        />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => deleteMutation.mutate({ id: schedule.id })}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Report History */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Lịch sử báo cáo</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {!reportHistory || reportHistory.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              Chưa có báo cáo nào được gửi
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Thời gian gửi</TableHead>
+                  <TableHead>Kỳ báo cáo</TableHead>
+                  <TableHead>Người nhận</TableHead>
+                  <TableHead>Trạng thái</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {reportHistory.map((h) => (
+                  <TableRow key={h.id}>
+                    <TableCell>{new Date(h.createdAt).toLocaleString('vi-VN')}</TableCell>
+                    <TableCell>
+                      {new Date(h.reportPeriodStart).toLocaleDateString('vi-VN')} - {new Date(h.reportPeriodEnd).toLocaleDateString('vi-VN')}
+                    </TableCell>
+                    <TableCell>{(h.recipients as string[]).length} người</TableCell>
+                    <TableCell>
+                      <Badge variant={h.emailSent ? "default" : "secondary"}>
+                        {h.emailSent ? "Đã gửi" : "Chưa gửi"}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Create Dialog */}
+      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Tạo lịch báo cáo OEE</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Tên báo cáo</Label>
+              <Input
+                value={newSchedule.name}
+                onChange={(e) => setNewSchedule({ ...newSchedule, name: e.target.value })}
+                placeholder="VD: Báo cáo OEE tuần"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Tần suất</Label>
+                <Select
+                  value={newSchedule.frequency}
+                  onValueChange={(v: 'weekly' | 'monthly') => setNewSchedule({ ...newSchedule, frequency: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="weekly">Hàng tuần</SelectItem>
+                    <SelectItem value="monthly">Hàng tháng</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>{newSchedule.frequency === 'weekly' ? 'Ngày trong tuần' : 'Ngày trong tháng'}</Label>
+                {newSchedule.frequency === 'weekly' ? (
+                  <Select
+                    value={newSchedule.dayOfWeek.toString()}
+                    onValueChange={(v) => setNewSchedule({ ...newSchedule, dayOfWeek: Number(v) })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {dayNames.map((name, i) => (
+                        <SelectItem key={i} value={i.toString()}>{name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input
+                    type="number"
+                    value={newSchedule.dayOfMonth}
+                    onChange={(e) => setNewSchedule({ ...newSchedule, dayOfMonth: Number(e.target.value) })}
+                    min={1}
+                    max={31}
+                  />
+                )}
+              </div>
+            </div>
+            <div>
+              <Label>Giờ gửi (0-23)</Label>
+              <Input
+                type="number"
+                value={newSchedule.hour}
+                onChange={(e) => setNewSchedule({ ...newSchedule, hour: Number(e.target.value) })}
+                min={0}
+                max={23}
+              />
+            </div>
+            <div>
+              <Label>Email người nhận</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={newSchedule.recipientInput}
+                  onChange={(e) => setNewSchedule({ ...newSchedule, recipientInput: e.target.value })}
+                  placeholder="email@example.com"
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddRecipient()}
+                />
+                <Button type="button" onClick={handleAddRecipient}>Thêm</Button>
+              </div>
+              <div className="flex flex-wrap gap-1 mt-2">
+                {newSchedule.recipients.map((r, i) => (
+                  <Badge key={i} variant="secondary" className="cursor-pointer" onClick={() => setNewSchedule({
+                    ...newSchedule,
+                    recipients: newSchedule.recipients.filter((_, idx) => idx !== i)
+                  })}>
+                    {r} ×
+                  </Badge>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Nội dung báo cáo</Label>
+              <div className="flex items-center gap-4">
+                <label className="flex items-center gap-2">
+                  <Switch
+                    checked={newSchedule.includeCharts}
+                    onCheckedChange={(v) => setNewSchedule({ ...newSchedule, includeCharts: v })}
+                  />
+                  <span className="text-sm">Biểu đồ</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <Switch
+                    checked={newSchedule.includeTrend}
+                    onCheckedChange={(v) => setNewSchedule({ ...newSchedule, includeTrend: v })}
+                  />
+                  <span className="text-sm">Trend</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <Switch
+                    checked={newSchedule.includeComparison}
+                    onCheckedChange={(v) => setNewSchedule({ ...newSchedule, includeComparison: v })}
+                  />
+                  <span className="text-sm">So sánh</span>
+                </label>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCreateDialog(false)}>Hủy</Button>
+            <Button onClick={handleCreate} disabled={createMutation.isPending}>
+              {createMutation.isPending ? 'Đang tạo...' : 'Tạo lịch'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+// ==================== Downtime Analysis Tab (Pareto) ====================
+function DowntimeAnalysisTab() {
+  const [days, setDays] = useState<7 | 14 | 30>(30);
+  const [selectedMachineId, setSelectedMachineId] = useState<number | undefined>(undefined);
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [newDowntime, setNewDowntime] = useState({
+    machineId: 0,
+    reasonCode: '',
+    reasonCategory: '',
+    reasonDescription: '',
+    durationMinutes: 30,
+    occurredAt: new Date().toISOString().slice(0, 16),
+  });
+
+  const { data: machines } = trpc.machineIntegration.listMachines.useQuery();
+  const { data: analysis, refetch } = trpc.machineIntegration.getDowntimeAnalysis.useQuery({
+    machineId: selectedMachineId,
+    days,
+  });
+  const { data: reasonCodes } = trpc.machineIntegration.getDowntimeReasonCodes.useQuery();
+
+  const addMutation = trpc.machineIntegration.addDowntimeReason.useMutation({
+    onSuccess: () => {
+      toast.success('Thêm downtime thành công!');
+      setShowAddDialog(false);
+      refetch();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899'];
+
+  const handleAdd = () => {
+    if (!newDowntime.machineId || !newDowntime.reasonCode) {
+      toast.error('Vui lòng chọn máy và mã lỗi');
+      return;
+    }
+    const selectedReason = reasonCodes?.find(r => r.code === newDowntime.reasonCode);
+    addMutation.mutate({
+      machineId: newDowntime.machineId,
+      reasonCode: newDowntime.reasonCode,
+      reasonCategory: selectedReason?.category || newDowntime.reasonCategory,
+      reasonDescription: selectedReason?.description || newDowntime.reasonDescription,
+      durationMinutes: newDowntime.durationMinutes,
+      occurredAt: newDowntime.occurredAt,
+    });
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div>
+          <h2 className="text-xl font-bold">Phân tích Downtime (Pareto)</h2>
+          <p className="text-muted-foreground">Xác định nguyên nhân downtime chính để cải thiện OEE</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Select
+            value={selectedMachineId?.toString() || 'all'}
+            onValueChange={(v) => setSelectedMachineId(v === 'all' ? undefined : Number(v))}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Tất cả máy" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tất cả máy</SelectItem>
+              {machines?.map((m) => (
+                <SelectItem key={m.id} value={m.id.toString()}>{m.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={days.toString()} onValueChange={(v) => setDays(Number(v) as 7 | 14 | 30)}>
+            <SelectTrigger className="w-[120px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="7">7 ngày</SelectItem>
+              <SelectItem value="14">14 ngày</SelectItem>
+              <SelectItem value="30">30 ngày</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button onClick={() => setShowAddDialog(true)}>
+            <Plus className="h-4 w-4 mr-1" />
+            Thêm Downtime
+          </Button>
+        </div>
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="pt-4">
+            <div className="text-3xl font-bold text-red-500">{analysis?.summary.totalDowntimeHours || 0}h</div>
+            <p className="text-sm text-muted-foreground">Tổng Downtime</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4">
+            <div className="text-3xl font-bold">{analysis?.summary.totalDowntimeMinutes || 0}</div>
+            <p className="text-sm text-muted-foreground">Phút Downtime</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4">
+            <div className="text-3xl font-bold text-blue-500">{analysis?.summary.uniqueReasons || 0}</div>
+            <p className="text-sm text-muted-foreground">Nguyên nhân</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4">
+            <div className="text-3xl font-bold text-purple-500">{analysis?.summary.uniqueCategories || 0}</div>
+            <p className="text-sm text-muted-foreground">Danh mục</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Pareto Chart */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Biểu đồ Pareto - Nguyên nhân Downtime</CardTitle>
+          <CardDescription>80% downtime thường đến từ 20% nguyên nhân</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {!analysis?.paretoData || analysis.paretoData.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              Chưa có dữ liệu downtime. Nhấn "Thêm Downtime" để bắt đầu.
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={400}>
+              <ComposedChart data={analysis.paretoData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis 
+                  dataKey="reasonCode" 
+                  tick={{ fontSize: 10 }}
+                  angle={-45}
+                  textAnchor="end"
+                  height={80}
+                />
+                <YAxis yAxisId="left" />
+                <YAxis yAxisId="right" orientation="right" domain={[0, 100]} />
+                <Tooltip
+                  formatter={(value: number, name: string) => {
+                    if (name === 'cumulativePercentage') return [`${value}%`, 'Tích lũy'];
+                    if (name === 'totalMinutes') return [`${value} phút`, 'Thời gian'];
+                    return [value, name];
+                  }}
+                />
+                <Legend />
+                <Bar yAxisId="left" dataKey="totalMinutes" name="Thời gian (phút)">
+                  {analysis.paretoData.map((_, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Bar>
+                <Line
+                  yAxisId="right"
+                  type="monotone"
+                  dataKey="cumulativePercentage"
+                  stroke="#ef4444"
+                  strokeWidth={2}
+                  dot={{ r: 4 }}
+                  name="Tích lũy %"
+                />
+              </ComposedChart>
+            </ResponsiveContainer>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* By Category Pie Chart */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>Downtime theo Danh mục</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {!analysis?.byCategory || analysis.byCategory.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">Không có dữ liệu</div>
+            ) : (
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={analysis.byCategory}
+                    dataKey="totalMinutes"
+                    nameKey="category"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={100}
+                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                  >
+                    {analysis.byCategory.map((_, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value: number) => [`${value} phút`]} />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Downtime theo Máy</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {!analysis?.byMachine || analysis.byMachine.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">Không có dữ liệu</div>
+            ) : (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={analysis.byMachine} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis type="number" />
+                  <YAxis type="category" dataKey="machineName" width={120} tick={{ fontSize: 11 }} />
+                  <Tooltip formatter={(value: number) => [`${value} phút`]} />
+                  <Bar dataKey="totalMinutes" fill="#ef4444" name="Downtime (phút)" />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Downtime Details Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Chi tiết nguyên nhân Downtime</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {!analysis?.paretoData || analysis.paretoData.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">Không có dữ liệu</div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Mã lỗi</TableHead>
+                  <TableHead>Danh mục</TableHead>
+                  <TableHead>Mô tả</TableHead>
+                  <TableHead className="text-right">Thời gian</TableHead>
+                  <TableHead className="text-right">Số lần</TableHead>
+                  <TableHead className="text-right">Tỷ lệ</TableHead>
+                  <TableHead className="text-right">Tích lũy</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {analysis.paretoData.map((row, i) => (
+                  <TableRow key={i}>
+                    <TableCell className="font-mono">{row.reasonCode}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{row.reasonCategory}</Badge>
+                    </TableCell>
+                    <TableCell>{row.reasonDescription}</TableCell>
+                    <TableCell className="text-right">{row.totalMinutes} phút</TableCell>
+                    <TableCell className="text-right">{row.occurrenceCount}</TableCell>
+                    <TableCell className="text-right">{row.percentage}%</TableCell>
+                    <TableCell className="text-right">
+                      <Badge variant={row.cumulativePercentage <= 80 ? "destructive" : "secondary"}>
+                        {row.cumulativePercentage}%
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Add Downtime Dialog */}
+      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Thêm Downtime</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Máy</Label>
+              <Select
+                value={newDowntime.machineId?.toString() || ''}
+                onValueChange={(v) => setNewDowntime({ ...newDowntime, machineId: Number(v) })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Chọn máy" />
+                </SelectTrigger>
+                <SelectContent>
+                  {machines?.map((m) => (
+                    <SelectItem key={m.id} value={m.id.toString()}>{m.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Mã lỗi</Label>
+              <Select
+                value={newDowntime.reasonCode}
+                onValueChange={(v) => {
+                  const reason = reasonCodes?.find(r => r.code === v);
+                  setNewDowntime({
+                    ...newDowntime,
+                    reasonCode: v,
+                    reasonCategory: reason?.category || '',
+                    reasonDescription: reason?.description || '',
+                  });
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Chọn mã lỗi" />
+                </SelectTrigger>
+                <SelectContent>
+                  {reasonCodes?.map((r) => (
+                    <SelectItem key={r.code} value={r.code}>
+                      {r.code} - {r.description}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Thời gian (phút)</Label>
+                <Input
+                  type="number"
+                  value={newDowntime.durationMinutes}
+                  onChange={(e) => setNewDowntime({ ...newDowntime, durationMinutes: Number(e.target.value) })}
+                  min={1}
+                />
+              </div>
+              <div>
+                <Label>Thời điểm xảy ra</Label>
+                <Input
+                  type="datetime-local"
+                  value={newDowntime.occurredAt}
+                  onChange={(e) => setNewDowntime({ ...newDowntime, occurredAt: e.target.value })}
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddDialog(false)}>Hủy</Button>
+            <Button onClick={handleAdd} disabled={addMutation.isPending}>
+              {addMutation.isPending ? 'Đang thêm...' : 'Thêm'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -12,6 +12,11 @@ import {
   machineWebhookLogs,
   machineFieldMappings,
   machineRealtimeEvents,
+  oeeAlertConfigs,
+  oeeAlertHistory,
+  oeeReportSchedules,
+  oeeReportHistory,
+  downtimeReasons,
 } from "../../drizzle/schema";
 import { eq, desc, and, gte, lte, sql } from "drizzle-orm";
 import crypto from "crypto";
@@ -1589,6 +1594,432 @@ export const machineIntegrationRouter = router({
         filename: `oee_data_${new Date().toISOString().split('T')[0]}.json`,
         mimeType: 'application/json',
       };
+    }),
+
+  // ==================== OEE Alert Configurations ====================
+  
+  // List OEE alert configs
+  listOeeAlertConfigs: protectedProcedure
+    .query(async ({ ctx }) => {
+      const db = await getDb();
+      const configs = await db
+        .select()
+        .from(oeeAlertConfigs)
+        .where(eq(oeeAlertConfigs.userId, ctx.user.id))
+        .orderBy(desc(oeeAlertConfigs.createdAt));
+
+      // Get machine names
+      const machineNames = await db
+        .select({ machineId: machineApiKeys.machineId, name: machineApiKeys.name })
+        .from(machineApiKeys)
+        .groupBy(machineApiKeys.machineId);
+      const nameMap = new Map(machineNames.map(m => [m.machineId, m.name]));
+
+      return configs.map(c => ({
+        ...c,
+        machineName: c.machineId ? nameMap.get(c.machineId) || `Machine ${c.machineId}` : 'Tất cả máy',
+        recipients: JSON.parse(c.recipients || '[]'),
+      }));
+    }),
+
+  // Create OEE alert config
+  createOeeAlertConfig: protectedProcedure
+    .input(z.object({
+      name: z.string().min(1),
+      machineId: z.number().optional(),
+      oeeThreshold: z.number().min(0).max(100),
+      consecutiveDays: z.number().min(1).max(30),
+      recipients: z.array(z.string().email()),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      const [result] = await db.insert(oeeAlertConfigs).values({
+        userId: ctx.user.id,
+        name: input.name,
+        machineId: input.machineId,
+        oeeThreshold: String(input.oeeThreshold),
+        consecutiveDays: input.consecutiveDays,
+        recipients: JSON.stringify(input.recipients),
+      });
+      return { id: result.insertId };
+    }),
+
+  // Update OEE alert config
+  updateOeeAlertConfig: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      name: z.string().min(1).optional(),
+      machineId: z.number().optional().nullable(),
+      oeeThreshold: z.number().min(0).max(100).optional(),
+      consecutiveDays: z.number().min(1).max(30).optional(),
+      recipients: z.array(z.string().email()).optional(),
+      isActive: z.boolean().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      const updates: Record<string, any> = {};
+      if (input.name !== undefined) updates.name = input.name;
+      if (input.machineId !== undefined) updates.machineId = input.machineId;
+      if (input.oeeThreshold !== undefined) updates.oeeThreshold = String(input.oeeThreshold);
+      if (input.consecutiveDays !== undefined) updates.consecutiveDays = input.consecutiveDays;
+      if (input.recipients !== undefined) updates.recipients = JSON.stringify(input.recipients);
+      if (input.isActive !== undefined) updates.isActive = input.isActive ? 1 : 0;
+      
+      await db.update(oeeAlertConfigs)
+        .set(updates)
+        .where(and(
+          eq(oeeAlertConfigs.id, input.id),
+          eq(oeeAlertConfigs.userId, ctx.user.id)
+        ));
+      return { success: true };
+    }),
+
+  // Delete OEE alert config
+  deleteOeeAlertConfig: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      await db.delete(oeeAlertConfigs)
+        .where(and(
+          eq(oeeAlertConfigs.id, input.id),
+          eq(oeeAlertConfigs.userId, ctx.user.id)
+        ));
+      return { success: true };
+    }),
+
+  // Get OEE alert history
+  getOeeAlertHistory: protectedProcedure
+    .input(z.object({ limit: z.number().default(50) }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      
+      // Get user's alert config IDs
+      const userConfigs = await db
+        .select({ id: oeeAlertConfigs.id })
+        .from(oeeAlertConfigs)
+        .where(eq(oeeAlertConfigs.userId, ctx.user.id));
+      const configIds = userConfigs.map(c => c.id);
+
+      if (configIds.length === 0) return [];
+
+      const history = await db
+        .select()
+        .from(oeeAlertHistory)
+        .where(sql`${oeeAlertHistory.alertConfigId} IN (${sql.raw(configIds.join(','))})`)
+        .orderBy(desc(oeeAlertHistory.createdAt))
+        .limit(input.limit);
+
+      return history.map(h => ({
+        ...h,
+        recipients: JSON.parse(h.recipients || '[]'),
+      }));
+    }),
+
+  // ==================== OEE Report Schedules ====================
+  
+  // List OEE report schedules
+  listOeeReportSchedules: protectedProcedure
+    .query(async ({ ctx }) => {
+      const db = await getDb();
+      const schedules = await db
+        .select()
+        .from(oeeReportSchedules)
+        .where(eq(oeeReportSchedules.userId, ctx.user.id))
+        .orderBy(desc(oeeReportSchedules.createdAt));
+
+      return schedules.map(s => ({
+        ...s,
+        machineIds: JSON.parse(s.machineIds || '[]'),
+        recipients: JSON.parse(s.recipients || '[]'),
+      }));
+    }),
+
+  // Create OEE report schedule
+  createOeeReportSchedule: protectedProcedure
+    .input(z.object({
+      name: z.string().min(1),
+      frequency: z.enum(['weekly', 'monthly']),
+      dayOfWeek: z.number().min(0).max(6).optional(),
+      dayOfMonth: z.number().min(1).max(31).optional(),
+      hour: z.number().min(0).max(23),
+      machineIds: z.array(z.number()).optional(),
+      recipients: z.array(z.string().email()),
+      includeCharts: z.boolean().default(true),
+      includeTrend: z.boolean().default(true),
+      includeComparison: z.boolean().default(true),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      
+      // Calculate next scheduled time
+      const now = new Date();
+      let nextScheduledAt = new Date();
+      
+      if (input.frequency === 'weekly') {
+        const dayOfWeek = input.dayOfWeek ?? 1; // Default Monday
+        const daysUntilNext = (dayOfWeek - now.getDay() + 7) % 7 || 7;
+        nextScheduledAt.setDate(now.getDate() + daysUntilNext);
+      } else {
+        const dayOfMonth = input.dayOfMonth ?? 1;
+        nextScheduledAt.setMonth(now.getMonth() + 1);
+        nextScheduledAt.setDate(dayOfMonth);
+      }
+      nextScheduledAt.setHours(input.hour, 0, 0, 0);
+
+      const [result] = await db.insert(oeeReportSchedules).values({
+        userId: ctx.user.id,
+        name: input.name,
+        frequency: input.frequency,
+        dayOfWeek: input.dayOfWeek,
+        dayOfMonth: input.dayOfMonth,
+        hour: input.hour,
+        machineIds: input.machineIds ? JSON.stringify(input.machineIds) : null,
+        recipients: JSON.stringify(input.recipients),
+        includeCharts: input.includeCharts ? 1 : 0,
+        includeTrend: input.includeTrend ? 1 : 0,
+        includeComparison: input.includeComparison ? 1 : 0,
+        nextScheduledAt,
+      });
+      return { id: result.insertId };
+    }),
+
+  // Update OEE report schedule
+  updateOeeReportSchedule: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      name: z.string().min(1).optional(),
+      frequency: z.enum(['weekly', 'monthly']).optional(),
+      dayOfWeek: z.number().min(0).max(6).optional().nullable(),
+      dayOfMonth: z.number().min(1).max(31).optional().nullable(),
+      hour: z.number().min(0).max(23).optional(),
+      machineIds: z.array(z.number()).optional().nullable(),
+      recipients: z.array(z.string().email()).optional(),
+      includeCharts: z.boolean().optional(),
+      includeTrend: z.boolean().optional(),
+      includeComparison: z.boolean().optional(),
+      isActive: z.boolean().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      const updates: Record<string, any> = {};
+      if (input.name !== undefined) updates.name = input.name;
+      if (input.frequency !== undefined) updates.frequency = input.frequency;
+      if (input.dayOfWeek !== undefined) updates.dayOfWeek = input.dayOfWeek;
+      if (input.dayOfMonth !== undefined) updates.dayOfMonth = input.dayOfMonth;
+      if (input.hour !== undefined) updates.hour = input.hour;
+      if (input.machineIds !== undefined) updates.machineIds = input.machineIds ? JSON.stringify(input.machineIds) : null;
+      if (input.recipients !== undefined) updates.recipients = JSON.stringify(input.recipients);
+      if (input.includeCharts !== undefined) updates.includeCharts = input.includeCharts ? 1 : 0;
+      if (input.includeTrend !== undefined) updates.includeTrend = input.includeTrend ? 1 : 0;
+      if (input.includeComparison !== undefined) updates.includeComparison = input.includeComparison ? 1 : 0;
+      if (input.isActive !== undefined) updates.isActive = input.isActive ? 1 : 0;
+      
+      await db.update(oeeReportSchedules)
+        .set(updates)
+        .where(and(
+          eq(oeeReportSchedules.id, input.id),
+          eq(oeeReportSchedules.userId, ctx.user.id)
+        ));
+      return { success: true };
+    }),
+
+  // Delete OEE report schedule
+  deleteOeeReportSchedule: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      await db.delete(oeeReportSchedules)
+        .where(and(
+          eq(oeeReportSchedules.id, input.id),
+          eq(oeeReportSchedules.userId, ctx.user.id)
+        ));
+      return { success: true };
+    }),
+
+  // Get OEE report history
+  getOeeReportHistory: protectedProcedure
+    .input(z.object({ limit: z.number().default(50) }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      
+      // Get user's schedule IDs
+      const userSchedules = await db
+        .select({ id: oeeReportSchedules.id })
+        .from(oeeReportSchedules)
+        .where(eq(oeeReportSchedules.userId, ctx.user.id));
+      const scheduleIds = userSchedules.map(s => s.id);
+
+      if (scheduleIds.length === 0) return [];
+
+      const history = await db
+        .select()
+        .from(oeeReportHistory)
+        .where(sql`${oeeReportHistory.scheduleId} IN (${sql.raw(scheduleIds.join(','))})`)
+        .orderBy(desc(oeeReportHistory.createdAt))
+        .limit(input.limit);
+
+      return history.map(h => ({
+        ...h,
+        recipients: JSON.parse(h.recipients || '[]'),
+        reportData: h.reportData ? JSON.parse(h.reportData) : null,
+      }));
+    }),
+
+  // ==================== Downtime Analysis (Pareto) ====================
+  
+  // Get downtime analysis for Pareto chart
+  getDowntimeAnalysis: protectedProcedure
+    .input(z.object({
+      machineId: z.number().optional(),
+      days: z.number().min(1).max(90).default(30),
+    }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - input.days);
+
+      // Build conditions
+      const conditions = [gte(downtimeReasons.occurredAt, startDate)];
+      if (input.machineId) {
+        conditions.push(eq(downtimeReasons.machineId, input.machineId));
+      }
+
+      // Get downtime by reason code
+      const byReason = await db
+        .select({
+          reasonCode: downtimeReasons.reasonCode,
+          reasonCategory: downtimeReasons.reasonCategory,
+          reasonDescription: downtimeReasons.reasonDescription,
+          totalMinutes: sql<number>`SUM(${downtimeReasons.durationMinutes})`,
+          occurrenceCount: sql<number>`COUNT(*)`,
+        })
+        .from(downtimeReasons)
+        .where(and(...conditions))
+        .groupBy(downtimeReasons.reasonCode, downtimeReasons.reasonCategory, downtimeReasons.reasonDescription)
+        .orderBy(desc(sql`SUM(${downtimeReasons.durationMinutes})`));
+
+      // Get downtime by category
+      const byCategory = await db
+        .select({
+          category: downtimeReasons.reasonCategory,
+          totalMinutes: sql<number>`SUM(${downtimeReasons.durationMinutes})`,
+          occurrenceCount: sql<number>`COUNT(*)`,
+        })
+        .from(downtimeReasons)
+        .where(and(...conditions))
+        .groupBy(downtimeReasons.reasonCategory)
+        .orderBy(desc(sql`SUM(${downtimeReasons.durationMinutes})`));
+
+      // Get downtime by machine
+      const byMachine = await db
+        .select({
+          machineId: downtimeReasons.machineId,
+          totalMinutes: sql<number>`SUM(${downtimeReasons.durationMinutes})`,
+          occurrenceCount: sql<number>`COUNT(*)`,
+        })
+        .from(downtimeReasons)
+        .where(gte(downtimeReasons.occurredAt, startDate))
+        .groupBy(downtimeReasons.machineId)
+        .orderBy(desc(sql`SUM(${downtimeReasons.durationMinutes})`));
+
+      // Get machine names
+      const machineNames = await db
+        .select({ machineId: machineApiKeys.machineId, name: machineApiKeys.name })
+        .from(machineApiKeys)
+        .groupBy(machineApiKeys.machineId);
+      const nameMap = new Map(machineNames.map(m => [m.machineId, m.name]));
+
+      // Calculate total for percentage
+      const totalDowntime = byReason.reduce((sum, r) => sum + (r.totalMinutes || 0), 0);
+
+      // Calculate cumulative percentage for Pareto
+      let cumulative = 0;
+      const paretoData = byReason.map(r => {
+        const percentage = totalDowntime > 0 ? ((r.totalMinutes || 0) / totalDowntime) * 100 : 0;
+        cumulative += percentage;
+        return {
+          reasonCode: r.reasonCode,
+          reasonCategory: r.reasonCategory || 'Khác',
+          reasonDescription: r.reasonDescription || r.reasonCode,
+          totalMinutes: r.totalMinutes || 0,
+          occurrenceCount: r.occurrenceCount || 0,
+          percentage: parseFloat(percentage.toFixed(1)),
+          cumulativePercentage: parseFloat(cumulative.toFixed(1)),
+        };
+      });
+
+      return {
+        paretoData,
+        byCategory: byCategory.map(c => ({
+          category: c.category || 'Khác',
+          totalMinutes: c.totalMinutes || 0,
+          occurrenceCount: c.occurrenceCount || 0,
+          percentage: totalDowntime > 0 ? parseFloat((((c.totalMinutes || 0) / totalDowntime) * 100).toFixed(1)) : 0,
+        })),
+        byMachine: byMachine.map(m => ({
+          machineId: m.machineId,
+          machineName: nameMap.get(m.machineId!) || `Machine ${m.machineId}`,
+          totalMinutes: m.totalMinutes || 0,
+          occurrenceCount: m.occurrenceCount || 0,
+        })),
+        summary: {
+          totalDowntimeMinutes: totalDowntime,
+          totalDowntimeHours: parseFloat((totalDowntime / 60).toFixed(1)),
+          uniqueReasons: byReason.length,
+          uniqueCategories: byCategory.length,
+          days: input.days,
+        },
+      };
+    }),
+
+  // Add downtime reason (for manual entry or from OEE data)
+  addDowntimeReason: protectedProcedure
+    .input(z.object({
+      machineId: z.number(),
+      oeeDataId: z.number().optional(),
+      reasonCode: z.string().min(1),
+      reasonCategory: z.string().optional(),
+      reasonDescription: z.string().optional(),
+      durationMinutes: z.number().min(1),
+      occurredAt: z.string(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      const [result] = await db.insert(downtimeReasons).values({
+        machineId: input.machineId,
+        oeeDataId: input.oeeDataId,
+        reasonCode: input.reasonCode,
+        reasonCategory: input.reasonCategory,
+        reasonDescription: input.reasonDescription,
+        durationMinutes: input.durationMinutes,
+        occurredAt: new Date(input.occurredAt),
+      });
+      return { id: result.insertId };
+    }),
+
+  // Get predefined downtime reason codes
+  getDowntimeReasonCodes: protectedProcedure
+    .query(async () => {
+      // Return predefined reason codes with categories
+      return [
+        { code: 'EQ_BREAKDOWN', category: 'Equipment', description: 'Hỏng thiết bị' },
+        { code: 'EQ_MAINTENANCE', category: 'Equipment', description: 'Bảo trì định kỳ' },
+        { code: 'EQ_SETUP', category: 'Equipment', description: 'Cài đặt/điều chỉnh máy' },
+        { code: 'EQ_TOOLCHANGE', category: 'Equipment', description: 'Thay dụng cụ' },
+        { code: 'MAT_SHORTAGE', category: 'Material', description: 'Thiếu nguyên liệu' },
+        { code: 'MAT_QUALITY', category: 'Material', description: 'Lỗi nguyên liệu' },
+        { code: 'MAT_CHANGEOVER', category: 'Material', description: 'Thay đổi nguyên liệu' },
+        { code: 'LAB_SHORTAGE', category: 'Labor', description: 'Thiếu nhân lực' },
+        { code: 'LAB_TRAINING', category: 'Labor', description: 'Đào tạo' },
+        { code: 'LAB_BREAK', category: 'Labor', description: 'Nghỉ giải lao' },
+        { code: 'PLAN_NOORDER', category: 'Planning', description: 'Không có đơn hàng' },
+        { code: 'PLAN_CHANGEOVER', category: 'Planning', description: 'Chuyển đổi sản phẩm' },
+        { code: 'QUAL_INSPECTION', category: 'Quality', description: 'Kiểm tra chất lượng' },
+        { code: 'QUAL_REWORK', category: 'Quality', description: 'Sửa lỗi sản phẩm' },
+        { code: 'EXT_POWER', category: 'External', description: 'Mất điện' },
+        { code: 'EXT_WEATHER', category: 'External', description: 'Thời tiết' },
+        { code: 'OTHER', category: 'Other', description: 'Khác' },
+      ];
     }),
 });
 

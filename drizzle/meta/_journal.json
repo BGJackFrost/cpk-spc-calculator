@@ -393,6 +393,13 @@
       "when": 1766068136625,
       "tag": "0055_normal_daimon_hellstrom",
       "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "5",
+      "when": 1766071934653,
+      "tag": "0056_organic_valkyrie",
+      "breakpoints": true
     }
   ]
 }

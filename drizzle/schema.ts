@@ -3058,3 +3058,95 @@ export const machineRealtimeEvents = mysqlTable("machine_realtime_events", {
 
 export type MachineRealtimeEvent = typeof machineRealtimeEvents.$inferSelect;
 export type InsertMachineRealtimeEvent = typeof machineRealtimeEvents.$inferInsert;
+
+
+// OEE Alert Configurations
+export const oeeAlertConfigs = mysqlTable("oee_alert_configs", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  machineId: int("machine_id"), // null = all machines
+  oeeThreshold: decimal("oee_threshold", { precision: 5, scale: 2 }).notNull(), // e.g., 85.00
+  consecutiveDays: int("consecutive_days").notNull().default(3), // trigger after N days
+  recipients: text("recipients").notNull(), // JSON array of emails
+  isActive: int("is_active").notNull().default(1),
+  lastTriggeredAt: timestamp("last_triggered_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type OeeAlertConfig = typeof oeeAlertConfigs.$inferSelect;
+export type InsertOeeAlertConfig = typeof oeeAlertConfigs.$inferInsert;
+
+// OEE Alert History
+export const oeeAlertHistory = mysqlTable("oee_alert_history", {
+  id: int("id").autoincrement().primaryKey(),
+  alertConfigId: int("alert_config_id").notNull(),
+  machineId: int("machine_id"),
+  machineName: varchar("machine_name", { length: 255 }),
+  oeeValue: decimal("oee_value", { precision: 5, scale: 2 }).notNull(),
+  consecutiveDaysBelow: int("consecutive_days_below").notNull(),
+  recipients: text("recipients").notNull(),
+  emailSent: int("email_sent").notNull().default(0),
+  emailSentAt: timestamp("email_sent_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type OeeAlertHistory = typeof oeeAlertHistory.$inferSelect;
+export type InsertOeeAlertHistory = typeof oeeAlertHistory.$inferInsert;
+
+// OEE Report Schedules
+export const oeeReportSchedules = mysqlTable("oee_report_schedules", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  frequency: mysqlEnum("frequency", ["weekly", "monthly"]).notNull(),
+  dayOfWeek: int("day_of_week"), // 0-6 for weekly (0=Sunday)
+  dayOfMonth: int("day_of_month"), // 1-31 for monthly
+  hour: int("hour").notNull().default(8), // Hour to send (0-23)
+  machineIds: text("machine_ids"), // JSON array, null = all machines
+  recipients: text("recipients").notNull(), // JSON array of emails
+  includeCharts: int("include_charts").notNull().default(1),
+  includeTrend: int("include_trend").notNull().default(1),
+  includeComparison: int("include_comparison").notNull().default(1),
+  isActive: int("is_active").notNull().default(1),
+  lastSentAt: timestamp("last_sent_at"),
+  nextScheduledAt: timestamp("next_scheduled_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type OeeReportSchedule = typeof oeeReportSchedules.$inferSelect;
+export type InsertOeeReportSchedule = typeof oeeReportSchedules.$inferInsert;
+
+// OEE Report History
+export const oeeReportHistory = mysqlTable("oee_report_history", {
+  id: int("id").autoincrement().primaryKey(),
+  scheduleId: int("schedule_id").notNull(),
+  reportPeriodStart: timestamp("report_period_start").notNull(),
+  reportPeriodEnd: timestamp("report_period_end").notNull(),
+  recipients: text("recipients").notNull(),
+  reportData: text("report_data"), // JSON summary
+  emailSent: int("email_sent").notNull().default(0),
+  emailSentAt: timestamp("email_sent_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type OeeReportHistory = typeof oeeReportHistory.$inferSelect;
+export type InsertOeeReportHistory = typeof oeeReportHistory.$inferInsert;
+
+// Downtime Reasons (for Pareto analysis)
+export const downtimeReasons = mysqlTable("downtime_reasons", {
+  id: int("id").autoincrement().primaryKey(),
+  machineId: int("machine_id"),
+  oeeDataId: int("oee_data_id"),
+  reasonCode: varchar("reason_code", { length: 50 }).notNull(),
+  reasonCategory: varchar("reason_category", { length: 100 }), // e.g., "Equipment", "Material", "Labor"
+  reasonDescription: varchar("reason_description", { length: 500 }),
+  durationMinutes: int("duration_minutes").notNull(),
+  occurredAt: timestamp("occurred_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type DowntimeReason = typeof downtimeReasons.$inferSelect;
+export type InsertDowntimeReason = typeof downtimeReasons.$inferInsert;
