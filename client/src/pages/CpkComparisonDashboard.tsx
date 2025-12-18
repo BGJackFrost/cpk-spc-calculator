@@ -6,11 +6,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { 
   Loader2, TrendingUp, TrendingDown, Minus, BarChart3, 
-  Factory, Cpu, RefreshCw, Calendar
+  Factory, Cpu, RefreshCw, Calendar, Download, FileSpreadsheet, FileText, GitCompare, Award
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -284,6 +285,7 @@ export default function CpkComparisonDashboard() {
                 ))}
               </SelectContent>
             </Select>
+            <ExportDropdown cpkStats={cpkStats} compareBy={compareBy} timeRange={timeRange} />
             <Button variant="outline" onClick={() => refetch()}>
               <RefreshCw className="mr-2 h-4 w-4" />
               Làm mới
@@ -350,6 +352,7 @@ export default function CpkComparisonDashboard() {
             <TabsTrigger value="trend">Xu hướng theo thời gian</TabsTrigger>
             <TabsTrigger value="ranking">Bảng xếp hạng</TabsTrigger>
             <TabsTrigger value="prediction">Dự báo xu hướng</TabsTrigger>
+            <TabsTrigger value="algorithms">So sánh thuật toán</TabsTrigger>
           </TabsList>
 
           {/* Comparison Tab */}
@@ -701,8 +704,304 @@ export default function CpkComparisonDashboard() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* Algorithms Comparison Tab */}
+          <TabsContent value="algorithms" className="space-y-4">
+            <AlgorithmsComparisonTab />
+          </TabsContent>
         </Tabs>
       </div>
     </DashboardLayout>
+  );
+}
+
+// Algorithms Comparison Component
+function AlgorithmsComparisonTab() {
+  const { data: algorithmData, isLoading, refetch } = trpc.spc.compareCpkAlgorithms.useQuery({
+    historicalDays: 30,
+    predictionDays: 14,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!algorithmData || algorithmData.algorithms.length === 0) {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-center justify-center h-64">
+          <GitCompare className="h-12 w-12 text-muted-foreground mb-4" />
+          <p className="text-muted-foreground">Không đủ dữ liệu để so sánh thuật toán</p>
+          <p className="text-sm text-muted-foreground">Cần ít nhất 5 ngày dữ liệu CPK</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const COLORS = ['#3b82f6', '#22c55e', '#f59e0b'];
+
+  return (
+    <div className="space-y-4">
+      {/* Recommendation Card */}
+      {algorithmData.recommendation && (
+        <Card className="border-green-200 bg-green-50">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-green-800">
+              <Award className="h-5 w-5" />
+              Khuyến nghị thuật toán tối ưu
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-green-700">
+              <strong>{algorithmData.recommendation.algorithm}</strong>: {algorithmData.recommendation.reason}
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Chart */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <GitCompare className="h-5 w-5" />
+            So sánh dự báo CPK giữa các thuật toán
+          </CardTitle>
+          <CardDescription>
+            Biểu đồ so sánh kết quả dự báo từ 3 thuật toán khác nhau
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[400px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={algorithmData.chartData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="date" />
+                <YAxis domain={[0, 'auto']} />
+                <Tooltip />
+                <Legend />
+                <Line
+                  type="monotone"
+                  dataKey="actual"
+                  name="Thực tế"
+                  stroke="#1e293b"
+                  strokeWidth={2}
+                  dot={{ r: 3 }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="linear"
+                  name="Linear Regression"
+                  stroke="#3b82f6"
+                  strokeDasharray="5 5"
+                  strokeWidth={2}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="movingAvg"
+                  name="Moving Average"
+                  stroke="#22c55e"
+                  strokeDasharray="5 5"
+                  strokeWidth={2}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="expSmoothing"
+                  name="Exp Smoothing"
+                  stroke="#f59e0b"
+                  strokeDasharray="5 5"
+                  strokeWidth={2}
+                />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Algorithms Comparison Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Bảng so sánh độ chính xác</CardTitle>
+          <CardDescription>
+            So sánh R² (hệ số xác định) và RMSE (sai số bình phương trung bình) của các thuật toán
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Thuật toán</TableHead>
+                <TableHead className="text-right">R² (%)</TableHead>
+                <TableHead className="text-right">RMSE</TableHead>
+                <TableHead className="text-right">Dự báo (14 ngày)</TableHead>
+                <TableHead>Đánh giá</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {algorithmData.algorithms.map((algo, index) => {
+                const avgPrediction = algo.predictions.reduce((a, b) => a + b, 0) / algo.predictions.length;
+                const isRecommended = algorithmData.recommendation?.code === algo.code;
+                return (
+                  <TableRow key={algo.code} className={isRecommended ? 'bg-green-50' : ''}>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[index] }} />
+                        {algo.name}
+                        {isRecommended && <Badge className="bg-green-100 text-green-800">Khuyến nghị</Badge>}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right font-mono">
+                      {(algo.r2 * 100).toFixed(1)}%
+                    </TableCell>
+                    <TableCell className="text-right font-mono">
+                      {algo.rmse.toFixed(4)}
+                    </TableCell>
+                    <TableCell className="text-right font-mono">
+                      {avgPrediction.toFixed(3)}
+                    </TableCell>
+                    <TableCell>
+                      {algo.r2 >= 0.8 ? (
+                        <Badge className="bg-green-100 text-green-800">Tốt</Badge>
+                      ) : algo.r2 >= 0.6 ? (
+                        <Badge className="bg-blue-100 text-blue-800">Khá</Badge>
+                      ) : algo.r2 >= 0.4 ? (
+                        <Badge className="bg-yellow-100 text-yellow-800">Trung bình</Badge>
+                      ) : (
+                        <Badge className="bg-red-100 text-red-800">Yếu</Badge>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {/* Algorithm Descriptions */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-blue-500" />
+              Linear Regression
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              Phù hợp khi dữ liệu có xu hướng tuyến tính rõ ràng (tăng hoặc giảm đều).
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-green-500" />
+              Moving Average
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              Phù hợp khi dữ liệu có nhiều biến động ngắn hạn, cần làm mịn xu hướng.
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-yellow-500" />
+              Exponential Smoothing
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              Phù hợp khi dữ liệu gần đây quan trọng hơn dữ liệu cũ.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+
+// Export Dropdown Component
+function ExportDropdown({ cpkStats, compareBy, timeRange }: { 
+  cpkStats: Array<{ id: number; name: string; avgCpk: number; avgCp: number; minCpk: number; maxCpk: number; count: number }>;
+  compareBy: "line" | "workstation";
+  timeRange: string;
+}) {
+  const exportExcelMutation = trpc.spc.exportCpkComparisonExcel.useMutation({
+    onSuccess: (data) => {
+      window.open(data.url, '_blank');
+      toast.success('Đã xuất file Excel thành công');
+    },
+    onError: (error) => {
+      toast.error('Lỗi xuất Excel: ' + error.message);
+    },
+  });
+
+  const exportPdfMutation = trpc.spc.exportCpkComparisonPdf.useMutation({
+    onSuccess: (data) => {
+      window.open(data.url, '_blank');
+      toast.success('Đã xuất file PDF thành công');
+    },
+    onError: (error) => {
+      toast.error('Lỗi xuất PDF: ' + error.message);
+    },
+  });
+
+  const handleExportExcel = () => {
+    if (cpkStats.length === 0) {
+      toast.error('Không có dữ liệu để xuất');
+      return;
+    }
+    exportExcelMutation.mutate({
+      data: cpkStats,
+      compareBy,
+      timeRange,
+    });
+  };
+
+  const handleExportPdf = () => {
+    if (cpkStats.length === 0) {
+      toast.error('Không có dữ liệu để xuất');
+      return;
+    }
+    exportPdfMutation.mutate({
+      data: cpkStats,
+      compareBy,
+      timeRange,
+    });
+  };
+
+  const isExporting = exportExcelMutation.isPending || exportPdfMutation.isPending;
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" disabled={isExporting}>
+          {isExporting ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Download className="mr-2 h-4 w-4" />
+          )}
+          Xuất báo cáo
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent>
+        <DropdownMenuItem onClick={handleExportExcel}>
+          <FileSpreadsheet className="mr-2 h-4 w-4" />
+          Xuất Excel
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={handleExportPdf}>
+          <FileText className="mr-2 h-4 w-4" />
+          Xuất PDF/HTML
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

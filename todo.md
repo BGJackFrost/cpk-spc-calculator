@@ -3323,3 +3323,24 @@
 - [x] Biểu đồ so sánh dự báo từ 3 thuật toán
 - [x] Bảng so sánh R² và RMSE
 - [x] Khuyến nghị thuật toán tối ưu
+
+
+## Phase 155 - OEE/CPK Scheduled Jobs & CPK Export
+
+### Scheduled job email cảnh báo OEE
+- [x] Tạo scheduled job kiểm tra OEE hàng ngày (8:30 sáng)
+- [x] Tạo scheduled job kiểm tra OEE hàng tuần (Thứ 2, 9:00 sáng)
+- [x] Cấu hình ngưỡng cảnh báo và danh sách email nhận
+- [x] Gửi email tổng hợp với danh sách máy có OEE giảm
+
+### Xuất báo cáo CPK ra PDF/Excel
+- [x] API exportCpkComparisonExcel - Tạo file Excel với ranking và trends
+- [x] API exportCpkComparisonPdf - Tạo báo cáo HTML/PDF chuyên nghiệp
+- [x] Nút xuất PDF/Excel trong trang So sánh CPK
+
+### So sánh CPK giữa các thuật toán
+- [x] API compareCpkAlgorithms - Chạy dự báo CPK với 3 thuật toán
+- [x] Tab "So sánh thuật toán" trong CpkComparisonDashboard
+- [x] Biểu đồ so sánh kết quả dự báo CPK
+- [x] Bảng so sánh R² và RMSE cho CPK
+- [x] Khuyến nghị thuật toán tối ưu cho CPK

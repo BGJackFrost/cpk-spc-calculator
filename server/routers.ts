@@ -1396,6 +1396,357 @@ Trả lời bằng tiếng Việt, ngắn gọn và chuyên nghiệp.`;
         analysis: response.choices[0]?.message?.content || "Không thể phân tích dữ liệu.",
       };
     }),
+
+  // Export CPK Comparison to Excel
+  exportCpkComparisonExcel: protectedProcedure
+    .input(z.object({
+      data: z.array(z.object({
+        name: z.string(),
+        avgCpk: z.number(),
+        avgCp: z.number(),
+        minCpk: z.number(),
+        maxCpk: z.number(),
+        count: z.number(),
+      })),
+      compareBy: z.enum(["line", "workstation"]),
+      timeRange: z.string(),
+    }))
+    .mutation(async ({ input }) => {
+      const ExcelJS = await import("exceljs");
+      const workbook = new ExcelJS.default.Workbook();
+      
+      // Sheet 1: Ranking
+      const rankingSheet = workbook.addWorksheet('Xếp hạng CPK');
+      rankingSheet.columns = [
+        { header: 'Hạng', key: 'rank', width: 8 },
+        { header: input.compareBy === 'line' ? 'Dây chuyền' : 'Công trạm', key: 'name', width: 25 },
+        { header: 'CPK TB', key: 'avgCpk', width: 12 },
+        { header: 'CP TB', key: 'avgCp', width: 12 },
+        { header: 'CPK Min', key: 'minCpk', width: 12 },
+        { header: 'CPK Max', key: 'maxCpk', width: 12 },
+        { header: 'Số mẫu', key: 'count', width: 10 },
+        { header: 'Đánh giá', key: 'rating', width: 15 },
+      ];
+      
+      // Style header
+      rankingSheet.getRow(1).font = { bold: true };
+      rankingSheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '3B82F6' } };
+      rankingSheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFF' } };
+      
+      input.data.forEach((item, index) => {
+        const rating = item.avgCpk >= 1.67 ? 'Xuất sắc' :
+                       item.avgCpk >= 1.33 ? 'Tốt' :
+                       item.avgCpk >= 1.0 ? 'Chấp nhận' :
+                       item.avgCpk >= 0.67 ? 'Cần cải thiện' : 'Kém';
+        
+        const row = rankingSheet.addRow({
+          rank: index + 1,
+          name: item.name,
+          avgCpk: item.avgCpk.toFixed(3),
+          avgCp: item.avgCp.toFixed(3),
+          minCpk: item.minCpk.toFixed(3),
+          maxCpk: item.maxCpk.toFixed(3),
+          count: item.count,
+          rating,
+        });
+        
+        // Color based on CPK
+        const cpkCell = row.getCell('avgCpk');
+        if (item.avgCpk >= 1.67) {
+          cpkCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '22C55E' } };
+        } else if (item.avgCpk >= 1.33) {
+          cpkCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '3B82F6' } };
+        } else if (item.avgCpk >= 1.0) {
+          cpkCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F59E0B' } };
+        } else {
+          cpkCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'EF4444' } };
+        }
+        cpkCell.font = { color: { argb: 'FFFFFF' }, bold: true };
+      });
+      
+      // Sheet 2: Summary
+      const summarySheet = workbook.addWorksheet('Tổng hợp');
+      const totalItems = input.data.length;
+      const avgCpkAll = input.data.reduce((a, b) => a + b.avgCpk, 0) / totalItems;
+      const excellent = input.data.filter(d => d.avgCpk >= 1.67).length;
+      const good = input.data.filter(d => d.avgCpk >= 1.33 && d.avgCpk < 1.67).length;
+      const acceptable = input.data.filter(d => d.avgCpk >= 1.0 && d.avgCpk < 1.33).length;
+      const poor = input.data.filter(d => d.avgCpk < 1.0).length;
+      
+      summarySheet.addRow(['BÁO CÁO SO SÁNH CPK']);
+      summarySheet.addRow([`Thời gian: ${input.timeRange} ngày qua`]);
+      summarySheet.addRow([`So sánh theo: ${input.compareBy === 'line' ? 'Dây chuyền' : 'Công trạm'}`]);
+      summarySheet.addRow([]);
+      summarySheet.addRow(['Tổng số:', totalItems]);
+      summarySheet.addRow(['CPK trung bình:', avgCpkAll.toFixed(3)]);
+      summarySheet.addRow([]);
+      summarySheet.addRow(['Phân loại:']);
+      summarySheet.addRow(['  - Xuất sắc (>=1.67):', excellent]);
+      summarySheet.addRow(['  - Tốt (>=1.33):', good]);
+      summarySheet.addRow(['  - Chấp nhận (>=1.0):', acceptable]);
+      summarySheet.addRow(['  - Cần cải thiện (<1.0):', poor]);
+      
+      const buffer = await workbook.xlsx.writeBuffer();
+      const { storagePut } = await import("./storage");
+      const fileName = `cpk-comparison-${Date.now()}.xlsx`;
+      const { url } = await storagePut(fileName, Buffer.from(buffer), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      
+      return { url, fileName };
+    }),
+
+  // Export CPK Comparison to PDF/HTML
+  exportCpkComparisonPdf: protectedProcedure
+    .input(z.object({
+      data: z.array(z.object({
+        name: z.string(),
+        avgCpk: z.number(),
+        avgCp: z.number(),
+        minCpk: z.number(),
+        maxCpk: z.number(),
+        count: z.number(),
+      })),
+      compareBy: z.enum(["line", "workstation"]),
+      timeRange: z.string(),
+    }))
+    .mutation(async ({ input }) => {
+      const totalItems = input.data.length;
+      const avgCpkAll = input.data.reduce((a, b) => a + b.avgCpk, 0) / totalItems;
+      const excellent = input.data.filter(d => d.avgCpk >= 1.67).length;
+      const good = input.data.filter(d => d.avgCpk >= 1.33 && d.avgCpk < 1.67).length;
+      const acceptable = input.data.filter(d => d.avgCpk >= 1.0 && d.avgCpk < 1.33).length;
+      const poor = input.data.filter(d => d.avgCpk < 1.0).length;
+      
+      const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <title>Báo cáo So sánh CPK</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 20px; }
+            h1 { color: #1e293b; }
+            .summary { display: flex; gap: 20px; margin-bottom: 30px; flex-wrap: wrap; }
+            .card { background: #f8fafc; padding: 15px; border-radius: 8px; min-width: 150px; }
+            .card-value { font-size: 24px; font-weight: bold; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            th, td { padding: 10px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+            th { background: #3b82f6; color: white; }
+            .excellent { background: #22c55e; color: white; padding: 2px 8px; border-radius: 4px; }
+            .good { background: #3b82f6; color: white; padding: 2px 8px; border-radius: 4px; }
+            .acceptable { background: #f59e0b; color: white; padding: 2px 8px; border-radius: 4px; }
+            .poor { background: #ef4444; color: white; padding: 2px 8px; border-radius: 4px; }
+          </style>
+        </head>
+        <body>
+          <h1>📊 Báo cáo So sánh CPK</h1>
+          <p>Thời gian: ${input.timeRange} ngày qua | So sánh theo: ${input.compareBy === 'line' ? 'Dây chuyền' : 'Công trạm'}</p>
+          
+          <div class="summary">
+            <div class="card">
+              <div style="color: #64748b;">Tổng số</div>
+              <div class="card-value">${totalItems}</div>
+            </div>
+            <div class="card">
+              <div style="color: #64748b;">CPK TB</div>
+              <div class="card-value" style="color: ${avgCpkAll >= 1.33 ? '#22c55e' : '#ef4444'};">${avgCpkAll.toFixed(3)}</div>
+            </div>
+            <div class="card">
+              <div style="color: #64748b;">Xuất sắc</div>
+              <div class="card-value" style="color: #22c55e;">${excellent}</div>
+            </div>
+            <div class="card">
+              <div style="color: #64748b;">Cần cải thiện</div>
+              <div class="card-value" style="color: #ef4444;">${poor}</div>
+            </div>
+          </div>
+          
+          <h2>Bảng xếp hạng</h2>
+          <table>
+            <tr>
+              <th>Hạng</th>
+              <th>${input.compareBy === 'line' ? 'Dây chuyền' : 'Công trạm'}</th>
+              <th>CPK TB</th>
+              <th>CP TB</th>
+              <th>CPK Min</th>
+              <th>CPK Max</th>
+              <th>Số mẫu</th>
+              <th>Đánh giá</th>
+            </tr>
+            ${input.data.map((item, index) => {
+              const rating = item.avgCpk >= 1.67 ? 'excellent' :
+                             item.avgCpk >= 1.33 ? 'good' :
+                             item.avgCpk >= 1.0 ? 'acceptable' : 'poor';
+              const ratingText = item.avgCpk >= 1.67 ? 'Xuất sắc' :
+                                 item.avgCpk >= 1.33 ? 'Tốt' :
+                                 item.avgCpk >= 1.0 ? 'Chấp nhận' : 'Cần cải thiện';
+              return `
+                <tr>
+                  <td>${index + 1}</td>
+                  <td>${item.name}</td>
+                  <td><strong>${item.avgCpk.toFixed(3)}</strong></td>
+                  <td>${item.avgCp.toFixed(3)}</td>
+                  <td>${item.minCpk.toFixed(3)}</td>
+                  <td>${item.maxCpk.toFixed(3)}</td>
+                  <td>${item.count}</td>
+                  <td><span class="${rating}">${ratingText}</span></td>
+                </tr>
+              `;
+            }).join('')}
+          </table>
+          
+          <p style="margin-top: 30px; color: #64748b; font-size: 12px;">
+            Tạo lúc: ${new Date().toLocaleString('vi-VN')} | SPC/CPK Calculator
+          </p>
+        </body>
+        </html>
+      `;
+      
+      const { storagePut } = await import("./storage");
+      const fileName = `cpk-comparison-${Date.now()}.html`;
+      const { url } = await storagePut(fileName, Buffer.from(html), 'text/html');
+      
+      return { url, fileName };
+    }),
+
+  // Compare CPK algorithms
+  compareCpkAlgorithms: protectedProcedure
+    .input(z.object({
+      historicalDays: z.number().default(30),
+      predictionDays: z.number().default(14),
+    }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return { algorithms: [], chartData: [], recommendation: null };
+      
+      // Get historical CPK data
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - input.historicalDays);
+      
+      const historicalData = await db
+        .select({
+          date: sql<string>`DATE(createdAt)`,
+          avgCpk: sql<number>`AVG(cpk)`,
+        })
+        .from(spcAnalysisHistory)
+        .where(and(
+          gte(spcAnalysisHistory.createdAt, startDate),
+          sql`cpk IS NOT NULL`
+        ))
+        .groupBy(sql`DATE(createdAt)`)
+        .orderBy(sql`DATE(createdAt)`);
+      
+      if (historicalData.length < 5) {
+        return { algorithms: [], chartData: [], recommendation: null, error: 'Không đủ dữ liệu lịch sử' };
+      }
+      
+      const cpkValues = historicalData.map(d => Number(d.avgCpk) || 0);
+      
+      // Linear Regression
+      const linearRegression = (data: number[]) => {
+        const n = data.length;
+        let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+        for (let i = 0; i < n; i++) {
+          sumX += i;
+          sumY += data[i];
+          sumXY += i * data[i];
+          sumX2 += i * i;
+        }
+        const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+        const intercept = (sumY - slope * sumX) / n;
+        
+        const predictions: number[] = [];
+        for (let i = 0; i < input.predictionDays; i++) {
+          predictions.push(slope * (n + i) + intercept);
+        }
+        
+        const ssRes = data.reduce((a, b, i) => a + Math.pow(b - (slope * i + intercept), 2), 0);
+        const mean = sumY / n;
+        const ssTotal = data.reduce((a, b) => a + Math.pow(b - mean, 2), 0);
+        const r2 = 1 - ssRes / ssTotal;
+        const rmse = Math.sqrt(ssRes / n);
+        
+        return { predictions, r2: Math.max(0, r2), rmse };
+      };
+      
+      // Moving Average
+      const movingAverage = (data: number[], window: number = 7) => {
+        const lastWindow = data.slice(-window);
+        const avg = lastWindow.reduce((a, b) => a + b, 0) / window;
+        const predictions = Array(input.predictionDays).fill(avg);
+        const variance = lastWindow.reduce((a, b) => a + Math.pow(b - avg, 2), 0) / window;
+        const rmse = Math.sqrt(variance);
+        const mean = data.reduce((a, b) => a + b, 0) / data.length;
+        const ssTotal = data.reduce((a, b) => a + Math.pow(b - mean, 2), 0);
+        const r2 = 1 - variance / (ssTotal / data.length);
+        return { predictions, r2: Math.max(0, r2), rmse };
+      };
+      
+      // Exponential Smoothing
+      const exponentialSmoothing = (data: number[], alpha: number = 0.3) => {
+        let forecast = data[0];
+        for (let i = 1; i < data.length; i++) {
+          forecast = alpha * data[i] + (1 - alpha) * forecast;
+        }
+        const predictions = Array(input.predictionDays).fill(forecast);
+        
+        let tempForecast = data[0];
+        let sumSquaredError = 0;
+        for (let i = 1; i < data.length; i++) {
+          sumSquaredError += Math.pow(data[i] - tempForecast, 2);
+          tempForecast = alpha * data[i] + (1 - alpha) * tempForecast;
+        }
+        const rmse = Math.sqrt(sumSquaredError / (data.length - 1));
+        const mean = data.reduce((a, b) => a + b, 0) / data.length;
+        const ssTotal = data.reduce((a, b) => a + Math.pow(b - mean, 2), 0);
+        const r2 = 1 - sumSquaredError / ssTotal;
+        
+        return { predictions, r2: Math.max(0, r2), rmse };
+      };
+      
+      const linearResult = linearRegression(cpkValues);
+      const maResult = movingAverage(cpkValues);
+      const esResult = exponentialSmoothing(cpkValues);
+      
+      const algorithms = [
+        { name: 'Linear Regression', code: 'linear', predictions: linearResult.predictions, r2: linearResult.r2, rmse: linearResult.rmse },
+        { name: 'Moving Average', code: 'moving_avg', predictions: maResult.predictions, r2: maResult.r2, rmse: maResult.rmse },
+        { name: 'Exponential Smoothing', code: 'exp_smoothing', predictions: esResult.predictions, r2: esResult.r2, rmse: esResult.rmse },
+      ];
+      
+      // Generate chart data
+      const chartData: any[] = [];
+      historicalData.forEach((d, i) => {
+        chartData.push({ date: d.date, actual: Number(d.avgCpk) || 0, linear: null, movingAvg: null, expSmoothing: null });
+      });
+      
+      for (let i = 0; i < input.predictionDays; i++) {
+        const futureDate = new Date();
+        futureDate.setDate(futureDate.getDate() + i + 1);
+        chartData.push({
+          date: futureDate.toISOString().split('T')[0],
+          actual: null,
+          linear: linearResult.predictions[i],
+          movingAvg: maResult.predictions[i],
+          expSmoothing: esResult.predictions[i],
+        });
+      }
+      
+      const bestAlgorithm = algorithms.reduce((best, current) => {
+        const bestScore = best.r2 * 0.6 + (1 / (1 + best.rmse)) * 0.4;
+        const currentScore = current.r2 * 0.6 + (1 / (1 + current.rmse)) * 0.4;
+        return currentScore > bestScore ? current : best;
+      });
+      
+      return {
+        algorithms,
+        chartData,
+        recommendation: {
+          algorithm: bestAlgorithm.name,
+          code: bestAlgorithm.code,
+          reason: `${bestAlgorithm.name} có R² = ${(bestAlgorithm.r2 * 100).toFixed(1)}% và RMSE = ${bestAlgorithm.rmse.toFixed(4)}, phù hợp nhất với dữ liệu CPK hiện tại.`,
+        },
+      };
+    }),
 });
 
 // Export Router

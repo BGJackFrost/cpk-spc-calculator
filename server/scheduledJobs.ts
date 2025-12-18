@@ -6,7 +6,7 @@
 import cron from 'node-cron';
 import { getLicensesExpiringSoon, getExpiredLicenses, getDb } from './db';
 import { generateShiftReport, sendShiftReportEmail, getCurrentShift } from './services/shiftReportService';
-import { realtimeAlerts, machines, machineOnlineStatus } from '../drizzle/schema';
+import { realtimeAlerts, machines, machineOnlineStatus, oeeRecords, oeeTargets, emailNotificationSettings } from '../drizzle/schema';
 import { eq, and, gte, lte, desc, sql } from 'drizzle-orm';
 import { triggerWebhooks } from './webhookService';
 import { notifyOwner } from './_core/notification';
@@ -340,6 +340,26 @@ export function initScheduledJobs(): void {
   });
   
   console.log('[ScheduledJob] Scheduled: NTF PowerPoint report at 10:00 AM on 1st (Asia/Ho_Chi_Minh)');
+  
+  // OEE daily alert - runs at 8:30 AM daily
+  cron.schedule('0 30 8 * * *', async () => {
+    console.log('[ScheduledJob] Triggered: OEE daily alert check');
+    await checkOeeAndSendAlerts('daily');
+  }, {
+    timezone: 'Asia/Ho_Chi_Minh'
+  });
+  
+  console.log('[ScheduledJob] Scheduled: OEE daily alert at 8:30 AM (Asia/Ho_Chi_Minh)');
+  
+  // OEE weekly alert - runs at 9:00 AM every Monday
+  cron.schedule('0 0 9 * * 1', async () => {
+    console.log('[ScheduledJob] Triggered: OEE weekly alert check');
+    await checkOeeAndSendAlerts('weekly');
+  }, {
+    timezone: 'Asia/Ho_Chi_Minh'
+  });
+  
+  console.log('[ScheduledJob] Scheduled: OEE weekly alert at 9:00 AM Monday (Asia/Ho_Chi_Minh)');
   
   jobsInitialized = true;
   console.log('[ScheduledJob] All scheduled jobs initialized successfully');
@@ -1557,4 +1577,279 @@ async function sendNtfPowerPointReport(): Promise<{ sent: number; failed: number
  */
 export async function triggerNtfPowerPointReport(): Promise<{ sent: number; failed: number; message: string }> {
   return await sendNtfPowerPointReport();
+}
+
+
+/**
+ * Check OEE and send alerts for machines with significant OEE drops
+ * Compares current period OEE with previous period
+ */
+export async function checkOeeAndSendAlerts(period: 'daily' | 'weekly' = 'daily'): Promise<{ sent: number; failed: number; alerts: number; message: string }> {
+  console.log(`[ScheduledJob] Checking OEE alerts for ${period} period...`);
+  
+  try {
+    const db = await getDb();
+    if (!db) {
+      return { sent: 0, failed: 0, alerts: 0, message: 'Database not available' };
+    }
+    
+    // Calculate date ranges based on period
+    const now = new Date();
+    let currentStart: Date, currentEnd: Date, previousStart: Date, previousEnd: Date;
+    
+    if (period === 'daily') {
+      // Current: yesterday, Previous: day before yesterday
+      currentEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      currentStart = new Date(currentEnd);
+      currentStart.setDate(currentStart.getDate() - 1);
+      previousEnd = new Date(currentStart);
+      previousStart = new Date(previousEnd);
+      previousStart.setDate(previousStart.getDate() - 1);
+    } else {
+      // Current: last 7 days, Previous: 7 days before that
+      currentEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      currentStart = new Date(currentEnd);
+      currentStart.setDate(currentStart.getDate() - 7);
+      previousEnd = new Date(currentStart);
+      previousStart = new Date(previousEnd);
+      previousStart.setDate(previousStart.getDate() - 7);
+    }
+    
+    // Get OEE data for current period by machine
+    const currentOeeResult = await db
+      .select({
+        machineId: oeeRecords.machineId,
+        machineName: machines.name,
+        avgOee: sql<number>`AVG(${oeeRecords.oee})`,
+        avgAvailability: sql<number>`AVG(${oeeRecords.availability})`,
+        avgPerformance: sql<number>`AVG(${oeeRecords.performance})`,
+        avgQuality: sql<number>`AVG(${oeeRecords.quality})`,
+      })
+      .from(oeeRecords)
+      .leftJoin(machines, eq(oeeRecords.machineId, machines.id))
+      .where(and(
+        gte(oeeRecords.recordDate, currentStart),
+        lte(oeeRecords.recordDate, currentEnd)
+      ))
+      .groupBy(oeeRecords.machineId, machines.name);
+    
+    // Get OEE data for previous period by machine
+    const previousOeeResult = await db
+      .select({
+        machineId: oeeRecords.machineId,
+        avgOee: sql<number>`AVG(${oeeRecords.oee})`,
+      })
+      .from(oeeRecords)
+      .where(and(
+        gte(oeeRecords.recordDate, previousStart),
+        lte(oeeRecords.recordDate, previousEnd)
+      ))
+      .groupBy(oeeRecords.machineId);
+    
+    // Create lookup for previous OEE
+    const previousOeeMap = new Map<number, number>();
+    for (const row of previousOeeResult) {
+      if (row.machineId) {
+        previousOeeMap.set(row.machineId, Number(row.avgOee) || 0);
+      }
+    }
+    
+    // Get OEE targets
+    const targets = await db.select().from(oeeTargets);
+    const targetMap = new Map<number, number>();
+    for (const t of targets) {
+      if (t.machineId) {
+        targetMap.set(t.machineId, Number(t.targetOee) || 85);
+      }
+    }
+    const defaultTarget = 85;
+    
+    // Find machines with significant OEE drops
+    const alerts: Array<{
+      machineId: number;
+      machineName: string;
+      currentOee: number;
+      previousOee: number;
+      targetOee: number;
+      change: number;
+      changePercent: number;
+      severity: 'high' | 'medium' | 'low';
+    }> = [];
+    
+    for (const current of currentOeeResult) {
+      if (!current.machineId) continue;
+      
+      const currentOee = Number(current.avgOee) || 0;
+      const previousOee = previousOeeMap.get(current.machineId) || currentOee;
+      const targetOee = targetMap.get(current.machineId) || defaultTarget;
+      const change = currentOee - previousOee;
+      const changePercent = previousOee > 0 ? (change / previousOee) * 100 : 0;
+      
+      // Alert conditions:
+      // 1. OEE dropped more than 5% absolute
+      // 2. OEE is below target
+      // 3. OEE dropped more than 10% relative
+      const shouldAlert = 
+        change <= -5 || // Dropped 5+ points
+        (currentOee < targetOee && change < 0) || // Below target and dropping
+        changePercent <= -10; // Dropped 10%+ relative
+      
+      if (shouldAlert) {
+        let severity: 'high' | 'medium' | 'low' = 'low';
+        if (change <= -10 || currentOee < targetOee - 10) {
+          severity = 'high';
+        } else if (change <= -5 || currentOee < targetOee) {
+          severity = 'medium';
+        }
+        
+        alerts.push({
+          machineId: current.machineId,
+          machineName: current.machineName || `Machine ${current.machineId}`,
+          currentOee,
+          previousOee,
+          targetOee,
+          change,
+          changePercent,
+          severity,
+        });
+      }
+    }
+    
+    if (alerts.length === 0) {
+      console.log('[ScheduledJob] No OEE alerts to send');
+      return { sent: 0, failed: 0, alerts: 0, message: 'No alerts needed' };
+    }
+    
+    // Sort alerts by severity and change
+    alerts.sort((a, b) => {
+      const severityOrder = { high: 0, medium: 1, low: 2 };
+      if (severityOrder[a.severity] !== severityOrder[b.severity]) {
+        return severityOrder[a.severity] - severityOrder[b.severity];
+      }
+      return a.change - b.change;
+    });
+    
+    // Get email recipients from email notification settings
+    const emailSettings = await db.select().from(emailNotificationSettings).limit(1);
+    let recipients: string[] = [];
+    
+    if (emailSettings.length > 0 && emailSettings[0].recipients) {
+      try {
+        recipients = JSON.parse(emailSettings[0].recipients);
+      } catch {}
+    }
+    
+    // Fallback to owner notification if no recipients configured
+    if (recipients.length === 0) {
+      console.log('[ScheduledJob] No OEE alert recipients configured, sending to owner');
+      await notifyOwner({
+        title: `⚠️ Cảnh báo OEE ${period === 'daily' ? 'hàng ngày' : 'hàng tuần'}: ${alerts.length} máy có OEE giảm`,
+        content: `Phát hiện ${alerts.length} máy có OEE giảm đáng kể:\n${alerts.slice(0, 5).map(a => 
+          `- ${a.machineName}: ${a.currentOee.toFixed(1)}% (${a.change >= 0 ? '+' : ''}${a.change.toFixed(1)}%)`
+        ).join('\n')}`,
+      });
+      return { sent: 1, failed: 0, alerts: alerts.length, message: 'Sent to owner' };
+    }
+    
+    // Generate email HTML
+    const periodLabel = period === 'daily' ? 'hôm qua' : '7 ngày qua';
+    const previousPeriodLabel = period === 'daily' ? 'hôm kia' : '7 ngày trước đó';
+    
+    const emailHtml = `
+      <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #dc2626, #991b1b); color: white; padding: 30px; border-radius: 10px 10px 0 0;">
+          <h1 style="margin: 0;">⚠️ Cảnh báo OEE ${period === 'daily' ? 'Hàng ngày' : 'Hàng tuần'}</h1>
+          <p style="margin: 10px 0 0 0; opacity: 0.9;">Phát hiện ${alerts.length} máy có OEE giảm đáng kể</p>
+        </div>
+        
+        <div style="background: #f8fafc; padding: 20px; border: 1px solid #e2e8f0;">
+          <div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+            <h3 style="margin: 0 0 15px 0; color: #1e293b;">📊 Tổng quan</h3>
+            <p style="margin: 5px 0;"><strong>Kỳ hiện tại:</strong> ${periodLabel}</p>
+            <p style="margin: 5px 0;"><strong>So sánh với:</strong> ${previousPeriodLabel}</p>
+            <p style="margin: 5px 0;"><strong>Số máy cảnh báo:</strong> ${alerts.length}</p>
+            <p style="margin: 5px 0;"><strong>Mức độ cao:</strong> ${alerts.filter(a => a.severity === 'high').length}</p>
+            <p style="margin: 5px 0;"><strong>Mức độ trung bình:</strong> ${alerts.filter(a => a.severity === 'medium').length}</p>
+          </div>
+          
+          <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+            <h3 style="margin: 0 0 15px 0; color: #1e293b;">🔴 Chi tiết cảnh báo</h3>
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr style="background: #f1f5f9;">
+                <th style="padding: 10px; text-align: left; border-bottom: 1px solid #e2e8f0;">Máy</th>
+                <th style="padding: 10px; text-align: center; border-bottom: 1px solid #e2e8f0;">OEE hiện tại</th>
+                <th style="padding: 10px; text-align: center; border-bottom: 1px solid #e2e8f0;">OEE trước</th>
+                <th style="padding: 10px; text-align: center; border-bottom: 1px solid #e2e8f0;">Thay đổi</th>
+                <th style="padding: 10px; text-align: center; border-bottom: 1px solid #e2e8f0;">Mục tiêu</th>
+                <th style="padding: 10px; text-align: center; border-bottom: 1px solid #e2e8f0;">Mức độ</th>
+              </tr>
+              ${alerts.map(a => `
+                <tr style="background: ${a.severity === 'high' ? '#fef2f2' : a.severity === 'medium' ? '#fffbeb' : 'white'};">
+                  <td style="padding: 10px; border-bottom: 1px solid #e2e8f0;">${a.machineName}</td>
+                  <td style="padding: 10px; text-align: center; border-bottom: 1px solid #e2e8f0; font-weight: bold; color: ${a.currentOee < a.targetOee ? '#dc2626' : '#22c55e'};">${a.currentOee.toFixed(1)}%</td>
+                  <td style="padding: 10px; text-align: center; border-bottom: 1px solid #e2e8f0;">${a.previousOee.toFixed(1)}%</td>
+                  <td style="padding: 10px; text-align: center; border-bottom: 1px solid #e2e8f0; color: ${a.change < 0 ? '#dc2626' : '#22c55e'};">
+                    ${a.change >= 0 ? '+' : ''}${a.change.toFixed(1)}% (${a.changePercent >= 0 ? '+' : ''}${a.changePercent.toFixed(1)}%)
+                  </td>
+                  <td style="padding: 10px; text-align: center; border-bottom: 1px solid #e2e8f0;">${a.targetOee.toFixed(1)}%</td>
+                  <td style="padding: 10px; text-align: center; border-bottom: 1px solid #e2e8f0;">
+                    <span style="padding: 2px 8px; border-radius: 4px; font-size: 12px; background: ${
+                      a.severity === 'high' ? '#dc2626' : a.severity === 'medium' ? '#f59e0b' : '#22c55e'
+                    }; color: white;">
+                      ${a.severity === 'high' ? 'Cao' : a.severity === 'medium' ? 'Trung bình' : 'Thấp'}
+                    </span>
+                  </td>
+                </tr>
+              `).join('')}
+            </table>
+          </div>
+          
+          <div style="margin-top: 20px; padding: 15px; background: #fef3c7; border-radius: 8px; border-left: 4px solid #f59e0b;">
+            <p style="margin: 0; color: #92400e;">
+              <strong>💡 Khuyến nghị:</strong> Vui lòng kiểm tra các máy có mức độ cảnh báo cao để xác định nguyên nhân và có biện pháp khắc phục kịp thời.
+            </p>
+          </div>
+        </div>
+        
+        <div style="background: #1e293b; color: white; padding: 15px; border-radius: 0 0 10px 10px; text-align: center; font-size: 12px;">
+          <p style="margin: 0;">Email này được gửi tự động từ hệ thống SPC/CPK Calculator</p>
+          <p style="margin: 5px 0 0 0; opacity: 0.7;">Thời gian: ${new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}</p>
+        </div>
+      </div>
+    `;
+    
+    // Send emails
+    let sent = 0;
+    let failed = 0;
+    
+    for (const email of recipients) {
+      try {
+        const result = await sendEmail(
+          email,
+          `⚠️ Cảnh báo OEE ${period === 'daily' ? 'hàng ngày' : 'hàng tuần'}: ${alerts.length} máy có OEE giảm`,
+          emailHtml
+        );
+        
+        if (result.success) sent++;
+        else failed++;
+      } catch (err) {
+        console.error(`[ScheduledJob] Failed to send OEE alert to ${email}:`, err);
+        failed++;
+      }
+    }
+    
+    console.log(`[ScheduledJob] OEE ${period} alerts: sent=${sent}, failed=${failed}, alerts=${alerts.length}`);
+    return { sent, failed, alerts: alerts.length, message: `Sent to ${sent} recipients, ${failed} failed` };
+    
+  } catch (error) {
+    console.error(`[ScheduledJob] Error checking OEE alerts:`, error);
+    return { sent: 0, failed: 0, alerts: 0, message: 'Error: ' + String(error) };
+  }
+}
+
+/**
+ * Manually trigger OEE alert check (for testing)
+ */
+export async function triggerOeeAlertCheck(period: 'daily' | 'weekly' = 'daily'): Promise<{ sent: number; failed: number; alerts: number; message: string }> {
+  return await checkOeeAndSendAlerts(period);
 }
