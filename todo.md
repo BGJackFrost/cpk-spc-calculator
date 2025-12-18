@@ -3257,3 +3257,69 @@
 - [x] Cập nhật getPrediction API với các tham số mới
 - [x] Tính confidence interval theo z-score (80%/90%/95%/99%)
 - [x] Trả về settings đã áp dụng trong response
+
+
+## Phase 154 - OEE/CPK Advanced Features
+
+### 1. Xuất báo cáo so sánh OEE ra PDF/Excel
+- [ ] API exportOeeComparisonPdf - Tạo báo cáo PDF với biểu đồ và bảng ranking
+- [ ] API exportOeeComparisonExcel - Tạo file Excel với nhiều sheets (Ranking, Trends, Predictions)
+- [ ] Nút xuất PDF/Excel trong trang So sánh OEE
+- [ ] Template PDF chuyên nghiệp với logo và header
+
+### 2. Email cảnh báo OEE giảm mạnh
+- [ ] Phát hiện OEE giảm mạnh (> 10% so với tuần trước)
+- [ ] Gửi email tự động cho quản lý khi phát hiện cảnh báo
+- [ ] Scheduled job kiểm tra OEE định kỳ (mỗi giờ)
+- [ ] Cấu hình ngưỡng cảnh báo và danh sách email nhận
+
+### 3. Dashboard so sánh CPK với dự báo xu hướng
+- [ ] Tạo trang CpkComparisonDashboard.tsx
+- [ ] API so sánh CPK giữa các sản phẩm/công trạm
+- [ ] Biểu đồ Radar so sánh đa chiều (CPK, Cp, Pp, Ppk)
+- [ ] Dự báo xu hướng CPK bằng Linear Regression/Moving Average/Exponential Smoothing
+- [ ] Cảnh báo sớm khi CPK dự báo giảm dưới ngưỡng
+
+### 4. Lưu cấu hình dự báo theo user
+- [ ] Tạo bảng user_prediction_configs trong database
+- [ ] API lưu/tải cấu hình dự báo (algorithm, forecastDays, confidenceLevel, etc.)
+- [ ] Tự động load cấu hình đã lưu khi mở trang
+- [ ] Nút "Lưu cấu hình" và "Đặt làm mặc định" trong dialog
+
+### 5. So sánh kết quả dự báo giữa các thuật toán
+- [ ] API compareAlgorithms - Chạy dự báo với tất cả thuật toán
+- [ ] Biểu đồ so sánh kết quả 3 thuật toán trên cùng một chart
+- [ ] Bảng so sánh độ chính xác (R², RMSE, MAE)
+- [ ] Khuyến nghị thuật toán phù hợp nhất dựa trên dữ liệu
+
+
+## Phase 154 - OEE/CPK Advanced Features
+
+### Xuất báo cáo so sánh OEE
+- [x] API xuất báo cáo Excel với bảng xếp hạng và dữ liệu theo ngày
+- [x] API xuất báo cáo PDF/HTML với biểu đồ và bảng ranking
+- [x] Nút xuất báo cáo trong OEE Comparison Dashboard
+
+### Email cảnh báo OEE
+- [x] API gửi email cảnh báo khi OEE giảm mạnh
+- [x] Dialog gửi email với danh sách cảnh báo và người nhận
+- [x] Template email HTML chuyên nghiệp
+
+### Dashboard so sánh CPK với dự báo
+- [x] Tab dự báo xu hướng CPK trong CpkComparisonDashboard
+- [x] Biểu đồ dự báo CPK với giới hạn trên/dưới
+- [x] Cảnh báo sớm cho quy trình có nguy cơ giảm CPK
+- [x] Bảng tổng hợp dự báo CPK
+
+### Lưu cấu hình dự báo theo user
+- [x] Bảng user_prediction_configs trong database
+- [x] API lưu, load, cập nhật, xóa cấu hình dự báo
+- [x] UI quản lý cấu hình đã lưu trong dialog settings
+- [x] Tự động load cấu hình mặc định khi mở trang
+
+### So sánh kết quả dự báo giữa các thuật toán
+- [x] API compareAlgorithms so sánh Linear, Moving Avg, Exp Smoothing
+- [x] Tab "So sánh thuật toán" trong OEE Comparison Dashboard
+- [x] Biểu đồ so sánh dự báo từ 3 thuật toán
+- [x] Bảng so sánh R² và RMSE
+- [x] Khuyến nghị thuật toán tối ưu

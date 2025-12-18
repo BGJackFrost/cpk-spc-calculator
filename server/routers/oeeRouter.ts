@@ -3,9 +3,12 @@ import { router, publicProcedure, protectedProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { 
   oeeRecords, oeeTargets, oeeLossCategories, oeeLossRecords,
-  machines
+  machines, userPredictionConfigs
 } from "../../drizzle/schema";
 import { eq, desc, and, gte, lte, sql, asc } from "drizzle-orm";
+import ExcelJS from "exceljs";
+import { storagePut } from "../storage";
+import { sendEmail, getSmtpConfig } from "../emailService";
 
 export const oeeRouter = router({
   // OEE Records
@@ -788,5 +791,701 @@ export const oeeRouter = router({
           smoothingFactor: input.smoothingFactor,
         },
       };
+    }),
+
+  // Export OEE Comparison to Excel
+  exportComparisonExcel: protectedProcedure
+    .input(z.object({
+      type: z.enum(["machines", "lines"]).default("machines"),
+      days: z.number().default(30),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - input.days);
+
+      // Get OEE data
+      const records = await db
+        .select({
+          machineId: oeeRecords.machineId,
+          machineName: machines.name,
+          recordDate: oeeRecords.recordDate,
+          availability: oeeRecords.availability,
+          performance: oeeRecords.performance,
+          quality: oeeRecords.quality,
+          oee: oeeRecords.oee,
+        })
+        .from(oeeRecords)
+        .leftJoin(machines, eq(oeeRecords.machineId, machines.id))
+        .where(gte(oeeRecords.recordDate, startDate))
+        .orderBy(desc(oeeRecords.recordDate));
+
+      // Create Excel workbook
+      const workbook = new ExcelJS.Workbook();
+      workbook.creator = 'SPC/CPK System';
+      workbook.created = new Date();
+
+      // Sheet 1: Ranking
+      const rankingSheet = workbook.addWorksheet('Bảng xếp hạng OEE');
+      rankingSheet.columns = [
+        { header: 'Hạng', key: 'rank', width: 8 },
+        { header: 'Tên', key: 'name', width: 25 },
+        { header: 'OEE (%)', key: 'oee', width: 12 },
+        { header: 'Availability (%)', key: 'availability', width: 15 },
+        { header: 'Performance (%)', key: 'performance', width: 15 },
+        { header: 'Quality (%)', key: 'quality', width: 12 },
+        { header: 'Trạng thái', key: 'status', width: 15 },
+      ];
+
+      // Group by machine and calculate averages
+      const machineStats: Record<number, { name: string; oeeSum: number; availSum: number; perfSum: number; qualSum: number; count: number }> = {};
+      records.forEach(r => {
+        if (!r.machineId) return;
+        if (!machineStats[r.machineId]) {
+          machineStats[r.machineId] = { name: r.machineName || `Machine ${r.machineId}`, oeeSum: 0, availSum: 0, perfSum: 0, qualSum: 0, count: 0 };
+        }
+        machineStats[r.machineId].oeeSum += Number(r.oee) || 0;
+        machineStats[r.machineId].availSum += Number(r.availability) || 0;
+        machineStats[r.machineId].perfSum += Number(r.performance) || 0;
+        machineStats[r.machineId].qualSum += Number(r.quality) || 0;
+        machineStats[r.machineId].count++;
+      });
+
+      const ranking = Object.entries(machineStats)
+        .map(([id, stats]) => ({
+          id: Number(id),
+          name: stats.name,
+          oee: stats.oeeSum / stats.count,
+          availability: stats.availSum / stats.count,
+          performance: stats.perfSum / stats.count,
+          quality: stats.qualSum / stats.count,
+        }))
+        .sort((a, b) => b.oee - a.oee);
+
+      ranking.forEach((item, index) => {
+        const status = item.oee >= 85 ? 'Xuất sắc' : item.oee >= 75 ? 'Tốt' : item.oee >= 65 ? 'Trung bình' : 'Cần cải thiện';
+        rankingSheet.addRow({
+          rank: index + 1,
+          name: item.name,
+          oee: item.oee.toFixed(2),
+          availability: item.availability.toFixed(2),
+          performance: item.performance.toFixed(2),
+          quality: item.quality.toFixed(2),
+          status,
+        });
+      });
+
+      // Style header
+      rankingSheet.getRow(1).font = { bold: true };
+      rankingSheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF3B82F6' } };
+      rankingSheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+
+      // Sheet 2: Daily Data
+      const dailySheet = workbook.addWorksheet('Dữ liệu theo ngày');
+      dailySheet.columns = [
+        { header: 'Ngày', key: 'date', width: 15 },
+        { header: 'Máy', key: 'machine', width: 25 },
+        { header: 'OEE (%)', key: 'oee', width: 12 },
+        { header: 'Availability (%)', key: 'availability', width: 15 },
+        { header: 'Performance (%)', key: 'performance', width: 15 },
+        { header: 'Quality (%)', key: 'quality', width: 12 },
+      ];
+
+      records.forEach(r => {
+        dailySheet.addRow({
+          date: r.recordDate ? new Date(r.recordDate).toLocaleDateString('vi-VN') : '',
+          machine: r.machineName || `Machine ${r.machineId}`,
+          oee: Number(r.oee)?.toFixed(2) || '0',
+          availability: Number(r.availability)?.toFixed(2) || '0',
+          performance: Number(r.performance)?.toFixed(2) || '0',
+          quality: Number(r.quality)?.toFixed(2) || '0',
+        });
+      });
+
+      dailySheet.getRow(1).font = { bold: true };
+      dailySheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF22C55E' } };
+      dailySheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+
+      // Sheet 3: Summary
+      const summarySheet = workbook.addWorksheet('Tổng hợp');
+      summarySheet.columns = [
+        { header: 'Chỉ số', key: 'metric', width: 25 },
+        { header: 'Giá trị', key: 'value', width: 20 },
+      ];
+
+      const avgOee = ranking.reduce((a, b) => a + b.oee, 0) / ranking.length || 0;
+      const maxOee = Math.max(...ranking.map(r => r.oee)) || 0;
+      const minOee = Math.min(...ranking.map(r => r.oee)) || 0;
+      const achievedTarget = ranking.filter(r => r.oee >= 85).length;
+
+      summarySheet.addRow({ metric: 'Khoảng thời gian', value: `${input.days} ngày` });
+      summarySheet.addRow({ metric: 'Số lượng máy', value: ranking.length });
+      summarySheet.addRow({ metric: 'OEE Trung bình', value: `${avgOee.toFixed(2)}%` });
+      summarySheet.addRow({ metric: 'OEE Cao nhất', value: `${maxOee.toFixed(2)}%` });
+      summarySheet.addRow({ metric: 'OEE Thấp nhất', value: `${minOee.toFixed(2)}%` });
+      summarySheet.addRow({ metric: 'Đạt mục tiêu (>=85%)', value: `${achievedTarget}/${ranking.length}` });
+      summarySheet.addRow({ metric: 'Ngày xuất báo cáo', value: new Date().toLocaleDateString('vi-VN') });
+
+      summarySheet.getRow(1).font = { bold: true };
+
+      // Generate buffer and upload to S3
+      const buffer = await workbook.xlsx.writeBuffer();
+      const fileName = `oee-comparison-${Date.now()}.xlsx`;
+      const { url } = await storagePut(fileName, Buffer.from(buffer), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+
+      return { url, fileName };
+    }),
+
+  // Export OEE Comparison to PDF (HTML format for download)
+  exportComparisonPdf: protectedProcedure
+    .input(z.object({
+      type: z.enum(["machines", "lines"]).default("machines"),
+      days: z.number().default(30),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - input.days);
+
+      // Get OEE data
+      const records = await db
+        .select({
+          machineId: oeeRecords.machineId,
+          machineName: machines.name,
+          availability: oeeRecords.availability,
+          performance: oeeRecords.performance,
+          quality: oeeRecords.quality,
+          oee: oeeRecords.oee,
+        })
+        .from(oeeRecords)
+        .leftJoin(machines, eq(oeeRecords.machineId, machines.id))
+        .where(gte(oeeRecords.recordDate, startDate));
+
+      // Group by machine
+      const machineStats: Record<number, { name: string; oeeSum: number; availSum: number; perfSum: number; qualSum: number; count: number }> = {};
+      records.forEach(r => {
+        if (!r.machineId) return;
+        if (!machineStats[r.machineId]) {
+          machineStats[r.machineId] = { name: r.machineName || `Machine ${r.machineId}`, oeeSum: 0, availSum: 0, perfSum: 0, qualSum: 0, count: 0 };
+        }
+        machineStats[r.machineId].oeeSum += Number(r.oee) || 0;
+        machineStats[r.machineId].availSum += Number(r.availability) || 0;
+        machineStats[r.machineId].perfSum += Number(r.performance) || 0;
+        machineStats[r.machineId].qualSum += Number(r.quality) || 0;
+        machineStats[r.machineId].count++;
+      });
+
+      const ranking = Object.entries(machineStats)
+        .map(([id, stats]) => ({
+          id: Number(id),
+          name: stats.name,
+          oee: stats.oeeSum / stats.count,
+          availability: stats.availSum / stats.count,
+          performance: stats.perfSum / stats.count,
+          quality: stats.qualSum / stats.count,
+        }))
+        .sort((a, b) => b.oee - a.oee);
+
+      const avgOee = ranking.reduce((a, b) => a + b.oee, 0) / ranking.length || 0;
+
+      // Generate HTML report
+      const html = `
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Báo cáo So sánh OEE</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 40px; }
+    h1 { color: #1e40af; border-bottom: 2px solid #3b82f6; padding-bottom: 10px; }
+    h2 { color: #374151; margin-top: 30px; }
+    .summary { display: flex; gap: 20px; margin: 20px 0; }
+    .summary-card { background: #f3f4f6; padding: 15px; border-radius: 8px; flex: 1; }
+    .summary-card h3 { margin: 0 0 5px 0; font-size: 14px; color: #6b7280; }
+    .summary-card .value { font-size: 24px; font-weight: bold; color: #1f2937; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #e5e7eb; padding: 12px; text-align: left; }
+    th { background: #3b82f6; color: white; }
+    tr:nth-child(even) { background: #f9fafb; }
+    .status-excellent { color: #22c55e; font-weight: bold; }
+    .status-good { color: #3b82f6; font-weight: bold; }
+    .status-average { color: #f59e0b; font-weight: bold; }
+    .status-poor { color: #ef4444; font-weight: bold; }
+    .footer { margin-top: 40px; text-align: center; color: #6b7280; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <h1>Báo cáo So sánh OEE</h1>
+  <p>Khoảng thời gian: ${input.days} ngày | Ngày xuất: ${new Date().toLocaleDateString('vi-VN')}</p>
+  
+  <div class="summary">
+    <div class="summary-card">
+      <h3>OEE Trung bình</h3>
+      <div class="value">${avgOee.toFixed(1)}%</div>
+    </div>
+    <div class="summary-card">
+      <h3>Số lượng máy</h3>
+      <div class="value">${ranking.length}</div>
+    </div>
+    <div class="summary-card">
+      <h3>Đạt mục tiêu</h3>
+      <div class="value">${ranking.filter(r => r.oee >= 85).length}/${ranking.length}</div>
+    </div>
+  </div>
+
+  <h2>Bảng xếp hạng OEE</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Hạng</th>
+        <th>Tên máy</th>
+        <th>OEE (%)</th>
+        <th>Availability (%)</th>
+        <th>Performance (%)</th>
+        <th>Quality (%)</th>
+        <th>Trạng thái</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${ranking.map((item, index) => {
+        const statusClass = item.oee >= 85 ? 'status-excellent' : item.oee >= 75 ? 'status-good' : item.oee >= 65 ? 'status-average' : 'status-poor';
+        const statusText = item.oee >= 85 ? 'Xuất sắc' : item.oee >= 75 ? 'Tốt' : item.oee >= 65 ? 'Trung bình' : 'Cần cải thiện';
+        return `
+          <tr>
+            <td>${index + 1}</td>
+            <td>${item.name}</td>
+            <td>${item.oee.toFixed(2)}</td>
+            <td>${item.availability.toFixed(2)}</td>
+            <td>${item.performance.toFixed(2)}</td>
+            <td>${item.quality.toFixed(2)}</td>
+            <td class="${statusClass}">${statusText}</td>
+          </tr>
+        `;
+      }).join('')}
+    </tbody>
+  </table>
+
+  <div class="footer">
+    <p>Báo cáo được tạo tự động bởi Hệ thống SPC/CPK</p>
+  </div>
+</body>
+</html>
+      `;
+
+      const fileName = `oee-comparison-${Date.now()}.html`;
+      const { url } = await storagePut(fileName, Buffer.from(html), 'text/html');
+
+      return { url, fileName };
+    }),
+
+  // Send OEE Alert Email
+  sendOeeAlert: protectedProcedure
+    .input(z.object({
+      machineName: z.string(),
+      currentOee: z.number(),
+      predictedOee: z.number(),
+      change: z.number(),
+      severity: z.enum(["high", "medium", "low"]),
+      recipients: z.array(z.string().email()),
+    }))
+    .mutation(async ({ input }) => {
+      const smtpConfig = await getSmtpConfig();
+      if (!smtpConfig) {
+        throw new Error("SMTP chưa được cấu hình");
+      }
+
+      const severityText = input.severity === 'high' ? 'CAO' : input.severity === 'medium' ? 'TRUNG BÌNH' : 'THẤP';
+      const severityColor = input.severity === 'high' ? '#ef4444' : input.severity === 'medium' ? '#f59e0b' : '#3b82f6';
+
+      const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+    .alert-box { border: 2px solid ${severityColor}; border-radius: 8px; padding: 20px; margin: 20px 0; }
+    .alert-header { color: ${severityColor}; font-size: 18px; font-weight: bold; margin-bottom: 15px; }
+    .metric { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #e5e7eb; }
+    .metric:last-child { border-bottom: none; }
+    .metric-label { color: #6b7280; }
+    .metric-value { font-weight: bold; }
+    .change-negative { color: #ef4444; }
+    .change-positive { color: #22c55e; }
+  </style>
+</head>
+<body>
+  <h1>Cảnh báo OEE - Mức độ: ${severityText}</h1>
+  <div class="alert-box">
+    <div class="alert-header">⚠️ ${input.machineName}</div>
+    <div class="metric">
+      <span class="metric-label">OEE hiện tại:</span>
+      <span class="metric-value">${input.currentOee.toFixed(1)}%</span>
+    </div>
+    <div class="metric">
+      <span class="metric-label">OEE dự báo:</span>
+      <span class="metric-value">${input.predictedOee.toFixed(1)}%</span>
+    </div>
+    <div class="metric">
+      <span class="metric-label">Thay đổi:</span>
+      <span class="metric-value ${input.change < 0 ? 'change-negative' : 'change-positive'}">
+        ${input.change > 0 ? '+' : ''}${input.change.toFixed(1)}%
+      </span>
+    </div>
+  </div>
+  <p>Vui lòng kiểm tra và có biện pháp khắc phục kịp thời.</p>
+  <p style="color: #6b7280; font-size: 12px;">Email được gửi tự động bởi Hệ thống SPC/CPK</p>
+</body>
+</html>
+      `;
+
+      for (const recipient of input.recipients) {
+        await sendEmail({
+          to: recipient,
+          subject: `[CẢNH BÁO OEE - ${severityText}] ${input.machineName}`,
+          html,
+        });
+      }
+
+      return { success: true, sentTo: input.recipients.length };
+    }),
+
+  // Compare Algorithms - Run prediction with all algorithms
+  compareAlgorithms: publicProcedure
+    .input(z.object({
+      days: z.number().default(30),
+      predictionDays: z.number().default(14),
+    }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return { algorithms: [], chartData: [], recommendation: null };
+
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - input.days);
+
+      // Get historical OEE data
+      const historicalData = await db
+        .select({
+          date: sql<string>`DATE(${oeeRecords.recordDate})`,
+          avgOee: sql<number>`AVG(${oeeRecords.oee})`,
+        })
+        .from(oeeRecords)
+        .where(gte(oeeRecords.recordDate, startDate))
+        .groupBy(sql`DATE(${oeeRecords.recordDate})`)
+        .orderBy(sql`DATE(${oeeRecords.recordDate})`);
+
+      if (historicalData.length < 7) {
+        return { algorithms: [], chartData: [], recommendation: null };
+      }
+
+      const oeeValues = historicalData.map(d => Number(d.avgOee) || 0);
+
+      // Linear Regression
+      const linearRegression = (data: number[]) => {
+        const n = data.length;
+        const sumX = data.reduce((a, _, i) => a + i, 0);
+        const sumY = data.reduce((a, b) => a + b, 0);
+        const sumXY = data.reduce((a, b, i) => a + i * b, 0);
+        const sumX2 = data.reduce((a, _, i) => a + i * i, 0);
+        const sumY2 = data.reduce((a, b) => a + b * b, 0);
+
+        const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+        const intercept = (sumY - slope * sumX) / n;
+
+        const yMean = sumY / n;
+        const ssTotal = data.reduce((a, b) => a + Math.pow(b - yMean, 2), 0);
+        const ssRes = data.reduce((a, b, i) => a + Math.pow(b - (slope * i + intercept), 2), 0);
+        const r2 = 1 - ssRes / ssTotal;
+
+        const predictions: number[] = [];
+        for (let i = 0; i < input.predictionDays; i++) {
+          predictions.push(slope * (n + i) + intercept);
+        }
+
+        // Calculate RMSE
+        const rmse = Math.sqrt(data.reduce((a, b, i) => a + Math.pow(b - (slope * i + intercept), 2), 0) / n);
+
+        return { predictions, r2: Math.max(0, r2), rmse };
+      };
+
+      // Moving Average
+      const movingAverage = (data: number[], window: number = 7) => {
+        const lastWindow = data.slice(-window);
+        const avg = lastWindow.reduce((a, b) => a + b, 0) / window;
+        const predictions = Array(input.predictionDays).fill(avg);
+
+        // Calculate variance for confidence
+        const variance = lastWindow.reduce((a, b) => a + Math.pow(b - avg, 2), 0) / window;
+        const rmse = Math.sqrt(variance);
+
+        return { predictions, r2: 1 - variance / (data.reduce((a, b) => a + Math.pow(b - avg, 2), 0) / data.length), rmse };
+      };
+
+      // Exponential Smoothing
+      const exponentialSmoothing = (data: number[], alpha: number = 0.3) => {
+        let forecast = data[0];
+        for (let i = 1; i < data.length; i++) {
+          forecast = alpha * data[i] + (1 - alpha) * forecast;
+        }
+        const predictions = Array(input.predictionDays).fill(forecast);
+
+        // Calculate RMSE
+        let tempForecast = data[0];
+        let sumSquaredError = 0;
+        for (let i = 1; i < data.length; i++) {
+          sumSquaredError += Math.pow(data[i] - tempForecast, 2);
+          tempForecast = alpha * data[i] + (1 - alpha) * tempForecast;
+        }
+        const rmse = Math.sqrt(sumSquaredError / (data.length - 1));
+        const mean = data.reduce((a, b) => a + b, 0) / data.length;
+        const ssTotal = data.reduce((a, b) => a + Math.pow(b - mean, 2), 0);
+        const r2 = 1 - sumSquaredError / ssTotal;
+
+        return { predictions, r2: Math.max(0, r2), rmse };
+      };
+
+      const linearResult = linearRegression(oeeValues);
+      const maResult = movingAverage(oeeValues);
+      const esResult = exponentialSmoothing(oeeValues);
+
+      const algorithms = [
+        {
+          name: 'Linear Regression',
+          code: 'linear',
+          predictions: linearResult.predictions.map(p => Math.max(0, Math.min(100, p))),
+          r2: linearResult.r2,
+          rmse: linearResult.rmse,
+          description: 'Phù hợp khi dữ liệu có xu hướng tuyến tính rõ ràng',
+        },
+        {
+          name: 'Moving Average',
+          code: 'moving_avg',
+          predictions: maResult.predictions.map(p => Math.max(0, Math.min(100, p))),
+          r2: maResult.r2,
+          rmse: maResult.rmse,
+          description: 'Phù hợp khi dữ liệu có nhiều biến động ngắn hạn',
+        },
+        {
+          name: 'Exponential Smoothing',
+          code: 'exp_smoothing',
+          predictions: esResult.predictions.map(p => Math.max(0, Math.min(100, p))),
+          r2: esResult.r2,
+          rmse: esResult.rmse,
+          description: 'Phù hợp khi dữ liệu gần đây quan trọng hơn',
+        },
+      ];
+
+      // Generate chart data
+      const chartData: any[] = [];
+
+      // Historical data
+      historicalData.forEach((d, i) => {
+        chartData.push({
+          date: d.date,
+          actual: Number(d.avgOee) || 0,
+          linear: null,
+          movingAvg: null,
+          expSmoothing: null,
+        });
+      });
+
+      // Predictions
+      for (let i = 0; i < input.predictionDays; i++) {
+        const futureDate = new Date();
+        futureDate.setDate(futureDate.getDate() + i + 1);
+        chartData.push({
+          date: futureDate.toISOString().split('T')[0],
+          actual: null,
+          linear: linearResult.predictions[i],
+          movingAvg: maResult.predictions[i],
+          expSmoothing: esResult.predictions[i],
+        });
+      }
+
+      // Recommendation based on R² and RMSE
+      const bestAlgorithm = algorithms.reduce((best, current) => {
+        const bestScore = best.r2 * 0.6 + (1 / (1 + best.rmse)) * 0.4;
+        const currentScore = current.r2 * 0.6 + (1 / (1 + current.rmse)) * 0.4;
+        return currentScore > bestScore ? current : best;
+      });
+
+      return {
+        algorithms,
+        chartData,
+        recommendation: {
+          algorithm: bestAlgorithm.name,
+          code: bestAlgorithm.code,
+          reason: `${bestAlgorithm.name} có R² = ${(bestAlgorithm.r2 * 100).toFixed(1)}% và RMSE = ${bestAlgorithm.rmse.toFixed(2)}, phù hợp nhất với dữ liệu hiện tại.`,
+        },
+      };
+    }),
+
+  // Save Prediction Config
+  savePredictionConfig: protectedProcedure
+    .input(z.object({
+      configName: z.string().min(1),
+      configType: z.enum(["oee", "cpk", "spc"]).default("oee"),
+      algorithm: z.enum(["linear", "moving_avg", "exp_smoothing"]).default("linear"),
+      predictionDays: z.number().default(14),
+      confidenceLevel: z.number().default(95),
+      alertThreshold: z.number().default(5),
+      movingAvgWindow: z.number().optional(),
+      smoothingFactor: z.number().optional(),
+      historicalDays: z.number().default(30),
+      isDefault: z.boolean().default(false),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      // If setting as default, unset other defaults
+      if (input.isDefault) {
+        await db.update(userPredictionConfigs)
+          .set({ isDefault: 0 })
+          .where(and(
+            eq(userPredictionConfigs.userId, ctx.user.id),
+            eq(userPredictionConfigs.configType, input.configType)
+          ));
+      }
+
+      const [result] = await db.insert(userPredictionConfigs).values({
+        userId: ctx.user.id,
+        configName: input.configName,
+        configType: input.configType,
+        algorithm: input.algorithm,
+        predictionDays: input.predictionDays,
+        confidenceLevel: String(input.confidenceLevel),
+        alertThreshold: String(input.alertThreshold),
+        movingAvgWindow: input.movingAvgWindow,
+        smoothingFactor: input.smoothingFactor ? String(input.smoothingFactor) : undefined,
+        historicalDays: input.historicalDays,
+        isDefault: input.isDefault ? 1 : 0,
+      });
+
+      return { success: true, id: result.insertId };
+    }),
+
+  // List User Prediction Configs
+  listPredictionConfigs: protectedProcedure
+    .input(z.object({
+      configType: z.enum(["oee", "cpk", "spc"]).optional(),
+    }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) return [];
+
+      const conditions = [
+        eq(userPredictionConfigs.userId, ctx.user.id),
+        eq(userPredictionConfigs.isActive, 1),
+      ];
+
+      if (input.configType) {
+        conditions.push(eq(userPredictionConfigs.configType, input.configType));
+      }
+
+      return db.select()
+        .from(userPredictionConfigs)
+        .where(and(...conditions))
+        .orderBy(desc(userPredictionConfigs.isDefault), desc(userPredictionConfigs.createdAt));
+    }),
+
+  // Get Default Prediction Config
+  getDefaultConfig: protectedProcedure
+    .input(z.object({
+      configType: z.enum(["oee", "cpk", "spc"]),
+    }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) return null;
+
+      const [config] = await db.select()
+        .from(userPredictionConfigs)
+        .where(and(
+          eq(userPredictionConfigs.userId, ctx.user.id),
+          eq(userPredictionConfigs.configType, input.configType),
+          eq(userPredictionConfigs.isDefault, 1),
+          eq(userPredictionConfigs.isActive, 1)
+        ))
+        .limit(1);
+
+      return config || null;
+    }),
+
+  // Update Prediction Config
+  updatePredictionConfig: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      configName: z.string().optional(),
+      algorithm: z.enum(["linear", "moving_avg", "exp_smoothing"]).optional(),
+      predictionDays: z.number().optional(),
+      confidenceLevel: z.number().optional(),
+      alertThreshold: z.number().optional(),
+      movingAvgWindow: z.number().optional(),
+      smoothingFactor: z.number().optional(),
+      historicalDays: z.number().optional(),
+      isDefault: z.boolean().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const { id, ...updates } = input;
+
+      // Verify ownership
+      const [existing] = await db.select()
+        .from(userPredictionConfigs)
+        .where(and(
+          eq(userPredictionConfigs.id, id),
+          eq(userPredictionConfigs.userId, ctx.user.id)
+        ));
+
+      if (!existing) throw new Error("Config not found");
+
+      // If setting as default, unset other defaults
+      if (updates.isDefault) {
+        await db.update(userPredictionConfigs)
+          .set({ isDefault: 0 })
+          .where(and(
+            eq(userPredictionConfigs.userId, ctx.user.id),
+            eq(userPredictionConfigs.configType, existing.configType)
+          ));
+      }
+
+      const updateData: any = {};
+      if (updates.configName) updateData.configName = updates.configName;
+      if (updates.algorithm) updateData.algorithm = updates.algorithm;
+      if (updates.predictionDays) updateData.predictionDays = updates.predictionDays;
+      if (updates.confidenceLevel) updateData.confidenceLevel = String(updates.confidenceLevel);
+      if (updates.alertThreshold) updateData.alertThreshold = String(updates.alertThreshold);
+      if (updates.movingAvgWindow !== undefined) updateData.movingAvgWindow = updates.movingAvgWindow;
+      if (updates.smoothingFactor !== undefined) updateData.smoothingFactor = String(updates.smoothingFactor);
+      if (updates.historicalDays) updateData.historicalDays = updates.historicalDays;
+      if (updates.isDefault !== undefined) updateData.isDefault = updates.isDefault ? 1 : 0;
+
+      await db.update(userPredictionConfigs)
+        .set(updateData)
+        .where(eq(userPredictionConfigs.id, id));
+
+      return { success: true };
+    }),
+
+  // Delete Prediction Config
+  deletePredictionConfig: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      await db.update(userPredictionConfigs)
+        .set({ isActive: 0 })
+        .where(and(
+          eq(userPredictionConfigs.id, input.id),
+          eq(userPredictionConfigs.userId, ctx.user.id)
+        ));
+
+      return { success: true };
     }),
 });

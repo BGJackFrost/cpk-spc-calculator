@@ -2771,3 +2771,28 @@ export const spcPlanTemplates = mysqlTable("spc_plan_templates", {
 
 export type SpcPlanTemplate = typeof spcPlanTemplates.$inferSelect;
 export type InsertSpcPlanTemplate = typeof spcPlanTemplates.$inferInsert;
+
+
+/**
+ * User Prediction Configs - Lưu cấu hình dự báo theo user
+ */
+export const userPredictionConfigs = mysqlTable("user_prediction_configs", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  configType: mysqlEnum("configType", ["oee", "cpk", "spc"]).notNull(), // Loại dự báo
+  configName: varchar("configName", { length: 100 }).notNull(), // Tên cấu hình
+  algorithm: mysqlEnum("algorithm", ["linear", "moving_avg", "exp_smoothing"]).notNull().default("linear"),
+  predictionDays: int("predictionDays").notNull().default(14),
+  confidenceLevel: decimal("confidenceLevel", { precision: 5, scale: 2 }).notNull().default("95.00"),
+  alertThreshold: decimal("alertThreshold", { precision: 5, scale: 2 }).notNull().default("5.00"),
+  movingAvgWindow: int("movingAvgWindow").default(7),
+  smoothingFactor: decimal("smoothingFactor", { precision: 3, scale: 2 }).default("0.30"),
+  historicalDays: int("historicalDays").notNull().default(30), // Số ngày dữ liệu lịch sử
+  isDefault: int("isDefault").notNull().default(0), // Cấu hình mặc định
+  isActive: int("isActive").notNull().default(1),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type UserPredictionConfig = typeof userPredictionConfigs.$inferSelect;
+export type InsertUserPredictionConfig = typeof userPredictionConfigs.$inferInsert;

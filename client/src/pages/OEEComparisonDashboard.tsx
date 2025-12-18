@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,8 +13,10 @@ import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import { 
   BarChart3, TrendingUp, TrendingDown, Award, Target, AlertTriangle,
-  RefreshCw, Download, Gauge, Activity, Zap, CheckCircle, Settings, Info
+  RefreshCw, Download, Gauge, Activity, Zap, CheckCircle, Settings, Info,
+  FileSpreadsheet, FileText, Mail, GitCompare, Save
 } from "lucide-react";
+import { toast } from "sonner";
 import {
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
   ResponsiveContainer, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -36,9 +38,16 @@ export default function OEEComparisonDashboard() {
   const [movingAvgWindow, setMovingAvgWindow] = useState(7);
   const [smoothingFactor, setSmoothingFactor] = useState(0.3);
   
+  // State for save config dialog
+  const [saveConfigOpen, setSaveConfigOpen] = useState(false);
+  const [configName, setConfigName] = useState("");
+  const [setAsDefault, setSetAsDefault] = useState(false);
+
   // Queries
   const { data: machines } = trpc.machine.listAll.useQuery();
   const { data: productionLines } = trpc.productionLine.list.useQuery();
+  const { data: savedConfigs, refetch: refetchConfigs } = trpc.oee.listPredictionConfigs.useQuery({ configType: "oee" });
+  const { data: defaultConfig } = trpc.oee.getDefaultConfig.useQuery({ configType: "oee" });
   const { data: oeeComparison, isLoading } = trpc.oee.getComparison.useQuery({
     type: comparisonType,
     days: Number(selectedPeriod),
@@ -52,6 +61,84 @@ export default function OEEComparisonDashboard() {
     movingAvgWindow: algorithm === "moving_avg" ? movingAvgWindow : undefined,
     smoothingFactor: algorithm === "exp_smoothing" ? smoothingFactor : undefined,
   });
+
+  // Compare algorithms query
+  const { data: algorithmComparison } = trpc.oee.compareAlgorithms.useQuery({
+    days: Number(selectedPeriod),
+    predictionDays,
+  });
+
+  // Export mutations
+  const exportExcelMutation = trpc.oee.exportComparisonExcel.useMutation({
+    onSuccess: (data) => {
+      toast.success("Xuất Excel thành công!");
+      window.open(data.url, "_blank");
+    },
+    onError: (error) => {
+      toast.error(`Lỗi xuất Excel: ${error.message}`);
+    },
+  });
+
+  const exportPdfMutation = trpc.oee.exportComparisonPdf.useMutation({
+    onSuccess: (data) => {
+      toast.success("Xuất PDF thành công!");
+      window.open(data.url, "_blank");
+    },
+    onError: (error) => {
+      toast.error(`Lỗi xuất PDF: ${error.message}`);
+    },
+  });
+
+  const sendAlertMutation = trpc.oee.sendOeeAlert.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Đã gửi email cảnh báo đến ${data.sentTo} người!`);
+    },
+    onError: (error) => {
+      toast.error(`Lỗi gửi email: ${error.message}`);
+    },
+  });
+
+  const saveConfigMutation = trpc.oee.savePredictionConfig.useMutation({
+    onSuccess: () => {
+      toast.success("Lưu cấu hình thành công!");
+      setSaveConfigOpen(false);
+      setConfigName("");
+      refetchConfigs();
+    },
+    onError: (error) => {
+      toast.error(`Lỗi lưu cấu hình: ${error.message}`);
+    },
+  });
+
+  const deleteConfigMutation = trpc.oee.deletePredictionConfig.useMutation({
+    onSuccess: () => {
+      toast.success("Xóa cấu hình thành công!");
+      refetchConfigs();
+    },
+  });
+
+  // Load default config on mount
+  useEffect(() => {
+    if (defaultConfig) {
+      setAlgorithm(defaultConfig.algorithm as any);
+      setPredictionDays(defaultConfig.predictionDays);
+      setConfidenceLevel(Number(defaultConfig.confidenceLevel));
+      setAlertThreshold(Number(defaultConfig.alertThreshold));
+      if (defaultConfig.movingAvgWindow) setMovingAvgWindow(defaultConfig.movingAvgWindow);
+      if (defaultConfig.smoothingFactor) setSmoothingFactor(Number(defaultConfig.smoothingFactor));
+    }
+  }, [defaultConfig]);
+
+  // Load saved config
+  const loadConfig = (config: any) => {
+    setAlgorithm(config.algorithm);
+    setPredictionDays(config.predictionDays);
+    setConfidenceLevel(Number(config.confidenceLevel));
+    setAlertThreshold(Number(config.alertThreshold));
+    if (config.movingAvgWindow) setMovingAvgWindow(config.movingAvgWindow);
+    if (config.smoothingFactor) setSmoothingFactor(Number(config.smoothingFactor));
+    toast.success(`Đã tải cấu hình: ${config.configName}`);
+  };
 
   // Prepare radar chart data
   const radarData = useMemo(() => {
@@ -120,9 +207,53 @@ export default function OEEComparisonDashboard() {
             <Button variant="outline" size="icon">
               <RefreshCw className="h-4 w-4" />
             </Button>
-            <Button variant="outline" size="icon">
-              <Download className="h-4 w-4" />
-            </Button>
+            {/* Export Dropdown */}
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="gap-2">
+                  <Download className="h-4 w-4" />
+                  Xuất báo cáo
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Xuất báo cáo So sánh OEE</DialogTitle>
+                  <DialogDescription>
+                    Chọn định dạng xuất báo cáo
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <Button
+                    variant="outline"
+                    className="justify-start gap-3 h-auto py-4"
+                    onClick={() => exportExcelMutation.mutate({ type: comparisonType, days: Number(selectedPeriod) })}
+                    disabled={exportExcelMutation.isPending}
+                  >
+                    <FileSpreadsheet className="h-8 w-8 text-green-600" />
+                    <div className="text-left">
+                      <div className="font-medium">Xuất Excel (.xlsx)</div>
+                      <div className="text-sm text-muted-foreground">
+                        Bảng xếp hạng, dữ liệu theo ngày, tổng hợp
+                      </div>
+                    </div>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="justify-start gap-3 h-auto py-4"
+                    onClick={() => exportPdfMutation.mutate({ type: comparisonType, days: Number(selectedPeriod) })}
+                    disabled={exportPdfMutation.isPending}
+                  >
+                    <FileText className="h-8 w-8 text-red-600" />
+                    <div className="text-left">
+                      <div className="font-medium">Xuất PDF (.html)</div>
+                      <div className="text-sm text-muted-foreground">
+                        Báo cáo định dạng in ấn chuyên nghiệp
+                      </div>
+                    </div>
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
 
@@ -204,6 +335,10 @@ export default function OEEComparisonDashboard() {
             <TabsTrigger value="ranking">Bảng xếp hạng</TabsTrigger>
             <TabsTrigger value="trend">Xu hướng</TabsTrigger>
             <TabsTrigger value="prediction">Dự báo</TabsTrigger>
+            <TabsTrigger value="compare-algorithms">
+              <GitCompare className="h-4 w-4 mr-1" />
+              So sánh thuật toán
+            </TabsTrigger>
           </TabsList>
 
           {/* Radar Chart Tab */}
@@ -496,15 +631,107 @@ export default function OEEComparisonDashboard() {
                             </div>
                           )}
                         </div>
+
+                        {/* Saved Configs */}
+                        {savedConfigs && savedConfigs.length > 0 && (
+                          <div className="space-y-2 pt-4 border-t">
+                            <Label>Cấu hình đã lưu</Label>
+                            <div className="space-y-2 max-h-[150px] overflow-y-auto">
+                              {savedConfigs.map((cfg) => (
+                                <div key={cfg.id} className="flex items-center justify-between p-2 border rounded">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-sm font-medium">{cfg.configName}</span>
+                                    {cfg.isDefault === 1 && <Badge variant="secondary">Mặc định</Badge>}
+                                  </div>
+                                  <div className="flex gap-1">
+                                    <Button size="sm" variant="ghost" onClick={() => loadConfig(cfg)}>
+                                      Tải
+                                    </Button>
+                                    <Button size="sm" variant="ghost" className="text-red-500" onClick={() => deleteConfigMutation.mutate({ id: cfg.id })}>
+                                      Xóa
+                                    </Button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        <DialogFooter className="flex-col sm:flex-row gap-2">
+                          <Button variant="outline" onClick={() => setSaveConfigOpen(true)} className="gap-2">
+                            <Save className="h-4 w-4" />
+                            Lưu cấu hình
+                          </Button>
+                          <div className="flex gap-2">
+                            <Button variant="outline" onClick={() => setPredictionSettingsOpen(false)}>
+                              Hủy
+                            </Button>
+                            <Button onClick={() => {
+                              refetchPrediction();
+                              setPredictionSettingsOpen(false);
+                            }}>
+                              Áp dụng
+                            </Button>
+                          </div>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+
+                    {/* Save Config Dialog */}
+                    <Dialog open={saveConfigOpen} onOpenChange={setSaveConfigOpen}>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Lưu cấu hình dự báo</DialogTitle>
+                          <DialogDescription>
+                            Lưu cấu hình hiện tại để sử dụng lại sau
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4 py-4">
+                          <div className="space-y-2">
+                            <Label>Tên cấu hình</Label>
+                            <Input
+                              value={configName}
+                              onChange={(e) => setConfigName(e.target.value)}
+                              placeholder="VD: Cấu hình OEE hàng tuần"
+                            />
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              id="setAsDefault"
+                              checked={setAsDefault}
+                              onChange={(e) => setSetAsDefault(e.target.checked)}
+                              className="h-4 w-4"
+                            />
+                            <Label htmlFor="setAsDefault">Sử dụng làm cấu hình mặc định</Label>
+                          </div>
+                        </div>
                         <DialogFooter>
-                          <Button variant="outline" onClick={() => setPredictionSettingsOpen(false)}>
+                          <Button variant="outline" onClick={() => setSaveConfigOpen(false)}>
                             Hủy
                           </Button>
-                          <Button onClick={() => {
-                            refetchPrediction();
-                            setPredictionSettingsOpen(false);
-                          }}>
-                            Áp dụng
+                          <Button
+                            onClick={() => {
+                              if (!configName.trim()) {
+                                toast.error("Vui lòng nhập tên cấu hình");
+                                return;
+                              }
+                              saveConfigMutation.mutate({
+                                configName: configName.trim(),
+                                configType: "oee",
+                                algorithm,
+                                predictionDays,
+                                confidenceLevel,
+                                alertThreshold,
+                                movingAvgWindow: algorithm === "moving_avg" ? movingAvgWindow : undefined,
+                                smoothingFactor: algorithm === "exp_smoothing" ? smoothingFactor : undefined,
+                                historicalDays: Number(selectedPeriod),
+                                isDefault: setAsDefault,
+                              });
+                            }}
+                            disabled={saveConfigMutation.isPending}
+                          >
+                            {saveConfigMutation.isPending ? "Đang lưu..." : "Lưu"}
                           </Button>
                         </DialogFooter>
                       </DialogContent>
@@ -561,13 +788,84 @@ export default function OEEComparisonDashboard() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <AlertTriangle className="h-5 w-5" />
-                    Cảnh báo sớm
-                  </CardTitle>
-                  <CardDescription>
-                    Phát hiện các máy/dây chuyền có nguy cơ giảm hiệu suất
-                  </CardDescription>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        <AlertTriangle className="h-5 w-5" />
+                        Cảnh báo sớm
+                      </CardTitle>
+                      <CardDescription>
+                        Phát hiện các máy/dây chuyền có nguy cơ giảm hiệu suất
+                      </CardDescription>
+                    </div>
+                    {oeePrediction?.alerts && oeePrediction.alerts.length > 0 && (
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button variant="outline" size="sm" className="gap-2">
+                            <Mail className="h-4 w-4" />
+                            Gửi email
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Gửi email cảnh báo OEE</DialogTitle>
+                            <DialogDescription>
+                              Gửi thông báo cảnh báo đến quản lý qua email
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="space-y-4 py-4">
+                            <div className="space-y-2">
+                              <Label>Chọn cảnh báo để gửi</Label>
+                              {oeePrediction.alerts.map((alert, idx) => (
+                                <div key={idx} className="flex items-center gap-2 p-2 border rounded">
+                                  <AlertTriangle className={`h-4 w-4 ${
+                                    alert.severity === 'high' ? 'text-red-500' : 'text-yellow-500'
+                                  }`} />
+                                  <span className="flex-1 text-sm">{alert.name}</span>
+                                  <Badge variant={alert.severity === 'high' ? 'destructive' : 'default'}>
+                                    {alert.severity === 'high' ? 'Cao' : 'TB'}
+                                  </Badge>
+                                </div>
+                              ))}
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Email người nhận (cách nhau bởi dấu phẩy)</Label>
+                              <Input
+                                id="alert-emails"
+                                placeholder="admin@company.com, manager@company.com"
+                              />
+                            </div>
+                          </div>
+                          <DialogFooter>
+                            <Button
+                              onClick={() => {
+                                const emailInput = document.getElementById('alert-emails') as HTMLInputElement;
+                                const emails = emailInput?.value.split(',').map(e => e.trim()).filter(e => e);
+                                if (!emails || emails.length === 0) {
+                                  toast.error('Vui lòng nhập ít nhất một email');
+                                  return;
+                                }
+                                // Send all high severity alerts
+                                const highAlerts = oeePrediction.alerts.filter(a => a.severity === 'high');
+                                const alertToSend = highAlerts[0] || oeePrediction.alerts[0];
+                                sendAlertMutation.mutate({
+                                  machineName: alertToSend.name,
+                                  currentOee: alertToSend.currentOee,
+                                  predictedOee: alertToSend.predictedOee,
+                                  change: alertToSend.predictedOee - alertToSend.currentOee,
+                                  severity: alertToSend.severity as any,
+                                  recipients: emails,
+                                });
+                              }}
+                              disabled={sendAlertMutation.isPending}
+                            >
+                              {sendAlertMutation.isPending ? 'Đang gửi...' : 'Gửi cảnh báo'}
+                            </Button>
+                          </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
+                    )}
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
@@ -650,6 +948,150 @@ export default function OEEComparisonDashboard() {
                       ))}
                     </TableBody>
                   </Table>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* Compare Algorithms Tab */}
+          <TabsContent value="compare-algorithms">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Algorithm Comparison Chart */}
+              <Card className="lg:col-span-2">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <GitCompare className="h-5 w-5" />
+                    So sánh kết quả dự báo giữa các thuật toán
+                  </CardTitle>
+                  <CardDescription>
+                    Biểu đồ so sánh dự báo OEE từ 3 thuật toán: Linear Regression, Moving Average, Exponential Smoothing
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[400px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={algorithmComparison?.chartData || []}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="date" />
+                        <YAxis domain={[0, 100]} />
+                        <Tooltip />
+                        <Legend />
+                        <Line
+                          type="monotone"
+                          dataKey="actual"
+                          name="Thực tế"
+                          stroke="#3b82f6"
+                          strokeWidth={2}
+                          dot={{ r: 3 }}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="linear"
+                          name="Linear Regression"
+                          stroke="#22c55e"
+                          strokeWidth={2}
+                          strokeDasharray="5 5"
+                          dot={false}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="movingAvg"
+                          name="Moving Average"
+                          stroke="#f59e0b"
+                          strokeWidth={2}
+                          strokeDasharray="5 5"
+                          dot={false}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="expSmoothing"
+                          name="Exp. Smoothing"
+                          stroke="#8b5cf6"
+                          strokeWidth={2}
+                          strokeDasharray="5 5"
+                          dot={false}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Algorithm Metrics Table */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Bảng so sánh độ chính xác</CardTitle>
+                  <CardDescription>
+                    So sánh R² và RMSE của các thuật toán
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Thuật toán</TableHead>
+                        <TableHead className="text-right">R² (%)</TableHead>
+                        <TableHead className="text-right">RMSE</TableHead>
+                        <TableHead>Đánh giá</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {algorithmComparison?.algorithms?.map((alg) => (
+                        <TableRow key={alg.code}>
+                          <TableCell className="font-medium">{alg.name}</TableCell>
+                          <TableCell className="text-right">
+                            <span className={alg.r2 >= 0.7 ? 'text-green-600 font-bold' : alg.r2 >= 0.5 ? 'text-yellow-600' : 'text-red-600'}>
+                              {(alg.r2 * 100).toFixed(1)}%
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-right">{alg.rmse.toFixed(2)}</TableCell>
+                          <TableCell className="text-sm text-muted-foreground">{alg.description}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+
+              {/* Recommendation Card */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Award className="h-5 w-5 text-yellow-500" />
+                    Khuyến nghị thuật toán
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {algorithmComparison?.recommendation ? (
+                    <div className="space-y-4">
+                      <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                        <div className="flex items-center gap-2 mb-2">
+                          <CheckCircle className="h-5 w-5 text-green-600" />
+                          <span className="font-bold text-green-800">
+                            {algorithmComparison.recommendation.algorithm}
+                          </span>
+                        </div>
+                        <p className="text-sm text-green-700">
+                          {algorithmComparison.recommendation.reason}
+                        </p>
+                      </div>
+                      <Button
+                        className="w-full"
+                        onClick={() => {
+                          setAlgorithm(algorithmComparison.recommendation!.code as any);
+                          toast.success(`Đã chọn thuật toán ${algorithmComparison.recommendation!.algorithm}`);
+                        }}
+                      >
+                        Áp dụng thuật toán này
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Info className="h-12 w-12 mx-auto mb-3" />
+                      <p>Chưa có dữ liệu để so sánh</p>
+                      <p className="text-sm">Cần ít nhất 7 ngày dữ liệu OEE</p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
