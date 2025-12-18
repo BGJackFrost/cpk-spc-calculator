@@ -2796,3 +2796,28 @@ export const userPredictionConfigs = mysqlTable("user_prediction_configs", {
 
 export type UserPredictionConfig = typeof userPredictionConfigs.$inferSelect;
 export type InsertUserPredictionConfig = typeof userPredictionConfigs.$inferInsert;
+
+
+/**
+ * OEE Alert Thresholds - Cấu hình ngưỡng cảnh báo OEE theo máy/dây chuyền
+ */
+export const oeeAlertThresholds = mysqlTable("oee_alert_thresholds", {
+  id: int("id").autoincrement().primaryKey(),
+  machineId: int("machineId"), // Null = áp dụng cho tất cả máy trong dây chuyền
+  productionLineId: int("productionLineId"), // Null = áp dụng cho tất cả dây chuyền
+  targetOee: decimal("targetOee", { precision: 5, scale: 2 }).notNull().default("85.00"),
+  warningThreshold: decimal("warningThreshold", { precision: 5, scale: 2 }).notNull().default("80.00"), // Ngưỡng cảnh báo vàng
+  criticalThreshold: decimal("criticalThreshold", { precision: 5, scale: 2 }).notNull().default("70.00"), // Ngưỡng cảnh báo đỏ
+  dropAlertThreshold: decimal("dropAlertThreshold", { precision: 5, scale: 2 }).notNull().default("5.00"), // % giảm để cảnh báo
+  relativeDropThreshold: decimal("relativeDropThreshold", { precision: 5, scale: 2 }).notNull().default("10.00"), // % giảm tương đối
+  availabilityTarget: decimal("availabilityTarget", { precision: 5, scale: 2 }).default("90.00"),
+  performanceTarget: decimal("performanceTarget", { precision: 5, scale: 2 }).default("95.00"),
+  qualityTarget: decimal("qualityTarget", { precision: 5, scale: 2 }).default("99.00"),
+  isActive: int("isActive").notNull().default(1),
+  createdBy: int("createdBy"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type OeeAlertThreshold = typeof oeeAlertThresholds.$inferSelect;
+export type InsertOeeAlertThreshold = typeof oeeAlertThresholds.$inferInsert;

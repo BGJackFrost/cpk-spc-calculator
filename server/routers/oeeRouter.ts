@@ -3,7 +3,8 @@ import { router, publicProcedure, protectedProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { 
   oeeRecords, oeeTargets, oeeLossCategories, oeeLossRecords,
-  machines, userPredictionConfigs
+  machines, userPredictionConfigs, oeeAlertThresholds, scheduledReports, scheduledReportLogs,
+  productionLines
 } from "../../drizzle/schema";
 import { eq, desc, and, gte, lte, sql, asc } from "drizzle-orm";
 import ExcelJS from "exceljs";
@@ -1487,5 +1488,365 @@ export const oeeRouter = router({
         ));
 
       return { success: true };
+    }),
+
+  // ============ OEE Alert Thresholds ============
+  
+  // List Alert Thresholds
+  listAlertThresholds: protectedProcedure
+    .input(z.object({
+      machineId: z.number().optional(),
+      productionLineId: z.number().optional(),
+    }).optional())
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return [];
+
+      const conditions = [eq(oeeAlertThresholds.isActive, 1)];
+      if (input?.machineId) {
+        conditions.push(eq(oeeAlertThresholds.machineId, input.machineId));
+      }
+      if (input?.productionLineId) {
+        conditions.push(eq(oeeAlertThresholds.productionLineId, input.productionLineId));
+      }
+
+      const thresholds = await db.select({
+        id: oeeAlertThresholds.id,
+        machineId: oeeAlertThresholds.machineId,
+        productionLineId: oeeAlertThresholds.productionLineId,
+        targetOee: oeeAlertThresholds.targetOee,
+        warningThreshold: oeeAlertThresholds.warningThreshold,
+        criticalThreshold: oeeAlertThresholds.criticalThreshold,
+        dropAlertThreshold: oeeAlertThresholds.dropAlertThreshold,
+        relativeDropThreshold: oeeAlertThresholds.relativeDropThreshold,
+        availabilityTarget: oeeAlertThresholds.availabilityTarget,
+        performanceTarget: oeeAlertThresholds.performanceTarget,
+        qualityTarget: oeeAlertThresholds.qualityTarget,
+        machineName: machines.name,
+        lineName: productionLines.name,
+        createdAt: oeeAlertThresholds.createdAt,
+      })
+      .from(oeeAlertThresholds)
+      .leftJoin(machines, eq(oeeAlertThresholds.machineId, machines.id))
+      .leftJoin(productionLines, eq(oeeAlertThresholds.productionLineId, productionLines.id))
+      .where(and(...conditions))
+      .orderBy(desc(oeeAlertThresholds.createdAt));
+
+      return thresholds;
+    }),
+
+  // Create Alert Threshold
+  createAlertThreshold: protectedProcedure
+    .input(z.object({
+      machineId: z.number().optional(),
+      productionLineId: z.number().optional(),
+      targetOee: z.number().min(0).max(100).default(85),
+      warningThreshold: z.number().min(0).max(100).default(80),
+      criticalThreshold: z.number().min(0).max(100).default(70),
+      dropAlertThreshold: z.number().min(0).max(100).default(5),
+      relativeDropThreshold: z.number().min(0).max(100).default(10),
+      availabilityTarget: z.number().min(0).max(100).optional(),
+      performanceTarget: z.number().min(0).max(100).optional(),
+      qualityTarget: z.number().min(0).max(100).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const [result] = await db.insert(oeeAlertThresholds).values({
+        machineId: input.machineId || null,
+        productionLineId: input.productionLineId || null,
+        targetOee: String(input.targetOee),
+        warningThreshold: String(input.warningThreshold),
+        criticalThreshold: String(input.criticalThreshold),
+        dropAlertThreshold: String(input.dropAlertThreshold),
+        relativeDropThreshold: String(input.relativeDropThreshold),
+        availabilityTarget: input.availabilityTarget ? String(input.availabilityTarget) : null,
+        performanceTarget: input.performanceTarget ? String(input.performanceTarget) : null,
+        qualityTarget: input.qualityTarget ? String(input.qualityTarget) : null,
+        createdBy: ctx.user.id,
+      });
+
+      return { success: true, id: result.insertId };
+    }),
+
+  // Update Alert Threshold
+  updateAlertThreshold: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      targetOee: z.number().min(0).max(100).optional(),
+      warningThreshold: z.number().min(0).max(100).optional(),
+      criticalThreshold: z.number().min(0).max(100).optional(),
+      dropAlertThreshold: z.number().min(0).max(100).optional(),
+      relativeDropThreshold: z.number().min(0).max(100).optional(),
+      availabilityTarget: z.number().min(0).max(100).optional(),
+      performanceTarget: z.number().min(0).max(100).optional(),
+      qualityTarget: z.number().min(0).max(100).optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const { id, ...updates } = input;
+      const updateData: Record<string, any> = {};
+      
+      if (updates.targetOee !== undefined) updateData.targetOee = String(updates.targetOee);
+      if (updates.warningThreshold !== undefined) updateData.warningThreshold = String(updates.warningThreshold);
+      if (updates.criticalThreshold !== undefined) updateData.criticalThreshold = String(updates.criticalThreshold);
+      if (updates.dropAlertThreshold !== undefined) updateData.dropAlertThreshold = String(updates.dropAlertThreshold);
+      if (updates.relativeDropThreshold !== undefined) updateData.relativeDropThreshold = String(updates.relativeDropThreshold);
+      if (updates.availabilityTarget !== undefined) updateData.availabilityTarget = String(updates.availabilityTarget);
+      if (updates.performanceTarget !== undefined) updateData.performanceTarget = String(updates.performanceTarget);
+      if (updates.qualityTarget !== undefined) updateData.qualityTarget = String(updates.qualityTarget);
+
+      await db.update(oeeAlertThresholds)
+        .set(updateData)
+        .where(eq(oeeAlertThresholds.id, id));
+
+      return { success: true };
+    }),
+
+  // Delete Alert Threshold
+  deleteAlertThreshold: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      await db.update(oeeAlertThresholds)
+        .set({ isActive: 0 })
+        .where(eq(oeeAlertThresholds.id, input.id));
+
+      return { success: true };
+    }),
+
+  // Get Effective Threshold for Machine
+  getEffectiveThreshold: protectedProcedure
+    .input(z.object({ machineId: z.number() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return null;
+
+      // Get machine's production line
+      const [machine] = await db.select()
+        .from(machines)
+        .where(eq(machines.id, input.machineId))
+        .limit(1);
+
+      // Priority: Machine-specific > Line-specific > Global default
+      const conditions = [eq(oeeAlertThresholds.isActive, 1)];
+      
+      // Try machine-specific first
+      const [machineThreshold] = await db.select()
+        .from(oeeAlertThresholds)
+        .where(and(
+          eq(oeeAlertThresholds.machineId, input.machineId),
+          eq(oeeAlertThresholds.isActive, 1)
+        ))
+        .limit(1);
+
+      if (machineThreshold) return machineThreshold;
+
+      // Try line-specific
+      if (machine?.workstationId) {
+        const [lineThreshold] = await db.select()
+          .from(oeeAlertThresholds)
+          .where(and(
+            sql`${oeeAlertThresholds.machineId} IS NULL`,
+            eq(oeeAlertThresholds.productionLineId, machine.workstationId),
+            eq(oeeAlertThresholds.isActive, 1)
+          ))
+          .limit(1);
+
+        if (lineThreshold) return lineThreshold;
+      }
+
+      // Try global default
+      const [globalThreshold] = await db.select()
+        .from(oeeAlertThresholds)
+        .where(and(
+          sql`${oeeAlertThresholds.machineId} IS NULL`,
+          sql`${oeeAlertThresholds.productionLineId} IS NULL`,
+          eq(oeeAlertThresholds.isActive, 1)
+        ))
+        .limit(1);
+
+      return globalThreshold || {
+        targetOee: '85.00',
+        warningThreshold: '80.00',
+        criticalThreshold: '70.00',
+        dropAlertThreshold: '5.00',
+        relativeDropThreshold: '10.00',
+      };
+    }),
+
+  // ============ Scheduled Reports ============
+  
+  // List Scheduled Reports
+  listScheduledReports: protectedProcedure
+    .input(z.object({
+      reportType: z.enum(["oee", "cpk", "oee_cpk_combined", "production_summary"]).optional(),
+    }).optional())
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return [];
+
+      const conditions = [eq(scheduledReports.isActive, 1)];
+      if (input?.reportType) {
+        conditions.push(eq(scheduledReports.reportType, input.reportType));
+      }
+
+      const reports = await db.select()
+        .from(scheduledReports)
+        .where(and(...conditions))
+        .orderBy(desc(scheduledReports.createdAt));
+
+      return reports.map(r => ({
+        ...r,
+        recipients: JSON.parse(r.recipients || '[]'),
+        machineIds: r.machineIds ? JSON.parse(r.machineIds) : null,
+        productionLineIds: r.productionLineIds ? JSON.parse(r.productionLineIds) : null,
+      }));
+    }),
+
+  // Create Scheduled Report
+  createScheduledReport: protectedProcedure
+    .input(z.object({
+      name: z.string().min(1),
+      reportType: z.enum(["oee", "cpk", "oee_cpk_combined", "production_summary"]),
+      frequency: z.enum(["daily", "weekly", "monthly"]),
+      dayOfWeek: z.number().min(0).max(6).optional(),
+      dayOfMonth: z.number().min(1).max(31).optional(),
+      timeOfDay: z.string().regex(/^\d{2}:\d{2}$/),
+      recipients: z.array(z.string().email()),
+      machineIds: z.array(z.number()).optional(),
+      productionLineIds: z.array(z.number()).optional(),
+      includeCharts: z.boolean().default(true),
+      includeTrends: z.boolean().default(true),
+      includeAlerts: z.boolean().default(true),
+      format: z.enum(["html", "excel", "pdf"]).default("html"),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const [result] = await db.insert(scheduledReports).values({
+        name: input.name,
+        reportType: input.reportType,
+        frequency: input.frequency,
+        dayOfWeek: input.dayOfWeek || null,
+        dayOfMonth: input.dayOfMonth || null,
+        timeOfDay: input.timeOfDay,
+        recipients: JSON.stringify(input.recipients),
+        machineIds: input.machineIds ? JSON.stringify(input.machineIds) : null,
+        productionLineIds: input.productionLineIds ? JSON.stringify(input.productionLineIds) : null,
+        includeCharts: input.includeCharts ? 1 : 0,
+        includeTrends: input.includeTrends ? 1 : 0,
+        includeAlerts: input.includeAlerts ? 1 : 0,
+        format: input.format,
+        createdBy: ctx.user.id,
+      });
+
+      return { success: true, id: result.insertId };
+    }),
+
+  // Update Scheduled Report
+  updateScheduledReport: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      name: z.string().min(1).optional(),
+      frequency: z.enum(["daily", "weekly", "monthly"]).optional(),
+      dayOfWeek: z.number().min(0).max(6).optional(),
+      dayOfMonth: z.number().min(1).max(31).optional(),
+      timeOfDay: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+      recipients: z.array(z.string().email()).optional(),
+      machineIds: z.array(z.number()).optional(),
+      productionLineIds: z.array(z.number()).optional(),
+      includeCharts: z.boolean().optional(),
+      includeTrends: z.boolean().optional(),
+      includeAlerts: z.boolean().optional(),
+      format: z.enum(["html", "excel", "pdf"]).optional(),
+      isActive: z.boolean().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const { id, ...updates } = input;
+      const updateData: Record<string, any> = {};
+      
+      if (updates.name !== undefined) updateData.name = updates.name;
+      if (updates.frequency !== undefined) updateData.frequency = updates.frequency;
+      if (updates.dayOfWeek !== undefined) updateData.dayOfWeek = updates.dayOfWeek;
+      if (updates.dayOfMonth !== undefined) updateData.dayOfMonth = updates.dayOfMonth;
+      if (updates.timeOfDay !== undefined) updateData.timeOfDay = updates.timeOfDay;
+      if (updates.recipients !== undefined) updateData.recipients = JSON.stringify(updates.recipients);
+      if (updates.machineIds !== undefined) updateData.machineIds = JSON.stringify(updates.machineIds);
+      if (updates.productionLineIds !== undefined) updateData.productionLineIds = JSON.stringify(updates.productionLineIds);
+      if (updates.includeCharts !== undefined) updateData.includeCharts = updates.includeCharts ? 1 : 0;
+      if (updates.includeTrends !== undefined) updateData.includeTrends = updates.includeTrends ? 1 : 0;
+      if (updates.includeAlerts !== undefined) updateData.includeAlerts = updates.includeAlerts ? 1 : 0;
+      if (updates.format !== undefined) updateData.format = updates.format;
+      if (updates.isActive !== undefined) updateData.isActive = updates.isActive ? 1 : 0;
+
+      await db.update(scheduledReports)
+        .set(updateData)
+        .where(eq(scheduledReports.id, id));
+
+      return { success: true };
+    }),
+
+  // Delete Scheduled Report
+  deleteScheduledReport: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      await db.update(scheduledReports)
+        .set({ isActive: 0 })
+        .where(eq(scheduledReports.id, input.id));
+
+      return { success: true };
+    }),
+
+  // Get Report Logs
+  getReportLogs: protectedProcedure
+    .input(z.object({
+      reportId: z.number(),
+      limit: z.number().default(20),
+    }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return [];
+
+      const logs = await db.select()
+        .from(scheduledReportLogs)
+        .where(eq(scheduledReportLogs.reportId, input.reportId))
+        .orderBy(desc(scheduledReportLogs.sentAt))
+        .limit(input.limit);
+
+      return logs;
+    }),
+
+  // Manually Trigger Report
+  triggerReport: protectedProcedure
+    .input(z.object({ reportId: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const [report] = await db.select()
+        .from(scheduledReports)
+        .where(eq(scheduledReports.id, input.reportId))
+        .limit(1);
+
+      if (!report) throw new Error("Report not found");
+
+      // Import and call the scheduled job function
+      const { generateAndSendScheduledReport } = await import('../scheduledJobs');
+      const result = await generateAndSendScheduledReport(report);
+
+      return result;
     }),
 });

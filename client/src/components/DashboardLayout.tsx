@@ -124,6 +124,7 @@ const menuGroups: MenuGroup[] = [
     icon: HardHat,
     items: [
       { icon: Target, labelKey: "nav.oeeDashboard", path: "/oee-dashboard" },
+      { icon: Gauge, labelKey: "nav.unifiedDashboard", path: "/unified-dashboard" },
       { icon: BarChart3, labelKey: "nav.plantKpi", path: "/plant-kpi" },
       { icon: TrendingUp, labelKey: "nav.advancedAnalytics", path: "/advanced-analytics" },
       { icon: ClipboardList, labelKey: "nav.maintenanceDashboard", path: "/maintenance-dashboard" },

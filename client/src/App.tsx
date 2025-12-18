@@ -120,6 +120,7 @@ import NtfSupplierAnalysis from "./pages/NtfSupplierAnalysis";
 import NtfEnvironmentCorrelation from "./pages/NtfEnvironmentCorrelation";
 import EnvironmentAlertConfig from "./pages/EnvironmentAlertConfig";
 import NtfCeoDashboard from "./pages/NtfCeoDashboard";
+import UnifiedDashboard from "./pages/UnifiedDashboard";
 
 function Router() {
   return (
@@ -158,6 +159,7 @@ function Router() {
       <Route path="/machine-status-report" component={MachineStatusReport} />
       <Route path="/oee-dashboard" component={OEEDashboard} />
       <Route path="/oee-comparison" component={OEEComparisonDashboard} />
+      <Route path="/unified-dashboard" component={UnifiedDashboard} />
       <Route path="/maintenance-dashboard" component={MaintenanceDashboard} />
       <Route path="/machine/:id" component={MachineDetail} />
       <Route path="/export-realtime" component={ExportRealtimeData} />

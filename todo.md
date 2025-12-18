@@ -3344,3 +3344,27 @@
 - [x] Biểu đồ so sánh kết quả dự báo CPK
 - [x] Bảng so sánh R² và RMSE cho CPK
 - [x] Khuyến nghị thuật toán tối ưu cho CPK
+
+
+## Phase 156 - OEE/CPK Advanced Configuration & Dashboard
+
+### Cấu hình ngưỡng cảnh báo OEE tùy chỉnh
+- [x] Bảng oee_alert_thresholds lưu ngưỡng theo máy/dây chuyền
+- [x] API CRUD cho ngưỡng cảnh báo OEE
+- [x] API getEffectiveThreshold lấy ngưỡng hiệu lực theo ưu tiên
+- [x] Tích hợp ngưỡng tùy chỉnh vào scheduled job cảnh báo
+
+### Xuất báo cáo OEE/CPK định kỳ tự động
+- [x] Bảng scheduled_reports lưu cấu hình báo cáo định kỳ
+- [x] Bảng scheduled_report_logs lưu lịch sử gửi báo cáo
+- [x] API CRUD cho lịch báo cáo định kỳ
+- [x] Scheduled job processScheduledReports chạy mỗi phút
+- [x] Hàm generateAndSendScheduledReport tạo và gửi báo cáo
+
+### Dashboard tổng hợp OEE và CPK
+- [x] Trang UnifiedDashboard so sánh OEE và CPK
+- [x] Biểu đồ xu hướng OEE & CPK theo thời gian
+- [x] Biểu đồ correlation (scatter plot) giữa OEE và CPK
+- [x] Bảng xếp hạng tổng hợp theo thiết bị
+- [x] Cảnh báo tổng hợp khi cả OEE và CPK đều giảm
+- [x] Menu trong sidebar và route đã cấu hình

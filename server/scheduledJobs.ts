@@ -6,7 +6,7 @@
 import cron from 'node-cron';
 import { getLicensesExpiringSoon, getExpiredLicenses, getDb } from './db';
 import { generateShiftReport, sendShiftReportEmail, getCurrentShift } from './services/shiftReportService';
-import { realtimeAlerts, machines, machineOnlineStatus, oeeRecords, oeeTargets, emailNotificationSettings } from '../drizzle/schema';
+import { realtimeAlerts, machines, machineOnlineStatus, oeeRecords, oeeTargets, emailNotificationSettings, scheduledReports, scheduledReportLogs, oeeAlertThresholds, spcAnalysisHistory, productionLines } from '../drizzle/schema';
 import { eq, and, gte, lte, desc, sql } from 'drizzle-orm';
 import { triggerWebhooks } from './webhookService';
 import { notifyOwner } from './_core/notification';
@@ -360,6 +360,15 @@ export function initScheduledJobs(): void {
   });
   
   console.log('[ScheduledJob] Scheduled: OEE weekly alert at 9:00 AM Monday (Asia/Ho_Chi_Minh)');
+  
+  // Scheduled reports processor - runs every minute to check for due reports
+  cron.schedule('0 * * * * *', async () => {
+    await processScheduledReports();
+  }, {
+    timezone: 'Asia/Ho_Chi_Minh'
+  });
+  
+  console.log('[ScheduledJob] Scheduled: Report processor every minute (Asia/Ho_Chi_Minh)');
   
   jobsInitialized = true;
   console.log('[ScheduledJob] All scheduled jobs initialized successfully');
@@ -1852,4 +1861,273 @@ export async function checkOeeAndSendAlerts(period: 'daily' | 'weekly' = 'daily'
  */
 export async function triggerOeeAlertCheck(period: 'daily' | 'weekly' = 'daily'): Promise<{ sent: number; failed: number; alerts: number; message: string }> {
   return await checkOeeAndSendAlerts(period);
+}
+
+
+/**
+ * Generate and send a scheduled report
+ */
+export async function generateAndSendScheduledReport(report: any): Promise<{ success: boolean; sent: number; failed: number; message: string }> {
+  console.log(`[ScheduledJob] Generating scheduled report: ${report.name} (${report.reportType})`);
+  const startTime = Date.now();
+  
+  try {
+    const db = await getDb();
+    if (!db) {
+      return { success: false, sent: 0, failed: 0, message: 'Database not available' };
+    }
+    
+    const recipients = typeof report.recipients === 'string' ? JSON.parse(report.recipients) : report.recipients;
+    if (!recipients || recipients.length === 0) {
+      return { success: false, sent: 0, failed: 0, message: 'No recipients configured' };
+    }
+    
+    // Get date range (last 7 days for daily, last 30 days for weekly/monthly)
+    const now = new Date();
+    const daysBack = report.frequency === 'daily' ? 7 : 30;
+    const startDate = new Date(now.getTime() - daysBack * 24 * 60 * 60 * 1000);
+    
+    // Parse machine and line filters
+    const machineIds = report.machineIds ? (typeof report.machineIds === 'string' ? JSON.parse(report.machineIds) : report.machineIds) : null;
+    const lineIds = report.productionLineIds ? (typeof report.productionLineIds === 'string' ? JSON.parse(report.productionLineIds) : report.productionLineIds) : null;
+    
+    let reportContent = '';
+    let fileUrl = '';
+    
+    if (report.reportType === 'oee' || report.reportType === 'oee_cpk_combined') {
+      // Get OEE data
+      const oeeConditions = [gte(oeeRecords.recordDate, startDate)];
+      if (machineIds && machineIds.length > 0) {
+        oeeConditions.push(sql`${oeeRecords.machineId} IN (${sql.join(machineIds.map((id: number) => sql`${id}`), sql`, `)})`);
+      }
+      
+      const oeeData = await db
+        .select({
+          machineId: oeeRecords.machineId,
+          machineName: machines.name,
+          avgOee: sql<number>`AVG(${oeeRecords.oee})`,
+          avgAvailability: sql<number>`AVG(${oeeRecords.availability})`,
+          avgPerformance: sql<number>`AVG(${oeeRecords.performance})`,
+          avgQuality: sql<number>`AVG(${oeeRecords.quality})`,
+          recordCount: sql<number>`COUNT(*)`,
+        })
+        .from(oeeRecords)
+        .leftJoin(machines, eq(oeeRecords.machineId, machines.id))
+        .where(and(...oeeConditions))
+        .groupBy(oeeRecords.machineId, machines.name);
+      
+      // Generate OEE section
+      const oeeHtml = `
+        <h2>📊 Báo cáo OEE</h2>
+        <p>Thời gian: ${daysBack} ngày qua (${startDate.toLocaleDateString('vi-VN')} - ${now.toLocaleDateString('vi-VN')})</p>
+        <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+          <tr style="background: #3b82f6; color: white;">
+            <th style="padding: 10px; text-align: left;">Máy</th>
+            <th style="padding: 10px; text-align: center;">OEE TB</th>
+            <th style="padding: 10px; text-align: center;">Availability</th>
+            <th style="padding: 10px; text-align: center;">Performance</th>
+            <th style="padding: 10px; text-align: center;">Quality</th>
+            <th style="padding: 10px; text-align: center;">Số bản ghi</th>
+          </tr>
+          ${oeeData.map(d => `
+            <tr>
+              <td style="padding: 10px; border-bottom: 1px solid #e2e8f0;">${d.machineName || `Machine ${d.machineId}`}</td>
+              <td style="padding: 10px; text-align: center; border-bottom: 1px solid #e2e8f0; font-weight: bold; color: ${Number(d.avgOee) >= 85 ? '#22c55e' : Number(d.avgOee) >= 70 ? '#f59e0b' : '#dc2626'};">${Number(d.avgOee).toFixed(1)}%</td>
+              <td style="padding: 10px; text-align: center; border-bottom: 1px solid #e2e8f0;">${Number(d.avgAvailability).toFixed(1)}%</td>
+              <td style="padding: 10px; text-align: center; border-bottom: 1px solid #e2e8f0;">${Number(d.avgPerformance).toFixed(1)}%</td>
+              <td style="padding: 10px; text-align: center; border-bottom: 1px solid #e2e8f0;">${Number(d.avgQuality).toFixed(1)}%</td>
+              <td style="padding: 10px; text-align: center; border-bottom: 1px solid #e2e8f0;">${d.recordCount}</td>
+            </tr>
+          `).join('')}
+        </table>
+      `;
+      reportContent += oeeHtml;
+    }
+    
+    if (report.reportType === 'cpk' || report.reportType === 'oee_cpk_combined') {
+      // Get CPK data
+      const cpkData = await db
+        .select({
+          productCode: spcAnalysisHistory.productCode,
+          stationName: spcAnalysisHistory.stationName,
+          avgCpk: sql<number>`AVG(${spcAnalysisHistory.cpk})`,
+          avgCp: sql<number>`AVG(${spcAnalysisHistory.cp})`,
+          recordCount: sql<number>`COUNT(*)`,
+        })
+        .from(spcAnalysisHistory)
+        .where(and(
+          gte(spcAnalysisHistory.createdAt, startDate),
+          sql`${spcAnalysisHistory.cpk} IS NOT NULL`
+        ))
+        .groupBy(spcAnalysisHistory.productCode, spcAnalysisHistory.stationName);
+      
+      // Generate CPK section
+      const cpkHtml = `
+        <h2>📈 Báo cáo CPK</h2>
+        <p>Thời gian: ${daysBack} ngày qua</p>
+        <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+          <tr style="background: #22c55e; color: white;">
+            <th style="padding: 10px; text-align: left;">Sản phẩm</th>
+            <th style="padding: 10px; text-align: left;">Công trạm</th>
+            <th style="padding: 10px; text-align: center;">CPK TB</th>
+            <th style="padding: 10px; text-align: center;">CP TB</th>
+            <th style="padding: 10px; text-align: center;">Đánh giá</th>
+          </tr>
+          ${cpkData.map(d => {
+            const cpk = Number(d.avgCpk);
+            const rating = cpk >= 1.67 ? 'Xuất sắc' : cpk >= 1.33 ? 'Tốt' : cpk >= 1.0 ? 'Chấp nhận' : 'Cần cải thiện';
+            const color = cpk >= 1.67 ? '#22c55e' : cpk >= 1.33 ? '#3b82f6' : cpk >= 1.0 ? '#f59e0b' : '#dc2626';
+            return `
+              <tr>
+                <td style="padding: 10px; border-bottom: 1px solid #e2e8f0;">${d.productCode}</td>
+                <td style="padding: 10px; border-bottom: 1px solid #e2e8f0;">${d.stationName}</td>
+                <td style="padding: 10px; text-align: center; border-bottom: 1px solid #e2e8f0; font-weight: bold; color: ${color};">${cpk.toFixed(3)}</td>
+                <td style="padding: 10px; text-align: center; border-bottom: 1px solid #e2e8f0;">${Number(d.avgCp).toFixed(3)}</td>
+                <td style="padding: 10px; text-align: center; border-bottom: 1px solid #e2e8f0;"><span style="padding: 2px 8px; border-radius: 4px; background: ${color}; color: white;">${rating}</span></td>
+              </tr>
+            `;
+          }).join('')}
+        </table>
+      `;
+      reportContent += cpkHtml;
+    }
+    
+    // Wrap in full HTML
+    const fullHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>${report.name}</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 20px; max-width: 900px; margin: 0 auto; }
+          h1 { color: #1e293b; }
+          h2 { color: #3b82f6; margin-top: 30px; }
+        </style>
+      </head>
+      <body>
+        <h1>📋 ${report.name}</h1>
+        <p style="color: #64748b;">Báo cáo ${report.frequency === 'daily' ? 'hàng ngày' : report.frequency === 'weekly' ? 'hàng tuần' : 'hàng tháng'} | Tạo lúc: ${now.toLocaleString('vi-VN')}</p>
+        ${reportContent}
+        <hr style="margin-top: 30px; border: none; border-top: 1px solid #e2e8f0;" />
+        <p style="color: #64748b; font-size: 12px;">Email này được gửi tự động từ hệ thống SPC/CPK Calculator</p>
+      </body>
+      </html>
+    `;
+    
+    // Upload to storage
+    const { storagePut } = await import('./storage');
+    const fileName = `report-${report.id}-${Date.now()}.html`;
+    const { url } = await storagePut(fileName, Buffer.from(fullHtml), 'text/html');
+    fileUrl = url;
+    
+    // Send emails
+    let sent = 0;
+    let failed = 0;
+    
+    for (const email of recipients) {
+      try {
+        const result = await sendEmail(
+          email,
+          `📋 ${report.name} - ${now.toLocaleDateString('vi-VN')}`,
+          fullHtml
+        );
+        
+        if (result.success) sent++;
+        else failed++;
+      } catch (err) {
+        console.error(`[ScheduledJob] Failed to send report to ${email}:`, err);
+        failed++;
+      }
+    }
+    
+    const executionTime = Date.now() - startTime;
+    
+    // Log the report
+    await db.insert(scheduledReportLogs).values({
+      reportId: report.id,
+      status: failed === 0 ? 'success' : (sent > 0 ? 'partial' : 'failed'),
+      recipientCount: sent + failed,
+      successCount: sent,
+      failedCount: failed,
+      reportFileUrl: fileUrl,
+      errorMessage: failed > 0 ? `${failed} emails failed to send` : null,
+      generationTimeMs: executionTime,
+    });
+    
+    // Update report status - only update lastSentAt since other fields don't exist in schema
+    await db.update(scheduledReports)
+      .set({
+        lastSentAt: new Date(),
+      })
+      .where(eq(scheduledReports.id, report.id));
+    
+    console.log(`[ScheduledJob] Report ${report.name}: sent=${sent}, failed=${failed}, time=${executionTime}ms`);
+    return { success: true, sent, failed, message: `Sent to ${sent} recipients, ${failed} failed` };
+    
+  } catch (error) {
+    console.error(`[ScheduledJob] Error generating report ${report.name}:`, error);
+    return { success: false, sent: 0, failed: 0, message: 'Error: ' + String(error) };
+  }
+}
+
+/**
+ * Process all due scheduled reports
+ */
+export async function processScheduledReports(): Promise<{ processed: number; sent: number; failed: number }> {
+  console.log('[ScheduledJob] Processing scheduled reports...');
+  
+  try {
+    const db = await getDb();
+    if (!db) {
+      return { processed: 0, sent: 0, failed: 0 };
+    }
+    
+    const now = new Date();
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+    const currentTime = `${String(currentHour).padStart(2, '0')}:${String(currentMinute).padStart(2, '0')}`;
+    const currentDayOfWeek = now.getDay();
+    const currentDayOfMonth = now.getDate();
+    
+    // Get all active reports
+    const reports = await db.select()
+      .from(scheduledReports)
+      .where(eq(scheduledReports.isActive, 1));
+    
+    let processed = 0;
+    let totalSent = 0;
+    let totalFailed = 0;
+    
+    for (const report of reports) {
+      // Check if report should run now
+      let shouldRun = false;
+      
+      // Use schedule field instead of frequency, and hour instead of timeOfDay
+      const reportHour = report.hour;
+      if (reportHour === currentHour) {
+        if (report.schedule === 'daily') {
+          shouldRun = true;
+        } else if (report.schedule === 'weekly' && report.dayOfWeek === currentDayOfWeek) {
+          shouldRun = true;
+        } else if (report.schedule === 'monthly' && report.dayOfMonth === currentDayOfMonth) {
+          shouldRun = true;
+        }
+      }
+      
+      if (shouldRun) {
+        const result = await generateAndSendScheduledReport(report);
+        processed++;
+        totalSent += result.sent;
+        totalFailed += result.failed;
+      }
+    }
+    
+    console.log(`[ScheduledJob] Processed ${processed} reports: sent=${totalSent}, failed=${totalFailed}`);
+    return { processed, sent: totalSent, failed: totalFailed };
+    
+  } catch (error) {
+    console.error('[ScheduledJob] Error processing scheduled reports:', error);
+    return { processed: 0, sent: 0, failed: 0 };
+  }
 }
