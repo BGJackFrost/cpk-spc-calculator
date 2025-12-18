@@ -121,6 +121,8 @@ import NtfEnvironmentCorrelation from "./pages/NtfEnvironmentCorrelation";
 import EnvironmentAlertConfig from "./pages/EnvironmentAlertConfig";
 import NtfCeoDashboard from "./pages/NtfCeoDashboard";
 import UnifiedDashboard from "./pages/UnifiedDashboard";
+import OeeAlertThresholdSettings from "./pages/OeeAlertThresholdSettings";
+import ScheduledReportManagement from "./pages/ScheduledReportManagement";
 
 function Router() {
   return (
@@ -181,6 +183,8 @@ function Router() {
       <Route path="/iot-gateway" component={IoTGatewayConfig} />
       <Route path="/reports-export" component={ReportsExport} />
       <Route path="/alert-config" component={AlertConfiguration} />
+      <Route path="/oee-alert-thresholds" component={OeeAlertThresholdSettings} />
+      <Route path="/scheduled-reports" component={ScheduledReportManagement} />
       <Route path="/ntf-config" component={NtfAlertConfig} />
       <Route path="/ntf-comparison" component={NtfComparison} />
       <Route path="/ntf-dashboard" component={NtfDashboard} />

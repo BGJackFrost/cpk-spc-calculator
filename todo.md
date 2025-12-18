@@ -3368,3 +3368,29 @@
 - [x] Bảng xếp hạng tổng hợp theo thiết bị
 - [x] Cảnh báo tổng hợp khi cả OEE và CPK đều giảm
 - [x] Menu trong sidebar và route đã cấu hình
+
+
+## Phase 157 - OEE/CPK UI Management & Home Widget
+
+### Giao diện quản lý ngưỡng cảnh báo OEE
+- [x] Trang OeeAlertThresholdSettings trong Settings
+- [x] Form thêm/sửa ngưỡng cảnh báo theo máy/dây chuyền
+- [x] Bảng danh sách ngưỡng với filter và search
+- [x] Nút xóa ngưỡng với xác nhận
+- [x] Hiển thị ngưỡng mặc định (global)
+- [x] Route và menu trong sidebar
+
+### Trang quản lý lịch báo cáo định kỳ
+- [x] Trang ScheduledReportManagement
+- [x] Form tạo lịch báo cáo mới (loại, tần suất, giờ gửi, người nhận)
+- [x] Bảng danh sách lịch báo cáo với trạng thái
+- [x] Nút bật/tắt, sửa, xóa lịch báo cáo
+- [x] Xem lịch sử gửi báo cáo (logs)
+- [x] Route và menu trong sidebar
+
+### Widget tổng hợp OEE/CPK trên Home
+- [x] Component UnifiedSummaryWidget
+- [x] Hiển thị OEE và CPK trung bình
+- [x] Biểu đồ mini xu hướng 7 ngày
+- [x] Số lượng cảnh báo hiện tại
+- [x] Link đến UnifiedDashboard

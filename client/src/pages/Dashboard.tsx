@@ -41,6 +41,7 @@ import { ValidationRulesCard } from "@/components/ValidationRulesCard";
 import { OnboardingWizard } from "@/components/OnboardingWizard";
 import NtfStatsWidget from "@/components/NtfStatsWidget";
 import NtfAiMonitor from "@/components/NtfAiMonitor";
+import UnifiedSummaryWidget from "@/components/UnifiedSummaryWidget";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -317,6 +318,9 @@ export default function Dashboard() {
             
             {/* NTF AI Monitor */}
             {isWidgetVisible("ntf_rate") && user?.role === 'admin' && <NtfAiMonitor />}
+            
+            {/* Unified OEE & CPK Summary Widget */}
+            <UnifiedSummaryWidget />
           </div>
         </div>
 

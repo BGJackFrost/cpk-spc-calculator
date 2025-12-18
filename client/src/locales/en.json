@@ -93,6 +93,8 @@
     "iotGateway": "IoT Gateway",
     "reportsExport": "Export Reports",
     "alertConfig": "Alert Configuration",
+    "oeeAlertThresholds": "OEE Alert Thresholds",
+    "scheduledReportManagement": "Scheduled Report Management",
     "alertThresholdConfig": "Alert Thresholds",
     "scheduledReports": "Scheduled Reports",
     "exportRealtime": "Export Realtime Data",

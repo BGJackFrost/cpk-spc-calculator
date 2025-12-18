@@ -65,6 +65,8 @@
     "iotGateway": "IoT Gateway",
     "reportsExport": "Xuất Báo cáo",
     "alertConfig": "Cấu hình Cảnh báo",
+    "oeeAlertThresholds": "Ngưỡng Cảnh báo OEE",
+    "scheduledReportManagement": "Quản lý Báo cáo Định kỳ",
     "alertThresholdConfig": "Ngưỡng Cảnh báo",
     "scheduledReports": "Báo cáo Tự động",
     "exportRealtime": "Xuất dữ liệu Realtime",
