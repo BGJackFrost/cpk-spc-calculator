@@ -1236,6 +1236,360 @@ export const machineIntegrationRouter = router({
         days: input.days,
       };
     }),
+
+  // Get list of machines for filter dropdown
+  listMachines: protectedProcedure
+    .query(async () => {
+      const db = await getDb();
+      
+      // Get unique machines from API keys
+      const machines = await db
+        .select({
+          machineId: machineApiKeys.machineId,
+          name: machineApiKeys.name,
+          machineType: machineApiKeys.machineType,
+          productionLineId: machineApiKeys.productionLineId,
+        })
+        .from(machineApiKeys)
+        .where(eq(machineApiKeys.isActive, 1))
+        .groupBy(machineApiKeys.machineId);
+
+      return machines.map(m => ({
+        id: m.machineId,
+        name: m.name,
+        machineType: m.machineType,
+        productionLineId: m.productionLineId,
+      }));
+    }),
+
+  // Get OEE dashboard data with comparison between machines
+  getOeeDashboard: protectedProcedure
+    .input(z.object({
+      days: z.number().min(1).max(90).default(7),
+    }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - input.days);
+
+      // Get OEE by machine
+      const byMachine = await db
+        .select({
+          machineId: machineOeeData.machineId,
+          avgOee: sql<number>`AVG(CAST(${machineOeeData.oee} AS DECIMAL(10,2)))`,
+          avgAvailability: sql<number>`AVG(CAST(${machineOeeData.availability} AS DECIMAL(10,2)))`,
+          avgPerformance: sql<number>`AVG(CAST(${machineOeeData.performance} AS DECIMAL(10,2)))`,
+          avgQuality: sql<number>`AVG(CAST(${machineOeeData.quality} AS DECIMAL(10,2)))`,
+          totalDowntime: sql<number>`SUM(${machineOeeData.downtime})`,
+          totalGood: sql<number>`SUM(${machineOeeData.goodCount})`,
+          totalReject: sql<number>`SUM(${machineOeeData.rejectCount})`,
+          recordCount: sql<number>`COUNT(*)`,
+        })
+        .from(machineOeeData)
+        .where(gte(machineOeeData.recordedAt, startDate))
+        .groupBy(machineOeeData.machineId);
+
+      // Get machine names
+      const machineNames = await db
+        .select({
+          machineId: machineApiKeys.machineId,
+          name: machineApiKeys.name,
+        })
+        .from(machineApiKeys)
+        .groupBy(machineApiKeys.machineId);
+
+      const nameMap = new Map(machineNames.map(m => [m.machineId, m.name]));
+
+      // Get daily trend for all machines
+      const dailyTrend = await db
+        .select({
+          date: machineOeeData.recordDate,
+          avgOee: sql<number>`AVG(CAST(${machineOeeData.oee} AS DECIMAL(10,2)))`,
+          avgAvailability: sql<number>`AVG(CAST(${machineOeeData.availability} AS DECIMAL(10,2)))`,
+          avgPerformance: sql<number>`AVG(CAST(${machineOeeData.performance} AS DECIMAL(10,2)))`,
+          avgQuality: sql<number>`AVG(CAST(${machineOeeData.quality} AS DECIMAL(10,2)))`,
+        })
+        .from(machineOeeData)
+        .where(gte(machineOeeData.recordedAt, startDate))
+        .groupBy(machineOeeData.recordDate)
+        .orderBy(machineOeeData.recordDate);
+
+      // Calculate overall summary
+      const [overall] = await db
+        .select({
+          avgOee: sql<number>`AVG(CAST(${machineOeeData.oee} AS DECIMAL(10,2)))`,
+          avgAvailability: sql<number>`AVG(CAST(${machineOeeData.availability} AS DECIMAL(10,2)))`,
+          avgPerformance: sql<number>`AVG(CAST(${machineOeeData.performance} AS DECIMAL(10,2)))`,
+          avgQuality: sql<number>`AVG(CAST(${machineOeeData.quality} AS DECIMAL(10,2)))`,
+          totalDowntime: sql<number>`SUM(${machineOeeData.downtime})`,
+          totalGood: sql<number>`SUM(${machineOeeData.goodCount})`,
+          totalReject: sql<number>`SUM(${machineOeeData.rejectCount})`,
+        })
+        .from(machineOeeData)
+        .where(gte(machineOeeData.recordedAt, startDate));
+
+      // Find best and worst machines
+      const sortedByOee = [...byMachine].sort((a, b) => (b.avgOee || 0) - (a.avgOee || 0));
+      const bestMachine = sortedByOee[0];
+      const worstMachine = sortedByOee[sortedByOee.length - 1];
+
+      return {
+        byMachine: byMachine.map(m => ({
+          machineId: m.machineId,
+          machineName: nameMap.get(m.machineId) || `Machine ${m.machineId}`,
+          avgOee: m.avgOee ? parseFloat(m.avgOee.toFixed(1)) : 0,
+          avgAvailability: m.avgAvailability ? parseFloat(m.avgAvailability.toFixed(1)) : 0,
+          avgPerformance: m.avgPerformance ? parseFloat(m.avgPerformance.toFixed(1)) : 0,
+          avgQuality: m.avgQuality ? parseFloat(m.avgQuality.toFixed(1)) : 0,
+          totalDowntime: m.totalDowntime || 0,
+          totalGood: m.totalGood || 0,
+          totalReject: m.totalReject || 0,
+          recordCount: m.recordCount || 0,
+        })),
+        dailyTrend: dailyTrend.map(d => ({
+          date: d.date,
+          oee: d.avgOee ? parseFloat(d.avgOee.toFixed(1)) : 0,
+          availability: d.avgAvailability ? parseFloat(d.avgAvailability.toFixed(1)) : 0,
+          performance: d.avgPerformance ? parseFloat(d.avgPerformance.toFixed(1)) : 0,
+          quality: d.avgQuality ? parseFloat(d.avgQuality.toFixed(1)) : 0,
+        })),
+        summary: {
+          avgOee: overall.avgOee ? parseFloat(overall.avgOee.toFixed(1)) : 0,
+          avgAvailability: overall.avgAvailability ? parseFloat(overall.avgAvailability.toFixed(1)) : 0,
+          avgPerformance: overall.avgPerformance ? parseFloat(overall.avgPerformance.toFixed(1)) : 0,
+          avgQuality: overall.avgQuality ? parseFloat(overall.avgQuality.toFixed(1)) : 0,
+          totalDowntime: overall.totalDowntime || 0,
+          totalGood: overall.totalGood || 0,
+          totalReject: overall.totalReject || 0,
+          machineCount: byMachine.length,
+          bestMachine: bestMachine ? {
+            machineId: bestMachine.machineId,
+            name: nameMap.get(bestMachine.machineId) || `Machine ${bestMachine.machineId}`,
+            oee: bestMachine.avgOee ? parseFloat(bestMachine.avgOee.toFixed(1)) : 0,
+          } : null,
+          worstMachine: worstMachine && byMachine.length > 1 ? {
+            machineId: worstMachine.machineId,
+            name: nameMap.get(worstMachine.machineId) || `Machine ${worstMachine.machineId}`,
+            oee: worstMachine.avgOee ? parseFloat(worstMachine.avgOee.toFixed(1)) : 0,
+          } : null,
+        },
+        days: input.days,
+      };
+    }),
+
+  // Export inspection data
+  exportInspectionData: protectedProcedure
+    .input(z.object({
+      machineId: z.number().optional(),
+      startDate: z.string().optional(),
+      endDate: z.string().optional(),
+      format: z.enum(['csv', 'json']).default('csv'),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      
+      const conditions = [];
+      if (input.machineId) {
+        conditions.push(eq(machineInspectionData.machineId, input.machineId));
+      }
+      if (input.startDate) {
+        conditions.push(gte(machineInspectionData.inspectedAt, new Date(input.startDate)));
+      }
+      if (input.endDate) {
+        conditions.push(lte(machineInspectionData.inspectedAt, new Date(input.endDate)));
+      }
+
+      const data = await db
+        .select()
+        .from(machineInspectionData)
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .orderBy(desc(machineInspectionData.inspectedAt))
+        .limit(10000);
+
+      // Get machine names
+      const machineNames = await db
+        .select({ machineId: machineApiKeys.machineId, name: machineApiKeys.name })
+        .from(machineApiKeys)
+        .groupBy(machineApiKeys.machineId);
+      const nameMap = new Map(machineNames.map(m => [m.machineId, m.name]));
+
+      const exportData = data.map(row => ({
+        id: row.id,
+        machineId: row.machineId,
+        machineName: nameMap.get(row.machineId!) || '',
+        batchId: row.batchId || '',
+        productCode: row.productCode || '',
+        serialNumber: row.serialNumber || '',
+        inspectionType: row.inspectionType,
+        inspectionResult: row.inspectionResult,
+        defectCount: row.defectCount || 0,
+        defectTypes: row.defectTypes || '',
+        inspectedAt: row.inspectedAt?.toISOString() || '',
+        cycleTimeMs: row.cycleTimeMs || 0,
+        operatorId: row.operatorId || '',
+        shiftId: row.shiftId || '',
+      }));
+
+      if (input.format === 'csv') {
+        const headers = Object.keys(exportData[0] || {}).join(',');
+        const rows = exportData.map(row => Object.values(row).map(v => `"${String(v).replace(/"/g, '""')}"`).join(','));
+        return {
+          data: [headers, ...rows].join('\n'),
+          filename: `inspection_data_${new Date().toISOString().split('T')[0]}.csv`,
+          mimeType: 'text/csv',
+        };
+      }
+
+      return {
+        data: JSON.stringify(exportData, null, 2),
+        filename: `inspection_data_${new Date().toISOString().split('T')[0]}.json`,
+        mimeType: 'application/json',
+      };
+    }),
+
+  // Export measurement data
+  exportMeasurementData: protectedProcedure
+    .input(z.object({
+      machineId: z.number().optional(),
+      startDate: z.string().optional(),
+      endDate: z.string().optional(),
+      format: z.enum(['csv', 'json']).default('csv'),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      
+      const conditions = [];
+      if (input.machineId) {
+        conditions.push(eq(machineMeasurementData.machineId, input.machineId));
+      }
+      if (input.startDate) {
+        conditions.push(gte(machineMeasurementData.measuredAt, new Date(input.startDate)));
+      }
+      if (input.endDate) {
+        conditions.push(lte(machineMeasurementData.measuredAt, new Date(input.endDate)));
+      }
+
+      const data = await db
+        .select()
+        .from(machineMeasurementData)
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .orderBy(desc(machineMeasurementData.measuredAt))
+        .limit(10000);
+
+      // Get machine names
+      const machineNames = await db
+        .select({ machineId: machineApiKeys.machineId, name: machineApiKeys.name })
+        .from(machineApiKeys)
+        .groupBy(machineApiKeys.machineId);
+      const nameMap = new Map(machineNames.map(m => [m.machineId, m.name]));
+
+      const exportData = data.map(row => ({
+        id: row.id,
+        machineId: row.machineId,
+        machineName: nameMap.get(row.machineId!) || '',
+        batchId: row.batchId || '',
+        productCode: row.productCode || '',
+        serialNumber: row.serialNumber || '',
+        parameterName: row.parameterName,
+        measuredValue: row.measuredValue,
+        unit: row.unit || '',
+        nominalValue: row.nominalValue || '',
+        usl: row.usl || '',
+        lsl: row.lsl || '',
+        isWithinSpec: row.isWithinSpec,
+        measuredAt: row.measuredAt?.toISOString() || '',
+        operatorId: row.operatorId || '',
+        shiftId: row.shiftId || '',
+      }));
+
+      if (input.format === 'csv') {
+        const headers = Object.keys(exportData[0] || {}).join(',');
+        const rows = exportData.map(row => Object.values(row).map(v => `"${String(v).replace(/"/g, '""')}"`).join(','));
+        return {
+          data: [headers, ...rows].join('\n'),
+          filename: `measurement_data_${new Date().toISOString().split('T')[0]}.csv`,
+          mimeType: 'text/csv',
+        };
+      }
+
+      return {
+        data: JSON.stringify(exportData, null, 2),
+        filename: `measurement_data_${new Date().toISOString().split('T')[0]}.json`,
+        mimeType: 'application/json',
+      };
+    }),
+
+  // Export OEE data
+  exportOeeData: protectedProcedure
+    .input(z.object({
+      machineId: z.number().optional(),
+      startDate: z.string().optional(),
+      endDate: z.string().optional(),
+      format: z.enum(['csv', 'json']).default('csv'),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      
+      const conditions = [];
+      if (input.machineId) {
+        conditions.push(eq(machineOeeData.machineId, input.machineId));
+      }
+      if (input.startDate) {
+        conditions.push(gte(machineOeeData.recordedAt, new Date(input.startDate)));
+      }
+      if (input.endDate) {
+        conditions.push(lte(machineOeeData.recordedAt, new Date(input.endDate)));
+      }
+
+      const data = await db
+        .select()
+        .from(machineOeeData)
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .orderBy(desc(machineOeeData.recordedAt))
+        .limit(10000);
+
+      // Get machine names
+      const machineNames = await db
+        .select({ machineId: machineApiKeys.machineId, name: machineApiKeys.name })
+        .from(machineApiKeys)
+        .groupBy(machineApiKeys.machineId);
+      const nameMap = new Map(machineNames.map(m => [m.machineId, m.name]));
+
+      const exportData = data.map(row => ({
+        id: row.id,
+        machineId: row.machineId,
+        machineName: nameMap.get(row.machineId!) || '',
+        recordDate: row.recordDate,
+        shiftId: row.shiftId || '',
+        plannedProductionTime: row.plannedProductionTime || 0,
+        actualProductionTime: row.actualProductionTime || 0,
+        downtime: row.downtime || 0,
+        totalCount: row.totalCount || 0,
+        goodCount: row.goodCount || 0,
+        rejectCount: row.rejectCount || 0,
+        availability: row.availability || '',
+        performance: row.performance || '',
+        quality: row.quality || '',
+        oee: row.oee || '',
+        recordedAt: row.recordedAt?.toISOString() || '',
+      }));
+
+      if (input.format === 'csv') {
+        const headers = Object.keys(exportData[0] || {}).join(',');
+        const rows = exportData.map(row => Object.values(row).map(v => `"${String(v).replace(/"/g, '""')}"`).join(','));
+        return {
+          data: [headers, ...rows].join('\n'),
+          filename: `oee_data_${new Date().toISOString().split('T')[0]}.csv`,
+          mimeType: 'text/csv',
+        };
+      }
+
+      return {
+        data: JSON.stringify(exportData, null, 2),
+        filename: `oee_data_${new Date().toISOString().split('T')[0]}.json`,
+        mimeType: 'application/json',
+      };
+    }),
 });
 
 // ==================== Public API Endpoints (for machine vendors) ====================

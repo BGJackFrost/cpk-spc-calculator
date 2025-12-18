@@ -3504,3 +3504,26 @@
 - [x] Biểu đồ Line/Area hiển thị pass rate theo phút/giờ
 - [x] Biểu đồ Pie hiển thị tỷ lệ pass/fail tổng
 - [x] Tích hợp vào tab Realtime trong Dashboard
+
+
+## Phase 162 - Machine Integration Dashboard Enhancement
+
+### Filter theo machine trong live chart
+- [x] Dropdown chọn machine trong Realtime tab
+- [x] API hỗ trợ filter theo machineId
+- [x] Cập nhật chart data khi thay đổi machine filter
+- [x] Hiển thị tên machine đang chọn
+
+### Dashboard tổng hợp OEE với biểu đồ trend
+- [x] Tab OEE Dashboard mới trong Machine Integration
+- [x] Biểu đồ OEE trend theo ngày (7/14/30 ngày)
+- [x] Biểu đồ breakdown: Availability, Performance, Quality
+- [x] So sánh OEE giữa các máy
+- [x] Cards tổng hợp: Avg OEE, Best/Worst machine, Total downtime
+
+### Export dữ liệu inspection/measurement ra Excel/CSV
+- [x] API exportInspectionData với filter
+- [x] API exportMeasurementData với filter
+- [x] Button Export trong Realtime tab
+- [x] Chọn định dạng: CSV hoặc JSON
+- [x] Download file với tên có timestamp

@@ -207,7 +207,8 @@ export default function MachineIntegrationDashboard() {
           <TabsTrigger value="webhooks"><Webhook className="h-4 w-4 mr-1" />Webhooks</TabsTrigger>
           <TabsTrigger value="field-mapping"><ArrowRightLeft className="h-4 w-4 mr-1" />Field Mapping</TabsTrigger>
           <TabsTrigger value="realtime"><Radio className="h-4 w-4 mr-1" />Realtime</TabsTrigger>
-          <TabsTrigger value="statistics"><BarChart3 className="h-4 w-4 mr-1" />Thống kê</TabsTrigger>
+          <TabsTrigger value="oee-dashboard"><BarChart3 className="h-4 w-4 mr-1" />OEE Dashboard</TabsTrigger>
+          <TabsTrigger value="statistics"><Activity className="h-4 w-4 mr-1" />Thống kê</TabsTrigger>
           <TabsTrigger value="logs"><Database className="h-4 w-4 mr-1" />Logs</TabsTrigger>
           <TabsTrigger value="documentation"><FileJson className="h-4 w-4 mr-1" />Tài liệu API</TabsTrigger>
         </TabsList>
@@ -592,6 +593,10 @@ Error Codes:
         {/* Realtime Tab */}
         <TabsContent value="realtime" className="space-y-4">
           <RealtimeTab />
+        </TabsContent>
+
+        <TabsContent value="oee-dashboard" className="space-y-4">
+          <OeeDashboardTab />
         </TabsContent>
       </Tabs>
 
@@ -1193,11 +1198,64 @@ function FieldMappingTab() {
 function RealtimeTab() {
   const [timeRange, setTimeRange] = useState<'1h' | '4h' | '8h' | '24h'>('1h');
   const [activeSubTab, setActiveSubTab] = useState<'events' | 'inspection' | 'measurement'>('events');
+  const [selectedMachineId, setSelectedMachineId] = useState<number | undefined>(undefined);
+  const [exportFormat, setExportFormat] = useState<'csv' | 'json'>('csv');
+  const [showExportDialog, setShowExportDialog] = useState(false);
+  const [exportType, setExportType] = useState<'inspection' | 'measurement'>('inspection');
   
+  const { data: machines } = trpc.machineIntegration.listMachines.useQuery();
   const { data: events, isLoading, refetch } = trpc.machineIntegration.listRealtimeEvents.useQuery({ limit: 50 });
   const { data: stats } = trpc.machineIntegration.getRealtimeStats.useQuery();
-  const { data: inspectionStats, refetch: refetchInspection } = trpc.machineIntegration.getInspectionStats.useQuery({ timeRange });
-  const { data: measurementStats, refetch: refetchMeasurement } = trpc.machineIntegration.getMeasurementStats.useQuery({ timeRange });
+  const { data: inspectionStats, refetch: refetchInspection } = trpc.machineIntegration.getInspectionStats.useQuery({ 
+    timeRange,
+    machineId: selectedMachineId,
+  });
+  const { data: measurementStats, refetch: refetchMeasurement } = trpc.machineIntegration.getMeasurementStats.useQuery({ 
+    timeRange,
+    machineId: selectedMachineId,
+  });
+
+  const exportInspectionMutation = trpc.machineIntegration.exportInspectionData.useMutation({
+    onSuccess: (data) => {
+      const blob = new Blob([data.data], { type: data.mimeType });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = data.filename;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('Export thành công!');
+      setShowExportDialog(false);
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const exportMeasurementMutation = trpc.machineIntegration.exportMeasurementData.useMutation({
+    onSuccess: (data) => {
+      const blob = new Blob([data.data], { type: data.mimeType });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = data.filename;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('Export thành công!');
+      setShowExportDialog(false);
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const handleExport = () => {
+    const params = {
+      machineId: selectedMachineId,
+      format: exportFormat,
+    };
+    if (exportType === 'inspection') {
+      exportInspectionMutation.mutate(params);
+    } else {
+      exportMeasurementMutation.mutate(params);
+    }
+  };
 
   // Auto-refresh every 5 seconds
   useEffect(() => {
@@ -1284,9 +1342,27 @@ function RealtimeTab() {
           <Activity className="h-4 w-4 mr-1" />
           Measurement Stats
         </Button>
-        <div className="ml-auto">
-          <Select value={timeRange} onValueChange={(v: any) => setTimeRange(v)}>
-            <SelectTrigger className="w-[120px]">
+        <div className="ml-auto flex items-center gap-2">
+          {/* Machine Filter */}
+          <Select 
+            value={selectedMachineId?.toString() || 'all'} 
+            onValueChange={(v) => setSelectedMachineId(v === 'all' ? undefined : Number(v))}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Tất cả máy" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tất cả máy</SelectItem>
+              {machines?.map((machine) => (
+                <SelectItem key={machine.id} value={machine.id.toString()}>
+                  {machine.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {/* Time Range */}
+          <Select value={timeRange} onValueChange={(v: '1h' | '4h' | '8h' | '24h') => setTimeRange(v)}>
+            <SelectTrigger className="w-[100px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -1296,8 +1372,80 @@ function RealtimeTab() {
               <SelectItem value="24h">24 giờ</SelectItem>
             </SelectContent>
           </Select>
+          {/* Export Button */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowExportDialog(true)}
+          >
+            <Download className="h-4 w-4 mr-1" />
+            Export
+          </Button>
         </div>
       </div>
+
+      {/* Export Dialog */}
+      <Dialog open={showExportDialog} onOpenChange={setShowExportDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Export Dữ liệu</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Loại dữ liệu</Label>
+              <Select value={exportType} onValueChange={(v: 'inspection' | 'measurement') => setExportType(v)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="inspection">Inspection Data</SelectItem>
+                  <SelectItem value="measurement">Measurement Data</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Định dạng</Label>
+              <Select value={exportFormat} onValueChange={(v: 'csv' | 'json') => setExportFormat(v)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="csv">CSV</SelectItem>
+                  <SelectItem value="json">JSON</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Máy</Label>
+              <Select 
+                value={selectedMachineId?.toString() || 'all'} 
+                onValueChange={(v) => setSelectedMachineId(v === 'all' ? undefined : Number(v))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Tất cả máy" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tất cả máy</SelectItem>
+                  {machines?.map((machine) => (
+                    <SelectItem key={machine.id} value={machine.id.toString()}>
+                      {machine.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowExportDialog(false)}>Hủy</Button>
+            <Button 
+              onClick={handleExport}
+              disabled={exportInspectionMutation.isPending || exportMeasurementMutation.isPending}
+            >
+              {(exportInspectionMutation.isPending || exportMeasurementMutation.isPending) ? 'Đang export...' : 'Export'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Event Stream */}
       {activeSubTab === 'events' && (
@@ -1587,6 +1735,256 @@ function RealtimeTab() {
             </CardContent>
           </Card>
         </div>
+      )}
+    </div>
+  );
+}
+
+
+// ==================== OEE Dashboard Tab ====================
+function OeeDashboardTab() {
+  const [days, setDays] = useState<7 | 14 | 30>(7);
+  const [exportFormat, setExportFormat] = useState<'csv' | 'json'>('csv');
+  
+  const { data: dashboard, isLoading, refetch } = trpc.machineIntegration.getOeeDashboard.useQuery({ days });
+  
+  const exportOeeMutation = trpc.machineIntegration.exportOeeData.useMutation({
+    onSuccess: (data) => {
+      const blob = new Blob([data.data], { type: data.mimeType });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = data.filename;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('Export thành công!');
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const getOeeColor = (oee: number) => {
+    if (oee >= 85) return 'text-green-500';
+    if (oee >= 60) return 'text-yellow-500';
+    return 'text-red-500';
+  };
+
+  const getOeeBgColor = (oee: number) => {
+    if (oee >= 85) return 'bg-green-500';
+    if (oee >= 60) return 'bg-yellow-500';
+    return 'bg-red-500';
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Header with controls */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-bold">OEE Dashboard</h2>
+          <p className="text-muted-foreground">Tổng quan hiệu suất thiết bị tổng thể</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Select value={days.toString()} onValueChange={(v) => setDays(Number(v) as 7 | 14 | 30)}>
+            <SelectTrigger className="w-[120px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="7">7 ngày</SelectItem>
+              <SelectItem value="14">14 ngày</SelectItem>
+              <SelectItem value="30">30 ngày</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button variant="outline" onClick={() => refetch()}>
+            <RefreshCw className="h-4 w-4 mr-1" />
+            Refresh
+          </Button>
+          <Button 
+            variant="outline" 
+            onClick={() => exportOeeMutation.mutate({ format: exportFormat })}
+            disabled={exportOeeMutation.isPending}
+          >
+            <Download className="h-4 w-4 mr-1" />
+            Export
+          </Button>
+        </div>
+      </div>
+
+      {isLoading ? (
+        <div className="text-center py-12">Đang tải...</div>
+      ) : !dashboard ? (
+        <div className="text-center py-12 text-muted-foreground">Không có dữ liệu OEE</div>
+      ) : (
+        <>
+          {/* Summary Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+            <Card>
+              <CardContent className="pt-4">
+                <div className={`text-3xl font-bold ${getOeeColor(dashboard.summary.avgOee)}`}>
+                  {dashboard.summary.avgOee}%
+                </div>
+                <p className="text-sm text-muted-foreground">OEE Trung bình</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-4">
+                <div className="text-3xl font-bold text-blue-500">{dashboard.summary.avgAvailability}%</div>
+                <p className="text-sm text-muted-foreground">Availability</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-4">
+                <div className="text-3xl font-bold text-purple-500">{dashboard.summary.avgPerformance}%</div>
+                <p className="text-sm text-muted-foreground">Performance</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-4">
+                <div className="text-3xl font-bold text-cyan-500">{dashboard.summary.avgQuality}%</div>
+                <p className="text-sm text-muted-foreground">Quality</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-4">
+                <div className="text-3xl font-bold text-orange-500">{dashboard.summary.totalDowntime}</div>
+                <p className="text-sm text-muted-foreground">Downtime (phút)</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-4">
+                <div className="text-3xl font-bold">{dashboard.summary.machineCount}</div>
+                <p className="text-sm text-muted-foreground">Số máy</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Best/Worst Machine */}
+          {(dashboard.summary.bestMachine || dashboard.summary.worstMachine) && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {dashboard.summary.bestMachine && (
+                <Card className="border-green-200 bg-green-50/50">
+                  <CardContent className="pt-4">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="h-5 w-5 text-green-500" />
+                      <span className="font-medium">Máy tốt nhất</span>
+                    </div>
+                    <div className="mt-2">
+                      <span className="text-lg font-bold">{dashboard.summary.bestMachine.name}</span>
+                      <span className="ml-2 text-green-600 font-semibold">{dashboard.summary.bestMachine.oee}% OEE</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+              {dashboard.summary.worstMachine && (
+                <Card className="border-red-200 bg-red-50/50">
+                  <CardContent className="pt-4">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="h-5 w-5 text-red-500" />
+                      <span className="font-medium">Máy cần cải thiện</span>
+                    </div>
+                    <div className="mt-2">
+                      <span className="text-lg font-bold">{dashboard.summary.worstMachine.name}</span>
+                      <span className="ml-2 text-red-600 font-semibold">{dashboard.summary.worstMachine.oee}% OEE</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          )}
+
+          {/* OEE Trend Chart */}
+          <Card>
+            <CardHeader>
+              <CardTitle>OEE Trend ({days} ngày)</CardTitle>
+              <CardDescription>Biểu đồ OEE và các thành phần theo ngày</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {dashboard.dailyTrend.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">Không có dữ liệu trend</div>
+              ) : (
+                <ResponsiveContainer width="100%" height={350}>
+                  <LineChart data={dashboard.dailyTrend}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                    <YAxis domain={[0, 100]} />
+                    <Tooltip 
+                      formatter={(value: number, name: string) => [`${value}%`, name]}
+                    />
+                    <Legend />
+                    <Line type="monotone" dataKey="oee" stroke="#22c55e" strokeWidth={3} name="OEE" dot={{ r: 4 }} />
+                    <Line type="monotone" dataKey="availability" stroke="#3b82f6" strokeWidth={2} name="Availability" dot={false} />
+                    <Line type="monotone" dataKey="performance" stroke="#a855f7" strokeWidth={2} name="Performance" dot={false} />
+                    <Line type="monotone" dataKey="quality" stroke="#06b6d4" strokeWidth={2} name="Quality" dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* OEE by Machine */}
+          <Card>
+            <CardHeader>
+              <CardTitle>So sánh OEE giữa các máy</CardTitle>
+              <CardDescription>Hiệu suất từng máy trong {days} ngày qua</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {dashboard.byMachine.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">Không có dữ liệu máy</div>
+              ) : (
+                <div className="space-y-4">
+                  {/* Bar Chart */}
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={dashboard.byMachine} layout="vertical">
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis type="number" domain={[0, 100]} />
+                      <YAxis type="category" dataKey="machineName" width={150} tick={{ fontSize: 12 }} />
+                      <Tooltip formatter={(value: number) => [`${value}%`]} />
+                      <Legend />
+                      <Bar dataKey="avgOee" fill="#22c55e" name="OEE" />
+                      <Bar dataKey="avgAvailability" fill="#3b82f6" name="Availability" />
+                      <Bar dataKey="avgPerformance" fill="#a855f7" name="Performance" />
+                      <Bar dataKey="avgQuality" fill="#06b6d4" name="Quality" />
+                    </BarChart>
+                  </ResponsiveContainer>
+
+                  {/* Table */}
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Máy</TableHead>
+                        <TableHead className="text-center">OEE</TableHead>
+                        <TableHead className="text-center">Availability</TableHead>
+                        <TableHead className="text-center">Performance</TableHead>
+                        <TableHead className="text-center">Quality</TableHead>
+                        <TableHead className="text-center">Downtime</TableHead>
+                        <TableHead className="text-center">Good/Reject</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {dashboard.byMachine.map((machine) => (
+                        <TableRow key={machine.machineId}>
+                          <TableCell className="font-medium">{machine.machineName}</TableCell>
+                          <TableCell className="text-center">
+                            <Badge className={getOeeBgColor(machine.avgOee)}>
+                              {machine.avgOee}%
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-center">{machine.avgAvailability}%</TableCell>
+                          <TableCell className="text-center">{machine.avgPerformance}%</TableCell>
+                          <TableCell className="text-center">{machine.avgQuality}%</TableCell>
+                          <TableCell className="text-center">{machine.totalDowntime} phút</TableCell>
+                          <TableCell className="text-center">
+                            <span className="text-green-600">{machine.totalGood}</span>
+                            {' / '}
+                            <span className="text-red-600">{machine.totalReject}</span>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </>
       )}
     </div>
   );
