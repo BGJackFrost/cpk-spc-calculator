@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS oee_targets (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  machineId INT,\n  productionLineId INT,\n  targetOee DECIMAL(5,2) DEFAULT 85.00,\n  targetAvailability DECIMAL(5,2) DEFAULT 90.00,\n  targetPerformance DECIMAL(5,2) DEFAULT 95.00,\n  targetQuality DECIMAL(5,2) DEFAULT 99.00,\n  effectiveFrom TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  effectiveTo TIMESTAMP NULL,\n  createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  updatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP\n)",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute CREATE TABLE IF NOT EXISTS oee_targets (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  machineId INT,\n  productionLineId INT,\n  targetOee DECIMAL(5,2) DEFAULT 85.00,\n  targetAvailability DECIMAL(5,2) DEFAULT 90.00,\n  targetPerformance DECIMAL(5,2) DEFAULT 95.00,\n  targetQuality DECIMAL(5,2) DEFAULT 99.00,\n  effectiveFrom TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  effectiveTo TIMESTAMP NULL,\n  createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  updatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP\n)",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1687
+}

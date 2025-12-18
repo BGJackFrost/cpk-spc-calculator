@@ -28,8 +28,11 @@ import {
   Mail,
   Shield,
   Zap,
-  Target
+  Target,
+  Sparkles,
+  FileText
 } from "lucide-react";
+import { useLocation } from "wouter";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useKeyboardShortcuts, createCommonShortcuts } from "@/hooks/useKeyboardShortcuts";
@@ -77,8 +80,10 @@ const statusLabels: Record<string, string> = {
 
 export default function SpcPlanManagement() {
   const { user } = useAuth();
+  const [, navigate] = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isModeSelectDialogOpen, setIsModeSelectDialogOpen] = useState(false);
   const [editingPlan, setEditingPlan] = useState<SpcPlan | null>(null);
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
   const [formData, setFormData] = useState({
@@ -319,13 +324,69 @@ export default function SpcPlanManagement() {
             <h1 className="text-3xl font-bold tracking-tight">Kế hoạch lấy mẫu SPC</h1>
             <p className="text-muted-foreground mt-1">Quản lý kế hoạch lấy mẫu tự động và gán vào dây chuyền</p>
           </div>
-          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+          {/* Mode Selection Dialog */}
+          <Dialog open={isModeSelectDialogOpen} onOpenChange={setIsModeSelectDialogOpen}>
             <DialogTrigger asChild>
-              <Button onClick={() => resetForm()}>
+              <Button>
                 <Plus className="h-4 w-4 mr-2" />
                 Tạo kế hoạch
               </Button>
             </DialogTrigger>
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle>Chọn cách tạo kế hoạch SPC</DialogTitle>
+                <DialogDescription>Chọn phương thức phù hợp với nhu cầu của bạn</DialogDescription>
+              </DialogHeader>
+              <div className="grid grid-cols-2 gap-4 py-4">
+                <div 
+                  className="border rounded-lg p-4 cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors"
+                  onClick={() => {
+                    setIsModeSelectDialogOpen(false);
+                    navigate("/quick-spc-plan");
+                  }}
+                >
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-2 bg-blue-100 rounded-lg">
+                      <Sparkles className="h-5 w-5 text-blue-600" />
+                    </div>
+                    <h3 className="font-semibold">Tạo nhanh</h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Tạo từ tiêu chuẩn đo lường hoặc nhập thủ công với giao diện wizard
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-1">
+                    <Badge variant="secondary" className="text-xs">Tiêu chuẩn</Badge>
+                    <Badge variant="secondary" className="text-xs">Template</Badge>
+                  </div>
+                </div>
+                <div 
+                  className="border rounded-lg p-4 cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors"
+                  onClick={() => {
+                    setIsModeSelectDialogOpen(false);
+                    resetForm();
+                    setIsCreateDialogOpen(true);
+                  }}
+                >
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-2 bg-green-100 rounded-lg">
+                      <FileText className="h-5 w-5 text-green-600" />
+                    </div>
+                    <h3 className="font-semibold">Tạo chi tiết</h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Cấu hình đầy đủ các tham số SPC Plan trong form chi tiết
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-1">
+                    <Badge variant="secondary" className="text-xs">Nâng cao</Badge>
+                    <Badge variant="secondary" className="text-xs">Tùy chỉnh</Badge>
+                  </div>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* Create Detail Dialog */}
+          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
             <DialogContent className="max-w-2xl">
               <DialogHeader>
                 <DialogTitle>Tạo kế hoạch lấy mẫu SPC</DialogTitle>

@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS oee_records (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  machineId INT NOT NULL,\n  productionLineId INT,\n  shiftId INT,\n  recordDate TIMESTAMP NOT NULL,\n  plannedProductionTime INT,\n  operatingTime INT,\n  idealCycleTime DECIMAL(10,4),\n  totalCount INT,\n  goodCount INT,\n  defectCount INT,\n  availability DECIMAL(5,2),\n  performance DECIMAL(5,2),\n  quality DECIMAL(5,2),\n  oee DECIMAL(5,2),\n  notes TEXT,\n  createdBy INT,\n  createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  updatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP\n)",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute CREATE TABLE IF NOT EXISTS oee_records (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  machineId INT NOT NULL,\n  productionLineId INT,\n  shiftId INT,\n  recordDate TIMESTAMP NOT NULL,\n  plannedProductionTime INT,\n  operatingTime INT,\n  idealCycleTime DECIMAL(10,4),\n  totalCount INT,\n  goodCount INT,\n  defectCount INT,\n  availability DECIMAL(5,2),\n  performance DECIMAL(5,2),\n  quality DECIMAL(5,2),\n  oee DECIMAL(5,2),\n  notes TEXT,\n  createdBy INT,\n  createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  updatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP\n)",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1554
+}

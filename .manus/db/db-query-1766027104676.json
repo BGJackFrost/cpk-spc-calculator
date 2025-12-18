@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE oee_records \nADD COLUMN IF NOT EXISTS plannedTime INT,\nADD COLUMN IF NOT EXISTS runTime INT,\nADD COLUMN IF NOT EXISTS cycleTime DECIMAL(10,4),\nADD COLUMN IF NOT EXISTS totalParts INT,\nADD COLUMN IF NOT EXISTS goodParts INT,\nADD COLUMN IF NOT EXISTS rejectParts INT",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute ALTER TABLE oee_records \nADD COLUMN IF NOT EXISTS plannedTime INT,\nADD COLUMN IF NOT EXISTS runTime INT,\nADD COLUMN IF NOT EXISTS cycleTime DECIMAL(10,4),\nADD COLUMN IF NOT EXISTS totalParts INT,\nADD COLUMN IF NOT EXISTS goodParts INT,\nADD COLUMN IF NOT EXISTS rejectParts INT",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 3227
+}

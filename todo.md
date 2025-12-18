@@ -3204,3 +3204,20 @@
 - [x] API CRUD cho templates (listTemplates, createTemplate, deleteTemplate)
 - [x] UI lưu template từ SPC Plan hiện tại - nút "Lưu Template"
 - [x] UI chọn template khi tạo SPC Plan mới - nút "Tải Template"
+
+
+## Phase 151 - SPC Plan UI Update, Sample Data & PostgreSQL Migration Plan
+
+### Cập nhật Quản lý SPC Plan
+- [x] Cập nhật nút "+ Tạo kế hoạch" để tương thích với trang Tạo SPC Plan nhanh
+- [x] Thêm dialog chọn chế độ tạo (Tạo nhanh/Tạo chi tiết)
+
+### Bổ sung dữ liệu mẫu
+- [x] Thêm dữ liệu OEE records cho OEE Dashboard (180 records, 90 ngày x 2 máy)
+- [x] Thêm dữ liệu KPI cho trang KPI Nhà máy (dùng chung OEE data)
+- [x] Thêm dữ liệu cho Phân tích Nâng cao (dùng chung OEE data)
+
+### Kế hoạch chuyển PostgreSQL
+- [x] Tạo tài liệu kế hoạch migration MySQL -> PostgreSQL (docs/postgresql-migration-plan.md)
+- [x] Phân tích các thay đổi cần thiết (kiểu dữ liệu, cú pháp SQL, Drizzle config)
+- [x] Đề xuất timeline 8 tuần và checklist chi tiết
