@@ -3639,3 +3639,24 @@
 - [x] Bảng so sánh máy/ca trong PDF
 - [x] Button Xuất PDF trong OEE Dashboard
 - [x] In/Lưu PDF qua browser print dialog
+
+
+## Phase 167 - PostgreSQL Migration (Rollback)
+
+### Backup MySQL Database
+- [x] Export toàn bộ dữ liệu MySQL (129 bảng, 687KB)
+- [x] Lưu backup file: backups/mysql-backup-2025-12-18T17-20-23-529Z.json
+
+### PostgreSQL Migration Attempt
+- [x] Cài đặt pg driver
+- [x] Chuyển đổi schema từ mysql-core sang pg-core
+- [x] Cập nhật drizzle.config.ts
+- [ ] Sửa các insert patterns (chưa hoàn thành - 246 lỗi TypeScript)
+- [ ] Migrate dữ liệu (chưa thực hiện)
+
+### Rollback
+- [x] Lưu các file PostgreSQL migration vào docs/postgresql-migration-wip/
+- [x] Rollback về MySQL (Phase 166 checkpoint)
+- [x] Tạo README hướng dẫn cho lần migration tiếp theo
+
+**Ghi chú:** Migration PostgreSQL cần thực hiện theo từng bước nhỏ hơn trong tương lai.
