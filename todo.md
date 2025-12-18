@@ -3583,3 +3583,29 @@
 - [x] Thống kê OEE theo ca (sáng/chiều/đêm)
 - [x] Khuyến nghị tự động dựa trên dữ liệu
 - [x] Tab OEE Theo Giờ mới trong Machine Integration
+
+
+## Phase 165 - Machine Integration Dashboard & Email Testing
+
+### Dashboard tổng quan Machine Integration
+- [x] Tab Overview mới với KPIs chính
+- [x] Card tổng số máy đã kết nối
+- [x] Card OEE trung bình (hôm nay/tuần/tháng)
+- [x] Card số alerts pending chưa xử lý
+- [x] Card số báo cáo đã gửi trong tuần
+- [x] Mini charts cho trend OEE 7 ngày
+- [x] Danh sách máy có OEE thấp nhất
+- [x] Sự kiện gần đây và Inspection stats
+
+### API endpoint test gửi email OEE
+- [x] API testSendOeeAlert để test gửi email cảnh báo
+- [x] API testSendOeeReport để test gửi email báo cáo
+- [x] UI buttons trong tab Cảnh báo OEE và Báo cáo OEE
+- [x] Dialog nhập email test và hiển thị kết quả
+
+### Biểu đồ so sánh OEE giữa các ca làm việc
+- [x] API getOeeByShift trả về OEE theo ca
+- [x] Biểu đồ bar chart so sánh OEE 3 ca
+- [x] Biểu đồ trend OEE theo ca theo tuần/tháng
+- [x] Bảng thống kê chi tiết theo ca (A/P/Q)
+- [x] Tích hợp vào tab Tổng quan (Overview)

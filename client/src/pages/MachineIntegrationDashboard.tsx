@@ -61,7 +61,7 @@ import {
 } from "recharts";
 
 export default function MachineIntegrationDashboard() {
-  const [selectedTab, setSelectedTab] = useState("api-keys");
+  const [selectedTab, setSelectedTab] = useState("overview");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [newKeyData, setNewKeyData] = useState({
     name: "",
@@ -215,6 +215,7 @@ export default function MachineIntegrationDashboard() {
       {/* Main Tabs */}
       <Tabs value={selectedTab} onValueChange={setSelectedTab}>
         <TabsList className="flex-wrap h-auto">
+          <TabsTrigger value="overview"><Activity className="h-4 w-4 mr-1" />Tổng quan</TabsTrigger>
           <TabsTrigger value="api-keys"><Key className="h-4 w-4 mr-1" />API Keys</TabsTrigger>
           <TabsTrigger value="webhooks"><Webhook className="h-4 w-4 mr-1" />Webhooks</TabsTrigger>
           <TabsTrigger value="field-mapping"><ArrowRightLeft className="h-4 w-4 mr-1" />Field Mapping</TabsTrigger>
@@ -228,6 +229,11 @@ export default function MachineIntegrationDashboard() {
           <TabsTrigger value="logs"><Database className="h-4 w-4 mr-1" />Logs</TabsTrigger>
           <TabsTrigger value="documentation"><FileJson className="h-4 w-4 mr-1" />Tài liệu API</TabsTrigger>
         </TabsList>
+
+        {/* Overview Tab */}
+        <TabsContent value="overview" className="space-y-4">
+          <OverviewTab />
+        </TabsContent>
 
         {/* API Keys Tab */}
         <TabsContent value="api-keys" className="space-y-4">
@@ -2067,6 +2073,20 @@ function OeeAlertsTab() {
     onError: (err) => toast.error(err.message),
   });
 
+  const testEmailMutation = trpc.machineIntegration.testSendOeeAlert.useMutation({
+    onSuccess: (data) => {
+      if (data.success) {
+        toast.success('Gửi email test thành công!');
+      } else {
+        toast.error(`Gửi email thất bại: ${data.message}`);
+      }
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const [testEmailDialog, setTestEmailDialog] = useState<{ alertId: number; alertName: string } | null>(null);
+  const [testEmail, setTestEmail] = useState('');
+
   const handleAddRecipient = () => {
     if (newAlert.recipientInput && newAlert.recipientInput.includes('@')) {
       setNewAlert({
@@ -2157,6 +2177,14 @@ function OeeAlertsTab() {
                           checked={!!alert.isActive}
                           onCheckedChange={(checked) => updateMutation.mutate({ id: alert.id, isActive: checked })}
                         />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title="Test gửi email"
+                          onClick={() => setTestEmailDialog({ alertId: alert.id, alertName: alert.name })}
+                        >
+                          <Mail className="h-4 w-4" />
+                        </Button>
                         <Button
                           variant="ghost"
                           size="icon"
@@ -2302,6 +2330,44 @@ function OeeAlertsTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Test Email Dialog */}
+      <Dialog open={!!testEmailDialog} onOpenChange={() => setTestEmailDialog(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Test gửi email cảnh báo</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Gửi email test cho cảnh báo: <strong>{testEmailDialog?.alertName}</strong>
+            </p>
+            <div>
+              <Label>Email nhận test</Label>
+              <Input
+                type="email"
+                value={testEmail}
+                onChange={(e) => setTestEmail(e.target.value)}
+                placeholder="your-email@example.com"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTestEmailDialog(null)}>Hủy</Button>
+            <Button
+              onClick={() => {
+                if (testEmailDialog && testEmail) {
+                  testEmailMutation.mutate({ alertConfigId: testEmailDialog.alertId, testEmail });
+                  setTestEmailDialog(null);
+                  setTestEmail('');
+                }
+              }}
+              disabled={!testEmail || testEmailMutation.isPending}
+            >
+              {testEmailMutation.isPending ? 'Gửi...' : 'Gửi test'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -2351,6 +2417,20 @@ function OeeReportsTab() {
     },
     onError: (err) => toast.error(err.message),
   });
+
+  const testEmailMutation = trpc.machineIntegration.testSendOeeReport.useMutation({
+    onSuccess: (data) => {
+      if (data.success) {
+        toast.success('Gửi email test thành công!');
+      } else {
+        toast.error(`Gửi email thất bại: ${data.message}`);
+      }
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const [testEmailDialog, setTestEmailDialog] = useState<{ scheduleId: number; scheduleName: string } | null>(null);
+  const [testEmail, setTestEmail] = useState('');
 
   const handleAddRecipient = () => {
     if (newSchedule.recipientInput && newSchedule.recipientInput.includes('@')) {
@@ -2459,6 +2539,14 @@ function OeeReportsTab() {
                           checked={!!schedule.isActive}
                           onCheckedChange={(checked) => updateMutation.mutate({ id: schedule.id, isActive: checked })}
                         />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title="Test gửi email"
+                          onClick={() => setTestEmailDialog({ scheduleId: schedule.id, scheduleName: schedule.name })}
+                        >
+                          <Mail className="h-4 w-4" />
+                        </Button>
                         <Button
                           variant="ghost"
                           size="icon"
@@ -2638,6 +2726,44 @@ function OeeReportsTab() {
             <Button variant="outline" onClick={() => setShowCreateDialog(false)}>Hủy</Button>
             <Button onClick={handleCreate} disabled={createMutation.isPending}>
               {createMutation.isPending ? 'Đang tạo...' : 'Tạo lịch'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Test Email Dialog */}
+      <Dialog open={!!testEmailDialog} onOpenChange={() => setTestEmailDialog(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Test gửi email báo cáo</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Gửi email test cho báo cáo: <strong>{testEmailDialog?.scheduleName}</strong>
+            </p>
+            <div>
+              <Label>Email nhận test</Label>
+              <Input
+                type="email"
+                value={testEmail}
+                onChange={(e) => setTestEmail(e.target.value)}
+                placeholder="your-email@example.com"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTestEmailDialog(null)}>Hủy</Button>
+            <Button
+              onClick={() => {
+                if (testEmailDialog && testEmail) {
+                  testEmailMutation.mutate({ scheduleId: testEmailDialog.scheduleId, testEmail });
+                  setTestEmailDialog(null);
+                  setTestEmail('');
+                }
+              }}
+              disabled={!testEmail || testEmailMutation.isPending}
+            >
+              {testEmailMutation.isPending ? 'Gửi...' : 'Gửi test'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -3331,5 +3457,382 @@ function OeeHourlyTrendTab() {
         </>
       )}
     </div>
+  );
+}
+
+
+// Overview Tab Component
+function OverviewTab() {
+  const { data: overview, isLoading } = trpc.machineIntegration.getDashboardOverview.useQuery();
+
+  const getOeeColor = (oee: number) => {
+    if (oee >= 85) return "text-green-600";
+    if (oee >= 70) return "text-amber-600";
+    return "text-red-600";
+  };
+
+  const getOeeBgColor = (oee: number) => {
+    if (oee >= 85) return "bg-green-50";
+    if (oee >= 70) return "bg-amber-50";
+    return "bg-red-50";
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!overview) {
+    return (
+      <Card>
+        <CardContent className="py-12 text-center text-muted-foreground">
+          Không có dữ liệu
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <Server className="h-4 w-4" />
+              Máy đã kết nối
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{overview.totalMachines}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {overview.activeApiKeys} API keys hoạt động
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className={getOeeBgColor(overview.oee.today)}>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <BarChart3 className="h-4 w-4" />
+              OEE Hôm nay
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className={`text-3xl font-bold ${getOeeColor(overview.oee.today)}`}>
+              {overview.oee.today.toFixed(1)}%
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Tuần: {overview.oee.week.toFixed(1)}% | Tháng: {overview.oee.month.toFixed(1)}%
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className={overview.pendingAlerts > 0 ? "bg-red-50" : ""}>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <Bell className="h-4 w-4" />
+              Cảnh báo chờ xử lý
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className={`text-3xl font-bold ${overview.pendingAlerts > 0 ? "text-red-600" : ""}`}>
+              {overview.pendingAlerts}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Cần kiểm tra và xử lý
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <Mail className="h-4 w-4" />
+              Báo cáo đã gửi
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{overview.reportsSentThisWeek}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Trong tuần này
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* OEE Trend and Inspection Stats */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">OEE Trend 7 ngày</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {overview.oeeTrend.length > 0 ? (
+              <ResponsiveContainer width="100%" height={200}>
+                <AreaChart data={overview.oeeTrend}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" tickFormatter={(d) => d.slice(5)} />
+                  <YAxis domain={[0, 100]} />
+                  <Tooltip formatter={(value: number) => [`${value.toFixed(1)}%`, 'OEE']} />
+                  <Area type="monotone" dataKey="avgOee" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.3} />
+                  <ReferenceLine y={85} stroke="#dc2626" strokeDasharray="5 5" />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[200px] flex items-center justify-center text-muted-foreground">
+                Chưa có dữ liệu OEE
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Inspection Hôm nay</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Tổng kiểm tra</span>
+                <span className="text-2xl font-bold">{overview.inspection.total}</span>
+              </div>
+              <div className="flex gap-4">
+                <div className="flex-1 p-3 bg-green-50 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-green-600">{overview.inspection.passed}</div>
+                  <div className="text-xs text-muted-foreground">Đạt</div>
+                </div>
+                <div className="flex-1 p-3 bg-red-50 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-red-600">{overview.inspection.failed}</div>
+                  <div className="text-xs text-muted-foreground">Lỗi</div>
+                </div>
+                <div className="flex-1 p-3 bg-blue-50 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-blue-600">{overview.inspection.passRate.toFixed(1)}%</div>
+                  <div className="text-xs text-muted-foreground">Tỷ lệ đạt</div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Lowest OEE Machines and Recent Events */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <TrendingDown className="h-5 w-5 text-red-500" />
+              Máy có OEE thấp nhất hôm nay
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {overview.lowestOeeMachines.length > 0 ? (
+              <div className="space-y-3">
+                {overview.lowestOeeMachines.map((m, i) => (
+                  <div key={i} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                    <div>
+                      <div className="font-medium">{m.machineName}</div>
+                      <div className="text-xs text-muted-foreground">{m.recordCount} bản ghi</div>
+                    </div>
+                    <div className={`text-xl font-bold ${getOeeColor(m.avgOee)}`}>
+                      {m.avgOee.toFixed(1)}%
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                Chưa có dữ liệu OEE hôm nay
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Zap className="h-5 w-5 text-amber-500" />
+              Sự kiện gần đây
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {overview.recentEvents.length > 0 ? (
+              <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                {overview.recentEvents.map((e) => (
+                  <div key={e.id} className="flex items-center gap-3 p-2 border-b last:border-0">
+                    <Badge variant={
+                      e.severity === 'critical' ? 'destructive' :
+                      e.severity === 'warning' ? 'secondary' : 'outline'
+                    }>
+                      {e.eventType}
+                    </Badge>
+                    <span className="flex-1 text-sm truncate">{e.machineName || 'System'}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(e.createdAt!).toLocaleTimeString('vi-VN')}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                Chưa có sự kiện nào
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Shift Comparison */}
+      <ShiftComparisonCard />
+    </div>
+  );
+}
+
+// Shift Comparison Card Component
+function ShiftComparisonCard() {
+  const [period, setPeriod] = useState<'week' | 'month'>('week');
+  const { data: shiftData, isLoading } = trpc.machineIntegration.getOeeByShift.useQuery({ period });
+
+  const getOeeColor = (oee: number) => {
+    if (oee >= 85) return "#22c55e";
+    if (oee >= 70) return "#f59e0b";
+    return "#dc2626";
+  };
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="py-12 flex items-center justify-center">
+          <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!shiftData || shiftData.shifts.every(s => s.recordCount === 0)) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">So sánh OEE theo ca</CardTitle>
+        </CardHeader>
+        <CardContent className="py-8 text-center text-muted-foreground">
+          Chưa có dữ liệu OEE theo ca
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg">So sánh OEE theo ca</CardTitle>
+          <Select value={period} onValueChange={(v) => setPeriod(v as 'week' | 'month')}>
+            <SelectTrigger className="w-[120px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="week">7 ngày</SelectItem>
+              <SelectItem value="month">30 ngày</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Bar Chart */}
+          <div>
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={shiftData.shifts}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="shiftName" tick={{ fontSize: 11 }} />
+                <YAxis domain={[0, 100]} />
+                <Tooltip formatter={(value: number) => [`${value.toFixed(1)}%`]} />
+                <Bar dataKey="avgOee" name="OEE">
+                  {shiftData.shifts.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={getOeeColor(entry.avgOee)} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Stats Table */}
+          <div className="space-y-4">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Ca</TableHead>
+                  <TableHead className="text-center">OEE</TableHead>
+                  <TableHead className="text-center">A</TableHead>
+                  <TableHead className="text-center">P</TableHead>
+                  <TableHead className="text-center">Q</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {shiftData.shifts.map((s) => (
+                  <TableRow key={s.shift}>
+                    <TableCell className="font-medium">{s.shiftName.split(' ')[0]} {s.shiftName.split(' ')[1]}</TableCell>
+                    <TableCell className="text-center font-bold" style={{ color: getOeeColor(s.avgOee) }}>
+                      {s.avgOee.toFixed(1)}%
+                    </TableCell>
+                    <TableCell className="text-center">{s.avgAvailability.toFixed(1)}%</TableCell>
+                    <TableCell className="text-center">{s.avgPerformance.toFixed(1)}%</TableCell>
+                    <TableCell className="text-center">{s.avgQuality.toFixed(1)}%</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+
+            {shiftData.bestShift && shiftData.worstShift && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-3 bg-green-50 rounded-lg">
+                  <div className="text-xs text-muted-foreground">Ca tốt nhất</div>
+                  <div className="font-medium text-green-600">{shiftData.bestShift.shiftName.split(' ')[0]} {shiftData.bestShift.shiftName.split(' ')[1]}</div>
+                  <div className="text-lg font-bold text-green-600">{shiftData.bestShift.avgOee.toFixed(1)}%</div>
+                </div>
+                <div className="p-3 bg-red-50 rounded-lg">
+                  <div className="text-xs text-muted-foreground">Ca cần cải thiện</div>
+                  <div className="font-medium text-red-600">{shiftData.worstShift.shiftName.split(' ')[0]} {shiftData.worstShift.shiftName.split(' ')[1]}</div>
+                  <div className="text-lg font-bold text-red-600">{shiftData.worstShift.avgOee.toFixed(1)}%</div>
+                </div>
+              </div>
+            )}
+
+            {shiftData.oeeGap > 10 && (
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <p className="text-sm text-amber-800">
+                  <strong>⚠️ Chênh lệch OEE giữa các ca: {shiftData.oeeGap.toFixed(1)}%</strong>
+                  <br />
+                  <span className="text-xs">Cần xem xét chuẩn hóa quy trình giữa các ca để giảm biến động.</span>
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Trend Chart */}
+        {shiftData.trend.length > 0 && (
+          <div className="mt-6">
+            <h4 className="text-sm font-medium mb-3">Xu hướng OEE theo ca</h4>
+            <ResponsiveContainer width="100%" height={200}>
+              <LineChart data={shiftData.trend}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="date" tickFormatter={(d) => d.slice(5)} />
+                <YAxis domain={[0, 100]} />
+                <Tooltip formatter={(value: number) => [`${value.toFixed(1)}%`]} />
+                <Legend />
+                <Line type="monotone" dataKey="morning" name="Ca Sáng" stroke="#22c55e" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="afternoon" name="Ca Chiều" stroke="#3b82f6" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="night" name="Ca Đêm" stroke="#8b5cf6" strokeWidth={2} dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

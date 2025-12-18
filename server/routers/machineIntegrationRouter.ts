@@ -374,6 +374,368 @@ async function triggerWebhook(
 }
 
 export const machineIntegrationRouter = router({
+  // ==================== Dashboard Overview ====================
+  
+  getDashboardOverview: protectedProcedure
+    .query(async () => {
+      const db = await getDb();
+      const now = new Date();
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+      // Total connected machines
+      const [machineCount] = await db
+        .select({ count: sql<number>`COUNT(DISTINCT ${machineApiKeys.machineId})` })
+        .from(machineApiKeys)
+        .where(eq(machineApiKeys.isActive, 1));
+
+      // Active API keys
+      const [apiKeyCount] = await db
+        .select({ count: sql<number>`COUNT(*)` })
+        .from(machineApiKeys)
+        .where(eq(machineApiKeys.isActive, 1));
+
+      // OEE averages
+      const [oeeToday] = await db
+        .select({ avg: sql<number>`AVG(${machineOeeData.oee})` })
+        .from(machineOeeData)
+        .where(gte(machineOeeData.recordedAt, todayStart));
+
+      const [oeeWeek] = await db
+        .select({ avg: sql<number>`AVG(${machineOeeData.oee})` })
+        .from(machineOeeData)
+        .where(gte(machineOeeData.recordedAt, weekStart));
+
+      const [oeeMonth] = await db
+        .select({ avg: sql<number>`AVG(${machineOeeData.oee})` })
+        .from(machineOeeData)
+        .where(gte(machineOeeData.recordedAt, monthStart));
+
+      // Pending alerts (not acknowledged)
+      const [pendingAlerts] = await db
+        .select({ count: sql<number>`COUNT(*)` })
+        .from(oeeAlertHistory)
+        .where(eq(oeeAlertHistory.emailSent, 0));
+
+      // Reports sent this week
+      const [reportsSent] = await db
+        .select({ count: sql<number>`COUNT(*)` })
+        .from(oeeReportHistory)
+        .where(and(
+          gte(oeeReportHistory.createdAt, weekStart),
+          eq(oeeReportHistory.emailSent, 1)
+        ));
+
+      // OEE trend last 7 days
+      const oeeTrend = await db
+        .select({
+          date: sql<string>`DATE(${machineOeeData.recordedAt})`,
+          avgOee: sql<number>`AVG(${machineOeeData.oee})`,
+          recordCount: sql<number>`COUNT(*)`,
+        })
+        .from(machineOeeData)
+        .where(gte(machineOeeData.recordedAt, weekStart))
+        .groupBy(sql`DATE(${machineOeeData.recordedAt})`)
+        .orderBy(sql`DATE(${machineOeeData.recordedAt})`);
+
+      // Machines with lowest OEE today
+      const lowestOeeMachines = await db
+        .select({
+          machineId: machineOeeData.machineId,
+          avgOee: sql<number>`AVG(${machineOeeData.oee})`,
+          recordCount: sql<number>`COUNT(*)`,
+        })
+        .from(machineOeeData)
+        .where(gte(machineOeeData.recordedAt, todayStart))
+        .groupBy(machineOeeData.machineId)
+        .orderBy(sql`AVG(${machineOeeData.oee})`)
+        .limit(5);
+
+      // Get machine names
+      const machineIds = lowestOeeMachines.map(m => m.machineId).filter(Boolean) as number[];
+      let machineNames: Map<number, string> = new Map();
+      if (machineIds.length > 0) {
+        const names = await db
+          .select({ machineId: machineApiKeys.machineId, name: machineApiKeys.name })
+          .from(machineApiKeys)
+          .where(sql`${machineApiKeys.machineId} IN (${sql.raw(machineIds.join(','))})`);
+        machineNames = new Map(names.map(n => [n.machineId!, n.name]));
+      }
+
+      // Recent events
+      const recentEvents = await db
+        .select()
+        .from(machineRealtimeEvents)
+        .orderBy(desc(machineRealtimeEvents.createdAt))
+        .limit(10);
+
+      // Inspection stats today
+      const [inspectionStats] = await db
+        .select({
+          total: sql<number>`COUNT(*)`,
+          passed: sql<number>`SUM(CASE WHEN ${machineInspectionData.inspectionResult} = 'pass' THEN 1 ELSE 0 END)`,
+          failed: sql<number>`SUM(CASE WHEN ${machineInspectionData.inspectionResult} = 'fail' THEN 1 ELSE 0 END)`,
+        })
+        .from(machineInspectionData)
+        .where(gte(machineInspectionData.inspectedAt, todayStart));
+
+      return {
+        totalMachines: machineCount?.count || 0,
+        activeApiKeys: apiKeyCount?.count || 0,
+        oee: {
+          today: oeeToday?.avg || 0,
+          week: oeeWeek?.avg || 0,
+          month: oeeMonth?.avg || 0,
+        },
+        pendingAlerts: pendingAlerts?.count || 0,
+        reportsSentThisWeek: reportsSent?.count || 0,
+        oeeTrend: oeeTrend.map(t => ({
+          date: t.date,
+          avgOee: t.avgOee || 0,
+          recordCount: t.recordCount || 0,
+        })),
+        lowestOeeMachines: lowestOeeMachines.map(m => ({
+          machineId: m.machineId,
+          machineName: machineNames.get(m.machineId!) || `Machine ${m.machineId}`,
+          avgOee: m.avgOee || 0,
+          recordCount: m.recordCount || 0,
+        })),
+        recentEvents: recentEvents.map(e => ({
+          id: e.id,
+          eventType: e.eventType,
+          machineName: e.machineName,
+          severity: e.severity,
+          createdAt: e.createdAt,
+        })),
+        inspection: {
+          total: inspectionStats?.total || 0,
+          passed: inspectionStats?.passed || 0,
+          failed: inspectionStats?.failed || 0,
+          passRate: inspectionStats?.total ? ((inspectionStats.passed || 0) / inspectionStats.total * 100) : 0,
+        },
+      };
+    }),
+
+  // Test send OEE alert email
+  testSendOeeAlert: protectedProcedure
+    .input(z.object({
+      alertConfigId: z.number(),
+      testEmail: z.string().email(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      
+      // Get alert config
+      const [config] = await db.select().from(oeeAlertConfigs).where(eq(oeeAlertConfigs.id, input.alertConfigId));
+      if (!config) {
+        return { success: false, message: 'Alert config not found' };
+      }
+
+      // Import sendEmail
+      const { sendEmail } = await import('../emailService');
+      
+      // Generate test email
+      const emailHtml = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f8fafc; border-radius: 10px; overflow: hidden;">
+          <div style="background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); color: white; padding: 20px; text-align: center;">
+            <h1 style="margin: 0; font-size: 24px;">⚠️ TEST: Cảnh báo OEE</h1>
+            <p style="margin: 10px 0 0 0; opacity: 0.9;">${config.name}</p>
+          </div>
+          <div style="padding: 20px;">
+            <div style="background: white; border-radius: 8px; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+              <h2 style="margin: 0 0 15px 0; color: #1e293b;">🔔 Đây là email test</h2>
+              <p>Email này được gửi để kiểm tra cấu hình cảnh báo OEE.</p>
+              <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+                <tr><td style="padding: 8px; border: 1px solid #e2e8f0;"><strong>Tên cảnh báo:</strong></td><td style="padding: 8px; border: 1px solid #e2e8f0;">${config.name}</td></tr>
+                <tr><td style="padding: 8px; border: 1px solid #e2e8f0;"><strong>Ngưỡng OEE:</strong></td><td style="padding: 8px; border: 1px solid #e2e8f0;">${config.oeeThreshold}%</td></tr>
+                <tr><td style="padding: 8px; border: 1px solid #e2e8f0;"><strong>Số ngày liên tiếp:</strong></td><td style="padding: 8px; border: 1px solid #e2e8f0;">${config.consecutiveDays} ngày</td></tr>
+              </table>
+            </div>
+          </div>
+          <div style="background: #1e293b; color: white; padding: 15px; text-align: center; font-size: 12px;">
+            <p style="margin: 0;">Email test từ hệ thống SPC/CPK Calculator</p>
+          </div>
+        </div>
+      `;
+
+      try {
+        const result = await sendEmail(
+          input.testEmail,
+          `[TEST] Cảnh báo OEE: ${config.name}`,
+          emailHtml
+        );
+        return { success: result.success, message: result.success ? 'Email sent successfully' : 'Failed to send email' };
+      } catch (error) {
+        return { success: false, message: String(error) };
+      }
+    }),
+
+  // Test send OEE report email
+  testSendOeeReport: protectedProcedure
+    .input(z.object({
+      scheduleId: z.number(),
+      testEmail: z.string().email(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      
+      // Get report schedule
+      const [schedule] = await db.select().from(oeeReportSchedules).where(eq(oeeReportSchedules.id, input.scheduleId));
+      if (!schedule) {
+        return { success: false, message: 'Report schedule not found' };
+      }
+
+      // Import sendEmail
+      const { sendEmail } = await import('../emailService');
+      
+      // Generate test email
+      const emailHtml = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f8fafc; border-radius: 10px; overflow: hidden;">
+          <div style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; padding: 20px; text-align: center;">
+            <h1 style="margin: 0; font-size: 24px;">📊 TEST: Báo cáo OEE</h1>
+            <p style="margin: 10px 0 0 0; opacity: 0.9;">${schedule.name}</p>
+          </div>
+          <div style="padding: 20px;">
+            <div style="background: white; border-radius: 8px; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+              <h2 style="margin: 0 0 15px 0; color: #1e293b;">🔔 Đây là email test</h2>
+              <p>Email này được gửi để kiểm tra cấu hình báo cáo OEE định kỳ.</p>
+              <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+                <tr><td style="padding: 8px; border: 1px solid #e2e8f0;"><strong>Tên báo cáo:</strong></td><td style="padding: 8px; border: 1px solid #e2e8f0;">${schedule.name}</td></tr>
+                <tr><td style="padding: 8px; border: 1px solid #e2e8f0;"><strong>Tần suất:</strong></td><td style="padding: 8px; border: 1px solid #e2e8f0;">${schedule.frequency === 'weekly' ? 'Hàng tuần' : 'Hàng tháng'}</td></tr>
+                <tr><td style="padding: 8px; border: 1px solid #e2e8f0;"><strong>Giờ gửi:</strong></td><td style="padding: 8px; border: 1px solid #e2e8f0;">${schedule.hour}:00</td></tr>
+              </table>
+            </div>
+          </div>
+          <div style="background: #1e293b; color: white; padding: 15px; text-align: center; font-size: 12px;">
+            <p style="margin: 0;">Email test từ hệ thống SPC/CPK Calculator</p>
+          </div>
+        </div>
+      `;
+
+      try {
+        const result = await sendEmail(
+          input.testEmail,
+          `[TEST] Báo cáo OEE: ${schedule.name}`,
+          emailHtml
+        );
+        return { success: result.success, message: result.success ? 'Email sent successfully' : 'Failed to send email' };
+      } catch (error) {
+        return { success: false, message: String(error) };
+      }
+    }),
+
+  // Get OEE by shift comparison
+  getOeeByShift: protectedProcedure
+    .input(z.object({
+      machineId: z.number().optional(),
+      period: z.enum(['week', 'month']).default('week'),
+    }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      
+      const now = new Date();
+      const startDate = input.period === 'week'
+        ? new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+        : new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+      const conditions = [gte(machineOeeData.recordedAt, startDate)];
+      if (input.machineId) {
+        conditions.push(eq(machineOeeData.machineId, input.machineId));
+      }
+
+      // Get OEE by shift (morning: 6-14, afternoon: 14-22, night: 22-6)
+      const shiftData = await db
+        .select({
+          shift: sql<string>`CASE 
+            WHEN HOUR(${machineOeeData.recordedAt}) >= 6 AND HOUR(${machineOeeData.recordedAt}) < 14 THEN 'morning'
+            WHEN HOUR(${machineOeeData.recordedAt}) >= 14 AND HOUR(${machineOeeData.recordedAt}) < 22 THEN 'afternoon'
+            ELSE 'night'
+          END`,
+          avgOee: sql<number>`AVG(${machineOeeData.oee})`,
+          avgAvailability: sql<number>`AVG(${machineOeeData.availability})`,
+          avgPerformance: sql<number>`AVG(${machineOeeData.performance})`,
+          avgQuality: sql<number>`AVG(${machineOeeData.quality})`,
+          recordCount: sql<number>`COUNT(*)`,
+          totalDowntime: sql<number>`SUM(${machineOeeData.plannedDowntime} + ${machineOeeData.unplannedDowntime})`,
+        })
+        .from(machineOeeData)
+        .where(and(...conditions))
+        .groupBy(sql`CASE 
+          WHEN HOUR(${machineOeeData.recordedAt}) >= 6 AND HOUR(${machineOeeData.recordedAt}) < 14 THEN 'morning'
+          WHEN HOUR(${machineOeeData.recordedAt}) >= 14 AND HOUR(${machineOeeData.recordedAt}) < 22 THEN 'afternoon'
+          ELSE 'night'
+        END`);
+
+      // Get OEE trend by shift and date
+      const trendData = await db
+        .select({
+          date: sql<string>`DATE(${machineOeeData.recordedAt})`,
+          shift: sql<string>`CASE 
+            WHEN HOUR(${machineOeeData.recordedAt}) >= 6 AND HOUR(${machineOeeData.recordedAt}) < 14 THEN 'morning'
+            WHEN HOUR(${machineOeeData.recordedAt}) >= 14 AND HOUR(${machineOeeData.recordedAt}) < 22 THEN 'afternoon'
+            ELSE 'night'
+          END`,
+          avgOee: sql<number>`AVG(${machineOeeData.oee})`,
+        })
+        .from(machineOeeData)
+        .where(and(...conditions))
+        .groupBy(
+          sql`DATE(${machineOeeData.recordedAt})`,
+          sql`CASE 
+            WHEN HOUR(${machineOeeData.recordedAt}) >= 6 AND HOUR(${machineOeeData.recordedAt}) < 14 THEN 'morning'
+            WHEN HOUR(${machineOeeData.recordedAt}) >= 14 AND HOUR(${machineOeeData.recordedAt}) < 22 THEN 'afternoon'
+            ELSE 'night'
+          END`
+        )
+        .orderBy(sql`DATE(${machineOeeData.recordedAt})`);
+
+      // Format shift data
+      const shiftMap = new Map(shiftData.map(s => [s.shift, s]));
+      const shifts = ['morning', 'afternoon', 'night'].map(shift => {
+        const data = shiftMap.get(shift);
+        return {
+          shift,
+          shiftName: shift === 'morning' ? 'Ca Sáng (6:00-14:00)' 
+            : shift === 'afternoon' ? 'Ca Chiều (14:00-22:00)' 
+            : 'Ca Đêm (22:00-6:00)',
+          avgOee: data?.avgOee || 0,
+          avgAvailability: data?.avgAvailability || 0,
+          avgPerformance: data?.avgPerformance || 0,
+          avgQuality: data?.avgQuality || 0,
+          recordCount: data?.recordCount || 0,
+          totalDowntime: data?.totalDowntime || 0,
+        };
+      });
+
+      // Format trend data by date
+      const dateMap = new Map<string, { date: string; morning: number; afternoon: number; night: number }>();
+      for (const row of trendData) {
+        if (!dateMap.has(row.date)) {
+          dateMap.set(row.date, { date: row.date, morning: 0, afternoon: 0, night: 0 });
+        }
+        const entry = dateMap.get(row.date)!;
+        if (row.shift === 'morning') entry.morning = row.avgOee || 0;
+        else if (row.shift === 'afternoon') entry.afternoon = row.avgOee || 0;
+        else entry.night = row.avgOee || 0;
+      }
+
+      // Find best and worst shift
+      const sortedShifts = [...shifts].sort((a, b) => b.avgOee - a.avgOee);
+      const bestShift = sortedShifts[0];
+      const worstShift = sortedShifts[sortedShifts.length - 1];
+
+      return {
+        shifts,
+        trend: Array.from(dateMap.values()).sort((a, b) => a.date.localeCompare(b.date)),
+        bestShift: bestShift.avgOee > 0 ? bestShift : null,
+        worstShift: worstShift.avgOee > 0 ? worstShift : null,
+        oeeGap: bestShift.avgOee > 0 && worstShift.avgOee > 0 
+          ? bestShift.avgOee - worstShift.avgOee 
+          : 0,
+      };
+    }),
+
   // ==================== API Key Management ====================
   
   createApiKey: protectedProcedure
