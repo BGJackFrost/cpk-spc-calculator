@@ -386,6 +386,13 @@
       "when": 1766053815368,
       "tag": "0054_complete_prodigy",
       "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "5",
+      "when": 1766068136625,
+      "tag": "0055_normal_daimon_hellstrom",
+      "breakpoints": true
     }
   ]
 }

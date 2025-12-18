@@ -2976,3 +2976,85 @@ export const machineOeeData = mysqlTable("machine_oee_data", {
 
 export type MachineOeeData = typeof machineOeeData.$inferSelect;
 export type InsertMachineOeeData = typeof machineOeeData.$inferInsert;
+
+
+// ==================== Machine Webhook Configs ====================
+export const machineWebhookConfigs = mysqlTable("machine_webhook_configs", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 200 }).notNull(),
+  webhookUrl: varchar("webhookUrl", { length: 500 }).notNull(),
+  webhookSecret: varchar("webhookSecret", { length: 255 }),
+  triggerType: mysqlEnum("triggerType", ["inspection_fail", "oee_low", "measurement_out_of_spec", "all"]).notNull(),
+  machineIds: text("machineIds"), // JSON array of machine IDs, null = all machines
+  oeeThreshold: decimal("oeeThreshold", { precision: 5, scale: 2 }), // Trigger when OEE below this
+  isActive: int("isActive").notNull().default(1),
+  retryCount: int("retryCount").notNull().default(3),
+  retryDelaySeconds: int("retryDelaySeconds").notNull().default(60),
+  headers: text("headers"), // JSON object for custom headers
+  createdBy: int("createdBy").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type MachineWebhookConfig = typeof machineWebhookConfigs.$inferSelect;
+export type InsertMachineWebhookConfig = typeof machineWebhookConfigs.$inferInsert;
+
+// ==================== Machine Webhook Logs ====================
+export const machineWebhookLogs = mysqlTable("machine_webhook_logs", {
+  id: int("id").autoincrement().primaryKey(),
+  webhookConfigId: int("webhookConfigId").notNull(),
+  triggerType: varchar("triggerType", { length: 50 }).notNull(),
+  triggerDataId: int("triggerDataId"), // ID of the data that triggered webhook
+  requestPayload: text("requestPayload"),
+  responseStatus: int("responseStatus"),
+  responseBody: text("responseBody"),
+  responseTime: int("responseTime"), // milliseconds
+  attempt: int("attempt").notNull().default(1),
+  status: mysqlEnum("status", ["pending", "success", "failed", "retrying"]).notNull().default("pending"),
+  errorMessage: text("errorMessage"),
+  triggeredAt: timestamp("triggeredAt").defaultNow().notNull(),
+  completedAt: timestamp("completedAt"),
+});
+
+export type MachineWebhookLog = typeof machineWebhookLogs.$inferSelect;
+export type InsertMachineWebhookLog = typeof machineWebhookLogs.$inferInsert;
+
+// ==================== Machine Field Mappings ====================
+export const machineFieldMappings = mysqlTable("machine_field_mappings", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 200 }).notNull(),
+  apiKeyId: int("apiKeyId"), // Specific to API key, null = global
+  machineType: varchar("machineType", { length: 100 }), // AOI, AVI, CMM, etc.
+  sourceField: varchar("sourceField", { length: 200 }).notNull(), // Field name from machine data
+  targetField: varchar("targetField", { length: 200 }).notNull(), // Field name in SPC system
+  targetTable: mysqlEnum("targetTable", ["measurements", "inspection_data", "oee_records"]).notNull(),
+  transformType: mysqlEnum("transformType", ["direct", "multiply", "divide", "add", "subtract", "custom"]).notNull().default("direct"),
+  transformValue: decimal("transformValue", { precision: 15, scale: 6 }), // Value for transform
+  customTransform: text("customTransform"), // Custom JS expression
+  defaultValue: varchar("defaultValue", { length: 255 }), // Default if source is null
+  isRequired: int("isRequired").notNull().default(0),
+  isActive: int("isActive").notNull().default(1),
+  createdBy: int("createdBy").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type MachineFieldMapping = typeof machineFieldMappings.$inferSelect;
+export type InsertMachineFieldMapping = typeof machineFieldMappings.$inferInsert;
+
+// ==================== Machine Realtime Events (for SSE) ====================
+export const machineRealtimeEvents = mysqlTable("machine_realtime_events", {
+  id: int("id").autoincrement().primaryKey(),
+  eventType: mysqlEnum("eventType", ["inspection", "measurement", "oee", "alert", "status"]).notNull(),
+  machineId: int("machineId"),
+  machineName: varchar("machineName", { length: 200 }),
+  apiKeyId: int("apiKeyId"),
+  eventData: text("eventData").notNull(), // JSON data
+  severity: mysqlEnum("severity", ["info", "warning", "error", "critical"]).notNull().default("info"),
+  isProcessed: int("isProcessed").notNull().default(0),
+  processedAt: timestamp("processedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type MachineRealtimeEvent = typeof machineRealtimeEvents.$inferSelect;
+export type InsertMachineRealtimeEvent = typeof machineRealtimeEvents.$inferInsert;

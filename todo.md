@@ -3450,3 +3450,33 @@
 - [x] Biểu đồ thời gian xử lý trung bình
 - [x] Tài liệu API đầy đủ cho nhà cung cấp
 - [x] Route và menu trong sidebar
+
+
+## Phase 160 - Machine Integration Advanced Features
+
+### Webhook callback cho dữ liệu lỗi AOI/AVI
+- [x] Bảng machine_webhook_configs lưu cấu hình webhook
+- [x] Bảng machine_webhook_logs lưu lịch sử gọi webhook
+- [x] API CRUD cho webhook configs
+- [x] API testWebhook kiểm tra kết nối
+- [x] Trigger webhook khi nhận dữ liệu inspection fail
+- [x] Retry mechanism với configurable count và delay
+- [x] Log webhook calls và responses
+- [x] Tab Webhooks trong MachineIntegrationDashboard
+
+### Mapping tự động fields dữ liệu máy vào SPC
+- [x] Bảng machine_field_mappings lưu mapping rules
+- [x] API CRUD cho field mappings
+- [x] API detectFields auto-detect fields từ JSON mẫu
+- [x] Transform types: direct, multiply, divide, add, subtract
+- [x] Target tables: measurements, inspection_data, oee_records
+- [x] Tab Field Mapping trong MachineIntegrationDashboard
+
+### Dashboard realtime dữ liệu máy
+- [x] Bảng machine_realtime_events lưu events
+- [x] API listRealtimeEvents với filter
+- [x] API getRealtimeStats thống kê 1h
+- [x] Tab Realtime trong MachineIntegrationDashboard
+- [x] Event stream với auto-refresh 5s
+- [x] Stats cards: total, critical, error, warning
+- [x] Cảnh báo realtime khi có lỗi (severity badges)
