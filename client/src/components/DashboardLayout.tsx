@@ -45,6 +45,7 @@ import { useLanguage } from "../contexts/LanguageContext";
 import { NotificationBell } from "./NotificationBell";
 import { WebSocketIndicator } from "./WebSocketIndicator";
 import { SseIndicator } from "./SseIndicator";
+import { TopNavigation } from "./TopNavigation";
 
 // Menu groups configuration
 interface MenuItem {
@@ -806,6 +807,24 @@ function DashboardLayoutContent({
       <SidebarInset className="flex flex-col min-h-screen">
         <header className="h-16 shrink-0 flex items-center gap-2 border-b px-4 lg:px-6">
           <SidebarTrigger className="-ml-1 lg:hidden" />
+          
+          {/* Logo */}
+          <div className="flex items-center gap-2 mr-4">
+            <img 
+              src="/logo.png" 
+              alt="Logo" 
+              className="h-8 w-8 object-contain"
+              onError={(e) => {
+                // Fallback to default icon if logo not found
+                (e.target as HTMLImageElement).style.display = 'none';
+              }}
+            />
+            <span className="hidden md:inline font-semibold text-lg">MMS/SPC</span>
+          </div>
+          
+          {/* Top Navigation Menu */}
+          <TopNavigation />
+          
           <div className="flex-1" />
           <SseIndicator />
           <WebSocketIndicator />

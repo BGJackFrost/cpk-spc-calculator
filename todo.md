@@ -4073,3 +4073,26 @@
 - [ ] Xác định các tính năng còn thiếu
 - [ ] Đề xuất phương hướng nâng cấp
 
+
+## Phase 186: Nâng cấp Menu và UI
+
+### Top Navigation Menu
+- [x] Thiết kế Top Navigation với dropdown menus
+- [x] Phân chia menu theo hệ thống: MMS, SPC, System
+- [x] Triển khai TopNavigation component
+- [x] Tích hợp với DashboardLayout
+
+### Logo và Header
+- [x] Thêm logo vào Header
+- [ ] Cấu hình logo động từ Settings
+- [x] Responsive logo cho mobile
+
+### Tối ưu Sidebar Menu
+- [ ] Giảm số lượng items trong sidebar
+- [ ] Gộp các menu liên quan
+- [ ] Cải thiện UX navigation
+
+### Bắt đầu Roadmap 2025
+- [ ] Triển khai AI/ML Integration cho SPC
+- [ ] Cải thiện Dashboard với KPIs
+- [ ] Nâng cấp báo cáo và analytics
