@@ -3998,3 +3998,27 @@
 - [x] Thực hiện migrate với progress bar
 - [x] Hiển thị kết quả (success/failed records)
 - [x] Thêm route /data-migration và link trong sidebar
+
+
+## Phase 182 - Schema Comparison, Data Validation, Incremental Migration
+
+### Schema Comparison Tool
+- [x] Tạo trang SchemaComparison.tsx với UI so sánh 2 database
+- [x] Hiển thị danh sách bảng với trạng thái: Match, Added, Removed, Modified
+- [x] So sánh chi tiết columns: tên, type, nullable, default, constraints
+- [x] Highlight khác biệt với màu sắc (xanh=match, vàng=modified, đỏ=removed, xanh lá=added)
+- [x] Export báo cáo khác biệt ra file
+
+### Data Validation Rules
+- [x] Tạo component ValidationRuleBuilder với drag-and-drop
+- [x] Hỗ trợ các rule types: Required, Format, Range, Unique, Custom Regex
+- [x] Preview validation results trước khi migrate
+- [x] Hiển thị số records pass/fail cho mỗi rule
+- [x] Cho phép skip hoặc fix invalid records
+
+### Incremental Migration
+- [x] Thêm option Incremental Migration vào wizard
+- [x] Detect changes dựa trên timestamp column hoặc hash
+- [x] Hiển thị số records: New, Updated, Deleted, Unchanged
+- [x] Cho phép chọn sync mode: Insert Only, Update Only, Full Sync
+- [x] Lưu last sync timestamp để migration tiếp theo
