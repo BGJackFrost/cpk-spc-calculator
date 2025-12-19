@@ -25,15 +25,12 @@ export default function NtfDepartmentDashboard() {
   const [selectedDepartment, setSelectedDepartment] = useState<string>("all");
 
   // Get department list
-  const { data: departments } = trpc.organization.getDepartments.useQuery(undefined, {
-    retry: false,
-    onError: () => {}
-  });
+  const { data: departments } = trpc.organization.listDepartments.useQuery();
 
   // Get department NTF analysis
-  const { data, isLoading } = trpc.ntfConfig.getDepartmentAnalysis.useQuery(
+  const { data, isLoading } = trpc.ceoDashboard.getDepartmentAnalysis.useQuery(
     { days, departmentId: selectedDepartment === "all" ? undefined : Number(selectedDepartment) },
-    { retry: false, onError: () => {} }
+    { retry: false }
   );
 
   const getStatusColor = (rate: number) => {

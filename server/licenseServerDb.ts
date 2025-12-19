@@ -611,7 +611,11 @@ export async function createLicenseInServer(data: {
   }
 
   try {
-    const [result] = await db.insert(licenseServerLicenses).values(data);
+    const insertData = {
+      ...data,
+      price: data.price !== undefined ? String(data.price) : undefined,
+    };
+    const [result] = await db.insert(licenseServerLicenses).values(insertData);
     
     // Log creation
     await db.insert(licenseServerAuditLogs).values({

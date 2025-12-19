@@ -269,7 +269,7 @@ export default function NotificationSettings() {
                               ...newChannel,
                               config: { 
                                 ...newChannel.config, 
-                                headers: { Authorization: e.target.value }
+                                authHeader: e.target.value || ''
                               }
                             })}
                           />

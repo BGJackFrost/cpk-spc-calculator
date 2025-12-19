@@ -169,8 +169,8 @@ export default function NtfPrediction({ productionLineId }: NtfPredictionProps) 
                   />
                   <YAxis tickFormatter={(v) => `${v.toFixed(0)}%`} />
                   <Tooltip 
-                    formatter={(value: number | null, name: string) => [
-                      value !== null ? `${value.toFixed(1)}%` : '-',
+                    formatter={(value: any, name: string) => [
+                      value !== null && typeof value === 'number' ? `${value.toFixed(1)}%` : '-',
                       name === 'actual' ? 'Thực tế' : 'Dự đoán'
                     ]}
                     labelFormatter={(label) => new Date(label).toLocaleDateString('vi-VN')}

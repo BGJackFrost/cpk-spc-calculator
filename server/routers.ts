@@ -8454,12 +8454,12 @@ Hãy trả về JSON với format:
     upsertChannel: protectedProcedure
       .input(z.object({
         channelType: z.enum(['email', 'sms', 'push', 'webhook']),
-        config: z.record(z.any()),
+        config: z.record(z.string(), z.any()),
         enabled: z.boolean().default(true),
       }))
       .mutation(async ({ ctx, input }) => {
         const { upsertChannel } = await import('./services/notificationService');
-        const id = await upsertChannel(ctx.user.id, input.channelType, input.config, input.enabled);
+        const id = await upsertChannel(ctx.user.id, input.channelType, input.config as Record<string, any>, input.enabled);
         return { success: true, id };
       }),
     
@@ -8488,7 +8488,7 @@ Hãy trả về JSON với format:
       .input(z.object({
         channelType: z.enum(['email', 'sms', 'push', 'webhook']),
         recipient: z.string(),
-        config: z.record(z.any()).optional(),
+        config: z.record(z.string(), z.any()).optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         const { sendNotification } = await import('./services/notificationService');

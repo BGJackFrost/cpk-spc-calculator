@@ -2186,7 +2186,7 @@ async function checkMachineOeeAlerts(): Promise<{ processed: number; triggered: 
     const machineNames = await db
       .select({ machineId: machineApiKeys.machineId, name: machineApiKeys.name })
       .from(machineApiKeys)
-      .groupBy(machineApiKeys.machineId);
+      .groupBy(machineApiKeys.machineId, machineApiKeys.name);
     const nameMap = new Map(machineNames.map(m => [m.machineId, m.name]));
     
     for (const config of alertConfigs) {
@@ -2453,7 +2453,7 @@ async function processMachineOeeReports(): Promise<{ processed: number; sent: nu
     const machineNames = await db
       .select({ machineId: machineApiKeys.machineId, name: machineApiKeys.name })
       .from(machineApiKeys)
-      .groupBy(machineApiKeys.machineId);
+      .groupBy(machineApiKeys.machineId, machineApiKeys.name);
     const nameMap = new Map(machineNames.map(m => [m.machineId, m.name]));
     
     for (const schedule of schedules) {

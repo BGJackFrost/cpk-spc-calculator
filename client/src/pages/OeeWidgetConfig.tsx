@@ -69,7 +69,7 @@ export default function OeeWidgetConfig() {
                   <SelectContent>
                     <SelectItem value="all">Tất cả máy (Tổng hợp)</SelectItem>
                     {machines?.map((m) => (
-                      <SelectItem key={m.id} value={m.id.toString()}>
+                      <SelectItem key={m.id ?? `machine-${m.name}`} value={(m.id ?? 0).toString()}>
                         {m.name}
                       </SelectItem>
                     ))}

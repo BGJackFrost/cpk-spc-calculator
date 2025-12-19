@@ -1515,7 +1515,7 @@ function RealtimeTab() {
             ) : (
               <div className="space-y-2 max-h-[500px] overflow-y-auto">
                 {events?.map((event) => {
-                  let eventData: Record<string, unknown> = {};
+                  let eventData: Record<string, any> = {};
                   try {
                     eventData = JSON.parse(event.eventData);
                   } catch {}
@@ -1535,8 +1535,8 @@ function RealtimeTab() {
                           )}
                         </div>
                         <div className="text-sm mt-1">
-                          {eventData.type && <span className="font-medium">{eventData.type as string}: </span>}
-                          {eventData.message && <span>{eventData.message as string}</span>}
+                          {eventData.type && <span className="font-medium">{String(eventData.type)}: </span>}
+                          {eventData.message && <span>{String(eventData.message)}</span>}
                           {eventData.failedCount !== undefined && (
                             <span>Failed: {String(eventData.failedCount)}/{String(eventData.totalCount)}</span>
                           )}

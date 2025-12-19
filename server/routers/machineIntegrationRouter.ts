@@ -1291,7 +1291,7 @@ export const machineIntegrationRouter = router({
       oeeThreshold: z.number().min(0).max(100).optional(),
       retryCount: z.number().min(0).max(10).default(3),
       retryDelaySeconds: z.number().min(10).max(3600).default(60),
-      headers: z.record(z.string()).optional(),
+      headers: z.record(z.string(), z.string()).optional(),
     }))
     .mutation(async ({ input, ctx }) => {
       const db = await getDb();
@@ -1323,7 +1323,7 @@ export const machineIntegrationRouter = router({
       isActive: z.boolean().optional(),
       retryCount: z.number().min(0).max(10).optional(),
       retryDelaySeconds: z.number().min(10).max(3600).optional(),
-      headers: z.record(z.string()).optional(),
+      headers: z.record(z.string(), z.string()).optional(),
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();
@@ -1533,7 +1533,7 @@ export const machineIntegrationRouter = router({
     }),
 
   detectFields: protectedProcedure
-    .input(z.object({ sampleData: z.record(z.unknown()) }))
+    .input(z.object({ sampleData: z.record(z.string(), z.unknown()) }))
     .mutation(async ({ input }) => {
       const fields: Array<{ name: string; type: string; sample: unknown }> = [];
       

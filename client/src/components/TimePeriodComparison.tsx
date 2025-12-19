@@ -179,16 +179,34 @@ export default function TimePeriodComparison() {
     endDate: periods.previous.endDate,
   });
 
-  // Fetch CPK data for both periods
-  const { data: currentCpkData, isLoading: loadingCurrentCpk } = trpc.spc.history.useQuery({
-    startDate: new Date(periods.current.startDate),
-    endDate: new Date(periods.current.endDate),
-  });
+  // Fetch CPK data for both periods - filter client-side since history API doesn't support date range
+  const { data: allCpkData, isLoading: loadingCpk } = trpc.spc.history.useQuery({ limit: 1000 });
+  
+  // Filter CPK data by date range client-side
+  const currentCpkData = useMemo(() => {
+    if (!allCpkData) return [];
+    const startDate = new Date(periods.current.startDate);
+    const endDate = new Date(periods.current.endDate);
+    endDate.setHours(23, 59, 59, 999);
+    return allCpkData.filter((r: any) => {
+      const date = new Date(r.createdAt);
+      return date >= startDate && date <= endDate;
+    });
+  }, [allCpkData, periods.current]);
 
-  const { data: previousCpkData, isLoading: loadingPreviousCpk } = trpc.spc.history.useQuery({
-    startDate: new Date(periods.previous.startDate),
-    endDate: new Date(periods.previous.endDate),
-  });
+  const previousCpkData = useMemo(() => {
+    if (!allCpkData) return [];
+    const startDate = new Date(periods.previous.startDate);
+    const endDate = new Date(periods.previous.endDate);
+    endDate.setHours(23, 59, 59, 999);
+    return allCpkData.filter((r: any) => {
+      const date = new Date(r.createdAt);
+      return date >= startDate && date <= endDate;
+    });
+  }, [allCpkData, periods.previous]);
+  
+  const loadingCurrentCpk = loadingCpk;
+  const loadingPreviousCpk = loadingCpk;
 
   const isLoading = loadingCurrentOee || loadingPreviousOee || loadingCurrentCpk || loadingPreviousCpk;
 
@@ -233,8 +251,8 @@ export default function TimePeriodComparison() {
     };
 
     return {
-      current: calcStats(currentCpkData as CpkRecord[] | undefined),
-      previous: calcStats(previousCpkData as CpkRecord[] | undefined),
+      current: calcStats(currentCpkData as unknown as CpkRecord[] | undefined),
+      previous: calcStats(previousCpkData as unknown as CpkRecord[] | undefined),
     };
   }, [currentCpkData, previousCpkData]);
 

@@ -358,11 +358,11 @@ export default function OEEComparisonDashboard() {
                         <PolarGrid />
                         <PolarAngleAxis dataKey="metric" />
                         <PolarRadiusAxis angle={30} domain={[0, 100]} />
-                        {oeeComparison?.items?.slice(0, 5).map((item: { name: string }, index: number) => (
+                        {oeeComparison?.items?.slice(0, 5).map((item, index: number) => (
                           <Radar
-                            key={item.name}
-                            name={item.name}
-                            dataKey={item.name}
+                            key={item.name || index}
+                            name={item.name || `Item ${index}`}
+                            dataKey={item.name || `item_${index}`}
                             stroke={COLORS[index % COLORS.length]}
                             fill={COLORS[index % COLORS.length]}
                             fillOpacity={0.2}
@@ -486,11 +486,11 @@ export default function OEEComparisonDashboard() {
                       <YAxis domain={[0, 100]} />
                       <Tooltip />
                       <Legend />
-                      {oeeComparison?.items?.slice(0, 5).map((item: { name: string }, index: number) => (
+                      {oeeComparison?.items?.slice(0, 5).map((item, index: number) => (
                         <Line
-                          key={item.name}
+                          key={item.name || index}
                           type="monotone"
-                          dataKey={item.name}
+                          dataKey={item.name || `item_${index}`}
                           stroke={COLORS[index % COLORS.length]}
                           strokeWidth={2}
                           dot={false}

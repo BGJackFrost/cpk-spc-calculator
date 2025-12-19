@@ -3785,3 +3785,22 @@
 - [x] Đã tạo drizzle/schema-postgresql-module1.ts
 - [x] Đã tạo docs/POSTGRESQL_MIGRATION_GUIDE.md
 - [ ] Chưa thực hiện migration thực tế (cần PostgreSQL server)
+
+
+## Phase 172 - TypeScript Fixes, PostgreSQL Setup & GROUP BY Fix
+
+### Sửa 24 lỗi TypeScript còn lại (24 → 0 lỗi)
+- [x] NtfDepartmentDashboard.tsx - procedure names (sửa getDepartments → listDepartments, ntfConfig → ceoDashboard)
+- [x] OEEComparisonDashboard.tsx - type mismatch (sửa type annotation)
+- [x] Server files - insert arguments (sửa z.record, price type)
+- [x] Các file frontend còn lại (TimePeriodComparison, UnifiedDashboard, NotificationSettings, etc.)
+
+### Sửa lỗi GROUP BY trong machine_api_keys query
+- [x] Tìm và sửa lỗi GROUP BY trong scheduledJobs.ts (thêm machineApiKeys.name vào groupBy)
+- [x] Test lại các scheduled jobs (851 tests pass)
+
+### Cài đặt PostgreSQL server
+- [x] Cài đặt PostgreSQL 14 trên sandbox
+- [x] Tạo database spc_calculator và user spc_user
+- [x] Chạy migration Module 1 (3 bảng: users, local_users, login_history)
+- [x] Test kết nối và verify data (3 bảng đã tạo thành công)

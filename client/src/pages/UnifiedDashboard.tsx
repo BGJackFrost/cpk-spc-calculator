@@ -114,7 +114,7 @@ export default function UnifiedDashboard() {
     });
 
     // Process CPK (map by station/product to machines)
-    filteredCpk.forEach((r: { stationName?: string; cpk?: number | string }) => {
+    filteredCpk.forEach((r) => {
       // Find matching machine by station name
       const machine = machines.find(m => 
         m.name?.toLowerCase().includes(r.stationName?.toLowerCase() || '') ||
@@ -129,7 +129,7 @@ export default function UnifiedDashboard() {
     // Calculate CPK averages
     Object.values(machineStats).forEach(stat => {
       if (stat.cpkRecords.length > 0) {
-        stat.avgCpk = stat.cpkRecords.reduce((sum: number, r: { cpk?: number | string }) => sum + Number(r.cpk || 0), 0) / stat.cpkRecords.length;
+        stat.avgCpk = stat.cpkRecords.reduce((sum: number, r: any) => sum + Number(r.cpk || 0), 0) / stat.cpkRecords.length;
         stat.cpkCount = stat.cpkRecords.length;
       }
     });
@@ -179,7 +179,7 @@ export default function UnifiedDashboard() {
       timeSeriesData[date].oeeCount++;
     });
 
-    filteredCpk.forEach((r: { createdAt: string | Date; cpk?: number | string }) => {
+    filteredCpk.forEach((r) => {
       const date = new Date(r.createdAt).toISOString().split('T')[0];
       if (!timeSeriesData[date]) {
         timeSeriesData[date] = { date, oee: 0, cpk: 0, oeeCount: 0, cpkCount: 0 };
