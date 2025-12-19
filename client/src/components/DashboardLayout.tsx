@@ -63,206 +63,60 @@ interface MenuGroup {
   defaultOpen?: boolean;
 }
 
+// Simplified sidebar menu - only frequently used items
+// Full menu is available in Top Navigation
 const menuGroups: MenuGroup[] = [
-  // ===== SPC/CPK SYSTEM =====
+  // ===== QUICK ACCESS =====
   {
-    id: "spcDashboard",
-    labelKey: "menuGroup.spcDashboard",
-    icon: Gauge,
+    id: "quickAccess",
+    labelKey: "menuGroup.quickAccess",
+    icon: Zap,
     defaultOpen: true,
     items: [
       { icon: LayoutDashboard, labelKey: "nav.dashboard", path: "/dashboard" },
-      { icon: Zap, labelKey: "nav.realtimeLine", path: "/realtime-line" },
-      { icon: Cpu, labelKey: "nav.machineOverview", path: "/machine-overview" },
-      { icon: BarChart3, labelKey: "nav.machineStatusReport", path: "/machine-status-report" },
-      { icon: Layers, labelKey: "nav.spcPlanOverview", path: "/spc-visualization" },
-      { icon: Users, labelKey: "nav.supervisorDashboard", path: "/supervisor-dashboard" },
-    ]
-  },
-  {
-    id: "spcAnalysis",
-    labelKey: "menuGroup.spcAnalysis",
-    icon: TrendingUp,
-    defaultOpen: true,
-    items: [
       { icon: TrendingUp, labelKey: "nav.analyze", path: "/analyze" },
-      { icon: GitCompare, labelKey: "nav.multiObjectAnalysis", path: "/multi-analysis" },
-      { icon: ArrowUpDown, labelKey: "nav.lineComparison", path: "/line-comparison" },
-      { icon: GitCompare, labelKey: "nav.machineComparison", path: "/machine-comparison" },
+      { icon: Zap, labelKey: "nav.realtimeLine", path: "/realtime-line" },
       { icon: History, labelKey: "nav.history", path: "/history" },
+      { icon: Brain, labelKey: "nav.anomalyDetection", path: "/anomaly-detection" },
+    ]
+  },
+  // ===== SPC/CPK =====
+  {
+    id: "spc",
+    labelKey: "menuGroup.spc",
+    icon: TrendingUp,
+    items: [
+      { icon: Cpu, labelKey: "nav.machineOverview", path: "/machine-overview" },
+      { icon: Layers, labelKey: "nav.spcPlanOverview", path: "/spc-visualization" },
       { icon: BarChart3, labelKey: "nav.spcReport", path: "/spc-report" },
-    ]
-  },
-  {
-    id: "spcQuality",
-    labelKey: "menuGroup.spcQuality",
-    icon: ClipboardList,
-    items: [
       { icon: AlertTriangle, labelKey: "nav.defectTracking", path: "/defects" },
-      { icon: BarChart3, labelKey: "nav.defectAnalysis", path: "/defect-statistics" },
       { icon: BookOpen, labelKey: "nav.spcRulesConfig", path: "/rules" },
-      { icon: ShieldCheck, labelKey: "nav.customValidation", path: "/validation-rules", adminOnly: true },
-      { icon: BarChart3, labelKey: "nav.cpkBenchmark", path: "/cpk-comparison" },
-      { icon: Clock, labelKey: "nav.shiftAnalysis", path: "/shift-cpk-comparison" },
     ]
   },
+  // ===== MMS =====
   {
-    id: "spcConfig",
-    labelKey: "menuGroup.spcConfig",
-    icon: Settings,
-    items: [
-      { icon: Activity, labelKey: "nav.realtimeConveyor", path: "/production-lines" },
-      { icon: Settings, labelKey: "nav.realtimeMachineConfig", path: "/realtime-machine-config", adminOnly: true },
-      { icon: History, labelKey: "nav.realtimeHistory", path: "/realtime-history" },
-      { icon: AlertTriangle, labelKey: "nav.alarmThreshold", path: "/alarm-threshold-config", adminOnly: true },
-      { icon: Layers, labelKey: "nav.machineAreas", path: "/machine-areas", adminOnly: true },
-    ]
-  },
-  // ===== MMS SYSTEM =====
-  {
-    id: "mmsDashboard",
-    labelKey: "menuGroup.mmsDashboard",
+    id: "mms",
+    labelKey: "menuGroup.mms",
     icon: HardHat,
     items: [
       { icon: Target, labelKey: "nav.oeeDashboard", path: "/oee-dashboard" },
       { icon: Gauge, labelKey: "nav.unifiedDashboard", path: "/unified-dashboard" },
-      { icon: BarChart3, labelKey: "nav.plantKpi", path: "/plant-kpi" },
-      { icon: TrendingUp, labelKey: "nav.advancedAnalytics", path: "/advanced-analytics" },
-      { icon: ClipboardList, labelKey: "nav.maintenanceDashboard", path: "/maintenance-dashboard" },
-    ]
-  },
-  {
-    id: "mmsMaintenance",
-    labelKey: "menuGroup.mmsMaintenance",
-    icon: Wrench,
-    items: [
       { icon: Calendar, labelKey: "nav.maintenanceSchedule", path: "/maintenance-schedule" },
       { icon: Brain, labelKey: "nav.predictiveMaintenance", path: "/predictive-maintenance" },
-      { icon: Cpu, labelKey: "nav.equipmentQr", path: "/equipment-qr" },
-    ]
-  },
-  {
-    id: "mmsSpareParts",
-    labelKey: "menuGroup.mmsSpareParts",
-    icon: Boxes,
-    items: [
       { icon: Boxes, labelKey: "nav.spareParts", path: "/spare-parts" },
-      { icon: BarChart3, labelKey: "nav.sparePartsCostReport", path: "/spare-parts-cost-report" },
-      { icon: BookOpen, labelKey: "nav.sparePartsGuide", path: "/spare-parts-guide" },
-      { icon: Database, labelKey: "nav.mmsDataInit", path: "/mms-data-init", adminOnly: true },
     ]
   },
+  // ===== ADMIN (Admin Only) =====
   {
-    id: "mmsConfig",
-    labelKey: "menuGroup.mmsConfig",
-    icon: Cog,
-    items: [
-      { icon: Cpu, labelKey: "nav.iotGateway", path: "/iot-gateway", adminOnly: true },
-      { icon: FileText, labelKey: "nav.reportsExport", path: "/reports-export" },
-      { icon: Download, labelKey: "nav.exportReports", path: "/export-reports" },
-      { icon: FileText, labelKey: "nav.customReportBuilder", path: "/custom-report-builder" },
-      { icon: AlertTriangle, labelKey: "nav.alertConfig", path: "/alert-config", adminOnly: true },
-      { icon: Target, labelKey: "nav.oeeAlertThresholds", path: "/oee-alert-thresholds", adminOnly: true },
-      { icon: Calendar, labelKey: "nav.scheduledReportManagement", path: "/scheduled-reports", adminOnly: true },
-      { icon: Server, labelKey: "nav.machineIntegration", path: "/machine-integration", adminOnly: true },
-      { icon: Bell, labelKey: "nav.ntfConfig", path: "/ntf-config", adminOnly: true },
-      { icon: BarChart3, labelKey: "nav.ntfDashboard", path: "/ntf-dashboard", adminOnly: true },
-      { icon: GitCompare, labelKey: "nav.ntfComparison", path: "/ntf-comparison", adminOnly: true },
-      { icon: BellRing, labelKey: "nav.notificationSettings", path: "/notification-settings", adminOnly: true },
-      { icon: Clock, labelKey: "nav.ntfShiftAnalysis", path: "/ntf-shift-analysis", adminOnly: true },
-      { icon: Package, labelKey: "nav.ntfProductAnalysis", path: "/ntf-product-analysis", adminOnly: true },
-      { icon: Building2, labelKey: "nav.ntfDepartment", path: "/ntf-department", adminOnly: true },
-      { icon: Truck, labelKey: "nav.ntfSupplierAnalysis", path: "/ntf-supplier-analysis", adminOnly: true },
-      { icon: Thermometer, labelKey: "nav.ntfEnvironment", path: "/ntf-environment", adminOnly: true },
-      { icon: AlertTriangle, labelKey: "nav.environmentAlerts", path: "/environment-alerts", adminOnly: true },
-      { icon: Award, labelKey: "nav.ceoDashboard", path: "/ceo-dashboard", adminOnly: true },
-      { icon: Target, labelKey: "nav.alertThresholdConfig", path: "/alert-threshold-config", adminOnly: true },
-      { icon: Mail, labelKey: "nav.scheduledReports", path: "/scheduled-reports" },
-      { icon: Clock, labelKey: "nav.shiftReports", path: "/shift-reports" },
-      { icon: FileSpreadsheet, labelKey: "nav.exportRealtime", path: "/export-realtime" },
-    ]
-  },
-  
-  {
-    id: "production",
-    labelKey: "menuGroup.production",
-    icon: Building2,
-    items: [
-      { icon: Factory, labelKey: "productionLine", path: "/production-line-management", adminOnly: true },
-      { icon: Wrench, labelKey: "workstation", path: "/workstations", adminOnly: true },
-      { icon: Cog, labelKey: "machine", path: "/machines", adminOnly: true },
-      { icon: Cpu, labelKey: "machineType", path: "/machine-types", adminOnly: true },
-      { icon: Wrench, labelKey: "fixture", path: "/fixtures", adminOnly: true },
-      { icon: GitBranch, labelKey: "process", path: "/processes", adminOnly: true },
-    ]
-  },
-  {
-    id: "masterData",
-    labelKey: "menuGroup.masterData",
-    icon: Boxes,
-    items: [
-      { icon: Package, labelKey: "nav.productManagement", path: "/products", adminOnly: true },
-      { icon: Ruler, labelKey: "nav.measurementStandards", path: "/measurement-standards", adminOnly: true },
-      { icon: BarChart3, labelKey: "nav.measurementStandardsDashboard", path: "/measurement-standards-dashboard", adminOnly: true },
-      { icon: FileSpreadsheet, labelKey: "nav.mappingManagement", path: "/mappings", adminOnly: true },
-      { icon: Calendar, labelKey: "nav.spcPlanManagement", path: "/spc-plans", adminOnly: true },
-      { icon: Zap, labelKey: "nav.quickSpcPlan", path: "/quick-spc-plan", adminOnly: true },
-    ]
-  },
-  {
-    id: "users",
-    labelKey: "menuGroup.users",
-    icon: Users,
+    id: "admin",
+    labelKey: "menuGroup.admin",
+    icon: Settings,
     items: [
       { icon: Users, labelKey: "nav.userManagement", path: "/users" },
-      { icon: UserCog, labelKey: "nav.localUserManagement", path: "/local-users", adminOnly: true },
-
-      { icon: History, labelKey: "nav.loginHistory", path: "/login-history", adminOnly: true },
-      { icon: Building2, labelKey: "nav.organization", path: "/organization", adminOnly: true },
-      { icon: GitBranch, labelKey: "nav.approvalWorkflow", path: "/approval-workflow", adminOnly: true },
-      { icon: Shield, labelKey: "nav.modulePermissions", path: "/module-permissions", adminOnly: true },
-      { icon: Clock, labelKey: "nav.pendingApprovals", path: "/pending-approvals" },
-      { icon: BarChart3, labelKey: "nav.approvalReport", path: "/approval-report" },
-    ]
-  },
-  {
-    id: "system",
-    labelKey: "menuGroup.system",
-    icon: ShieldCheck,
-    items: [
-      { icon: Settings, labelKey: "nav.settingsAndConnections", path: "/settings", adminOnly: true },
       { icon: Database, labelKey: "nav.databaseUnified", path: "/database-unified", adminOnly: true },
-      { icon: Database, labelKey: "nav.databaseWizard", path: "/database-wizard", adminOnly: true },
-      { icon: ArrowUpDown, labelKey: "nav.dataMigration", path: "/data-migration", adminOnly: true },
-      { icon: ArrowUpDown, labelKey: "nav.dataMigrationEnhanced", path: "/data-migration-enhanced", adminOnly: true },
-      { icon: Database, labelKey: "nav.schemaComparison", path: "/schema-comparison", adminOnly: true },
-      { icon: FolderClock, labelKey: "nav.backupHistory", path: "/backup-history", adminOnly: true },
-      { icon: Building2, labelKey: "nav.companyInfo", path: "/company-info", adminOnly: true },
-      { icon: Mail, labelKey: "emailNotification", path: "/email-notifications", adminOnly: true },
-      { icon: Server, labelKey: "smtpConfig", path: "/smtp-settings", adminOnly: true },
-      { icon: Webhook, labelKey: "nav.webhookManagement", path: "/webhooks", adminOnly: true },
+      { icon: Settings, labelKey: "nav.settingsAndConnections", path: "/settings", adminOnly: true },
       { icon: Key, labelKey: "nav.licensePortal", path: "/license-activation" },
-      { icon: FileText, labelKey: "nav.auditLog", path: "/audit-logs" },
-      { icon: Database, labelKey: "seedData", path: "/seed-data", adminOnly: true },
-      { icon: FileType, labelKey: "nav.reportTemplates", path: "/report-templates", adminOnly: true },
-      { icon: FolderClock, labelKey: "nav.exportHistory", path: "/export-history" },
       { icon: Info, labelKey: "nav.about", path: "/about" },
-      { icon: Bell, labelKey: "nav.notificationCenter", path: "/notification-center" },
-      { icon: Clock, labelKey: "nav.scheduledJobs", path: "/scheduled-jobs", adminOnly: true },
-      { icon: Shield, labelKey: "nav.rateLimitDashboard", path: "/rate-limit-dashboard", adminOnly: true },
-      { icon: Activity, labelKey: "nav.websocketEventLog", path: "/websocket-event-log", adminOnly: true },
-    ]
-  },
-  {
-    id: "licenseServer",
-    labelKey: "menuGroup.licenseServer",
-    icon: Shield,
-    items: [
-      { icon: Gauge, labelKey: "nav.licenseServerDashboard", path: "/license-server-dashboard", adminOnly: true },
-      { icon: Key, labelKey: "nav.licenseManagement", path: "/license-management", adminOnly: true },
-      { icon: Building2, labelKey: "nav.licenseCustomers", path: "/license-customers", adminOnly: true },
-      { icon: BarChart3, labelKey: "nav.licenseRevenue", path: "/license-revenue", adminOnly: true },
-      { icon: Server, labelKey: "nav.licenseServerSettings", path: "/license-server-settings", adminOnly: true },
     ]
   },
 ];
@@ -826,6 +680,10 @@ function DashboardLayoutContent({
           <TopNavigation />
           
           <div className="flex-1" />
+          
+          {/* Dark Mode Toggle */}
+          <DarkModeToggle />
+          
           <SseIndicator />
           <WebSocketIndicator />
           <NotificationBell />
@@ -835,5 +693,26 @@ function DashboardLayoutContent({
         </main>
       </SidebarInset>
     </>
+  );
+}
+
+// Dark Mode Toggle Component
+function DarkModeToggle() {
+  const { theme, setTheme } = useTheme();
+  
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+      className="h-9 w-9 rounded-lg hover:bg-accent transition-colors"
+      title={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
+    >
+      {theme === "dark" ? (
+        <Sun className="h-4 w-4 text-yellow-500" />
+      ) : (
+        <Moon className="h-4 w-4 text-slate-700" />
+      )}
+    </Button>
   );
 }

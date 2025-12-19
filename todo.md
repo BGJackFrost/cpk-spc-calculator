@@ -4096,3 +4096,22 @@
 - [ ] Triển khai AI/ML Integration cho SPC
 - [ ] Cải thiện Dashboard với KPIs
 - [ ] Nâng cấp báo cáo và analytics
+
+## Phase 187: Tối ưu Sidebar, AI/ML và Dark Mode
+
+### Tối ưu Sidebar
+- [x] Giảm bớt items trong sidebar (chỉ giữ menu thường dùng)
+- [x] Gộp các menu liên quan thành nhóm
+- [x] Ẩn các menu đã có trong Top Navigation
+
+### Dark Mode Toggle
+- [x] Thêm nút chuyển đổi theme vào Header
+- [x] Hiển thị icon Sun/Moon theo theme hiện tại
+- [x] Lưu preference vào localStorage
+
+### AI/ML Anomaly Detection
+- [x] Tạo trang Anomaly Detection Dashboard
+- [x] Tích hợp thuật toán phát hiện bất thường (Z-score, IQR)
+- [x] Hiển thị cảnh báo khi phát hiện anomaly
+- [x] Trend prediction với moving average
+- [x] Root cause suggestion với AI

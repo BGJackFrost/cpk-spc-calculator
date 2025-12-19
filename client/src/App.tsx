@@ -134,6 +134,7 @@ import DataMigrationToolEnhanced from "./pages/DataMigrationToolEnhanced";
 import SchemaComparison from "./pages/SchemaComparison";
 import DatabaseUnified from "./pages/DatabaseUnified";
 import BackupRestore from "./pages/BackupRestore";
+import AnomalyDetection from "./pages/AnomalyDetection";
 
 function Router() {
   return (
@@ -154,6 +155,7 @@ function Router() {
       <Route path="/local-login" component={LocalLogin} />
       <Route path="/change-password" component={ChangePassword} />
       <Route path="/dashboard" component={Dashboard} />
+      <Route path="/anomaly-detection" component={AnomalyDetection} />
       <Route path="/production-lines" component={ProductionLinesDashboard} />
       <Route path="/analyze" component={Analyze} />
       <Route path="/history" component={History} />
