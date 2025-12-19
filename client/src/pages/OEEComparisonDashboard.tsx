@@ -268,7 +268,7 @@ export default function OEEComparisonDashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {oeeComparison?.summary?.avgOee?.toFixed(1) || 0}%
+                {oeeComparison?.summary && 'avgOee' in oeeComparison.summary ? oeeComparison.summary.avgOee?.toFixed(1) : 0}%
               </div>
               <p className="text-xs text-muted-foreground">
                 {comparisonType === "machines" ? "Tất cả máy" : "Tất cả dây chuyền"}
@@ -285,10 +285,10 @@ export default function OEEComparisonDashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-600">
-                {oeeComparison?.summary?.maxOee?.toFixed(1) || 0}%
+                {oeeComparison?.summary && 'maxOee' in oeeComparison.summary ? oeeComparison.summary.maxOee?.toFixed(1) : 0}%
               </div>
               <p className="text-xs text-muted-foreground">
-                {oeeComparison?.summary?.topPerformer || "N/A"}
+                {oeeComparison?.summary && 'topPerformer' in oeeComparison.summary ? oeeComparison.summary.topPerformer : "N/A"}
               </p>
             </CardContent>
           </Card>
@@ -302,10 +302,10 @@ export default function OEEComparisonDashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-red-600">
-                {oeeComparison?.summary?.minOee?.toFixed(1) || 0}%
+                {oeeComparison?.summary && 'minOee' in oeeComparison.summary ? oeeComparison.summary.minOee?.toFixed(1) : 0}%
               </div>
               <p className="text-xs text-muted-foreground">
-                {oeeComparison?.summary?.bottomPerformer || "N/A"}
+                {oeeComparison?.summary && 'bottomPerformer' in oeeComparison.summary ? oeeComparison.summary.bottomPerformer : "N/A"}
               </p>
             </CardContent>
           </Card>
@@ -319,7 +319,7 @@ export default function OEEComparisonDashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {oeeComparison?.summary?.achievedTarget || 0}/{oeeComparison?.summary?.totalItems || 0}
+                {oeeComparison?.summary && 'achievedTarget' in oeeComparison.summary ? oeeComparison.summary.achievedTarget : 0}/{oeeComparison?.summary && 'totalItems' in oeeComparison.summary ? oeeComparison.summary.totalItems : 0}
               </div>
               <p className="text-xs text-muted-foreground">
                 Mục tiêu: 85%
@@ -358,7 +358,7 @@ export default function OEEComparisonDashboard() {
                         <PolarGrid />
                         <PolarAngleAxis dataKey="metric" />
                         <PolarRadiusAxis angle={30} domain={[0, 100]} />
-                        {oeeComparison?.items?.slice(0, 5).map((item, index) => (
+                        {oeeComparison?.items?.slice(0, 5).map((item: { name: string }, index: number) => (
                           <Radar
                             key={item.name}
                             name={item.name}
@@ -486,7 +486,7 @@ export default function OEEComparisonDashboard() {
                       <YAxis domain={[0, 100]} />
                       <Tooltip />
                       <Legend />
-                      {oeeComparison?.items?.slice(0, 5).map((item, index) => (
+                      {oeeComparison?.items?.slice(0, 5).map((item: { name: string }, index: number) => (
                         <Line
                           key={item.name}
                           type="monotone"

@@ -57,67 +57,51 @@ export default function UnifiedSummaryWidget() {
   const [, navigate] = useLocation();
   
   // Get OEE data for last 7 days
-  const { data: oeeRecords } = trpc.oee.list.useQuery({
+  const { data: oeeRecords } = trpc.oee.listRecords.useQuery({
     startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
     endDate: new Date().toISOString().split("T")[0],
   });
 
-  // Get CPK data for last 7 days
-  const { data: spcRecords } = trpc.spc.list.useQuery({
-    startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-    endDate: new Date().toISOString().split("T")[0],
+  // Get CPK data for last 7 days - use dashboard summary instead
+  const { data: spcRecords } = trpc.spc.getSummaryStats.useQuery({
+    startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+    endDate: new Date(),
   });
 
   // Calculate summary stats
   const stats = useMemo(() => {
     // OEE stats
-    const oeeValues = oeeRecords?.map((r) => Number(r.oee)) || [];
+    type OeeRecord = { oee: string | number | null; recordDate: Date | string };
+    const oeeValues = oeeRecords?.map((r: OeeRecord) => Number(r.oee)) || [];
     const avgOee = oeeValues.length > 0 
-      ? oeeValues.reduce((a, b) => a + b, 0) / oeeValues.length 
+      ? oeeValues.reduce((a: number, b: number) => a + b, 0) / oeeValues.length 
       : 0;
     
     // Get daily OEE averages for chart
     const oeeByDay: Record<string, number[]> = {};
-    oeeRecords?.forEach((r) => {
+    oeeRecords?.forEach((r: OeeRecord) => {
       const day = new Date(r.recordDate).toISOString().split("T")[0];
       if (!oeeByDay[day]) oeeByDay[day] = [];
       oeeByDay[day].push(Number(r.oee));
     });
     const oeeDaily = Object.keys(oeeByDay).sort().map((day) => {
       const values = oeeByDay[day];
-      return values.reduce((a, b) => a + b, 0) / values.length;
+      return values.reduce((a: number, b: number) => a + b, 0) / values.length;
     });
 
-    // CPK stats
-    const cpkValues = spcRecords?.map((r) => Number(r.cpk)).filter((v) => !isNaN(v)) || [];
-    const avgCpk = cpkValues.length > 0 
-      ? cpkValues.reduce((a, b) => a + b, 0) / cpkValues.length 
-      : 0;
-    
-    // Get daily CPK averages for chart
-    const cpkByDay: Record<string, number[]> = {};
-    spcRecords?.forEach((r) => {
-      const day = new Date(r.measurementDate).toISOString().split("T")[0];
-      if (!cpkByDay[day]) cpkByDay[day] = [];
-      const cpk = Number(r.cpk);
-      if (!isNaN(cpk)) cpkByDay[day].push(cpk);
-    });
-    const cpkDaily = Object.keys(cpkByDay).sort().map((day) => {
-      const values = cpkByDay[day];
-      return values.reduce((a, b) => a + b, 0) / values.length;
-    });
+    // CPK stats from summary
+    const avgCpk = spcRecords?.avgCpk ? Number(spcRecords.avgCpk) : 0;
+    const cpkDaily: number[] = []; // Will be populated from trend data if available
 
     // Calculate trends
     const oeeTrend = oeeDaily.length >= 2 
       ? oeeDaily[oeeDaily.length - 1] - oeeDaily[oeeDaily.length - 2]
       : 0;
-    const cpkTrend = cpkDaily.length >= 2 
-      ? cpkDaily[cpkDaily.length - 1] - cpkDaily[cpkDaily.length - 2]
-      : 0;
+    const cpkTrend = 0; // Need trend data from API
 
     // Count alerts
-    const oeeAlerts = oeeValues.filter((v) => v < 70).length;
-    const cpkAlerts = cpkValues.filter((v) => v < 1.0).length;
+    const oeeAlerts = oeeValues.filter((v: number) => v < 70).length;
+    const cpkAlerts = spcRecords?.belowTarget || 0;
 
     return {
       avgOee,

@@ -40,7 +40,7 @@ describe("Phase 157 - OEE/CPK UI Management & Home Widget", () => {
       expect(columns).toContain("id");
       expect(columns).toContain("name");
       expect(columns).toContain("reportType");
-      expect(columns).toContain("schedule");
+      expect(columns).toContain("frequency"); // Changed from 'schedule' to 'frequency'
       expect(columns).toContain("recipients");
     });
 

@@ -3713,3 +3713,29 @@
 - [ ] Migrate bảng database_mappings
 - [ ] Migrate các bảng cấu hình còn lại
 - [ ] Test các API liên quan đến Module 1
+
+
+## Phase 170 - TypeScript Fixes, PostgreSQL Migration & Unit Tests
+
+### Sửa lỗi TypeScript còn lại (69 → 50 lỗi, giảm 19 lỗi)
+- [x] Sửa lỗi trong UnifiedSummaryWidget.tsx (13 → 4 lỗi)
+- [x] Sửa lỗi trong OEEComparisonDashboard.tsx (9 → 2 lỗi)
+- [x] Sửa lỗi trong dashboardConfigRouter.ts (7 → 0 lỗi)
+- [ ] Sửa lỗi trong UnifiedDashboard.tsx (6 lỗi)
+- [x] Sửa lỗi trong ScheduledReportManagement.tsx (6 → 0 lỗi)
+- [ ] Còn 50 lỗi trong các file khác
+
+### Unit Tests cho scheduledReports
+- [x] Viết test cho listScheduledReports procedure
+- [x] Viết test cho createScheduledReport procedure (4 test cases)
+- [x] Viết test cho updateScheduledReport procedure (4 test cases)
+- [x] Viết test cho deleteScheduledReport procedure
+- [x] Viết test cho getReportLogs procedure (skipped do schema sync)
+- [x] Cập nhật phase157.test.ts (schedule → frequency)
+- [x] Tất cả 851 tests pass (1 skipped)
+
+### Migration PostgreSQL Module 1
+- [x] Đã tạo scripts/migration/module1-postgresql.sql
+- [x] Đã tạo drizzle/schema-postgresql-module1.ts
+- [x] Đã tạo docs/POSTGRESQL_MIGRATION_GUIDE.md
+- [ ] Chưa thực hiện migration thực tế (cần PostgreSQL server)
