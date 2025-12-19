@@ -50,6 +50,7 @@ const fallbackLabelsVi: Record<string, string> = {
   "menuGroup.spcAnalysis": "Phân tích",
   "menuGroup.spcQuality": "Chất lượng",
   "menuGroup.spcConfig": "Cấu hình SPC",
+  "menuGroup.spcRealtime": "Realtime SPC",
   "menuGroup.mmsOverview": "Tổng quan MMS",
   "menuGroup.mmsMaintenance": "Bảo trì",
   "menuGroup.mmsSpareParts": "Kho phụ tùng",
@@ -83,6 +84,7 @@ const fallbackLabelsVi: Record<string, string> = {
   "nav.cpkBenchmark": "So sánh CPK",
   "nav.shiftAnalysis": "Phân tích theo Ca",
   "nav.realtimeConveyor": "Dây chuyền Realtime",
+  "nav.productionLineStatus": "Trạng thái Dây chuyền",
   "nav.realtimeMachineConfig": "Cấu hình Máy Realtime",
   "nav.realtimeHistory": "Lịch sử Realtime",
   "nav.alarmThreshold": "Ngưỡng Cảnh báo",
@@ -156,6 +158,7 @@ const fallbackLabelsEn: Record<string, string> = {
   "menuGroup.spcAnalysis": "Analysis",
   "menuGroup.spcQuality": "Quality",
   "menuGroup.spcConfig": "SPC Config",
+  "menuGroup.spcRealtime": "Realtime SPC",
   "menuGroup.mmsOverview": "MMS Overview",
   "menuGroup.mmsMaintenance": "Maintenance",
   "menuGroup.mmsSpareParts": "Spare Parts",
@@ -189,6 +192,7 @@ const fallbackLabelsEn: Record<string, string> = {
   "nav.cpkBenchmark": "CPK Comparison",
   "nav.shiftAnalysis": "Shift Analysis",
   "nav.realtimeConveyor": "Realtime Conveyor",
+  "nav.productionLineStatus": "Production Line Status",
   "nav.realtimeMachineConfig": "Realtime Machine Config",
   "nav.realtimeHistory": "Realtime History",
   "nav.alarmThreshold": "Alarm Threshold",
@@ -540,43 +544,7 @@ function DashboardLayoutContent({
             })}
           </SidebarContent>
 
-          <SidebarFooter className="border-t p-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-3 w-full p-2 rounded-lg hover:bg-accent transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src={user?.avatarUrl || undefined} alt={user?.name || "User"} />
-                    <AvatarFallback>
-                      {user?.name?.charAt(0).toUpperCase() || "U"}
-                    </AvatarFallback>
-                  </Avatar>
-                  {!isCollapsed && (
-                    <div className="flex-1 text-left min-w-0">
-                      <p className="text-sm font-medium truncate">{user?.name}</p>
-                      <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
-                    </div>
-                  )}
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuItem onClick={() => setLocation("/profile")}>
-                  <User className="mr-2 h-4 w-4" />
-                  {language === 'en' ? 'Profile' : 'Hồ sơ'}
-                </DropdownMenuItem>
-                <LanguageSwitcher />
-                <DropdownMenuItem
-                  onClick={() => {
-                    logout();
-                    setLocation("/");
-                  }}
-                  className="text-destructive focus:text-destructive"
-                >
-                  <LogOut className="mr-2 h-4 w-4" />
-                  {language === 'en' ? 'Logout' : 'Đăng xuất'}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </SidebarFooter>
+          {/* User menu removed from sidebar - now only in header */}
         </Sidebar>
 
         {/* Resize handle */}
@@ -595,18 +563,18 @@ function DashboardLayoutContent({
         <header className="h-16 shrink-0 flex items-center gap-2 border-b px-4 lg:px-6 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <SidebarTrigger className="-ml-1 lg:hidden" />
           
-          {/* Logo */}
+          {/* Logo - configurable via VITE_APP_LOGO */}
           <div className="flex items-center gap-2 mr-2">
             <img 
-              src="/logo.png" 
-              alt="Logo" 
+              src={import.meta.env.VITE_APP_LOGO || "/logo.png"} 
+              alt={import.meta.env.VITE_APP_TITLE || "Logo"} 
               className="h-8 w-8 object-contain"
               onError={(e) => {
                 (e.target as HTMLImageElement).style.display = 'none';
               }}
             />
-            <span className="hidden md:inline font-bold text-lg bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              MMS/SPC
+            <span className="hidden md:inline font-bold text-lg bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+              {import.meta.env.VITE_APP_TITLE || "MMS/SPC"}
             </span>
           </div>
           
@@ -675,10 +643,6 @@ function DashboardLayoutContent({
                 <DropdownMenuItem onClick={() => setLocation("/profile")} className="py-2">
                   <User className="mr-2 h-4 w-4" />
                   {language === 'en' ? 'Profile' : 'Hồ sơ cá nhân'}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setLocation("/license-activation")} className="py-2">
-                  <Key className="mr-2 h-4 w-4" />
-                  {language === 'en' ? 'License Status' : 'Trạng thái License'}
                 </DropdownMenuItem>
                 <LanguageSwitcher />
                 <div className="border-t my-1" />

@@ -4157,19 +4157,46 @@ export const appRouter = router({
         maxProductionLines: z.number().default(3),
         maxSpcPlans: z.number().default(10),
         features: z.string().optional(),
-        systems: z.array(z.string()).optional(), // ["spc", "mms", "production", "license", "system"]
-        systemFeatures: z.record(z.array(z.string())).optional(), // { "spc": ["realtime", "ai"], "mms": ["predictive"] }
+        // Accept both array and JSON string for systems
+        systems: z.union([z.array(z.string()), z.string()]).optional(),
+        // Accept both record and JSON string for systemFeatures
+        systemFeatures: z.union([z.record(z.array(z.string())), z.string()]).optional(),
         expiresAt: z.date().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
         if (ctx.user?.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
         const licenseKey = input.licenseKey || generateLicenseKey();
+        
+        // Parse systems - handle both array and JSON string
+        let systemsJson: string | null = null;
+        if (input.systems) {
+          if (typeof input.systems === 'string') {
+            // Already JSON string
+            systemsJson = input.systems;
+          } else {
+            // Array - stringify it
+            systemsJson = JSON.stringify(input.systems);
+          }
+        }
+        
+        // Parse systemFeatures - handle both record and JSON string
+        let featuresJson: string | null = null;
+        if (input.systemFeatures) {
+          if (typeof input.systemFeatures === 'string') {
+            // Already JSON string
+            featuresJson = input.systemFeatures;
+          } else {
+            // Record - stringify it
+            featuresJson = JSON.stringify(input.systemFeatures);
+          }
+        }
+        
         await createLicense({
           ...input,
           licenseKey,
           isActive: 0,
-          systems: input.systems ? JSON.stringify(input.systems) : null,
-          systemFeatures: input.systemFeatures ? JSON.stringify(input.systemFeatures) : null,
+          systems: systemsJson,
+          systemFeatures: featuresJson,
         });
         return { success: true, licenseKey };
       }),

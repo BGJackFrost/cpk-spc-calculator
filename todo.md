@@ -4237,3 +4237,34 @@
 - [x] Lưu theme preference vào database
 - [x] Load theme từ database khi đăng nhập
 - [x] Fallback về localStorage nếu chưa đăng nhập
+
+## Phase 193 - Nâng cấp Theme System và Menu Navigation
+
+### Thêm màu theme vào giao diện
+- [x] Cập nhật các trang sử dụng CSS variables từ theme
+- [x] Thêm màu primary, secondary, accent vào các components
+- [x] Đảm bảo dark mode hoạt động đúng trên tất cả các trang
+
+### Theme từ hình ảnh
+- [x] Tạo chức năng upload hình ảnh
+- [x] Trích xuất màu dominant từ hình ảnh
+- [x] Tự động tạo theme từ màu sắc hình ảnh
+
+### Sửa icon menu top và logo
+- [x] Sửa icon trên menu top để hoạt động đúng
+- [x] Cho phép cấu hình logo từ Settings (VITE_APP_LOGO, VITE_APP_TITLE)
+- [x] Bỏ menu License trong user menu dropdown
+
+### Rà soát và sửa tên menu
+- [x] Rà soát tên tất cả các menu
+- [x] Sửa tên menu chưa đúng
+- [x] Phân bổ lại chức năng giữa các hệ thống (SPC/CPK, MMS, Production, System)
+
+### Sửa lỗi License
+- [x] Sửa lỗi tạo license theo hệ thống/module (accept cả array và JSON string)
+- [x] Kiểm tra và fix các API liên quan
+
+### Bỏ user menu trên sidebar
+- [x] Xóa menu thông tin người dùng trên sidebar trái
+- [x] Giữ lại user menu trên header
+
