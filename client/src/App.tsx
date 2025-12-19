@@ -132,12 +132,14 @@ import DatabaseConnectionWizard from "./pages/DatabaseConnectionWizard";
 import DataMigrationTool from "./pages/DataMigrationTool";
 import DataMigrationToolEnhanced from "./pages/DataMigrationToolEnhanced";
 import SchemaComparison from "./pages/SchemaComparison";
+import DatabaseUnified from "./pages/DatabaseUnified";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/setup" component={SystemSetup} />
+      <Route path="/database-unified" component={DatabaseUnified} />
       <Route path="/database-settings" component={DatabaseSettings} />
       <Route path="/database-health" component={DatabaseHealthDashboard} />
       <Route path="/database-connections" component={DatabaseConnectionsSettings} />

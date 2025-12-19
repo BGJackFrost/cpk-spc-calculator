@@ -667,3 +667,64 @@ export type InsertBackup = typeof backups.$inferInsert;
 // ============================================================
 
 export * from "drizzle-orm/pg-core";
+
+// ============================================================
+// Database Connection & Sync Tables
+// ============================================================
+
+/**
+ * Database Connections - Quản lý kết nối database
+ */
+export const databaseConnections = pgTable("database_connections", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  databaseType: varchar("database_type", { length: 50 }).notNull(),
+  host: varchar("host", { length: 255 }).notNull(),
+  port: integer("port").notNull(),
+  database: varchar("database", { length: 255 }).notNull(),
+  username: varchar("username", { length: 255 }).notNull(),
+  passwordEncrypted: text("password_encrypted"),
+  description: text("description"),
+  purpose: varchar("purpose", { length: 100 }),
+  sslEnabled: integer("ssl_enabled").notNull().default(0),
+  maxConnections: integer("max_connections").notNull().default(10),
+  connectionTimeout: integer("connection_timeout").notNull().default(30000),
+  healthCheckEnabled: integer("health_check_enabled").notNull().default(1),
+  healthCheckInterval: integer("health_check_interval").notNull().default(60000),
+  isDefault: integer("is_default").notNull().default(0),
+  isPrimary: integer("is_primary").notNull().default(0),
+  syncEnabled: integer("sync_enabled").notNull().default(0),
+  isActive: integer("is_active").notNull().default(1),
+  lastHealthCheck: timestamp("last_health_check"),
+  healthStatus: varchar("health_status", { length: 50 }).default("unknown"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  createdBy: integer("created_by"),
+});
+
+export type DatabaseConnection = typeof databaseConnections.$inferSelect;
+export type InsertDatabaseConnection = typeof databaseConnections.$inferInsert;
+
+/**
+ * Database Sync Logs - Log đồng bộ database
+ */
+export const databaseSyncLogs = pgTable("database_sync_logs", {
+  id: serial("id").primaryKey(),
+  sourceConnectionId: integer("source_connection_id").notNull(),
+  targetConnectionId: integer("target_connection_id").notNull(),
+  tableName: varchar("table_name", { length: 255 }).notNull(),
+  syncType: varchar("sync_type", { length: 50 }).notNull(),
+  recordsInserted: integer("records_inserted").notNull().default(0),
+  recordsUpdated: integer("records_updated").notNull().default(0),
+  recordsDeleted: integer("records_deleted").notNull().default(0),
+  recordsFailed: integer("records_failed").notNull().default(0),
+  startTime: timestamp("start_time").notNull(),
+  endTime: timestamp("end_time"),
+  status: varchar("status", { length: 50 }).notNull().default("running"),
+  errorMessage: text("error_message"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type DatabaseSyncLog = typeof databaseSyncLogs.$inferSelect;
+export type InsertDatabaseSyncLog = typeof databaseSyncLogs.$inferInsert;
