@@ -103,14 +103,14 @@ export default function ScheduledReports() {
     createReport.mutate({
       name: formData.name,
       reportType: formData.reportType as any,
-      schedule: formData.schedule as any,
+      frequency: formData.schedule as any,
       dayOfWeek: formData.schedule === "weekly" ? formData.dayOfWeek : undefined,
       dayOfMonth: formData.schedule === "monthly" ? formData.dayOfMonth : undefined,
-      hour: formData.hour,
+      timeOfDay: formData.hour ? `${formData.hour.toString().padStart(2, '0')}:00` : '08:00',
       recipients: formData.recipients,
       includeCharts: formData.includeCharts,
-      includeTables: formData.includeTables,
-      includeRecommendations: formData.includeRecommendations,
+      includeTrends: formData.includeTables,
+      includeAlerts: formData.includeRecommendations,
     });
   };
 
@@ -370,9 +370,7 @@ export default function ScheduledReports() {
                               </span>
                             </TableCell>
                             <TableCell>
-                              {report.nextScheduledAt 
-                                ? new Date(report.nextScheduledAt).toLocaleString('vi-VN')
-                                : '-'}
+                              {report.timeOfDay || '-'}
                             </TableCell>
                             <TableCell>
                               <Badge variant={report.isActive === 1 ? "default" : "secondary"}>

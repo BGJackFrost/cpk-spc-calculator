@@ -62,10 +62,9 @@ export default function UnifiedSummaryWidget() {
     endDate: new Date().toISOString().split("T")[0],
   });
 
-  // Get CPK data for last 7 days - use dashboard summary instead
-  const { data: spcRecords } = trpc.spc.getSummaryStats.useQuery({
-    startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-    endDate: new Date(),
+  // Get CPK data for last 7 days - use history instead
+  const { data: spcRecords } = trpc.spc.history.useQuery({
+    limit: 100,
   });
 
   // Calculate summary stats
@@ -89,8 +88,12 @@ export default function UnifiedSummaryWidget() {
       return values.reduce((a: number, b: number) => a + b, 0) / values.length;
     });
 
-    // CPK stats from summary
-    const avgCpk = spcRecords?.avgCpk ? Number(spcRecords.avgCpk) : 0;
+    // CPK stats from history records
+    type SpcRecord = { cpk?: string | number | null; createdAt: Date | string };
+    const cpkValues = spcRecords?.map((r: SpcRecord) => Number(r.cpk || 0)).filter((v: number) => v > 0) || [];
+    const avgCpk = cpkValues.length > 0 
+      ? cpkValues.reduce((a: number, b: number) => a + b, 0) / cpkValues.length 
+      : 0;
     const cpkDaily: number[] = []; // Will be populated from trend data if available
 
     // Calculate trends
@@ -101,7 +104,7 @@ export default function UnifiedSummaryWidget() {
 
     // Count alerts
     const oeeAlerts = oeeValues.filter((v: number) => v < 70).length;
-    const cpkAlerts = spcRecords?.belowTarget || 0;
+    const cpkAlerts = cpkValues.filter((v: number) => v < 1.33).length;
 
     return {
       avgOee,

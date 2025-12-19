@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,19 +24,20 @@ export default function EnvironmentAlertConfig() {
   const [newEmail, setNewEmail] = useState("");
   const [enabled, setEnabled] = useState(true);
 
-  const { data: config, isLoading } = trpc.environmentAlerts.getConfig.useQuery(undefined, {
-    onSuccess: (data) => {
-      if (data) {
-        setTempMin(data.tempMin);
-        setTempMax(data.tempMax);
-        setHumidityMin(data.humidityMin);
-        setHumidityMax(data.humidityMax);
-        setCheckInterval(data.checkInterval);
-        setAlertEmails(data.alertEmails);
-        setEnabled(data.enabled);
-      }
-    },
-  });
+  const { data: config, isLoading } = trpc.environmentAlerts.getConfig.useQuery();
+
+  // Update state when config data is loaded
+  useEffect(() => {
+    if (config) {
+      setTempMin(config.tempMin);
+      setTempMax(config.tempMax);
+      setHumidityMin(config.humidityMin);
+      setHumidityMax(config.humidityMax);
+      setCheckInterval(config.checkInterval);
+      setAlertEmails(config.alertEmails);
+      setEnabled(config.enabled);
+    }
+  }, [config]);
 
   const { data: alertHistory } = trpc.environmentAlerts.getAlertHistory.useQuery({ limit: 50 });
 
@@ -83,7 +84,7 @@ export default function EnvironmentAlertConfig() {
             </h1>
             <p className="text-muted-foreground">Thiết lập ngưỡng cảnh báo nhiệt độ và độ ẩm tự động</p>
           </div>
-          <Button onClick={handleSave} disabled={updateMutation.isLoading}>
+          <Button onClick={handleSave} disabled={updateMutation.isPending}>
             <Save className="w-4 h-4 mr-2" />
             Lưu cấu hình
           </Button>

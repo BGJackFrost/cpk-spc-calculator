@@ -379,7 +379,7 @@ export default function SparePartsManagement() {
     let createdCount = 0;
     itemsBySupplier.forEach((items, supplierId) => {
       createPurchaseOrderMutation.mutate({
-        supplierId: supplierId || undefined,
+        supplierId: supplierId || 0,
         notes: `Tạo từ đề xuất đặt hàng - ${new Date().toLocaleDateString('vi-VN')}`,
         items,
       }, {
@@ -1591,7 +1591,7 @@ export default function SparePartsManagement() {
                           </TableCell>
                           <TableCell>
                             {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
-                              (selectedItem?.qty || item.suggestedQuantity) * (item.unitPrice || 0)
+                              Number(selectedItem?.qty || item.suggestedQuantity) * Number(item.unitPrice || 0)
                             )}
                           </TableCell>
                         </TableRow>
@@ -1615,7 +1615,7 @@ export default function SparePartsManagement() {
                         Tổng: {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
                           selectedReorderItems.reduce((sum, s) => {
                             const item = reorderSuggestions?.find(r => r.id === s.id);
-                            return sum + (s.qty * (item?.unitPrice || 0));
+                            return sum + (Number(s.qty) * Number(item?.unitPrice || 0));
                           }, 0)
                         )}
                       </span>

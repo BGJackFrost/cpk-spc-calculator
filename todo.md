@@ -3739,3 +3739,49 @@
 - [x] Đã tạo drizzle/schema-postgresql-module1.ts
 - [x] Đã tạo docs/POSTGRESQL_MIGRATION_GUIDE.md
 - [ ] Chưa thực hiện migration thực tế (cần PostgreSQL server)
+
+
+## Phase 171 - TypeScript Fixes, PostgreSQL Config & Schema Sync
+
+### Sửa lỗi TypeScript còn lại (50 lỗi)
+- [ ] Sửa lỗi trong UnifiedDashboard.tsx (6 lỗi)
+- [ ] Sửa lỗi trong LicenseManagement.tsx (5 lỗi)
+- [ ] Sửa lỗi trong PlantKPIDashboard.tsx (4 lỗi)
+- [ ] Sửa lỗi trong TimePeriodComparison.tsx (4 lỗi)
+- [ ] Sửa lỗi trong UnifiedSummaryWidget.tsx (4 lỗi)
+- [ ] Sửa lỗi trong các file còn lại
+
+### Đồng bộ schema scheduled_report_logs
+- [ ] Chạy pnpm db:push để đồng bộ schema
+- [ ] Verify các cột mới đã được thêm
+- [ ] Test lại unit tests
+
+### Chuẩn bị PostgreSQL Server
+- [ ] Tạo script kiểm tra PostgreSQL connection
+- [ ] Cập nhật tài liệu migration với các bước chi tiết hơn
+- [ ] Tạo script rollback nếu migration thất bại
+
+
+## Phase 171 - TypeScript Fixes, Schema Sync & PostgreSQL Config
+
+### Sửa lỗi TypeScript Frontend (50 → 24 lỗi, giảm 26 lỗi)
+- [x] Sửa lỗi trong UnifiedDashboard.tsx (getHistory → history)
+- [x] Sửa lỗi trong UnifiedSummaryWidget.tsx (getHistory → history)
+- [x] Sửa lỗi trong TimePeriodComparison.tsx (getHistory → history)
+- [x] Sửa lỗi trong EnvironmentAlertConfig.tsx (thêm import React, useEffect)
+- [x] Sửa lỗi trong SparePartsManagement.tsx (type casting)
+- [x] Sửa lỗi trong ScheduledReports.tsx (schedule → frequency)
+- [x] Sửa lỗi trong LicenseManagement.tsx (implicit any)
+- [x] Sửa lỗi trong PlantKPIDashboard.tsx (thêm import toast)
+- [ ] Còn 24 lỗi trong các file khác (chủ yếu type mismatch)
+
+### Đồng bộ Schema scheduled_report_logs
+- [x] Kiểm tra cấu trúc bảng trong database
+- [x] Schema đã khớp với database (8 cột)
+- [x] Không cần migration bổ sung
+
+### Chuẩn bị PostgreSQL Config
+- [x] Đã tạo scripts/migration/module1-postgresql.sql
+- [x] Đã tạo drizzle/schema-postgresql-module1.ts
+- [x] Đã tạo docs/POSTGRESQL_MIGRATION_GUIDE.md
+- [ ] Chưa thực hiện migration thực tế (cần PostgreSQL server)

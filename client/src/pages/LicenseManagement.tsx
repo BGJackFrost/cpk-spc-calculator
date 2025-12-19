@@ -163,8 +163,8 @@ export default function LicenseManagement() {
         maxProductionLines: newLicense.maxProductionLines,
         maxSpcPlans: newLicense.maxSpcPlans,
         expiresAt,
-        price: newLicense.price || undefined,
-        currency: newLicense.currency || "VND"
+        // Note: price and currency are handled separately if needed
+        // currency: newLicense.currency || "VND"
       });
       
       toast.success(`Đã tạo license: ${result.licenseKey}`);
@@ -1161,10 +1161,10 @@ export default function LicenseManagement() {
                       <div className="p-4 bg-primary/5 rounded-lg">
                         <h4 className="font-medium mb-2">Tổng kết {revenueByPeriodQuery.data.year}</h4>
                         <div className="grid grid-cols-2 gap-2 text-sm">
-                          <div>Số license: <span className="font-bold">{revenueByPeriodQuery.data.summary.totalCount}</span></div>
-                          <div>TB/kỳ: <span className="font-bold">{(revenueByPeriodQuery.data.summary.avgPerPeriod || 0).toFixed(1)}</span></div>
-                          <div>VND: <span className="font-bold">{(revenueByPeriodQuery.data.summary.totalVND || 0).toLocaleString("vi-VN")}</span></div>
-                          <div>USD: <span className="font-bold">${revenueByPeriodQuery.data.summary.totalUSD || 0}</span></div>
+                          <div>Số license: <span className="font-bold">{('totalCount' in revenueByPeriodQuery.data.summary) ? revenueByPeriodQuery.data.summary.totalCount : 0}</span></div>
+                          <div>TB/kỳ: <span className="font-bold">{('avgPerPeriod' in revenueByPeriodQuery.data.summary) ? (revenueByPeriodQuery.data.summary.avgPerPeriod || 0).toFixed(1) : '0.0'}</span></div>
+                          <div>VND: <span className="font-bold">{('totalVND' in revenueByPeriodQuery.data.summary) ? (revenueByPeriodQuery.data.summary.totalVND || 0).toLocaleString("vi-VN") : '0'}</span></div>
+                          <div>USD: <span className="font-bold">${('totalUSD' in revenueByPeriodQuery.data.summary) ? revenueByPeriodQuery.data.summary.totalUSD || 0 : 0}</span></div>
                         </div>
                       </div>
                     )}

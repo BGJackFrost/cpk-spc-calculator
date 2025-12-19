@@ -169,25 +169,25 @@ export default function TimePeriodComparison() {
   const periods = useMemo(() => getComparisonPeriods(period), [period]);
 
   // Fetch OEE data for both periods
-  const { data: currentOeeData, isLoading: loadingCurrentOee } = trpc.oee.list.useQuery({
+  const { data: currentOeeData, isLoading: loadingCurrentOee } = trpc.oee.listRecords.useQuery({
     startDate: periods.current.startDate,
     endDate: periods.current.endDate,
   });
 
-  const { data: previousOeeData, isLoading: loadingPreviousOee } = trpc.oee.list.useQuery({
+  const { data: previousOeeData, isLoading: loadingPreviousOee } = trpc.oee.listRecords.useQuery({
     startDate: periods.previous.startDate,
     endDate: periods.previous.endDate,
   });
 
   // Fetch CPK data for both periods
-  const { data: currentCpkData, isLoading: loadingCurrentCpk } = trpc.spc.list.useQuery({
-    startDate: periods.current.startDate,
-    endDate: periods.current.endDate,
+  const { data: currentCpkData, isLoading: loadingCurrentCpk } = trpc.spc.history.useQuery({
+    startDate: new Date(periods.current.startDate),
+    endDate: new Date(periods.current.endDate),
   });
 
-  const { data: previousCpkData, isLoading: loadingPreviousCpk } = trpc.spc.list.useQuery({
-    startDate: periods.previous.startDate,
-    endDate: periods.previous.endDate,
+  const { data: previousCpkData, isLoading: loadingPreviousCpk } = trpc.spc.history.useQuery({
+    startDate: new Date(periods.previous.startDate),
+    endDate: new Date(periods.previous.endDate),
   });
 
   const isLoading = loadingCurrentOee || loadingPreviousOee || loadingCurrentCpk || loadingPreviousCpk;

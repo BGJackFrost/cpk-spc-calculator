@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
 import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 import { Search, Filter, X, Settings, LayoutGrid, Eye, EyeOff, RotateCcw, Save, Loader2 } from "lucide-react";
 import { DraggableWidget, useWidgetManager, WidgetConfig } from "@/components/DraggableWidget";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";

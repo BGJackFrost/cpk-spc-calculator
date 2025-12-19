@@ -198,7 +198,7 @@ export default function ScheduledReportManagement() {
         dayOfWeek: createData.dayOfWeek,
         dayOfMonth: createData.dayOfMonth,
         timeOfDay: createData.timeOfDay,
-        recipients: createData.recipients.join(','),
+        recipients: createData.recipients,
         includeCharts: createData.includeCharts,
         includeTrends: createData.includeTrends,
         includeAlerts: createData.includeAlerts,
@@ -206,8 +206,8 @@ export default function ScheduledReportManagement() {
     } else {
       createMutation.mutate({
         ...createData,
-        machineIds: formData.machineIds.length > 0 ? JSON.stringify(formData.machineIds) : undefined,
-        productionLineIds: formData.productionLineIds.length > 0 ? JSON.stringify(formData.productionLineIds) : undefined,
+        machineIds: formData.machineIds.length > 0 ? formData.machineIds : undefined,
+        productionLineIds: formData.productionLineIds.length > 0 ? formData.productionLineIds : undefined,
       });
     }
   };
