@@ -3909,3 +3909,66 @@
 - [x] Chạy node scripts/test-failover.mjs status - Hiển thị cấu hình đầy đủ
 - [x] Chạy node scripts/test-failover.mjs simulate - Verify cấu hình đúng
 - [x] Kết quả: Failover enabled, MySQL healthy, PostgreSQL connected, sẵn sàng failover
+
+
+## Phase 179 - Database Connection Management
+
+### Tạo bảng database_connections và schema
+- [ ] Tạo bảng database_connections trong MySQL schema
+- [ ] Hỗ trợ nhiều loại database: MySQL, PostgreSQL, SQL Server, Oracle
+- [ ] Lưu trữ connection string, credentials (encrypted)
+- [ ] Thêm cột is_default để đánh dấu connection mặc định
+- [ ] Chạy migration
+
+### Tạo API endpoints cho quản lý database connections
+- [ ] listConnections - Liệt kê tất cả connections
+- [ ] createConnection - Tạo connection mới
+- [ ] updateConnection - Cập nhật connection
+- [ ] deleteConnection - Xóa connection
+- [ ] testConnection - Test kết nối
+- [ ] setDefaultConnection - Đặt connection mặc định
+
+### Tạo UI trang Database Connections Settings
+- [ ] Tạo trang DatabaseConnectionsSettings.tsx
+- [ ] Form thêm/sửa connection với các trường: name, type, host, port, database, username, password
+- [ ] Hiển thị danh sách connections với status
+- [ ] Nút test connection
+- [ ] Nút set default
+
+### Bật failover và test simulation
+- [ ] Khởi động PostgreSQL server
+- [ ] Set DATABASE_FAILOVER_ENABLED=true
+- [ ] Set PG_LOCAL_ENABLED=true
+- [ ] Set FAILOVER_EMAIL_ENABLED=true
+- [ ] Set FAILOVER_EMAIL_RECIPIENTS=admin@example.com
+- [ ] Chạy test-failover.mjs simulate
+
+
+## Phase 179 - Database Connections Management & Failover
+
+### Tạo bảng database_connections và schema
+- [x] Thêm cột isDefault, purpose, sslEnabled, maxConnections, healthCheckEnabled vào bảng
+- [x] Chạy migration để cập nhật schema (ALTER TABLE)
+- [x] Verify schema trong MySQL
+
+### Tạo API endpoints cho quản lý database connections
+- [x] Tạo databaseConnectionRouter.ts với các endpoints: list, getById, getDefault, create, update, delete, test, setDefault, getStats, testAll
+- [x] Hỗ trợ nhiều loại database: MySQL, PostgreSQL, SQL Server, Oracle, Access, Excel, Internal
+- [x] Thêm test connection functions cho MySQL và PostgreSQL
+- [x] Giữ lại legacyDbConnection cho backward compatibility
+
+### Tạo UI trang Database Connections Settings
+- [x] Tạo DatabaseConnectionsSettings.tsx với form quản lý connections
+- [x] Hiển thị danh sách connections với status badges
+- [x] Thêm chức năng test connection, set default, bulk test
+- [x] Thêm route /database-connections và link "Kết nối Database" trong System menu
+
+### Bật failover và cấu hình email recipients
+- [x] Khởi động PostgreSQL và chạy migration (61 tables)
+- [x] Failover status: MySQL healthy, PostgreSQL not_configured (cần set PG_LOCAL_ENABLED)
+- [x] Cấu hình sẵn sàng cho failover khi bật environment variables
+
+### Test failover simulation
+- [x] Chạy node scripts/test-failover.mjs status - Hiển thị đầy đủ cấu hình
+- [x] Chạy node scripts/test-failover.mjs simulate - Verify cấu hình
+- [x] Kết quả: 851 tests pass, failover sẵn sàng khi bật environment variables

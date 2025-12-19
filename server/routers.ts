@@ -12,6 +12,7 @@ import { alertRouter as mmsAlertRouter } from "./routers/alertRouter";
 import { mmsDashboardConfigRouter } from "./routers/dashboardConfigRouter";
 import { machineIntegrationRouter, machinePublicRouter } from "./routers/machineIntegrationRouter";
 import { systemRouter } from "./_core/systemRouter";
+import { databaseConnectionRouter as dbConnectionRouter } from "./routers/databaseConnectionRouter";
 import { triggerLicenseExpiryCheck } from "./scheduledJobs";
 import { triggerWebhooks, testWebhook } from "./webhookService";
 import { storagePut } from "./storage";
@@ -354,8 +355,8 @@ const productSpecRouter = router({
     }),
 });
 
-// Database Connection Router - Hỗ trợ đa loại database
-const databaseConnectionRouter = router({
+// Database Connection Router - Hỗ trợ đa loại database (legacy - use dbConnectionRouter from routers/databaseConnectionRouter.ts)
+const legacyDatabaseConnectionRouter = router({
   // Lấy danh sách kết nối
   list: adminProcedure.query(async () => {
     const { getConnections } = await import("./externalDatabaseService");
@@ -3215,6 +3216,8 @@ const emailNotificationRouter = router({
 
 export const appRouter = router({
   system: systemRouter,
+  databaseConnection: dbConnectionRouter,
+  legacyDbConnection: legacyDatabaseConnectionRouter,
   machineIntegration: machineIntegrationRouter,
   machineApi: machinePublicRouter,
   auth: router({
@@ -3553,7 +3556,6 @@ export const appRouter = router({
   user: userRouter,
   product: productRouter,
   productSpec: productSpecRouter,
-  databaseConnection: databaseConnectionRouter,
   mapping: mappingRouter,
   mappingTemplate: mappingTemplateRouter,
   spc: spcRouter,

@@ -77,7 +77,7 @@ export default function Settings() {
   const [formData, setFormData] = useState<ConnectionFormData>(defaultConnectionForm);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
-  const { data: connections, refetch: refetchConnections } = trpc.databaseConnection.list.useQuery(undefined, {
+  const { data: connections, refetch: refetchConnections } = trpc.legacyDbConnection.list.useQuery(undefined, {
     enabled: isAdmin,
   });
   const { data: alertSettings } = trpc.alert.get.useQuery(undefined, {
@@ -86,41 +86,41 @@ export default function Settings() {
 
   const utils = trpc.useUtils();
 
-  const createConnectionMutation = trpc.databaseConnection.create.useMutation({
+  const createConnectionMutation = trpc.legacyDbConnection.create.useMutation({
     onSuccess: () => {
       toast.success("Tạo kết nối thành công!");
       setIsDialogOpen(false);
       resetForm();
-      utils.databaseConnection.list.invalidate();
+      utils.legacyDbConnection.list.invalidate();
     },
     onError: (error) => {
       toast.error(error.message);
     },
   });
 
-  const updateConnectionMutation = trpc.databaseConnection.update.useMutation({
+  const updateConnectionMutation = trpc.legacyDbConnection.update.useMutation({
     onSuccess: () => {
       toast.success("Cập nhật kết nối thành công!");
       setIsDialogOpen(false);
       resetForm();
-      utils.databaseConnection.list.invalidate();
+      utils.legacyDbConnection.list.invalidate();
     },
     onError: (error) => {
       toast.error(error.message);
     },
   });
 
-  const deleteConnectionMutation = trpc.databaseConnection.delete.useMutation({
+  const deleteConnectionMutation = trpc.legacyDbConnection.delete.useMutation({
     onSuccess: () => {
       toast.success("Xóa kết nối thành công!");
-      utils.databaseConnection.list.invalidate();
+      utils.legacyDbConnection.list.invalidate();
     },
     onError: (error) => {
       toast.error(error.message);
     },
   });
 
-  const testConnectionMutation = trpc.databaseConnection.testConnection.useMutation({
+  const testConnectionMutation = trpc.legacyDbConnection.testConnection.useMutation({
     onSuccess: (result) => {
       setTestResult(result);
       if (result.success) {

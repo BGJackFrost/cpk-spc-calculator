@@ -90,13 +90,13 @@ export default function Mappings() {
   });
 
   // Dynamic schema loading - lấy danh sách bảng khi chọn connection
-  const { data: tablesData, isLoading: loadingTables } = trpc.databaseConnection.getTables.useQuery(
+  const { data: tablesData, isLoading: loadingTables } = trpc.legacyDbConnection.getTables.useQuery(
     { connectionId: formData.connectionId },
     { enabled: formData.connectionId > 0 }
   );
 
   // Lấy danh sách cột khi chọn bảng
-  const { data: columnsData, isLoading: loadingColumns } = trpc.databaseConnection.getColumns.useQuery(
+  const { data: columnsData, isLoading: loadingColumns } = trpc.legacyDbConnection.getColumns.useQuery(
     { connectionId: formData.connectionId, tableName: formData.tableName },
     { enabled: formData.connectionId > 0 && formData.tableName.length > 0 }
   );
@@ -104,7 +104,7 @@ export default function Mappings() {
   const utils = trpc.useUtils();
 
   // Test connection mutation
-  const testConnectionMutation = trpc.databaseConnection.testConnectionById.useMutation({
+  const testConnectionMutation = trpc.legacyDbConnection.testConnectionById.useMutation({
     onSuccess: (result) => {
       setConnectionTestResult(result);
       setTestingConnection(false);
@@ -122,7 +122,7 @@ export default function Mappings() {
   });
 
   // Preview data query
-  const { data: previewData, isLoading: loadingPreview, refetch: refetchPreview } = trpc.databaseConnection.previewData.useQuery(
+  const { data: previewData, isLoading: loadingPreview, refetch: refetchPreview } = trpc.legacyDbConnection.previewData.useQuery(
     {
       connectionId: formData.connectionId,
       tableName: formData.tableName,

@@ -127,6 +127,7 @@ import MachineIntegrationDashboard from "./pages/MachineIntegrationDashboard";
 import OeeWidget from "./pages/OeeWidget";
 import OeeWidgetConfig from "./pages/OeeWidgetConfig";
 import DatabaseHealthDashboard from "./pages/DatabaseHealthDashboard";
+import DatabaseConnectionsSettings from "./pages/DatabaseConnectionsSettings";
 
 function Router() {
   return (
@@ -135,6 +136,7 @@ function Router() {
       <Route path="/setup" component={SystemSetup} />
       <Route path="/database-settings" component={DatabaseSettings} />
       <Route path="/database-health" component={DatabaseHealthDashboard} />
+      <Route path="/database-connections" component={DatabaseConnectionsSettings} />
       <Route path="/database-setting" component={DatabaseSettings} />
       <Route path="/connection-manager" component={ConnectionManager} />
       <Route path="/company-info" component={CompanyInfo} />

@@ -326,6 +326,20 @@ export const databaseConnections = mysqlTable("database_connections", {
   // Connection status
   lastTestedAt: timestamp("lastTestedAt"),
   lastTestStatus: varchar("lastTestStatus", { length: 50 }),
+  lastTestError: text("lastTestError"), // Error message if test failed
+  // Default connection flag - only one connection can be default per type
+  isDefault: int("isDefault").notNull().default(0),
+  // Purpose/category of connection
+  purpose: varchar("purpose", { length: 100 }), // e.g., 'spc_data', 'oee_data', 'failover', 'backup'
+  // SSL/TLS settings
+  sslEnabled: int("sslEnabled").notNull().default(0),
+  sslCertPath: text("sslCertPath"),
+  // Connection pool settings
+  maxConnections: int("maxConnections").default(10),
+  connectionTimeout: int("connectionTimeout").default(30000), // milliseconds
+  // Health check settings
+  healthCheckEnabled: int("healthCheckEnabled").notNull().default(1),
+  healthCheckInterval: int("healthCheckInterval").default(60000), // milliseconds
   isActive: int("isActive").notNull().default(1),
   createdBy: int("createdBy").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
