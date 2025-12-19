@@ -4301,6 +4301,49 @@ export const appRouter = router({
         return { success: true, fileContent: result.fileContent };
       }),
     
+    // Generate offline license for activation flow
+    generateOfflineLicense: protectedProcedure
+      .input(z.object({
+        licenseKey: z.string(),
+        hardwareFingerprint: z.string(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const { licenseServer } = await import("./licenseServer");
+        const result = await licenseServer.generateOfflineFile(input.licenseKey, input.hardwareFingerprint);
+        if (!result.success) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: result.error });
+        }
+        return { offlineLicenseFile: result.fileContent };
+      }),
+    
+    // Validate offline license file
+    validateOfflineLicense: publicProcedure
+      .input(z.object({
+        offlineLicenseFile: z.string(),
+        hardwareFingerprint: z.string(),
+      }))
+      .mutation(async ({ input }) => {
+        try {
+          // Decode and validate the offline license file
+          const decoded = Buffer.from(input.offlineLicenseFile, 'base64').toString('utf-8');
+          const licenseData = JSON.parse(decoded);
+          
+          // Check hardware fingerprint
+          if (licenseData.hardwareFingerprint !== input.hardwareFingerprint) {
+            return { valid: false, error: "Hardware fingerprint không khớp" };
+          }
+          
+          // Check expiry
+          if (licenseData.expiresAt && new Date(licenseData.expiresAt) < new Date()) {
+            return { valid: false, error: "License đã hết hạn" };
+          }
+          
+          return { valid: true, licenseData };
+        } catch (error) {
+          return { valid: false, error: "File license không hợp lệ" };
+        }
+      }),
+    
     // Hybrid Activation - Offline activation
     activateOffline: publicProcedure
       .input(z.object({

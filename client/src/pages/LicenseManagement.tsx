@@ -1,5 +1,8 @@
 import { useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
+import LicenseCreateDialog from "@/components/license/LicenseCreateDialog";
+import LicenseActivationFlow from "@/components/license/LicenseActivationFlow";
+import LicenseAnalyticsDashboard from "@/components/license/LicenseAnalyticsDashboard";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -61,6 +64,7 @@ export default function LicenseManagement() {
   const [bulkCreateOpen, setBulkCreateOpen] = useState(false);
   const [extendDialogOpen, setExtendDialogOpen] = useState(false);
   const [transferDialogOpen, setTransferDialogOpen] = useState(false);
+  const [activationDialogOpen, setActivationDialogOpen] = useState(false);
   const [selectedLicenseKey, setSelectedLicenseKey] = useState("");
   
   // Create form
@@ -588,6 +592,11 @@ export default function LicenseManagement() {
               Doanh thu
             </TabsTrigger>
           </TabsList>
+          
+          {/* Analytics Tab with Dashboard */}
+          <TabsContent value="analytics">
+            <LicenseAnalyticsDashboard />
+          </TabsContent>
           
           {/* Licenses Tab */}
           <TabsContent value="licenses" className="space-y-4">
@@ -1288,6 +1297,27 @@ export default function LicenseManagement() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        
+        {/* New License Create Dialog with Systems/Features */}
+        <LicenseCreateDialog 
+          open={createDialogOpen}
+          onOpenChange={setCreateDialogOpen}
+          onSuccess={() => {
+            licensesQuery.refetch();
+            statisticsQuery.refetch();
+          }}
+        />
+        
+        {/* License Activation Flow Dialog */}
+        <LicenseActivationFlow
+          open={activationDialogOpen}
+          onOpenChange={setActivationDialogOpen}
+          licenseKey={selectedLicenseKey}
+          onSuccess={() => {
+            licensesQuery.refetch();
+            statisticsQuery.refetch();
+          }}
+        />
       </div>
     </DashboardLayout>
   );
