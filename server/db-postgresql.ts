@@ -36,6 +36,16 @@ function getPostgresUrl(): string | null {
     || process.env.PG_URL
     || process.env.DATABASE_URL_PG;
   
+  // Fallback to local PostgreSQL if configured
+  if (!url && process.env.PG_LOCAL_ENABLED === 'true') {
+    const host = process.env.PG_HOST || 'localhost';
+    const port = process.env.PG_PORT || '5432';
+    const user = process.env.PG_USER || 'spc_user';
+    const password = process.env.PG_PASSWORD || 'spc_password';
+    const database = process.env.PG_DATABASE || 'spc_calculator';
+    return `postgresql://${user}:${password}@${host}:${port}/${database}`;
+  }
+  
   return url || null;
 }
 

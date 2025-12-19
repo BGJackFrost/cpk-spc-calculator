@@ -3847,3 +3847,25 @@
 - [x] Tạo system.databaseStatus (admin) - chi tiết với table count, pool info
 - [x] Tạo system.switchDatabase (admin) - hướng dẫn chuyển đổi database
 - [x] Test endpoint thành công: MySQL connected, PostgreSQL not_configured
+
+
+## Phase 175 - POSTGRES_URL Config, Sync Script & Health Dashboard
+
+### Cấu hình POSTGRES_URL và test dual-database mode
+- [x] Cập nhật db-postgresql.ts để hỗ trợ PG_LOCAL_ENABLED và các PG_* env vars
+- [x] Thêm PostgreSQL config vào env.ts (pgLocalEnabled, pgHost, pgPort, etc.)
+- [x] Test dual-database mode với local PostgreSQL (61 tables, 180 OEE records)
+- [x] Verify health check endpoint hoạt động
+
+### Hoàn thiện sync script cho các bảng còn lại
+- [x] Tạo ALTER script hoàn chỉnh (alter-pg-schema-complete.sql)
+- [x] Tạo sync script hoàn chỉnh (run-sync-complete.mjs) cho 46 bảng
+- [x] Chạy sync: 16 tables thành công, 9 rows mới (users, local_users, licenses, etc.)
+- [x] Verify dữ liệu: users(1), local_users(4), licenses(1), oee_records(180)
+
+### Tạo UI Dashboard cho database health monitoring
+- [x] Tạo trang DatabaseHealthDashboard.tsx với full UI
+- [x] Hiển thị trạng thái MySQL và PostgreSQL (cards với badges)
+- [x] Hiển thị table count, connection pool info, response time
+- [x] Thêm auto-refresh (10s/30s/60s) và manual refresh button
+- [x] Thêm route /database-health trong App.tsx
