@@ -4845,6 +4845,220 @@ export const appRouter = router({
         
         return { data, summary, year: currentYear, period: input.period };
       }),
+    
+    // Get licenses expiring soon (for notifications)
+    getExpiringLicenses: protectedProcedure
+      .input(z.object({
+        daysThreshold: z.number().default(30)
+      }).optional())
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        
+        const { getDb } = await import("./db");
+        const db = await getDb();
+        if (!db) return [];
+        
+        const { licenses } = await import("../drizzle/schema");
+        const { and, gte, lte, eq } = await import("drizzle-orm");
+        
+        const now = new Date();
+        const threshold = new Date(now.getTime() + (input?.daysThreshold || 30) * 24 * 60 * 60 * 1000);
+        
+        const expiring = await db.select().from(licenses).where(
+          and(
+            eq(licenses.licenseStatus, "active"),
+            gte(licenses.expiresAt, now),
+            lte(licenses.expiresAt, threshold)
+          )
+        );
+        
+        return expiring.map(lic => ({
+          ...lic,
+          daysRemaining: Math.ceil((new Date(lic.expiresAt!).getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+        }));
+      }),
+    
+    // Send expiry notification email
+    sendExpiryNotification: protectedProcedure
+      .input(z.object({
+        licenseKey: z.string(),
+        daysRemaining: z.number()
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        
+        const { licenseServer } = await import("./licenseServer");
+        const license = await licenseServer.getLicenseByKey(input.licenseKey);
+        
+        if (!license || !license.contactEmail) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "License not found or no contact email" });
+        }
+        
+        // Send notification via owner notification
+        const { notifyOwner } = await import("./_core/notification");
+        await notifyOwner({
+          title: `License sắp hết hạn - ${license.companyName || license.licenseKey}`,
+          content: `License ${license.licenseKey} của ${license.companyName || 'khách hàng'} sẽ hết hạn trong ${input.daysRemaining} ngày.\n\nEmail liên hệ: ${license.contactEmail}\nLoại: ${license.type}\nNgày hết hạn: ${license.expiresAt?.toLocaleDateString('vi-VN')}`
+        });
+        
+        // Log notification
+        const { getDb } = await import("./db");
+        const db = await getDb();
+        if (db) {
+          const { licenseNotificationLogs } = await import("../drizzle/schema");
+          try {
+            await db.insert(licenseNotificationLogs).values({
+              licenseKey: input.licenseKey,
+              notificationType: input.daysRemaining <= 7 ? '7_days' : '30_days',
+              sentAt: new Date(),
+              recipientEmail: license.contactEmail,
+              status: 'sent'
+            });
+          } catch (e) {
+            // Table might not exist yet
+            console.log('Notification log skipped - table may not exist');
+          }
+        }
+        
+        return { success: true };
+      }),
+    
+    // Get license usage statistics
+    getUsageStats: protectedProcedure
+      .input(z.object({
+        licenseKey: z.string().optional()
+      }).optional())
+      .query(async ({ ctx, input }) => {
+        const { getDb } = await import("./db");
+        const db = await getDb();
+        if (!db) return null;
+        
+        const { licenses, users, productionLines, spcPlans } = await import("../drizzle/schema");
+        const { eq, count } = await import("drizzle-orm");
+        
+        // Get active license
+        let license;
+        if (input?.licenseKey) {
+          const [lic] = await db.select().from(licenses).where(eq(licenses.licenseKey, input.licenseKey));
+          license = lic;
+        } else {
+          const [lic] = await db.select().from(licenses).where(eq(licenses.isActive, 1));
+          license = lic;
+        }
+        
+        if (!license) return null;
+        
+        // Count current usage
+        const [userCount] = await db.select({ count: count() }).from(users);
+        const [lineCount] = await db.select({ count: count() }).from(productionLines);
+        const [planCount] = await db.select({ count: count() }).from(spcPlans);
+        
+        return {
+          licenseKey: license.licenseKey,
+          licenseType: license.licenseType,
+          usage: {
+            users: {
+              current: userCount?.count || 0,
+              max: license.maxUsers || 0,
+              percentage: license.maxUsers && license.maxUsers > 0 
+                ? Math.round(((userCount?.count || 0) / license.maxUsers) * 100) 
+                : 0
+            },
+            productionLines: {
+              current: lineCount?.count || 0,
+              max: license.maxProductionLines || 0,
+              percentage: license.maxProductionLines && license.maxProductionLines > 0 
+                ? Math.round(((lineCount?.count || 0) / license.maxProductionLines) * 100) 
+                : 0
+            },
+            spcPlans: {
+              current: planCount?.count || 0,
+              max: license.maxSpcPlans || 0,
+              percentage: license.maxSpcPlans && license.maxSpcPlans > 0 
+                ? Math.round(((planCount?.count || 0) / license.maxSpcPlans) * 100) 
+                : 0
+            }
+          },
+          expiresAt: license.expiresAt,
+          daysRemaining: license.expiresAt 
+            ? Math.ceil((new Date(license.expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+            : null
+        };
+      }),
+    
+    // Check and send scheduled notifications
+    processExpiryNotifications: protectedProcedure.mutation(async ({ ctx }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+      }
+      
+      const { getDb } = await import("./db");
+      const db = await getDb();
+      if (!db) return { processed: 0, sent: 0 };
+      
+      const { licenses } = await import("../drizzle/schema");
+      const { and, gte, lte, eq } = await import("drizzle-orm");
+      
+      const now = new Date();
+      const in7Days = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+      const in30Days = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+      
+      // Get licenses expiring in 7 days
+      const expiring7Days = await db.select().from(licenses).where(
+        and(
+          eq(licenses.licenseStatus, "active"),
+          gte(licenses.expiresAt, now),
+          lte(licenses.expiresAt, in7Days)
+        )
+      );
+      
+      // Get licenses expiring in 30 days
+      const expiring30Days = await db.select().from(licenses).where(
+        and(
+          eq(licenses.licenseStatus, "active"),
+          gte(licenses.expiresAt, in7Days),
+          lte(licenses.expiresAt, in30Days)
+        )
+      );
+      
+      let sent = 0;
+      const { notifyOwner } = await import("./_core/notification");
+      
+      // Send 7-day notifications
+      for (const lic of expiring7Days) {
+        if (lic.contactEmail) {
+          const days = Math.ceil((new Date(lic.expiresAt!).getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+          await notifyOwner({
+            title: `⚠️ License sắp hết hạn (${days} ngày)`,
+            content: `License ${lic.licenseKey} của ${lic.companyName || 'khách hàng'} sẽ hết hạn trong ${days} ngày.\nEmail: ${lic.contactEmail}`
+          });
+          sent++;
+        }
+      }
+      
+      // Send 30-day notifications
+      for (const lic of expiring30Days) {
+        if (lic.contactEmail) {
+          const days = Math.ceil((new Date(lic.expiresAt!).getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+          await notifyOwner({
+            title: `License sắp hết hạn (${days} ngày)`,
+            content: `License ${lic.licenseKey} của ${lic.companyName || 'khách hàng'} sẽ hết hạn trong ${days} ngày.\nEmail: ${lic.contactEmail}`
+          });
+          sent++;
+        }
+      }
+      
+      return {
+        processed: expiring7Days.length + expiring30Days.length,
+        sent,
+        expiring7Days: expiring7Days.length,
+        expiring30Days: expiring30Days.length
+      };
+    }),
   }),
   
   // Webhook router

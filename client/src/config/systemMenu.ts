@@ -284,10 +284,19 @@ export const SYSTEM_MENU: SystemMenuConfig = {
   system: SYSTEMS.SYSTEM,
   menuGroups: [
     {
+      id: "license-activation",
+      labelKey: "menuGroup.licenseActivation",
+      icon: Key,
+      defaultOpen: true,
+      items: [
+        { id: "license-activation", icon: Key, labelKey: "nav.licenseActivation", path: "/license-activation" },
+        { id: "license-status", icon: Shield, labelKey: "nav.licenseStatus", path: "/license-activation" },
+      ],
+    },
+    {
       id: "users-management",
       labelKey: "menuGroup.users",
       icon: Users,
-      defaultOpen: true,
       items: [
         { id: "users", icon: Users, labelKey: "nav.userManagement", path: "/users" },
         { id: "local-users", icon: UserCog, labelKey: "nav.localUserManagement", path: "/local-users", adminOnly: true },

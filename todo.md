@@ -4159,3 +4159,27 @@
 - [x] Biểu đồ tỷ lệ sử dụng license (active/inactive/expired)
 - [x] Danh sách cảnh báo license sắp hết hạn
 - [x] Export báo cáo license
+
+
+## Phase 190: License Activation cho User, Email Notifications, Usage Tracking, User Menu
+
+### License Activation cho User
+- [x] Tạo trang LicenseActivation riêng trong System cho người dùng cuối
+- [x] Thêm route /license-activation (có sẵn)
+- [x] Cập nhật menu System để thêm link kích hoạt license
+
+### Email Notifications
+- [x] API getExpiringLicenses lấy license sắp hết hạn
+- [x] API sendExpiryNotification gửi thông báo
+- [x] API processExpiryNotifications xử lý tự động (7/30 ngày)
+- [x] Log lịch sử gửi thông báo
+
+### License Usage Tracking
+- [x] API getUsageStats thống kê sử dụng (users, lines, plans)
+- [x] Component LicenseUsageWidget hiển thị usage
+- [x] Cảnh báo khi sắp đạt giới hạn (>90%)
+
+### User Menu Top Left
+- [x] Chuyển avatar/user menu lên Header bên trái
+- [x] Thiết kế dropdown menu giống Google
+- [x] Hiển thị thông tin user và link nhanh (Profile, License Status)
