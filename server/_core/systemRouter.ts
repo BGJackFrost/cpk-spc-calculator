@@ -2,6 +2,8 @@ import { z } from "zod";
 import { notifyOwner } from "./notification";
 import { adminProcedure, publicProcedure, protectedProcedure, router } from "./trpc";
 import { getDb } from "../db";
+import { getPgStatus, isPgConfigured } from "../db-postgresql";
+import { getDatabaseType, getAllDatabaseStatuses, listTables } from "../db-unified";
 import { systemConfig, companyInfo } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { storagePut } from "../storage";
@@ -19,6 +21,174 @@ export const systemRouter = router({
     .query(() => ({
       ok: true,
     })),
+
+  // Database health check - monitor both MySQL and PostgreSQL
+  databaseHealth: publicProcedure.query(async () => {
+    const startTime = Date.now();
+    
+    // Get all database statuses
+    const statuses = await getAllDatabaseStatuses();
+    
+    // Get active database type
+    const activeDb = getDatabaseType();
+    
+    // Get table count for active database
+    let tableCount = 0;
+    try {
+      const tables = await listTables();
+      tableCount = tables.length;
+    } catch (e) {
+      // Ignore errors
+    }
+    
+    // Calculate response time
+    const responseTime = Date.now() - startTime;
+    
+    return {
+      status: statuses[activeDb].connected ? 'healthy' : 'unhealthy',
+      activeDatabase: activeDb,
+      responseTimeMs: responseTime,
+      tableCount,
+      databases: {
+        mysql: {
+          configured: statuses.mysql.configured,
+          connected: statuses.mysql.connected,
+          status: statuses.mysql.connected ? 'connected' : (statuses.mysql.configured ? 'disconnected' : 'not_configured'),
+        },
+        postgresql: {
+          configured: statuses.postgresql.configured,
+          connected: statuses.postgresql.connected,
+          status: statuses.postgresql.connected ? 'connected' : (statuses.postgresql.configured ? 'disconnected' : 'not_configured'),
+        },
+      },
+      timestamp: new Date().toISOString(),
+    };
+  }),
+
+  // Detailed database status (admin only)
+  databaseStatus: adminProcedure.query(async () => {
+    const startTime = Date.now();
+    
+    // MySQL status
+    let mysqlStatus: {
+      configured: boolean;
+      connected: boolean;
+      tableCount?: number;
+      error?: string;
+    } = { configured: false, connected: false };
+    
+    try {
+      const db = await getDb();
+      if (db) {
+        mysqlStatus.configured = true;
+        mysqlStatus.connected = true;
+        
+        // Count tables
+        const result = await db.execute(
+          `SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = DATABASE()`
+        );
+        mysqlStatus.tableCount = (result[0] as any)?.[0]?.count || 0;
+      }
+    } catch (e: any) {
+      mysqlStatus.configured = !!process.env.DATABASE_URL;
+      mysqlStatus.error = e.message;
+    }
+    
+    // PostgreSQL status
+    let pgStatus: {
+      configured: boolean;
+      connected: boolean;
+      tableCount?: number;
+      poolSize?: number;
+      idleCount?: number;
+      error?: string;
+    } = { configured: false, connected: false };
+    
+    try {
+      const status = await getPgStatus();
+      pgStatus.configured = status.configured;
+      pgStatus.connected = status.connected;
+      pgStatus.poolSize = status.poolSize;
+      pgStatus.idleCount = status.idleCount;
+      
+      if (status.connected) {
+        // Count tables
+        const { executePgQuery } = await import("../db-postgresql");
+        const result = await executePgQuery<{ count: string }>(
+          `SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE'`
+        );
+        pgStatus.tableCount = parseInt(result[0]?.count || '0');
+      }
+    } catch (e: any) {
+      pgStatus.configured = isPgConfigured();
+      pgStatus.error = e.message;
+    }
+    
+    const responseTime = Date.now() - startTime;
+    
+    return {
+      activeDatabase: getDatabaseType(),
+      responseTimeMs: responseTime,
+      mysql: mysqlStatus,
+      postgresql: pgStatus,
+      environment: {
+        DATABASE_TYPE: process.env.DATABASE_TYPE || 'mysql (default)',
+        DATABASE_URL: process.env.DATABASE_URL ? '***configured***' : 'not set',
+        POSTGRES_URL: process.env.POSTGRES_URL ? '***configured***' : 'not set',
+      },
+      timestamp: new Date().toISOString(),
+    };
+  }),
+
+  // Switch active database (admin only)
+  switchDatabase: adminProcedure
+    .input(z.object({
+      database: z.enum(['mysql', 'postgresql']),
+    }))
+    .mutation(async ({ input }) => {
+      // Note: This only returns info about what would need to change
+      // Actual switching requires changing DATABASE_TYPE env var and restarting
+      const currentDb = getDatabaseType();
+      
+      if (input.database === currentDb) {
+        return {
+          success: true,
+          message: `Already using ${input.database}`,
+          currentDatabase: currentDb,
+        };
+      }
+      
+      // Check if target database is configured
+      if (input.database === 'postgresql') {
+        if (!isPgConfigured()) {
+          return {
+            success: false,
+            message: 'PostgreSQL is not configured. Set POSTGRES_URL environment variable.',
+            currentDatabase: currentDb,
+          };
+        }
+      } else {
+        if (!process.env.DATABASE_URL) {
+          return {
+            success: false,
+            message: 'MySQL is not configured. Set DATABASE_URL environment variable.',
+            currentDatabase: currentDb,
+          };
+        }
+      }
+      
+      return {
+        success: false,
+        message: `To switch to ${input.database}, set DATABASE_TYPE=${input.database} in environment and restart the server.`,
+        currentDatabase: currentDb,
+        targetDatabase: input.database,
+        instructions: [
+          `1. Set DATABASE_TYPE=${input.database} in environment variables`,
+          '2. Restart the server',
+          '3. Verify connection with /api/trpc/system.databaseHealth',
+        ],
+      };
+    }),
 
   notifyOwner: adminProcedure
     .input(

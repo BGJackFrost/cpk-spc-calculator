@@ -3827,3 +3827,23 @@
 - [x] Thêm DATABASE_TYPE env variable selector (mysql | postgresql)
 - [x] Tạo SqlDialect helpers cho cross-database queries
 - [x] Test kết nối PostgreSQL thành công (61 bảng)
+
+
+## Phase 174 - Data Sync, Drizzle Schema & Health Check
+
+### Chạy script đồng bộ dữ liệu MySQL → PostgreSQL
+- [x] Chạy sync script với --dry-run trước (217 rows)
+- [x] Chạy sync thực tế với dữ liệu production
+- [x] Verify dữ liệu đã sync: production_lines (5), machines (2), oee_records (180), oee_targets (2)
+
+### Tạo PostgreSQL schema cho Drizzle ORM
+- [x] Tạo drizzle/schema-pg.ts với PostgreSQL types (pgTable, serial, pgEnum)
+- [x] Map 25+ bảng chính từ MySQL schema
+- [x] Tạo type exports cho type-safe queries (User, Machine, OeeRecord, etc.)
+- [x] Định nghĩa các enum types (roleEnum, machineStatusEnum, licenseTypeEnum, etc.)
+
+### Thêm database health check endpoint
+- [x] Tạo system.databaseHealth (public) - kiểm tra cả 2 database
+- [x] Tạo system.databaseStatus (admin) - chi tiết với table count, pool info
+- [x] Tạo system.switchDatabase (admin) - hướng dẫn chuyển đổi database
+- [x] Test endpoint thành công: MySQL connected, PostgreSQL not_configured
