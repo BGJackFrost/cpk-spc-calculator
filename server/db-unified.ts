@@ -355,5 +355,3 @@ export async function listTables(): Promise<string[]> {
   }
 }
 
-// Export database type for type checking
-export { DatabaseType };

@@ -2831,7 +2831,7 @@ async function syncMySqlToPostgres(): Promise<{ tables: number; rows: number; er
         
         // Get data from MySQL
         const [mysqlData] = await db.execute(sql.raw(`SELECT * FROM \`${tableName}\``));
-        const dataRows = mysqlData as any[];
+        const dataRows = mysqlData as unknown as any[];
         
         if (!dataRows || dataRows.length === 0) {
           continue;
