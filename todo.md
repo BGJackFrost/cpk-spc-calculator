@@ -3804,3 +3804,26 @@
 - [x] Tạo database spc_calculator và user spc_user
 - [x] Chạy migration Module 1 (3 bảng: users, local_users, login_history)
 - [x] Test kết nối và verify data (3 bảng đã tạo thành công)
+
+
+## Phase 173 - PostgreSQL Migration Modules 2-5 & Dual-Database Support
+
+### Chạy migration Module 2-5 cho PostgreSQL
+- [x] Module 2: Organization & SPC Core Tables (companies, departments, spc_mappings, etc.)
+- [x] Module 3: OEE & Machines Tables (machines, oee_records, production_lines, etc.)
+- [x] Module 4: Defect & NTF Tables (spc_defect_records, ntf_alert_config, measurements, etc.)
+- [x] Module 5: Advanced Features (licenses, webhooks, machine_connections, etc.)
+- [x] Verify tất cả 61 bảng đã được tạo thành công
+
+### Tạo script đồng bộ dữ liệu MySQL → PostgreSQL
+- [x] Tạo script sync-mysql-to-postgresql.ts
+- [x] Handle data type conversions (TINYINT → INTEGER, DATETIME → TIMESTAMP, JSON → JSONB)
+- [x] Support --dry-run và --tables options
+- [x] Table mapping cho 30+ bảng chính
+
+### Thêm dual-database support trong db.ts
+- [x] Tạo db-postgresql.ts - PostgreSQL connection module
+- [x] Tạo db-unified.ts - Unified database interface
+- [x] Thêm DATABASE_TYPE env variable selector (mysql | postgresql)
+- [x] Tạo SqlDialect helpers cho cross-database queries
+- [x] Test kết nối PostgreSQL thành công (61 bảng)
