@@ -4043,3 +4043,33 @@
 - [x] Thiết lập MySQL sync từ PostgreSQL
 - [x] Cập nhật schema và migrations
 - [x] Test data synchronization
+
+
+## Phase 185 - Hoàn thiện Database Tools, Backup & Rà soát Hệ thống
+
+### Di chuyển dữ liệu & Di chuyển DL Nâng cao
+- [ ] Kết nối API thực tế cho Data Migration Tool
+- [ ] Hoàn thiện Visual Schema Mapping với drag-and-drop
+- [ ] Hoàn thiện Data Preview & Transformation
+- [ ] Hoàn thiện Conflict Resolution với logging
+- [ ] Hoàn thiện Incremental Migration với change detection
+
+### So sánh Schema
+- [ ] Kết nối API thực tế cho Schema Comparison
+- [ ] Hiển thị diff chi tiết giữa 2 database
+- [ ] Export báo cáo so sánh schema (JSON/PDF)
+- [ ] Tự động generate migration scripts từ diff
+
+### Backup & Khôi phục hệ thống
+- [ ] Tạo trang Backup & Restore Management
+- [ ] API endpoints cho backup/restore
+- [ ] Lịch backup tự động (daily/weekly/monthly)
+- [ ] Restore từ backup với preview
+- [ ] Quản lý retention policy
+
+### Rà soát hệ thống MMS và SPC
+- [ ] Phân tích cấu trúc và chức năng hiện tại
+- [ ] Đánh giá hiệu suất và bottlenecks
+- [ ] Xác định các tính năng còn thiếu
+- [ ] Đề xuất phương hướng nâng cấp
+

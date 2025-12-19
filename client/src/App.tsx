@@ -133,6 +133,7 @@ import DataMigrationTool from "./pages/DataMigrationTool";
 import DataMigrationToolEnhanced from "./pages/DataMigrationToolEnhanced";
 import SchemaComparison from "./pages/SchemaComparison";
 import DatabaseUnified from "./pages/DatabaseUnified";
+import BackupRestore from "./pages/BackupRestore";
 
 function Router() {
   return (
@@ -260,6 +261,7 @@ function Router() {
       <Route path="/license-server-dashboard" component={LicenseServerDashboard} />
       <Route path="/login-history" component={LoginHistoryPage} />
       <Route path="/backup-history" component={BackupHistory} />
+      <Route path="/backup-restore" component={BackupRestore} />
       <Route path="/measurement-standards" component={MeasurementStandards} />
       <Route path="/measurement-standards-dashboard" component={MeasurementStandardsDashboard} />
       <Route path="/spc-visualization" component={SpcPlanVisualization} />
