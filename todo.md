@@ -4183,3 +4183,27 @@
 - [x] Chuyển avatar/user menu lên Header bên trái
 - [x] Thiết kế dropdown menu giống Google
 - [x] Hiển thị thông tin user và link nhanh (Profile, License Status)
+
+
+## Phase 191: Sửa Menu, Chuyển Login Menu, Theme Selector
+
+### Sửa Menu Trùng Lặp
+- [x] Kiểm tra các menu trùng lặp trong systemMenu.ts
+- [x] Gộp các menu License trùng lặp (xóa trong LICENSE_MENU, giữ trong SYSTEM_MENU)
+- [x] Sửa lỗi tên menu không chính xác
+- [x] Đảm bảo menu nhất quán giữa các hệ thống
+
+### Chuyển Login Menu sang Phải
+- [x] Chuyển User Avatar/Menu từ bên trái sang góc phải Top Menu
+- [x] Giữ nguyên dropdown menu với Profile, License Status, Logout
+
+### Theme Selector
+- [x] Tạo ThemeSelector component với các theme mẫu
+- [x] Theme 1: Default Blue (hiện tại)
+- [x] Theme 2: Green Nature
+- [x] Theme 3: Purple Elegant
+- [x] Theme 4: Orange Warm
+- [x] Theme 5: Dark Professional
+- [x] Theme 6: Rose Pink
+- [x] Lưu theme preference vào localStorage
+- [x] Tích hợp vào Header (nút Palette)

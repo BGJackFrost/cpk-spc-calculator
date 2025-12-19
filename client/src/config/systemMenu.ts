@@ -244,36 +244,35 @@ export const PRODUCTION_MENU: SystemMenuConfig = {
   ],
 };
 
-// ===== LICENSE SERVER MENU =====
+// ===== LICENSE SERVER MENU (Admin Only - Quản lý License cho Công ty) =====
 export const LICENSE_MENU: SystemMenuConfig = {
   system: SYSTEMS.LICENSE,
   menuGroups: [
     {
-      id: "license-overview",
-      labelKey: "menuGroup.licenseOverview",
+      id: "license-dashboard",
+      labelKey: "menuGroup.licenseDashboard",
       icon: Gauge,
       defaultOpen: true,
       items: [
         { id: "license-server-dashboard", icon: Gauge, labelKey: "nav.licenseServerDashboard", path: "/license-server-dashboard", adminOnly: true },
         { id: "license-management", icon: Key, labelKey: "nav.licenseManagement", path: "/license-management", adminOnly: true },
+      ],
+    },
+    {
+      id: "license-customers",
+      labelKey: "menuGroup.licenseCustomers",
+      icon: Building2,
+      items: [
         { id: "license-customers", icon: Building2, labelKey: "nav.licenseCustomers", path: "/license-customers", adminOnly: true },
-      ],
-    },
-    {
-      id: "license-revenue",
-      labelKey: "menuGroup.licenseRevenue",
-      icon: DollarSign,
-      items: [
         { id: "license-revenue", icon: BarChart3, labelKey: "nav.licenseRevenue", path: "/license-revenue", adminOnly: true },
-        { id: "license-server-settings", icon: Server, labelKey: "nav.licenseServerSettings", path: "/license-server-settings", adminOnly: true },
       ],
     },
     {
-      id: "license-activation",
-      labelKey: "menuGroup.licenseActivation",
-      icon: Unlock,
+      id: "license-settings",
+      labelKey: "menuGroup.licenseSettings",
+      icon: Settings,
       items: [
-        { id: "license-activation", icon: Key, labelKey: "nav.licensePortal", path: "/license-activation" },
+        { id: "license-server-settings", icon: Server, labelKey: "nav.licenseServerSettings", path: "/license-server-settings", adminOnly: true },
       ],
     },
   ],
@@ -284,13 +283,12 @@ export const SYSTEM_MENU: SystemMenuConfig = {
   system: SYSTEMS.SYSTEM,
   menuGroups: [
     {
-      id: "license-activation",
-      labelKey: "menuGroup.licenseActivation",
+      id: "my-license",
+      labelKey: "menuGroup.myLicense",
       icon: Key,
       defaultOpen: true,
       items: [
         { id: "license-activation", icon: Key, labelKey: "nav.licenseActivation", path: "/license-activation" },
-        { id: "license-status", icon: Shield, labelKey: "nav.licenseStatus", path: "/license-activation" },
       ],
     },
     {

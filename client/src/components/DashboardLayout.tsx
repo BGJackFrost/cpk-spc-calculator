@@ -40,6 +40,7 @@ import { NotificationBell } from "./NotificationBell";
 import { WebSocketIndicator } from "./WebSocketIndicator";
 import { SseIndicator } from "./SseIndicator";
 import { TopNavigation } from "./TopNavigation";
+import { ThemeSelector } from "./ThemeSelector";
 import { useSystem } from "@/contexts/SystemContext";
 import { MenuGroup as SystemMenuGroup, MenuItem as SystemMenuItem } from "@/config/systemMenu";
 
@@ -609,85 +610,91 @@ function DashboardLayoutContent({
             </span>
           </div>
           
-          {/* User Avatar Menu - Left side like Google */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-2 px-2 py-1.5 rounded-full hover:bg-accent transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                <Avatar className="h-8 w-8 border-2 border-primary/20">
-                  <AvatarImage src={user?.avatar} alt={user?.name} />
-                  <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-xs font-medium">
-                    {user?.name?.charAt(0).toUpperCase() || "U"}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="hidden lg:flex flex-col items-start">
-                  <span className="text-sm font-medium leading-none">{user?.name}</span>
-                  <span className="text-xs text-muted-foreground leading-none mt-0.5">{user?.email?.split('@')[0]}</span>
-                </div>
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-64">
-              <div className="px-3 py-2 border-b">
-                <div className="flex items-center gap-3">
-                  <Avatar className="h-10 w-10">
-                    <AvatarImage src={user?.avatar} alt={user?.name} />
-                    <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white">
-                      {user?.name?.charAt(0).toUpperCase() || "U"}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{user?.name}</p>
-                    <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
-                  </div>
-                </div>
-              </div>
-              <DropdownMenuItem onClick={() => setLocation("/profile")} className="py-2">
-                <User className="mr-2 h-4 w-4" />
-                {language === 'en' ? 'Profile' : 'Hồ sơ cá nhân'}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setLocation("/license-activation")} className="py-2">
-                <Key className="mr-2 h-4 w-4" />
-                {language === 'en' ? 'License Status' : 'Trạng thái License'}
-              </DropdownMenuItem>
-              <LanguageSwitcher />
-              <div className="border-t my-1" />
-              <DropdownMenuItem
-                onClick={() => {
-                  logout();
-                  setLocation("/");
-                }}
-                className="text-destructive focus:text-destructive py-2"
-              >
-                <LogOut className="mr-2 h-4 w-4" />
-                {language === 'en' ? 'Sign out' : 'Đăng xuất'}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          
-          <div className="h-6 w-px bg-border mx-2 hidden lg:block" />
-          
           {/* Top Navigation Menu */}
           <TopNavigation />
           
           <div className="flex-1" />
           
-          {/* Dark Mode Toggle */}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            className="h-9 w-9 rounded-lg hover:bg-accent transition-colors"
-            title={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
-          >
-            {theme === "dark" ? (
-              <Sun className="h-4 w-4 text-yellow-500" />
-            ) : (
-              <Moon className="h-4 w-4 text-slate-700" />
-            )}
-          </Button>
-          
-          <SseIndicator />
-          <WebSocketIndicator />
-          <NotificationBell />
+          {/* Right side controls */}
+          <div className="flex items-center gap-1">
+            {/* Theme Selector */}
+            <ThemeSelector />
+            
+            {/* Dark Mode Toggle */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              className="h-9 w-9 rounded-lg hover:bg-accent transition-colors"
+              title={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            >
+              {theme === "dark" ? (
+                <Sun className="h-4 w-4 text-yellow-500" />
+              ) : (
+                <Moon className="h-4 w-4 text-slate-700" />
+              )}
+            </Button>
+            
+            <SseIndicator />
+            <WebSocketIndicator />
+            <NotificationBell />
+            
+            <div className="h-6 w-px bg-border mx-1 hidden lg:block" />
+            
+            {/* User Avatar Menu - Right side */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center gap-2 px-2 py-1.5 rounded-full hover:bg-accent transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                  <Avatar className="h-8 w-8 border-2 border-primary/20">
+                    <AvatarImage src={user?.avatar} alt={user?.name} />
+                    <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-xs font-medium">
+                      {user?.name?.charAt(0).toUpperCase() || "U"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="hidden xl:flex flex-col items-start">
+                    <span className="text-sm font-medium leading-none">{user?.name}</span>
+                    <span className="text-xs text-muted-foreground leading-none mt-0.5">{user?.email?.split('@')[0]}</span>
+                  </div>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-64">
+                <div className="px-3 py-2 border-b">
+                  <div className="flex items-center gap-3">
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src={user?.avatar} alt={user?.name} />
+                      <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white">
+                        {user?.name?.charAt(0).toUpperCase() || "U"}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{user?.name}</p>
+                      <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+                    </div>
+                  </div>
+                </div>
+                <DropdownMenuItem onClick={() => setLocation("/profile")} className="py-2">
+                  <User className="mr-2 h-4 w-4" />
+                  {language === 'en' ? 'Profile' : 'Hồ sơ cá nhân'}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setLocation("/license-activation")} className="py-2">
+                  <Key className="mr-2 h-4 w-4" />
+                  {language === 'en' ? 'License Status' : 'Trạng thái License'}
+                </DropdownMenuItem>
+                <LanguageSwitcher />
+                <div className="border-t my-1" />
+                <DropdownMenuItem
+                  onClick={() => {
+                    logout();
+                    setLocation("/");
+                  }}
+                  className="text-destructive focus:text-destructive py-2"
+                >
+                  <LogOut className="mr-2 h-4 w-4" />
+                  {language === 'en' ? 'Sign out' : 'Đăng xuất'}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </header>
         <main className="flex-1 overflow-auto">
           {children}
