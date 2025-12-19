@@ -27,13 +27,7 @@ import {
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
 import { 
-  LayoutDashboard, LogOut, PanelLeft, TrendingUp, History, FileSpreadsheet, 
-  Settings, Activity, Users, Package, Ruler, Factory, Clock, Calendar, 
-  Mail, Shield, Server, Database, Wrench, Cog, GitBranch, FileText, 
-  BarChart3, AlertTriangle, Cpu, GitCompare, ArrowUpDown, Info, BookOpen, 
-  Layers, Key, Webhook, FileType, FolderClock, UserCog, ChevronRight,
-  Gauge, ClipboardList, Building2, ShieldCheck, Boxes, Moon, Sun, Zap,
-  Target, HardHat, Hammer, Truck, Brain, Bell, Download, BellRing, Award, Thermometer
+  LogOut, PanelLeft, ChevronRight, Moon, Sun, User
 } from "lucide-react";
 import { useTheme } from "../contexts/ThemeContext";
 import { CSSProperties, useEffect, useRef, useState } from "react";
@@ -46,308 +40,251 @@ import { NotificationBell } from "./NotificationBell";
 import { WebSocketIndicator } from "./WebSocketIndicator";
 import { SseIndicator } from "./SseIndicator";
 import { TopNavigation } from "./TopNavigation";
-
-// Menu groups configuration
-interface MenuItem {
-  icon: React.ComponentType<{ className?: string }>;
-  labelKey: string;
-  path: string;
-  adminOnly?: boolean;
-}
-
-interface MenuGroup {
-  id: string;
-  labelKey: string;
-  icon: React.ComponentType<{ className?: string }>;
-  items: MenuItem[];
-  defaultOpen?: boolean;
-}
-
-// Simplified sidebar menu - only frequently used items
-// Full menu is available in Top Navigation
-const menuGroups: MenuGroup[] = [
-  // ===== QUICK ACCESS =====
-  {
-    id: "quickAccess",
-    labelKey: "menuGroup.quickAccess",
-    icon: Zap,
-    defaultOpen: true,
-    items: [
-      { icon: LayoutDashboard, labelKey: "nav.dashboard", path: "/dashboard" },
-      { icon: TrendingUp, labelKey: "nav.analyze", path: "/analyze" },
-      { icon: Zap, labelKey: "nav.realtimeLine", path: "/realtime-line" },
-      { icon: History, labelKey: "nav.history", path: "/history" },
-      { icon: Brain, labelKey: "nav.anomalyDetection", path: "/anomaly-detection" },
-    ]
-  },
-  // ===== SPC/CPK =====
-  {
-    id: "spc",
-    labelKey: "menuGroup.spc",
-    icon: TrendingUp,
-    items: [
-      { icon: Cpu, labelKey: "nav.machineOverview", path: "/machine-overview" },
-      { icon: Layers, labelKey: "nav.spcPlanOverview", path: "/spc-visualization" },
-      { icon: BarChart3, labelKey: "nav.spcReport", path: "/spc-report" },
-      { icon: AlertTriangle, labelKey: "nav.defectTracking", path: "/defects" },
-      { icon: BookOpen, labelKey: "nav.spcRulesConfig", path: "/rules" },
-    ]
-  },
-  // ===== MMS =====
-  {
-    id: "mms",
-    labelKey: "menuGroup.mms",
-    icon: HardHat,
-    items: [
-      { icon: Target, labelKey: "nav.oeeDashboard", path: "/oee-dashboard" },
-      { icon: Gauge, labelKey: "nav.unifiedDashboard", path: "/unified-dashboard" },
-      { icon: Calendar, labelKey: "nav.maintenanceSchedule", path: "/maintenance-schedule" },
-      { icon: Brain, labelKey: "nav.predictiveMaintenance", path: "/predictive-maintenance" },
-      { icon: Boxes, labelKey: "nav.spareParts", path: "/spare-parts" },
-    ]
-  },
-  // ===== ADMIN (Admin Only) =====
-  {
-    id: "admin",
-    labelKey: "menuGroup.admin",
-    icon: Settings,
-    items: [
-      { icon: Users, labelKey: "nav.userManagement", path: "/users" },
-      { icon: Database, labelKey: "nav.databaseUnified", path: "/database-unified", adminOnly: true },
-      { icon: Settings, labelKey: "nav.settingsAndConnections", path: "/settings", adminOnly: true },
-      { icon: Key, labelKey: "nav.licensePortal", path: "/license-activation" },
-      { icon: Info, labelKey: "nav.about", path: "/about" },
-    ]
-  },
-];
+import { useSystem } from "@/contexts/SystemContext";
+import { MenuGroup as SystemMenuGroup, MenuItem as SystemMenuItem } from "@/config/systemMenu";
 
 // Fallback labels for keys not in translation files (by language)
 const fallbackLabelsVi: Record<string, string> = {
-  "productionLine": "Quản lý Dây chuyền",
-  "workstation": "Quản lý Công trạm",
-  "machine": "Quản lý Máy",
-  "machineType": "Loại Máy",
-  "fixture": "Quản lý Fixture",
-  "process": "Quản lý Quy trình",
-  "samplingMethod": "Phương pháp Lấy mẫu",
-  "emailNotification": "Thông báo Email",
-  "permission": "Phân quyền",
-  "smtpConfig": "Cấu hình SMTP",
-  "seedData": "Khởi tạo Dữ liệu",
-  "nav.reportTemplates": "Template Báo cáo",
-  "nav.exportHistory": "Lịch sử Xuất",
+  "menuGroup.spcOverview": "Tổng quan SPC",
+  "menuGroup.spcAnalysis": "Phân tích",
+  "menuGroup.spcQuality": "Chất lượng",
+  "menuGroup.spcConfig": "Cấu hình SPC",
+  "menuGroup.mmsOverview": "Tổng quan MMS",
+  "menuGroup.mmsMaintenance": "Bảo trì",
+  "menuGroup.mmsSpareParts": "Kho phụ tùng",
+  "menuGroup.mmsConfig": "Cấu hình MMS",
+  "menuGroup.production": "Quản lý Sản xuất",
+  "menuGroup.masterData": "Dữ liệu Chính",
+  "menuGroup.licenseOverview": "Tổng quan License",
+  "menuGroup.licenseRevenue": "Doanh thu",
+  "menuGroup.licenseActivation": "Kích hoạt",
+  "menuGroup.users": "Người dùng",
+  "menuGroup.system": "Hệ thống",
+  "menuGroup.notifications": "Thông báo",
+  "menuGroup.systemTools": "Công cụ",
+  "nav.dashboard": "Dashboard",
+  "nav.realtimeLine": "Realtime Dashboard",
+  "nav.machineOverview": "Tổng quan Máy",
+  "nav.machineStatusReport": "Báo cáo Trạng thái",
+  "nav.spcPlanOverview": "SPC Plan Overview",
+  "nav.supervisorDashboard": "Dashboard Giám sát",
+  "nav.analyze": "Phân tích SPC/CPK",
+  "nav.anomalyDetection": "AI Anomaly Detection",
+  "nav.multiObjectAnalysis": "Phân tích Đa đối tượng",
+  "nav.lineComparison": "So sánh Dây chuyền",
+  "nav.machineComparison": "So sánh Máy",
+  "nav.history": "Lịch sử Phân tích",
+  "nav.spcReport": "Báo cáo SPC",
+  "nav.defectTracking": "Theo dõi Lỗi",
+  "nav.defectAnalysis": "Phân tích Lỗi",
+  "nav.spcRulesConfig": "Cấu hình SPC Rules",
+  "nav.customValidation": "Validation Rules",
+  "nav.cpkBenchmark": "So sánh CPK",
+  "nav.shiftAnalysis": "Phân tích theo Ca",
+  "nav.realtimeConveyor": "Dây chuyền Realtime",
+  "nav.realtimeMachineConfig": "Cấu hình Máy Realtime",
+  "nav.realtimeHistory": "Lịch sử Realtime",
+  "nav.alarmThreshold": "Ngưỡng Cảnh báo",
+  "nav.machineAreas": "Khu vực Máy",
+  "nav.oeeDashboard": "Dashboard OEE",
+  "nav.unifiedDashboard": "Dashboard Tổng hợp",
+  "nav.plantKpi": "KPI Nhà máy",
+  "nav.advancedAnalytics": "Phân tích Nâng cao",
+  "nav.maintenanceDashboard": "Dashboard Bảo trì",
+  "nav.maintenanceSchedule": "Lịch Bảo trì",
+  "nav.predictiveMaintenance": "Bảo trì Dự đoán",
+  "nav.equipmentQr": "Tra cứu QR",
+  "nav.spareParts": "Quản lý Phụ tùng",
+  "nav.sparePartsCostReport": "Báo cáo Chi phí",
+  "nav.sparePartsGuide": "Hướng dẫn",
+  "nav.mmsDataInit": "Khởi tạo Dữ liệu",
+  "nav.iotGateway": "IoT Gateway",
+  "nav.reportsExport": "Xuất Báo cáo",
+  "nav.customReportBuilder": "Tạo Báo cáo",
+  "nav.alertConfig": "Cấu hình Cảnh báo",
+  "nav.oeeAlertThresholds": "Ngưỡng OEE",
+  "nav.ntfConfig": "Cấu hình NTF",
+  "nav.ntfDashboard": "Dashboard NTF",
+  "nav.productionLine": "Dây chuyền Sản xuất",
+  "nav.workstation": "Công trạm",
+  "nav.machine": "Máy móc",
+  "nav.machineType": "Loại Máy",
+  "nav.fixture": "Fixture",
+  "nav.process": "Quy trình",
+  "nav.productManagement": "Sản phẩm",
+  "nav.measurementStandards": "Tiêu chuẩn Đo",
+  "nav.measurementStandardsDashboard": "Dashboard Tiêu chuẩn",
+  "nav.mappingManagement": "Mapping",
+  "nav.spcPlanManagement": "Kế hoạch SPC",
+  "nav.quickSpcPlan": "Quick SPC Plan",
+  "nav.licenseServerDashboard": "Dashboard License",
+  "nav.licenseManagement": "Quản lý License",
+  "nav.licenseCustomers": "Khách hàng",
+  "nav.licenseRevenue": "Doanh thu",
+  "nav.licenseServerSettings": "Cài đặt Server",
+  "nav.licensePortal": "Kích hoạt License",
+  "nav.userManagement": "Quản lý Người dùng",
   "nav.localUserManagement": "Người dùng Local",
   "nav.loginHistory": "Lịch sử Đăng nhập",
   "nav.organization": "Cấu trúc Tổ chức",
-  "nav.licensePortal": "Cổng License",
-  "nav.licenseAdmin": "Quản trị License",
-  "nav.licenseServer": "License Server",
-  "nav.connectionManager": "Quản lý Kết nối",
-  "nav.companyInfo": "Thông tin Công ty",
-  "menuGroup.spcDashboard": "SPC - Tổng quan",
-  "menuGroup.spcAnalysis": "SPC - Phân tích",
-  "menuGroup.spcQuality": "SPC - Chất lượng",
-  "menuGroup.spcConfig": "SPC - Cấu hình",
-  "menuGroup.mmsDashboard": "MMS - Tổng quan",
-  "menuGroup.mmsMaintenance": "MMS - Bảo trì",
-  "menuGroup.mmsSpareParts": "MMS - Phụ tùng",
-  "menuGroup.mmsConfig": "MMS - Cấu hình",
-  "menuGroup.production": "Sản xuất",
-  "menuGroup.masterData": "Dữ liệu chính",
-  "menuGroup.users": "Người dùng",
-  "menuGroup.system": "Hệ thống",
-  "nav.mmsDataInit": "Khởi tạo Dữ liệu MMS",
-  "nav.measurementStandards": "Tiêu chuẩn Đo",
-  "nav.measurementStandardsDashboard": "Dashboard Tiêu chuẩn",
-  "nav.quickSpcPlan": "Tạo nhanh SPC Plan",
-  "nav.realtimeLine": "Dashboard RealTime",
-  "nav.realtimeMachineConfig": "Cấu hình Máy Realtime",
-  "nav.realtimeHistory": "Lịch sử Realtime",
-  "nav.alarmThreshold": "Cấu hình Ngưỡng Alarm",
-  "nav.machineOverview": "Tổng quan Máy móc",
-  "nav.machineAreas": "Khu vực Máy",
-  "nav.machineStatusReport": "Báo cáo Trạng thái",
-  "menuGroup.oee": "OEE",
-  "nav.oeeDashboard": "Dashboard OEE",
-  "menuGroup.maintenance": "Bảo trì",
-  "nav.maintenanceDashboard": "Dashboard Bảo trì",
-  "nav.shiftCpkComparison": "So sánh CPK theo Ca",
-  "nav.defectTracking": "Theo dõi Lỗi",
-  "nav.defectAnalysis": "Phân tích Lỗi (Pareto)",
-  "nav.spcRulesConfig": "Cấu hình SPC Rules",
-  "nav.customValidation": "Kiểm tra Tùy chỉnh",
-  "nav.cpkBenchmark": "So sánh CPK",
-  "nav.shiftAnalysis": "Phân tích theo Ca",
-  "menuGroup.licenseServer": "License Server",
-  "nav.licenseManagement": "Quản lý License",
-  "nav.licenseCustomers": "Quản lý Khách hàng",
-  "nav.licenseRevenue": "Báo cáo Doanh thu",
-  "nav.licenseServerSettings": "Cài đặt Server",
-  "nav.licenseServerDashboard": "Dashboard Server",
-  "nav.supervisorDashboard": "Dashboard Supervisor",
-  "nav.machineComparison": "So sánh Máy",
-  "nav.shiftReports": "Báo cáo theo Ca",
-  "nav.notificationCenter": "Trung tâm Thông báo",
-  "nav.scheduledJobs": "Quản lý Scheduled Jobs",
-  "nav.rateLimitDashboard": "Giám sát Rate Limit",
-  "nav.databaseHealth": "Sức khỏe Database",
-  "nav.databaseConnections": "Kết nối Database",
+  "nav.approvalWorkflow": "Workflow Phê duyệt",
+  "nav.modulePermissions": "Phân quyền Module",
+  "nav.pendingApprovals": "Chờ Phê duyệt",
+  "nav.settingsAndConnections": "Cài đặt",
   "nav.databaseUnified": "Quản lý Database",
-  "nav.databaseWizard": "Wizard Kết nối DB",
+  "nav.databaseWizard": "Database Wizard",
   "nav.dataMigration": "Di chuyển Dữ liệu",
-  "nav.dataMigrationEnhanced": "Di chuyển DL Nâng cao",
   "nav.schemaComparison": "So sánh Schema",
-  "nav.websocketEventLog": "WebSocket Event Log",
-  "nav.advancedAnalytics": "Phân tích Nâng cao",
-  "nav.exportReports": "Xuất Báo cáo",
-  "nav.customReportBuilder": "Tạo Báo cáo Tùy chỉnh",
-  "nav.sparePartsCostReport": "Báo cáo Chi phí",
-  "nav.sparePartsGuide": "Hướng dẫn Sử dụng",
-  "nav.approvalWorkflow": "Quy trình Phê duyệt",
-  "nav.modulePermissions": "Phân quyền",
-  "nav.pendingApprovals": "Phê duyệt",
-  "nav.approvalReport": "Báo cáo Phê duyệt",
+  "nav.backupHistory": "Backup & Restore",
+  "nav.companyInfo": "Thông tin Công ty",
+  "nav.emailNotification": "Email Notification",
+  "nav.smtpConfig": "Cấu hình SMTP",
+  "nav.webhookManagement": "Webhook",
+  "nav.notificationCenter": "Trung tâm Thông báo",
+  "nav.auditLog": "Audit Log",
+  "nav.seedData": "Seed Data",
+  "nav.reportTemplates": "Mẫu Báo cáo",
+  "nav.exportHistory": "Lịch sử Export",
+  "nav.scheduledJobs": "Scheduled Jobs",
+  "nav.rateLimitDashboard": "Rate Limit",
+  "nav.about": "Thông tin",
 };
 
 const fallbackLabelsEn: Record<string, string> = {
-  "productionLine": "Production Line",
-  "workstation": "Workstation",
-  "machine": "Machine",
-  "machineType": "Machine Type",
-  "fixture": "Fixture",
-  "process": "Process",
-  "samplingMethod": "Sampling Method",
-  "emailNotification": "Email Notification",
-  "permission": "Permissions",
-  "smtpConfig": "SMTP Config",
-  "seedData": "Seed Data",
-  "nav.reportTemplates": "Report Templates",
-  "nav.exportHistory": "Export History",
+  "menuGroup.spcOverview": "SPC Overview",
+  "menuGroup.spcAnalysis": "Analysis",
+  "menuGroup.spcQuality": "Quality",
+  "menuGroup.spcConfig": "SPC Config",
+  "menuGroup.mmsOverview": "MMS Overview",
+  "menuGroup.mmsMaintenance": "Maintenance",
+  "menuGroup.mmsSpareParts": "Spare Parts",
+  "menuGroup.mmsConfig": "MMS Config",
+  "menuGroup.production": "Production Management",
+  "menuGroup.masterData": "Master Data",
+  "menuGroup.licenseOverview": "License Overview",
+  "menuGroup.licenseRevenue": "Revenue",
+  "menuGroup.licenseActivation": "Activation",
+  "menuGroup.users": "Users",
+  "menuGroup.system": "System",
+  "menuGroup.notifications": "Notifications",
+  "menuGroup.systemTools": "Tools",
+  "nav.dashboard": "Dashboard",
+  "nav.realtimeLine": "Realtime Dashboard",
+  "nav.machineOverview": "Machine Overview",
+  "nav.machineStatusReport": "Status Report",
+  "nav.spcPlanOverview": "SPC Plan Overview",
+  "nav.supervisorDashboard": "Supervisor Dashboard",
+  "nav.analyze": "SPC/CPK Analysis",
+  "nav.anomalyDetection": "AI Anomaly Detection",
+  "nav.multiObjectAnalysis": "Multi-object Analysis",
+  "nav.lineComparison": "Line Comparison",
+  "nav.machineComparison": "Machine Comparison",
+  "nav.history": "Analysis History",
+  "nav.spcReport": "SPC Report",
+  "nav.defectTracking": "Defect Tracking",
+  "nav.defectAnalysis": "Defect Analysis",
+  "nav.spcRulesConfig": "SPC Rules Config",
+  "nav.customValidation": "Validation Rules",
+  "nav.cpkBenchmark": "CPK Comparison",
+  "nav.shiftAnalysis": "Shift Analysis",
+  "nav.realtimeConveyor": "Realtime Conveyor",
+  "nav.realtimeMachineConfig": "Realtime Machine Config",
+  "nav.realtimeHistory": "Realtime History",
+  "nav.alarmThreshold": "Alarm Threshold",
+  "nav.machineAreas": "Machine Areas",
+  "nav.oeeDashboard": "OEE Dashboard",
+  "nav.unifiedDashboard": "Unified Dashboard",
+  "nav.plantKpi": "Plant KPI",
+  "nav.advancedAnalytics": "Advanced Analytics",
+  "nav.maintenanceDashboard": "Maintenance Dashboard",
+  "nav.maintenanceSchedule": "Maintenance Schedule",
+  "nav.predictiveMaintenance": "Predictive Maintenance",
+  "nav.equipmentQr": "Equipment QR Lookup",
+  "nav.spareParts": "Spare Parts",
+  "nav.sparePartsCostReport": "Cost Report",
+  "nav.sparePartsGuide": "User Guide",
+  "nav.mmsDataInit": "Data Init",
+  "nav.iotGateway": "IoT Gateway",
+  "nav.reportsExport": "Export Reports",
+  "nav.customReportBuilder": "Report Builder",
+  "nav.alertConfig": "Alert Config",
+  "nav.oeeAlertThresholds": "OEE Thresholds",
+  "nav.ntfConfig": "NTF Config",
+  "nav.ntfDashboard": "NTF Dashboard",
+  "nav.productionLine": "Production Lines",
+  "nav.workstation": "Workstations",
+  "nav.machine": "Machines",
+  "nav.machineType": "Machine Types",
+  "nav.fixture": "Fixtures",
+  "nav.process": "Processes",
+  "nav.productManagement": "Products",
+  "nav.measurementStandards": "Measurement Standards",
+  "nav.measurementStandardsDashboard": "Standards Dashboard",
+  "nav.mappingManagement": "Mappings",
+  "nav.spcPlanManagement": "SPC Plans",
+  "nav.quickSpcPlan": "Quick SPC Plan",
+  "nav.licenseServerDashboard": "License Dashboard",
+  "nav.licenseManagement": "License Management",
+  "nav.licenseCustomers": "Customers",
+  "nav.licenseRevenue": "Revenue",
+  "nav.licenseServerSettings": "Server Settings",
+  "nav.licensePortal": "License Activation",
+  "nav.userManagement": "User Management",
   "nav.localUserManagement": "Local Users",
   "nav.loginHistory": "Login History",
   "nav.organization": "Organization",
-  "nav.licensePortal": "License Portal",
-  "nav.licenseAdmin": "License Administration",
-  "nav.licenseServer": "License Server",
-  "nav.connectionManager": "Connection Manager",
-  "nav.companyInfo": "Company Info",
-  "menuGroup.spcDashboard": "SPC - Overview",
-  "menuGroup.spcAnalysis": "SPC - Analysis",
-  "menuGroup.spcQuality": "SPC - Quality",
-  "menuGroup.spcConfig": "SPC - Config",
-  "menuGroup.mmsDashboard": "MMS - Overview",
-  "menuGroup.mmsMaintenance": "MMS - Maintenance",
-  "menuGroup.mmsSpareParts": "MMS - Spare Parts",
-  "menuGroup.mmsConfig": "MMS - Config",
-  "menuGroup.production": "Production",
-  "menuGroup.masterData": "Master Data",
-  "menuGroup.users": "Users",
-  "menuGroup.system": "System",
-  "nav.mmsDataInit": "MMS Data Init",
-  "nav.measurementStandards": "Measurement Standards",
-  "nav.measurementStandardsDashboard": "Standards Dashboard",
-  "nav.quickSpcPlan": "Quick SPC Plan",
-  "nav.realtimeLine": "Realtime Dashboard",
-  "nav.realtimeMachineConfig": "Realtime Machine Config",
-  "nav.realtimeHistory": "Realtime History",
-  "nav.alarmThreshold": "Alarm Threshold Config",
-  "nav.machineOverview": "Machine Overview",
-  "nav.machineAreas": "Machine Areas",
-  "nav.machineStatusReport": "Status Report",
-  "menuGroup.licenseServer": "License Server",
-  "nav.licenseManagement": "License Management",
-  "nav.licenseCustomers": "Customer Management",
-  "nav.licenseRevenue": "Revenue Report",
-  "nav.licenseServerSettings": "Server Settings",
-  "nav.databaseHealth": "Database Health",
-  "nav.databaseConnections": "Database Connections",
-  "nav.databaseUnified": "Database Management",
-  "nav.databaseWizard": "DB Connection Wizard",
-  "nav.dataMigration": "Data Migration",
-  "nav.dataMigrationEnhanced": "Enhanced Data Migration",
-  "nav.schemaComparison": "Schema Comparison",
-  "nav.licenseServerDashboard": "Server Dashboard",
-  "nav.shiftCpkComparison": "Shift CPK Comparison",
-  "nav.defectTracking": "Defect Tracking",
-  "nav.defectAnalysis": "Defect Analysis (Pareto)",
-  "nav.spcRulesConfig": "SPC Rules Config",
-  "nav.customValidation": "Custom Validation",
-  "nav.cpkBenchmark": "CPK Benchmark",
-  "nav.shiftAnalysis": "Shift Analysis",
-  "nav.supervisorDashboard": "Supervisor Dashboard",
-  "nav.machineComparison": "Machine Comparison",
-  "nav.shiftReports": "Shift Reports",
-  "nav.notificationCenter": "Notification Center",
-  "nav.scheduledJobs": "Scheduled Jobs",
-  "nav.rateLimitDashboard": "Rate Limit Dashboard",
-  "nav.websocketEventLog": "WebSocket Event Log",
-  "nav.advancedAnalytics": "Advanced Analytics",
-  "nav.exportReports": "Export Reports",
-  "nav.customReportBuilder": "Custom Report Builder",
-  "nav.sparePartsCostReport": "Cost Report",
-  "nav.sparePartsGuide": "User Guide",
   "nav.approvalWorkflow": "Approval Workflow",
-  "nav.modulePermissions": "Module & Permissions",
+  "nav.modulePermissions": "Module Permissions",
   "nav.pendingApprovals": "Pending Approvals",
-  "nav.approvalReport": "Approval Report",
+  "nav.settingsAndConnections": "Settings",
+  "nav.databaseUnified": "Database Management",
+  "nav.databaseWizard": "Database Wizard",
+  "nav.dataMigration": "Data Migration",
+  "nav.schemaComparison": "Schema Comparison",
+  "nav.backupHistory": "Backup & Restore",
+  "nav.companyInfo": "Company Info",
+  "nav.emailNotification": "Email Notification",
+  "nav.smtpConfig": "SMTP Config",
+  "nav.webhookManagement": "Webhooks",
+  "nav.notificationCenter": "Notification Center",
+  "nav.auditLog": "Audit Log",
+  "nav.seedData": "Seed Data",
+  "nav.reportTemplates": "Report Templates",
+  "nav.exportHistory": "Export History",
+  "nav.scheduledJobs": "Scheduled Jobs",
+  "nav.rateLimitDashboard": "Rate Limit",
+  "nav.about": "About",
 };
 
-const SIDEBAR_WIDTH_KEY = "sidebar-width";
-const MENU_OPEN_STATE_KEY = "menu-open-state";
-const DEFAULT_WIDTH = 280;
 const MIN_WIDTH = 200;
-const MAX_WIDTH = 480;
+const MAX_WIDTH = 400;
+const MENU_OPEN_STATE_KEY = "dashboard-menu-open-state";
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const [sidebarWidth, setSidebarWidth] = useState(() => {
-    const saved = localStorage.getItem(SIDEBAR_WIDTH_KEY);
-    return saved ? parseInt(saved, 10) : DEFAULT_WIDTH;
-  });
-  const { loading, user } = useAuth();
+  const { user, isLoading } = useAuth();
+  const [sidebarWidth, setSidebarWidth] = useState(280);
+  const { systemConfig, activeSystem } = useSystem();
 
-  useEffect(() => {
-    localStorage.setItem(SIDEBAR_WIDTH_KEY, sidebarWidth.toString());
-  }, [sidebarWidth]);
-
-  if (loading) {
-    return <DashboardLayoutSkeleton />
+  if (isLoading) {
+    return <DashboardLayoutSkeleton />;
   }
 
   if (!user) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="flex flex-col items-center gap-8 p-8 max-w-md w-full">
-          <div className="flex flex-col items-center gap-6">
-            <h1 className="text-2xl font-semibold tracking-tight text-center">
-              Sign in to continue
-            </h1>
-            <p className="text-sm text-muted-foreground text-center max-w-sm">
-              Access to this dashboard requires authentication. Continue to launch the login flow.
-            </p>
-          </div>
-          <Button
-            onClick={() => {
-              window.location.href = getLoginUrl();
-            }}
-            size="lg"
-            className="w-full shadow-lg hover:shadow-xl transition-all"
-          >
-            Sign in
-          </Button>
-        </div>
-      </div>
-    );
+    window.location.href = getLoginUrl();
+    return <DashboardLayoutSkeleton />;
   }
 
   return (
     <SidebarProvider
+      defaultOpen={true}
       style={
         {
           "--sidebar-width": `${sidebarWidth}px`,
+          "--sidebar-width-icon": "60px",
         } as CSSProperties
       }
     >
@@ -373,11 +310,16 @@ function DashboardLayoutContent({
   const isCollapsed = state === "collapsed";
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
-  const { translate, t, language } = useLanguage();
+  const { translate, language } = useLanguage();
+  const { systemConfig, systemMenu, activeSystem } = useSystem();
+  const { theme, setTheme } = useTheme();
+  
+  // Get menu groups from current system
+  const menuGroups = systemMenu?.menuGroups || [];
   
   // Menu open state
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
-    const saved = localStorage.getItem(MENU_OPEN_STATE_KEY);
+    const saved = localStorage.getItem(`${MENU_OPEN_STATE_KEY}-${activeSystem}`);
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -393,10 +335,32 @@ function DashboardLayoutContent({
     return defaults;
   });
 
+  // Reset open state when system changes
+  useEffect(() => {
+    const saved = localStorage.getItem(`${MENU_OPEN_STATE_KEY}-${activeSystem}`);
+    if (saved) {
+      try {
+        setOpenGroups(JSON.parse(saved));
+      } catch {
+        const defaults: Record<string, boolean> = {};
+        menuGroups.forEach(group => {
+          defaults[group.id] = group.defaultOpen || group.items.some(item => item.path === location);
+        });
+        setOpenGroups(defaults);
+      }
+    } else {
+      const defaults: Record<string, boolean> = {};
+      menuGroups.forEach(group => {
+        defaults[group.id] = group.defaultOpen || group.items.some(item => item.path === location);
+      });
+      setOpenGroups(defaults);
+    }
+  }, [activeSystem, menuGroups, location]);
+
   // Save open state to localStorage
   useEffect(() => {
-    localStorage.setItem(MENU_OPEN_STATE_KEY, JSON.stringify(openGroups));
-  }, [openGroups]);
+    localStorage.setItem(`${MENU_OPEN_STATE_KEY}-${activeSystem}`, JSON.stringify(openGroups));
+  }, [openGroups, activeSystem]);
 
   // Get label for menu item based on current language
   const getLabel = (labelKey: string) => {
@@ -407,27 +371,6 @@ function DashboardLayoutContent({
   };
   
   const isMobile = useIsMobile();
-  const { theme, toggleTheme, switchable } = useTheme();
-  
-  // Theme Toggle Component
-  const ThemeToggle = () => {
-    if (!switchable || !toggleTheme) return null;
-    return (
-      <DropdownMenuItem onClick={toggleTheme}>
-        {theme === 'dark' ? (
-          <>
-            <Sun className="mr-2 h-4 w-4" />
-            {language === 'en' ? 'Light Mode' : 'Chế độ sáng'}
-          </>
-        ) : (
-          <>
-            <Moon className="mr-2 h-4 w-4" />
-            {language === 'en' ? 'Dark Mode' : 'Chế độ tối'}
-          </>
-        )}
-      </DropdownMenuItem>
-    );
-  };
 
   useEffect(() => {
     if (isCollapsed) {
@@ -473,8 +416,20 @@ function DashboardLayoutContent({
   };
 
   // Filter items based on user role
-  const filterItems = (items: MenuItem[]) => {
+  const filterItems = (items: SystemMenuItem[]) => {
     return items.filter(item => !item.adminOnly || user?.role === "admin");
+  };
+
+  // Get system color class
+  const getSystemColorClass = () => {
+    switch (activeSystem) {
+      case "spc": return "text-blue-600 dark:text-blue-400";
+      case "mms": return "text-orange-600 dark:text-orange-400";
+      case "production": return "text-green-600 dark:text-green-400";
+      case "license": return "text-purple-600 dark:text-purple-400";
+      case "system": return "text-slate-600 dark:text-slate-400";
+      default: return "text-primary";
+    }
   };
 
   return (
@@ -485,7 +440,7 @@ function DashboardLayoutContent({
           className="border-r-0"
           disableTransition={isResizing}
         >
-          <SidebarHeader className="h-16 justify-center">
+          <SidebarHeader className="h-16 justify-center border-b">
             <div className="flex items-center gap-3 px-2 transition-all w-full">
               <button
                 onClick={toggleSidebar}
@@ -494,10 +449,11 @@ function DashboardLayoutContent({
               >
                 <PanelLeft className="h-4 w-4 text-muted-foreground" />
               </button>
-              {!isCollapsed ? (
+              {!isCollapsed && systemConfig ? (
                 <div className="flex items-center gap-2 min-w-0">
-                  <span className="font-semibold tracking-tight truncate">
-                    SPC/CPK Calculator
+                  <systemConfig.icon className={`h-5 w-5 ${getSystemColorClass()}`} />
+                  <span className={`font-semibold tracking-tight truncate ${getSystemColorClass()}`}>
+                    {systemConfig.shortName}
                   </span>
                 </div>
               ) : null}
@@ -583,41 +539,30 @@ function DashboardLayoutContent({
             })}
           </SidebarContent>
 
-          <SidebarFooter className="p-2">
+          <SidebarFooter className="border-t p-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-3 w-full p-2 rounded-lg hover:bg-accent transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                  <Avatar className="h-8 w-8 shrink-0">
-                    {(user as any)?.avatar ? (
-                      <AvatarImage src={(user as any).avatar} alt={user?.name || "User"} />
-                    ) : null}
-                    <AvatarFallback className="bg-primary/10 text-primary text-sm">
-                      {user?.name?.[0]?.toUpperCase() || "U"}
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={user?.avatarUrl || undefined} alt={user?.name || "User"} />
+                    <AvatarFallback>
+                      {user?.name?.charAt(0).toUpperCase() || "U"}
                     </AvatarFallback>
                   </Avatar>
                   {!isCollapsed && (
-                    <div className="flex flex-col items-start min-w-0">
-                      <span className="text-sm font-medium truncate w-full">
-                        {user?.name || "User"}
-                      </span>
-                      <span className="text-xs text-muted-foreground truncate w-full">
-                        {user?.email || ""}
-                      </span>
+                    <div className="flex-1 text-left min-w-0">
+                      <p className="text-sm font-medium truncate">{user?.name}</p>
+                      <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
                     </div>
                   )}
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-56">
-                <div className="px-2 py-1.5 text-sm font-medium">
-                  {user?.name}
-                </div>
-                <div className="px-2 pb-2 text-xs text-muted-foreground">
-                  {user?.email}
-                </div>
-                <div className="border-t my-1" />
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem onClick={() => setLocation("/profile")}>
+                  <User className="mr-2 h-4 w-4" />
+                  {language === 'en' ? 'Profile' : 'Hồ sơ'}
+                </DropdownMenuItem>
                 <LanguageSwitcher />
-                <ThemeToggle />
-                <div className="border-t my-1" />
                 <DropdownMenuItem
                   onClick={() => {
                     logout();
@@ -626,23 +571,10 @@ function DashboardLayoutContent({
                   className="text-destructive focus:text-destructive"
                 >
                   <LogOut className="mr-2 h-4 w-4" />
-                  {translate("common.logout")}
+                  {language === 'en' ? 'Logout' : 'Đăng xuất'}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            
-            {/* Nút Đăng xuất riêng biệt */}
-            <Button
-              variant="ghost"
-              className="w-full justify-start gap-2 text-destructive hover:text-destructive hover:bg-destructive/10 mt-2"
-              onClick={() => {
-                logout();
-                setLocation("/");
-              }}
-            >
-              <LogOut className="h-4 w-4" />
-              {!isCollapsed && translate("common.logout")}
-            </Button>
           </SidebarFooter>
         </Sidebar>
 
@@ -659,7 +591,7 @@ function DashboardLayoutContent({
       </div>
 
       <SidebarInset className="flex flex-col min-h-screen">
-        <header className="h-16 shrink-0 flex items-center gap-2 border-b px-4 lg:px-6">
+        <header className="h-16 shrink-0 flex items-center gap-2 border-b px-4 lg:px-6 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <SidebarTrigger className="-ml-1 lg:hidden" />
           
           {/* Logo */}
@@ -669,11 +601,12 @@ function DashboardLayoutContent({
               alt="Logo" 
               className="h-8 w-8 object-contain"
               onError={(e) => {
-                // Fallback to default icon if logo not found
                 (e.target as HTMLImageElement).style.display = 'none';
               }}
             />
-            <span className="hidden md:inline font-semibold text-lg">MMS/SPC</span>
+            <span className="hidden md:inline font-bold text-lg bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              MMS/SPC
+            </span>
           </div>
           
           {/* Top Navigation Menu */}
@@ -682,7 +615,19 @@ function DashboardLayoutContent({
           <div className="flex-1" />
           
           {/* Dark Mode Toggle */}
-          <DarkModeToggle />
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            className="h-9 w-9 rounded-lg hover:bg-accent transition-colors"
+            title={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
+          >
+            {theme === "dark" ? (
+              <Sun className="h-4 w-4 text-yellow-500" />
+            ) : (
+              <Moon className="h-4 w-4 text-slate-700" />
+            )}
+          </Button>
           
           <SseIndicator />
           <WebSocketIndicator />
@@ -693,26 +638,5 @@ function DashboardLayoutContent({
         </main>
       </SidebarInset>
     </>
-  );
-}
-
-// Dark Mode Toggle Component
-function DarkModeToggle() {
-  const { theme, setTheme } = useTheme();
-  
-  return (
-    <Button
-      variant="ghost"
-      size="icon"
-      onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-      className="h-9 w-9 rounded-lg hover:bg-accent transition-colors"
-      title={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
-    >
-      {theme === "dark" ? (
-        <Sun className="h-4 w-4 text-yellow-500" />
-      ) : (
-        <Moon className="h-4 w-4 text-slate-700" />
-      )}
-    </Button>
   );
 }

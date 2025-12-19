@@ -4155,6 +4155,8 @@ export const appRouter = router({
         maxProductionLines: z.number().default(3),
         maxSpcPlans: z.number().default(10),
         features: z.string().optional(),
+        systems: z.array(z.string()).optional(), // ["spc", "mms", "production", "license", "system"]
+        systemFeatures: z.record(z.array(z.string())).optional(), // { "spc": ["realtime", "ai"], "mms": ["predictive"] }
         expiresAt: z.date().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
@@ -4164,6 +4166,8 @@ export const appRouter = router({
           ...input,
           licenseKey,
           isActive: 0,
+          systems: input.systems ? JSON.stringify(input.systems) : null,
+          systemFeatures: input.systemFeatures ? JSON.stringify(input.systemFeatures) : null,
         });
         return { success: true, licenseKey };
       }),

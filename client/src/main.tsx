@@ -7,6 +7,8 @@ import superjson from "superjson";
 import App from "./App";
 import { getLoginUrl } from "./const";
 import { LanguageProvider } from "./contexts/LanguageContext";
+import { SystemProvider } from "./contexts/SystemContext";
+import { LicenseAccessProvider } from "./contexts/LicenseAccessContext";
 import "./index.css";
 
 const queryClient = new QueryClient();
@@ -70,7 +72,11 @@ createRoot(document.getElementById("root")!).render(
   <trpc.Provider client={trpcClient} queryClient={queryClient}>
     <QueryClientProvider client={queryClient}>
       <LanguageProvider>
-        <App />
+        <SystemProvider>
+          <LicenseAccessProvider>
+            <App />
+          </LicenseAccessProvider>
+        </SystemProvider>
       </LanguageProvider>
     </QueryClientProvider>
   </trpc.Provider>

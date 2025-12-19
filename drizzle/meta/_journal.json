@@ -407,6 +407,13 @@
       "when": 1766074592732,
       "tag": "0057_married_arachne",
       "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "5",
+      "when": 1766159542313,
+      "tag": "0058_exotic_vivisector",
+      "breakpoints": true
     }
   ]
 }

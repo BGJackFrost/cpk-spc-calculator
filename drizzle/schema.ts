@@ -1284,6 +1284,8 @@ export const licenses = mysqlTable("licenses", {
   maxProductionLines: int("maxProductionLines").notNull().default(3),
   maxSpcPlans: int("maxSpcPlans").notNull().default(10),
   features: text("features"), // JSON array of enabled features
+  systems: text("systems"), // JSON array of enabled systems: ["spc", "mms", "production", "license", "system"]
+  systemFeatures: text("systemFeatures"), // JSON object: { "spc": ["realtime", "ai", "analytics"], "mms": ["predictive", "spare_parts"] }
   issuedAt: timestamp("issuedAt").defaultNow().notNull(),
   expiresAt: timestamp("expiresAt"),
   activatedAt: timestamp("activatedAt"),
