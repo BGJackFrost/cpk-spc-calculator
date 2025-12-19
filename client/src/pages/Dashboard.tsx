@@ -42,6 +42,7 @@ import { OnboardingWizard } from "@/components/OnboardingWizard";
 import NtfStatsWidget from "@/components/NtfStatsWidget";
 import NtfAiMonitor from "@/components/NtfAiMonitor";
 import UnifiedSummaryWidget from "@/components/UnifiedSummaryWidget";
+import { ConnectionPoolWidget } from "@/components/ConnectionPoolWidget";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -233,6 +234,12 @@ export default function Dashboard() {
                 >
                   Tỉ lệ NTF
                 </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem
+                  checked={isWidgetVisible("connection_pool")}
+                  onCheckedChange={() => handleToggleWidget("connection_pool")}
+                >
+                  Connection Pool Monitor
+                </DropdownMenuCheckboxItem>
               </DropdownMenuContent>
             </DropdownMenu>
             {isCompleted && (
@@ -321,6 +328,9 @@ export default function Dashboard() {
             
             {/* Unified OEE & CPK Summary Widget */}
             <UnifiedSummaryWidget />
+            
+            {/* Connection Pool Monitoring Widget */}
+            {user?.role === 'admin' && isWidgetVisible("connection_pool") && <ConnectionPoolWidget />}
           </div>
         </div>
 

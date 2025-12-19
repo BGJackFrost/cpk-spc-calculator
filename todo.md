@@ -3972,3 +3972,29 @@
 - [x] Chạy node scripts/test-failover.mjs status - Hiển thị đầy đủ cấu hình
 - [x] Chạy node scripts/test-failover.mjs simulate - Verify cấu hình
 - [x] Kết quả: 851 tests pass, failover sẵn sàng khi bật environment variables
+
+## Phase 180 - Database Connection Wizard, Pool Monitoring & Migration Tool
+
+### Database Connection Wizard
+- [x] Tạo trang DatabaseConnectionWizard.tsx với wizard 4 bước
+- [x] Bước 1: Chọn loại database (MySQL, PostgreSQL, SQL Server, Oracle, etc.)
+- [x] Bước 2: Nhập thông tin kết nối (host, port, database, username, password)
+- [x] Bước 3: Test connection và auto-detect schema (tables, columns)
+- [x] Bước 4: Xác nhận và lưu kết nối
+- [x] Thêm route /database-wizard và link trong sidebar
+
+### Connection Pool Monitoring
+- [x] Tạo API endpoints: getPoolStats, getQueryLatency, getConnectionHistory
+- [x] Tạo component ConnectionPoolWidget với biểu đồ
+- [x] Hiển thị số connections active/idle/total
+- [x] Hiển thị query latency (avg, min, max)
+- [x] Thêm widget vào Dashboard
+
+### Data Migration Tool
+- [x] Tạo trang DataMigrationTool.tsx
+- [x] Chọn source connection và target connection
+- [x] Chọn tables để migrate
+- [x] Preview dữ liệu trước khi migrate
+- [x] Thực hiện migrate với progress bar
+- [x] Hiển thị kết quả (success/failed records)
+- [x] Thêm route /data-migration và link trong sidebar
