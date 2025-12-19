@@ -130,6 +130,7 @@ import DatabaseHealthDashboard from "./pages/DatabaseHealthDashboard";
 import DatabaseConnectionsSettings from "./pages/DatabaseConnectionsSettings";
 import DatabaseConnectionWizard from "./pages/DatabaseConnectionWizard";
 import DataMigrationTool from "./pages/DataMigrationTool";
+import DataMigrationToolEnhanced from "./pages/DataMigrationToolEnhanced";
 
 function Router() {
   return (
@@ -141,6 +142,7 @@ function Router() {
       <Route path="/database-connections" component={DatabaseConnectionsSettings} />
       <Route path="/database-wizard" component={DatabaseConnectionWizard} />
       <Route path="/data-migration" component={DataMigrationTool} />
+      <Route path="/data-migration-enhanced" component={DataMigrationToolEnhanced} />
       <Route path="/database-setting" component={DatabaseSettings} />
       <Route path="/connection-manager" component={ConnectionManager} />
       <Route path="/company-info" component={CompanyInfo} />
