@@ -12,6 +12,7 @@ import { alertRouter as mmsAlertRouter } from "./routers/alertRouter";
 import { mmsDashboardConfigRouter } from "./routers/dashboardConfigRouter";
 import { machineIntegrationRouter, machinePublicRouter } from "./routers/machineIntegrationRouter";
 import { systemRouter } from "./_core/systemRouter";
+import { themeRouter } from "./routers/themeRouter";
 import { databaseConnectionRouter as dbConnectionRouter } from "./routers/databaseConnectionRouter";
 import { triggerLicenseExpiryCheck } from "./scheduledJobs";
 import { triggerWebhooks, testWebhook } from "./webhookService";
@@ -3216,6 +3217,7 @@ const emailNotificationRouter = router({
 
 export const appRouter = router({
   system: systemRouter,
+  theme: themeRouter,
   databaseConnection: dbConnectionRouter,
   legacyDbConnection: legacyDatabaseConnectionRouter,
   machineIntegration: machineIntegrationRouter,

@@ -4207,3 +4207,33 @@
 - [x] Theme 6: Rose Pink
 - [x] Lưu theme preference vào localStorage
 - [x] Tích hợp vào Header (nút Palette)
+
+
+## Phase 192: Custom Theme, Database Sync, Realtime Preview
+
+### Database Schema cho Theme
+- [x] Tạo bảng user_theme_preferences (userId, themeId, customTheme)
+- [x] Tạo bảng custom_themes (id, userId, name, colors)
+- [x] API lưu theme preference (themeRouter.savePreference)
+- [x] API lấy theme preference khi đăng nhập (themeRouter.getPreference)
+
+### Custom Theme Creator
+- [x] Color picker cho Primary color
+- [x] Color picker cho Secondary color
+- [x] Color picker cho Accent color
+- [x] Color picker cho Background color
+- [x] Color picker cho Foreground (Text) color
+- [x] Lưu custom theme vào database (themeRouter.createCustomTheme)
+- [x] Quản lý danh sách custom themes (edit, delete)
+- [x] Chia sẻ theme với người dùng khác (isPublic)
+
+### Theme Preview Realtime
+- [x] Preview theme khi hover vào option
+- [x] Rollback về theme cũ khi mouse leave
+- [x] Apply theme khi click
+- [x] Icon Eye hiển thị khi đang preview
+
+### Đồng bộ Theme giữa thiết bị
+- [x] Lưu theme preference vào database
+- [x] Load theme từ database khi đăng nhập
+- [x] Fallback về localStorage nếu chưa đăng nhập

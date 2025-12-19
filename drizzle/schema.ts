@@ -3175,3 +3175,49 @@ export const downtimeReasons = mysqlTable("downtime_reasons", {
 
 export type DowntimeReason = typeof downtimeReasons.$inferSelect;
 export type InsertDowntimeReason = typeof downtimeReasons.$inferInsert;
+
+
+// ==================== User Theme Preferences ====================
+/**
+ * User theme preferences - Lưu theme preference của user để đồng bộ giữa các thiết bị
+ */
+export const userThemePreferences = mysqlTable("user_theme_preferences", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull(),
+  themeId: varchar("theme_id", { length: 50 }).notNull().default("default-blue"), // ID của preset theme hoặc custom theme
+  isDarkMode: int("is_dark_mode").notNull().default(0), // 0 = light, 1 = dark
+  customThemeId: int("custom_theme_id"), // Reference to custom_themes nếu dùng custom theme
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+export type UserThemePreference = typeof userThemePreferences.$inferSelect;
+export type InsertUserThemePreference = typeof userThemePreferences.$inferInsert;
+
+// ==================== Custom Themes ====================
+/**
+ * Custom themes - Cho phép user tự tạo theme với color picker
+ */
+export const customThemes = mysqlTable("custom_themes", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull(),
+  name: varchar("name", { length: 100 }).notNull(),
+  description: varchar("description", { length: 255 }),
+  // Colors in HSL format (e.g., "217.2 91.2% 59.8%")
+  primaryColor: varchar("primary_color", { length: 50 }).notNull(),
+  secondaryColor: varchar("secondary_color", { length: 50 }).notNull(),
+  accentColor: varchar("accent_color", { length: 50 }).notNull(),
+  backgroundColor: varchar("background_color", { length: 50 }).notNull(),
+  foregroundColor: varchar("foreground_color", { length: 50 }).notNull(),
+  mutedColor: varchar("muted_color", { length: 50 }),
+  mutedForegroundColor: varchar("muted_foreground_color", { length: 50 }),
+  // Store full CSS variables as JSON for flexibility
+  lightVariables: text("light_variables"), // JSON string of light mode CSS variables
+  darkVariables: text("dark_variables"), // JSON string of dark mode CSS variables
+  isPublic: int("is_public").notNull().default(0), // 0 = private, 1 = public (share with others)
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+export type CustomTheme = typeof customThemes.$inferSelect;
+export type InsertCustomTheme = typeof customThemes.$inferInsert;

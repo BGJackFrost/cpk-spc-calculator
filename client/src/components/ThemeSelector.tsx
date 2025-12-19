@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -8,8 +8,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Palette, Check } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Palette, Check, Plus, Trash2, Save, Eye } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { trpc } from "@/lib/trpc";
+import { useToast } from "@/hooks/use-toast";
 
 // Theme definitions
 export interface ThemeConfig {
@@ -250,6 +255,33 @@ export const THEMES: ThemeConfig[] = [
   },
 ];
 
+// Convert HEX to HSL
+function hexToHsl(hex: string): string {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  if (!result) return "0 0% 0%";
+  
+  let r = parseInt(result[1], 16) / 255;
+  let g = parseInt(result[2], 16) / 255;
+  let b = parseInt(result[3], 16) / 255;
+  
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  let h = 0, s = 0;
+  const l = (max + min) / 2;
+  
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+      case g: h = ((b - r) / d + 2) / 6; break;
+      case b: h = ((r - g) / d + 4) / 6; break;
+    }
+  }
+  
+  return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
+}
+
 // Get current theme from localStorage
 export function getCurrentTheme(): string {
   if (typeof window !== "undefined") {
@@ -259,24 +291,99 @@ export function getCurrentTheme(): string {
 }
 
 // Apply theme to document
-export function applyTheme(themeId: string, isDark: boolean) {
-  const theme = THEMES.find((t) => t.id === themeId);
-  if (!theme) return;
-
+export function applyTheme(themeId: string, isDark: boolean, customVariables?: Record<string, string>) {
   const root = document.documentElement;
-  const variables = isDark ? theme.cssVariables.dark : theme.cssVariables.light;
-
-  Object.entries(variables).forEach(([key, value]) => {
-    root.style.setProperty(key, value);
-  });
-
+  
+  if (customVariables) {
+    Object.entries(customVariables).forEach(([key, value]) => {
+      root.style.setProperty(key, value);
+    });
+  } else {
+    const theme = THEMES.find((t) => t.id === themeId);
+    if (!theme) return;
+    
+    const variables = isDark ? theme.cssVariables.dark : theme.cssVariables.light;
+    Object.entries(variables).forEach(([key, value]) => {
+      root.style.setProperty(key, value);
+    });
+  }
+  
   localStorage.setItem("app-color-theme", themeId);
+}
+
+// Apply preview theme temporarily
+function applyPreviewTheme(preview: ThemeConfig["preview"], isDark: boolean) {
+  const root = document.documentElement;
+  const hslPrimary = hexToHsl(preview.primary);
+  const hslSecondary = hexToHsl(preview.secondary);
+  const hslAccent = hexToHsl(preview.accent);
+  
+  root.style.setProperty("--primary", hslPrimary);
+  root.style.setProperty("--secondary", isDark ? `${hslSecondary.split(" ")[0]} 32.6% 17.5%` : hslSecondary);
+  root.style.setProperty("--accent", isDark ? `${hslAccent.split(" ")[0]} 32.6% 17.5%` : hslAccent);
 }
 
 export function ThemeSelector() {
   const { language } = useLanguage();
+  const { toast } = useToast();
   const [selectedTheme, setSelectedTheme] = useState(getCurrentTheme());
   const [open, setOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("presets");
+  const [previewThemeId, setPreviewThemeId] = useState<string | null>(null);
+  const previousThemeRef = useRef<string>(selectedTheme);
+  
+  // Custom theme creator state
+  const [customName, setCustomName] = useState("");
+  const [customColors, setCustomColors] = useState({
+    primary: "#3b82f6",
+    secondary: "#6366f1",
+    accent: "#8b5cf6",
+    background: "#ffffff",
+    foreground: "#0f172a",
+  });
+  
+  // tRPC queries and mutations
+  const { data: preference, refetch: refetchPreference } = trpc.theme.getPreference.useQuery(undefined, {
+    enabled: open,
+  });
+  const { data: customThemes, refetch: refetchCustomThemes } = trpc.theme.getCustomThemes.useQuery(undefined, {
+    enabled: open,
+  });
+  
+  const savePreferenceMutation = trpc.theme.savePreference.useMutation({
+    onSuccess: () => {
+      refetchPreference();
+    },
+  });
+  
+  const createCustomThemeMutation = trpc.theme.createCustomTheme.useMutation({
+    onSuccess: () => {
+      refetchCustomThemes();
+      toast({
+        title: language === "en" ? "Theme created" : "Đã tạo giao diện",
+        description: language === "en" ? "Your custom theme has been saved" : "Giao diện tùy chỉnh đã được lưu",
+      });
+      setCustomName("");
+    },
+  });
+  
+  const deleteCustomThemeMutation = trpc.theme.deleteCustomTheme.useMutation({
+    onSuccess: () => {
+      refetchCustomThemes();
+      toast({
+        title: language === "en" ? "Theme deleted" : "Đã xóa giao diện",
+      });
+    },
+  });
+  
+  // Sync with database preference on load
+  useEffect(() => {
+    if (preference) {
+      setSelectedTheme(preference.themeId);
+      const isDark = document.documentElement.classList.contains("dark");
+      applyTheme(preference.themeId, isDark);
+    }
+  }, [preference]);
 
   useEffect(() => {
     const isDark = document.documentElement.classList.contains("dark");
@@ -289,19 +396,102 @@ export function ThemeSelector() {
       mutations.forEach((mutation) => {
         if (mutation.attributeName === "class") {
           const isDark = document.documentElement.classList.contains("dark");
-          applyTheme(selectedTheme, isDark);
+          applyTheme(previewThemeId || selectedTheme, isDark);
         }
       });
     });
 
     observer.observe(document.documentElement, { attributes: true });
     return () => observer.disconnect();
-  }, [selectedTheme]);
+  }, [selectedTheme, previewThemeId]);
 
-  const handleSelectTheme = (themeId: string) => {
+  // Handle theme hover for preview
+  const handleThemeHover = useCallback((themeId: string) => {
+    if (!previewThemeId) {
+      previousThemeRef.current = selectedTheme;
+    }
+    setPreviewThemeId(themeId);
+    const isDark = document.documentElement.classList.contains("dark");
+    const theme = THEMES.find(t => t.id === themeId);
+    if (theme) {
+      applyPreviewTheme(theme.preview, isDark);
+    }
+  }, [selectedTheme, previewThemeId]);
+
+  const handleThemeLeave = useCallback(() => {
+    setPreviewThemeId(null);
+    const isDark = document.documentElement.classList.contains("dark");
+    applyTheme(previousThemeRef.current, isDark);
+  }, []);
+
+  const handleSelectTheme = async (themeId: string) => {
     setSelectedTheme(themeId);
+    previousThemeRef.current = themeId;
+    setPreviewThemeId(null);
     const isDark = document.documentElement.classList.contains("dark");
     applyTheme(themeId, isDark);
+    
+    // Save to database
+    try {
+      await savePreferenceMutation.mutateAsync({
+        themeId,
+        isDarkMode: isDark,
+      });
+    } catch {
+      // Fallback to localStorage only
+    }
+  };
+
+  const handleCreateCustomTheme = async () => {
+    if (!customName.trim()) {
+      toast({
+        title: language === "en" ? "Error" : "Lỗi",
+        description: language === "en" ? "Please enter a theme name" : "Vui lòng nhập tên giao diện",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    try {
+      await createCustomThemeMutation.mutateAsync({
+        name: customName,
+        colors: {
+          primaryColor: hexToHsl(customColors.primary),
+          secondaryColor: hexToHsl(customColors.secondary),
+          accentColor: hexToHsl(customColors.accent),
+          backgroundColor: hexToHsl(customColors.background),
+          foregroundColor: hexToHsl(customColors.foreground),
+        },
+      });
+    } catch {
+      toast({
+        title: language === "en" ? "Error" : "Lỗi",
+        description: language === "en" ? "Failed to create theme" : "Không thể tạo giao diện",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteCustomTheme = async (id: number) => {
+    try {
+      await deleteCustomThemeMutation.mutateAsync({ id });
+    } catch {
+      toast({
+        title: language === "en" ? "Error" : "Lỗi",
+        description: language === "en" ? "Failed to delete theme" : "Không thể xóa giao diện",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Preview custom colors in real-time
+  const handleCustomColorChange = (key: keyof typeof customColors, value: string) => {
+    setCustomColors(prev => ({ ...prev, [key]: value }));
+  };
+
+  const previewCustomTheme = () => {
+    const isDark = document.documentElement.classList.contains("dark");
+    applyPreviewTheme(customColors, isDark);
   };
 
   return (
@@ -316,64 +506,314 @@ export function ThemeSelector() {
           <Palette className="h-4 w-4" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {language === "en" ? "Choose Theme" : "Chọn Giao diện"}
+            {language === "en" ? "Theme Settings" : "Cài đặt Giao diện"}
           </DialogTitle>
           <DialogDescription>
             {language === "en"
-              ? "Select a color theme for the application"
-              : "Chọn giao diện màu sắc cho ứng dụng"}
+              ? "Choose a preset theme or create your own custom theme"
+              : "Chọn giao diện có sẵn hoặc tạo giao diện tùy chỉnh của bạn"}
           </DialogDescription>
         </DialogHeader>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 py-4">
-          {THEMES.map((theme) => (
-            <button
-              key={theme.id}
-              onClick={() => handleSelectTheme(theme.id)}
-              className={`relative p-3 rounded-lg border-2 transition-all hover:scale-105 ${
-                selectedTheme === theme.id
-                  ? "border-primary ring-2 ring-primary/20"
-                  : "border-border hover:border-primary/50"
-              }`}
-            >
-              {selectedTheme === theme.id && (
-                <div className="absolute top-2 right-2 h-5 w-5 rounded-full bg-primary flex items-center justify-center">
-                  <Check className="h-3 w-3 text-primary-foreground" />
+        
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="presets">
+              {language === "en" ? "Preset Themes" : "Giao diện có sẵn"}
+            </TabsTrigger>
+            <TabsTrigger value="custom">
+              {language === "en" ? "Custom Theme" : "Tùy chỉnh"}
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="presets" className="mt-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              {THEMES.map((theme) => (
+                <button
+                  key={theme.id}
+                  onClick={() => handleSelectTheme(theme.id)}
+                  onMouseEnter={() => handleThemeHover(theme.id)}
+                  onMouseLeave={handleThemeLeave}
+                  className={`relative p-3 rounded-lg border-2 transition-all hover:scale-105 ${
+                    selectedTheme === theme.id
+                      ? "border-primary ring-2 ring-primary/20"
+                      : "border-border hover:border-primary/50"
+                  }`}
+                >
+                  {selectedTheme === theme.id && (
+                    <div className="absolute top-2 right-2 h-5 w-5 rounded-full bg-primary flex items-center justify-center">
+                      <Check className="h-3 w-3 text-primary-foreground" />
+                    </div>
+                  )}
+                  {previewThemeId === theme.id && selectedTheme !== theme.id && (
+                    <div className="absolute top-2 right-2 h-5 w-5 rounded-full bg-blue-500 flex items-center justify-center">
+                      <Eye className="h-3 w-3 text-white" />
+                    </div>
+                  )}
+                  <div
+                    className="h-16 rounded-md mb-2 flex items-end overflow-hidden"
+                    style={{ backgroundColor: theme.preview.background }}
+                  >
+                    <div className="flex w-full h-8 gap-1 p-1">
+                      <div
+                        className="flex-1 rounded"
+                        style={{ backgroundColor: theme.preview.primary }}
+                      />
+                      <div
+                        className="flex-1 rounded"
+                        style={{ backgroundColor: theme.preview.secondary }}
+                      />
+                      <div
+                        className="flex-1 rounded"
+                        style={{ backgroundColor: theme.preview.accent }}
+                      />
+                    </div>
+                  </div>
+                  <div className="text-left">
+                    <p className="font-medium text-sm">
+                      {language === "en" ? theme.name : theme.nameVi}
+                    </p>
+                    <p className="text-xs text-muted-foreground line-clamp-1">
+                      {language === "en" ? theme.description : theme.descriptionVi}
+                    </p>
+                  </div>
+                </button>
+              ))}
+            </div>
+            
+            {/* Custom themes from database */}
+            {customThemes && customThemes.length > 0 && (
+              <>
+                <div className="mt-6 mb-3">
+                  <h4 className="text-sm font-medium">
+                    {language === "en" ? "Your Custom Themes" : "Giao diện tùy chỉnh của bạn"}
+                  </h4>
                 </div>
-              )}
-              {/* Theme preview */}
-              <div
-                className="h-16 rounded-md mb-2 flex items-end overflow-hidden"
-                style={{ backgroundColor: theme.preview.background }}
-              >
-                <div className="flex w-full h-8 gap-1 p-1">
-                  <div
-                    className="flex-1 rounded"
-                    style={{ backgroundColor: theme.preview.primary }}
-                  />
-                  <div
-                    className="flex-1 rounded"
-                    style={{ backgroundColor: theme.preview.secondary }}
-                  />
-                  <div
-                    className="flex-1 rounded"
-                    style={{ backgroundColor: theme.preview.accent }}
-                  />
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {customThemes.map((theme) => (
+                    <div
+                      key={theme.id}
+                      className={`relative p-3 rounded-lg border-2 transition-all ${
+                        selectedTheme === `custom-${theme.id}`
+                          ? "border-primary ring-2 ring-primary/20"
+                          : "border-border hover:border-primary/50"
+                      }`}
+                    >
+                      {theme.isOwner && (
+                        <button
+                          onClick={() => handleDeleteCustomTheme(theme.id)}
+                          className="absolute top-2 right-2 h-5 w-5 rounded-full bg-destructive/10 hover:bg-destructive/20 flex items-center justify-center transition-colors"
+                        >
+                          <Trash2 className="h-3 w-3 text-destructive" />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleSelectTheme(`custom-${theme.id}`)}
+                        className="w-full text-left"
+                      >
+                        <div className="h-12 rounded-md mb-2 flex items-center justify-center gap-2 bg-muted">
+                          <div
+                            className="h-6 w-6 rounded-full"
+                            style={{ backgroundColor: `hsl(${theme.primaryColor})` }}
+                          />
+                          <div
+                            className="h-6 w-6 rounded-full"
+                            style={{ backgroundColor: `hsl(${theme.secondaryColor})` }}
+                          />
+                          <div
+                            className="h-6 w-6 rounded-full"
+                            style={{ backgroundColor: `hsl(${theme.accentColor})` }}
+                          />
+                        </div>
+                        <p className="font-medium text-sm truncate">{theme.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {theme.isOwner 
+                            ? (language === "en" ? "Your theme" : "Của bạn")
+                            : (language === "en" ? "Shared" : "Được chia sẻ")
+                          }
+                        </p>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </TabsContent>
+          
+          <TabsContent value="custom" className="mt-4">
+            <div className="space-y-6">
+              {/* Theme name */}
+              <div className="space-y-2">
+                <Label htmlFor="theme-name">
+                  {language === "en" ? "Theme Name" : "Tên giao diện"}
+                </Label>
+                <Input
+                  id="theme-name"
+                  value={customName}
+                  onChange={(e) => setCustomName(e.target.value)}
+                  placeholder={language === "en" ? "My Custom Theme" : "Giao diện của tôi"}
+                />
+              </div>
+              
+              {/* Color pickers */}
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="primary-color">
+                    {language === "en" ? "Primary" : "Màu chính"}
+                  </Label>
+                  <div className="flex gap-2">
+                    <input
+                      type="color"
+                      id="primary-color"
+                      value={customColors.primary}
+                      onChange={(e) => handleCustomColorChange("primary", e.target.value)}
+                      className="h-10 w-14 rounded cursor-pointer border"
+                    />
+                    <Input
+                      value={customColors.primary}
+                      onChange={(e) => handleCustomColorChange("primary", e.target.value)}
+                      className="flex-1"
+                    />
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="secondary-color">
+                    {language === "en" ? "Secondary" : "Màu phụ"}
+                  </Label>
+                  <div className="flex gap-2">
+                    <input
+                      type="color"
+                      id="secondary-color"
+                      value={customColors.secondary}
+                      onChange={(e) => handleCustomColorChange("secondary", e.target.value)}
+                      className="h-10 w-14 rounded cursor-pointer border"
+                    />
+                    <Input
+                      value={customColors.secondary}
+                      onChange={(e) => handleCustomColorChange("secondary", e.target.value)}
+                      className="flex-1"
+                    />
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="accent-color">
+                    {language === "en" ? "Accent" : "Màu nhấn"}
+                  </Label>
+                  <div className="flex gap-2">
+                    <input
+                      type="color"
+                      id="accent-color"
+                      value={customColors.accent}
+                      onChange={(e) => handleCustomColorChange("accent", e.target.value)}
+                      className="h-10 w-14 rounded cursor-pointer border"
+                    />
+                    <Input
+                      value={customColors.accent}
+                      onChange={(e) => handleCustomColorChange("accent", e.target.value)}
+                      className="flex-1"
+                    />
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="background-color">
+                    {language === "en" ? "Background" : "Nền"}
+                  </Label>
+                  <div className="flex gap-2">
+                    <input
+                      type="color"
+                      id="background-color"
+                      value={customColors.background}
+                      onChange={(e) => handleCustomColorChange("background", e.target.value)}
+                      className="h-10 w-14 rounded cursor-pointer border"
+                    />
+                    <Input
+                      value={customColors.background}
+                      onChange={(e) => handleCustomColorChange("background", e.target.value)}
+                      className="flex-1"
+                    />
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="foreground-color">
+                    {language === "en" ? "Text" : "Chữ"}
+                  </Label>
+                  <div className="flex gap-2">
+                    <input
+                      type="color"
+                      id="foreground-color"
+                      value={customColors.foreground}
+                      onChange={(e) => handleCustomColorChange("foreground", e.target.value)}
+                      className="h-10 w-14 rounded cursor-pointer border"
+                    />
+                    <Input
+                      value={customColors.foreground}
+                      onChange={(e) => handleCustomColorChange("foreground", e.target.value)}
+                      className="flex-1"
+                    />
+                  </div>
                 </div>
               </div>
-              <div className="text-left">
-                <p className="font-medium text-sm">
-                  {language === "en" ? theme.name : theme.nameVi}
-                </p>
-                <p className="text-xs text-muted-foreground line-clamp-1">
-                  {language === "en" ? theme.description : theme.descriptionVi}
-                </p>
+              
+              {/* Preview */}
+              <div className="space-y-2">
+                <Label>{language === "en" ? "Preview" : "Xem trước"}</Label>
+                <div
+                  className="h-24 rounded-lg border p-4 flex items-center justify-center gap-4"
+                  style={{ backgroundColor: customColors.background }}
+                >
+                  <div
+                    className="px-4 py-2 rounded-md text-white font-medium"
+                    style={{ backgroundColor: customColors.primary }}
+                  >
+                    {language === "en" ? "Primary" : "Chính"}
+                  </div>
+                  <div
+                    className="px-4 py-2 rounded-md text-white font-medium"
+                    style={{ backgroundColor: customColors.secondary }}
+                  >
+                    {language === "en" ? "Secondary" : "Phụ"}
+                  </div>
+                  <div
+                    className="px-4 py-2 rounded-md text-white font-medium"
+                    style={{ backgroundColor: customColors.accent }}
+                  >
+                    {language === "en" ? "Accent" : "Nhấn"}
+                  </div>
+                </div>
               </div>
-            </button>
-          ))}
-        </div>
+              
+              {/* Actions */}
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={previewCustomTheme}
+                  className="flex-1"
+                >
+                  <Eye className="h-4 w-4 mr-2" />
+                  {language === "en" ? "Preview" : "Xem trước"}
+                </Button>
+                <Button
+                  onClick={handleCreateCustomTheme}
+                  disabled={createCustomThemeMutation.isPending}
+                  className="flex-1"
+                >
+                  {createCustomThemeMutation.isPending ? (
+                    <span className="animate-spin mr-2">⏳</span>
+                  ) : (
+                    <Plus className="h-4 w-4 mr-2" />
+                  )}
+                  {language === "en" ? "Save Theme" : "Lưu giao diện"}
+                </Button>
+              </div>
+            </div>
+          </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
   );
