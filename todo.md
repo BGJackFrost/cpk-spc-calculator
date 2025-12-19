@@ -3891,3 +3891,21 @@
 - [x] Thêm notification khi failover/recovery xảy ra
 - [x] Thêm API endpoints: failoverStatus, startFailoverMonitoring, stopFailoverMonitoring, manualFailover, manualRecovery
 - [x] Cập nhật DatabaseHealthDashboard hiển thị failover status
+
+
+## Phase 178 - Enable Failover & Test Simulation
+
+### Khởi động PostgreSQL và cấu hình environment
+- [x] Cài đặt và khởi động PostgreSQL 14
+- [x] Tạo database spc_calculator và user spc_user
+- [x] Chạy migration Module 1-5 (61 tables)
+- [x] Set DATABASE_FAILOVER_ENABLED=true
+- [x] Set PG_LOCAL_ENABLED=true
+- [x] Set FAILOVER_EMAIL_ENABLED=true
+- [x] Set FAILOVER_EMAIL_RECIPIENTS=admin@example.com
+
+### Test failover simulation
+- [x] Restart server với failover enabled
+- [x] Chạy node scripts/test-failover.mjs status - Hiển thị cấu hình đầy đủ
+- [x] Chạy node scripts/test-failover.mjs simulate - Verify cấu hình đúng
+- [x] Kết quả: Failover enabled, MySQL healthy, PostgreSQL connected, sẵn sàng failover
