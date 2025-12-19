@@ -3869,3 +3869,25 @@
 - [x] Hiển thị table count, connection pool info, response time
 - [x] Thêm auto-refresh (10s/30s/60s) và manual refresh button
 - [x] Thêm route /database-health trong App.tsx
+
+
+## Phase 176 - Sidebar Link, Scheduled Sync & Database Failover
+
+### Thêm link Database Health vào Settings menu
+- [x] Thêm link Database Health vào System menu trong DashboardLayout
+- [x] Thêm translations cho nav.databaseHealth (Vi: "Sức khỏe Database", En: "Database Health")
+- [x] Sử dụng icon Activity cho link
+
+### Tạo scheduled job sync MySQL → PostgreSQL hàng ngày
+- [x] Tạo function syncMySqlToPostgres trong scheduledJobs.ts
+- [x] Đăng ký job chạy hàng ngày lúc 2:30 AM (Asia/Ho_Chi_Minh)
+- [x] Thêm logging và error handling (notify owner khi có lỗi)
+- [x] Export triggerMySqlToPostgresSync() cho manual testing
+
+### Thêm database failover tự động
+- [x] Tạo db-failover.ts với health check functions
+- [x] Implement failover logic (3 failures → failover to PostgreSQL)
+- [x] Implement auto-recovery (3 successes → recover to MySQL)
+- [x] Thêm notification khi failover/recovery xảy ra
+- [x] Thêm API endpoints: failoverStatus, startFailoverMonitoring, stopFailoverMonitoring, manualFailover, manualRecovery
+- [x] Cập nhật DatabaseHealthDashboard hiển thị failover status

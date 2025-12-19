@@ -231,6 +231,7 @@ const menuGroups: MenuGroup[] = [
     items: [
       { icon: Settings, labelKey: "nav.settingsAndConnections", path: "/settings", adminOnly: true },
       { icon: Database, labelKey: "nav.databaseSettings", path: "/database-setting", adminOnly: true },
+      { icon: Activity, labelKey: "nav.databaseHealth", path: "/database-health", adminOnly: true },
       { icon: FolderClock, labelKey: "nav.backupHistory", path: "/backup-history", adminOnly: true },
       { icon: Building2, labelKey: "nav.companyInfo", path: "/company-info", adminOnly: true },
       { icon: Mail, labelKey: "emailNotification", path: "/email-notifications", adminOnly: true },
@@ -331,6 +332,7 @@ const fallbackLabelsVi: Record<string, string> = {
   "nav.notificationCenter": "Trung tâm Thông báo",
   "nav.scheduledJobs": "Quản lý Scheduled Jobs",
   "nav.rateLimitDashboard": "Giám sát Rate Limit",
+  "nav.databaseHealth": "Sức khỏe Database",
   "nav.websocketEventLog": "WebSocket Event Log",
   "nav.advancedAnalytics": "Phân tích Nâng cao",
   "nav.exportReports": "Xuất Báo cáo",
@@ -393,6 +395,7 @@ const fallbackLabelsEn: Record<string, string> = {
   "nav.licenseCustomers": "Customer Management",
   "nav.licenseRevenue": "Revenue Report",
   "nav.licenseServerSettings": "Server Settings",
+  "nav.databaseHealth": "Database Health",
   "nav.licenseServerDashboard": "Server Dashboard",
   "nav.shiftCpkComparison": "Shift CPK Comparison",
   "nav.defectTracking": "Defect Tracking",

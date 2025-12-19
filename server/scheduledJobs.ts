@@ -2742,3 +2742,168 @@ export async function triggerMachineOeeAlertCheck(): Promise<{ processed: number
 export async function triggerMachineOeeReportProcess(): Promise<{ processed: number; sent: number; failed: number }> {
   return await processMachineOeeReports();
 }
+
+
+// ============================================================
+// Database Sync: MySQL → PostgreSQL
+// ============================================================
+
+/**
+ * Sync data from MySQL to PostgreSQL
+ * Runs daily at 2:30 AM to keep PostgreSQL backup in sync
+ */
+async function syncMySqlToPostgres(): Promise<{ tables: number; rows: number; errors: number }> {
+  console.log('[ScheduledJob] Starting MySQL → PostgreSQL sync...');
+  
+  let tables = 0;
+  let rows = 0;
+  let errors = 0;
+  
+  try {
+    // Check if PostgreSQL is configured
+    const pgEnabled = process.env.PG_LOCAL_ENABLED === 'true' || !!process.env.POSTGRES_URL;
+    if (!pgEnabled) {
+      console.log('[ScheduledJob] PostgreSQL not configured, skipping sync');
+      return { tables: 0, rows: 0, errors: 0 };
+    }
+    
+    const db = await getDb();
+    if (!db) {
+      console.log('[ScheduledJob] MySQL not available, skipping sync');
+      return { tables: 0, rows: 0, errors: 0 };
+    }
+    
+    // Import pg dynamically
+    const pg = await import('pg');
+    const { Client } = pg.default || pg;
+    
+    // Build PostgreSQL connection
+    let pgConnectionString = process.env.POSTGRES_URL;
+    if (!pgConnectionString && process.env.PG_LOCAL_ENABLED === 'true') {
+      const host = process.env.PG_HOST || 'localhost';
+      const port = process.env.PG_PORT || '5432';
+      const user = process.env.PG_USER || 'spc_user';
+      const password = process.env.PG_PASSWORD || 'spc_password';
+      const database = process.env.PG_DATABASE || 'spc_calculator';
+      pgConnectionString = `postgresql://${user}:${password}@${host}:${port}/${database}`;
+    }
+    
+    if (!pgConnectionString) {
+      console.log('[ScheduledJob] PostgreSQL connection string not available');
+      return { tables: 0, rows: 0, errors: 0 };
+    }
+    
+    const pgClient = new Client({ connectionString: pgConnectionString });
+    await pgClient.connect();
+    
+    // Tables to sync (in order of dependencies)
+    const tablesToSync = [
+      'users',
+      'local_users',
+      'production_lines',
+      'machines',
+      'oee_records',
+      'oee_targets',
+      'licenses',
+      'spc_analysis_history',
+      'companies',
+      'departments',
+    ];
+    
+    for (const tableName of tablesToSync) {
+      try {
+        // Check if table exists in MySQL
+        const [mysqlCheck] = await db.execute(
+          sql`SELECT COUNT(*) as cnt FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ${tableName}`
+        );
+        if (!mysqlCheck || (mysqlCheck as any)[0]?.cnt === 0) {
+          continue;
+        }
+        
+        // Check if table exists in PostgreSQL
+        const pgCheck = await pgClient.query(
+          `SELECT COUNT(*) as cnt FROM information_schema.tables WHERE table_schema = 'public' AND table_name = $1`,
+          [tableName]
+        );
+        if (!pgCheck.rows[0] || pgCheck.rows[0].cnt === '0') {
+          continue;
+        }
+        
+        // Get data from MySQL
+        const [mysqlData] = await db.execute(sql.raw(`SELECT * FROM \`${tableName}\``));
+        const dataRows = mysqlData as any[];
+        
+        if (!dataRows || dataRows.length === 0) {
+          continue;
+        }
+        
+        tables++;
+        
+        // Insert into PostgreSQL with ON CONFLICT DO NOTHING
+        for (const row of dataRows) {
+          try {
+            const columns = Object.keys(row);
+            const values = Object.values(row);
+            const placeholders = columns.map((_, i) => `$${i + 1}`).join(', ');
+            
+            // Convert column names to snake_case
+            const pgColumns = columns.map(col => 
+              col.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`)
+            );
+            
+            await pgClient.query(
+              `INSERT INTO ${tableName} (${pgColumns.join(', ')}) VALUES (${placeholders}) ON CONFLICT DO NOTHING`,
+              values.map(v => v instanceof Date ? v : (typeof v === 'object' && v !== null ? JSON.stringify(v) : v))
+            );
+            rows++;
+          } catch (rowErr: any) {
+            if (!rowErr.message?.includes('duplicate key')) {
+              errors++;
+            }
+          }
+        }
+        
+        console.log(`[ScheduledJob] Synced ${tableName}: ${dataRows.length} rows`);
+        
+      } catch (tableErr) {
+        console.error(`[ScheduledJob] Error syncing ${tableName}:`, tableErr);
+        errors++;
+      }
+    }
+    
+    await pgClient.end();
+    
+    console.log(`[ScheduledJob] MySQL → PostgreSQL sync completed: ${tables} tables, ${rows} rows, ${errors} errors`);
+    
+    // Notify owner if there were errors
+    if (errors > 0) {
+      await notifyOwner({
+        title: '⚠️ Database Sync có lỗi',
+        content: `MySQL → PostgreSQL sync hoàn thành với ${errors} lỗi.\nTables: ${tables}, Rows: ${rows}`,
+      });
+    }
+    
+    return { tables, rows, errors };
+    
+  } catch (error) {
+    console.error('[ScheduledJob] Error in MySQL → PostgreSQL sync:', error);
+    return { tables, rows, errors: errors + 1 };
+  }
+}
+
+// Schedule MySQL → PostgreSQL sync - runs daily at 2:30 AM
+cron.schedule('0 30 2 * * *', async () => {
+  console.log('[ScheduledJob] Triggered: MySQL → PostgreSQL sync');
+  await syncMySqlToPostgres();
+}, {
+  timezone: 'Asia/Ho_Chi_Minh'
+});
+
+console.log('[ScheduledJob] Scheduled: MySQL → PostgreSQL sync at 2:30 AM daily (Asia/Ho_Chi_Minh)');
+
+/**
+ * Manually trigger MySQL → PostgreSQL sync (for testing)
+ */
+export async function triggerMySqlToPostgresSync(): Promise<{ tables: number; rows: number; errors: number }> {
+  return await syncMySqlToPostgres();
+}

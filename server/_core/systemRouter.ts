@@ -10,6 +10,7 @@ import { storagePut } from "../storage";
 import { isWebSocketEnabled, setWebSocketEnabled, realtimeWebSocketServer, loadWebSocketConfig, getEventLog, clearEventLog } from "../websocketServer";
 import { getConnectedClientsCount as getSseClientCount, isSseServerEnabled, setSseServerEnabled, getSseEventLog, clearSseEventLog } from "../sse";
 import { getRecentLogs, clearLogBuffer, getLogStats, type LogLevel } from "./logger";
+import { getFailoverState, startFailoverMonitoring, stopFailoverMonitoring, manualFailover, manualRecovery, isFailoverActive, getActiveDatabase } from "../db-failover";
 
 export const systemRouter = router({
   health: publicProcedure
@@ -541,4 +542,60 @@ export const systemRouter = router({
       
       return { success: true, url };
     }),
+
+  // Database failover status
+  failoverStatus: publicProcedure.query(async () => {
+    const state = getFailoverState();
+    return {
+      enabled: process.env.DATABASE_FAILOVER_ENABLED === 'true',
+      activeDatabase: state.activeDatabase,
+      isFailoverActive: isFailoverActive(),
+      mysqlHealthy: state.mysqlHealthy,
+      postgresqlHealthy: state.postgresqlHealthy,
+      lastMysqlCheck: state.lastMysqlCheck?.toISOString() || null,
+      lastPostgresqlCheck: state.lastPostgresqlCheck?.toISOString() || null,
+      failoverCount: state.failoverCount,
+      recoveryCount: state.recoveryCount,
+      lastFailoverAt: state.lastFailoverAt?.toISOString() || null,
+      lastRecoveryAt: state.lastRecoveryAt?.toISOString() || null,
+    };
+  }),
+
+  // Start failover monitoring (admin only)
+  startFailoverMonitoring: adminProcedure.mutation(async () => {
+    startFailoverMonitoring();
+    return {
+      success: true,
+      message: 'Failover monitoring started',
+    };
+  }),
+
+  // Stop failover monitoring (admin only)
+  stopFailoverMonitoring: adminProcedure.mutation(async () => {
+    stopFailoverMonitoring();
+    return {
+      success: true,
+      message: 'Failover monitoring stopped',
+    };
+  }),
+
+  // Manual failover to PostgreSQL (admin only)
+  manualFailover: adminProcedure.mutation(async () => {
+    const success = await manualFailover();
+    return {
+      success,
+      message: success ? 'Failover to PostgreSQL successful' : 'Failover failed - PostgreSQL may not be available',
+      activeDatabase: getActiveDatabase(),
+    };
+  }),
+
+  // Manual recovery to MySQL (admin only)
+  manualRecovery: adminProcedure.mutation(async () => {
+    const success = await manualRecovery();
+    return {
+      success,
+      message: success ? 'Recovery to MySQL successful' : 'Recovery failed - MySQL may not be available',
+      activeDatabase: getActiveDatabase(),
+    };
+  }),
 });

@@ -14,7 +14,11 @@ import {
   Clock,
   Activity,
   HardDrive,
-  Layers
+  Layers,
+  Shield,
+  ArrowRightLeft,
+  Play,
+  Square
 } from "lucide-react";
 
 export default function DatabaseHealthDashboard() {
@@ -31,9 +35,15 @@ export default function DatabaseHealthDashboard() {
     refetchInterval: autoRefresh ? refreshInterval * 1000 : false,
   });
   
+  // Failover status query
+  const failoverQuery = trpc.system.failoverStatus.useQuery(undefined, {
+    refetchInterval: autoRefresh ? refreshInterval * 1000 : false,
+  });
+  
   const handleRefresh = () => {
     healthQuery.refetch();
     statusQuery.refetch();
+    failoverQuery.refetch();
   };
   
   const getStatusIcon = (status: string) => {
@@ -322,6 +332,107 @@ export default function DatabaseHealthDashboard() {
               <li>Verify connection on this dashboard</li>
             </ol>
           </div>
+        </CardContent>
+      </Card>
+      
+      {/* Failover Status */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Shield className="h-5 w-5" />
+            Database Failover
+          </CardTitle>
+          <CardDescription>Automatic failover to PostgreSQL when MySQL is unavailable</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="p-4 bg-muted/50 rounded-lg">
+              <p className="text-sm text-muted-foreground mb-1">Failover Enabled</p>
+              <div className="flex items-center gap-2">
+                {failoverQuery.data?.enabled 
+                  ? <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  : <XCircle className="h-4 w-4 text-red-500" />
+                }
+                <span className="font-medium">{failoverQuery.data?.enabled ? 'Yes' : 'No'}</span>
+              </div>
+            </div>
+            <div className="p-4 bg-muted/50 rounded-lg">
+              <p className="text-sm text-muted-foreground mb-1">Active Database</p>
+              <Badge variant={failoverQuery.data?.isFailoverActive ? 'destructive' : 'default'}>
+                {failoverQuery.data?.activeDatabase?.toUpperCase() || 'MYSQL'}
+              </Badge>
+            </div>
+            <div className="p-4 bg-muted/50 rounded-lg">
+              <p className="text-sm text-muted-foreground mb-1">Failover Count</p>
+              <span className="font-medium text-lg">{failoverQuery.data?.failoverCount || 0}</span>
+            </div>
+            <div className="p-4 bg-muted/50 rounded-lg">
+              <p className="text-sm text-muted-foreground mb-1">Recovery Count</p>
+              <span className="font-medium text-lg">{failoverQuery.data?.recoveryCount || 0}</span>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <div className="p-4 bg-muted/50 rounded-lg">
+              <p className="text-sm text-muted-foreground mb-1">MySQL Health</p>
+              <div className="flex items-center gap-2">
+                {failoverQuery.data?.mysqlHealthy 
+                  ? <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  : <XCircle className="h-4 w-4 text-red-500" />
+                }
+                <span className="font-medium">{failoverQuery.data?.mysqlHealthy ? 'Healthy' : 'Unhealthy'}</span>
+                {failoverQuery.data?.lastMysqlCheck && (
+                  <span className="text-xs text-muted-foreground ml-2">
+                    ({new Date(failoverQuery.data.lastMysqlCheck).toLocaleTimeString()})
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="p-4 bg-muted/50 rounded-lg">
+              <p className="text-sm text-muted-foreground mb-1">PostgreSQL Health</p>
+              <div className="flex items-center gap-2">
+                {failoverQuery.data?.postgresqlHealthy 
+                  ? <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  : <XCircle className="h-4 w-4 text-red-500" />
+                }
+                <span className="font-medium">{failoverQuery.data?.postgresqlHealthy ? 'Healthy' : 'Unhealthy'}</span>
+                {failoverQuery.data?.lastPostgresqlCheck && (
+                  <span className="text-xs text-muted-foreground ml-2">
+                    ({new Date(failoverQuery.data.lastPostgresqlCheck).toLocaleTimeString()})
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+          
+          {failoverQuery.data?.lastFailoverAt && (
+            <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <p className="text-sm text-yellow-700">
+                <strong>Last Failover:</strong> {new Date(failoverQuery.data.lastFailoverAt).toLocaleString()}
+              </p>
+            </div>
+          )}
+          
+          {failoverQuery.data?.lastRecoveryAt && (
+            <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+              <p className="text-sm text-green-700">
+                <strong>Last Recovery:</strong> {new Date(failoverQuery.data.lastRecoveryAt).toLocaleString()}
+              </p>
+            </div>
+          )}
+          
+          {!failoverQuery.data?.enabled && (
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <h4 className="font-medium text-blue-800 mb-2">Enable Automatic Failover</h4>
+              <p className="text-sm text-blue-700 mb-2">
+                Set <code className="bg-blue-100 px-1 rounded">DATABASE_FAILOVER_ENABLED=true</code> in environment to enable automatic failover.
+              </p>
+              <p className="text-sm text-blue-600">
+                When enabled, the system will automatically switch to PostgreSQL if MySQL becomes unavailable,
+                and recover back to MySQL when it's healthy again.
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
       
