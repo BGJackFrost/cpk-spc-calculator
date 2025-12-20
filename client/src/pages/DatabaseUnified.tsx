@@ -58,7 +58,10 @@ import {
   Link2,
   Unlink,
   GripVertical,
-  Copy
+  Copy,
+  Download,
+  Upload,
+  FileJson
 } from "lucide-react";
 
 // Types
@@ -82,6 +85,8 @@ interface DatabaseConnection {
   connectionCount: number;
   maxConnections: number;
   sortOrder?: number;
+  responseTime?: number;
+  lastError?: string;
 }
 
 // Sortable Table Row Component
@@ -98,7 +103,7 @@ function SortableConnectionTableRow({
 }: {
   conn: DatabaseConnection;
   getDatabaseIcon: (type: DatabaseType) => React.ReactNode;
-  getStatusBadge: (status: DatabaseConnection["healthStatus"]) => React.ReactNode;
+  getStatusBadge: (conn: DatabaseConnection) => React.ReactNode;
   handleTestConnection: (id: number) => void;
   handleSetPrimary: (id: number) => void;
   handleCloneConnection: (conn: DatabaseConnection) => void;
@@ -145,7 +150,7 @@ function SortableConnectionTableRow({
         {conn.host}:{conn.port}
       </TableCell>
       <TableCell className="font-mono text-sm">{conn.database}</TableCell>
-      <TableCell>{getStatusBadge(conn.healthStatus)}</TableCell>
+      <TableCell>{getStatusBadge(conn)}</TableCell>
       <TableCell>
         {conn.isPrimary ? (
           <Badge className="bg-yellow-500">
@@ -332,6 +337,9 @@ export default function DatabaseUnified() {
   const [isTesting, setIsTesting] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncProgress, setSyncProgress] = useState(0);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [importData, setImportData] = useState<string>("");
+  const [importPreview, setImportPreview] = useState<DatabaseConnection[]>([]);
 
   // Form state for add/edit
   const [formData, setFormData] = useState({
@@ -368,20 +376,40 @@ export default function DatabaseUnified() {
   const primaryDb = useMemo(() => connections.find(c => c.isPrimary), [connections]);
   const secondaryDbs = useMemo(() => connections.filter(c => !c.isPrimary && c.syncEnabled), [connections]);
 
+  // Test connection mutation
+  const testConnectionMutation = trpc.databaseConnection.test.useMutation({
+    onSuccess: (result, variables) => {
+      if (result.success) {
+        toast.success(`Kết nối thành công! (${result.responseTime}ms)`);
+        setConnections(prev => prev.map(c => 
+          c.id === variables.id ? { 
+            ...c, 
+            healthStatus: "healthy" as const, 
+            lastHealthCheck: new Date(),
+            responseTime: result.responseTime 
+          } : c
+        ));
+      } else {
+        toast.error(`Kết nối thất bại: ${result.error}`);
+        setConnections(prev => prev.map(c => 
+          c.id === variables.id ? { 
+            ...c, 
+            healthStatus: "error" as const,
+            lastError: result.error 
+          } : c
+        ));
+      }
+    },
+    onError: (error) => {
+      toast.error(`Lỗi: ${error.message}`);
+    }
+  });
+
   // Test connection
   const handleTestConnection = async (connectionId: number) => {
     setIsTesting(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      toast.success("Kết nối thành công!");
-      setConnections(prev => prev.map(c => 
-        c.id === connectionId ? { ...c, healthStatus: "healthy" as const, lastHealthCheck: new Date() } : c
-      ));
-    } catch {
-      toast.error("Kết nối thất bại!");
-      setConnections(prev => prev.map(c => 
-        c.id === connectionId ? { ...c, healthStatus: "error" as const } : c
-      ));
+      await testConnectionMutation.mutateAsync({ id: connectionId });
     } finally {
       setIsTesting(false);
     }
@@ -566,17 +594,134 @@ export default function DatabaseUnified() {
     toast.success(`Đã clone kết nối "${conn.name}"!`);
   };
 
-  // Get status badge
-  const getStatusBadge = (status: DatabaseConnection["healthStatus"]) => {
-    switch (status) {
+  // Export connections to JSON
+  const handleExportConnections = () => {
+    const exportData = connections.map(conn => ({
+      name: conn.name,
+      databaseType: conn.databaseType,
+      host: conn.host,
+      port: conn.port,
+      database: conn.database,
+      username: conn.username,
+      description: conn.description,
+      isActive: conn.isActive,
+      isPrimary: conn.isPrimary,
+      syncEnabled: conn.syncEnabled,
+      maxConnections: conn.maxConnections,
+    }));
+    
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `database-connections-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success(`Đã xuất ${connections.length} kết nối!`);
+  };
+
+  // Handle import file change
+  const handleImportFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const content = event.target?.result as string;
+        setImportData(content);
+        const parsed = JSON.parse(content);
+        if (Array.isArray(parsed)) {
+          const preview: DatabaseConnection[] = parsed.map((item, index) => ({
+            id: Math.max(...connections.map(c => c.id), 0) + index + 1,
+            name: item.name || `Connection ${index + 1}`,
+            databaseType: item.databaseType || 'postgresql',
+            host: item.host || '',
+            port: item.port || 5432,
+            database: item.database || '',
+            username: item.username || '',
+            description: item.description || '',
+            isDefault: false,
+            isActive: item.isActive !== false,
+            isPrimary: false,
+            syncEnabled: item.syncEnabled || false,
+            healthStatus: 'unknown' as const,
+            connectionCount: 0,
+            maxConnections: item.maxConnections || 100,
+          }));
+          setImportPreview(preview);
+        } else {
+          toast.error('File không hợp lệ! Cần là mảng JSON.');
+        }
+      } catch {
+        toast.error('Không thể đọc file JSON!');
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  // Confirm import
+  const handleConfirmImport = () => {
+    if (importPreview.length === 0) {
+      toast.error('Không có dữ liệu để import!');
+      return;
+    }
+    setConnections([...connections, ...importPreview]);
+    toast.success(`Đã import ${importPreview.length} kết nối!`);
+    setIsImportDialogOpen(false);
+    setImportData('');
+    setImportPreview([]);
+  };
+
+  // Get status badge with tooltip
+  const getStatusBadge = (conn: DatabaseConnection) => {
+    const { healthStatus, responseTime, lastError, lastHealthCheck } = conn;
+    const lastCheckStr = lastHealthCheck 
+      ? new Date(lastHealthCheck).toLocaleString("vi-VN")
+      : "Chưa kiểm tra";
+    
+    switch (healthStatus) {
       case "healthy":
-        return <Badge className="bg-green-500"><CheckCircle className="h-3 w-3 mr-1" />Healthy</Badge>;
+        return (
+          <div className="flex items-center gap-2" title={`Response: ${responseTime || 'N/A'}ms\nKiểm tra lần cuối: ${lastCheckStr}`}>
+            <Badge className="bg-green-500 hover:bg-green-600 cursor-help">
+              <CheckCircle className="h-3 w-3 mr-1" />
+              Healthy
+            </Badge>
+            {responseTime && (
+              <span className="text-xs text-muted-foreground">{responseTime}ms</span>
+            )}
+          </div>
+        );
       case "warning":
-        return <Badge className="bg-yellow-500"><AlertTriangle className="h-3 w-3 mr-1" />Warning</Badge>;
+        return (
+          <div className="flex items-center gap-2" title={`Kiểm tra lần cuối: ${lastCheckStr}`}>
+            <Badge className="bg-yellow-500 hover:bg-yellow-600 cursor-help">
+              <AlertTriangle className="h-3 w-3 mr-1" />
+              Warning
+            </Badge>
+          </div>
+        );
       case "error":
-        return <Badge variant="destructive"><XCircle className="h-3 w-3 mr-1" />Error</Badge>;
+        return (
+          <div className="flex items-center gap-2" title={`Lỗi: ${lastError || 'Unknown'}\nKiểm tra lần cuối: ${lastCheckStr}`}>
+            <Badge variant="destructive" className="cursor-help">
+              <XCircle className="h-3 w-3 mr-1" />
+              Error
+            </Badge>
+          </div>
+        );
       default:
-        return <Badge variant="secondary"><Clock className="h-3 w-3 mr-1" />Unknown</Badge>;
+        return (
+          <div className="flex items-center gap-2" title="Chưa kiểm tra kết nối">
+            <Badge variant="secondary" className="cursor-help">
+              <Clock className="h-3 w-3 mr-1" />
+              Unknown
+            </Badge>
+          </div>
+        );
     }
   };
 
@@ -606,10 +751,20 @@ export default function DatabaseUnified() {
               Cấu hình kết nối, giám sát sức khỏe và đồng bộ dữ liệu giữa các database
             </p>
           </div>
-          <Button onClick={() => setIsAddDialogOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Thêm kết nối
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={handleExportConnections}>
+              <Download className="h-4 w-4 mr-2" />
+              Xuất
+            </Button>
+            <Button variant="outline" onClick={() => setIsImportDialogOpen(true)}>
+              <Upload className="h-4 w-4 mr-2" />
+              Nhập
+            </Button>
+            <Button onClick={() => setIsAddDialogOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Thêm kết nối
+            </Button>
+          </div>
         </div>
 
         {/* Quick Stats */}
@@ -692,7 +847,7 @@ export default function DatabaseUnified() {
                       <Star className="h-5 w-5 text-yellow-500" />
                       Database Chính (Primary)
                     </CardTitle>
-                    {primaryDb && getStatusBadge(primaryDb.healthStatus)}
+                    {primaryDb && getStatusBadge(primaryDb)}
                   </div>
                   <CardDescription>
                     Tất cả dữ liệu được ghi vào database này trước
@@ -774,7 +929,7 @@ export default function DatabaseUnified() {
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
-                            {getStatusBadge(db.healthStatus)}
+                            {getStatusBadge(db)}
                             <Switch
                               checked={db.syncEnabled}
                               onCheckedChange={(checked) => handleToggleSync(db.id, checked)}
@@ -1025,7 +1180,7 @@ export default function DatabaseUnified() {
                         {getDatabaseIcon(conn.databaseType)}
                         {conn.name}
                       </CardTitle>
-                      {getStatusBadge(conn.healthStatus)}
+                      {getStatusBadge(conn)}
                     </div>
                   </CardHeader>
                   <CardContent>
@@ -1293,6 +1448,80 @@ export default function DatabaseUnified() {
               <Button onClick={handleEditConnection}>
                 <Save className="h-4 w-4 mr-2" />
                 Lưu thay đổi
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Import Dialog */}
+        <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <FileJson className="h-5 w-5" />
+                Nhập cấu hình Database
+              </DialogTitle>
+              <DialogDescription>
+                Chọn file JSON chứa cấu hình database connections để import
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Chọn file JSON</Label>
+                <Input
+                  type="file"
+                  accept=".json"
+                  onChange={handleImportFileChange}
+                />
+              </div>
+              
+              {importPreview.length > 0 && (
+                <div className="space-y-2">
+                  <Label>Xem trước ({importPreview.length} kết nối)</Label>
+                  <ScrollArea className="h-[200px] border rounded-md p-2">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Tên</TableHead>
+                          <TableHead>Loại</TableHead>
+                          <TableHead>Host</TableHead>
+                          <TableHead>Database</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {importPreview.map((conn) => (
+                          <TableRow key={conn.id}>
+                            <TableCell className="font-medium">{conn.name}</TableCell>
+                            <TableCell>
+                              <Badge variant="outline">{conn.databaseType.toUpperCase()}</Badge>
+                            </TableCell>
+                            <TableCell className="font-mono text-sm">{conn.host}:{conn.port}</TableCell>
+                            <TableCell className="font-mono text-sm">{conn.database}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </ScrollArea>
+                </div>
+              )}
+              
+              {importData && importPreview.length === 0 && (
+                <div className="p-4 bg-red-50 dark:bg-red-950 rounded-md text-red-600 dark:text-red-400">
+                  File không hợp lệ hoặc không chứa dữ liệu connections.
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => {
+                setIsImportDialogOpen(false);
+                setImportData('');
+                setImportPreview([]);
+              }}>
+                Hủy
+              </Button>
+              <Button onClick={handleConfirmImport} disabled={importPreview.length === 0}>
+                <Upload className="h-4 w-4 mr-2" />
+                Import {importPreview.length > 0 ? `(${importPreview.length})` : ''}
               </Button>
             </DialogFooter>
           </DialogContent>

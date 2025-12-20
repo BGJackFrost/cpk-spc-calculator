@@ -4385,3 +4385,24 @@
 - [x] Hiển thị database có sẵn của hệ thống trong dropdown
 - [x] Thêm sample connections nếu cần
 
+
+## Phase 199 - Cải tiến Quản lý Database
+
+### Test Connection trực tiếp
+- [x] Thêm nút Test Connection cho mỗi database row
+- [x] Gọi API test connection và hiển thị kết quả
+- [x] Hiển thị response time khi test thành công
+- [x] Hiển thị error message khi test thất bại
+
+### Cải thiện UI trạng thái kết nối
+- [x] Thêm badge màu cho trạng thái (healthy=xanh, error=đỏ, unknown=xám)
+- [x] Hiển thị icon trạng thái bên cạnh tên connection
+- [x] Thêm tooltip hiển thị chi tiết trạng thái
+- [ ] Auto refresh trạng thái định kỳ
+
+### Import/Export cấu hình
+- [x] Thêm nút Export để xuất tất cả connections ra JSON
+- [x] Thêm nút Import để nhập connections từ file JSON
+- [x] Validate dữ liệu import trước khi lưu
+- [x] Hiển thị preview trước khi import
+
