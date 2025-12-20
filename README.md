@@ -2,6 +2,7 @@
 
 [![CI Pipeline](https://github.com/BGJackFrost/BGJackFrost/actions/workflows/ci.yml/badge.svg)](https://github.com/BGJackFrost/BGJackFrost/actions/workflows/ci.yml)
 [![Tests](https://img.shields.io/badge/tests-900%2B%20passed-brightgreen)](https://github.com/BGJackFrost/BGJackFrost/actions)
+[![Coverage](https://codecov.io/gh/BGJackFrost/BGJackFrost/branch/main/graph/badge.svg)](https://codecov.io/gh/BGJackFrost/BGJackFrost)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-19-61dafb)](https://react.dev/)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
