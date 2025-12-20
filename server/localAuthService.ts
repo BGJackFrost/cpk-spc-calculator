@@ -391,3 +391,459 @@ export async function ensureDefaultAdmin(): Promise<void> {
     console.error("[LocalAuth] Error ensuring default admin:", error);
   }
 }
+
+
+// ==================== PASSWORD RESET ====================
+
+import crypto from "crypto";
+import { passwordResetTokens, userSessions, twoFactorAuth, twoFactorBackupCodes } from "../drizzle/schema";
+import { and, lt, isNull, desc } from "drizzle-orm";
+
+/**
+ * Generate password reset token
+ */
+export async function generatePasswordResetToken(email: string): Promise<{ token: string; expiresAt: Date } | null> {
+  const db = await getDb();
+  if (!db) return null;
+
+  // Find user by email
+  const users = await db.select().from(localUsers).where(eq(localUsers.email, email)).limit(1);
+  if (users.length === 0) return null;
+
+  const user = users[0];
+  const token = crypto.randomBytes(32).toString("hex");
+  const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+  // Delete old tokens for this user
+  await db.delete(passwordResetTokens).where(eq(passwordResetTokens.userId, user.id));
+
+  // Create new token
+  await db.insert(passwordResetTokens).values({
+    userId: user.id,
+    token,
+    email,
+    expiresAt,
+  });
+
+  return { token, expiresAt };
+}
+
+/**
+ * Verify password reset token and reset password
+ */
+export async function resetPasswordWithToken(token: string, newPassword: string): Promise<{ success: boolean; message: string }> {
+  const db = await getDb();
+  if (!db) return { success: false, message: "Database not available" };
+
+  // Find valid token
+  const tokens = await db.select()
+    .from(passwordResetTokens)
+    .where(and(
+      eq(passwordResetTokens.token, token),
+      isNull(passwordResetTokens.usedAt)
+    ))
+    .limit(1);
+
+  if (tokens.length === 0) {
+    return { success: false, message: "Token không hợp lệ hoặc đã được sử dụng" };
+  }
+
+  const resetToken = tokens[0];
+  
+  // Check if expired
+  if (new Date() > new Date(resetToken.expiresAt)) {
+    return { success: false, message: "Token đã hết hạn" };
+  }
+
+  // Update password
+  const passwordHash = await hashPassword(newPassword);
+  await db.update(localUsers)
+    .set({ passwordHash, mustChangePassword: 0 })
+    .where(eq(localUsers.id, resetToken.userId));
+
+  // Mark token as used
+  await db.update(passwordResetTokens)
+    .set({ usedAt: new Date() })
+    .where(eq(passwordResetTokens.id, resetToken.id));
+
+  return { success: true, message: "Mật khẩu đã được đặt lại thành công" };
+}
+
+// ==================== SESSION MANAGEMENT ====================
+
+/**
+ * Create a new session
+ */
+export async function createSession(
+  userId: number,
+  token: string,
+  deviceInfo: {
+    deviceName?: string;
+    deviceType?: string;
+    browser?: string;
+    os?: string;
+    ipAddress?: string;
+    location?: string;
+  }
+): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+
+  await db.insert(userSessions).values({
+    userId,
+    token,
+    deviceName: deviceInfo.deviceName || "Unknown Device",
+    deviceType: deviceInfo.deviceType || "unknown",
+    browser: deviceInfo.browser || "Unknown",
+    os: deviceInfo.os || "Unknown",
+    ipAddress: deviceInfo.ipAddress,
+    location: deviceInfo.location,
+    expiresAt,
+    isActive: 1,
+  });
+}
+
+/**
+ * Get all active sessions for a user
+ */
+export async function getUserSessions(userId: number): Promise<Array<{
+  id: number;
+  deviceName: string | null;
+  deviceType: string | null;
+  browser: string | null;
+  os: string | null;
+  ipAddress: string | null;
+  location: string | null;
+  lastActiveAt: Date;
+  createdAt: Date;
+  isCurrent?: boolean;
+}>> {
+  const db = await getDb();
+  if (!db) return [];
+
+  const sessions = await db.select()
+    .from(userSessions)
+    .where(and(
+      eq(userSessions.userId, userId),
+      eq(userSessions.isActive, 1)
+    ))
+    .orderBy(desc(userSessions.lastActiveAt));
+
+  return sessions.map(s => ({
+    id: s.id,
+    deviceName: s.deviceName,
+    deviceType: s.deviceType,
+    browser: s.browser,
+    os: s.os,
+    ipAddress: s.ipAddress,
+    location: s.location,
+    lastActiveAt: s.lastActiveAt,
+    createdAt: s.createdAt,
+  }));
+}
+
+/**
+ * Revoke a specific session
+ */
+export async function revokeSession(sessionId: number, userId: number): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+
+  const result = await db.update(userSessions)
+    .set({ isActive: 0 })
+    .where(and(
+      eq(userSessions.id, sessionId),
+      eq(userSessions.userId, userId)
+    ));
+
+  return true;
+}
+
+/**
+ * Revoke all sessions except current
+ */
+export async function revokeAllOtherSessions(userId: number, currentToken: string): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+
+  // Get current session to exclude
+  const currentSessions = await db.select()
+    .from(userSessions)
+    .where(and(
+      eq(userSessions.userId, userId),
+      eq(userSessions.token, currentToken)
+    ))
+    .limit(1);
+
+  const currentSessionId = currentSessions.length > 0 ? currentSessions[0].id : -1;
+
+  // Revoke all other sessions
+  await db.update(userSessions)
+    .set({ isActive: 0 })
+    .where(and(
+      eq(userSessions.userId, userId),
+      eq(userSessions.isActive, 1)
+    ));
+
+  // Re-activate current session
+  if (currentSessionId > 0) {
+    await db.update(userSessions)
+      .set({ isActive: 1 })
+      .where(eq(userSessions.id, currentSessionId));
+  }
+
+  return 1;
+}
+
+/**
+ * Update session last active time
+ */
+export async function updateSessionActivity(token: string): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+
+  await db.update(userSessions)
+    .set({ lastActiveAt: new Date() })
+    .where(eq(userSessions.token, token));
+}
+
+// ==================== TWO FACTOR AUTHENTICATION ====================
+
+import * as OTPAuth from "otpauth";
+
+/**
+ * Generate 2FA secret for a user
+ */
+export async function generate2FASecret(userId: number, username: string): Promise<{
+  secret: string;
+  otpauthUrl: string;
+  qrCodeUrl: string;
+} | null> {
+  const db = await getDb();
+  if (!db) return null;
+
+  // Generate new TOTP secret
+  const totp = new OTPAuth.TOTP({
+    issuer: "SPC/CPK Calculator",
+    label: username,
+    algorithm: "SHA1",
+    digits: 6,
+    period: 30,
+    secret: new OTPAuth.Secret({ size: 20 }),
+  });
+
+  const secret = totp.secret.base32;
+  const otpauthUrl = totp.toString();
+
+  // Check if user already has 2FA setup
+  const existing = await db.select().from(twoFactorAuth).where(eq(twoFactorAuth.userId, userId)).limit(1);
+
+  if (existing.length > 0) {
+    // Update existing
+    await db.update(twoFactorAuth)
+      .set({ secret, isEnabled: 0, verifiedAt: null })
+      .where(eq(twoFactorAuth.userId, userId));
+  } else {
+    // Create new
+    await db.insert(twoFactorAuth).values({
+      userId,
+      secret,
+      isEnabled: 0,
+    });
+  }
+
+  // Generate QR code URL using Google Charts API
+  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(otpauthUrl)}`;
+
+  return { secret, otpauthUrl, qrCodeUrl };
+}
+
+/**
+ * Verify 2FA code and enable 2FA
+ */
+export async function verify2FAAndEnable(userId: number, code: string): Promise<{ success: boolean; backupCodes?: string[] }> {
+  const db = await getDb();
+  if (!db) return { success: false };
+
+  // Get user's 2FA secret
+  const tfaRecords = await db.select().from(twoFactorAuth).where(eq(twoFactorAuth.userId, userId)).limit(1);
+  if (tfaRecords.length === 0) return { success: false };
+
+  const tfa = tfaRecords[0];
+
+  // Verify code
+  const totp = new OTPAuth.TOTP({
+    issuer: "SPC/CPK Calculator",
+    label: "user",
+    algorithm: "SHA1",
+    digits: 6,
+    period: 30,
+    secret: OTPAuth.Secret.fromBase32(tfa.secret),
+  });
+
+  const delta = totp.validate({ token: code, window: 1 });
+  if (delta === null) return { success: false };
+
+  // Enable 2FA
+  await db.update(twoFactorAuth)
+    .set({ isEnabled: 1, verifiedAt: new Date() })
+    .where(eq(twoFactorAuth.userId, userId));
+
+  // Generate backup codes
+  const backupCodes: string[] = [];
+  for (let i = 0; i < 10; i++) {
+    const code = crypto.randomBytes(4).toString("hex").toUpperCase();
+    backupCodes.push(code);
+    
+    // Hash and store backup code
+    const hashedCode = await hashPassword(code);
+    await db.insert(twoFactorBackupCodes).values({
+      userId,
+      code: hashedCode,
+    });
+  }
+
+  return { success: true, backupCodes };
+}
+
+/**
+ * Verify 2FA code during login
+ */
+export async function verify2FACode(userId: number, code: string): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+
+  // Get user's 2FA secret
+  const tfaRecords = await db.select().from(twoFactorAuth)
+    .where(and(
+      eq(twoFactorAuth.userId, userId),
+      eq(twoFactorAuth.isEnabled, 1)
+    ))
+    .limit(1);
+
+  if (tfaRecords.length === 0) return true; // 2FA not enabled
+
+  const tfa = tfaRecords[0];
+
+  // Try TOTP code first
+  const totp = new OTPAuth.TOTP({
+    issuer: "SPC/CPK Calculator",
+    label: "user",
+    algorithm: "SHA1",
+    digits: 6,
+    period: 30,
+    secret: OTPAuth.Secret.fromBase32(tfa.secret),
+  });
+
+  const delta = totp.validate({ token: code, window: 1 });
+  if (delta !== null) return true;
+
+  // Try backup code
+  const backupCodes = await db.select().from(twoFactorBackupCodes)
+    .where(and(
+      eq(twoFactorBackupCodes.userId, userId),
+      isNull(twoFactorBackupCodes.usedAt)
+    ));
+
+  for (const bc of backupCodes) {
+    const isValid = await verifyPassword(code.toUpperCase(), bc.code);
+    if (isValid) {
+      // Mark backup code as used
+      await db.update(twoFactorBackupCodes)
+        .set({ usedAt: new Date() })
+        .where(eq(twoFactorBackupCodes.id, bc.id));
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Check if user has 2FA enabled
+ */
+export async function is2FAEnabled(userId: number): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+
+  const tfaRecords = await db.select().from(twoFactorAuth)
+    .where(and(
+      eq(twoFactorAuth.userId, userId),
+      eq(twoFactorAuth.isEnabled, 1)
+    ))
+    .limit(1);
+
+  return tfaRecords.length > 0;
+}
+
+/**
+ * Disable 2FA for a user
+ */
+export async function disable2FA(userId: number, password: string): Promise<{ success: boolean; message: string }> {
+  const db = await getDb();
+  if (!db) return { success: false, message: "Database not available" };
+
+  // Verify password first
+  const users = await db.select().from(localUsers).where(eq(localUsers.id, userId)).limit(1);
+  if (users.length === 0) return { success: false, message: "User not found" };
+
+  const isValidPassword = await verifyPassword(password, users[0].passwordHash);
+  if (!isValidPassword) return { success: false, message: "Mật khẩu không đúng" };
+
+  // Delete 2FA records
+  await db.delete(twoFactorAuth).where(eq(twoFactorAuth.userId, userId));
+  await db.delete(twoFactorBackupCodes).where(eq(twoFactorBackupCodes.userId, userId));
+
+  return { success: true, message: "Đã tắt xác thực 2 yếu tố" };
+}
+
+/**
+ * Get remaining backup codes count
+ */
+export async function getBackupCodesCount(userId: number): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+
+  const codes = await db.select().from(twoFactorBackupCodes)
+    .where(and(
+      eq(twoFactorBackupCodes.userId, userId),
+      isNull(twoFactorBackupCodes.usedAt)
+    ));
+
+  return codes.length;
+}
+
+/**
+ * Regenerate backup codes
+ */
+export async function regenerateBackupCodes(userId: number, password: string): Promise<{ success: boolean; backupCodes?: string[]; message?: string }> {
+  const db = await getDb();
+  if (!db) return { success: false, message: "Database not available" };
+
+  // Verify password first
+  const users = await db.select().from(localUsers).where(eq(localUsers.id, userId)).limit(1);
+  if (users.length === 0) return { success: false, message: "User not found" };
+
+  const isValidPassword = await verifyPassword(password, users[0].passwordHash);
+  if (!isValidPassword) return { success: false, message: "Mật khẩu không đúng" };
+
+  // Delete old backup codes
+  await db.delete(twoFactorBackupCodes).where(eq(twoFactorBackupCodes.userId, userId));
+
+  // Generate new backup codes
+  const backupCodes: string[] = [];
+  for (let i = 0; i < 10; i++) {
+    const code = crypto.randomBytes(4).toString("hex").toUpperCase();
+    backupCodes.push(code);
+    
+    const hashedCode = await hashPassword(code);
+    await db.insert(twoFactorBackupCodes).values({
+      userId,
+      code: hashedCode,
+    });
+  }
+
+  return { success: true, backupCodes };
+}

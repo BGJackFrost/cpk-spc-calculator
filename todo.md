@@ -4430,3 +4430,27 @@
 - [x] Tạo API authentication cho local users (đã có sẵn - localAuth router)
 - [x] Cho phép chọn giữa đăng nhập Google hoặc Local (chỉ có Local, không có Google)
 
+
+## Phase 201 - Bảo mật Tài khoản Local
+
+### Quên mật khẩu với Email Recovery
+- [x] Tạo schema lưu password reset tokens
+- [x] Tạo API gửi email reset password
+- [x] Tạo trang nhập email để reset
+- [x] Tạo trang đặt mật khẩu mới từ token
+- [x] Thêm link "Quên mật khẩu" vào form đăng nhập
+
+### Quản lý Phiên đăng nhập (Session Management)
+- [x] Tạo schema lưu active sessions
+- [x] Hiển thị danh sách thiết bị đang đăng nhập
+- [x] Cho phép đăng xuất từ xa từng thiết bị
+- [x] Cho phép đăng xuất tất cả thiết bị khác
+- [x] Hiển thị thông tin: IP, trình duyệt, thời gian đăng nhập
+
+### Xác thực 2 yếu tố (2FA)
+- [x] Tạo schema lưu 2FA secrets
+- [x] Tạo API enable/disable 2FA
+- [x] Tạo trang setup 2FA với QR code
+- [x] Tạo form nhập OTP khi đăng nhập
+- [x] Tạo backup codes cho trường hợp mất điện thoại
+

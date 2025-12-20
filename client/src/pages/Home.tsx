@@ -275,6 +275,15 @@ export default function Home() {
                             </>
                           )}
                         </Button>
+                        
+                        <div className="text-center">
+                          <a 
+                            href="/forgot-password" 
+                            className="text-sm text-primary hover:underline"
+                          >
+                            Quên mật khẩu?
+                          </a>
+                        </div>
                       </form>
                     </TabsContent>
                     

@@ -217,6 +217,9 @@ importers:
       nodemailer:
         specifier: ^7.0.11
         version: 7.0.11
+      otpauth:
+        specifier: ^9.4.1
+        version: 9.4.1
       pdfkit:
         specifier: ^0.17.2
         version: 0.17.2
@@ -1298,6 +1301,10 @@ packages:
 
   '@mermaid-js/parser@0.6.3':
     resolution: {integrity: sha512-lnjOhe7zyHjc+If7yT4zoedx2vo4sHaTmtkl1+or8BRTnCtDmcTpAjpzDSfCZrshM5bCoz0GyidzadJAH1xobA==}
+
+  '@noble/hashes@1.8.0':
+    resolution: {integrity: sha512-jCs9ldd7NwzpgXDIf6P3+NrHh9/sD6CQdxHyjQI+h/6rDNo88ypBxxz45UDuZHz9r3tNz7N/VInSVoVdtXEI4A==}
+    engines: {node: ^14.21.3 || >=16}
 
   '@playwright/test@1.57.0':
     resolution: {integrity: sha512-6TyEnHgd6SArQO8UO2OMTxshln3QMWBtPGrOCgs3wVEmQmwyuNtB10IZMfmYDE0riwNR1cu4q+pPcxMVtaG3TA==}
@@ -4468,6 +4475,9 @@ packages:
   oniguruma-to-es@4.3.3:
     resolution: {integrity: sha512-rPiZhzC3wXwE59YQMRDodUwwT9FZ9nNBwQQfsd1wfdtlKEyCdRV0avrTcSZ5xlIvGRVPd/cx6ZN45ECmS39xvg==}
 
+  otpauth@9.4.1:
+    resolution: {integrity: sha512-+iVvys36CFsyXEqfNftQm1II7SW23W1wx9RwNk0Cd97lbvorqAhBDksb/0bYry087QMxjiuBS0wokdoZ0iUeAw==}
+
   p-limit@2.3.0:
     resolution: {integrity: sha512-//88mFWSJx8lxCzwdAABTJL2MyWB12+eIY7MDL2SqLmAkeKU9qxRvWuSyTjm3FUmpBEMuFfckAIqEaVGUDxb6w==}
     engines: {node: '>=6'}
@@ -6850,6 +6860,8 @@ snapshots:
   '@mermaid-js/parser@0.6.3':
     dependencies:
       langium: 3.3.1
+
+  '@noble/hashes@1.8.0': {}
 
   '@playwright/test@1.57.0':
     dependencies:
@@ -10559,6 +10571,10 @@ snapshots:
       oniguruma-parser: 0.12.1
       regex: 6.0.1
       regex-recursion: 6.0.2
+
+  otpauth@9.4.1:
+    dependencies:
+      '@noble/hashes': 1.8.0
 
   p-limit@2.3.0:
     dependencies:

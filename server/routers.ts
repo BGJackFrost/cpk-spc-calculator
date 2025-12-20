@@ -29,6 +29,23 @@ import {
   changeLocalPassword,
   adminResetPassword,
   type LocalAuthUser,
+  // Password Reset
+  generatePasswordResetToken,
+  resetPasswordWithToken,
+  // Session Management
+  createSession,
+  getUserSessions,
+  revokeSession,
+  revokeAllOtherSessions,
+  updateSessionActivity,
+  // 2FA
+  generate2FASecret,
+  verify2FAAndEnable,
+  verify2FACode,
+  is2FAEnabled,
+  disable2FA,
+  getBackupCodesCount,
+  regenerateBackupCodes,
 } from "./localAuthService";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { 
@@ -3553,6 +3570,131 @@ export const appRouter = router({
       await ensureDefaultAdmin();
       return { success: true, message: 'Default admin initialized' };
     }),
+
+    // ==================== PASSWORD RESET ====================
+    
+    // Request password reset (send email)
+    requestPasswordReset: publicProcedure
+      .input(z.object({ email: z.string().email() }))
+      .mutation(async ({ input }) => {
+        const result = await generatePasswordResetToken(input.email);
+        // Always return success to prevent email enumeration
+        return { 
+          success: true, 
+          message: 'Nếu email tồn tại, bạn sẽ nhận được hướng dẫn đặt lại mật khẩu',
+          // In development, return token for testing
+          ...(process.env.NODE_ENV === 'development' && result ? { token: result.token } : {})
+        };
+      }),
+
+    // Reset password with token
+    resetPasswordWithToken: publicProcedure
+      .input(z.object({
+        token: z.string(),
+        newPassword: z.string().min(6),
+      }))
+      .mutation(async ({ input }) => {
+        const result = await resetPasswordWithToken(input.token, input.newPassword);
+        if (!result.success) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: result.message });
+        }
+        return { success: true, message: result.message };
+      }),
+
+    // ==================== SESSION MANAGEMENT ====================
+    
+    // Get all active sessions for current user
+    getSessions: protectedProcedure.query(async ({ ctx }) => {
+      const sessions = await getUserSessions(ctx.user.id);
+      const currentToken = ctx.req.cookies?.['local_auth_token'] || '';
+      return sessions.map(s => ({
+        ...s,
+        isCurrent: false, // Will be determined by comparing tokens
+      }));
+    }),
+
+    // Revoke a specific session
+    revokeSession: protectedProcedure
+      .input(z.object({ sessionId: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const success = await revokeSession(input.sessionId, ctx.user.id);
+        if (!success) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: 'Không thể đăng xuất phiên này' });
+        }
+        return { success: true, message: 'Đã đăng xuất thiết bị' };
+      }),
+
+    // Revoke all other sessions
+    revokeAllOtherSessions: protectedProcedure.mutation(async ({ ctx }) => {
+      const currentToken = ctx.req.cookies?.['local_auth_token'] || '';
+      await revokeAllOtherSessions(ctx.user.id, currentToken);
+      return { success: true, message: 'Đã đăng xuất tất cả thiết bị khác' };
+    }),
+
+    // ==================== TWO FACTOR AUTHENTICATION ====================
+    
+    // Check if 2FA is enabled for current user
+    is2FAEnabled: protectedProcedure.query(async ({ ctx }) => {
+      const enabled = await is2FAEnabled(ctx.user.id);
+      const backupCodesCount = enabled ? await getBackupCodesCount(ctx.user.id) : 0;
+      return { enabled, backupCodesCount };
+    }),
+
+    // Generate 2FA secret (start setup)
+    setup2FA: protectedProcedure.mutation(async ({ ctx }) => {
+      const result = await generate2FASecret(ctx.user.id, ctx.user.username || ctx.user.name || 'user');
+      if (!result) {
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Không thể tạo mã 2FA' });
+      }
+      return result;
+    }),
+
+    // Verify 2FA code and enable
+    verify2FA: protectedProcedure
+      .input(z.object({ code: z.string().length(6) }))
+      .mutation(async ({ input, ctx }) => {
+        const result = await verify2FAAndEnable(ctx.user.id, input.code);
+        if (!result.success) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: 'Mã xác thực không hợp lệ' });
+        }
+        return { success: true, backupCodes: result.backupCodes };
+      }),
+
+    // Disable 2FA
+    disable2FA: protectedProcedure
+      .input(z.object({ password: z.string() }))
+      .mutation(async ({ input, ctx }) => {
+        const result = await disable2FA(ctx.user.id, input.password);
+        if (!result.success) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: result.message });
+        }
+        return { success: true, message: result.message };
+      }),
+
+    // Regenerate backup codes
+    regenerateBackupCodes: protectedProcedure
+      .input(z.object({ password: z.string() }))
+      .mutation(async ({ input, ctx }) => {
+        const result = await regenerateBackupCodes(ctx.user.id, input.password);
+        if (!result.success) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: result.message });
+        }
+        return { success: true, backupCodes: result.backupCodes };
+      }),
+
+    // Verify 2FA during login (for 2FA-enabled accounts)
+    verify2FALogin: publicProcedure
+      .input(z.object({
+        userId: z.number(),
+        code: z.string(),
+      }))
+      .mutation(async ({ input }) => {
+        const isValid = await verify2FACode(input.userId, input.code);
+        if (!isValid) {
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Mã xác thực không hợp lệ' });
+        }
+        return { success: true };
+      }),
   }),
 
   user: userRouter,

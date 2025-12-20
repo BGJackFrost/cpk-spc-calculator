@@ -3221,3 +3221,73 @@ export const customThemes = mysqlTable("custom_themes", {
 
 export type CustomTheme = typeof customThemes.$inferSelect;
 export type InsertCustomTheme = typeof customThemes.$inferInsert;
+
+
+/**
+ * Password Reset Tokens - Token đặt lại mật khẩu
+ */
+export const passwordResetTokens = mysqlTable("password_reset_tokens", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull(),
+  token: varchar("token", { length: 255 }).notNull().unique(),
+  email: varchar("email", { length: 320 }).notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  usedAt: timestamp("used_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
+export type InsertPasswordResetToken = typeof passwordResetTokens.$inferInsert;
+
+/**
+ * User Sessions - Phiên đăng nhập
+ */
+export const userSessions = mysqlTable("user_sessions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull(),
+  authType: mysqlEnum("auth_type", ["local", "manus"]).notNull().default("local"),
+  token: varchar("token", { length: 500 }).notNull().unique(),
+  deviceName: varchar("device_name", { length: 255 }),
+  deviceType: varchar("device_type", { length: 50 }), // desktop, mobile, tablet
+  browser: varchar("browser", { length: 100 }),
+  os: varchar("os", { length: 100 }),
+  ipAddress: varchar("ip_address", { length: 45 }),
+  location: varchar("location", { length: 255 }), // City, Country
+  lastActiveAt: timestamp("last_active_at").defaultNow().notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  isActive: int("is_active").notNull().default(1),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type UserSession = typeof userSessions.$inferSelect;
+export type InsertUserSession = typeof userSessions.$inferInsert;
+
+/**
+ * Two Factor Authentication - Xác thực 2 yếu tố
+ */
+export const twoFactorAuth = mysqlTable("two_factor_auth", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull().unique(),
+  secret: varchar("secret", { length: 255 }).notNull(), // TOTP secret (encrypted)
+  isEnabled: int("is_enabled").notNull().default(0),
+  verifiedAt: timestamp("verified_at"), // Khi user xác nhận setup xong
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+export type TwoFactorAuth = typeof twoFactorAuth.$inferSelect;
+export type InsertTwoFactorAuth = typeof twoFactorAuth.$inferInsert;
+
+/**
+ * Two Factor Backup Codes - Mã backup cho 2FA
+ */
+export const twoFactorBackupCodes = mysqlTable("two_factor_backup_codes", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull(),
+  code: varchar("code", { length: 20 }).notNull(), // Hashed backup code
+  usedAt: timestamp("used_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type TwoFactorBackupCode = typeof twoFactorBackupCodes.$inferSelect;
+export type InsertTwoFactorBackupCode = typeof twoFactorBackupCodes.$inferInsert;

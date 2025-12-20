@@ -421,6 +421,13 @@
       "when": 1766163649359,
       "tag": "0059_eminent_marrow",
       "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "5",
+      "when": 1766200288965,
+      "tag": "0060_striped_nightshade",
+      "breakpoints": true
     }
   ]
 }
