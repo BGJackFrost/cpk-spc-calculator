@@ -4454,3 +4454,26 @@
 - [x] Tạo form nhập OTP khi đăng nhập
 - [x] Tạo backup codes cho trường hợp mất điện thoại
 
+
+## Phase 202 - Sửa lỗi Dashboard và Bảo mật Nâng cao
+
+### Sửa lỗi Dashboard
+- [x] Sửa lỗi React error #185 trên trang Dashboard
+- [x] Kiểm tra và fix các component render null/undefined
+
+### Rate Limiting cho Password Reset
+- [x] Thêm rate limiter cho API requestPasswordReset
+- [x] Giới hạn 5 request/15 phút, block 30 phút nếu vượt
+- [x] Hiển thị thông báo khi bị rate limit
+
+### Email Notification khi đăng nhập thiết bị mới
+- [x] Phát hiện thiết bị mới dựa trên fingerprint/IP
+- [x] Gửi email cảnh báo khi đăng nhập từ thiết bị mới
+- [x] Lưu danh sách thiết bị tin cậy
+
+### Tích hợp 2FA vào Flow đăng nhập
+- [x] Kiểm tra 2FA enabled sau khi verify username/password
+- [x] Hiển thị form nhập OTP nếu 2FA enabled
+- [x] Cho phép dùng backup code thay OTP
+- [x] Redirect về dashboard sau khi verify OTP thành công
+

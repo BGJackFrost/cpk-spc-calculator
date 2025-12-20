@@ -17,7 +17,10 @@ import {
   Activity,
   FileText,
   Copy,
-  Check
+  Check,
+  AlertCircle,
+  Key,
+  CheckCircle
 } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";

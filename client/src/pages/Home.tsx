@@ -34,6 +34,8 @@ export default function Home() {
   // Login form state
   const [loginUsername, setLoginUsername] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
+  const [twoFactorCode, setTwoFactorCode] = useState("");
+  const [requires2FA, setRequires2FA] = useState(false);
   
   // Register form state
   const [regUsername, setRegUsername] = useState("");
@@ -50,7 +52,20 @@ export default function Home() {
 
   const loginMutation = trpc.localAuth.login.useMutation({
     onSuccess: (data) => {
+      // Check if 2FA is required
+      if (data.requires2FA) {
+        setRequires2FA(true);
+        toast.info("Vui lòng nhập mã xác thực 2 yếu tố");
+        return;
+      }
+      
       toast.success("Đăng nhập thành công!");
+      
+      // Show new device notification if applicable
+      if (data.isNewDevice) {
+        toast.info("Đăng nhập từ thiết bị mới. Email thông báo đã được gửi.", { duration: 5000 });
+      }
+      
       if (data.mustChangePassword) {
         setLocation("/change-password");
         window.location.reload();
@@ -60,6 +75,10 @@ export default function Home() {
       }
     },
     onError: (error) => {
+      // Reset 2FA state on error
+      if (requires2FA) {
+        setTwoFactorCode("");
+      }
       toast.error(error.message || "Đăng nhập thất bại");
     },
   });
@@ -86,7 +105,24 @@ export default function Home() {
       toast.error("Vui lòng nhập tên đăng nhập và mật khẩu");
       return;
     }
-    loginMutation.mutate({ username: loginUsername, password: loginPassword });
+    
+    // If 2FA is required, validate the code
+    if (requires2FA && !twoFactorCode) {
+      toast.error("Vui lòng nhập mã xác thực 2 yếu tố");
+      return;
+    }
+    
+    loginMutation.mutate({ 
+      username: loginUsername, 
+      password: loginPassword,
+      twoFactorCode: requires2FA ? twoFactorCode : undefined,
+    });
+  };
+  
+  const handleCancel2FA = () => {
+    setRequires2FA(false);
+    setTwoFactorCode("");
+    setLoginPassword("");
   };
 
   const handleRegister = (e: React.FormEvent) => {
@@ -254,27 +290,62 @@ export default function Home() {
                               onChange={(e) => setLoginPassword(e.target.value)}
                               className="pl-10"
                               autoComplete="current-password"
+                              disabled={requires2FA}
                             />
                           </div>
                         </div>
                         
-                        <Button 
-                          type="submit" 
-                          className="w-full"
-                          disabled={loginMutation.isPending}
-                        >
-                          {loginMutation.isPending ? (
-                            <>
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              Đang đăng nhập...
-                            </>
-                          ) : (
-                            <>
-                              Đăng nhập
-                              <ArrowRight className="ml-2 h-4 w-4" />
-                            </>
+                        {requires2FA && (
+                          <div className="space-y-2">
+                            <Label htmlFor="two-factor-code">Mã xác thực 2 yếu tố</Label>
+                            <div className="relative">
+                              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                              <Input
+                                id="two-factor-code"
+                                type="text"
+                                placeholder="Nhập mã 6 số từ ứng dụng Authenticator"
+                                value={twoFactorCode}
+                                onChange={(e) => setTwoFactorCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                className="pl-10 text-center text-lg tracking-widest"
+                                maxLength={6}
+                                autoFocus
+                              />
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              Mở ứng dụng Google Authenticator hoặc tương tự để lấy mã
+                            </p>
+                          </div>
+                        )}
+                        
+                        <div className="flex gap-2">
+                          {requires2FA && (
+                            <Button 
+                              type="button" 
+                              variant="outline"
+                              className="flex-1"
+                              onClick={handleCancel2FA}
+                            >
+                              Quay lại
+                            </Button>
                           )}
-                        </Button>
+                          <Button 
+                            type="submit" 
+                            className={requires2FA ? "flex-1" : "w-full"}
+                            disabled={loginMutation.isPending}
+                          >
+                            {loginMutation.isPending ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                {requires2FA ? 'Đang xác thực...' : 'Đang đăng nhập...'}
+                              </>
+                            ) : (
+                              <>
+                                {requires2FA ? 'Xác thực' : 'Đăng nhập'}
+                                <ArrowRight className="ml-2 h-4 w-4" />
+                              </>
+                            )}
+                          </Button>
+                        </div>
                         
                         <div className="text-center">
                           <a 

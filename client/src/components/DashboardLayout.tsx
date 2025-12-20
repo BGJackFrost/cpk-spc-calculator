@@ -648,7 +648,7 @@ function DashboardLayoutContent({
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-2 px-2 py-1.5 rounded-full hover:bg-accent transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                   <Avatar className="h-8 w-8 border-2 border-primary/20">
-                    <AvatarImage src={user?.avatar} alt={user?.name} />
+                    <AvatarImage src={user?.avatar ?? undefined} alt={user?.name ?? undefined} />
                     <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-xs font-medium">
                       {user?.name?.charAt(0).toUpperCase() || "U"}
                     </AvatarFallback>
@@ -663,7 +663,7 @@ function DashboardLayoutContent({
                 <div className="px-3 py-2 border-b">
                   <div className="flex items-center gap-3">
                     <Avatar className="h-10 w-10">
-                      <AvatarImage src={user?.avatar} alt={user?.name} />
+                      <AvatarImage src={user?.avatar ?? undefined} alt={user?.name ?? undefined} />
                       <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white">
                         {user?.name?.charAt(0).toUpperCase() || "U"}
                       </AvatarFallback>

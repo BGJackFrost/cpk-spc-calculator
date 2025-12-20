@@ -280,7 +280,7 @@ export default function BackupHistory() {
     let successCount = 0;
     let errorCount = 0;
     
-    for (const id of selectedBackups) {
+    for (const id of Array.from(selectedBackups)) {
       try {
         const response = await fetch('/api/trpc/backup.delete', {
           method: 'POST',

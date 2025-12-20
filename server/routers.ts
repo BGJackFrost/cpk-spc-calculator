@@ -48,6 +48,8 @@ import {
   regenerateBackupCodes,
 } from "./localAuthService";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
+import { checkRateLimit, resetRateLimit, getRateLimitKey, RATE_LIMIT_CONFIGS } from "./rateLimiter";
+import { checkNewDevice, sendLoginNotification, recordDeviceInSession } from "./loginNotificationService";
 import { 
   getRateLimitStats, 
   resetRateLimitStats, 
@@ -3266,17 +3268,75 @@ export const appRouter = router({
         return result;
       }),
 
-    // Login with local credentials
+    // Login with local credentials - with rate limiting and new device notification
     login: publicProcedure
       .input(z.object({
         username: z.string(),
         password: z.string(),
+        twoFactorCode: z.string().optional(), // For 2FA verification
       }))
       .mutation(async ({ input, ctx }) => {
+        // Rate limit by IP + username combination
+        const ip = ctx.req?.ip || ctx.req?.socket?.remoteAddress || 'unknown';
+        const rateLimitKey = getRateLimitKey('login', `${ip}:${input.username}`);
+        const rateLimit = checkRateLimit(rateLimitKey, RATE_LIMIT_CONFIGS.login);
+        
+        if (rateLimit.isLimited) {
+          throw new TRPCError({
+            code: 'TOO_MANY_REQUESTS',
+            message: `Quá nhiều lần đăng nhập thất bại. Vui lòng thử lại sau ${Math.ceil(rateLimit.retryAfter / 60)} phút.`,
+          });
+        }
+        
         const result = await loginLocalUser(input);
         if (!result.success) {
           throw new TRPCError({ code: 'UNAUTHORIZED', message: result.error });
         }
+        
+        // Check if 2FA is enabled for this user
+        const twoFAEnabled = await is2FAEnabled(result.user!.id);
+        if (twoFAEnabled) {
+          // If 2FA code not provided, return requires2FA flag
+          if (!input.twoFactorCode) {
+            return {
+              success: false,
+              requires2FA: true,
+              message: 'Vui lòng nhập mã xác thực 2 yếu tố',
+            };
+          }
+          
+          // Verify 2FA code
+          const twoFAResult = await verify2FACode(result.user!.id, input.twoFactorCode);
+          if (!twoFAResult.valid) {
+            throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Mã xác thực không hợp lệ' });
+          }
+        }
+        
+        // Reset rate limit on successful login
+        resetRateLimit(rateLimitKey);
+        
+        // Check for new device and send notification
+        const userAgent = ctx.req?.headers?.['user-agent'] || 'Unknown';
+        const deviceCheck = await checkNewDevice(result.user!.id, userAgent, ip);
+        
+        if (deviceCheck.shouldNotify && result.user?.email) {
+          // Send notification asynchronously (don't block login)
+          sendLoginNotification(
+            result.user.id,
+            result.user.email,
+            deviceCheck.deviceInfo,
+            new Date()
+          ).catch(err => console.error('[Login] Notification error:', err));
+        }
+        
+        // Create session record
+        const sessionResult = await createSession(
+          result.user!.id,
+          userAgent,
+          ip,
+          deviceCheck.deviceInfo.deviceFingerprint
+        );
+        
         // Set cookie with token
         if (result.token) {
           const cookieOptions = getSessionCookieOptions(ctx.req);
@@ -3285,10 +3345,12 @@ export const appRouter = router({
             maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
           });
         }
+        
         return { 
           success: true, 
           user: result.user,
           mustChangePassword: result.mustChangePassword || false,
+          isNewDevice: deviceCheck.isNewDevice,
         };
       }),
 
@@ -3573,15 +3635,28 @@ export const appRouter = router({
 
     // ==================== PASSWORD RESET ====================
     
-    // Request password reset (send email)
+    // Request password reset (send email) - with rate limiting
     requestPasswordReset: publicProcedure
       .input(z.object({ email: z.string().email() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        // Rate limit by IP address
+        const ip = ctx.req?.ip || ctx.req?.socket?.remoteAddress || 'unknown';
+        const rateLimitKey = getRateLimitKey('password_reset', ip);
+        const rateLimit = checkRateLimit(rateLimitKey, RATE_LIMIT_CONFIGS.passwordReset);
+        
+        if (rateLimit.isLimited) {
+          throw new TRPCError({
+            code: 'TOO_MANY_REQUESTS',
+            message: `Quá nhiều yêu cầu. Vui lòng thử lại sau ${Math.ceil(rateLimit.retryAfter / 60)} phút.`,
+          });
+        }
+        
         const result = await generatePasswordResetToken(input.email);
         // Always return success to prevent email enumeration
         return { 
           success: true, 
           message: 'Nếu email tồn tại, bạn sẽ nhận được hướng dẫn đặt lại mật khẩu',
+          remainingRequests: rateLimit.remainingRequests,
           // In development, return token for testing
           ...(process.env.NODE_ENV === 'development' && result ? { token: result.token } : {})
         };
@@ -3642,7 +3717,7 @@ export const appRouter = router({
 
     // Generate 2FA secret (start setup)
     setup2FA: protectedProcedure.mutation(async ({ ctx }) => {
-      const result = await generate2FASecret(ctx.user.id, ctx.user.username || ctx.user.name || 'user');
+      const result = await generate2FASecret(ctx.user.id, ctx.user.name || ctx.user.email || 'user');
       if (!result) {
         throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Không thể tạo mã 2FA' });
       }
