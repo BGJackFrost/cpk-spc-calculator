@@ -4522,3 +4522,12 @@
 - [x] Sử dụng cấu hình động thay vì hardcode
 - [x] Cache cấu hình để tối ưu performance (5 phút TTL)
 
+
+## Phase 205 - Sửa lỗi Dashboard
+
+### Bug: React Error #185
+- [x] Sửa lỗi "Minified React error #185" trên trang Dashboard
+- [x] Kiểm tra và fix các component render object thay vì string/number
+- [x] Sử dụng useState để stabilize Date references trong NTF query
+- [ ] Cần Publish để deploy lên production
+
