@@ -1,6 +1,6 @@
 import { router, publicProcedure, protectedProcedure } from "../_core/trpc";
 import { z } from "zod";
-import { getDb } from "../db";
+import { getDbWithPool } from "../db";
 import { userThemePreferences, customThemes } from "../../drizzle/schema";
 import { eq, and, or } from "drizzle-orm";
 
@@ -22,7 +22,7 @@ export const themeRouter = router({
   // Get user's theme preference
   getPreference: protectedProcedure.query(async ({ ctx }) => {
     const userId = ctx.user.id;
-    const db = await getDb();
+    const db = await getDbWithPool();
     if (!db) {
       return {
         themeId: "default-blue",
@@ -61,7 +61,7 @@ export const themeRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.user.id;
-      const db = await getDb();
+      const db = await getDbWithPool();
       if (!db) throw new Error("Database not available");
       
       // Check if preference exists
@@ -97,7 +97,7 @@ export const themeRouter = router({
   // Get user's custom themes
   getCustomThemes: protectedProcedure.query(async ({ ctx }) => {
     const userId = ctx.user.id;
-    const db = await getDb();
+    const db = await getDbWithPool();
     if (!db) return [];
     
     // Get user's own themes + public themes from others
@@ -137,7 +137,7 @@ export const themeRouter = router({
     .input(z.object({ id: z.number() }))
     .query(async ({ ctx, input }) => {
       const userId = ctx.user.id;
-      const db = await getDb();
+      const db = await getDbWithPool();
       if (!db) return null;
       
       const [theme] = await db
@@ -189,7 +189,7 @@ export const themeRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.user.id;
-      const db = await getDb();
+      const db = await getDbWithPool();
       if (!db) throw new Error("Database not available");
       
       const [result] = await db.insert(customThemes).values({
@@ -227,7 +227,7 @@ export const themeRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.user.id;
-      const db = await getDb();
+      const db = await getDbWithPool();
       if (!db) throw new Error("Database not available");
       
       // Check ownership
@@ -278,7 +278,7 @@ export const themeRouter = router({
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.user.id;
-      const db = await getDb();
+      const db = await getDbWithPool();
       if (!db) throw new Error("Database not available");
       
       // Check ownership

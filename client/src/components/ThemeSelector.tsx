@@ -254,6 +254,187 @@ export const THEMES: ThemeConfig[] = [
       },
     },
   },
+  // Industry-specific themes
+  {
+    id: "manufacturing-industrial",
+    name: "Manufacturing Industrial",
+    nameVi: "Công nghiệp Sản xuất",
+    description: "Industrial theme for manufacturing environments",
+    descriptionVi: "Giao diện công nghiệp cho môi trường sản xuất",
+    preview: {
+      primary: "#0891b2",
+      secondary: "#0e7490",
+      accent: "#06b6d4",
+      background: "#f0f9ff",
+      foreground: "#164e63",
+    },
+    cssVariables: {
+      light: {
+        "--primary": "192 91% 36%",
+        "--primary-foreground": "192 100% 98%",
+        "--secondary": "193 82% 31%",
+        "--secondary-foreground": "192 100% 98%",
+        "--accent": "188 94% 43%",
+        "--accent-foreground": "192 80% 10%",
+        "--muted": "192 76.5% 96.7%",
+        "--muted-foreground": "192 16.3% 46.9%",
+      },
+      dark: {
+        "--primary": "192 91% 36%",
+        "--primary-foreground": "192 80% 10%",
+        "--secondary": "193 62% 21%",
+        "--secondary-foreground": "192 76.5% 96.7%",
+        "--accent": "188 74% 33%",
+        "--accent-foreground": "192 76.5% 96.7%",
+        "--muted": "192 32.6% 17.5%",
+        "--muted-foreground": "192 20.2% 65.1%",
+      },
+    },
+  },
+  {
+    id: "healthcare-medical",
+    name: "Healthcare Medical",
+    nameVi: "Y tế Chăm sóc Sức khỏe",
+    description: "Clean medical theme for healthcare applications",
+    descriptionVi: "Giao diện y tế sạch sẽ cho ứng dụng chăm sóc sức khỏe",
+    preview: {
+      primary: "#059669",
+      secondary: "#10b981",
+      accent: "#34d399",
+      background: "#ecfdf5",
+      foreground: "#064e3b",
+    },
+    cssVariables: {
+      light: {
+        "--primary": "160 84% 39%",
+        "--primary-foreground": "160 100% 98%",
+        "--secondary": "160 84% 39%",
+        "--secondary-foreground": "160 100% 98%",
+        "--accent": "160 67% 52%",
+        "--accent-foreground": "160 80% 10%",
+        "--muted": "160 76.5% 96.7%",
+        "--muted-foreground": "160 16.3% 46.9%",
+      },
+      dark: {
+        "--primary": "160 84% 39%",
+        "--primary-foreground": "160 80% 10%",
+        "--secondary": "160 64% 29%",
+        "--secondary-foreground": "160 76.5% 96.7%",
+        "--accent": "160 47% 42%",
+        "--accent-foreground": "160 76.5% 96.7%",
+        "--muted": "160 32.6% 17.5%",
+        "--muted-foreground": "160 20.2% 65.1%",
+      },
+    },
+  },
+  {
+    id: "finance-corporate",
+    name: "Finance Corporate",
+    nameVi: "Tài chính Doanh nghiệp",
+    description: "Professional corporate theme for finance applications",
+    descriptionVi: "Giao diện doanh nghiệp chuyên nghiệp cho ứng dụng tài chính",
+    preview: {
+      primary: "#1e40af",
+      secondary: "#3b82f6",
+      accent: "#60a5fa",
+      background: "#eff6ff",
+      foreground: "#1e3a8a",
+    },
+    cssVariables: {
+      light: {
+        "--primary": "224 76% 48%",
+        "--primary-foreground": "224 100% 98%",
+        "--secondary": "217 91% 60%",
+        "--secondary-foreground": "224 100% 98%",
+        "--accent": "213 94% 68%",
+        "--accent-foreground": "224 80% 10%",
+        "--muted": "224 76.5% 96.7%",
+        "--muted-foreground": "224 16.3% 46.9%",
+      },
+      dark: {
+        "--primary": "224 76% 48%",
+        "--primary-foreground": "224 80% 10%",
+        "--secondary": "217 71% 40%",
+        "--secondary-foreground": "224 76.5% 96.7%",
+        "--accent": "213 74% 48%",
+        "--accent-foreground": "224 76.5% 96.7%",
+        "--muted": "224 32.6% 17.5%",
+        "--muted-foreground": "224 20.2% 65.1%",
+      },
+    },
+  },
+  {
+    id: "automotive-tech",
+    name: "Automotive Tech",
+    nameVi: "Công nghệ Ô tô",
+    description: "Modern tech theme for automotive industry",
+    descriptionVi: "Giao diện công nghệ hiện đại cho ngành ô tô",
+    preview: {
+      primary: "#dc2626",
+      secondary: "#ef4444",
+      accent: "#f87171",
+      background: "#fef2f2",
+      foreground: "#7f1d1d",
+    },
+    cssVariables: {
+      light: {
+        "--primary": "0 72% 51%",
+        "--primary-foreground": "0 100% 98%",
+        "--secondary": "0 84% 60%",
+        "--secondary-foreground": "0 100% 98%",
+        "--accent": "0 91% 71%",
+        "--accent-foreground": "0 80% 10%",
+        "--muted": "0 76.5% 96.7%",
+        "--muted-foreground": "0 16.3% 46.9%",
+      },
+      dark: {
+        "--primary": "0 72% 51%",
+        "--primary-foreground": "0 80% 10%",
+        "--secondary": "0 64% 40%",
+        "--secondary-foreground": "0 76.5% 96.7%",
+        "--accent": "0 71% 51%",
+        "--accent-foreground": "0 76.5% 96.7%",
+        "--muted": "0 32.6% 17.5%",
+        "--muted-foreground": "0 20.2% 65.1%",
+      },
+    },
+  },
+  {
+    id: "food-beverage",
+    name: "Food & Beverage",
+    nameVi: "Thực phẩm & Đồ uống",
+    description: "Fresh theme for food and beverage industry",
+    descriptionVi: "Giao diện tươi mới cho ngành thực phẩm và đồ uống",
+    preview: {
+      primary: "#ea580c",
+      secondary: "#f97316",
+      accent: "#84cc16",
+      background: "#fffbeb",
+      foreground: "#78350f",
+    },
+    cssVariables: {
+      light: {
+        "--primary": "21 90% 48%",
+        "--primary-foreground": "21 100% 98%",
+        "--secondary": "25 95% 53%",
+        "--secondary-foreground": "21 100% 98%",
+        "--accent": "84 81% 44%",
+        "--accent-foreground": "84 80% 10%",
+        "--muted": "48 76.5% 96.7%",
+        "--muted-foreground": "21 16.3% 46.9%",
+      },
+      dark: {
+        "--primary": "21 90% 48%",
+        "--primary-foreground": "21 80% 10%",
+        "--secondary": "25 75% 33%",
+        "--secondary-foreground": "48 76.5% 96.7%",
+        "--accent": "84 61% 34%",
+        "--accent-foreground": "48 76.5% 96.7%",
+        "--muted": "21 32.6% 17.5%",
+        "--muted-foreground": "21 20.2% 65.1%",
+      },
+    },
+  },
 ];
 
 // Convert HEX to HSL
@@ -307,6 +488,20 @@ export function applyTheme(themeId: string, isDark: boolean, customVariables?: R
     Object.entries(variables).forEach(([key, value]) => {
       root.style.setProperty(key, value);
     });
+    
+    // Also apply sidebar colors based on primary
+    const primaryVar = variables["--primary"];
+    if (primaryVar) {
+      root.style.setProperty("--sidebar-primary", primaryVar);
+      root.style.setProperty("--ring", primaryVar);
+      root.style.setProperty("--sidebar-ring", primaryVar);
+    }
+    
+    // Apply foreground to sidebar
+    const fgVar = variables["--primary-foreground"];
+    if (fgVar) {
+      root.style.setProperty("--sidebar-primary-foreground", fgVar);
+    }
   }
   
   localStorage.setItem("app-color-theme", themeId);
@@ -318,10 +513,34 @@ function applyPreviewTheme(preview: ThemeConfig["preview"], isDark: boolean) {
   const hslPrimary = hexToHsl(preview.primary);
   const hslSecondary = hexToHsl(preview.secondary);
   const hslAccent = hexToHsl(preview.accent);
+  const hslBackground = hexToHsl(preview.background);
+  const hslForeground = hexToHsl(preview.foreground);
   
+  // Apply primary colors
   root.style.setProperty("--primary", hslPrimary);
-  root.style.setProperty("--secondary", isDark ? `${hslSecondary.split(" ")[0]} 32.6% 17.5%` : hslSecondary);
-  root.style.setProperty("--accent", isDark ? `${hslAccent.split(" ")[0]} 32.6% 17.5%` : hslAccent);
+  root.style.setProperty("--sidebar-primary", hslPrimary);
+  root.style.setProperty("--ring", hslPrimary);
+  root.style.setProperty("--sidebar-ring", hslPrimary);
+  
+  // Apply secondary and accent
+  if (isDark) {
+    const hue = hslSecondary.split(" ")[0];
+    root.style.setProperty("--secondary", `${hue} 32.6% 17.5%`);
+    root.style.setProperty("--accent", `${hslAccent.split(" ")[0]} 32.6% 17.5%`);
+  } else {
+    root.style.setProperty("--secondary", hslSecondary);
+    root.style.setProperty("--accent", hslAccent);
+  }
+  
+  // Apply background and foreground for preview
+  // Note: Only apply in light mode preview to avoid breaking dark mode
+  if (!isDark) {
+    // Subtle background tint based on primary
+    const primaryHue = hslPrimary.split(" ")[0];
+    root.style.setProperty("--background", `${primaryHue} 5% 98%`);
+    root.style.setProperty("--card", `${primaryHue} 0% 100%`);
+    root.style.setProperty("--sidebar", `${primaryHue} 5% 98%`);
+  }
 }
 
 export function ThemeSelector() {

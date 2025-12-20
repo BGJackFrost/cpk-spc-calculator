@@ -4268,3 +4268,36 @@
 - [x] Xóa menu thông tin người dùng trên sidebar trái
 - [x] Giữ lại user menu trên header
 
+
+## Phase 194 - Sửa lỗi Theme System và Nâng cấp
+
+### Sửa Theme áp dụng đầy đủ
+- [x] Sửa theme áp dụng cho chữ, title, thanh menu
+- [x] Sửa tính năng xem trước theme không khả dụng
+- [x] Đảm bảo tất cả CSS variables được áp dụng đúng
+
+### Sửa chế độ darkmode
+- [x] Kiểm tra và sửa darkmode không hoạt động
+- [x] Đảm bảo toggle dark/light mode hoạt động đúng
+
+### Sửa tên menu chưa đúng
+- [x] Sửa menuGroup.myLicense và các label chưa đúng
+- [x] Thêm fallback labels cho tất cả menu items
+
+### Thêm trang Settings cấu hình logo/title
+- [x] Tạo trang AppSettings trong UI
+- [x] Cho phép cấu hình logo URL
+- [x] Cho phép cấu hình title ứng dụng
+
+### Tạo preset theme theo ngành
+- [x] Thêm preset Manufacturing (công nghiệp)
+- [x] Thêm preset Healthcare (y tế)
+- [x] Thêm preset Finance (tài chính)
+- [x] Thêm preset Automotive Tech (ô tô)
+- [x] Thêm preset Food & Beverage (thực phẩm)
+
+### Thêm chức năng export/import theme
+- [x] Export theme ra file JSON
+- [x] Import theme từ file JSON
+- [x] Chia sẻ theme giữa các users
+

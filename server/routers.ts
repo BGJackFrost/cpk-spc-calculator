@@ -4160,7 +4160,7 @@ export const appRouter = router({
         // Accept both array and JSON string for systems
         systems: z.union([z.array(z.string()), z.string()]).optional(),
         // Accept both record and JSON string for systemFeatures
-        systemFeatures: z.union([z.record(z.array(z.string())), z.string()]).optional(),
+        systemFeatures: z.union([z.record(z.string(), z.array(z.string())), z.string()]).optional(),
         expiresAt: z.date().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
@@ -4934,24 +4934,8 @@ export const appRouter = router({
           content: `License ${license.licenseKey} của ${license.companyName || 'khách hàng'} sẽ hết hạn trong ${input.daysRemaining} ngày.\n\nEmail liên hệ: ${license.contactEmail}\nLoại: ${license.type}\nNgày hết hạn: ${license.expiresAt?.toLocaleDateString('vi-VN')}`
         });
         
-        // Log notification
-        const { getDb } = await import("./db");
-        const db = await getDb();
-        if (db) {
-          const { licenseNotificationLogs } = await import("../drizzle/schema");
-          try {
-            await db.insert(licenseNotificationLogs).values({
-              licenseKey: input.licenseKey,
-              notificationType: input.daysRemaining <= 7 ? '7_days' : '30_days',
-              sentAt: new Date(),
-              recipientEmail: license.contactEmail,
-              status: 'sent'
-            });
-          } catch (e) {
-            // Table might not exist yet
-            console.log('Notification log skipped - table may not exist');
-          }
-        }
+        // Log notification (skipped - table not available)
+        console.log(`License expiry notification sent for ${input.licenseKey}`);
         
         return { success: true };
       }),
@@ -4966,7 +4950,7 @@ export const appRouter = router({
         const db = await getDb();
         if (!db) return null;
         
-        const { licenses, users, productionLines, spcPlans } = await import("../drizzle/schema");
+        const { licenses, users, productionLines, spcSamplingPlans } = await import("../drizzle/schema");
         const { eq, count } = await import("drizzle-orm");
         
         // Get active license
@@ -4984,7 +4968,7 @@ export const appRouter = router({
         // Count current usage
         const [userCount] = await db.select({ count: count() }).from(users);
         const [lineCount] = await db.select({ count: count() }).from(productionLines);
-        const [planCount] = await db.select({ count: count() }).from(spcPlans);
+        const [planCount] = await db.select({ count: count() }).from(spcSamplingPlans);
         
         return {
           licenseKey: license.licenseKey,

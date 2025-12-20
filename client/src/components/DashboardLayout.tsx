@@ -151,6 +151,15 @@ const fallbackLabelsVi: Record<string, string> = {
   "nav.scheduledJobs": "Scheduled Jobs",
   "nav.rateLimitDashboard": "Rate Limit",
   "nav.about": "Thông tin",
+  "menuGroup.myLicense": "License của tôi",
+  "nav.myLicenseStatus": "Trạng thái License",
+  "nav.activateLicense": "Kích hoạt License",
+  "nav.licenseHistory": "Lịch sử License",
+  "nav.licenseUsage": "Sử dụng License",
+  "nav.licenseSupport": "Hỗ trợ License",
+  "nav.systemSettings": "Cài đặt Hệ thống",
+  "nav.themeSettings": "Cài đặt Giao diện",
+  "nav.generalSettings": "Cài đặt Chung",
 };
 
 const fallbackLabelsEn: Record<string, string> = {
@@ -259,6 +268,15 @@ const fallbackLabelsEn: Record<string, string> = {
   "nav.scheduledJobs": "Scheduled Jobs",
   "nav.rateLimitDashboard": "Rate Limit",
   "nav.about": "About",
+  "menuGroup.myLicense": "My License",
+  "nav.myLicenseStatus": "License Status",
+  "nav.activateLicense": "Activate License",
+  "nav.licenseHistory": "License History",
+  "nav.licenseUsage": "License Usage",
+  "nav.licenseSupport": "License Support",
+  "nav.systemSettings": "System Settings",
+  "nav.themeSettings": "Theme Settings",
+  "nav.generalSettings": "General Settings",
 };
 
 const MIN_WIDTH = 200;
