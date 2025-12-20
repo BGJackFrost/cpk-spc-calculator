@@ -4477,3 +4477,26 @@
 - [x] Cho phép dùng backup code thay OTP
 - [x] Redirect về dashboard sau khi verify OTP thành công
 
+
+
+## Phase 203 - Bảo mật Nâng cao: Thiết bị tin cậy, Lịch sử đăng nhập, Cảnh báo
+
+### Nhớ thiết bị tin cậy (Skip 2FA)
+- [x] Tạo bảng trusted_devices lưu thiết bị tin cậy
+- [x] Thêm checkbox "Nhớ thiết bị này" trong form 2FA
+- [x] Tạo API addTrustedDevice và removeTrustedDevice
+- [x] Skip 2FA nếu thiết bị đã được tin cậy
+- [x] Trang quản lý thiết bị tin cậy (TrustedDevicesSettings.tsx)
+
+### Lịch sử đăng nhập chi tiết với bản đồ IP
+- [x] Tạo trang LoginHistoryDetail với bảng chi tiết
+- [x] Tích hợp bản đồ hiển thị vị trí IP (Leaflet/OpenStreetMap)
+- [x] API tra cứu vị trí từ IP (ip-api.com)
+- [x] Hiển thị thông tin: IP, Browser, OS, Location, Time
+
+### Cảnh báo đăng nhập thất bại liên tiếp
+- [x] Đếm số lần đăng nhập thất bại liên tiếp
+- [x] Gửi thông báo cảnh báo khi >= 5 lần thất bại
+- [x] Khóa tài khoản tạm thời sau 10 lần thất bại
+- [x] Trang admin xem danh sách tài khoản bị khóa (LockedAccountsAdmin.tsx)
+

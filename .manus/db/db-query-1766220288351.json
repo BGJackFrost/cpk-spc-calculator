@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `account_lockouts` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `user_id` int NOT NULL,\n  `username` varchar(100) NOT NULL,\n  `locked_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  `locked_until` timestamp NOT NULL,\n  `reason` varchar(255),\n  `failed_attempts` int NOT NULL DEFAULT 0,\n  `unlocked_at` timestamp NULL,\n  `unlocked_by` int,\n  CONSTRAINT `account_lockouts_id` PRIMARY KEY(`id`)\n)",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute CREATE TABLE IF NOT EXISTS `account_lockouts` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `user_id` int NOT NULL,\n  `username` varchar(100) NOT NULL,\n  `locked_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  `locked_until` timestamp NOT NULL,\n  `reason` varchar(255),\n  `failed_attempts` int NOT NULL DEFAULT 0,\n  `unlocked_at` timestamp NULL,\n  `unlocked_by` int,\n  CONSTRAINT `account_lockouts_id` PRIMARY KEY(`id`)\n)",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1605
+}

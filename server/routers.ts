@@ -46,6 +46,23 @@ import {
   disable2FA,
   getBackupCodesCount,
   regenerateBackupCodes,
+  // Trusted Devices
+  isTrustedDevice,
+  addTrustedDevice,
+  getTrustedDevices,
+  removeTrustedDevice,
+  removeAllTrustedDevices,
+  // Failed Login Tracking
+  recordFailedLoginAttempt,
+  isAccountLocked,
+  unlockAccount,
+  getLockedAccounts,
+  clearFailedAttempts,
+  // IP Location
+  getIpLocation,
+  saveLoginLocation,
+  getLoginLocationHistory,
+  getAllLoginLocationHistory,
 } from "./localAuthService";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { checkRateLimit, resetRateLimit, getRateLimitKey, RATE_LIMIT_CONFIGS } from "./rateLimiter";
@@ -3268,16 +3285,32 @@ export const appRouter = router({
         return result;
       }),
 
-    // Login with local credentials - with rate limiting and new device notification
+    // Login with local credentials - with rate limiting, account lockout, trusted device and new device notification
     login: publicProcedure
       .input(z.object({
         username: z.string(),
         password: z.string(),
         twoFactorCode: z.string().optional(), // For 2FA verification
+        deviceFingerprint: z.string().optional(), // For trusted device check
+        trustDevice: z.boolean().optional(), // Remember this device
       }))
       .mutation(async ({ input, ctx }) => {
-        // Rate limit by IP + username combination
         const ip = ctx.req?.ip || ctx.req?.socket?.remoteAddress || 'unknown';
+        const userAgent = ctx.req?.headers?.['user-agent'] || 'Unknown';
+        
+        // Check if account is locked
+        const lockStatus = await isAccountLocked(input.username);
+        if (lockStatus.locked) {
+          const remainingMinutes = lockStatus.lockedUntil 
+            ? Math.ceil((new Date(lockStatus.lockedUntil).getTime() - Date.now()) / 60000)
+            : 30;
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: `Tài khoản đã bị khóa tạm thời do quá nhiều lần đăng nhập thất bại. Vui lòng thử lại sau ${remainingMinutes} phút.`,
+          });
+        }
+        
+        // Rate limit by IP + username combination
         const rateLimitKey = getRateLimitKey('login', `${ip}:${input.username}`);
         const rateLimit = checkRateLimit(rateLimitKey, RATE_LIMIT_CONFIGS.login);
         
@@ -3290,33 +3323,70 @@ export const appRouter = router({
         
         const result = await loginLocalUser(input);
         if (!result.success) {
+          // Record failed attempt
+          const failedResult = await recordFailedLoginAttempt(input.username, ip, userAgent, 'wrong_credentials');
+          
+          // Send alert if threshold reached
+          if (failedResult.shouldAlert) {
+            notifyOwner({
+              title: '⚠️ Cảnh báo: Nhiều lần đăng nhập thất bại',
+              content: `Tài khoản "${input.username}" đã có ${failedResult.failedCount} lần đăng nhập thất bại liên tiếp từ IP: ${ip}. Thời gian: ${new Date().toLocaleString('vi-VN')}.`,
+            }).catch(err => console.error('[Login] Alert error:', err));
+          }
+          
+          // Notify if account locked
+          if (failedResult.shouldLock) {
+            notifyOwner({
+              title: '🔒 Tài khoản bị khóa',
+              content: `Tài khoản "${input.username}" đã bị khóa tạm thời sau ${failedResult.failedCount} lần đăng nhập thất bại. IP: ${ip}.`,
+            }).catch(err => console.error('[Login] Lock alert error:', err));
+          }
+          
           throw new TRPCError({ code: 'UNAUTHORIZED', message: result.error });
         }
         
         // Check if 2FA is enabled for this user
         const twoFAEnabled = await is2FAEnabled(result.user!.id);
-        if (twoFAEnabled) {
+        
+        // Check if device is trusted (skip 2FA)
+        let skipTwoFA = false;
+        if (twoFAEnabled && input.deviceFingerprint) {
+          skipTwoFA = await isTrustedDevice(result.user!.id, input.deviceFingerprint);
+        }
+        
+        if (twoFAEnabled && !skipTwoFA) {
           // If 2FA code not provided, return requires2FA flag
           if (!input.twoFactorCode) {
             return {
               success: false,
               requires2FA: true,
+              userId: result.user!.id,
               message: 'Vui lòng nhập mã xác thực 2 yếu tố',
             };
           }
           
           // Verify 2FA code
-          const twoFAResult = await verify2FACode(result.user!.id, input.twoFactorCode);
-          if (!twoFAResult.valid) {
+          const twoFAValid = await verify2FACode(result.user!.id, input.twoFactorCode);
+          if (!twoFAValid) {
             throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Mã xác thực không hợp lệ' });
+          }
+          
+          // Add device as trusted if requested
+          if (input.trustDevice && input.deviceFingerprint) {
+            await addTrustedDevice(result.user!.id, input.deviceFingerprint, {
+              deviceName: userAgent.substring(0, 100),
+              ipAddress: ip,
+              userAgent,
+              trustDays: 30, // Trust for 30 days
+            });
           }
         }
         
-        // Reset rate limit on successful login
+        // Reset rate limit and clear failed attempts on successful login
         resetRateLimit(rateLimitKey);
+        await clearFailedAttempts(input.username);
         
         // Check for new device and send notification
-        const userAgent = ctx.req?.headers?.['user-agent'] || 'Unknown';
         const deviceCheck = await checkNewDevice(result.user!.id, userAgent, ip);
         
         if (deviceCheck.shouldNotify && result.user?.email) {
@@ -3337,6 +3407,12 @@ export const appRouter = router({
           deviceCheck.deviceInfo.deviceFingerprint
         );
         
+        // Save login location asynchronously
+        if (sessionResult && ip) {
+          saveLoginLocation(sessionResult.id || 0, result.user!.id, ip)
+            .catch(err => console.error('[Login] Location save error:', err));
+        }
+        
         // Set cookie with token
         if (result.token) {
           const cookieOptions = getSessionCookieOptions(ctx.req);
@@ -3351,6 +3427,7 @@ export const appRouter = router({
           user: result.user,
           mustChangePassword: result.mustChangePassword || false,
           isNewDevice: deviceCheck.isNewDevice,
+          trustedDeviceSkipped2FA: skipTwoFA,
         };
       }),
 
@@ -3769,6 +3846,104 @@ export const appRouter = router({
           throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Mã xác thực không hợp lệ' });
         }
         return { success: true };
+      }),
+
+    // ==================== TRUSTED DEVICES ====================
+    
+    // Get all trusted devices for current user
+    getTrustedDevices: protectedProcedure.query(async ({ ctx }) => {
+      return await getTrustedDevices(ctx.user.id);
+    }),
+
+    // Add a trusted device
+    addTrustedDevice: protectedProcedure
+      .input(z.object({
+        deviceFingerprint: z.string(),
+        deviceName: z.string().optional(),
+        trustDays: z.number().optional(), // 0 = never expires
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const ip = ctx.req?.ip || ctx.req?.socket?.remoteAddress || 'unknown';
+        const userAgent = ctx.req?.headers?.['user-agent'] || 'Unknown';
+        
+        const result = await addTrustedDevice(ctx.user.id, input.deviceFingerprint, {
+          deviceName: input.deviceName || userAgent.substring(0, 100),
+          ipAddress: ip,
+          userAgent,
+          trustDays: input.trustDays,
+        });
+        
+        if (!result.success) {
+          throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Không thể thêm thiết bị tin cậy' });
+        }
+        return { success: true, deviceId: result.deviceId };
+      }),
+
+    // Remove a trusted device
+    removeTrustedDevice: protectedProcedure
+      .input(z.object({ deviceId: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const success = await removeTrustedDevice(ctx.user.id, input.deviceId);
+        if (!success) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: 'Không thể xóa thiết bị' });
+        }
+        return { success: true, message: 'Đã xóa thiết bị tin cậy' };
+      }),
+
+    // Remove all trusted devices
+    removeAllTrustedDevices: protectedProcedure.mutation(async ({ ctx }) => {
+      await removeAllTrustedDevices(ctx.user.id);
+      return { success: true, message: 'Đã xóa tất cả thiết bị tin cậy' };
+    }),
+
+    // ==================== ACCOUNT LOCKOUTS (Admin) ====================
+    
+    // Get locked accounts (admin only)
+    getLockedAccounts: protectedProcedure.query(async ({ ctx }) => {
+      if (ctx.user.role !== 'admin') {
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin access required' });
+      }
+      return await getLockedAccounts();
+    }),
+
+    // Unlock an account (admin only)
+    unlockAccount: protectedProcedure
+      .input(z.object({ username: z.string() }))
+      .mutation(async ({ input, ctx }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin access required' });
+        }
+        const success = await unlockAccount(input.username, ctx.user.id);
+        if (!success) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: 'Không thể mở khóa tài khoản' });
+        }
+        return { success: true, message: 'Đã mở khóa tài khoản' };
+      }),
+
+    // ==================== LOGIN LOCATION HISTORY ====================
+    
+    // Get login location history for current user
+    getLoginLocationHistory: protectedProcedure
+      .input(z.object({ limit: z.number().default(50) }))
+      .query(async ({ input, ctx }) => {
+        return await getLoginLocationHistory(ctx.user.id, input.limit);
+      }),
+
+    // Get all login location history (admin only)
+    getAllLoginLocationHistory: protectedProcedure
+      .input(z.object({ limit: z.number().default(100) }))
+      .query(async ({ input, ctx }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin access required' });
+        }
+        return await getAllLoginLocationHistory(input.limit);
+      }),
+
+    // Get IP location info (for display)
+    getIpLocation: protectedProcedure
+      .input(z.object({ ipAddress: z.string() }))
+      .query(async ({ input }) => {
+        return await getIpLocation(input.ipAddress);
       }),
   }),
 

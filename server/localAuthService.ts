@@ -476,33 +476,80 @@ export async function resetPasswordWithToken(token: string, newPassword: string)
  */
 export async function createSession(
   userId: number,
-  token: string,
-  deviceInfo: {
-    deviceName?: string;
-    deviceType?: string;
-    browser?: string;
-    os?: string;
-    ipAddress?: string;
-    location?: string;
-  }
-): Promise<void> {
+  userAgentOrToken: string,
+  ipAddress?: string,
+  deviceFingerprint?: string
+): Promise<{ id: number } | null> {
   const db = await getDb();
-  if (!db) return;
+  if (!db) return null;
 
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+  
+  // Parse user agent to get device info
+  const { browser, os, deviceType } = parseUserAgentForSession(userAgentOrToken);
+  
+  // Generate a unique token for the session
+  const token = `session_${userId}_${Date.now()}_${Math.random().toString(36).substring(7)}`;
 
-  await db.insert(userSessions).values({
-    userId,
-    token,
-    deviceName: deviceInfo.deviceName || "Unknown Device",
-    deviceType: deviceInfo.deviceType || "unknown",
-    browser: deviceInfo.browser || "Unknown",
-    os: deviceInfo.os || "Unknown",
-    ipAddress: deviceInfo.ipAddress,
-    location: deviceInfo.location,
-    expiresAt,
-    isActive: 1,
-  });
+  try {
+    const result = await db.insert(userSessions).values({
+      userId,
+      token,
+      deviceName: `${browser} on ${os}`,
+      deviceType: deviceType,
+      deviceFingerprint,
+      browser,
+      os,
+      userAgent: userAgentOrToken,
+      ipAddress,
+      expiresAt,
+      isActive: 1,
+    });
+    
+    return { id: result[0].insertId };
+  } catch (error) {
+    console.error("[Session] Create error:", error);
+    return null;
+  }
+}
+
+/**
+ * Parse user agent string for session info
+ */
+function parseUserAgentForSession(userAgent: string): { browser: string; os: string; deviceType: string } {
+  let browser = "Unknown";
+  let os = "Unknown";
+  let deviceType = "desktop";
+
+  // Parse browser
+  if (userAgent.includes("Chrome") && !userAgent.includes("Edg")) {
+    browser = "Chrome";
+  } else if (userAgent.includes("Firefox")) {
+    browser = "Firefox";
+  } else if (userAgent.includes("Safari") && !userAgent.includes("Chrome")) {
+    browser = "Safari";
+  } else if (userAgent.includes("Edg")) {
+    browser = "Edge";
+  } else if (userAgent.includes("Opera") || userAgent.includes("OPR")) {
+    browser = "Opera";
+  }
+
+  // Parse OS
+  if (userAgent.includes("Windows")) {
+    os = "Windows";
+  } else if (userAgent.includes("Mac OS")) {
+    os = "macOS";
+  } else if (userAgent.includes("Linux")) {
+    os = "Linux";
+  } else if (userAgent.includes("Android")) {
+    os = "Android";
+    deviceType = "mobile";
+  } else if (userAgent.includes("iPhone") || userAgent.includes("iPad")) {
+    os = "iOS";
+    deviceType = userAgent.includes("iPad") ? "tablet" : "mobile";
+  }
+
+  return { browser, os, deviceType };
 }
 
 /**
@@ -846,4 +893,539 @@ export async function regenerateBackupCodes(userId: number, password: string): P
   }
 
   return { success: true, backupCodes };
+}
+
+
+// ==================== TRUSTED DEVICES ====================
+
+import { trustedDevices, failedLoginAttempts, accountLockouts, loginLocationHistory } from "../drizzle/schema";
+
+/**
+ * Check if device is trusted for a user
+ */
+export async function isTrustedDevice(userId: number, deviceFingerprint: string): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+
+  const devices = await db.select()
+    .from(trustedDevices)
+    .where(and(
+      eq(trustedDevices.userId, userId),
+      eq(trustedDevices.deviceFingerprint, deviceFingerprint)
+    ))
+    .limit(1);
+
+  if (devices.length === 0) return false;
+
+  const device = devices[0];
+  
+  // Check if expired
+  if (device.expiresAt && new Date() > new Date(device.expiresAt)) {
+    // Delete expired device
+    await db.delete(trustedDevices).where(eq(trustedDevices.id, device.id));
+    return false;
+  }
+
+  // Update last used
+  await db.update(trustedDevices)
+    .set({ lastUsedAt: new Date() })
+    .where(eq(trustedDevices.id, device.id));
+
+  return true;
+}
+
+/**
+ * Add a trusted device for a user
+ */
+export async function addTrustedDevice(
+  userId: number,
+  deviceFingerprint: string,
+  deviceInfo: {
+    deviceName?: string;
+    ipAddress?: string;
+    userAgent?: string;
+    trustDays?: number; // 0 = never expires
+  }
+): Promise<{ success: boolean; deviceId?: number }> {
+  const db = await getDb();
+  if (!db) return { success: false };
+
+  try {
+    // Check if already exists
+    const existing = await db.select()
+      .from(trustedDevices)
+      .where(and(
+        eq(trustedDevices.userId, userId),
+        eq(trustedDevices.deviceFingerprint, deviceFingerprint)
+      ))
+      .limit(1);
+
+    if (existing.length > 0) {
+      // Update existing
+      await db.update(trustedDevices)
+        .set({
+          lastUsedAt: new Date(),
+          deviceName: deviceInfo.deviceName || existing[0].deviceName,
+        })
+        .where(eq(trustedDevices.id, existing[0].id));
+      return { success: true, deviceId: existing[0].id };
+    }
+
+    // Calculate expiry
+    const expiresAt = deviceInfo.trustDays && deviceInfo.trustDays > 0
+      ? new Date(Date.now() + deviceInfo.trustDays * 24 * 60 * 60 * 1000)
+      : null;
+
+    const result = await db.insert(trustedDevices).values({
+      userId,
+      deviceFingerprint,
+      deviceName: deviceInfo.deviceName || "Unknown Device",
+      ipAddress: deviceInfo.ipAddress,
+      userAgent: deviceInfo.userAgent,
+      expiresAt,
+    });
+
+    return { success: true, deviceId: result[0].insertId };
+  } catch (error) {
+    console.error("[TrustedDevices] Add error:", error);
+    return { success: false };
+  }
+}
+
+/**
+ * Get all trusted devices for a user
+ */
+export async function getTrustedDevices(userId: number): Promise<Array<{
+  id: number;
+  deviceFingerprint: string;
+  deviceName: string | null;
+  ipAddress: string | null;
+  lastUsedAt: Date;
+  expiresAt: Date | null;
+  createdAt: Date;
+}>> {
+  const db = await getDb();
+  if (!db) return [];
+
+  const devices = await db.select()
+    .from(trustedDevices)
+    .where(eq(trustedDevices.userId, userId))
+    .orderBy(desc(trustedDevices.lastUsedAt));
+
+  return devices.map(d => ({
+    id: d.id,
+    deviceFingerprint: d.deviceFingerprint,
+    deviceName: d.deviceName,
+    ipAddress: d.ipAddress,
+    lastUsedAt: d.lastUsedAt,
+    expiresAt: d.expiresAt,
+    createdAt: d.createdAt,
+  }));
+}
+
+/**
+ * Remove a trusted device
+ */
+export async function removeTrustedDevice(userId: number, deviceId: number): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+
+  await db.delete(trustedDevices)
+    .where(and(
+      eq(trustedDevices.id, deviceId),
+      eq(trustedDevices.userId, userId)
+    ));
+
+  return true;
+}
+
+/**
+ * Remove all trusted devices for a user
+ */
+export async function removeAllTrustedDevices(userId: number): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+
+  await db.delete(trustedDevices).where(eq(trustedDevices.userId, userId));
+  return true;
+}
+
+// ==================== FAILED LOGIN TRACKING ====================
+
+const MAX_FAILED_ATTEMPTS = 5; // Send alert after 5 failures
+const LOCKOUT_THRESHOLD = 10; // Lock account after 10 failures
+const LOCKOUT_DURATION_MINUTES = 30;
+const FAILED_ATTEMPTS_WINDOW_MINUTES = 15;
+
+/**
+ * Record a failed login attempt
+ */
+export async function recordFailedLoginAttempt(
+  username: string,
+  ipAddress?: string,
+  userAgent?: string,
+  reason?: string
+): Promise<{ shouldAlert: boolean; shouldLock: boolean; failedCount: number }> {
+  const db = await getDb();
+  if (!db) return { shouldAlert: false, shouldLock: false, failedCount: 0 };
+
+  try {
+    // Record the attempt
+    await db.insert(failedLoginAttempts).values({
+      username,
+      ipAddress,
+      userAgent,
+      reason: reason || "wrong_password",
+    });
+
+    // Count recent failures
+    const windowStart = new Date(Date.now() - FAILED_ATTEMPTS_WINDOW_MINUTES * 60 * 1000);
+    const recentFailures = await db.select()
+      .from(failedLoginAttempts)
+      .where(and(
+        eq(failedLoginAttempts.username, username),
+        // Note: We can't use gt with timestamp directly, so we'll count all and filter
+      ));
+
+    // Filter by time window
+    const failedCount = recentFailures.filter(f => 
+      new Date(f.attemptedAt) > windowStart
+    ).length;
+
+    const shouldAlert = failedCount === MAX_FAILED_ATTEMPTS;
+    const shouldLock = failedCount >= LOCKOUT_THRESHOLD;
+
+    // Lock account if threshold reached
+    if (shouldLock) {
+      await lockAccount(username, failedCount);
+    }
+
+    return { shouldAlert, shouldLock, failedCount };
+  } catch (error) {
+    console.error("[FailedLogin] Record error:", error);
+    return { shouldAlert: false, shouldLock: false, failedCount: 0 };
+  }
+}
+
+/**
+ * Lock an account
+ */
+async function lockAccount(username: string, failedAttempts: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+
+  // Find user
+  const users = await db.select().from(localUsers).where(eq(localUsers.username, username)).limit(1);
+  if (users.length === 0) return;
+
+  const user = users[0];
+  const lockedUntil = new Date(Date.now() + LOCKOUT_DURATION_MINUTES * 60 * 1000);
+
+  // Check if already locked
+  const existingLock = await db.select()
+    .from(accountLockouts)
+    .where(and(
+      eq(accountLockouts.userId, user.id),
+      isNull(accountLockouts.unlockedAt)
+    ))
+    .limit(1);
+
+  if (existingLock.length > 0) {
+    // Update existing lock
+    await db.update(accountLockouts)
+      .set({ lockedUntil, failedAttempts })
+      .where(eq(accountLockouts.id, existingLock[0].id));
+  } else {
+    // Create new lock
+    await db.insert(accountLockouts).values({
+      userId: user.id,
+      username,
+      lockedUntil,
+      reason: "too_many_failed_attempts",
+      failedAttempts,
+    });
+  }
+}
+
+/**
+ * Check if account is locked
+ */
+export async function isAccountLocked(username: string): Promise<{ locked: boolean; lockedUntil?: Date; reason?: string }> {
+  const db = await getDb();
+  if (!db) return { locked: false };
+
+  const users = await db.select().from(localUsers).where(eq(localUsers.username, username)).limit(1);
+  if (users.length === 0) return { locked: false };
+
+  const user = users[0];
+
+  const locks = await db.select()
+    .from(accountLockouts)
+    .where(and(
+      eq(accountLockouts.userId, user.id),
+      isNull(accountLockouts.unlockedAt)
+    ))
+    .orderBy(desc(accountLockouts.lockedAt))
+    .limit(1);
+
+  if (locks.length === 0) return { locked: false };
+
+  const lock = locks[0];
+
+  // Check if lock has expired
+  if (new Date() > new Date(lock.lockedUntil)) {
+    // Auto-unlock
+    await db.update(accountLockouts)
+      .set({ unlockedAt: new Date() })
+      .where(eq(accountLockouts.id, lock.id));
+    return { locked: false };
+  }
+
+  return {
+    locked: true,
+    lockedUntil: lock.lockedUntil,
+    reason: lock.reason || undefined,
+  };
+}
+
+/**
+ * Unlock an account (admin action)
+ */
+export async function unlockAccount(username: string, adminId: number): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+
+  const users = await db.select().from(localUsers).where(eq(localUsers.username, username)).limit(1);
+  if (users.length === 0) return false;
+
+  await db.update(accountLockouts)
+    .set({ unlockedAt: new Date(), unlockedBy: adminId })
+    .where(and(
+      eq(accountLockouts.userId, users[0].id),
+      isNull(accountLockouts.unlockedAt)
+    ));
+
+  // Clear recent failed attempts
+  await db.delete(failedLoginAttempts).where(eq(failedLoginAttempts.username, username));
+
+  return true;
+}
+
+/**
+ * Get locked accounts (admin)
+ */
+export async function getLockedAccounts(): Promise<Array<{
+  id: number;
+  userId: number;
+  username: string;
+  lockedAt: Date;
+  lockedUntil: Date;
+  reason: string | null;
+  failedAttempts: number;
+}>> {
+  const db = await getDb();
+  if (!db) return [];
+
+  const locks = await db.select()
+    .from(accountLockouts)
+    .where(isNull(accountLockouts.unlockedAt))
+    .orderBy(desc(accountLockouts.lockedAt));
+
+  return locks.map(l => ({
+    id: l.id,
+    userId: l.userId,
+    username: l.username,
+    lockedAt: l.lockedAt,
+    lockedUntil: l.lockedUntil,
+    reason: l.reason,
+    failedAttempts: l.failedAttempts,
+  }));
+}
+
+/**
+ * Clear failed login attempts on successful login
+ */
+export async function clearFailedAttempts(username: string): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+
+  await db.delete(failedLoginAttempts).where(eq(failedLoginAttempts.username, username));
+}
+
+// ==================== IP LOCATION TRACKING ====================
+
+interface IpLocationInfo {
+  country?: string;
+  countryCode?: string;
+  region?: string;
+  city?: string;
+  latitude?: number;
+  longitude?: number;
+  isp?: string;
+  timezone?: string;
+}
+
+/**
+ * Get location info from IP address using ip-api.com
+ */
+export async function getIpLocation(ipAddress: string): Promise<IpLocationInfo | null> {
+  // Skip for private/local IPs
+  if (isPrivateIp(ipAddress)) {
+    return {
+      country: "Local Network",
+      countryCode: "LO",
+      city: "Local",
+    };
+  }
+
+  try {
+    const response = await fetch(`http://ip-api.com/json/${ipAddress}?fields=status,country,countryCode,region,regionName,city,lat,lon,isp,timezone`);
+    const data = await response.json();
+
+    if (data.status === "success") {
+      return {
+        country: data.country,
+        countryCode: data.countryCode,
+        region: data.regionName,
+        city: data.city,
+        latitude: data.lat,
+        longitude: data.lon,
+        isp: data.isp,
+        timezone: data.timezone,
+      };
+    }
+    return null;
+  } catch (error) {
+    console.error("[IpLocation] Error:", error);
+    return null;
+  }
+}
+
+/**
+ * Check if IP is private/local
+ */
+function isPrivateIp(ip: string): boolean {
+  if (!ip) return true;
+  if (ip === "::1" || ip === "127.0.0.1" || ip === "localhost") return true;
+  
+  // Check private ranges
+  const parts = ip.split(".").map(Number);
+  if (parts.length !== 4) return true;
+  
+  // 10.0.0.0/8
+  if (parts[0] === 10) return true;
+  // 172.16.0.0/12
+  if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) return true;
+  // 192.168.0.0/16
+  if (parts[0] === 192 && parts[1] === 168) return true;
+  
+  return false;
+}
+
+/**
+ * Save login location to history
+ */
+export async function saveLoginLocation(
+  loginHistoryId: number,
+  userId: number,
+  ipAddress: string
+): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+
+  const location = await getIpLocation(ipAddress);
+  if (!location) return;
+
+  try {
+    await db.insert(loginLocationHistory).values({
+      loginHistoryId,
+      userId,
+      ipAddress,
+      country: location.country,
+      countryCode: location.countryCode,
+      region: location.region,
+      city: location.city,
+      latitude: location.latitude?.toString(),
+      longitude: location.longitude?.toString(),
+      isp: location.isp,
+      timezone: location.timezone,
+    });
+  } catch (error) {
+    console.error("[LoginLocation] Save error:", error);
+  }
+}
+
+/**
+ * Get login location history for a user
+ */
+export async function getLoginLocationHistory(userId: number, limit: number = 50): Promise<Array<{
+  id: number;
+  loginHistoryId: number;
+  ipAddress: string;
+  country: string | null;
+  countryCode: string | null;
+  region: string | null;
+  city: string | null;
+  latitude: string | null;
+  longitude: string | null;
+  isp: string | null;
+  timezone: string | null;
+  createdAt: Date;
+}>> {
+  const db = await getDb();
+  if (!db) return [];
+
+  const locations = await db.select()
+    .from(loginLocationHistory)
+    .where(eq(loginLocationHistory.userId, userId))
+    .orderBy(desc(loginLocationHistory.createdAt))
+    .limit(limit);
+
+  return locations.map(l => ({
+    id: l.id,
+    loginHistoryId: l.loginHistoryId,
+    ipAddress: l.ipAddress,
+    country: l.country,
+    countryCode: l.countryCode,
+    region: l.region,
+    city: l.city,
+    latitude: l.latitude,
+    longitude: l.longitude,
+    isp: l.isp,
+    timezone: l.timezone,
+    createdAt: l.createdAt,
+  }));
+}
+
+/**
+ * Get all login location history (admin)
+ */
+export async function getAllLoginLocationHistory(limit: number = 100): Promise<Array<{
+  id: number;
+  userId: number;
+  ipAddress: string;
+  country: string | null;
+  city: string | null;
+  latitude: string | null;
+  longitude: string | null;
+  createdAt: Date;
+}>> {
+  const db = await getDb();
+  if (!db) return [];
+
+  const locations = await db.select()
+    .from(loginLocationHistory)
+    .orderBy(desc(loginLocationHistory.createdAt))
+    .limit(limit);
+
+  return locations.map(l => ({
+    id: l.id,
+    userId: l.userId,
+    ipAddress: l.ipAddress,
+    country: l.country,
+    city: l.city,
+    latitude: l.latitude,
+    longitude: l.longitude,
+    createdAt: l.createdAt,
+  }));
 }

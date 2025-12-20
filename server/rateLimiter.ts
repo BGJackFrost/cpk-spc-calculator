@@ -105,7 +105,8 @@ export function getRateLimitKey(prefix: string, identifier: string): string {
  */
 export function cleanupExpiredEntries(): void {
   const now = Date.now();
-  for (const [key, entry] of rateLimitStore.entries()) {
+  const entries = Array.from(rateLimitStore.entries());
+  for (const [key, entry] of entries) {
     // Remove entries that are both:
     // 1. Not blocked or block expired
     // 2. Window expired
@@ -128,7 +129,8 @@ export function getRateLimitStats(): { totalEntries: number; blockedEntries: num
   let blockedEntries = 0;
   const now = Date.now();
   
-  for (const entry of rateLimitStore.values()) {
+  const values = Array.from(rateLimitStore.values());
+  for (const entry of values) {
     if (entry.blockedUntil && now < entry.blockedUntil) {
       blockedEntries++;
     }

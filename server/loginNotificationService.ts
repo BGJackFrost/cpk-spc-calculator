@@ -207,7 +207,7 @@ export async function getUserKnownDevices(userId: number): Promise<Array<{
       .select({
         deviceFingerprint: userSessions.deviceFingerprint,
         userAgent: userSessions.userAgent,
-        lastActivity: userSessions.lastActivity,
+        lastActiveAt: userSessions.lastActiveAt,
       })
       .from(userSessions)
       .where(eq(userSessions.userId, userId));
@@ -220,11 +220,11 @@ export async function getUserKnownDevices(userId: number): Promise<Array<{
         const { browser, os } = parseUserAgent(session.userAgent || "");
         const existing = deviceMap.get(session.deviceFingerprint);
         
-        if (!existing || (session.lastActivity && session.lastActivity > existing.lastSeen)) {
+        if (!existing || (session.lastActiveAt && session.lastActiveAt > existing.lastSeen)) {
           deviceMap.set(session.deviceFingerprint, {
             browser,
             os,
-            lastSeen: session.lastActivity || new Date(),
+            lastSeen: session.lastActiveAt || new Date(),
           });
         }
       }

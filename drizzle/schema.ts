@@ -3249,8 +3249,10 @@ export const userSessions = mysqlTable("user_sessions", {
   token: varchar("token", { length: 500 }).notNull().unique(),
   deviceName: varchar("device_name", { length: 255 }),
   deviceType: varchar("device_type", { length: 50 }), // desktop, mobile, tablet
+  deviceFingerprint: varchar("device_fingerprint", { length: 255 }), // For trusted device check
   browser: varchar("browser", { length: 100 }),
   os: varchar("os", { length: 100 }),
+  userAgent: text("user_agent"), // Full user agent string
   ipAddress: varchar("ip_address", { length: 45 }),
   location: varchar("location", { length: 255 }), // City, Country
   lastActiveAt: timestamp("last_active_at").defaultNow().notNull(),
@@ -3291,3 +3293,77 @@ export const twoFactorBackupCodes = mysqlTable("two_factor_backup_codes", {
 
 export type TwoFactorBackupCode = typeof twoFactorBackupCodes.$inferSelect;
 export type InsertTwoFactorBackupCode = typeof twoFactorBackupCodes.$inferInsert;
+
+
+/**
+ * Trusted Devices - Thiết bị tin cậy (skip 2FA)
+ */
+export const trustedDevices = mysqlTable("trusted_devices", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull(),
+  deviceFingerprint: varchar("device_fingerprint", { length: 255 }).notNull(),
+  deviceName: varchar("device_name", { length: 255 }), // e.g., "Chrome on Windows"
+  ipAddress: varchar("ip_address", { length: 45 }),
+  userAgent: text("user_agent"),
+  lastUsedAt: timestamp("last_used_at").defaultNow().notNull(),
+  expiresAt: timestamp("expires_at"), // null = never expires
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type TrustedDevice = typeof trustedDevices.$inferSelect;
+export type InsertTrustedDevice = typeof trustedDevices.$inferInsert;
+
+/**
+ * Failed Login Attempts - Theo dõi đăng nhập thất bại
+ */
+export const failedLoginAttempts = mysqlTable("failed_login_attempts", {
+  id: int("id").autoincrement().primaryKey(),
+  username: varchar("username", { length: 100 }).notNull(),
+  ipAddress: varchar("ip_address", { length: 45 }),
+  userAgent: text("user_agent"),
+  reason: varchar("reason", { length: 255 }), // e.g., "wrong_password", "account_locked"
+  attemptedAt: timestamp("attempted_at").defaultNow().notNull(),
+});
+
+export type FailedLoginAttempt = typeof failedLoginAttempts.$inferSelect;
+export type InsertFailedLoginAttempt = typeof failedLoginAttempts.$inferInsert;
+
+/**
+ * Account Lockouts - Khóa tài khoản tạm thời
+ */
+export const accountLockouts = mysqlTable("account_lockouts", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull(),
+  username: varchar("username", { length: 100 }).notNull(),
+  lockedAt: timestamp("locked_at").defaultNow().notNull(),
+  lockedUntil: timestamp("locked_until").notNull(),
+  reason: varchar("reason", { length: 255 }), // e.g., "too_many_failed_attempts"
+  failedAttempts: int("failed_attempts").notNull().default(0),
+  unlockedAt: timestamp("unlocked_at"), // null = still locked
+  unlockedBy: int("unlocked_by"), // admin who unlocked
+});
+
+export type AccountLockout = typeof accountLockouts.$inferSelect;
+export type InsertAccountLockout = typeof accountLockouts.$inferInsert;
+
+/**
+ * Login Location History - Lịch sử vị trí đăng nhập
+ */
+export const loginLocationHistory = mysqlTable("login_location_history", {
+  id: int("id").autoincrement().primaryKey(),
+  loginHistoryId: int("login_history_id").notNull(),
+  userId: int("user_id").notNull(),
+  ipAddress: varchar("ip_address", { length: 45 }).notNull(),
+  country: varchar("country", { length: 100 }),
+  countryCode: varchar("country_code", { length: 10 }),
+  region: varchar("region", { length: 100 }),
+  city: varchar("city", { length: 100 }),
+  latitude: decimal("latitude", { precision: 10, scale: 7 }),
+  longitude: decimal("longitude", { precision: 10, scale: 7 }),
+  isp: varchar("isp", { length: 255 }),
+  timezone: varchar("timezone", { length: 100 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type LoginLocationHistory = typeof loginLocationHistory.$inferSelect;
+export type InsertLoginLocationHistory = typeof loginLocationHistory.$inferInsert;

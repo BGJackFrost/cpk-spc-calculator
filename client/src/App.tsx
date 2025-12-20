@@ -139,6 +139,9 @@ import AppSettings from "./pages/AppSettings";
 import ForgotPassword from "./pages/ForgotPassword";
 import SessionManagement from "./pages/SessionManagement";
 import TwoFactorSettings from "./pages/TwoFactorSettings";
+import TrustedDevicesSettings from "./pages/TrustedDevicesSettings";
+import LoginHistoryDetail from "./pages/LoginHistoryDetail";
+import LockedAccountsAdmin from "./pages/LockedAccountsAdmin";
 
 function Router() {
   return (
@@ -160,6 +163,9 @@ function Router() {
       <Route path="/forgot-password" component={ForgotPassword} />
       <Route path="/session-management" component={SessionManagement} />
       <Route path="/two-factor-settings" component={TwoFactorSettings} />
+      <Route path="/trusted-devices" component={TrustedDevicesSettings} />
+      <Route path="/login-history-detail" component={LoginHistoryDetail} />
+      <Route path="/locked-accounts" component={LockedAccountsAdmin} />
       <Route path="/change-password" component={ChangePassword} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/anomaly-detection" component={AnomalyDetection} />
