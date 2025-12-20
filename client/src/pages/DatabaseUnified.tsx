@@ -16,6 +16,23 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import {
   Database,
   Server,
   Shield,
@@ -39,7 +56,9 @@ import {
   HardDrive,
   Zap,
   Link2,
-  Unlink
+  Unlink,
+  GripVertical,
+  Copy
 } from "lucide-react";
 
 // Types
@@ -62,6 +81,137 @@ interface DatabaseConnection {
   healthStatus: "healthy" | "warning" | "error" | "unknown";
   connectionCount: number;
   maxConnections: number;
+  sortOrder?: number;
+}
+
+// Sortable Table Row Component
+function SortableConnectionTableRow({
+  conn,
+  getDatabaseIcon,
+  getStatusBadge,
+  handleTestConnection,
+  handleSetPrimary,
+  handleCloneConnection,
+  handleDeleteConnection,
+  isTesting,
+  onEdit,
+}: {
+  conn: DatabaseConnection;
+  getDatabaseIcon: (type: DatabaseType) => React.ReactNode;
+  getStatusBadge: (status: DatabaseConnection["healthStatus"]) => React.ReactNode;
+  handleTestConnection: (id: number) => void;
+  handleSetPrimary: (id: number) => void;
+  handleCloneConnection: (conn: DatabaseConnection) => void;
+  handleDeleteConnection: (id: number) => void;
+  isTesting: boolean;
+  onEdit: (conn: DatabaseConnection) => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: conn.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <TableRow ref={setNodeRef} style={style} className={isDragging ? "bg-muted" : ""}>
+      <TableCell className="w-10">
+        <button
+          {...attributes}
+          {...listeners}
+          className="cursor-grab active:cursor-grabbing p-1 hover:bg-muted rounded"
+        >
+          <GripVertical className="h-4 w-4 text-muted-foreground" />
+        </button>
+      </TableCell>
+      <TableCell>
+        <div className="flex items-center gap-2">
+          {getDatabaseIcon(conn.databaseType)}
+          <span className="font-medium">{conn.name}</span>
+        </div>
+      </TableCell>
+      <TableCell>
+        <Badge variant="outline">{conn.databaseType.toUpperCase()}</Badge>
+      </TableCell>
+      <TableCell className="font-mono text-sm">
+        {conn.host}:{conn.port}
+      </TableCell>
+      <TableCell className="font-mono text-sm">{conn.database}</TableCell>
+      <TableCell>{getStatusBadge(conn.healthStatus)}</TableCell>
+      <TableCell>
+        {conn.isPrimary ? (
+          <Badge className="bg-yellow-500">
+            <Star className="h-3 w-3 mr-1" />
+            Primary
+          </Badge>
+        ) : conn.syncEnabled ? (
+          <Badge variant="secondary">
+            <Link2 className="h-3 w-3 mr-1" />
+            Sync
+          </Badge>
+        ) : (
+          <Badge variant="outline">Standalone</Badge>
+        )}
+      </TableCell>
+      <TableCell className="text-right">
+        <div className="flex justify-end gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => handleTestConnection(conn.id)}
+            disabled={isTesting}
+            title="Test kết nối"
+          >
+            <TestTube className="h-4 w-4" />
+          </Button>
+          {!conn.isPrimary && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => handleSetPrimary(conn.id)}
+              title="Đặt làm Primary"
+            >
+              <Star className="h-4 w-4" />
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => handleCloneConnection(conn)}
+            title="Clone kết nối"
+          >
+            <Copy className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => onEdit(conn)}
+            title="Sửa kết nối"
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+          {!conn.isPrimary && conn.databaseType !== "internal" && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => handleDeleteConnection(conn.id)}
+              title="Xóa kết nối"
+            >
+              <Trash2 className="h-4 w-4 text-red-500" />
+            </Button>
+          )}
+        </div>
+      </TableCell>
+    </TableRow>
+  );
 }
 
 interface HealthMetrics {
@@ -335,6 +485,49 @@ export default function DatabaseUnified() {
       isPrimary: false,
       syncEnabled: false,
     });
+  };
+
+  // DnD sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  // Handle drag end for reordering
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      setConnections((items) => {
+        const oldIndex = items.findIndex((item) => item.id === active.id);
+        const newIndex = items.findIndex((item) => item.id === over.id);
+        const newItems = arrayMove(items, oldIndex, newIndex);
+        // Update sortOrder for each item
+        return newItems.map((item, index) => ({ ...item, sortOrder: index }));
+      });
+      toast.success("Đã cập nhật thứ tự kết nối!");
+    }
+  };
+
+  // Clone connection
+  const handleCloneConnection = (conn: DatabaseConnection) => {
+    const newConnection: DatabaseConnection = {
+      ...conn,
+      id: Math.max(...connections.map(c => c.id)) + 1,
+      name: `${conn.name} (Copy)`,
+      isPrimary: false,
+      isDefault: false,
+      healthStatus: "unknown",
+      connectionCount: 0,
+      lastHealthCheck: undefined,
+    };
+    setConnections([...connections, newConnection]);
+    toast.success(`Đã clone kết nối "${conn.name}"!`);
   };
 
   // Get status badge
@@ -633,107 +826,63 @@ export default function DatabaseUnified() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Tên</TableHead>
-                      <TableHead>Loại</TableHead>
-                      <TableHead>Host</TableHead>
-                      <TableHead>Database</TableHead>
-                      <TableHead>Trạng thái</TableHead>
-                      <TableHead>Vai trò</TableHead>
-                      <TableHead className="text-right">Thao tác</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {connections.map((conn) => (
-                      <TableRow key={conn.id}>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            {getDatabaseIcon(conn.databaseType)}
-                            <span className="font-medium">{conn.name}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{conn.databaseType.toUpperCase()}</Badge>
-                        </TableCell>
-                        <TableCell className="font-mono text-sm">
-                          {conn.host}:{conn.port}
-                        </TableCell>
-                        <TableCell className="font-mono text-sm">{conn.database}</TableCell>
-                        <TableCell>{getStatusBadge(conn.healthStatus)}</TableCell>
-                        <TableCell>
-                          {conn.isPrimary ? (
-                            <Badge className="bg-yellow-500">
-                              <Star className="h-3 w-3 mr-1" />
-                              Primary
-                            </Badge>
-                          ) : conn.syncEnabled ? (
-                            <Badge variant="secondary">
-                              <Link2 className="h-3 w-3 mr-1" />
-                              Sync
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline">Standalone</Badge>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleTestConnection(conn.id)}
-                              disabled={isTesting}
-                            >
-                              <TestTube className="h-4 w-4" />
-                            </Button>
-                            {!conn.isPrimary && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleSetPrimary(conn.id)}
-                              >
-                                <Star className="h-4 w-4" />
-                              </Button>
-                            )}
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => {
-                                setSelectedConnection(conn);
-                                setFormData({
-                                  name: conn.name,
-                                  databaseType: conn.databaseType,
-                                  host: conn.host,
-                                  port: conn.port.toString(),
-                                  database: conn.database,
-                                  username: conn.username,
-                                  password: "",
-                                  description: conn.description || "",
-                                  isActive: conn.isActive,
-                                  isPrimary: conn.isPrimary,
-                                  syncEnabled: conn.syncEnabled,
-                                });
-                                setIsEditDialogOpen(true);
-                              }}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            {!conn.isPrimary && conn.databaseType !== "internal" && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleDeleteConnection(conn.id)}
-                              >
-                                <Trash2 className="h-4 w-4 text-red-500" />
-                              </Button>
-                            )}
-                          </div>
-                        </TableCell>
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
+                >
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-10"></TableHead>
+                        <TableHead>Tên</TableHead>
+                        <TableHead>Loại</TableHead>
+                        <TableHead>Host</TableHead>
+                        <TableHead>Database</TableHead>
+                        <TableHead>Trạng thái</TableHead>
+                        <TableHead>Vai trò</TableHead>
+                        <TableHead className="text-right">Thao tác</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <SortableContext
+                      items={connections.map(c => c.id)}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      <TableBody>
+                        {connections.map((conn) => (
+                          <SortableConnectionTableRow
+                            key={conn.id}
+                            conn={conn}
+                            getDatabaseIcon={getDatabaseIcon}
+                            getStatusBadge={getStatusBadge}
+                            handleTestConnection={handleTestConnection}
+                            handleSetPrimary={handleSetPrimary}
+                            handleCloneConnection={handleCloneConnection}
+                            handleDeleteConnection={handleDeleteConnection}
+                            isTesting={isTesting}
+                            onEdit={(c) => {
+                              setSelectedConnection(c);
+                              setFormData({
+                                name: c.name,
+                                databaseType: c.databaseType,
+                                host: c.host,
+                                port: c.port.toString(),
+                                database: c.database,
+                                username: c.username,
+                                password: "",
+                                description: c.description || "",
+                                isActive: c.isActive,
+                                isPrimary: c.isPrimary,
+                                syncEnabled: c.syncEnabled,
+                              });
+                              setIsEditDialogOpen(true);
+                            }}
+                          />
+                        ))}
+                      </TableBody>
+                    </SortableContext>
+                  </Table>
+                </DndContext>
               </CardContent>
             </Card>
           </TabsContent>

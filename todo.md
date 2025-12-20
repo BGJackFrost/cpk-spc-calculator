@@ -4343,3 +4343,22 @@
 - [x] Sửa selectbox database trong So sánh Schema (thêm dữ liệu mẫu)
 - [x] Kiểm tra chức năng Lịch sử Backup (API hoạt động đúng)
 
+
+## Phase 197 - Nâng cấp Database và Backup
+
+### Drag & Drop Database Connections
+- [x] Cài đặt thư viện drag & drop (@dnd-kit/core, @dnd-kit/sortable, @dnd-kit/utilities)
+- [x] Thêm chức năng kéo thả để sắp xếp thứ tự connections
+- [x] Cập nhật sortOrder khi kéo thả
+
+### Clone/Duplicate Database Connection
+- [x] Thêm nút Clone vào mỗi connection row
+- [x] Tự động tạo connection mới với tên "(Copy)"
+- [x] Copy tất cả thông tin (trừ password) sang connection mới
+
+### Batch Operations cho Backup
+- [x] Thêm checkbox để chọn nhiều backup
+- [x] Thêm nút "Xóa đã chọn" với thanh thông báo
+- [x] Dialog xác nhận xóa hàng loạt
+- [x] Hiển thị số lượng đã chọn và highlight rows
+

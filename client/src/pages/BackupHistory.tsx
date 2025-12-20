@@ -9,6 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -103,6 +104,11 @@ export default function BackupHistory() {
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Batch selection state
+  const [selectedBackups, setSelectedBackups] = useState<Set<number>>(new Set());
+  const [showBatchDeleteDialog, setShowBatchDeleteDialog] = useState(false);
+  const [isBatchDeleting, setIsBatchDeleting] = useState(false);
 
   const [backups, setBackups] = useState<Backup[]>([]);
   const [total, setTotal] = useState(0);
@@ -244,6 +250,67 @@ export default function BackupHistory() {
       const error = err as Error;
       toast.error(error.message || "Lỗi xóa backup");
     }
+  };
+
+  // Batch selection handlers
+  const toggleSelectBackup = (id: number) => {
+    setSelectedBackups(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedBackups.size === backups.length) {
+      setSelectedBackups(new Set());
+    } else {
+      setSelectedBackups(new Set(backups.map(b => b.id)));
+    }
+  };
+
+  const handleBatchDelete = async () => {
+    if (selectedBackups.size === 0) return;
+    
+    setIsBatchDeleting(true);
+    let successCount = 0;
+    let errorCount = 0;
+    
+    for (const id of selectedBackups) {
+      try {
+        const response = await fetch('/api/trpc/backup.delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id }),
+        });
+        const data = await response.json();
+        if (data.result?.data?.success) {
+          successCount++;
+        } else {
+          errorCount++;
+        }
+      } catch {
+        errorCount++;
+      }
+    }
+    
+    setIsBatchDeleting(false);
+    setShowBatchDeleteDialog(false);
+    setSelectedBackups(new Set());
+    
+    if (successCount > 0) {
+      toast.success(`Đã xóa ${successCount} backup`);
+    }
+    if (errorCount > 0) {
+      toast.error(`Lỗi xóa ${errorCount} backup`);
+    }
+    
+    fetchBackups();
+    fetchStats();
   };
 
   const handleRestore = async () => {
@@ -571,58 +638,88 @@ export default function BackupHistory() {
                     <p>Chưa có backup nào</p>
                   </div>
                 ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Tên file</TableHead>
-                        <TableHead>Loại</TableHead>
-                        <TableHead>Trạng thái</TableHead>
-                        <TableHead>Kích thước</TableHead>
-                        <TableHead>Ngày tạo</TableHead>
-                        <TableHead className="text-right">Thao tác</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {backups.map((backup) => (
-                        <TableRow key={backup.id}>
-                          <TableCell className="font-mono text-sm">{backup.filename}</TableCell>
-                          <TableCell>{getTypeBadge(backup.backupType)}</TableCell>
-                          <TableCell>{getStatusBadge(backup.status)}</TableCell>
-                          <TableCell>{formatFileSize(backup.fileSize)}</TableCell>
-                          <TableCell>{formatDate(backup.createdAt)}</TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-2">
-                              {backup.status === "completed" && (
-                                <>
-                                  {backup.fileUrl && (
-                                    <Button variant="ghost" size="sm" asChild>
-                                      <a href={backup.fileUrl} target="_blank" rel="noopener noreferrer">
-                                        <Download className="w-4 h-4" />
-                                      </a>
-                                    </Button>
-                                  )}
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => setRestoreId(backup.id)}
-                                  >
-                                    <RotateCcw className="w-4 h-4" />
-                                  </Button>
-                                </>
-                              )}
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setDeleteId(backup.id)}
-                              >
-                                <Trash2 className="w-4 h-4 text-destructive" />
-                              </Button>
-                            </div>
-                          </TableCell>
+                  <>
+                    {/* Batch actions bar */}
+                    {selectedBackups.size > 0 && (
+                      <div className="flex items-center justify-between p-3 mb-4 bg-muted rounded-lg">
+                        <span className="text-sm font-medium">
+                          Đã chọn {selectedBackups.size} backup
+                        </span>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => setShowBatchDeleteDialog(true)}
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Xóa đã chọn
+                        </Button>
+                      </div>
+                    )}
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-10">
+                            <Checkbox
+                              checked={backups.length > 0 && selectedBackups.size === backups.length}
+                              onCheckedChange={toggleSelectAll}
+                            />
+                          </TableHead>
+                          <TableHead>Tên file</TableHead>
+                          <TableHead>Loại</TableHead>
+                          <TableHead>Trạng thái</TableHead>
+                          <TableHead>Kích thước</TableHead>
+                          <TableHead>Ngày tạo</TableHead>
+                          <TableHead className="text-right">Thao tác</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {backups.map((backup) => (
+                          <TableRow key={backup.id} className={selectedBackups.has(backup.id) ? "bg-muted/50" : ""}>
+                            <TableCell>
+                              <Checkbox
+                                checked={selectedBackups.has(backup.id)}
+                                onCheckedChange={() => toggleSelectBackup(backup.id)}
+                              />
+                            </TableCell>
+                            <TableCell className="font-mono text-sm">{backup.filename}</TableCell>
+                            <TableCell>{getTypeBadge(backup.backupType)}</TableCell>
+                            <TableCell>{getStatusBadge(backup.status)}</TableCell>
+                            <TableCell>{formatFileSize(backup.fileSize)}</TableCell>
+                            <TableCell>{formatDate(backup.createdAt)}</TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end gap-2">
+                                {backup.status === "completed" && (
+                                  <>
+                                    {backup.fileUrl && (
+                                      <Button variant="ghost" size="sm" asChild>
+                                        <a href={backup.fileUrl} target="_blank" rel="noopener noreferrer">
+                                          <Download className="w-4 h-4" />
+                                        </a>
+                                      </Button>
+                                    )}
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => setRestoreId(backup.id)}
+                                    >
+                                      <RotateCcw className="w-4 h-4" />
+                                    </Button>
+                                  </>
+                                )}
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setDeleteId(backup.id)}
+                                >
+                                  <Trash2 className="w-4 h-4 text-destructive" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </>
                 )}
 
                 {/* Pagination */}
@@ -831,6 +928,37 @@ export default function BackupHistory() {
                   <RotateCcw className="w-4 h-4 mr-2" />
                 )}
                 Khôi phục
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Batch Delete Confirmation Dialog */}
+        <AlertDialog open={showBatchDeleteDialog} onOpenChange={setShowBatchDeleteDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-destructive" />
+                Xác nhận xóa nhiều backup
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                Bạn có chắc chắn muốn xóa {selectedBackups.size} backup đã chọn?
+                Hành động này không thể hoàn tác.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isBatchDeleting}>Hủy</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleBatchDelete}
+                disabled={isBatchDeleting}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {isBatchDeleting ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Trash2 className="w-4 h-4 mr-2" />
+                )}
+                Xóa {selectedBackups.size} backup
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
