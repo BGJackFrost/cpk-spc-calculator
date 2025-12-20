@@ -310,6 +310,7 @@ export const SYSTEM_MENU: SystemMenuConfig = {
       labelKey: "menuGroup.system",
       icon: Settings,
       items: [
+        { id: "app-settings", icon: Cog, labelKey: "nav.appSettings", path: "/app-settings", adminOnly: true },
         { id: "settings", icon: Settings, labelKey: "nav.settingsAndConnections", path: "/settings", adminOnly: true },
         { id: "database-unified", icon: Database, labelKey: "nav.databaseUnified", path: "/database-unified", adminOnly: true },
         { id: "database-wizard", icon: Database, labelKey: "nav.databaseWizard", path: "/database-wizard", adminOnly: true },

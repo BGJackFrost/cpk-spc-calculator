@@ -4301,3 +4301,25 @@
 - [x] Import theme từ file JSON
 - [x] Chia sẻ theme giữa các users
 
+
+## Phase 195 - Nâng cấp Theme System (Tiếp theo)
+
+### Thêm menu AppSettings vào sidebar
+- [x] Thêm menu item "Cài đặt Ứng dụng" vào System menu
+- [x] Link đến trang /app-settings
+
+### Preview realtime theme
+- [x] Tạo chức năng preview khi hover vào theme
+- [x] Không apply theme khi chỉ preview
+- [x] Restore theme gốc khi rời khỏi preview
+- [x] Auto preview khi thay đổi màu trong tab Custom
+
+### Color picker nâng cao cho custom theme
+- [x] Thêm AdvancedColorPicker component với gradient picker
+- [x] Hue slider và saturation/lightness gradient
+- [x] Preset colors theo category (Primary, Warm, Cool, Neutral, Light)
+- [x] HSL value inputs
+- [x] Cho phép chọn màu primary, secondary, accent, background, foreground
+- [x] Preview realtime khi thay đổi màu
+- [x] Lưu custom theme vào database
+

@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Palette, Check, Plus, Trash2, Save, Eye, ImageIcon } from "lucide-react";
 import { ImageThemeExtractor } from "./ImageThemeExtractor";
+import { AdvancedColorPicker } from "./AdvancedColorPicker";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { trpc } from "@/lib/trpc";
 import { useToast } from "@/hooks/use-toast";
@@ -704,14 +705,28 @@ export function ThemeSelector() {
     }
   };
 
-  // Preview custom colors in real-time
+  // Preview custom colors in real-time with auto-preview
   const handleCustomColorChange = (key: keyof typeof customColors, value: string) => {
-    setCustomColors(prev => ({ ...prev, [key]: value }));
+    const newColors = { ...customColors, [key]: value };
+    setCustomColors(newColors);
+    // Auto preview when changing colors
+    const isDark = document.documentElement.classList.contains("dark");
+    applyPreviewTheme(newColors, isDark);
   };
 
   const previewCustomTheme = () => {
     const isDark = document.documentElement.classList.contains("dark");
     applyPreviewTheme(customColors, isDark);
+  };
+  
+  // Reset to original theme when leaving custom tab
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    if (tab !== "custom") {
+      // Restore original theme when leaving custom tab
+      const isDark = document.documentElement.classList.contains("dark");
+      applyTheme(selectedTheme, isDark);
+    }
   };
 
   return (
@@ -738,7 +753,7 @@ export function ThemeSelector() {
           </DialogDescription>
         </DialogHeader>
         
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="presets">
               {language === "en" ? "Preset Themes" : "Giao diện có sẵn"}
@@ -880,107 +895,37 @@ export function ThemeSelector() {
                 />
               </div>
               
-              {/* Color pickers */}
+              {/* Advanced Color pickers */}
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="primary-color">
-                    {language === "en" ? "Primary" : "Màu chính"}
-                  </Label>
-                  <div className="flex gap-2">
-                    <input
-                      type="color"
-                      id="primary-color"
-                      value={customColors.primary}
-                      onChange={(e) => handleCustomColorChange("primary", e.target.value)}
-                      className="h-10 w-14 rounded cursor-pointer border"
-                    />
-                    <Input
-                      value={customColors.primary}
-                      onChange={(e) => handleCustomColorChange("primary", e.target.value)}
-                      className="flex-1"
-                    />
-                  </div>
-                </div>
+                <AdvancedColorPicker
+                  label={language === "en" ? "Primary" : "Màu chính"}
+                  value={customColors.primary}
+                  onChange={(color) => handleCustomColorChange("primary", color)}
+                />
                 
-                <div className="space-y-2">
-                  <Label htmlFor="secondary-color">
-                    {language === "en" ? "Secondary" : "Màu phụ"}
-                  </Label>
-                  <div className="flex gap-2">
-                    <input
-                      type="color"
-                      id="secondary-color"
-                      value={customColors.secondary}
-                      onChange={(e) => handleCustomColorChange("secondary", e.target.value)}
-                      className="h-10 w-14 rounded cursor-pointer border"
-                    />
-                    <Input
-                      value={customColors.secondary}
-                      onChange={(e) => handleCustomColorChange("secondary", e.target.value)}
-                      className="flex-1"
-                    />
-                  </div>
-                </div>
+                <AdvancedColorPicker
+                  label={language === "en" ? "Secondary" : "Màu phụ"}
+                  value={customColors.secondary}
+                  onChange={(color) => handleCustomColorChange("secondary", color)}
+                />
                 
-                <div className="space-y-2">
-                  <Label htmlFor="accent-color">
-                    {language === "en" ? "Accent" : "Màu nhấn"}
-                  </Label>
-                  <div className="flex gap-2">
-                    <input
-                      type="color"
-                      id="accent-color"
-                      value={customColors.accent}
-                      onChange={(e) => handleCustomColorChange("accent", e.target.value)}
-                      className="h-10 w-14 rounded cursor-pointer border"
-                    />
-                    <Input
-                      value={customColors.accent}
-                      onChange={(e) => handleCustomColorChange("accent", e.target.value)}
-                      className="flex-1"
-                    />
-                  </div>
-                </div>
+                <AdvancedColorPicker
+                  label={language === "en" ? "Accent" : "Màu nhấn"}
+                  value={customColors.accent}
+                  onChange={(color) => handleCustomColorChange("accent", color)}
+                />
                 
-                <div className="space-y-2">
-                  <Label htmlFor="background-color">
-                    {language === "en" ? "Background" : "Nền"}
-                  </Label>
-                  <div className="flex gap-2">
-                    <input
-                      type="color"
-                      id="background-color"
-                      value={customColors.background}
-                      onChange={(e) => handleCustomColorChange("background", e.target.value)}
-                      className="h-10 w-14 rounded cursor-pointer border"
-                    />
-                    <Input
-                      value={customColors.background}
-                      onChange={(e) => handleCustomColorChange("background", e.target.value)}
-                      className="flex-1"
-                    />
-                  </div>
-                </div>
+                <AdvancedColorPicker
+                  label={language === "en" ? "Background" : "Nền"}
+                  value={customColors.background}
+                  onChange={(color) => handleCustomColorChange("background", color)}
+                />
                 
-                <div className="space-y-2">
-                  <Label htmlFor="foreground-color">
-                    {language === "en" ? "Text" : "Chữ"}
-                  </Label>
-                  <div className="flex gap-2">
-                    <input
-                      type="color"
-                      id="foreground-color"
-                      value={customColors.foreground}
-                      onChange={(e) => handleCustomColorChange("foreground", e.target.value)}
-                      className="h-10 w-14 rounded cursor-pointer border"
-                    />
-                    <Input
-                      value={customColors.foreground}
-                      onChange={(e) => handleCustomColorChange("foreground", e.target.value)}
-                      className="flex-1"
-                    />
-                  </div>
-                </div>
+                <AdvancedColorPicker
+                  label={language === "en" ? "Text" : "Chữ"}
+                  value={customColors.foreground}
+                  onChange={(color) => handleCustomColorChange("foreground", color)}
+                />
               </div>
               
               {/* Preview */}

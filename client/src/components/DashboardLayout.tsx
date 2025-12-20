@@ -160,6 +160,7 @@ const fallbackLabelsVi: Record<string, string> = {
   "nav.systemSettings": "Cài đặt Hệ thống",
   "nav.themeSettings": "Cài đặt Giao diện",
   "nav.generalSettings": "Cài đặt Chung",
+  "nav.appSettings": "Cài đặt Ứng dụng",
 };
 
 const fallbackLabelsEn: Record<string, string> = {
@@ -277,6 +278,7 @@ const fallbackLabelsEn: Record<string, string> = {
   "nav.systemSettings": "System Settings",
   "nav.themeSettings": "Theme Settings",
   "nav.generalSettings": "General Settings",
+  "nav.appSettings": "Application Settings",
 };
 
 const MIN_WIDTH = 200;
