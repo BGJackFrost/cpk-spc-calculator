@@ -4595,3 +4595,24 @@
 - [x] Cấu hình auto-update cho GitHub Actions
 - [x] Thiết lập schedule và labels
 
+
+## Phase 209 - Sửa lỗi, CI Workflow, Codecov và Branch Protection
+
+### Sửa lỗi từ ảnh
+- [x] Xác định lỗi từ screenshot (thiếu import Link trong Profile.tsx)
+- [x] Sửa lỗi và kiểm tra (TypeScript pass)
+
+### Upload CI Workflow
+- [x] Tạo hướng dẫn chi tiết (GITHUB_SETUP_GUIDE.md)
+- [ ] Upload ci.yml lên GitHub qua web interface (cần đăng nhập GitHub)
+
+### Tích hợp Codecov
+- [x] Hướng dẫn tạo Codecov account (trong GITHUB_SETUP_GUIDE.md)
+- [ ] Thêm CODECOV_TOKEN vào GitHub Secrets (cần thực hiện thủ công)
+- [ ] Kiểm tra coverage upload
+
+### Branch Protection Rules
+- [x] Hướng dẫn thiết lập (trong GITHUB_SETUP_GUIDE.md)
+- [ ] Thiết lập require status checks (cần thực hiện thủ công)
+- [ ] Thiết lập require PR reviews (cần thực hiện thủ công)
+
