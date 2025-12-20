@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
+import { applyTheme } from "@/components/ThemeSelector";
 
 type Theme = "light" | "dark";
 
@@ -39,12 +40,18 @@ export function ThemeProvider({
   // Apply theme to document
   useEffect(() => {
     const root = document.documentElement;
-    if (theme === "dark") {
+    const isDark = theme === "dark";
+    
+    if (isDark) {
       root.classList.add("dark");
     } else {
       root.classList.remove("dark");
     }
     localStorage.setItem("theme", theme);
+    
+    // Re-apply color theme when switching dark/light mode
+    const colorTheme = localStorage.getItem("app-color-theme") || "default-blue";
+    applyTheme(colorTheme, isDark);
   }, [theme]);
 
   // Listen for system theme changes

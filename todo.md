@@ -4406,3 +4406,27 @@
 - [x] Validate dữ liệu import trước khi lưu
 - [x] Hiển thị preview trước khi import
 
+
+## Phase 200 - Cải tiến Dark Mode, Menu và Đăng nhập Offline
+
+### Sửa lỗi Dark Mode
+- [x] Dark mode phải áp dụng theme tương tự light mode
+- [x] Kiểm tra ThemeSelector xử lý dark/light mode
+- [x] Đảm bảo CSS variables áp dụng đúng cho cả 2 chế độ
+
+### Di chuyển Bảng điều khiển
+- [x] Đưa "Bảng điều khiển" lên menu đầu tiên của Top Menu
+- [x] Click logo sẽ redirect về trang Bảng điều khiển
+- [x] Cập nhật route mặc định
+
+### Tối ưu trang Hệ thống trùng lặp
+- [x] Phân tích các phần trùng lặp trong Cài đặt ứng dụng, Cài đặt và Kết nối, Thông tin công ty
+- [x] Gộp hoặc tách các component dùng chung (các trang có mục đích khác nhau, không cần gộp)
+- [x] Tối ưu UX cho các trang này
+
+### Đăng nhập Offline (Local Account)
+- [x] Tạo schema cho local users (đã có sẵn)
+- [x] Tạo trang đăng nhập/đăng ký local (đã có sẵn - Home.tsx)
+- [x] Tạo API authentication cho local users (đã có sẵn - localAuth router)
+- [x] Cho phép chọn giữa đăng nhập Google hoặc Local (chỉ có Local, không có Google)
+

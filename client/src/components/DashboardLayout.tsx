@@ -593,8 +593,12 @@ function DashboardLayoutContent({
         <header className="h-16 shrink-0 flex items-center gap-2 border-b px-4 lg:px-6 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <SidebarTrigger className="-ml-1 lg:hidden" />
           
-          {/* Logo - configurable via VITE_APP_LOGO */}
-          <div className="flex items-center gap-2 mr-2">
+          {/* Logo - configurable via VITE_APP_LOGO - Click to go to Dashboard */}
+          <button 
+            onClick={() => setLocation("/dashboard")}
+            className="flex items-center gap-2 mr-2 hover:opacity-80 transition-opacity cursor-pointer"
+            title={language === 'en' ? 'Go to Dashboard' : 'Về Bảng điều khiển'}
+          >
             <img 
               src={import.meta.env.VITE_APP_LOGO || "/logo.png"} 
               alt={import.meta.env.VITE_APP_TITLE || "Logo"} 
@@ -606,7 +610,7 @@ function DashboardLayoutContent({
             <span className="hidden md:inline font-bold text-lg bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
               {import.meta.env.VITE_APP_TITLE || "MMS/SPC"}
             </span>
-          </div>
+          </button>
           
           {/* Top Navigation Menu */}
           <TopNavigation />

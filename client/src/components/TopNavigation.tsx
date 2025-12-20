@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
 import { useSystem } from "@/contexts/SystemContext";
 import { SYSTEMS } from "@/config/systemMenu";
+import { LayoutDashboard } from "lucide-react";
 import { useLocation } from "wouter";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
@@ -11,6 +12,11 @@ import {
 
 // System labels
 const systemLabels: Record<string, { vi: string; en: string; description: { vi: string; en: string } }> = {
+  dashboard: { 
+    vi: "Bảng điều khiển", 
+    en: "Dashboard",
+    description: { vi: "Tổng quan hệ thống", en: "System Overview" }
+  },
   spc: { 
     vi: "SPC/CPK", 
     en: "SPC/CPK",
@@ -40,7 +46,8 @@ const systemLabels: Record<string, { vi: string; en: string; description: { vi: 
 
 // Default paths for each system
 const systemDefaultPaths: Record<string, string> = {
-  spc: "/dashboard",
+  dashboard: "/dashboard",
+  spc: "/spc-analysis",
   mms: "/oee-dashboard",
   production: "/production-line-management",
   license: "/license-server-dashboard",
@@ -54,6 +61,7 @@ export function TopNavigation() {
   const isVi = language === "vi";
 
   const systems = [
+    { id: "dashboard", config: { icon: () => <LayoutDashboard className="h-4 w-4" />, menuGroups: [] } },
     { id: "spc", config: SYSTEMS.SPC },
     { id: "mms", config: SYSTEMS.MMS },
     { id: "production", config: SYSTEMS.PRODUCTION },
