@@ -1,0 +1,1227 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Connection Pool Widget Snapshots > should match ConnectionPoolWidget snapshot with healthy status 1`] = `
+{
+  "children": [
+    {
+      "children": [],
+      "props": {
+        "icon": "Database",
+        "title": "Connection Pool",
+      },
+      "timestamp": "SNAPSHOT_TIMESTAMP",
+      "type": "WidgetHeader",
+    },
+    {
+      "children": [
+        {
+          "children": [],
+          "props": {
+            "label": "5/50 connections",
+            "max": 100,
+            "status": "healthy",
+            "value": 10,
+          },
+          "timestamp": "SNAPSHOT_TIMESTAMP",
+          "type": "GaugeChart",
+        },
+        {
+          "children": [],
+          "props": {
+            "items": [
+              {
+                "label": "Active",
+                "value": 5,
+              },
+              {
+                "label": "Idle",
+                "value": 15,
+              },
+              {
+                "label": "Latency",
+                "value": "12.5ms",
+              },
+            ],
+          },
+          "timestamp": "SNAPSHOT_TIMESTAMP",
+          "type": "StatRow",
+        },
+      ],
+      "props": {},
+      "timestamp": "SNAPSHOT_TIMESTAMP",
+      "type": "WidgetBody",
+    },
+  ],
+  "props": {
+    "className": "widget connection-pool",
+  },
+  "timestamp": "SNAPSHOT_TIMESTAMP",
+  "type": "ConnectionPoolWidget",
+}
+`;
+
+exports[`Connection Pool Widget Snapshots > should match ConnectionPoolWidget snapshot with warning status 1`] = `
+{
+  "children": [
+    {
+      "children": [],
+      "props": {
+        "icon": "Database",
+        "title": "Connection Pool",
+      },
+      "timestamp": "SNAPSHOT_TIMESTAMP",
+      "type": "WidgetHeader",
+    },
+    {
+      "children": [
+        {
+          "children": [],
+          "props": {
+            "label": "35/50 connections",
+            "max": 100,
+            "status": "warning",
+            "value": 70,
+          },
+          "timestamp": "SNAPSHOT_TIMESTAMP",
+          "type": "GaugeChart",
+        },
+        {
+          "children": [],
+          "props": {
+            "message": "Connection pool usage is high",
+            "severity": "warning",
+          },
+          "timestamp": "SNAPSHOT_TIMESTAMP",
+          "type": "AlertBanner",
+        },
+      ],
+      "props": {},
+      "timestamp": "SNAPSHOT_TIMESTAMP",
+      "type": "WidgetBody",
+    },
+  ],
+  "props": {
+    "className": "widget connection-pool warning",
+  },
+  "timestamp": "SNAPSHOT_TIMESTAMP",
+  "type": "ConnectionPoolWidget",
+}
+`;
+
+exports[`Dashboard Grid Layout Snapshots > should match DashboardGrid snapshot with all widgets 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "props": {},
+          "timestamp": "SNAPSHOT_TIMESTAMP",
+          "type": "NtfStatsWidget",
+        },
+      ],
+      "props": {
+        "span": 1,
+      },
+      "timestamp": "SNAPSHOT_TIMESTAMP",
+      "type": "GridItem",
+    },
+    {
+      "children": [
+        {
+          "children": [],
+          "props": {},
+          "timestamp": "SNAPSHOT_TIMESTAMP",
+          "type": "LicenseStatusWidget",
+        },
+      ],
+      "props": {
+        "span": 1,
+      },
+      "timestamp": "SNAPSHOT_TIMESTAMP",
+      "type": "GridItem",
+    },
+    {
+      "children": [
+        {
+          "children": [],
+          "props": {},
+          "timestamp": "SNAPSHOT_TIMESTAMP",
+          "type": "ConnectionPoolWidget",
+        },
+      ],
+      "props": {
+        "span": 1,
+      },
+      "timestamp": "SNAPSHOT_TIMESTAMP",
+      "type": "GridItem",
+    },
+    {
+      "children": [
+        {
+          "children": [],
+          "props": {},
+          "timestamp": "SNAPSHOT_TIMESTAMP",
+          "type": "ValidationRulesCard",
+        },
+      ],
+      "props": {
+        "span": 2,
+      },
+      "timestamp": "SNAPSHOT_TIMESTAMP",
+      "type": "GridItem",
+    },
+    {
+      "children": [
+        {
+          "children": [],
+          "props": {},
+          "timestamp": "SNAPSHOT_TIMESTAMP",
+          "type": "LowStockWidget",
+        },
+      ],
+      "props": {
+        "span": 1,
+      },
+      "timestamp": "SNAPSHOT_TIMESTAMP",
+      "type": "GridItem",
+    },
+  ],
+  "props": {
+    "className": "dashboard-grid",
+    "columns": 3,
+    "gap": 16,
+  },
+  "timestamp": "SNAPSHOT_TIMESTAMP",
+  "type": "DashboardGrid",
+}
+`;
+
+exports[`Dashboard Grid Layout Snapshots > should match DashboardGrid snapshot with mobile layout 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "props": {
+            "compact": true,
+          },
+          "timestamp": "SNAPSHOT_TIMESTAMP",
+          "type": "NtfStatsWidget",
+        },
+      ],
+      "props": {
+        "span": 1,
+      },
+      "timestamp": "SNAPSHOT_TIMESTAMP",
+      "type": "GridItem",
+    },
+    {
+      "children": [
+        {
+          "children": [],
+          "props": {
+            "compact": true,
+          },
+          "timestamp": "SNAPSHOT_TIMESTAMP",
+          "type": "LicenseStatusWidget",
+        },
+      ],
+      "props": {
+        "span": 1,
+      },
+      "timestamp": "SNAPSHOT_TIMESTAMP",
+      "type": "GridItem",
+    },
+  ],
+  "props": {
+    "className": "dashboard-grid mobile",
+    "columns": 1,
+    "gap": 12,
+  },
+  "timestamp": "SNAPSHOT_TIMESTAMP",
+  "type": "DashboardGrid",
+}
+`;
+
+exports[`Dashboard Layout Snapshots > should match DashboardLayout snapshot with collapsed sidebar 1`] = `
+{
+  "children": [
+    {
+      "children": [],
+      "props": {
+        "activeItem": "dashboard",
+        "collapsed": true,
+        "items": [
+          {
+            "icon": "Home",
+            "id": "dashboard",
+            "label": "Dashboard",
+          },
+          {
+            "icon": "BarChart",
+            "id": "spc",
+            "label": "SPC",
+          },
+        ],
+      },
+      "timestamp": "SNAPSHOT_TIMESTAMP",
+      "type": "Sidebar",
+    },
+    {
+      "children": [],
+      "props": {
+        "className": "main-content expanded",
+      },
+      "timestamp": "SNAPSHOT_TIMESTAMP",
+      "type": "MainContent",
+    },
+  ],
+  "props": {
+    "className": "dashboard-layout sidebar-collapsed",
+    "sidebarCollapsed": true,
+    "theme": "light",
+  },
+  "timestamp": "SNAPSHOT_TIMESTAMP",
+  "type": "DashboardLayout",
+}
+`;
+
+exports[`Dashboard Layout Snapshots > should match DashboardLayout snapshot with dark theme 1`] = `
+{
+  "children": [
+    {
+      "children": [],
+      "props": {
+        "activeItem": "dashboard",
+        "items": [
+          {
+            "icon": "Home",
+            "id": "dashboard",
+            "label": "Dashboard",
+          },
+        ],
+        "theme": "dark",
+      },
+      "timestamp": "SNAPSHOT_TIMESTAMP",
+      "type": "Sidebar",
+    },
+    {
+      "children": [],
+      "props": {
+        "className": "main-content dark",
+      },
+      "timestamp": "SNAPSHOT_TIMESTAMP",
+      "type": "MainContent",
+    },
+  ],
+  "props": {
+    "className": "dashboard-layout dark",
+    "sidebarCollapsed": false,
+    "theme": "dark",
+  },
+  "timestamp": "SNAPSHOT_TIMESTAMP",
+  "type": "DashboardLayout",
+}
+`;
+
+exports[`Dashboard Layout Snapshots > should match DashboardLayout snapshot with default props 1`] = `
+{
+  "children": [
+    {
+      "children": [],
+      "props": {
+        "activeItem": "dashboard",
+        "items": [
+          {
+            "icon": "Home",
+            "id": "dashboard",
+            "label": "Dashboard",
+          },
+          {
+            "icon": "BarChart",
+            "id": "spc",
+            "label": "SPC",
+          },
+          {
+            "icon": "Settings",
+            "id": "mms",
+            "label": "MMS",
+          },
+        ],
+      },
+      "timestamp": "SNAPSHOT_TIMESTAMP",
+      "type": "Sidebar",
+    },
+    {
+      "children": [
+        {
+          "children": [],
+          "props": {
+            "showBreadcrumbs": true,
+            "title": "Dashboard",
+          },
+          "timestamp": "SNAPSHOT_TIMESTAMP",
+          "type": "Header",
+        },
+        {
+          "children": [],
+          "props": {
+            "className": "content-area",
+          },
+          "timestamp": "SNAPSHOT_TIMESTAMP",
+          "type": "ContentArea",
+        },
+      ],
+      "props": {
+        "className": "main-content",
+      },
+      "timestamp": "SNAPSHOT_TIMESTAMP",
+      "type": "MainContent",
+    },
+  ],
+  "props": {
+    "className": "dashboard-layout",
+    "sidebarCollapsed": false,
+    "theme": "light",
+  },
+  "timestamp": "SNAPSHOT_TIMESTAMP",
+  "type": "DashboardLayout",
+}
+`;
+
+exports[`License Status Widget Snapshots > should match LicenseStatusWidget snapshot with active license 1`] = `
+{
+  "children": [
+    {
+      "children": [],
+      "props": {
+        "icon": "Key",
+        "title": "License Status",
+      },
+      "timestamp": "SNAPSHOT_TIMESTAMP",
+      "type": "WidgetHeader",
+    },
+    {
+      "children": [
+        {
+          "children": [],
+          "props": {
+            "color": "green",
+            "label": "Active",
+            "status": "active",
+          },
+          "timestamp": "SNAPSHOT_TIMESTAMP",
+          "type": "StatusBadge",
+        },
+        {
+          "children": [],
+          "props": {
+            "daysRemaining": 365,
+            "expiresAt": "2025-12-31",
+            "type": "Professional",
+          },
+          "timestamp": "SNAPSHOT_TIMESTAMP",
+          "type": "LicenseInfo",
+        },
+        {
+          "children": [],
+          "props": {
+            "features": [
+              "SPC Analysis",
+              "MMS",
+              "Reports",
+              "API Access",
+            ],
+          },
+          "timestamp": "SNAPSHOT_TIMESTAMP",
+          "type": "FeatureList",
+        },
+      ],
+      "props": {},
+      "timestamp": "SNAPSHOT_TIMESTAMP",
+      "type": "WidgetBody",
+    },
+  ],
+  "props": {
+    "className": "widget license-status",
+  },
+  "timestamp": "SNAPSHOT_TIMESTAMP",
+  "type": "LicenseStatusWidget",
+}
+`;
+
+exports[`License Status Widget Snapshots > should match LicenseStatusWidget snapshot with expired license 1`] = `
+{
+  "children": [
+    {
+      "children": [],
+      "props": {
+        "icon": "Key",
+        "title": "License Status",
+      },
+      "timestamp": "SNAPSHOT_TIMESTAMP",
+      "type": "WidgetHeader",
+    },
+    {
+      "children": [
+        {
+          "children": [],
+          "props": {
+            "color": "red",
+            "label": "Expired",
+            "status": "expired",
+          },
+          "timestamp": "SNAPSHOT_TIMESTAMP",
+          "type": "StatusBadge",
+        },
+        {
+          "children": [],
+          "props": {
+            "action": "Activate License",
+            "message": "License has expired",
+            "severity": "error",
+          },
+          "timestamp": "SNAPSHOT_TIMESTAMP",
+          "type": "AlertBanner",
+        },
+      ],
+      "props": {},
+      "timestamp": "SNAPSHOT_TIMESTAMP",
+      "type": "WidgetBody",
+    },
+  ],
+  "props": {
+    "className": "widget license-status error",
+  },
+  "timestamp": "SNAPSHOT_TIMESTAMP",
+  "type": "LicenseStatusWidget",
+}
+`;
+
+exports[`License Status Widget Snapshots > should match LicenseStatusWidget snapshot with expiring license 1`] = `
+{
+  "children": [
+    {
+      "children": [],
+      "props": {
+        "icon": "Key",
+        "title": "License Status",
+      },
+      "timestamp": "SNAPSHOT_TIMESTAMP",
+      "type": "WidgetHeader",
+    },
+    {
+      "children": [
+        {
+          "children": [],
+          "props": {
+            "color": "yellow",
+            "label": "Expiring Soon",
+            "status": "expiring",
+          },
+          "timestamp": "SNAPSHOT_TIMESTAMP",
+          "type": "StatusBadge",
+        },
+        {
+          "children": [],
+          "props": {
+            "daysRemaining": 10,
+            "expiresAt": "2024-12-30",
+            "type": "Standard",
+          },
+          "timestamp": "SNAPSHOT_TIMESTAMP",
+          "type": "LicenseInfo",
+        },
+        {
+          "children": [],
+          "props": {
+            "action": "Renew Now",
+            "message": "License expires in 10 days",
+          },
+          "timestamp": "SNAPSHOT_TIMESTAMP",
+          "type": "AlertBanner",
+        },
+      ],
+      "props": {},
+      "timestamp": "SNAPSHOT_TIMESTAMP",
+      "type": "WidgetBody",
+    },
+  ],
+  "props": {
+    "className": "widget license-status warning",
+  },
+  "timestamp": "SNAPSHOT_TIMESTAMP",
+  "type": "LicenseStatusWidget",
+}
+`;
+
+exports[`Low Stock Widget Snapshots > should match LowStockWidget snapshot with critical items 1`] = `
+{
+  "children": [
+    {
+      "children": [],
+      "props": {
+        "badge": {
+          "color": "red",
+          "count": 8,
+        },
+        "icon": "Package",
+        "title": "Low Stock Alerts",
+      },
+      "timestamp": "SNAPSHOT_TIMESTAMP",
+      "type": "WidgetHeader",
+    },
+    {
+      "children": [
+        {
+          "children": [],
+          "props": {
+            "items": [
+              {
+                "currentQty": 5,
+                "id": "part-1",
+                "minQty": 10,
+                "name": "Bearing XYZ",
+                "severity": "warning",
+              },
+              {
+                "currentQty": 2,
+                "id": "part-2",
+                "minQty": 5,
+                "name": "Motor ABC",
+                "severity": "critical",
+              },
+            ],
+          },
+          "timestamp": "SNAPSHOT_TIMESTAMP",
+          "type": "AlertList",
+        },
+        {
+          "children": [],
+          "props": {
+            "href": "/spare-parts",
+            "label": "View all 8 items",
+          },
+          "timestamp": "SNAPSHOT_TIMESTAMP",
+          "type": "ViewAllLink",
+        },
+      ],
+      "props": {},
+      "timestamp": "SNAPSHOT_TIMESTAMP",
+      "type": "WidgetBody",
+    },
+  ],
+  "props": {
+    "className": "widget low-stock",
+  },
+  "timestamp": "SNAPSHOT_TIMESTAMP",
+  "type": "LowStockWidget",
+}
+`;
+
+exports[`Low Stock Widget Snapshots > should match LowStockWidget snapshot with no low stock 1`] = `
+{
+  "children": [
+    {
+      "children": [],
+      "props": {
+        "icon": "Package",
+        "title": "Low Stock Alerts",
+      },
+      "timestamp": "SNAPSHOT_TIMESTAMP",
+      "type": "WidgetHeader",
+    },
+    {
+      "children": [
+        {
+          "children": [],
+          "props": {
+            "icon": "CheckCircle",
+            "message": "All stock levels are healthy",
+          },
+          "timestamp": "SNAPSHOT_TIMESTAMP",
+          "type": "SuccessMessage",
+        },
+      ],
+      "props": {},
+      "timestamp": "SNAPSHOT_TIMESTAMP",
+      "type": "WidgetBody",
+    },
+  ],
+  "props": {
+    "className": "widget low-stock empty",
+  },
+  "timestamp": "SNAPSHOT_TIMESTAMP",
+  "type": "LowStockWidget",
+}
+`;
+
+exports[`NTF Stats Widget Snapshots > should match NtfStatsWidget snapshot with data 1`] = `
+{
+  "children": [
+    {
+      "children": [],
+      "props": {
+        "actions": [
+          "refresh",
+          "expand",
+        ],
+        "icon": "AlertTriangle",
+        "title": "NTF Statistics",
+      },
+      "timestamp": "SNAPSHOT_TIMESTAMP",
+      "type": "WidgetHeader",
+    },
+    {
+      "children": [
+        {
+          "children": [],
+          "props": {
+            "label": "Total Defects",
+            "trend": "up",
+            "trendValue": "+12%",
+            "value": 150,
+          },
+          "timestamp": "SNAPSHOT_TIMESTAMP",
+          "type": "StatCard",
+        },
+        {
+          "children": [],
+          "props": {
+            "color": "red",
+            "label": "Real NG",
+            "value": 100,
+          },
+          "timestamp": "SNAPSHOT_TIMESTAMP",
+          "type": "StatCard",
+        },
+        {
+          "children": [],
+          "props": {
+            "color": "yellow",
+            "label": "NTF",
+            "value": 50,
+          },
+          "timestamp": "SNAPSHOT_TIMESTAMP",
+          "type": "StatCard",
+        },
+        {
+          "children": [],
+          "props": {
+            "data": [
+              {
+                "name": "Real NG",
+                "value": 100,
+              },
+              {
+                "name": "NTF",
+                "value": 50,
+              },
+            ],
+          },
+          "timestamp": "SNAPSHOT_TIMESTAMP",
+          "type": "PieChart",
+        },
+      ],
+      "props": {},
+      "timestamp": "SNAPSHOT_TIMESTAMP",
+      "type": "WidgetBody",
+    },
+  ],
+  "props": {
+    "className": "widget ntf-stats",
+    "title": "NTF Statistics",
+  },
+  "timestamp": "SNAPSHOT_TIMESTAMP",
+  "type": "NtfStatsWidget",
+}
+`;
+
+exports[`NTF Stats Widget Snapshots > should match NtfStatsWidget snapshot with empty data 1`] = `
+{
+  "children": [
+    {
+      "children": [],
+      "props": {
+        "icon": "AlertTriangle",
+        "title": "NTF Statistics",
+      },
+      "timestamp": "SNAPSHOT_TIMESTAMP",
+      "type": "WidgetHeader",
+    },
+    {
+      "children": [],
+      "props": {
+        "icon": "Inbox",
+        "message": "No defect data available",
+      },
+      "timestamp": "SNAPSHOT_TIMESTAMP",
+      "type": "EmptyState",
+    },
+  ],
+  "props": {
+    "className": "widget ntf-stats empty",
+    "title": "NTF Statistics",
+  },
+  "timestamp": "SNAPSHOT_TIMESTAMP",
+  "type": "NtfStatsWidget",
+}
+`;
+
+exports[`NTF Stats Widget Snapshots > should match NtfStatsWidget snapshot with error state 1`] = `
+{
+  "children": [
+    {
+      "children": [],
+      "props": {
+        "icon": "AlertTriangle",
+        "title": "NTF Statistics",
+      },
+      "timestamp": "SNAPSHOT_TIMESTAMP",
+      "type": "WidgetHeader",
+    },
+    {
+      "children": [],
+      "props": {
+        "message": "Failed to load NTF statistics",
+        "retryButton": true,
+      },
+      "timestamp": "SNAPSHOT_TIMESTAMP",
+      "type": "ErrorState",
+    },
+  ],
+  "props": {
+    "className": "widget ntf-stats error",
+    "hasError": true,
+    "title": "NTF Statistics",
+  },
+  "timestamp": "SNAPSHOT_TIMESTAMP",
+  "type": "NtfStatsWidget",
+}
+`;
+
+exports[`NTF Stats Widget Snapshots > should match NtfStatsWidget snapshot with loading state 1`] = `
+{
+  "children": [
+    {
+      "children": [],
+      "props": {
+        "icon": "AlertTriangle",
+        "title": "NTF Statistics",
+      },
+      "timestamp": "SNAPSHOT_TIMESTAMP",
+      "type": "WidgetHeader",
+    },
+    {
+      "children": [
+        {
+          "children": [],
+          "props": {
+            "height": 60,
+          },
+          "timestamp": "SNAPSHOT_TIMESTAMP",
+          "type": "Skeleton",
+        },
+        {
+          "children": [],
+          "props": {
+            "height": 60,
+          },
+          "timestamp": "SNAPSHOT_TIMESTAMP",
+          "type": "Skeleton",
+        },
+        {
+          "children": [],
+          "props": {
+            "height": 120,
+            "type": "chart",
+          },
+          "timestamp": "SNAPSHOT_TIMESTAMP",
+          "type": "Skeleton",
+        },
+      ],
+      "props": {},
+      "timestamp": "SNAPSHOT_TIMESTAMP",
+      "type": "WidgetBody",
+    },
+  ],
+  "props": {
+    "className": "widget ntf-stats loading",
+    "isLoading": true,
+    "title": "NTF Statistics",
+  },
+  "timestamp": "SNAPSHOT_TIMESTAMP",
+  "type": "NtfStatsWidget",
+}
+`;
+
+exports[`Validation Rules Widget Snapshots > should match ValidationRulesCard snapshot with no violations 1`] = `
+{
+  "children": [
+    {
+      "children": [],
+      "props": {
+        "icon": "CheckCircle",
+        "title": "Validation Rules",
+      },
+      "timestamp": "SNAPSHOT_TIMESTAMP",
+      "type": "WidgetHeader",
+    },
+    {
+      "children": [
+        {
+          "children": [],
+          "props": {
+            "items": [
+              {
+                "label": "Total Rules",
+                "value": 25,
+              },
+              {
+                "label": "Active",
+                "value": 25,
+              },
+              {
+                "label": "Triggered",
+                "value": 0,
+              },
+            ],
+          },
+          "timestamp": "SNAPSHOT_TIMESTAMP",
+          "type": "StatRow",
+        },
+        {
+          "children": [],
+          "props": {
+            "icon": "CheckCircle",
+            "message": "All rules passing",
+          },
+          "timestamp": "SNAPSHOT_TIMESTAMP",
+          "type": "SuccessMessage",
+        },
+      ],
+      "props": {},
+      "timestamp": "SNAPSHOT_TIMESTAMP",
+      "type": "WidgetBody",
+    },
+  ],
+  "props": {
+    "className": "widget validation-rules success",
+  },
+  "timestamp": "SNAPSHOT_TIMESTAMP",
+  "type": "ValidationRulesCard",
+}
+`;
+
+exports[`Validation Rules Widget Snapshots > should match ValidationRulesCard snapshot with violations 1`] = `
+{
+  "children": [
+    {
+      "children": [],
+      "props": {
+        "icon": "CheckCircle",
+        "title": "Validation Rules",
+      },
+      "timestamp": "SNAPSHOT_TIMESTAMP",
+      "type": "WidgetHeader",
+    },
+    {
+      "children": [
+        {
+          "children": [],
+          "props": {
+            "items": [
+              {
+                "label": "Total Rules",
+                "value": 25,
+              },
+              {
+                "label": "Active",
+                "value": 20,
+              },
+              {
+                "color": "red",
+                "label": "Triggered",
+                "value": 5,
+              },
+            ],
+          },
+          "timestamp": "SNAPSHOT_TIMESTAMP",
+          "type": "StatRow",
+        },
+        {
+          "children": [],
+          "props": {
+            "violations": [
+              {
+                "count": 3,
+                "rule": "CPK < 1.33",
+                "severity": "warning",
+              },
+              {
+                "count": 2,
+                "rule": "Out of Spec",
+                "severity": "error",
+              },
+            ],
+          },
+          "timestamp": "SNAPSHOT_TIMESTAMP",
+          "type": "ViolationList",
+        },
+      ],
+      "props": {},
+      "timestamp": "SNAPSHOT_TIMESTAMP",
+      "type": "WidgetBody",
+    },
+  ],
+  "props": {
+    "className": "widget validation-rules",
+  },
+  "timestamp": "SNAPSHOT_TIMESTAMP",
+  "type": "ValidationRulesCard",
+}
+`;
+
+exports[`Webhook Retry Widget Snapshots > should match WebhookRetryWidget snapshot with no retries 1`] = `
+{
+  "children": [
+    {
+      "children": [],
+      "props": {
+        "icon": "RefreshCw",
+        "title": "Webhook Retries",
+      },
+      "timestamp": "SNAPSHOT_TIMESTAMP",
+      "type": "WidgetHeader",
+    },
+    {
+      "children": [
+        {
+          "children": [],
+          "props": {
+            "items": [
+              {
+                "label": "Pending",
+                "value": 0,
+              },
+              {
+                "label": "Exhausted",
+                "value": 0,
+              },
+              {
+                "label": "Success Rate",
+                "value": "100%",
+              },
+            ],
+          },
+          "timestamp": "SNAPSHOT_TIMESTAMP",
+          "type": "StatRow",
+        },
+        {
+          "children": [],
+          "props": {
+            "message": "All webhooks delivered successfully",
+          },
+          "timestamp": "SNAPSHOT_TIMESTAMP",
+          "type": "SuccessMessage",
+        },
+      ],
+      "props": {},
+      "timestamp": "SNAPSHOT_TIMESTAMP",
+      "type": "WidgetBody",
+    },
+  ],
+  "props": {
+    "className": "widget webhook-retry success",
+  },
+  "timestamp": "SNAPSHOT_TIMESTAMP",
+  "type": "WebhookRetryWidget",
+}
+`;
+
+exports[`Webhook Retry Widget Snapshots > should match WebhookRetryWidget snapshot with pending retries 1`] = `
+{
+  "children": [
+    {
+      "children": [],
+      "props": {
+        "icon": "RefreshCw",
+        "title": "Webhook Retries",
+      },
+      "timestamp": "SNAPSHOT_TIMESTAMP",
+      "type": "WidgetHeader",
+    },
+    {
+      "children": [
+        {
+          "children": [],
+          "props": {
+            "items": [
+              {
+                "color": "yellow",
+                "label": "Pending",
+                "value": 3,
+              },
+              {
+                "color": "red",
+                "label": "Exhausted",
+                "value": 1,
+              },
+              {
+                "label": "Success Rate",
+                "value": "85.5%",
+              },
+            ],
+          },
+          "timestamp": "SNAPSHOT_TIMESTAMP",
+          "type": "StatRow",
+        },
+        {
+          "children": [],
+          "props": {
+            "disabled": false,
+            "label": "Retry All Pending",
+          },
+          "timestamp": "SNAPSHOT_TIMESTAMP",
+          "type": "RetryButton",
+        },
+      ],
+      "props": {},
+      "timestamp": "SNAPSHOT_TIMESTAMP",
+      "type": "WidgetBody",
+    },
+  ],
+  "props": {
+    "className": "widget webhook-retry",
+  },
+  "timestamp": "SNAPSHOT_TIMESTAMP",
+  "type": "WebhookRetryWidget",
+}
+`;
+
+exports[`Widget Common Elements Snapshots > should match WidgetEmpty snapshot 1`] = `
+{
+  "children": [
+    {
+      "children": [],
+      "props": {
+        "icon": "Inbox",
+        "size": 48,
+      },
+      "timestamp": "SNAPSHOT_TIMESTAMP",
+      "type": "EmptyIcon",
+    },
+    {
+      "children": [],
+      "props": {
+        "description": "Data will appear here once available",
+        "title": "No data available",
+      },
+      "timestamp": "SNAPSHOT_TIMESTAMP",
+      "type": "EmptyMessage",
+    },
+  ],
+  "props": {
+    "className": "widget-empty",
+  },
+  "timestamp": "SNAPSHOT_TIMESTAMP",
+  "type": "WidgetEmpty",
+}
+`;
+
+exports[`Widget Common Elements Snapshots > should match WidgetError snapshot 1`] = `
+{
+  "children": [
+    {
+      "children": [],
+      "props": {
+        "icon": "AlertCircle",
+        "size": 48,
+      },
+      "timestamp": "SNAPSHOT_TIMESTAMP",
+      "type": "ErrorIcon",
+    },
+    {
+      "children": [],
+      "props": {
+        "description": "Please try again later",
+        "title": "Failed to load data",
+      },
+      "timestamp": "SNAPSHOT_TIMESTAMP",
+      "type": "ErrorMessage",
+    },
+    {
+      "children": [],
+      "props": {
+        "label": "Retry",
+        "onClick": "handleRetry",
+      },
+      "timestamp": "SNAPSHOT_TIMESTAMP",
+      "type": "RetryButton",
+    },
+  ],
+  "props": {
+    "className": "widget-error",
+  },
+  "timestamp": "SNAPSHOT_TIMESTAMP",
+  "type": "WidgetError",
+}
+`;
+
+exports[`Widget Common Elements Snapshots > should match WidgetSkeleton snapshot 1`] = `
+{
+  "children": [
+    {
+      "children": [],
+      "props": {
+        "height": 24,
+        "width": "60%",
+      },
+      "timestamp": "SNAPSHOT_TIMESTAMP",
+      "type": "SkeletonHeader",
+    },
+    {
+      "children": [
+        {
+          "children": [],
+          "props": {
+            "height": 16,
+            "width": "100%",
+          },
+          "timestamp": "SNAPSHOT_TIMESTAMP",
+          "type": "SkeletonLine",
+        },
+        {
+          "children": [],
+          "props": {
+            "height": 16,
+            "width": "80%",
+          },
+          "timestamp": "SNAPSHOT_TIMESTAMP",
+          "type": "SkeletonLine",
+        },
+        {
+          "children": [],
+          "props": {
+            "height": 16,
+            "width": "90%",
+          },
+          "timestamp": "SNAPSHOT_TIMESTAMP",
+          "type": "SkeletonLine",
+        },
+      ],
+      "props": {},
+      "timestamp": "SNAPSHOT_TIMESTAMP",
+      "type": "SkeletonBody",
+    },
+  ],
+  "props": {
+    "className": "widget-skeleton",
+    "variant": "card",
+  },
+  "timestamp": "SNAPSHOT_TIMESTAMP",
+  "type": "WidgetSkeleton",
+}
+`;
