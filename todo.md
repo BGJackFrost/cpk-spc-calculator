@@ -4500,3 +4500,25 @@
 - [x] Khóa tài khoản tạm thời sau 10 lần thất bại
 - [x] Trang admin xem danh sách tài khoản bị khóa (LockedAccountsAdmin.tsx)
 
+
+## Phase 204 - Cấu hình Bảo mật Đăng nhập
+
+### Cấu hình số lần đăng nhập thất bại
+- [x] Tạo bảng security_settings lưu cấu hình
+- [x] API getSecuritySettings và updateSecuritySettings
+- [x] Cấu hình: max_failed_attempts (mặc định 10)
+- [x] Cấu hình: alert_threshold (mặc định 5)
+
+### Cấu hình thời gian khóa tài khoản
+- [x] Cấu hình: lockout_duration_minutes (mặc định 30)
+- [x] Cấu hình: auto_unlock_enabled (mặc định true)
+
+### Trang cài đặt bảo mật cho Admin
+- [x] Tạo SecuritySettingsAdmin.tsx
+- [x] Form cấu hình với validation
+- [x] Thêm route và link trong menu admin (Settings > Bảo mật)
+
+### Tích hợp vào login flow
+- [x] Sử dụng cấu hình động thay vì hardcode
+- [x] Cache cấu hình để tối ưu performance (5 phút TTL)
+

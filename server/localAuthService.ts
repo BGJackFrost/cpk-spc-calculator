@@ -898,7 +898,7 @@ export async function regenerateBackupCodes(userId: number, password: string): P
 
 // ==================== TRUSTED DEVICES ====================
 
-import { trustedDevices, failedLoginAttempts, accountLockouts, loginLocationHistory } from "../drizzle/schema";
+import { trustedDevices, failedLoginAttempts, accountLockouts, loginLocationHistory, securitySettings } from "../drizzle/schema";
 
 /**
  * Check if device is trusted for a user
@@ -1052,9 +1052,10 @@ export async function removeAllTrustedDevices(userId: number): Promise<boolean> 
 
 // ==================== FAILED LOGIN TRACKING ====================
 
-const MAX_FAILED_ATTEMPTS = 5; // Send alert after 5 failures
-const LOCKOUT_THRESHOLD = 10; // Lock account after 10 failures
-const LOCKOUT_DURATION_MINUTES = 30;
+// Default constants (can be overridden by security settings)
+const DEFAULT_ALERT_THRESHOLD = 5; // Send alert after 5 failures
+const DEFAULT_LOCKOUT_THRESHOLD = 10; // Lock account after 10 failures
+const DEFAULT_LOCKOUT_DURATION_MINUTES = 30;
 const FAILED_ATTEMPTS_WINDOW_MINUTES = 15;
 
 /**
@@ -1068,6 +1069,11 @@ export async function recordFailedLoginAttempt(
 ): Promise<{ shouldAlert: boolean; shouldLock: boolean; failedCount: number }> {
   const db = await getDb();
   if (!db) return { shouldAlert: false, shouldLock: false, failedCount: 0 };
+
+  // Get security settings
+  const settings = await getSecuritySettings();
+  const alertThreshold = parseInt(settings.alert_threshold || String(DEFAULT_ALERT_THRESHOLD), 10);
+  const lockoutThreshold = parseInt(settings.max_failed_attempts || String(DEFAULT_LOCKOUT_THRESHOLD), 10);
 
   try {
     // Record the attempt
@@ -1092,8 +1098,8 @@ export async function recordFailedLoginAttempt(
       new Date(f.attemptedAt) > windowStart
     ).length;
 
-    const shouldAlert = failedCount === MAX_FAILED_ATTEMPTS;
-    const shouldLock = failedCount >= LOCKOUT_THRESHOLD;
+    const shouldAlert = failedCount === alertThreshold;
+    const shouldLock = failedCount >= lockoutThreshold;
 
     // Lock account if threshold reached
     if (shouldLock) {
@@ -1114,12 +1120,16 @@ async function lockAccount(username: string, failedAttempts: number): Promise<vo
   const db = await getDb();
   if (!db) return;
 
+  // Get lockout duration from settings
+  const settings = await getSecuritySettings();
+  const lockoutDurationMinutes = parseInt(settings.lockout_duration_minutes || String(DEFAULT_LOCKOUT_DURATION_MINUTES), 10);
+
   // Find user
   const users = await db.select().from(localUsers).where(eq(localUsers.username, username)).limit(1);
   if (users.length === 0) return;
 
   const user = users[0];
-  const lockedUntil = new Date(Date.now() + LOCKOUT_DURATION_MINUTES * 60 * 1000);
+  const lockedUntil = new Date(Date.now() + lockoutDurationMinutes * 60 * 1000);
 
   // Check if already locked
   const existingLock = await db.select()
@@ -1174,11 +1184,18 @@ export async function isAccountLocked(username: string): Promise<{ locked: boole
 
   // Check if lock has expired
   if (new Date() > new Date(lock.lockedUntil)) {
-    // Auto-unlock
-    await db.update(accountLockouts)
-      .set({ unlockedAt: new Date() })
-      .where(eq(accountLockouts.id, lock.id));
-    return { locked: false };
+    // Check if auto-unlock is enabled
+    const settings = await getSecuritySettings();
+    const autoUnlockEnabled = settings.auto_unlock_enabled === "true";
+    
+    if (autoUnlockEnabled) {
+      // Auto-unlock
+      await db.update(accountLockouts)
+        .set({ unlockedAt: new Date() })
+        .where(eq(accountLockouts.id, lock.id));
+      return { locked: false };
+    }
+    // If auto-unlock is disabled, account remains locked until admin unlocks
   }
 
   return {
@@ -1428,4 +1445,234 @@ export async function getAllLoginLocationHistory(limit: number = 100): Promise<A
     longitude: l.longitude,
     createdAt: l.createdAt,
   }));
+}
+
+
+// ==================== SECURITY SETTINGS ====================
+
+// Cache for security settings
+let securitySettingsCache: Map<string, string> | null = null;
+let cacheTimestamp: number = 0;
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+/**
+ * Get all security settings
+ */
+export async function getSecuritySettings(): Promise<Record<string, string>> {
+  const db = await getDb();
+  if (!db) {
+    return getDefaultSecuritySettings();
+  }
+
+  // Check cache
+  if (securitySettingsCache && Date.now() - cacheTimestamp < CACHE_TTL) {
+    return Object.fromEntries(securitySettingsCache);
+  }
+
+  try {
+    const settings = await db.select()
+      .from(securitySettings)
+      .execute();
+
+    const settingsMap = new Map<string, string>();
+    for (const setting of settings) {
+      settingsMap.set(setting.settingKey, setting.settingValue);
+    }
+
+    // Fill in defaults for missing settings
+    const defaults = getDefaultSecuritySettings();
+    for (const [key, value] of Object.entries(defaults)) {
+      if (!settingsMap.has(key)) {
+        settingsMap.set(key, value);
+      }
+    }
+
+    // Update cache
+    securitySettingsCache = settingsMap;
+    cacheTimestamp = Date.now();
+
+    return Object.fromEntries(settingsMap);
+  } catch (error) {
+    console.error("[SecuritySettings] Get error:", error);
+    return getDefaultSecuritySettings();
+  }
+}
+
+/**
+ * Get a single security setting
+ */
+export async function getSecuritySetting(key: string): Promise<string> {
+  const settings = await getSecuritySettings();
+  return settings[key] || getDefaultSecuritySettings()[key] || "";
+}
+
+/**
+ * Update security settings
+ */
+export async function updateSecuritySettings(
+  settings: Record<string, string>,
+  updatedBy: number
+): Promise<{ success: boolean; message: string }> {
+  const db = await getDb();
+  if (!db) {
+    return { success: false, message: "Database không khả dụng" };
+  }
+
+  try {
+    for (const [key, value] of Object.entries(settings)) {
+      // Validate key
+      if (!isValidSecuritySettingKey(key)) {
+        continue;
+      }
+
+      // Validate value
+      const validationError = validateSecuritySettingValue(key, value);
+      if (validationError) {
+        return { success: false, message: validationError };
+      }
+
+      // Upsert setting
+      await db.insert(securitySettings)
+        .values({
+          settingKey: key,
+          settingValue: value,
+          updatedBy,
+        })
+        .onDuplicateKeyUpdate({
+          set: {
+            settingValue: value,
+            updatedBy,
+          },
+        });
+    }
+
+    // Clear cache
+    securitySettingsCache = null;
+
+    return { success: true, message: "Đã cập nhật cài đặt bảo mật" };
+  } catch (error) {
+    console.error("[SecuritySettings] Update error:", error);
+    return { success: false, message: "Lỗi khi cập nhật cài đặt" };
+  }
+}
+
+/**
+ * Get default security settings
+ */
+function getDefaultSecuritySettings(): Record<string, string> {
+  return {
+    max_failed_attempts: "10",
+    alert_threshold: "5",
+    lockout_duration_minutes: "30",
+    auto_unlock_enabled: "true",
+    trusted_device_expiry_days: "30",
+  };
+}
+
+/**
+ * Valid security setting keys
+ */
+const VALID_SECURITY_SETTING_KEYS = [
+  "max_failed_attempts",
+  "alert_threshold",
+  "lockout_duration_minutes",
+  "auto_unlock_enabled",
+  "trusted_device_expiry_days",
+];
+
+function isValidSecuritySettingKey(key: string): boolean {
+  return VALID_SECURITY_SETTING_KEYS.includes(key);
+}
+
+/**
+ * Validate security setting value
+ */
+function validateSecuritySettingValue(key: string, value: string): string | null {
+  switch (key) {
+    case "max_failed_attempts":
+      const maxAttempts = parseInt(value, 10);
+      if (isNaN(maxAttempts) || maxAttempts < 3 || maxAttempts > 100) {
+        return "Số lần thất bại tối đa phải từ 3 đến 100";
+      }
+      break;
+    case "alert_threshold":
+      const alertThreshold = parseInt(value, 10);
+      if (isNaN(alertThreshold) || alertThreshold < 1 || alertThreshold > 50) {
+        return "Ngưỡng cảnh báo phải từ 1 đến 50";
+      }
+      break;
+    case "lockout_duration_minutes":
+      const lockoutDuration = parseInt(value, 10);
+      if (isNaN(lockoutDuration) || lockoutDuration < 1 || lockoutDuration > 1440) {
+        return "Thời gian khóa phải từ 1 đến 1440 phút (24 giờ)";
+      }
+      break;
+    case "auto_unlock_enabled":
+      if (value !== "true" && value !== "false") {
+        return "Giá trị phải là true hoặc false";
+      }
+      break;
+    case "trusted_device_expiry_days":
+      const expiryDays = parseInt(value, 10);
+      if (isNaN(expiryDays) || expiryDays < 1 || expiryDays > 365) {
+        return "Số ngày hết hạn phải từ 1 đến 365";
+      }
+      break;
+  }
+  return null;
+}
+
+/**
+ * Get security settings with descriptions for UI
+ */
+export async function getSecuritySettingsWithDescriptions(): Promise<Array<{
+  key: string;
+  value: string;
+  description: string;
+  type: "number" | "boolean";
+  min?: number;
+  max?: number;
+}>> {
+  const settings = await getSecuritySettings();
+  
+  return [
+    {
+      key: "max_failed_attempts",
+      value: settings.max_failed_attempts,
+      description: "Số lần đăng nhập thất bại tối đa trước khi khóa tài khoản",
+      type: "number",
+      min: 3,
+      max: 100,
+    },
+    {
+      key: "alert_threshold",
+      value: settings.alert_threshold,
+      description: "Số lần thất bại để gửi cảnh báo cho admin",
+      type: "number",
+      min: 1,
+      max: 50,
+    },
+    {
+      key: "lockout_duration_minutes",
+      value: settings.lockout_duration_minutes,
+      description: "Thời gian khóa tài khoản (phút)",
+      type: "number",
+      min: 1,
+      max: 1440,
+    },
+    {
+      key: "auto_unlock_enabled",
+      value: settings.auto_unlock_enabled,
+      description: "Tự động mở khóa tài khoản sau thời gian lockout",
+      type: "boolean",
+    },
+    {
+      key: "trusted_device_expiry_days",
+      value: settings.trusted_device_expiry_days,
+      description: "Số ngày thiết bị tin cậy hết hạn",
+      type: "number",
+      min: 1,
+      max: 365,
+    },
+  ];
 }

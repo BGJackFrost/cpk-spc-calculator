@@ -63,6 +63,11 @@ import {
   saveLoginLocation,
   getLoginLocationHistory,
   getAllLoginLocationHistory,
+  // Security Settings
+  getSecuritySettings,
+  getSecuritySetting,
+  updateSecuritySettings,
+  getSecuritySettingsWithDescriptions,
 } from "./localAuthService";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { checkRateLimit, resetRateLimit, getRateLimitKey, RATE_LIMIT_CONFIGS } from "./rateLimiter";
@@ -3944,6 +3949,44 @@ export const appRouter = router({
       .input(z.object({ ipAddress: z.string() }))
       .query(async ({ input }) => {
         return await getIpLocation(input.ipAddress);
+      }),
+
+    // ==================== SECURITY SETTINGS (Admin) ====================
+    
+    // Get security settings
+    getSecuritySettings: protectedProcedure.query(async ({ ctx }) => {
+      if (ctx.user.role !== 'admin') {
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin access required' });
+      }
+      return await getSecuritySettingsWithDescriptions();
+    }),
+
+    // Update security settings
+    updateSecuritySettings: protectedProcedure
+      .input(z.object({
+        settings: z.record(z.string(), z.string()),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin access required' });
+        }
+        const result = await updateSecuritySettings(input.settings, ctx.user.id);
+        if (!result.success) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: result.message });
+        }
+        return result;
+      }),
+
+    // Get a single security setting (for login flow)
+    getSecuritySettingPublic: publicProcedure
+      .input(z.object({ key: z.string() }))
+      .query(async ({ input }) => {
+        // Only allow certain keys to be read publicly
+        const allowedKeys = ['max_failed_attempts', 'lockout_duration_minutes'];
+        if (!allowedKeys.includes(input.key)) {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Setting not accessible' });
+        }
+        return await getSecuritySetting(input.key);
       }),
   }),
 

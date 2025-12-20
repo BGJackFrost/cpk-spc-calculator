@@ -3367,3 +3367,20 @@ export const loginLocationHistory = mysqlTable("login_location_history", {
 
 export type LoginLocationHistory = typeof loginLocationHistory.$inferSelect;
 export type InsertLoginLocationHistory = typeof loginLocationHistory.$inferInsert;
+
+
+/**
+ * Security Settings - Cấu hình bảo mật hệ thống
+ */
+export const securitySettings = mysqlTable("security_settings", {
+  id: int("id").autoincrement().primaryKey(),
+  settingKey: varchar("setting_key", { length: 100 }).notNull().unique(),
+  settingValue: varchar("setting_value", { length: 255 }).notNull(),
+  description: varchar("description", { length: 500 }),
+  updatedBy: int("updated_by"),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type SecuritySetting = typeof securitySettings.$inferSelect;
+export type InsertSecuritySetting = typeof securitySettings.$inferInsert;

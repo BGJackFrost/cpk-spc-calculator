@@ -142,6 +142,7 @@ import TwoFactorSettings from "./pages/TwoFactorSettings";
 import TrustedDevicesSettings from "./pages/TrustedDevicesSettings";
 import LoginHistoryDetail from "./pages/LoginHistoryDetail";
 import LockedAccountsAdmin from "./pages/LockedAccountsAdmin";
+import SecuritySettingsAdmin from "./pages/SecuritySettingsAdmin";
 
 function Router() {
   return (
@@ -166,6 +167,7 @@ function Router() {
       <Route path="/trusted-devices" component={TrustedDevicesSettings} />
       <Route path="/login-history-detail" component={LoginHistoryDetail} />
       <Route path="/locked-accounts" component={LockedAccountsAdmin} />
+      <Route path="/security-settings" component={SecuritySettingsAdmin} />
       <Route path="/change-password" component={ChangePassword} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/anomaly-detection" component={AnomalyDetection} />
