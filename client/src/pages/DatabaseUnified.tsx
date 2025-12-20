@@ -281,6 +281,34 @@ export default function DatabaseUnified() {
     toast.success("Đã thêm kết nối mới!");
   };
 
+  // Edit connection
+  const handleEditConnection = () => {
+    if (!selectedConnection) return;
+    
+    setConnections(prev => prev.map(conn => {
+      if (conn.id === selectedConnection.id) {
+        return {
+          ...conn,
+          name: formData.name,
+          databaseType: formData.databaseType,
+          host: formData.host,
+          port: parseInt(formData.port),
+          database: formData.database,
+          username: formData.username,
+          description: formData.description,
+          isActive: formData.isActive,
+          isPrimary: formData.isPrimary,
+          syncEnabled: formData.syncEnabled,
+        };
+      }
+      return conn;
+    }));
+    
+    setIsEditDialogOpen(false);
+    resetForm();
+    toast.success("Đã cập nhật kết nối!");
+  };
+
   // Delete connection
   const handleDeleteConnection = (connectionId: number) => {
     const conn = connections.find(c => c.id === connectionId);
@@ -673,6 +701,19 @@ export default function DatabaseUnified() {
                               size="icon"
                               onClick={() => {
                                 setSelectedConnection(conn);
+                                setFormData({
+                                  name: conn.name,
+                                  databaseType: conn.databaseType,
+                                  host: conn.host,
+                                  port: conn.port.toString(),
+                                  database: conn.database,
+                                  username: conn.username,
+                                  password: "",
+                                  description: conn.description || "",
+                                  isActive: conn.isActive,
+                                  isPrimary: conn.isPrimary,
+                                  syncEnabled: conn.syncEnabled,
+                                });
                                 setIsEditDialogOpen(true);
                               }}
                             >
@@ -949,6 +990,124 @@ export default function DatabaseUnified() {
               <Button onClick={handleAddConnection}>
                 <Save className="h-4 w-4 mr-2" />
                 Lưu
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Connection Dialog */}
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Sửa kết nối Database</DialogTitle>
+              <DialogDescription>
+                Chỉnh sửa thông tin kết nối database
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Tên kết nối</Label>
+                <Input
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="VD: PostgreSQL Production"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Loại Database</Label>
+                <Select
+                  value={formData.databaseType}
+                  onValueChange={(value: DatabaseType) => {
+                    setFormData({ 
+                      ...formData, 
+                      databaseType: value,
+                      port: value === "postgresql" ? "5432" : "3306"
+                    });
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="postgresql">PostgreSQL</SelectItem>
+                    <SelectItem value="mysql">MySQL</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="col-span-2 space-y-2">
+                  <Label>Host</Label>
+                  <Input
+                    value={formData.host}
+                    onChange={(e) => setFormData({ ...formData, host: e.target.value })}
+                    placeholder="localhost"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Port</Label>
+                  <Input
+                    value={formData.port}
+                    onChange={(e) => setFormData({ ...formData, port: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Database</Label>
+                <Input
+                  value={formData.database}
+                  onChange={(e) => setFormData({ ...formData, database: e.target.value })}
+                  placeholder="spc_calculator"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Username</Label>
+                  <Input
+                    value={formData.username}
+                    onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Password</Label>
+                  <Input
+                    type="password"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    placeholder="Để trống nếu không thay đổi"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Mô tả</Label>
+                <Input
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Mô tả ngắn về kết nối này"
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label>Đặt làm database chính</Label>
+                <Switch
+                  checked={formData.isPrimary}
+                  onCheckedChange={(checked) => setFormData({ ...formData, isPrimary: checked })}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label>Bật đồng bộ (nếu không phải primary)</Label>
+                <Switch
+                  checked={formData.syncEnabled}
+                  onCheckedChange={(checked) => setFormData({ ...formData, syncEnabled: checked })}
+                  disabled={formData.isPrimary}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                Hủy
+              </Button>
+              <Button onClick={handleEditConnection}>
+                <Save className="h-4 w-4 mr-2" />
+                Lưu thay đổi
               </Button>
             </DialogFooter>
           </DialogContent>

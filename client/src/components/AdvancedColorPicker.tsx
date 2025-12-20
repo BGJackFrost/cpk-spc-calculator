@@ -3,7 +3,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Pipette, RotateCcw } from "lucide-react";
+import { Pipette, RotateCcw, Copy, Check, Palette } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 interface AdvancedColorPickerProps {
   value: string;
@@ -102,18 +103,40 @@ function hslToHex(h: number, s: number, l: number): string {
   return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
 }
 
+// Generate color harmonies
+function getComplementary(h: number): number {
+  return (h + 180) % 360;
+}
+
+function getTriadic(h: number): [number, number] {
+  return [(h + 120) % 360, (h + 240) % 360];
+}
+
+function getAnalogous(h: number): [number, number] {
+  return [(h + 30) % 360, (h - 30 + 360) % 360];
+}
+
+function getSplitComplementary(h: number): [number, number] {
+  return [(h + 150) % 360, (h + 210) % 360];
+}
+
 export function AdvancedColorPicker({
   value,
   onChange,
   label,
   presetColors,
 }: AdvancedColorPickerProps) {
+  const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [hsl, setHsl] = useState(() => hexToHsl(value));
   const [inputValue, setInputValue] = useState(value);
   const gradientRef = useRef<HTMLDivElement>(null);
   const hueRef = useRef<HTMLDivElement>(null);
-  const [isDragging, setIsDragging] = useState<"gradient" | "hue" | null>(null);
+  const [isDragging, setIsDragging] = useState<"gradient" | "hue" | "opacity" | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [showHarmony, setShowHarmony] = useState(false);
+  const [opacity, setOpacity] = useState(100);
+  const opacityRef = useRef<HTMLDivElement>(null);
 
   // Sync HSL when value changes externally
   useEffect(() => {
@@ -163,6 +186,18 @@ export function AdvancedColorPicker({
     [hsl, updateColor]
   );
 
+  // Handle opacity slider click/drag
+  const handleOpacityInteraction = useCallback(
+    (e: React.MouseEvent | MouseEvent) => {
+      if (!opacityRef.current) return;
+      const rect = opacityRef.current.getBoundingClientRect();
+      const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+      const newOpacity = Math.round(x * 100);
+      setOpacity(newOpacity);
+    },
+    []
+  );
+
   // Mouse event handlers
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -170,6 +205,8 @@ export function AdvancedColorPicker({
         handleGradientInteraction(e);
       } else if (isDragging === "hue") {
         handleHueInteraction(e);
+      } else if (isDragging === "opacity") {
+        handleOpacityInteraction(e);
       }
     };
 
@@ -186,7 +223,7 @@ export function AdvancedColorPicker({
       document.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [isDragging, handleGradientInteraction, handleHueInteraction]);
+  }, [isDragging, handleGradientInteraction, handleHueInteraction, handleOpacityInteraction]);
 
   // Handle hex input change
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -218,6 +255,65 @@ export function AdvancedColorPicker({
     onChange(defaultColor);
   };
 
+  // Copy color to clipboard
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      toast({
+        title: "Copied!",
+        description: `Color ${value} copied to clipboard`,
+      });
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast({
+        title: "Error",
+        description: "Failed to copy color",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Paste color from clipboard
+  const handlePaste = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      const cleanedText = text.trim();
+      // Check if it's a valid hex color
+      if (/^#?[0-9A-Fa-f]{6}$/.test(cleanedText)) {
+        const hex = cleanedText.startsWith("#") ? cleanedText : `#${cleanedText}`;
+        const newHsl = hexToHsl(hex);
+        setHsl(newHsl);
+        setInputValue(hex);
+        onChange(hex);
+        toast({
+          title: "Pasted!",
+          description: `Color ${hex} applied`,
+        });
+      } else {
+        toast({
+          title: "Invalid color",
+          description: "Clipboard does not contain a valid hex color",
+          variant: "destructive",
+        });
+      }
+    } catch {
+      toast({
+        title: "Error",
+        description: "Failed to paste color",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Generate harmony colors
+  const harmonyColors = {
+    complementary: hslToHex(getComplementary(hsl.h), hsl.s, hsl.l),
+    triadic: getTriadic(hsl.h).map(h => hslToHex(h, hsl.s, hsl.l)),
+    analogous: getAnalogous(hsl.h).map(h => hslToHex(h, hsl.s, hsl.l)),
+    splitComplementary: getSplitComplementary(hsl.h).map(h => hslToHex(h, hsl.s, hsl.l)),
+  };
+
   const allPresets = presetColors || [
     ...DEFAULT_PRESETS.primary,
     ...DEFAULT_PRESETS.warm,
@@ -243,12 +339,15 @@ export function AdvancedColorPicker({
         </PopoverTrigger>
         <PopoverContent className="w-80 p-0" align="start">
           <Tabs defaultValue="picker" className="w-full">
-            <TabsList className="w-full grid grid-cols-2 rounded-none border-b">
-              <TabsTrigger value="picker" className="rounded-none">
+            <TabsList className="w-full grid grid-cols-3 rounded-none border-b">
+              <TabsTrigger value="picker" className="rounded-none text-xs">
                 Picker
               </TabsTrigger>
-              <TabsTrigger value="presets" className="rounded-none">
+              <TabsTrigger value="presets" className="rounded-none text-xs">
                 Presets
+              </TabsTrigger>
+              <TabsTrigger value="harmony" className="rounded-none text-xs">
+                Harmony
               </TabsTrigger>
             </TabsList>
 
@@ -302,8 +401,39 @@ export function AdvancedColorPicker({
                 />
               </div>
 
+              {/* Opacity slider */}
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">Opacity: {opacity}%</label>
+                <div
+                  ref={opacityRef}
+                  className="relative h-4 rounded-full cursor-pointer"
+                  style={{
+                    background: `linear-gradient(to right, transparent 0%, ${value} 100%)`,
+                  }}
+                  onMouseDown={(e) => {
+                    setIsDragging("opacity");
+                    handleOpacityInteraction(e);
+                  }}
+                >
+                  {/* Checkerboard background for transparency */}
+                  <div className="absolute inset-0 rounded-full -z-10" style={{
+                    backgroundImage: `linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)`,
+                    backgroundSize: '8px 8px',
+                    backgroundPosition: '0 0, 0 4px, 4px -4px, -4px 0px',
+                  }} />
+                  {/* Opacity indicator */}
+                  <div
+                    className="absolute w-4 h-4 -translate-x-1/2 top-0 rounded-full border-2 border-white shadow-md pointer-events-none"
+                    style={{
+                      left: `${opacity}%`,
+                      backgroundColor: value,
+                    }}
+                  />
+                </div>
+              </div>
+
               {/* HSL values */}
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-4 gap-2">
                 <div className="space-y-1">
                   <label className="text-xs text-muted-foreground">H</label>
                   <Input
@@ -343,16 +473,45 @@ export function AdvancedColorPicker({
                     className="h-8 text-xs"
                   />
                 </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground">A</label>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={opacity}
+                    onChange={(e) =>
+                      setOpacity(Math.max(0, Math.min(100, parseInt(e.target.value) || 0)))
+                    }
+                    className="h-8 text-xs"
+                  />
+                </div>
               </div>
 
-              {/* HEX input */}
-              <div className="flex gap-2">
+              {/* HEX input with copy/paste */}
+              <div className="flex gap-1">
                 <Input
                   value={inputValue}
                   onChange={handleInputChange}
                   placeholder="#000000"
                   className="flex-1 font-mono"
                 />
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={handleCopy}
+                  title="Copy color"
+                >
+                  {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={handlePaste}
+                  title="Paste color"
+                >
+                  <Pipette className="h-4 w-4" />
+                </Button>
                 <Button
                   variant="outline"
                   size="icon"
@@ -465,6 +624,91 @@ export function AdvancedColorPicker({
                       }`}
                       style={{ backgroundColor: color }}
                       onClick={() => handlePresetClick(color)}
+                    />
+                  ))}
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="harmony" className="p-4 space-y-4">
+              {/* Current color */}
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-muted-foreground">
+                  Current Color
+                </label>
+                <div className="flex items-center gap-2">
+                  <div
+                    className="h-8 w-8 rounded-md border"
+                    style={{ backgroundColor: value }}
+                  />
+                  <span className="font-mono text-sm">{value}</span>
+                </div>
+              </div>
+
+              {/* Complementary */}
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-muted-foreground">
+                  Complementary
+                </label>
+                <div className="flex gap-2">
+                  <button
+                    className="h-8 w-8 rounded-md border-2 transition-all hover:scale-110 border-transparent"
+                    style={{ backgroundColor: harmonyColors.complementary }}
+                    onClick={() => handlePresetClick(harmonyColors.complementary)}
+                    title={harmonyColors.complementary}
+                  />
+                </div>
+              </div>
+
+              {/* Triadic */}
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-muted-foreground">
+                  Triadic
+                </label>
+                <div className="flex gap-2">
+                  {harmonyColors.triadic.map((color, i) => (
+                    <button
+                      key={i}
+                      className="h-8 w-8 rounded-md border-2 transition-all hover:scale-110 border-transparent"
+                      style={{ backgroundColor: color }}
+                      onClick={() => handlePresetClick(color)}
+                      title={color}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Analogous */}
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-muted-foreground">
+                  Analogous
+                </label>
+                <div className="flex gap-2">
+                  {harmonyColors.analogous.map((color, i) => (
+                    <button
+                      key={i}
+                      className="h-8 w-8 rounded-md border-2 transition-all hover:scale-110 border-transparent"
+                      style={{ backgroundColor: color }}
+                      onClick={() => handlePresetClick(color)}
+                      title={color}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Split Complementary */}
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-muted-foreground">
+                  Split Complementary
+                </label>
+                <div className="flex gap-2">
+                  {harmonyColors.splitComplementary.map((color, i) => (
+                    <button
+                      key={i}
+                      className="h-8 w-8 rounded-md border-2 transition-all hover:scale-110 border-transparent"
+                      style={{ backgroundColor: color }}
+                      onClick={() => handlePresetClick(color)}
+                      title={color}
                     />
                   ))}
                 </div>

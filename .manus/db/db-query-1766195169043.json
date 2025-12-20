@@ -1,0 +1,50 @@
+{
+  "query": "SELECT * FROM database_connections;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute SELECT * FROM database_connections;",
+  "rows": [
+    {
+      "id": "1",
+      "name": "MachineDatabase Demo",
+      "connectionString": "mysql://2bBfAdpTc8yvngq.root:mFV2P8c4tg78M9EFOete@gateway02.us-east-1.prod.aws.tidbcloud.com:4000/RpnsLdN3u3f6PBDr9mn7Zq?ssl={\"rejectUnauthorized\":true}",
+      "databaseType": "internal",
+      "description": "Demo database connection for testing",
+      "isActive": "1",
+      "createdBy": "1",
+      "createdAt": "2025-12-11 05:50:00",
+      "updatedAt": "2025-12-14 14:41:46",
+      "host": "NULL",
+      "port": "NULL",
+      "database": "NULL",
+      "username": "NULL",
+      "password": "NULL",
+      "filePath": "NULL",
+      "connectionOptions": "NULL",
+      "lastTestedAt": "NULL",
+      "lastTestStatus": "NULL"
+    },
+    {
+      "id": "30001",
+      "name": "Internal Database (Demo)",
+      "connectionString": "mysql://demo_user@localhost:3306/cpk_spc_calculator",
+      "databaseType": "internal",
+      "description": "Kết nối mẫu đến database nội bộ của hệ thống. Sử dụng để thử nghiệm tính năng xem bảng và dữ liệu.",
+      "isActive": "1",
+      "createdBy": "1",
+      "createdAt": "2025-12-13 15:14:18",
+      "updatedAt": "2025-12-13 15:26:03",
+      "host": "localhost",
+      "port": "3306",
+      "database": "cpk_spc_calculator",
+      "username": "demo_user",
+      "password": "",
+      "filePath": "NULL",
+      "connectionOptions": "NULL",
+      "lastTestedAt": "NULL",
+      "lastTestStatus": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tconnectionString\tdatabaseType\tdescription\tisActive\tcreatedBy\tcreatedAt\tupdatedAt\thost\tport\tdatabase\tusername\tpassword\tfilePath\tconnectionOptions\tlastTestedAt\tlastTestStatus\n1\tMachineDatabase Demo\tmysql://2bBfAdpTc8yvngq.root:***@gateway02.us-east-1.prod.aws.tidbcloud.com:4000/RpnsLdN3u3f6PBDr9mn7Zq?ssl={\"rejectUnauthorized\":true}\tinternal\tDemo database connection for testing\t1\t1\t2025-12-11 05:50:00\t2025-12-14 14:41:46\tNULL\tNULL\tNULL\tNULL\tNULL\tNULL\tNULL\tNULL\tNULL\n30001\tInternal Database (Demo)\tmysql://demo_user@localhost:3306/cpk_spc_calculator\tinternal\tKết nối mẫu đến database nội bộ của hệ thống. Sử dụng để thử nghiệm tính năng xem bảng và dữ liệu.\t1\t1\t2025-12-13 15:14:18\t2025-12-13 15:26:03\tlocalhost\t3306\tcpk_spc_calculator\tdemo_user\t\tNULL\tNULL\tNULL\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 1532
+}

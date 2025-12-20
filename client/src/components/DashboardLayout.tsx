@@ -161,6 +161,10 @@ const fallbackLabelsVi: Record<string, string> = {
   "nav.themeSettings": "Cài đặt Giao diện",
   "nav.generalSettings": "Cài đặt Chung",
   "nav.appSettings": "Cài đặt Ứng dụng",
+  "menuGroup.licenseDashboard": "Dashboard License",
+  "menuGroup.licenseCustomers": "Khách hàng License",
+  "menuGroup.licenseSettings": "Cài đặt License",
+  "nav.licenseActivation": "Kích hoạt License",
 };
 
 const fallbackLabelsEn: Record<string, string> = {
@@ -279,6 +283,10 @@ const fallbackLabelsEn: Record<string, string> = {
   "nav.themeSettings": "Theme Settings",
   "nav.generalSettings": "General Settings",
   "nav.appSettings": "Application Settings",
+  "menuGroup.licenseDashboard": "License Dashboard",
+  "menuGroup.licenseCustomers": "License Customers",
+  "menuGroup.licenseSettings": "License Settings",
+  "nav.licenseActivation": "License Activation",
 };
 
 const MIN_WIDTH = 200;

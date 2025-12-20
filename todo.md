@@ -4323,3 +4323,23 @@
 - [x] Preview realtime khi thay đổi màu
 - [x] Lưu custom theme vào database
 
+
+## Phase 196 - Sửa lỗi Menu và Nâng cấp Color Picker
+
+### Sửa tên menu đang lỗi
+- [x] Sửa menuGroup.licenseDashboard
+- [x] Sửa menuGroup.licenseCustomers
+- [x] Sửa menuGroup.licenseSettings
+- [x] Sửa nav.licenseActivation
+
+### Nâng cấp Color Picker
+- [x] Thêm chức năng copy/paste màu giữa các color picker
+- [x] Tạo color harmony suggestions (complementary, triadic, analogous, split complementary)
+- [x] Thêm opacity/alpha channel cho màu sắc
+
+### Sửa chức năng Database
+- [x] Sửa chức năng "Sửa kết nối" trong Quản lý database
+- [x] Sửa selectbox database trong Di chuyển dữ liệu (thêm dữ liệu mẫu)
+- [x] Sửa selectbox database trong So sánh Schema (thêm dữ liệu mẫu)
+- [x] Kiểm tra chức năng Lịch sử Backup (API hoạt động đúng)
+

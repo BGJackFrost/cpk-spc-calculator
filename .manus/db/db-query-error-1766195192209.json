@@ -1,0 +1,8 @@
+{
+  "query": "INSERT INTO database_connections (name, databaseType, host, port, `database`, username, isActive, createdAt, updatedAt) VALUES \n('Production MySQL', 'mysql', 'localhost', 3306, 'production_db', 'admin', 1, NOW(), NOW()),\n('Development PostgreSQL', 'postgresql', 'localhost', 5432, 'dev_db', 'developer', 1, NOW(), NOW()),\n('Test Database', 'mysql', '192.168.1.100', 3306, 'test_db', 'tester', 1, NOW(), NOW());",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute INSERT INTO database_connections (name, databaseType, host, port, `database`, username, isActive, createdAt, updatedAt) VALUES \n('Production MySQL', 'mysql', 'localhost', 3306, 'production_db', 'admin', 1, NOW(), NOW()),\n('Development PostgreSQL', 'postgresql', 'localhost', 5432, 'dev_db', 'developer', 1, NOW(), NOW()),\n('Test Database', 'mysql', '192.168.1.100', 3306, 'test_db', 'tester', 1, NOW(), NOW());",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1364 (HY000) at line 1: Field 'connectionString' doesn't have a default value"
+  ]
+}
