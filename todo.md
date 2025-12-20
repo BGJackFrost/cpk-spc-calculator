@@ -4616,3 +4616,29 @@
 - [ ] Thiết lập require status checks (cần thực hiện thủ công)
 - [ ] Thiết lập require PR reviews (cần thực hiện thủ công)
 
+
+## Phase 210 - GitHub Login, CI Workflow Upload và PR Test
+
+### Đăng nhập GitHub
+- [x] Đăng nhập vào GitHub
+- [x] Kiểm tra quyền truy cập repository
+
+### Upload CI Workflow
+- [x] Upload ci.yml lên GitHub
+- [x] Kiểm tra workflow chạy
+- [x] Sửa lỗi pnpm frozen-lockfile
+- [x] Sửa lỗi vitest version mismatch
+- [x] Sửa lỗi scheduledReports.test.ts (skip khi không có db)
+- [x] Sửa lỗi phase60.test.ts (đường dẫn tương đối)
+- [x] Sửa lỗi phase33.test.ts (getLoginStats structure) - local fixed
+- [ ] Upload phase33.test.ts đã sửa lên GitHub (cần thực hiện thủ công)
+
+### Kiểm tra Badges
+- [ ] Kiểm tra CI badge trên README (sau khi CI pass)
+- [ ] Kiểm tra Coverage badge
+
+### Tạo PR Test
+- [ ] Tạo branch mới
+- [ ] Tạo Pull Request
+- [ ] Kiểm tra Branch Protection hoạt động
+

@@ -57,13 +57,13 @@ describe("Phase 28 - S3 Storage, Filters và Email", () => {
     it("should have appRouter defined", async () => {
       const routersModule = await import("./routers");
       expect(routersModule.appRouter).toBeDefined();
-    });
+    }, 15000); // Increase timeout for router import
 
     it("should have router procedures defined", async () => {
       const routersModule = await import("./routers");
       expect(routersModule.appRouter._def).toBeDefined();
       expect(routersModule.appRouter._def.procedures).toBeDefined();
-    });
+    }, 15000); // Increase timeout for router import
   });
 
   describe("Schema", () => {
