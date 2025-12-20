@@ -4362,3 +4362,26 @@
 - [x] Dialog xác nhận xóa hàng loạt
 - [x] Hiển thị số lượng đã chọn và highlight rows
 
+
+## Phase 198 - Cải thiện Theme, License và Menu
+
+### Cải thiện Theme áp dụng cho giao diện chính
+- [x] Cập nhật CSS variables cho text và background khi theme thay đổi
+- [x] Áp dụng màu primary/secondary cho top menu, sidebar
+- [x] Đảm bảo cards, buttons đều thay đổi theo theme
+
+### Gộp 2 phần License
+- [x] Xóa menu "License của tôi" riêng biệt
+- [x] Gộp chức năng kích hoạt license vào tab License trong About
+- [x] Cập nhật navigation
+
+### Tách menu trong Hệ thống
+- [x] Tạo catalog "Thông tin" riêng cho "Thông tin Công ty" và "Giới thiệu"
+- [x] Di chuyển 2 menu items sang catalog mới
+- [x] Cập nhật sidebar navigation
+
+### Sửa lỗi Database Connections
+- [x] Kiểm tra API lấy danh sách database connections
+- [x] Hiển thị database có sẵn của hệ thống trong dropdown
+- [x] Thêm sample connections nếu cần
+

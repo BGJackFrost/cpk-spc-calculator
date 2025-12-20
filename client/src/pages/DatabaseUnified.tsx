@@ -289,6 +289,42 @@ const mockConnections: DatabaseConnection[] = [
 export default function DatabaseUnified() {
   const [activeTab, setActiveTab] = useState("overview");
   const [connections, setConnections] = useState<DatabaseConnection[]>(mockConnections);
+  const [isLoadingConnections, setIsLoadingConnections] = useState(true);
+  
+  // Load connections from API
+  const connectionsQuery = trpc.databaseConnection.list.useQuery({});
+  
+  // Update connections when API data changes
+  useEffect(() => {
+    if (connectionsQuery.data) {
+      // Transform API data to match DatabaseConnection interface
+      const transformedConnections: DatabaseConnection[] = connectionsQuery.data.map((conn: any) => ({
+        id: conn.id,
+        name: conn.name,
+        databaseType: conn.databaseType as DatabaseType,
+        host: conn.host || '',
+        port: conn.port || 0,
+        database: conn.database || '',
+        username: conn.username || '',
+        description: conn.description || '',
+        isDefault: conn.isDefault === 1,
+        isActive: conn.isActive === 1,
+        isPrimary: conn.isDefault === 1,
+        syncEnabled: false,
+        healthStatus: conn.healthCheckEnabled ? 'healthy' : 'unknown' as const,
+        connectionCount: 0,
+        maxConnections: conn.maxConnections || 100,
+        lastHealthCheck: conn.lastHealthCheck ? new Date(conn.lastHealthCheck) : undefined,
+      }));
+      if (transformedConnections.length > 0) {
+        setConnections(transformedConnections);
+      }
+      setIsLoadingConnections(false);
+    } else if (connectionsQuery.isError) {
+      // Keep mock data on error
+      setIsLoadingConnections(false);
+    }
+  }, [connectionsQuery.data, connectionsQuery.isError]);
   const [selectedConnection, setSelectedConnection] = useState<DatabaseConnection | null>(null);
   const [showPasswordMap, setShowPasswordMap] = useState<Record<number, boolean>>({});
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);

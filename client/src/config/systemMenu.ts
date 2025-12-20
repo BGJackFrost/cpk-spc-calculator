@@ -283,18 +283,10 @@ export const SYSTEM_MENU: SystemMenuConfig = {
   system: SYSTEMS.SYSTEM,
   menuGroups: [
     {
-      id: "my-license",
-      labelKey: "menuGroup.myLicense",
-      icon: Key,
-      defaultOpen: true,
-      items: [
-        { id: "license-activation", icon: Key, labelKey: "nav.licenseActivation", path: "/license-activation" },
-      ],
-    },
-    {
       id: "users-management",
       labelKey: "menuGroup.users",
       icon: Users,
+      defaultOpen: true,
       items: [
         { id: "users", icon: Users, labelKey: "nav.userManagement", path: "/users" },
         { id: "local-users", icon: UserCog, labelKey: "nav.localUserManagement", path: "/local-users", adminOnly: true },
@@ -317,7 +309,6 @@ export const SYSTEM_MENU: SystemMenuConfig = {
         { id: "data-migration", icon: ArrowUpDown, labelKey: "nav.dataMigration", path: "/data-migration", adminOnly: true },
         { id: "schema-comparison", icon: Database, labelKey: "nav.schemaComparison", path: "/schema-comparison", adminOnly: true },
         { id: "backup-history", icon: FolderClock, labelKey: "nav.backupHistory", path: "/backup-history", adminOnly: true },
-        { id: "company-info", icon: Building2, labelKey: "nav.companyInfo", path: "/company-info", adminOnly: true },
       ],
     },
     {
@@ -342,6 +333,14 @@ export const SYSTEM_MENU: SystemMenuConfig = {
         { id: "export-history", icon: FolderClock, labelKey: "nav.exportHistory", path: "/export-history" },
         { id: "scheduled-jobs", icon: Clock, labelKey: "nav.scheduledJobs", path: "/scheduled-jobs", adminOnly: true },
         { id: "rate-limit-dashboard", icon: Shield, labelKey: "nav.rateLimitDashboard", path: "/rate-limit-dashboard", adminOnly: true },
+      ],
+    },
+    {
+      id: "system-info",
+      labelKey: "menuGroup.systemInfo",
+      icon: Info,
+      items: [
+        { id: "company-info", icon: Building2, labelKey: "nav.companyInfo", path: "/company-info", adminOnly: true },
         { id: "about", icon: Info, labelKey: "nav.about", path: "/about" },
       ],
     },

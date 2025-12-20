@@ -165,6 +165,7 @@ const fallbackLabelsVi: Record<string, string> = {
   "menuGroup.licenseCustomers": "Khách hàng License",
   "menuGroup.licenseSettings": "Cài đặt License",
   "nav.licenseActivation": "Kích hoạt License",
+  "menuGroup.systemInfo": "Thông tin",
 };
 
 const fallbackLabelsEn: Record<string, string> = {
@@ -287,6 +288,7 @@ const fallbackLabelsEn: Record<string, string> = {
   "menuGroup.licenseCustomers": "License Customers",
   "menuGroup.licenseSettings": "License Settings",
   "nav.licenseActivation": "License Activation",
+  "menuGroup.systemInfo": "Information",
 };
 
 const MIN_WIDTH = 200;

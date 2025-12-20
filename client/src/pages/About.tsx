@@ -1,17 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Info, 
-  Key, 
-  CheckCircle, 
-  AlertCircle, 
   Server, 
   Database, 
   BarChart3, 
@@ -21,14 +16,8 @@ import {
   Cpu,
   Activity,
   FileText,
-  Settings,
-  Loader2,
   Copy,
-  Check,
-  Wifi,
-  WifiOff,
-  RefreshCw,
-  Globe
+  Check
 } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
@@ -57,58 +46,10 @@ const TECH_STACK = [
 
 export default function About() {
   const { user } = useAuth();
-  const [licenseKey, setLicenseKey] = useState("");
-  const [isActivating, setIsActivating] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [licenseServerUrl, setLicenseServerUrl] = useState("");
-  const [isValidating, setIsValidating] = useState(false);
-  const [serverStatus, setServerStatus] = useState<'connected' | 'disconnected' | 'checking'>('checking');
-  const [deviceId] = useState(() => {
-    // Generate or get device ID
-    let id = localStorage.getItem('device_id');
-    if (!id) {
-      id = 'DEV-' + Math.random().toString(36).substring(2, 15);
-      localStorage.setItem('device_id', id);
-    }
-    return id;
-  });
   
   // Fetch active license from database
-  const { data: activeLicense, refetch: refetchLicense } = trpc.license.getActive.useQuery();
-  
-  // License Server status
-  const licenseServerStatus = trpc.licenseServer.getStatus.useQuery(undefined, {
-    refetchInterval: 30000
-  });
-  
-  // Update server status when query data changes
-  useEffect(() => {
-    if (licenseServerStatus.data) {
-      setServerStatus(licenseServerStatus.data.connected ? 'connected' : 'disconnected');
-    } else if (licenseServerStatus.error) {
-      setServerStatus('disconnected');
-    }
-  }, [licenseServerStatus.data, licenseServerStatus.error]);
-  
-  // Validate license with License Server
-  const validateMutation = trpc.licenseServer.validateLicense.useMutation();
-  const activateServerMutation = trpc.licenseServer.activateLicense.useMutation();
-  const heartbeatMutation = trpc.licenseServer.heartbeat.useMutation();
-  
-  // Send heartbeat periodically
-  useEffect(() => {
-    if (activeLicense?.licenseKey && serverStatus === 'connected') {
-      const sendHeartbeat = () => {
-        heartbeatMutation.mutate({
-          licenseKey: activeLicense.licenseKey,
-          deviceId
-        });
-      };
-      sendHeartbeat();
-      const interval = setInterval(sendHeartbeat, 60 * 60 * 1000); // Every hour
-      return () => clearInterval(interval);
-    }
-  }, [activeLicense?.licenseKey, serverStatus, deviceId]);
+  const { data: activeLicense } = trpc.license.getActive.useQuery();
   
   const licenseStatus = {
     isActive: activeLicense?.isActive === 1,
@@ -116,31 +57,6 @@ export default function About() {
     expiresAt: activeLicense?.expiresAt ? new Date(activeLicense.expiresAt) : null,
     maxUsers: activeLicense?.maxUsers || 5,
     maxProductionLines: activeLicense?.maxProductionLines || 3,
-  };
-  
-  const activateMutation = trpc.license.activate.useMutation({
-    onSuccess: () => {
-      toast.success("Kích hoạt license thành công!");
-      refetchLicense();
-      setLicenseKey("");
-    },
-    onError: (error) => {
-      toast.error(error.message || "Kích hoạt thất bại");
-    },
-  });
-
-  const handleActivateLicense = async () => {
-    if (!licenseKey.trim()) {
-      toast.error("Vui lòng nhập mã license");
-      return;
-    }
-
-    setIsActivating(true);
-    try {
-      await activateMutation.mutateAsync({ licenseKey: licenseKey.trim() });
-    } finally {
-      setIsActivating(false);
-    }
   };
 
   const getLicenseTypeBadge = (type: string) => {
@@ -203,7 +119,6 @@ export default function About() {
           <TabsList>
             <TabsTrigger value="info">Thông tin</TabsTrigger>
             <TabsTrigger value="features">Tính năng</TabsTrigger>
-            <TabsTrigger value="license">License</TabsTrigger>
             <TabsTrigger value="tech">Công nghệ</TabsTrigger>
           </TabsList>
 
@@ -351,210 +266,6 @@ export default function About() {
             </Card>
           </TabsContent>
 
-          {/* License Tab */}
-          <TabsContent value="license" className="space-y-4">
-            {/* License Server Connection Status */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Globe className="h-5 w-5" />
-                  Kết nối License Server
-                </CardTitle>
-                <CardDescription>
-                  Xác thực license online với License Server
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
-                  <div className="flex items-center gap-2">
-                    {serverStatus === 'connected' ? (
-                      <><Wifi className="h-5 w-5 text-green-500" /><span className="text-green-600 font-medium">Đã kết nối License Server</span></>
-                    ) : serverStatus === 'checking' ? (
-                      <><RefreshCw className="h-5 w-5 animate-spin text-blue-500" /><span className="text-blue-600">Đang kiểm tra...</span></>
-                    ) : (
-                      <><WifiOff className="h-5 w-5 text-red-500" /><span className="text-red-600">Chưa kết nối License Server</span></>
-                    )}
-                  </div>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => licenseServerStatus.refetch()}
-                  >
-                    <RefreshCw className="h-4 w-4" />
-                  </Button>
-                </div>
-                
-                {serverStatus === 'disconnected' && (
-                  <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm">
-                    <p className="text-yellow-800">
-                      <AlertCircle className="h-4 w-4 inline mr-1" />
-                      License Server chưa được cấu hình. Vui lòng liên hệ Admin để cấu hình kết nối.
-                    </p>
-                  </div>
-                )}
-                
-                <div className="text-xs text-muted-foreground">
-                  <p>Device ID: <code className="bg-muted px-1 rounded">{deviceId}</code></p>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <div className="grid gap-4 md:grid-cols-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Key className="h-5 w-5" />
-                    Kích hoạt License
-                  </CardTitle>
-                  <CardDescription>
-                    Nhập mã license để kích hoạt và xác thực online
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="license-key">Mã License</Label>
-                    <Input
-                      id="license-key"
-                      placeholder="SPC-XXX-XXXX-XXXX-XXXX"
-                      value={licenseKey}
-                      onChange={(e) => setLicenseKey(e.target.value.toUpperCase())}
-                      className="font-mono"
-                    />
-                  </div>
-                  
-                  <div className="flex gap-2">
-                    <Button 
-                      onClick={async () => {
-                        if (!licenseKey.trim()) {
-                          toast.error("Vui lòng nhập mã license");
-                          return;
-                        }
-                        setIsValidating(true);
-                        try {
-                          // Validate with License Server first
-                          if (serverStatus === 'connected') {
-                            const validation = await validateMutation.mutateAsync({
-                              licenseKey: licenseKey.trim(),
-                              deviceId
-                            });
-                            if (!validation.valid) {
-                              toast.error(validation.error || "License không hợp lệ");
-                              return;
-                            }
-                            // Activate on server
-                            const activation = await activateServerMutation.mutateAsync({
-                              licenseKey: licenseKey.trim(),
-                              deviceId,
-                              deviceName: navigator.userAgent.substring(0, 50)
-                            });
-                            if (!activation.success) {
-                              toast.error(activation.error || "Kích hoạt thất bại");
-                              return;
-                            }
-                          }
-                          // Activate locally
-                          await activateMutation.mutateAsync({ licenseKey: licenseKey.trim() });
-                        } catch (error: any) {
-                          toast.error(error.message || "Kích hoạt thất bại");
-                        } finally {
-                          setIsValidating(false);
-                        }
-                      }}
-                      disabled={isActivating || isValidating || !licenseKey.trim()}
-                      className="flex-1"
-                    >
-                      {(isActivating || isValidating) ? (
-                        <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Đang xác thực...</>
-                      ) : (
-                        <><Key className="h-4 w-4 mr-2" />Kích hoạt License</>
-                      )}
-                    </Button>
-                  </div>
-                  
-                  {serverStatus === 'connected' && (
-                    <p className="text-xs text-green-600 flex items-center gap-1">
-                      <CheckCircle className="h-3 w-3" />
-                      License sẽ được xác thực online với License Server
-                    </p>
-                  )}
-                  
-                  <Separator />
-                  
-                  <div className="text-sm text-muted-foreground space-y-2">
-                    <p className="font-semibold">Định dạng mã license:</p>
-                    <ul className="list-disc list-inside space-y-1">
-                      <li><code className="bg-muted px-1 rounded">SPC-STD-XXXX</code> - Standard Edition</li>
-                      <li><code className="bg-muted px-1 rounded">SPC-PRO-XXXX</code> - Professional Edition</li>
-                      <li><code className="bg-muted px-1 rounded">SPC-ENT-XXXX</code> - Enterprise Edition</li>
-                    </ul>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>So sánh Gói License</CardTitle>
-                  <CardDescription>
-                    Chọn gói phù hợp với nhu cầu của bạn
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="p-4 rounded-lg border">
-                      <div className="flex justify-between items-center mb-2">
-                        <h4 className="font-semibold">Trial</h4>
-                        <Badge className="bg-yellow-100 text-yellow-800">Miễn phí</Badge>
-                      </div>
-                      <ul className="text-sm text-muted-foreground space-y-1">
-                        <li>• 30 ngày dùng thử</li>
-                        <li>• Tối đa 5 người dùng</li>
-                        <li>• Tối đa 3 dây chuyền</li>
-                      </ul>
-                    </div>
-                    
-                    <div className="p-4 rounded-lg border">
-                      <div className="flex justify-between items-center mb-2">
-                        <h4 className="font-semibold">Standard</h4>
-                        <Badge className="bg-blue-100 text-blue-800">$499/năm</Badge>
-                      </div>
-                      <ul className="text-sm text-muted-foreground space-y-1">
-                        <li>• Tối đa 20 người dùng</li>
-                        <li>• Tối đa 10 dây chuyền</li>
-                        <li>• Hỗ trợ email</li>
-                      </ul>
-                    </div>
-                    
-                    <div className="p-4 rounded-lg border border-purple-200 bg-purple-50/50">
-                      <div className="flex justify-between items-center mb-2">
-                        <h4 className="font-semibold">Professional</h4>
-                        <Badge className="bg-purple-100 text-purple-800">$999/năm</Badge>
-                      </div>
-                      <ul className="text-sm text-muted-foreground space-y-1">
-                        <li>• Tối đa 50 người dùng</li>
-                        <li>• Tối đa 20 dây chuyền</li>
-                        <li>• Hỗ trợ ưu tiên</li>
-                        <li>• API access</li>
-                      </ul>
-                    </div>
-                    
-                    <div className="p-4 rounded-lg border border-green-200 bg-green-50/50">
-                      <div className="flex justify-between items-center mb-2">
-                        <h4 className="font-semibold">Enterprise</h4>
-                        <Badge className="bg-green-100 text-green-800">Liên hệ</Badge>
-                      </div>
-                      <ul className="text-sm text-muted-foreground space-y-1">
-                        <li>• Không giới hạn người dùng</li>
-                        <li>• Không giới hạn dây chuyền</li>
-                        <li>• Hỗ trợ 24/7</li>
-                        <li>• On-premise deployment</li>
-                        <li>• Custom integrations</li>
-                      </ul>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
 
           {/* Tech Stack Tab */}
           <TabsContent value="tech" className="space-y-4">
