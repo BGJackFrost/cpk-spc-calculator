@@ -4642,3 +4642,20 @@
 - [ ] Tạo Pull Request
 - [ ] Kiểm tra Branch Protection hoạt động
 
+
+## Phase 211 - Nâng cấp Đăng nhập Online/Offline và GitHub CI
+
+### Nâng cấp Đăng nhập
+- [x] Tạo AuthModeContext để quản lý chế độ đăng nhập (Online/Offline)
+- [x] Cập nhật trang Home.tsx với toggle Online/Offline
+- [x] Online là chế độ mặc định (Manus OAuth)
+- [x] Offline sử dụng local database authentication
+- [x] Lưu preference vào localStorage
+- [x] Cập nhật UI đăng nhập với 2 chế độ rõ ràng
+
+### GitHub CI
+- [x] Upload phase33.test.ts lên GitHub
+- [x] Kiểm tra CI workflow pass
+- [x] Thiết lập Branch Protection Rules
+- [x] Tích hợp Codecov
+
