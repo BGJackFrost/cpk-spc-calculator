@@ -4659,3 +4659,15 @@
 - [x] Thiết lập Branch Protection Rules
 - [x] Tích hợp Codecov
 
+
+## Phase 212 - Codecov Enhancement
+
+### Badge & Configuration
+- [x] Thêm badge Codecov vào README
+- [x] Tạo file codecov.yml để cấu hình comment trên PR
+
+### Unit Tests
+- [x] Viết thêm unit tests cho server/db.ts
+- [x] Viết thêm unit tests cho server/routers.ts
+- [x] Đạt coverage > 50% (thêm 5 file tests mới: db.test.ts, cache.test.ts, encryptionService.test.ts, auditService.test.ts, exportUtils.test.ts, offlineConfig.test.ts, routers.test.ts)
+
