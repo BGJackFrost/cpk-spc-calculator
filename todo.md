@@ -4671,3 +4671,22 @@
 - [x] Viết thêm unit tests cho server/routers.ts
 - [x] Đạt coverage > 50% (thêm 5 file tests mới: db.test.ts, cache.test.ts, encryptionService.test.ts, auditService.test.ts, exportUtils.test.ts, offlineConfig.test.ts, routers.test.ts)
 
+
+## Phase 213 - Codecov PR Test & Integration Tests
+
+### PR Test
+- [x] Tạo feature branch từ main
+- [x] Thêm integration tests mới
+- [x] Tạo PR để test Codecov comment (PR #1)
+
+### Integration Tests
+- [x] Tests cho auth endpoints (login, logout, me)
+- [x] Tests cho product endpoints (CRUD)
+- [x] Tests cho SPC analysis endpoints
+- [x] Tests cho dashboard endpoints
+
+### Coverage Threshold
+- [ ] Tăng threshold lên 30%
+- [ ] Tăng threshold lên 40%
+- [ ] Tăng threshold lên 50%
+
