@@ -87,23 +87,43 @@ export const cacheKeys = {
   workstations: () => 'workstations:all',
   workstationById: (id: number) => "workstations:" + id,
   machines: () => 'machines:all',
+  machineById: (id: number) => "machines:" + id,
+  machinesByWorkstation: (workstationId: number) => "machines:workstation:" + workstationId,
   machineTypes: () => 'machineTypes:all',
   fixtures: () => 'fixtures:all',
   fixturesByMachine: (machineId: number) => "fixtures:machine:" + machineId,
   productionLines: () => 'productionLines:all',
+  productionLineById: (id: number) => "productionLines:" + id,
   samplingConfigs: () => 'samplingConfigs:all',
   specifications: () => 'specifications:all',
+  specificationsByProduct: (productId: number) => "specifications:product:" + productId,
+  mappings: () => 'mappings:all',
+  mappingById: (id: number) => "mappings:" + id,
   
   // SPC data (shorter TTL - 30 seconds)
   spcPlans: () => 'spcPlans:all',
   spcPlanById: (id: number) => "spcPlans:" + id,
+  spcPlansByLine: (lineId: number) => "spcPlans:line:" + lineId,
   analysisHistory: (page: number, limit: number) => "analysisHistory:page:" + page + ":limit:" + limit,
+  analysisHistoryByProduct: (productCode: string) => "analysisHistory:product:" + productCode,
   realtimeData: (planId: number) => "realtimeData:plan:" + planId,
   summaryStats: (planId: number, period: string) => "summaryStats:plan:" + planId + ":period:" + period,
   
   // Dashboard (medium TTL - 1 minute)
   dashboardStats: (userId: number) => "dashboard:stats:" + userId,
   dashboardConfig: (userId: number) => "dashboard:config:" + userId,
+  
+  // Quick Access
+  quickAccess: (userId: number) => "quickAccess:user:" + userId,
+  
+  // Rules
+  spcRules: () => 'spcRules:all',
+  caRules: () => 'caRules:all',
+  cpkRules: () => 'cpkRules:all',
+  
+  // Defects
+  defectCategories: () => 'defectCategories:all',
+  defectStats: (days: number, lineId?: number) => "defectStats:days:" + days + ":line:" + (lineId || 'all'),
 };
 
 // TTL constants (in milliseconds)
@@ -147,6 +167,47 @@ export function invalidateCache(patterns: string[]): void {
   for (const pattern of patterns) {
     cache.deletePattern(pattern);
   }
+}
+
+// Cache invalidation patterns for common operations
+export const invalidationPatterns = {
+  // When products change
+  products: ['products:'],
+  // When workstations change
+  workstations: ['workstations:'],
+  // When machines change
+  machines: ['machines:'],
+  // When production lines change
+  productionLines: ['productionLines:', 'spcPlans:line:'],
+  // When SPC plans change
+  spcPlans: ['spcPlans:', 'realtimeData:', 'summaryStats:'],
+  // When analysis history changes
+  analysisHistory: ['analysisHistory:'],
+  // When rules change
+  rules: ['spcRules:', 'caRules:', 'cpkRules:'],
+  // When defects change
+  defects: ['defectCategories:', 'defectStats:'],
+  // When quick access changes
+  quickAccess: ['quickAccess:'],
+  // When dashboard config changes
+  dashboard: ['dashboard:'],
+};
+
+// Helper to invalidate related caches
+export function invalidateRelatedCaches(entityType: keyof typeof invalidationPatterns): void {
+  const patterns = invalidationPatterns[entityType];
+  if (patterns) {
+    invalidateCache(patterns);
+  }
+}
+
+// Get cache statistics for monitoring
+export function getCacheStats(): {
+  size: number;
+  keys: string[];
+  hitRate?: number;
+} {
+  return cache.stats();
 }
 
 // Export for use in routers

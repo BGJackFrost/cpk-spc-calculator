@@ -137,6 +137,7 @@ import DatabaseUnified from "./pages/DatabaseUnified";
 import BackupRestore from "./pages/BackupRestore";
 import AnomalyDetection from "./pages/AnomalyDetection";
 import AppSettings from "./pages/AppSettings";
+import QuickAccessManagement from "./pages/QuickAccessManagement";
 
 function Router() {
   return (
@@ -165,6 +166,7 @@ function Router() {
       <Route path="/mappings" component={Mappings} />
       <Route path="/settings" component={Settings} />
       <Route path="/app-settings" component={AppSettings} />
+      <Route path="/quick-access" component={QuickAccessManagement} />
       <Route path="/users" component={UserManagement} />
       <Route path="/local-users" component={LocalUserManagement} />
       <Route path="/products" component={ProductManagement} />
