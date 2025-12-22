@@ -4689,7 +4689,7 @@
 ## Phase 1: Performance & Stability (Q1 2025 - Tuần 1-6)
 
 ### 1.1 Database Query Optimization (Tuần 1-2)
-- [ ] P1-DB-01: Audit slow queries với EXPLAIN ANALYZE
+- [x] P1-DB-01: Audit slow queries với EXPLAIN ANALYZE (Phát hiện 193 queries cần tối ưu)
 - [ ] P1-DB-02: Thêm composite indexes cho spc_analysis_history, audit_logs, work_orders
 - [ ] P1-DB-03: Implement cursor-based pagination cho danh sách lớn
 - [ ] P1-DB-04: Tối ưu connection pool với PgBouncer/ProxySQL
@@ -4727,7 +4727,7 @@
 ## Phase 2: Security Enhancement (Q1 2025 - Tuần 7-13)
 
 ### 2.1 Security Audit (Tuần 7-8)
-- [ ] P2-SEC-01: Scan vulnerabilities với npm audit, Snyk
+- [x] P2-SEC-01: Scan vulnerabilities với npm audit, Snyk (Fixed 2 HIGH vulnerabilities)
 - [ ] P2-SEC-02: Static code analysis với SonarQube
 - [ ] P2-SEC-03: Penetration testing với OWASP ZAP
 - [ ] P2-SEC-04: Review JWT implementation, session management
@@ -4742,7 +4742,7 @@
 - [ ] P2-OWASP-05: Review data encryption và masking
 - [ ] P2-OWASP-06: Review authorization logic
 - [ ] P2-OWASP-07: Review server và app configuration
-- [ ] P2-OWASP-08: Update dependencies có vulnerabilities
+- [x] P2-OWASP-08: Update dependencies có vulnerabilities (@trpc/server 11.8.1, streamdown 1.6.10)
 
 ### 2.3 Data Encryption at Rest (Tuần 11)
 - [ ] P2-ENC-01: Enable TDE (Transparent Data Encryption)
@@ -4851,3 +4851,25 @@
 - [ ] P4-TRN-03: Chương trình certification
 - [ ] P4-TRN-04: Materials cho trainers
 - [ ] P4-TRN-05: Bài test đánh giá
+
+
+## Phase 230 - CI/CD Pipeline Setup (22/12/2024)
+
+### GitHub Actions Workflows
+- [x] ci.yml: Main CI pipeline (lint, test, build, security)
+- [x] security.yml: Weekly security scanning (CodeQL, Gitleaks, dependency audit)
+- [x] db-migration.yml: Database migration automation
+
+### Security Fixes Applied
+- [x] @trpc/server upgraded 11.6.0 → 11.8.1 (fix CVE-2025-68130 Prototype Pollution)
+- [x] @trpc/client upgraded 11.6.0 → 11.8.1
+- [x] @trpc/react-query upgraded 11.6.0 → 11.8.1
+- [x] streamdown upgraded 1.4.0 → 1.6.10 (fix XSS vulnerabilities)
+
+### Database Optimization Scripts
+- [x] scripts/add-indexes.sql: SQL script để thêm indexes cho 15+ tables
+- [x] docs/AUDIT_REPORT_P1-DB-01.md: Báo cáo chi tiết audit queries và security
+
+### Remaining Vulnerabilities (7 moderate)
+- [ ] tar@7.5.1 (dependency của @tailwindcss/oxide) - waiting for upstream fix
+- [ ] Various markdown packages - low priority
