@@ -215,11 +215,9 @@ export default function LandingPage() {
       <header className="border-b bg-background/80 backdrop-blur-lg supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
         <div className="container flex h-16 items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-lg shadow-primary/25">
-              <TrendingUp className="h-6 w-6 text-primary-foreground" />
-            </div>
+            <img src="/foutec-logo.png" alt="Foutec Logo" className="w-10 h-10 object-contain" />
             <div>
-              <span className="font-bold text-lg">SPC/CPK Calculator</span>
+              <span className="font-bold text-lg">Foutec SPC/CPK</span>
               <p className="text-xs text-muted-foreground">Manufacturing Excellence System</p>
             </div>
           </div>
@@ -522,8 +520,11 @@ export default function LandingPage() {
           <div className="grid lg:grid-cols-2 gap-12">
             <div>
               <h2 className="text-3xl font-bold mb-6">Thông tin Công ty</h2>
+              <p className="text-lg text-primary font-medium italic mb-4">
+                "Sự hài lòng của bạn là giá trị cốt lõi của chúng tôi"
+              </p>
               <p className="text-muted-foreground mb-8 leading-relaxed">
-                Chúng tôi cung cấp giải pháp phần mềm quản lý sản xuất và kiểm soát chất lượng 
+                Công ty TNHH Foutec chuyên cung cấp giải pháp phần mềm quản lý sản xuất và kiểm soát chất lượng 
                 cho các doanh nghiệp sản xuất công nghiệp, giúp nâng cao hiệu suất và giảm chi phí.
               </p>
               
@@ -533,7 +534,7 @@ export default function LandingPage() {
                     <Building2 className="h-5 w-5 text-primary" />
                   </div>
                   <div>
-                    <div className="font-medium">Công ty TNHH Giải pháp Công nghệ</div>
+                    <div className="font-medium">Công Ty TNHH Foutec</div>
                     <div className="text-sm text-muted-foreground">Manufacturing Excellence Solutions</div>
                   </div>
                 </div>
@@ -544,7 +545,7 @@ export default function LandingPage() {
                   </div>
                   <div>
                     <div className="font-medium">Địa chỉ</div>
-                    <div className="text-sm text-muted-foreground">123 Đường ABC, Quận XYZ, TP. Hồ Chí Minh</div>
+                    <div className="text-sm text-muted-foreground">Lạc Vệ, Tân Chi, Bắc Ninh</div>
                   </div>
                 </div>
                 
@@ -554,7 +555,7 @@ export default function LandingPage() {
                   </div>
                   <div>
                     <div className="font-medium">Hotline</div>
-                    <div className="text-sm text-muted-foreground">1900 xxxx xx</div>
+                    <div className="text-sm text-muted-foreground">0778484853</div>
                   </div>
                 </div>
                 
@@ -564,7 +565,7 @@ export default function LandingPage() {
                   </div>
                   <div>
                     <div className="font-medium">Email</div>
-                    <div className="text-sm text-muted-foreground">contact@company.com</div>
+                    <div className="text-sm text-muted-foreground">admin@foutec.vn</div>
                   </div>
                 </div>
               </div>
@@ -622,13 +623,11 @@ export default function LandingPage() {
         <div className="container">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-                <TrendingUp className="h-5 w-5 text-primary-foreground" />
-              </div>
-              <span className="font-semibold">SPC/CPK Calculator</span>
+              <img src="/foutec-logo.png" alt="Foutec Logo" className="w-8 h-8 object-contain" />
+              <span className="font-semibold">Foutec SPC/CPK</span>
             </div>
             <p className="text-sm text-muted-foreground">
-              © 2024 Manufacturing Excellence System. All rights reserved.
+              © 2024 Công Ty TNHH Foutec. All rights reserved.
             </p>
             <div className="flex items-center gap-4">
               <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">

@@ -56,7 +56,7 @@ const systemDefaultPaths: Record<string, string> = {
 
 export function TopNavigation() {
   const { activeSystem, setActiveSystem } = useSystem();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const { language } = useLanguage();
   const isVi = language === "vi";
 
@@ -70,14 +70,25 @@ export function TopNavigation() {
   ];
 
   const handleSystemClick = (systemId: string) => {
+    // Dashboard is a special case - just navigate without changing activeSystem
+    // This prevents the infinite loop error because "dashboard" is not a valid system
+    if (systemId === "dashboard") {
+      setLocation("/dashboard");
+      return;
+    }
+    
     setActiveSystem(systemId);
     setLocation(systemDefaultPaths[systemId]);
   };
 
+  // Check if dashboard is active based on current location
+  const isDashboardActive = location === "/dashboard";
+
   return (
     <nav className="hidden lg:flex items-center gap-1">
       {systems.map(({ id, config }) => {
-        const isActive = activeSystem === id;
+        // Dashboard active state is based on location, others based on activeSystem
+        const isActive = id === "dashboard" ? isDashboardActive : activeSystem === id;
         const Icon = config.icon;
         const labels = systemLabels[id];
         

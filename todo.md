@@ -4447,3 +4447,19 @@
 - [x] Thống kê số lượng trang, bảng, API endpoints
 - [x] Đánh giá mức độ hoàn thiện các module
 - [x] Tạo báo cáo kế hoạch nâng cấp và cải tiến
+
+
+## Phase 215 - Bug Fix và Cải tiến Landing Page
+
+### Bug Fix
+- [x] Sửa lỗi Dashboard button trên Top Menu gây infinite loop (useMemo cho menuGroups)
+- [x] Xóa cache Vite và restart server
+
+### Tùy chỉnh Landing Page
+- [x] Cập nhật thông tin công ty Foutec (tên, địa chỉ, hotline, email)
+- [x] Thêm slogan: "Sự hài lòng của bạn là giá trị cốt lõi của chúng tôi"
+- [x] Thêm logo công ty Foutec (foutec-logo.png)
+- [x] Cập nhật header và footer với logo và tên Foutec
+
+### Email Notification
+- [x] Cấu hình gửi thông báo (notifyOwner) khi có người dùng mới đăng ký

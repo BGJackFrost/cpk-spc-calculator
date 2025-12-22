@@ -3246,6 +3246,18 @@ export const appRouter = router({
         if (!result.success) {
           throw new TRPCError({ code: 'BAD_REQUEST', message: result.error });
         }
+        
+        // Send notification to owner about new user registration
+        try {
+          await notifyOwner({
+            title: `👤 Người dùng mới đăng ký: ${input.username}`,
+            content: `Có người dùng mới đăng ký tài khoản trên hệ thống SPC/CPK Calculator.\n\n**Thông tin:**\n- Tên đăng nhập: ${input.username}\n- Họ tên: ${input.name || 'Chưa cung cấp'}\n- Email: ${input.email || 'Chưa cung cấp'}\n- Thời gian: ${new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}\n\nVui lòng kiểm tra và phân quyền cho người dùng nếu cần.`,
+          });
+        } catch (notifyError) {
+          // Don't fail registration if notification fails
+          console.error('Failed to send new user notification:', notifyError);
+        }
+        
         return result;
       }),
 

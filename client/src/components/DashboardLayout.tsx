@@ -30,7 +30,7 @@ import {
   LogOut, PanelLeft, ChevronRight, Moon, Sun, User, Key
 } from "lucide-react";
 import { useTheme } from "../contexts/ThemeContext";
-import { CSSProperties, useEffect, useRef, useState } from "react";
+import { CSSProperties, useEffect, useRef, useState, useMemo } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
@@ -349,47 +349,38 @@ function DashboardLayoutContent({
   const { systemConfig, systemMenu, activeSystem } = useSystem();
   const { theme, setTheme } = useTheme();
   
-  // Get menu groups from current system
-  const menuGroups = systemMenu?.menuGroups || [];
+  // Get menu groups from current system - memoized to prevent infinite loops
+  const menuGroups = useMemo(() => {
+    return systemMenu?.menuGroups || [];
+  }, [systemMenu]);
   
   // Menu open state
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+
+  // Reset open state when system changes
+  useEffect(() => {
+    // Skip if no menuGroups (e.g., when activeSystem is "dashboard")
+    if (menuGroups.length === 0) {
+      setOpenGroups({});
+      return;
+    }
+    
     const saved = localStorage.getItem(`${MENU_OPEN_STATE_KEY}-${activeSystem}`);
     if (saved) {
       try {
-        return JSON.parse(saved);
+        setOpenGroups(JSON.parse(saved));
+        return;
       } catch {
-        return {};
+        // Fall through to defaults
       }
     }
+    
     // Default: open groups that have defaultOpen or contain active item
     const defaults: Record<string, boolean> = {};
     menuGroups.forEach(group => {
       defaults[group.id] = group.defaultOpen || group.items.some(item => item.path === location);
     });
-    return defaults;
-  });
-
-  // Reset open state when system changes
-  useEffect(() => {
-    const saved = localStorage.getItem(`${MENU_OPEN_STATE_KEY}-${activeSystem}`);
-    if (saved) {
-      try {
-        setOpenGroups(JSON.parse(saved));
-      } catch {
-        const defaults: Record<string, boolean> = {};
-        menuGroups.forEach(group => {
-          defaults[group.id] = group.defaultOpen || group.items.some(item => item.path === location);
-        });
-        setOpenGroups(defaults);
-      }
-    } else {
-      const defaults: Record<string, boolean> = {};
-      menuGroups.forEach(group => {
-        defaults[group.id] = group.defaultOpen || group.items.some(item => item.path === location);
-      });
-      setOpenGroups(defaults);
-    }
+    setOpenGroups(defaults);
   }, [activeSystem, menuGroups, location]);
 
   // Save open state to localStorage

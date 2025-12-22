@@ -1,0 +1,12 @@
+Error: Maximum update depth exceeded. This can happen when a component repeatedly calls setState inside componentWillUpdate or componentDidUpdate. React limits the number of nested updates to prevent infinite loops.
+
+Stack trace shows:
+- setRef in chunk-IGR43HWG.js
+- Array.map
+- dispatchSetState
+- dispatchSetStateInternal
+- enqueueConcurrentHookUpdate
+- getRootForUpdatedFiber
+
+This is a React infinite loop error caused by setState being called during render.
+The error occurs when clicking Dashboard button on Top Menu.
