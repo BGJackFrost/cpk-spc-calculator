@@ -1,4 +1,13 @@
-import { eq, and, desc, sql, gte, lte, asc, or } from "drizzle-orm";
+import { eq, and, desc, sql, gte, lte, asc, or, lt, gt } from "drizzle-orm";
+import { 
+  CursorPaginationInput, 
+  CursorPaginationResult, 
+  normalizePaginationInput, 
+  buildPaginationResult, 
+  encodeCursor,
+  DEFAULT_PAGE_SIZE,
+  MAX_PAGE_SIZE 
+} from "../shared/pagination";
 import { drizzle } from "drizzle-orm/mysql2";
 import mysql from "mysql2/promise";
 import { 
@@ -3567,4 +3576,329 @@ export async function getRecentViolations(limit: number = 5) {
     .where(eq(validationRuleLogs.passed, 0))
     .orderBy(desc(validationRuleLogs.executedAt))
     .limit(limit);
+}
+
+
+// ============================================
+// Cursor-based Pagination Functions
+// ============================================
+
+/**
+ * Get users with cursor-based pagination
+ */
+export async function getUsersWithCursor(input: CursorPaginationInput): Promise<CursorPaginationResult<typeof users.$inferSelect>> {
+  const db = await getDb();
+  if (!db) return { items: [], nextCursor: null, prevCursor: null, hasMore: false };
+  
+  const { cursor, limit, direction } = normalizePaginationInput(input);
+  
+  let query = db.select().from(users);
+  
+  if (cursor) {
+    if (direction === 'forward') {
+      query = query.where(lt(users.id, cursor.id)) as any;
+    } else {
+      query = query.where(gt(users.id, cursor.id)) as any;
+    }
+  }
+  
+  const orderDirection = direction === 'forward' ? desc : asc;
+  const items = await query.orderBy(orderDirection(users.id)).limit(limit + 1);
+  
+  // Get total count
+  const countResult = await db.select({ count: sql<number>`count(*)` }).from(users);
+  const totalCount = countResult[0]?.count || 0;
+  
+  return buildPaginationResult(items, limit, direction, totalCount);
+}
+
+/**
+ * Get SPC analysis history with cursor-based pagination
+ */
+export async function getSpcAnalysisHistoryWithCursor(
+  mappingId: number | null,
+  input: CursorPaginationInput
+): Promise<CursorPaginationResult<typeof spcAnalysisHistory.$inferSelect>> {
+  const db = await getDb();
+  if (!db) return { items: [], nextCursor: null, prevCursor: null, hasMore: false };
+  
+  const { cursor, limit, direction } = normalizePaginationInput(input);
+  
+  let conditions: any[] = [];
+  
+  if (mappingId) {
+    conditions.push(eq(spcAnalysisHistory.mappingId, mappingId));
+  }
+  
+  if (cursor) {
+    if (cursor.createdAt) {
+      const cursorDate = new Date(cursor.createdAt);
+      if (direction === 'forward') {
+        conditions.push(
+          or(
+            lt(spcAnalysisHistory.createdAt, cursorDate),
+            and(
+              eq(spcAnalysisHistory.createdAt, cursorDate),
+              lt(spcAnalysisHistory.id, cursor.id)
+            )
+          )
+        );
+      } else {
+        conditions.push(
+          or(
+            gt(spcAnalysisHistory.createdAt, cursorDate),
+            and(
+              eq(spcAnalysisHistory.createdAt, cursorDate),
+              gt(spcAnalysisHistory.id, cursor.id)
+            )
+          )
+        );
+      }
+    } else {
+      if (direction === 'forward') {
+        conditions.push(lt(spcAnalysisHistory.id, cursor.id));
+      } else {
+        conditions.push(gt(spcAnalysisHistory.id, cursor.id));
+      }
+    }
+  }
+  
+  let query = db.select().from(spcAnalysisHistory);
+  if (conditions.length > 0) {
+    query = query.where(and(...conditions)) as any;
+  }
+  
+  const orderDirection = direction === 'forward' ? desc : asc;
+  const items = await query
+    .orderBy(orderDirection(spcAnalysisHistory.createdAt), orderDirection(spcAnalysisHistory.id))
+    .limit(limit + 1);
+  
+  // Get total count
+  let countQuery = db.select({ count: sql<number>`count(*)` }).from(spcAnalysisHistory);
+  if (mappingId) {
+    countQuery = countQuery.where(eq(spcAnalysisHistory.mappingId, mappingId)) as any;
+  }
+  const countResult = await countQuery;
+  const totalCount = countResult[0]?.count || 0;
+  
+  return buildPaginationResult(items, limit, direction, totalCount);
+}
+
+/**
+ * Get audit logs with cursor-based pagination
+ */
+export async function getAuditLogsWithCursor(
+  params: {
+    action?: string;
+    module?: string;
+    search?: string;
+  },
+  input: CursorPaginationInput
+): Promise<CursorPaginationResult<typeof auditLogs.$inferSelect>> {
+  const db = await getDb();
+  if (!db) return { items: [], nextCursor: null, prevCursor: null, hasMore: false };
+  
+  const { cursor, limit, direction } = normalizePaginationInput(input);
+  const { action, module, search } = params;
+  
+  let conditions: any[] = [];
+  
+  if (action) {
+    conditions.push(eq(auditLogs.action, action as any));
+  }
+  if (module) {
+    conditions.push(eq(auditLogs.module, module));
+  }
+  if (search) {
+    conditions.push(
+      sql`(${auditLogs.description} LIKE ${`%${search}%`} OR ${auditLogs.userName} LIKE ${`%${search}%`})`
+    );
+  }
+  
+  if (cursor) {
+    if (cursor.createdAt) {
+      const cursorDate = new Date(cursor.createdAt);
+      if (direction === 'forward') {
+        conditions.push(
+          or(
+            lt(auditLogs.createdAt, cursorDate),
+            and(
+              eq(auditLogs.createdAt, cursorDate),
+              lt(auditLogs.id, cursor.id)
+            )
+          )
+        );
+      } else {
+        conditions.push(
+          or(
+            gt(auditLogs.createdAt, cursorDate),
+            and(
+              eq(auditLogs.createdAt, cursorDate),
+              gt(auditLogs.id, cursor.id)
+            )
+          )
+        );
+      }
+    } else {
+      if (direction === 'forward') {
+        conditions.push(lt(auditLogs.id, cursor.id));
+      } else {
+        conditions.push(gt(auditLogs.id, cursor.id));
+      }
+    }
+  }
+  
+  let query = db.select().from(auditLogs);
+  if (conditions.length > 0) {
+    query = query.where(and(...conditions)) as any;
+  }
+  
+  const orderDirection = direction === 'forward' ? desc : asc;
+  const items = await query
+    .orderBy(orderDirection(auditLogs.createdAt), orderDirection(auditLogs.id))
+    .limit(limit + 1);
+  
+  // Get total count with filters
+  let countQuery = db.select({ count: sql<number>`count(*)` }).from(auditLogs);
+  const filterConditions = conditions.filter(c => c !== conditions[conditions.length - 1]); // Remove cursor condition
+  if (filterConditions.length > 0) {
+    countQuery = countQuery.where(and(...filterConditions)) as any;
+  }
+  const countResult = await countQuery;
+  const totalCount = countResult[0]?.count || 0;
+  
+  return buildPaginationResult(items, limit, direction, totalCount);
+}
+
+/**
+ * Get login history with cursor-based pagination
+ */
+export async function getLoginHistoryWithCursor(
+  userId: number | null,
+  input: CursorPaginationInput
+): Promise<CursorPaginationResult<typeof loginHistory.$inferSelect>> {
+  const db = await getDb();
+  if (!db) return { items: [], nextCursor: null, prevCursor: null, hasMore: false };
+  
+  const { cursor, limit, direction } = normalizePaginationInput(input);
+  
+  let conditions: any[] = [];
+  
+  if (userId) {
+    conditions.push(eq(loginHistory.userId, userId));
+  }
+  
+  if (cursor) {
+    if (cursor.createdAt) {
+      const cursorDate = new Date(cursor.createdAt);
+      if (direction === 'forward') {
+        conditions.push(
+          or(
+            lt(loginHistory.createdAt, cursorDate),
+            and(
+              eq(loginHistory.createdAt, cursorDate),
+              lt(loginHistory.id, cursor.id)
+            )
+          )
+        );
+      } else {
+        conditions.push(
+          or(
+            gt(loginHistory.createdAt, cursorDate),
+            and(
+              eq(loginHistory.createdAt, cursorDate),
+              gt(loginHistory.id, cursor.id)
+            )
+          )
+        );
+      }
+    } else {
+      if (direction === 'forward') {
+        conditions.push(lt(loginHistory.id, cursor.id));
+      } else {
+        conditions.push(gt(loginHistory.id, cursor.id));
+      }
+    }
+  }
+  
+  let query = db.select().from(loginHistory);
+  if (conditions.length > 0) {
+    query = query.where(and(...conditions)) as any;
+  }
+  
+  const orderDirection = direction === 'forward' ? desc : asc;
+  const items = await query
+    .orderBy(orderDirection(loginHistory.createdAt), orderDirection(loginHistory.id))
+    .limit(limit + 1);
+  
+  // Get total count
+  let countQuery = db.select({ count: sql<number>`count(*)` }).from(loginHistory);
+  if (userId) {
+    countQuery = countQuery.where(eq(loginHistory.userId, userId)) as any;
+  }
+  const countResult = await countQuery;
+  const totalCount = countResult[0]?.count || 0;
+  
+  return buildPaginationResult(items, limit, direction, totalCount);
+}
+
+/**
+ * Get licenses with cursor-based pagination
+ */
+export async function getLicensesWithCursor(
+  params: {
+    status?: string;
+    customerId?: number;
+    search?: string;
+  },
+  input: CursorPaginationInput
+): Promise<CursorPaginationResult<typeof licenses.$inferSelect>> {
+  const db = await getDb();
+  if (!db) return { items: [], nextCursor: null, prevCursor: null, hasMore: false };
+  
+  const { cursor, limit, direction } = normalizePaginationInput(input);
+  const { status, customerId, search } = params;
+  
+  let conditions: any[] = [];
+  
+  if (status) {
+    conditions.push(eq(licenses.licenseStatus, status as any));
+  }
+  if (customerId) {
+    conditions.push(eq(licenses.customerId, customerId));
+  }
+  if (search) {
+    conditions.push(
+      sql`(${licenses.licenseKey} LIKE ${`%${search}%`} OR ${licenses.customerName} LIKE ${`%${search}%`})`
+    );
+  }
+  
+  if (cursor) {
+    if (direction === 'forward') {
+      conditions.push(lt(licenses.id, cursor.id));
+    } else {
+      conditions.push(gt(licenses.id, cursor.id));
+    }
+  }
+  
+  let query = db.select().from(licenses);
+  if (conditions.length > 0) {
+    query = query.where(and(...conditions)) as any;
+  }
+  
+  const orderDirection = direction === 'forward' ? desc : asc;
+  const items = await query
+    .orderBy(orderDirection(licenses.createdAt), orderDirection(licenses.id))
+    .limit(limit + 1);
+  
+  // Get total count with filters (excluding cursor condition)
+  const filterConditions = conditions.slice(0, -1);
+  let countQuery = db.select({ count: sql<number>`count(*)` }).from(licenses);
+  if (filterConditions.length > 0) {
+    countQuery = countQuery.where(and(...filterConditions)) as any;
+  }
+  const countResult = await countQuery;
+  const totalCount = countResult[0]?.count || 0;
+  
+  return buildPaginationResult(items, limit, direction, totalCount);
 }

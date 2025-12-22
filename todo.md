@@ -4873,3 +4873,24 @@
 ### Remaining Vulnerabilities (7 moderate)
 - [ ] tar@7.5.1 (dependency của @tailwindcss/oxide) - waiting for upstream fix
 - [ ] Various markdown packages - low priority
+
+
+## Phase 231 - Database Indexes & Cursor Pagination (22/12/2024)
+
+### Database Indexes
+- [x] Chạy script add-indexes.sql trên database production (25+ indexes đã tạo)
+- [x] Verify indexes đã được tạo thành công
+- [ ] Monitor query performance sau khi thêm indexes
+
+### GitHub Push
+- [x] Push code lên GitHub repository (bd1eff5)
+- [x] Verify CI/CD pipeline được kích hoạt
+
+### Cursor-based Pagination (P1-DB-03)
+- [x] Implement cursor pagination cho getAllUsers (user.listWithCursor)
+- [x] Implement cursor pagination cho getSpcAnalysisHistory
+- [x] Implement cursor pagination cho getAuditLogs (audit.listWithCursor)
+- [x] Implement cursor pagination cho getLoginHistory (auth.loginHistoryWithCursor)
+- [x] Implement cursor pagination cho getLicenses (license.listWithCursor)
+- [x] Tạo shared pagination utility (shared/pagination.ts)
+- [ ] Update frontend để sử dụng cursor pagination

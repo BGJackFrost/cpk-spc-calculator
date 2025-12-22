@@ -1,0 +1,9 @@
+{
+  "query": "CREATE INDEX IF NOT EXISTS idx_inventory_part ON spare_parts_inventory(sparePartId);\nCREATE INDEX IF NOT EXISTS idx_oee_machine ON oee_records(machineId);\nCREATE INDEX IF NOT EXISTS idx_oee_date ON oee_records(recordDate);\nCREATE INDEX IF NOT EXISTS idx_oee_machine_date ON oee_records(machineId, recordDate DESC);\nCREATE INDEX IF NOT EXISTS idx_validation_rule ON validation_rule_logs(ruleId);\nCREATE INDEX IF NOT EXISTS idx_validation_executed ON validation_rule_logs(executedAt);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute CREATE INDEX IF NOT EXISTS idx_inventory_part ON spare_parts_inventory(sparePartId);\nCREATE INDEX IF NOT EXISTS idx_oee_machine ON oee_records(machineId);\nCREATE INDEX IF NOT EXISTS idx_oee_date ON oee_records(recordDate);\nCREATE INDEX IF NOT EXISTS idx_oee_machine_date ON oee_records(machineId, recordDate DESC);\nCREATE INDEX IF NOT EXISTS idx_validation_rule ON validation_rule_logs(ruleId);\nCREATE INDEX IF NOT EXISTS idx_validation_executed ON validation_rule_logs(executedAt);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 5111
+}

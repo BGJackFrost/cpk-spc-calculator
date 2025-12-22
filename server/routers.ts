@@ -94,6 +94,11 @@ import {
   deleteMappingTemplate,
   seedDefaultMappingTemplates,
   getLicenses,
+  getUsersWithCursor,
+  getSpcAnalysisHistoryWithCursor,
+  getAuditLogsWithCursor,
+  getLoginHistoryWithCursor,
+  getLicensesWithCursor,
   getActiveLicense,
   getLicenseByKey,
   getLicensesExpiringSoon,
@@ -226,6 +231,17 @@ const userRouter = router({
   list: adminProcedure.query(async () => {
     return await getAllUsers();
   }),
+
+  // Cursor-based pagination endpoint
+  listWithCursor: adminProcedure
+    .input(z.object({
+      cursor: z.string().optional(),
+      limit: z.number().min(1).max(100).default(20),
+      direction: z.enum(['forward', 'backward']).default('forward'),
+    }))
+    .query(async ({ input }) => {
+      return await getUsersWithCursor(input);
+    }),
 
   updateRole: adminProcedure
     .input(z.object({
@@ -3410,6 +3426,22 @@ export const appRouter = router({
         return getLoginHistory(input);
       }),
 
+    // Get login history with cursor-based pagination (admin only)
+    loginHistoryWithCursor: protectedProcedure
+      .input(z.object({
+        userId: z.number().optional(),
+        cursor: z.string().optional(),
+        limit: z.number().min(1).max(100).default(20),
+        direction: z.enum(['forward', 'backward']).default('forward'),
+      }))
+      .query(async ({ input, ctx }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin access required' });
+        }
+        const { userId, cursor, limit, direction } = input;
+        return getLoginHistoryWithCursor(userId || null, { cursor, limit, direction });
+      }),
+
     // Get login stats
     loginStats: protectedProcedure
       .input(z.object({ userId: z.number().optional() }))
@@ -3942,6 +3974,21 @@ export const appRouter = router({
         const { getAuditLogs } = await import("./db");
         return await getAuditLogs(input);
       }),
+
+    // Cursor-based pagination endpoint
+    listWithCursor: protectedProcedure
+      .input(z.object({
+        cursor: z.string().optional(),
+        limit: z.number().min(1).max(100).default(20),
+        direction: z.enum(['forward', 'backward']).default('forward'),
+        action: z.string().optional(),
+        module: z.string().optional(),
+        search: z.string().optional(),
+      }))
+      .query(async ({ input }) => {
+        const { cursor, limit, direction, ...filters } = input;
+        return await getAuditLogsWithCursor(filters, { cursor, limit, direction });
+      }),
   }),
 
   // Rules Management router
@@ -4154,6 +4201,21 @@ export const appRouter = router({
     list: protectedProcedure.query(async () => {
       return await getLicenses();
     }),
+    
+    // Cursor-based pagination endpoint
+    listWithCursor: protectedProcedure
+      .input(z.object({
+        cursor: z.string().optional(),
+        limit: z.number().min(1).max(100).default(20),
+        direction: z.enum(['forward', 'backward']).default('forward'),
+        status: z.string().optional(),
+        customerId: z.number().optional(),
+        search: z.string().optional(),
+      }))
+      .query(async ({ input }) => {
+        const { cursor, limit, direction, ...filters } = input;
+        return await getLicensesWithCursor(filters, { cursor, limit, direction });
+      }),
     getActive: publicProcedure.query(async () => {
       return await getActiveLicense();
     }),
