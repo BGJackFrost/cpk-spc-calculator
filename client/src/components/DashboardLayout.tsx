@@ -43,6 +43,8 @@ import { TopNavigation } from "./TopNavigation";
 import { ThemeSelector } from "./ThemeSelector";
 import { useSystem } from "@/contexts/SystemContext";
 import { MenuGroup as SystemMenuGroup, MenuItem as SystemMenuItem } from "@/config/systemMenu";
+import { useQuickAccess } from "@/hooks/useQuickAccess";
+import { Star } from "lucide-react";
 
 // Fallback labels for keys not in translation files (by language)
 const fallbackLabelsVi: Record<string, string> = {
@@ -359,10 +361,34 @@ function DashboardLayoutContent({
   const { systemConfig, systemMenu, activeSystem } = useSystem();
   const { theme, setTheme } = useTheme();
   
+  // Load Quick Access items dynamically
+  const { quickAccessMenuItems, hasQuickAccess } = useQuickAccess();
+  
   // Get menu groups from current system - memoized to prevent infinite loops
+  // Inject Quick Access items dynamically for Dashboard system
   const menuGroups = useMemo(() => {
-    return systemMenu?.menuGroups || [];
-  }, [systemMenu]);
+    const groups = systemMenu?.menuGroups || [];
+    
+    // If Dashboard system and has Quick Access items, inject them
+    if (activeSystem === 'dashboard' && hasQuickAccess) {
+      return groups.map(group => {
+        if (group.id === 'quick-access') {
+          return {
+            ...group,
+            items: quickAccessMenuItems,
+          };
+        }
+        return group;
+      });
+    }
+    
+    // Filter out empty Quick Access group if no items
+    if (activeSystem === 'dashboard') {
+      return groups.filter(group => group.id !== 'quick-access' || hasQuickAccess);
+    }
+    
+    return groups;
+  }, [systemMenu, activeSystem, quickAccessMenuItems, hasQuickAccess]);
   
   // Menu open state
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});

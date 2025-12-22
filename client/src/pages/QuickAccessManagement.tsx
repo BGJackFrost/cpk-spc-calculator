@@ -8,12 +8,31 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Star, StarOff, Plus, Trash2, GripVertical, Search, 
   LayoutDashboard, TrendingUp, HardHat, Factory, Key, Settings,
-  ArrowUp, ArrowDown, RefreshCw
+  RefreshCw
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { ALL_SYSTEM_MENUS, SYSTEMS } from "@/config/systemMenu";
+
+// DnD Kit imports
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 // Icon mapping
 const iconMap: Record<string, any> = {
@@ -51,10 +70,90 @@ function getAllMenuItems() {
   return items;
 }
 
+// Sortable Item Component
+interface SortableItemProps {
+  item: {
+    id: number;
+    menuId: string;
+    menuPath: string;
+    menuLabel: string;
+    systemId: string | null;
+    sortOrder: number;
+  };
+  onRemove: (id: number) => void;
+}
+
+function SortableItem({ item, onRemove }: SortableItemProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: item.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 1000 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors ${
+        isDragging ? "shadow-lg ring-2 ring-primary" : ""
+      }`}
+    >
+      <button
+        {...attributes}
+        {...listeners}
+        className="cursor-grab active:cursor-grabbing touch-none"
+      >
+        <GripVertical className="h-5 w-5 text-muted-foreground" />
+      </button>
+      <div className="flex-1">
+        <div className="flex items-center gap-2">
+          <span className="font-medium">{item.menuLabel}</span>
+          {item.systemId && (
+            <Badge variant="secondary" className="text-xs">
+              {item.systemId.toUpperCase()}
+            </Badge>
+          )}
+        </div>
+        <span className="text-sm text-muted-foreground">{item.menuPath}</span>
+      </div>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="text-destructive hover:text-destructive"
+        onClick={() => onRemove(item.id)}
+      >
+        <Trash2 className="h-4 w-4" />
+      </Button>
+    </div>
+  );
+}
+
 export default function QuickAccessManagement() {
   const { t } = useLanguage();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedSystem, setSelectedSystem] = useState<string>("all");
+
+  // DnD sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   // Fetch user's quick access items
   const { data: quickAccessItems = [], refetch, isLoading } = trpc.quickAccess.list.useQuery();
@@ -135,24 +234,20 @@ export default function QuickAccessManagement() {
     removeMutation.mutate({ id });
   };
 
-  // Move item up
-  const handleMoveUp = (index: number) => {
-    if (index === 0) return;
-    const newItems = [...quickAccessItems];
-    [newItems[index - 1], newItems[index]] = [newItems[index], newItems[index - 1]];
-    reorderMutation.mutate({
-      items: newItems.map((item, idx) => ({ id: item.id, sortOrder: idx })),
-    });
-  };
+  // Handle drag end
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
 
-  // Move item down
-  const handleMoveDown = (index: number) => {
-    if (index === quickAccessItems.length - 1) return;
-    const newItems = [...quickAccessItems];
-    [newItems[index], newItems[index + 1]] = [newItems[index + 1], newItems[index]];
-    reorderMutation.mutate({
-      items: newItems.map((item, idx) => ({ id: item.id, sortOrder: idx })),
-    });
+    if (over && active.id !== over.id) {
+      const oldIndex = quickAccessItems.findIndex(item => item.id === active.id);
+      const newIndex = quickAccessItems.findIndex(item => item.id === over.id);
+
+      const newItems = arrayMove(quickAccessItems, oldIndex, newIndex);
+      
+      reorderMutation.mutate({
+        items: newItems.map((item, idx) => ({ id: item.id, sortOrder: idx })),
+      });
+    }
   };
 
   // Get system color class
@@ -215,7 +310,7 @@ export default function QuickAccessManagement() {
               <CardHeader>
                 <CardTitle>Menu Quick Access</CardTitle>
                 <CardDescription>
-                  Các menu bạn đã thêm vào Quick Access. Sử dụng mũi tên để sắp xếp thứ tự.
+                  Kéo thả để sắp xếp thứ tự các menu yêu thích của bạn
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -232,53 +327,26 @@ export default function QuickAccessManagement() {
                     </p>
                   </div>
                 ) : (
-                  <div className="space-y-2">
-                    {quickAccessItems.map((item, index) => (
-                      <div
-                        key={item.id}
-                        className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
-                      >
-                        <GripVertical className="h-5 w-5 text-muted-foreground" />
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">{item.menuLabel}</span>
-                            {item.systemId && (
-                              <Badge variant="secondary" className="text-xs">
-                                {item.systemId.toUpperCase()}
-                              </Badge>
-                            )}
-                          </div>
-                          <span className="text-sm text-muted-foreground">{item.menuPath}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleMoveUp(index)}
-                            disabled={index === 0}
-                          >
-                            <ArrowUp className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleMoveDown(index)}
-                            disabled={index === quickAccessItems.length - 1}
-                          >
-                            <ArrowDown className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-destructive hover:text-destructive"
-                            onClick={() => handleRemove(item.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
+                  >
+                    <SortableContext
+                      items={quickAccessItems.map(item => item.id)}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      <div className="space-y-2">
+                        {quickAccessItems.map((item) => (
+                          <SortableItem
+                            key={item.id}
+                            item={item}
+                            onRemove={handleRemove}
+                          />
+                        ))}
                       </div>
-                    ))}
-                  </div>
+                    </SortableContext>
+                  </DndContext>
                 )}
               </CardContent>
             </Card>
