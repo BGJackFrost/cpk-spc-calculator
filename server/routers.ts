@@ -278,16 +278,18 @@ const userRouter = router({
     }),
 });
 
-// Product Router
+// Product Router - with caching
 const productRouter = router({
   list: protectedProcedure.query(async () => {
-    return await getProducts();
+    const { getCachedProducts } = await import('./services/cachedQueries');
+    return await getCachedProducts();
   }),
 
   getById: protectedProcedure
     .input(z.object({ id: z.number() }))
     .query(async ({ input }) => {
-      return await getProductById(input.id);
+      const { getCachedProductById } = await import('./services/cachedQueries');
+      return await getCachedProductById(input.id);
     }),
 
   create: adminProcedure
@@ -300,6 +302,9 @@ const productRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       const id = await createProduct({ ...input, createdBy: ctx.user.id });
+      // Invalidate cache after create
+      const { invalidateProductCache } = await import('./services/cachedQueries');
+      invalidateProductCache();
       return { id };
     }),
 
@@ -315,6 +320,9 @@ const productRouter = router({
     .mutation(async ({ input }) => {
       const { id, ...data } = input;
       await updateProduct(id, data);
+      // Invalidate cache after update
+      const { invalidateProductCache } = await import('./services/cachedQueries');
+      invalidateProductCache();
       return { success: true };
     }),
 
@@ -322,6 +330,9 @@ const productRouter = router({
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input }) => {
       await deleteProduct(input.id);
+      // Invalidate cache after delete
+      const { invalidateProductCache } = await import('./services/cachedQueries');
+      invalidateProductCache();
       return { success: true };
     }),
 });
@@ -2681,16 +2692,18 @@ const permissionRouter = router({
     }),
 });
 
-// Machine Type Router - Quản lý loại máy
+// Machine Type Router - Quản lý loại máy (with caching)
 const machineTypeRouter = router({
   list: protectedProcedure.query(async () => {
-    return await getMachineTypes();
+    const { getCachedMachineTypes } = await import('./services/cachedQueries');
+    return await getCachedMachineTypes();
   }),
 
   getById: protectedProcedure
     .input(z.object({ id: z.number() }))
     .query(async ({ input }) => {
-      return await getMachineTypeById(input.id);
+      const { getCachedMachineTypeById } = await import('./services/cachedQueries');
+      return await getCachedMachineTypeById(input.id);
     }),
 
   create: protectedProcedure
@@ -2705,6 +2718,8 @@ const machineTypeRouter = router({
         ...input,
         createdBy: ctx.user.id,
       });
+      const { invalidateMachineTypeCache } = await import('./services/cachedQueries');
+      invalidateMachineTypeCache();
       return { id };
     }),
 
@@ -2719,6 +2734,8 @@ const machineTypeRouter = router({
     .mutation(async ({ input }) => {
       const { id, ...data } = input;
       await updateMachineType(id, data);
+      const { invalidateMachineTypeCache } = await import('./services/cachedQueries');
+      invalidateMachineTypeCache();
       return { success: true };
     }),
 
@@ -2726,16 +2743,23 @@ const machineTypeRouter = router({
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input }) => {
       await deleteMachineType(input.id);
+      const { invalidateMachineTypeCache } = await import('./services/cachedQueries');
+      invalidateMachineTypeCache();
       return { success: true };
     }),
 });
 
-// Fixture Router - Quản lý Fixture
+// Fixture Router - Quản lý Fixture (with caching)
 const fixtureRouter = router({
   list: protectedProcedure
     .input(z.object({ machineId: z.number().optional() }).optional())
     .query(async ({ input }) => {
-      return await getFixtures(input?.machineId);
+      if (input?.machineId) {
+        const { getCachedFixturesByMachine } = await import('./services/cachedQueries');
+        return await getCachedFixturesByMachine(input.machineId);
+      }
+      const { getCachedFixtures } = await import('./services/cachedQueries');
+      return await getCachedFixtures();
     }),
 
   listWithMachineInfo: protectedProcedure.query(async () => {
@@ -2745,7 +2769,8 @@ const fixtureRouter = router({
   getById: protectedProcedure
     .input(z.object({ id: z.number() }))
     .query(async ({ input }) => {
-      return await getFixtureById(input.id);
+      const { getCachedFixtureById } = await import('./services/cachedQueries');
+      return await getCachedFixtureById(input.id);
     }),
 
   create: protectedProcedure
@@ -2763,6 +2788,8 @@ const fixtureRouter = router({
         ...input,
         createdBy: ctx.user.id,
       });
+      const { invalidateFixtureCache } = await import('./services/cachedQueries');
+      invalidateFixtureCache();
       return { id };
     }),
 
@@ -2781,6 +2808,8 @@ const fixtureRouter = router({
     .mutation(async ({ input }) => {
       const { id, ...data } = input;
       await updateFixture(id, data);
+      const { invalidateFixtureCache } = await import('./services/cachedQueries');
+      invalidateFixtureCache();
       return { success: true };
     }),
 
@@ -2788,6 +2817,8 @@ const fixtureRouter = router({
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input }) => {
       await deleteFixture(input.id);
+      const { invalidateFixtureCache } = await import('./services/cachedQueries');
+      invalidateFixtureCache();
       return { success: true };
     }),
 });
@@ -9175,7 +9206,225 @@ Hãy trả về JSON với format:
         queryCache.setMaxEntries(input.maxEntries);
         return { success: true };
       }),
-  })
+  }),
+
+  // Performance Alert Router
+  performanceAlert: router({
+    // Get all alert rules
+    getRules: protectedProcedure
+      .query(async ({ ctx }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { getAlertRules } = await import("./services/performanceAlertService");
+        return getAlertRules();
+      }),
+
+    // Create alert rule
+    createRule: protectedProcedure
+      .input(z.object({
+        name: z.string().min(1),
+        type: z.enum(["slow_query_threshold", "pool_utilization", "pool_queue_length", "error_rate", "cache_hit_rate", "memory_usage"]),
+        threshold: z.number(),
+        severity: z.enum(["info", "warning", "critical"]),
+        enabled: z.boolean().default(true),
+        notifyEmail: z.boolean().default(false),
+        notifyWebhook: z.boolean().default(false),
+        cooldownMinutes: z.number().min(1).default(5),
+        description: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { createAlertRule } = await import("./services/performanceAlertService");
+        return createAlertRule(input);
+      }),
+
+    // Update alert rule
+    updateRule: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        name: z.string().optional(),
+        threshold: z.number().optional(),
+        severity: z.enum(["info", "warning", "critical"]).optional(),
+        enabled: z.boolean().optional(),
+        notifyEmail: z.boolean().optional(),
+        notifyWebhook: z.boolean().optional(),
+        cooldownMinutes: z.number().min(1).optional(),
+        description: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { updateAlertRule } = await import("./services/performanceAlertService");
+        const { id, ...updates } = input;
+        const result = updateAlertRule(id, updates);
+        if (!result) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Alert rule not found" });
+        }
+        return result;
+      }),
+
+    // Delete alert rule
+    deleteRule: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { deleteAlertRule } = await import("./services/performanceAlertService");
+        const success = deleteAlertRule(input.id);
+        if (!success) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Alert rule not found" });
+        }
+        return { success: true };
+      }),
+
+    // Toggle alert rule
+    toggleRule: protectedProcedure
+      .input(z.object({ id: z.number(), enabled: z.boolean() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { toggleAlertRule } = await import("./services/performanceAlertService");
+        const success = toggleAlertRule(input.id, input.enabled);
+        if (!success) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Alert rule not found" });
+        }
+        return { success: true };
+      }),
+
+    // Get alerts
+    getAlerts: protectedProcedure
+      .input(z.object({
+        severity: z.enum(["info", "warning", "critical"]).optional(),
+        type: z.enum(["slow_query_threshold", "pool_utilization", "pool_queue_length", "error_rate", "cache_hit_rate", "memory_usage"]).optional(),
+        acknowledged: z.boolean().optional(),
+        limit: z.number().default(100),
+      }).optional())
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { getAlerts } = await import("./services/performanceAlertService");
+        return getAlerts(input);
+      }),
+
+    // Get alert stats
+    getStats: protectedProcedure
+      .query(async ({ ctx }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { getAlertStats } = await import("./services/performanceAlertService");
+        return getAlertStats();
+      }),
+
+    // Acknowledge alert
+    acknowledgeAlert: protectedProcedure
+      .input(z.object({ alertId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { acknowledgeAlert } = await import("./services/performanceAlertService");
+        const success = acknowledgeAlert(input.alertId, ctx.user.id);
+        if (!success) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Alert not found" });
+        }
+        return { success: true };
+      }),
+
+    // Acknowledge multiple alerts
+    acknowledgeAlerts: protectedProcedure
+      .input(z.object({ alertIds: z.array(z.number()) }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { acknowledgeAlerts } = await import("./services/performanceAlertService");
+        const count = acknowledgeAlerts(input.alertIds, ctx.user.id);
+        return { count };
+      }),
+
+    // Run performance checks manually
+    runChecks: protectedProcedure
+      .mutation(async ({ ctx }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { runPerformanceChecks } = await import("./services/performanceAlertService");
+        return await runPerformanceChecks();
+      }),
+
+    // Clear all alerts
+    clearAlerts: protectedProcedure
+      .mutation(async ({ ctx }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { clearAlerts } = await import("./services/performanceAlertService");
+        clearAlerts();
+        return { success: true };
+      }),
+
+    // Clear old alerts
+    clearOldAlerts: protectedProcedure
+      .input(z.object({ days: z.number().min(1).default(30) }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { clearOldAlerts } = await import("./services/performanceAlertService");
+        const count = clearOldAlerts(input.days);
+        return { count };
+      }),
+
+    // Export performance report
+    exportReport: protectedProcedure
+      .input(z.object({
+        startDate: z.string(),
+        endDate: z.string(),
+        includeSlowQueries: z.boolean().default(true),
+        includePoolStats: z.boolean().default(true),
+        includeAlerts: z.boolean().default(true),
+        includeCacheStats: z.boolean().default(true),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { generatePerformanceReport } = await import("./services/performanceReportService");
+        return await generatePerformanceReport({
+          startDate: new Date(input.startDate),
+          endDate: new Date(input.endDate),
+          includeSlowQueries: input.includeSlowQueries,
+          includePoolStats: input.includePoolStats,
+          includeAlerts: input.includeAlerts,
+          includeCacheStats: input.includeCacheStats,
+        });
+      }),
+
+    // Get report data (without export)
+    getReportData: protectedProcedure
+      .input(z.object({
+        startDate: z.string(),
+        endDate: z.string(),
+      }))
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { generatePerformanceReportData } = await import("./services/performanceReportService");
+        return await generatePerformanceReportData({
+          startDate: new Date(input.startDate),
+          endDate: new Date(input.endDate),
+        });
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

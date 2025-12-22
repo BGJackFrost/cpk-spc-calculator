@@ -4951,3 +4951,47 @@
 - [x] Tạo API endpoints: queryCache.getStats, queryCache.clear, queryCache.getEntries, queryCache.invalidateQuery
 - [x] Tạo QueryCacheWidget component trong Admin Monitoring (tab Query Cache)
 - [x] Viết unit tests cho QueryCacheService
+
+
+## Phase 234 - Query Cache Integration, Performance Alerts & Reports (23/12/2024)
+
+### Tích hợp Query Cache vào queries phổ biến
+- [x] Tạo cachedQueries.ts service với TTL configurable
+- [x] Tích hợp QueryCache vào product queries (getAll, getById, getByCode)
+- [x] Tích hợp QueryCache vào machine queries (getAll, getByWorkstation, getByType)
+- [x] Tích hợp QueryCache vào workstation queries (getAll, getByLine)
+- [x] Tích hợp QueryCache vào productionLine queries (getAll, getById)
+- [x] Tích hợp QueryCache vào fixture queries (getAll, getByMachine)
+- [x] Tích hợp QueryCache vào machineType queries (getAll, getById)
+- [x] Auto-invalidate cache khi dữ liệu thay đổi (invalidateProductCache, invalidateMachineCache, etc.)
+
+### Alert Rules cho Performance
+- [x] Tạo performanceAlertService.ts với in-memory storage
+- [x] Tạo PerformanceAlertService với các rule types:
+  - [x] slow_query_threshold: Alert khi query > threshold ms
+  - [x] pool_utilization: Alert khi pool usage > threshold %
+  - [x] pool_queue_length: Alert khi queue length > threshold
+  - [x] error_rate: Alert khi error rate > threshold %
+  - [x] cache_hit_rate: Alert khi cache hit rate < threshold %
+  - [x] memory_usage: Alert khi memory usage > threshold %
+- [x] Tạo API endpoints: performanceAlert.getRules, createRule, updateRule, deleteRule, toggleRule
+- [x] Tạo API endpoints: performanceAlert.getAlerts, getStats, acknowledgeAlert, acknowledgeAlerts
+- [x] Tạo API endpoints: performanceAlert.runChecks, clearAlerts, clearOldAlerts
+- [x] Tạo PerformanceAlertWidget component với tabs Rules/Alerts
+- [x] Tích hợp vào Admin Monitoring page (tab Alerts)
+- [x] Thêm cooldown mechanism để tránh spam alerts
+- [x] Viết unit tests cho performanceAlertService
+
+### Export Performance Report
+- [x] Tạo performanceReportService.ts để tổng hợp dữ liệu
+- [x] Tạo API endpoint performanceAlert.exportReport
+- [x] Tạo API endpoint performanceAlert.getReportData
+- [x] Export Excel với các sheets:
+  - [x] Summary: Tổng quan performance
+  - [x] Slow Queries: Danh sách slow queries với execution time
+  - [x] Pool Stats: Thống kê connection pool theo thời gian
+  - [x] Alerts: Danh sách alerts với severity và status
+  - [x] Cache Stats: Thống kê cache theo category
+- [x] Tạo PerformanceReportExport component với date presets
+- [x] Tích hợp vào Admin Monitoring page (tab Reports)
+- [x] Hỗ trợ filter theo ngày/tuần/tháng với custom range

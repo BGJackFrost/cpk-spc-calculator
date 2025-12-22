@@ -30,16 +30,18 @@ import {
   setDashboardLineSelections,
 } from "./db";
 
-// Production Line Router
+// Production Line Router (with caching)
 export const productionLineRouter = router({
   list: protectedProcedure.query(async () => {
-    return await getProductionLines();
+    const { getCachedProductionLines } = await import('./services/cachedQueries');
+    return await getCachedProductionLines();
   }),
 
   getById: protectedProcedure
     .input(z.object({ id: z.number() }))
     .query(async ({ input }) => {
-      return await getProductionLineById(input.id);
+      const { getCachedProductionLineById } = await import('./services/cachedQueries');
+      return await getCachedProductionLineById(input.id);
     }),
 
   create: protectedProcedure
@@ -61,6 +63,8 @@ export const productionLineRouter = router({
         ...input,
         createdBy: ctx.user.id,
       });
+      const { invalidateProductionLineCache } = await import('./services/cachedQueries');
+      invalidateProductionLineCache();
       return { id };
     }),
 
@@ -83,6 +87,8 @@ export const productionLineRouter = router({
       }
       const { id, ...data } = input;
       await updateProductionLine(id, data);
+      const { invalidateProductionLineCache } = await import('./services/cachedQueries');
+      invalidateProductionLineCache();
       return { success: true };
     }),
 
@@ -93,6 +99,8 @@ export const productionLineRouter = router({
         throw new Error("Admin access required");
       }
       await deleteProductionLine(input.id);
+      const { invalidateProductionLineCache } = await import('./services/cachedQueries');
+      invalidateProductionLineCache();
       return { success: true };
     }),
 
@@ -122,17 +130,18 @@ export const productionLineRouter = router({
     }),
 });
 
-// Workstation Router
+// Workstation Router (with caching)
 export const workstationRouter = router({
   listAll: protectedProcedure.query(async () => {
-    const { getAllWorkstations } = await import("./db");
-    return await getAllWorkstations();
+    const { getCachedWorkstations } = await import('./services/cachedQueries');
+    return await getCachedWorkstations();
   }),
 
   listByLine: protectedProcedure
     .input(z.object({ productionLineId: z.number() }))
     .query(async ({ input }) => {
-      return await getWorkstationsByLine(input.productionLineId);
+      const { getCachedWorkstationsByLine } = await import('./services/cachedQueries');
+      return await getCachedWorkstationsByLine(input.productionLineId);
     }),
 
   create: protectedProcedure
@@ -150,6 +159,8 @@ export const workstationRouter = router({
         throw new Error("Admin access required");
       }
       const id = await createWorkstation(input);
+      const { invalidateWorkstationCache } = await import('./services/cachedQueries');
+      invalidateWorkstationCache();
       return { id };
     }),
 
@@ -169,6 +180,8 @@ export const workstationRouter = router({
       }
       const { id, ...data } = input;
       await updateWorkstation(id, data);
+      const { invalidateWorkstationCache } = await import('./services/cachedQueries');
+      invalidateWorkstationCache();
       return { success: true };
     }),
 
@@ -179,26 +192,29 @@ export const workstationRouter = router({
         throw new Error("Admin access required");
       }
       await deleteWorkstation(input.id);
+      const { invalidateWorkstationCache } = await import('./services/cachedQueries');
+      invalidateWorkstationCache();
       return { success: true };
     }),
 });
 
-// Machine Router
+// Machine Router (with caching)
 export const machineRouter = router({
   list: protectedProcedure.query(async () => {
-    const { getAllMachines } = await import("./db");
-    return await getAllMachines();
+    const { getCachedMachines } = await import('./services/cachedQueries');
+    return await getCachedMachines();
   }),
 
   listAll: protectedProcedure.query(async () => {
-    const { getAllMachines } = await import("./db");
-    return await getAllMachines();
+    const { getCachedMachines } = await import('./services/cachedQueries');
+    return await getCachedMachines();
   }),
 
   listByWorkstation: protectedProcedure
     .input(z.object({ workstationId: z.number() }))
     .query(async ({ input }) => {
-      return await getMachinesByWorkstation(input.workstationId);
+      const { getCachedMachinesByWorkstation } = await import('./services/cachedQueries');
+      return await getCachedMachinesByWorkstation(input.workstationId);
     }),
 
   create: protectedProcedure
@@ -219,6 +235,8 @@ export const machineRouter = router({
         throw new Error("Admin access required");
       }
       const id = await createMachine(input);
+      const { invalidateMachineCache } = await import('./services/cachedQueries');
+      invalidateMachineCache();
       return { id };
     }),
 
@@ -241,6 +259,8 @@ export const machineRouter = router({
       }
       const { id, ...data } = input;
       await updateMachine(id, data);
+      const { invalidateMachineCache } = await import('./services/cachedQueries');
+      invalidateMachineCache();
       return { success: true };
     }),
 
@@ -251,6 +271,8 @@ export const machineRouter = router({
         throw new Error("Admin access required");
       }
       await deleteMachine(input.id);
+      const { invalidateMachineCache } = await import('./services/cachedQueries');
+      invalidateMachineCache();
       return { success: true };
     }),
 

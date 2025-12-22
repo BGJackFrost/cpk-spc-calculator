@@ -32,6 +32,8 @@ import {
 import { toast } from "sonner";
 import PerformanceDashboardWidget from "@/components/PerformanceDashboardWidget";
 import QueryCacheWidget from "@/components/QueryCacheWidget";
+import PerformanceAlertWidget from "@/components/PerformanceAlertWidget";
+import PerformanceReportExport from "@/components/PerformanceReportExport";
 
 export default function AdminMonitoring() {
   const { user } = useAuth();
@@ -214,7 +216,7 @@ export default function AdminMonitoring() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full max-w-2xl grid-cols-4">
+          <TabsList className="grid w-full max-w-4xl grid-cols-6">
             <TabsTrigger value="cache" className="flex items-center gap-2">
               <Database className="h-4 w-4" />
               Cache
@@ -230,6 +232,14 @@ export default function AdminMonitoring() {
             <TabsTrigger value="querycache" className="flex items-center gap-2">
               <Zap className="h-4 w-4" />
               Query Cache
+            </TabsTrigger>
+            <TabsTrigger value="alerts" className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4" />
+              Alerts
+            </TabsTrigger>
+            <TabsTrigger value="reports" className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4" />
+              Reports
             </TabsTrigger>
           </TabsList>
 
@@ -606,6 +616,16 @@ export default function AdminMonitoring() {
           {/* Query Cache Tab */}
           <TabsContent value="querycache" className="space-y-6">
             <QueryCacheWidget />
+          </TabsContent>
+
+          {/* Performance Alerts Tab */}
+          <TabsContent value="alerts" className="space-y-6">
+            <PerformanceAlertWidget />
+          </TabsContent>
+
+          {/* Reports Tab */}
+          <TabsContent value="reports" className="space-y-6">
+            <PerformanceReportExport />
           </TabsContent>
         </Tabs>
       </div>
