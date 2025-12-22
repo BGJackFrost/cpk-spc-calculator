@@ -4680,3 +4680,174 @@
 - [x] API rate limiting enhancement - đã có sẵn với IP whitelist, user tracking, alerts
 - [x] Session management - đã có JWT-based session trong template
 - [ ] Input validation strengthening - cần review các API endpoints
+
+
+---
+
+# ROADMAP 2025 - Lộ trình Nâng cấp Hệ thống
+
+## Phase 1: Performance & Stability (Q1 2025 - Tuần 1-6)
+
+### 1.1 Database Query Optimization (Tuần 1-2)
+- [ ] P1-DB-01: Audit slow queries với EXPLAIN ANALYZE
+- [ ] P1-DB-02: Thêm composite indexes cho spc_analysis_history, audit_logs, work_orders
+- [ ] P1-DB-03: Implement cursor-based pagination cho danh sách lớn
+- [ ] P1-DB-04: Tối ưu connection pool với PgBouncer/ProxySQL
+- [ ] P1-DB-05: Implement query result caching với TTL
+- [ ] P1-DB-06: Chuyển đổi operations sang batch processing
+
+### 1.2 Caching Layer Enhancement (Tuần 3)
+- [ ] P1-CACHE-01: Setup Redis cluster cho high availability
+- [ ] P1-CACHE-02: Implement smart cache invalidation với tags
+- [ ] P1-CACHE-03: Tự động warm cache cho data thường xuyên truy cập
+- [ ] P1-CACHE-04: Thêm monitoring cho cache hit/miss rate
+- [ ] P1-CACHE-05: Implement distributed locks với Redis
+
+### 1.3 Memory Leak Fixes (Tuần 4)
+- [ ] P1-MEM-01: Memory profiling với Chrome DevTools và Node.js --inspect
+- [ ] P1-MEM-02: Fix React memory leaks - cleanup useEffect
+- [ ] P1-MEM-03: Fix WebSocket connection leaks
+- [ ] P1-MEM-04: Fix Server-Sent Events leaks
+- [ ] P1-MEM-05: Set memory limits và auto-restart
+
+### 1.4 Error Handling Improvement (Tuần 5)
+- [ ] P1-ERR-01: Tạo centralized error handler middleware
+- [ ] P1-ERR-02: Định nghĩa custom error types cho từng domain
+- [ ] P1-ERR-03: Implement React Error Boundaries
+- [ ] P1-ERR-04: Chuyển đổi technical errors sang user-friendly
+- [ ] P1-ERR-05: Tích hợp Sentry cho error tracking
+
+### 1.5 Logging & Monitoring (Tuần 6)
+- [ ] P1-LOG-01: Implement JSON structured logging với Winston
+- [ ] P1-LOG-02: Setup ELK stack/Loki cho log aggregation
+- [ ] P1-LOG-03: Tích hợp Application Performance Monitoring
+- [ ] P1-LOG-04: Tạo comprehensive health check endpoints
+- [ ] P1-LOG-05: Cấu hình alerts cho critical metrics
+
+## Phase 2: Security Enhancement (Q1 2025 - Tuần 7-13)
+
+### 2.1 Security Audit (Tuần 7-8)
+- [ ] P2-SEC-01: Scan vulnerabilities với npm audit, Snyk
+- [ ] P2-SEC-02: Static code analysis với SonarQube
+- [ ] P2-SEC-03: Penetration testing với OWASP ZAP
+- [ ] P2-SEC-04: Review JWT implementation, session management
+- [ ] P2-SEC-05: Review RBAC implementation
+- [ ] P2-SEC-06: Review tất cả input validation
+
+### 2.2 OWASP Compliance (Tuần 9-10)
+- [ ] P2-OWASP-01: Review và fix SQL Injection vulnerabilities
+- [ ] P2-OWASP-02: Implement Content Security Policy (XSS)
+- [ ] P2-OWASP-03: Verify CSRF tokens implementation
+- [ ] P2-OWASP-04: Add security headers (HSTS, X-Frame-Options)
+- [ ] P2-OWASP-05: Review data encryption và masking
+- [ ] P2-OWASP-06: Review authorization logic
+- [ ] P2-OWASP-07: Review server và app configuration
+- [ ] P2-OWASP-08: Update dependencies có vulnerabilities
+
+### 2.3 Data Encryption at Rest (Tuần 11)
+- [ ] P2-ENC-01: Enable TDE (Transparent Data Encryption)
+- [ ] P2-ENC-02: Encrypt files trước khi upload S3
+- [ ] P2-ENC-03: Encrypt PII fields trong database
+- [ ] P2-ENC-04: Implement key rotation với AWS KMS
+- [ ] P2-ENC-05: Encrypt database backups
+
+### 2.4 API Rate Limiting Enhancement (Tuần 12)
+- [ ] P2-RATE-01: Dynamic rate limits theo user role và endpoint
+- [ ] P2-RATE-02: Implement API key based rate limiting
+- [ ] P2-RATE-03: Implement token bucket algorithm
+- [ ] P2-RATE-04: Add X-RateLimit headers cho clients
+- [ ] P2-RATE-05: Dashboard monitoring rate limits
+
+### 2.5 Session Management Improvement (Tuần 13)
+- [ ] P2-SESS-01: Implement session ID rotation
+- [ ] P2-SESS-02: Giới hạn số sessions đồng thời
+- [ ] P2-SESS-03: Force logout khi password change
+- [ ] P2-SESS-04: Secure remember me implementation
+- [ ] P2-SESS-05: Log session activities
+- [ ] P2-SESS-06: Quản lý devices đã đăng nhập
+
+## Phase 3: Feature Enhancement (Q2 2025 - Tuần 14-28)
+
+### 3.1 Mobile App - React Native (Tuần 14-17)
+- [ ] P3-MOB-01: Setup React Native với Expo
+- [ ] P3-MOB-02: Implement mobile authentication
+- [ ] P3-MOB-03: Tạo dashboard screens cho mobile
+- [ ] P3-MOB-04: Implement SPC charts cho mobile
+- [ ] P3-MOB-05: Setup push notifications
+- [ ] P3-MOB-06: Implement offline data sync
+- [ ] P3-MOB-07: Face ID / Fingerprint authentication
+- [ ] P3-MOB-08: Quản lý work orders trên mobile
+- [ ] P3-MOB-09: Scan QR code cho machines/parts
+- [ ] P3-MOB-10: Submit to App Store và Play Store
+
+### 3.2 Advanced Reporting (Tuần 18-19)
+- [ ] P3-RPT-01: Drag-and-drop report builder
+- [ ] P3-RPT-02: Tự động gửi reports theo lịch
+- [ ] P3-RPT-03: Export PDF, Excel, PowerPoint
+- [ ] P3-RPT-04: Tạo templates cho common reports
+- [ ] P3-RPT-05: Embed dashboards vào external sites
+- [ ] P3-RPT-06: Share reports với external users
+
+### 3.3 Payment Gateway Integration (Tuần 20-21)
+- [ ] P3-PAY-01: Tích hợp Stripe cho payments
+- [ ] P3-PAY-02: Implement subscription plans
+- [ ] P3-PAY-03: Tự động generate invoices
+- [ ] P3-PAY-04: Lịch sử thanh toán
+- [ ] P3-PAY-05: Xử lý hoàn tiền
+- [ ] P3-PAY-06: Tính thuế tự động
+- [ ] P3-PAY-07: Hỗ trợ nhiều loại tiền tệ
+
+### 3.4 IoT Device Integration (Tuần 22-24)
+- [ ] P3-IOT-01: Setup MQTT broker cho IoT devices
+- [ ] P3-IOT-02: Đăng ký và quản lý devices
+- [ ] P3-IOT-03: Nhận data từ sensors
+- [ ] P3-IOT-04: Stream processing với Kafka
+- [ ] P3-IOT-05: Dashboard monitoring devices
+- [ ] P3-IOT-06: Alerts khi device offline/anomaly
+- [ ] P3-IOT-07: Support MQTT, CoAP, HTTP protocols
+
+### 3.5 AI/ML Model Training (Tuần 25-28)
+- [ ] P3-AI-01: ETL pipeline cho training data
+- [ ] P3-AI-02: Train model phát hiện anomaly
+- [ ] P3-AI-03: Model dự đoán hỏng hóc (Predictive Maintenance)
+- [ ] P3-AI-04: Model dự đoán chất lượng
+- [ ] P3-AI-05: Deploy models với TensorFlow Serving
+- [ ] P3-AI-06: Monitor model performance
+- [ ] P3-AI-07: Framework cho model A/B testing
+
+## Phase 4: Documentation & Training (Q2 2025 - Tuần 29-36)
+
+### 4.1 API Documentation - OpenAPI (Tuần 29)
+- [ ] P4-DOC-01: Generate OpenAPI specification
+- [ ] P4-DOC-02: Interactive API documentation
+- [ ] P4-DOC-03: Code examples cho các ngôn ngữ phổ biến
+- [ ] P4-DOC-04: Document webhook events
+- [ ] P4-DOC-05: Generate SDKs từ OpenAPI
+
+### 4.2 User Manual (Tuần 30-31)
+- [ ] P4-MAN-01: Hướng dẫn bắt đầu nhanh
+- [ ] P4-MAN-02: Document từng feature
+- [ ] P4-MAN-03: Câu hỏi thường gặp (FAQ)
+- [ ] P4-MAN-04: Hướng dẫn xử lý lỗi
+- [ ] P4-MAN-05: Best practices cho users
+
+### 4.3 Video Tutorials (Tuần 32-33)
+- [ ] P4-VID-01: Video giới thiệu hệ thống
+- [ ] P4-VID-02: Tutorial cho từng feature chính
+- [ ] P4-VID-03: Hướng dẫn cho administrators
+- [ ] P4-VID-04: Hướng dẫn tích hợp
+- [ ] P4-VID-05: Video xử lý lỗi thường gặp
+
+### 4.4 Developer Guide (Tuần 34)
+- [ ] P4-DEV-01: Document kiến trúc hệ thống
+- [ ] P4-DEV-02: Hướng dẫn setup môi trường dev
+- [ ] P4-DEV-03: Hướng dẫn contribute code
+- [ ] P4-DEV-04: Hướng dẫn viết tests
+- [ ] P4-DEV-05: Hướng dẫn deploy
+
+### 4.5 Training Materials (Tuần 35-36)
+- [ ] P4-TRN-01: PowerPoint slides cho training
+- [ ] P4-TRN-02: Bài tập thực hành
+- [ ] P4-TRN-03: Chương trình certification
+- [ ] P4-TRN-04: Materials cho trainers
+- [ ] P4-TRN-05: Bài test đánh giá
