@@ -2,8 +2,8 @@ import { z } from "zod";
 import { router, protectedProcedure } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { getDb } from "../db";
-import { userQuickAccess } from "../../drizzle/schema";
-import { eq, and, asc } from "drizzle-orm";
+import { userQuickAccess, userQuickAccessCategories } from "../../drizzle/schema";
+import { eq, and, asc, isNull } from "drizzle-orm";
 
 export const quickAccessRouter = router({
   // Lấy danh sách Quick Access của user hiện tại
@@ -28,6 +28,7 @@ export const quickAccessRouter = router({
       menuLabel: z.string().min(1),
       menuIcon: z.string().optional(),
       systemId: z.string().optional(),
+      categoryId: z.number().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
@@ -63,6 +64,7 @@ export const quickAccessRouter = router({
         menuLabel: input.menuLabel,
         menuIcon: input.menuIcon || null,
         systemId: input.systemId || null,
+        categoryId: input.categoryId || null,
         sortOrder: newOrder,
       });
 
@@ -220,4 +222,235 @@ export const quickAccessRouter = router({
 
       return { success: true, imported, skipped };
     }),
+
+  // ==================== CATEGORY APIs ====================
+
+  // Lấy danh sách categories của user
+  listCategories: protectedProcedure.query(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) return [];
+    
+    const categories = await db
+      .select()
+      .from(userQuickAccessCategories)
+      .where(eq(userQuickAccessCategories.userId, ctx.user.id))
+      .orderBy(asc(userQuickAccessCategories.sortOrder));
+    
+    return categories;
+  }),
+
+  // Tạo category mới
+  createCategory: protectedProcedure
+    .input(z.object({
+      name: z.string().min(1).max(100),
+      icon: z.string().optional(),
+      color: z.string().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      // Lấy sortOrder lớn nhất
+      const maxOrder = await db
+        .select({ maxOrder: userQuickAccessCategories.sortOrder })
+        .from(userQuickAccessCategories)
+        .where(eq(userQuickAccessCategories.userId, ctx.user.id))
+        .orderBy(asc(userQuickAccessCategories.sortOrder));
+      
+      const newOrder = maxOrder.length > 0 ? Math.max(...maxOrder.map(m => m.maxOrder)) + 1 : 0;
+
+      const result = await db.insert(userQuickAccessCategories).values({
+        userId: ctx.user.id,
+        name: input.name,
+        icon: input.icon || "Folder",
+        color: input.color || "blue",
+        sortOrder: newOrder,
+      });
+
+      return { success: true, id: Number((result as any).insertId || 0) };
+    }),
+
+  // Cập nhật category
+  updateCategory: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      name: z.string().min(1).max(100).optional(),
+      icon: z.string().optional(),
+      color: z.string().optional(),
+      isExpanded: z.boolean().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      // Kiểm tra quyền sở hữu
+      const category = await db
+        .select()
+        .from(userQuickAccessCategories)
+        .where(and(
+          eq(userQuickAccessCategories.id, input.id),
+          eq(userQuickAccessCategories.userId, ctx.user.id)
+        ))
+        .limit(1);
+
+      if (category.length === 0) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Không tìm thấy category" });
+      }
+
+      const updateData: any = {};
+      if (input.name !== undefined) updateData.name = input.name;
+      if (input.icon !== undefined) updateData.icon = input.icon;
+      if (input.color !== undefined) updateData.color = input.color;
+      if (input.isExpanded !== undefined) updateData.isExpanded = input.isExpanded ? 1 : 0;
+
+      await db
+        .update(userQuickAccessCategories)
+        .set(updateData)
+        .where(eq(userQuickAccessCategories.id, input.id));
+
+      return { success: true };
+    }),
+
+  // Xóa category
+  deleteCategory: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      // Kiểm tra quyền sở hữu
+      const category = await db
+        .select()
+        .from(userQuickAccessCategories)
+        .where(and(
+          eq(userQuickAccessCategories.id, input.id),
+          eq(userQuickAccessCategories.userId, ctx.user.id)
+        ))
+        .limit(1);
+
+      if (category.length === 0) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Không tìm thấy category" });
+      }
+
+      // Chuyển các items trong category về uncategorized
+      await db
+        .update(userQuickAccess)
+        .set({ categoryId: null })
+        .where(and(
+          eq(userQuickAccess.userId, ctx.user.id),
+          eq(userQuickAccess.categoryId, input.id)
+        ));
+
+      // Xóa category
+      await db.delete(userQuickAccessCategories).where(eq(userQuickAccessCategories.id, input.id));
+
+      return { success: true };
+    }),
+
+  // Sắp xếp lại thứ tự categories
+  reorderCategories: protectedProcedure
+    .input(z.object({
+      items: z.array(z.object({
+        id: z.number(),
+        sortOrder: z.number(),
+      })),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      for (const item of input.items) {
+        await db
+          .update(userQuickAccessCategories)
+          .set({ sortOrder: item.sortOrder })
+          .where(and(
+            eq(userQuickAccessCategories.id, item.id),
+            eq(userQuickAccessCategories.userId, ctx.user.id)
+          ));
+      }
+
+      return { success: true };
+    }),
+
+  // Chuyển item vào category
+  moveToCategory: protectedProcedure
+    .input(z.object({
+      itemId: z.number(),
+      categoryId: z.number().nullable(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      // Kiểm tra item thuộc về user
+      const item = await db
+        .select()
+        .from(userQuickAccess)
+        .where(and(
+          eq(userQuickAccess.id, input.itemId),
+          eq(userQuickAccess.userId, ctx.user.id)
+        ))
+        .limit(1);
+
+      if (item.length === 0) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Không tìm thấy item" });
+      }
+
+      // Nếu categoryId không null, kiểm tra category thuộc về user
+      if (input.categoryId !== null) {
+        const category = await db
+          .select()
+          .from(userQuickAccessCategories)
+          .where(and(
+            eq(userQuickAccessCategories.id, input.categoryId),
+            eq(userQuickAccessCategories.userId, ctx.user.id)
+          ))
+          .limit(1);
+
+        if (category.length === 0) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Không tìm thấy category" });
+        }
+      }
+
+      await db
+        .update(userQuickAccess)
+        .set({ categoryId: input.categoryId })
+        .where(eq(userQuickAccess.id, input.itemId));
+
+      return { success: true };
+    }),
+
+  // Lấy Quick Access items theo category
+  listByCategory: protectedProcedure.query(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) return { categories: [], uncategorized: [] };
+    
+    // Lấy tất cả categories
+    const categories = await db
+      .select()
+      .from(userQuickAccessCategories)
+      .where(eq(userQuickAccessCategories.userId, ctx.user.id))
+      .orderBy(asc(userQuickAccessCategories.sortOrder));
+    
+    // Lấy tất cả items
+    const items = await db
+      .select()
+      .from(userQuickAccess)
+      .where(eq(userQuickAccess.userId, ctx.user.id))
+      .orderBy(asc(userQuickAccess.sortOrder));
+    
+    // Nhóm items theo category
+    const categorizedItems = categories.map(cat => ({
+      ...cat,
+      items: items.filter(item => item.categoryId === cat.id),
+    }));
+    
+    // Items không có category
+    const uncategorized = items.filter(item => item.categoryId === null);
+    
+    return {
+      categories: categorizedItems,
+      uncategorized,
+    };
+  }),
 });

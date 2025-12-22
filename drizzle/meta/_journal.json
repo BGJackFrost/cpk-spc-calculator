@@ -463,6 +463,13 @@
       "when": 1766371815462,
       "tag": "0065_cooing_ted_forrester",
       "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "5",
+      "when": 1766375956331,
+      "tag": "0066_fancy_garia",
+      "breakpoints": true
     }
   ]
 }

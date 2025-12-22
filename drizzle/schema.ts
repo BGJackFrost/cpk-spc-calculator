@@ -3235,9 +3235,27 @@ export const userQuickAccess = mysqlTable("user_quick_access", {
   menuLabel: varchar("menu_label", { length: 100 }).notNull(), // Label hiển thị
   menuIcon: varchar("menu_icon", { length: 50 }), // Icon name (e.g., "TrendingUp")
   systemId: varchar("system_id", { length: 50 }), // System mà menu thuộc về (e.g., "spc", "mms")
+  categoryId: int("category_id"), // Category tùy chỉnh (null = Uncategorized)
   sortOrder: int("sort_order").notNull().default(0), // Thứ tự hiển thị
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
 });
 export type UserQuickAccess = typeof userQuickAccess.$inferSelect;
 export type InsertUserQuickAccess = typeof userQuickAccess.$inferInsert;
+
+/**
+ * User quick access categories - Danh mục tùy chỉnh cho Quick Access
+ */
+export const userQuickAccessCategories = mysqlTable("user_quick_access_categories", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull(),
+  name: varchar("name", { length: 100 }).notNull(), // Tên category
+  icon: varchar("icon", { length: 50 }).default("Folder"), // Icon name
+  color: varchar("color", { length: 20 }).default("blue"), // Màu sắc
+  sortOrder: int("sort_order").notNull().default(0), // Thứ tự hiển thị
+  isExpanded: int("is_expanded").notNull().default(1), // Mặc định mở rộng
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type UserQuickAccessCategory = typeof userQuickAccessCategories.$inferSelect;
+export type InsertUserQuickAccessCategory = typeof userQuickAccessCategories.$inferInsert;

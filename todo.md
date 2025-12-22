@@ -4556,3 +4556,24 @@
 - [x] Thêm API endpoint import Quick Access settings (với replaceExisting option)
 - [x] Tạo UI buttons Export/Import trong QuickAccessManagement
 - [x] Validate version và xử lý lỗi khi import
+
+## Phase 221 - Dashboard Sidebar Redesign & Quick Access Categories
+
+### Dashboard Sidebar Restructure
+- [x] Chỉ giữ category "Tổng quan" với menu Dashboard cố định
+- [x] Bỏ category "Báo cáo" khỏi Dashboard sidebar
+- [x] Tất cả menu khác thuộc Quick Access
+
+### Custom Categories cho Quick Access
+- [x] Tạo bảng user_quick_access_categories trong schema
+- [x] Thêm cột categoryId vào user_quick_access
+- [x] API CRUD cho categories (create, update, delete, list)
+- [x] API moveToCategory để gán items vào categories
+- [x] API listByCategory để lấy items theo category
+- [x] Cập nhật useQuickAccess hook hỗ trợ categories
+
+### UI Improvements
+- [x] Cập nhật DASHBOARD_MENU chỉ giữ Tổng quan + Quick Access
+- [x] Thêm tab "Danh mục" trong QuickAccessManagement
+- [x] UI tạo/sửa/xóa category với màu sắc
+- [x] UI phân loại Quick Access items vào categories

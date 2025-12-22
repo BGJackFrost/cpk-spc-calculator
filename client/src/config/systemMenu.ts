@@ -359,6 +359,9 @@ export const SYSTEM_MENU: SystemMenuConfig = {
 };
 
 // ===== DASHBOARD SYSTEM MENU =====
+// Dashboard sidebar chỉ có 2 phần:
+// 1. Tổng quan - cố định với menu Dashboard
+// 2. Quick Access - động, load từ database và cho phép tạo category tùy chỉnh
 export const DASHBOARD_MENU: SystemMenuConfig = {
   system: SYSTEMS.DASHBOARD,
   menuGroups: [
@@ -369,30 +372,16 @@ export const DASHBOARD_MENU: SystemMenuConfig = {
       defaultOpen: true,
       items: [
         { id: "main-dashboard", icon: LayoutDashboard, labelKey: "nav.mainDashboard", path: "/dashboard" },
-        { id: "realtime-line", icon: Zap, labelKey: "nav.realtimeLine", path: "/realtime-line" },
-        { id: "supervisor-dashboard", icon: Users, labelKey: "nav.supervisorDashboard", path: "/supervisor-dashboard" },
-        { id: "oee-dashboard", icon: Target, labelKey: "nav.oeeDashboard", path: "/oee-dashboard" },
-        { id: "unified-dashboard", icon: Gauge, labelKey: "nav.unifiedDashboard", path: "/unified-dashboard" },
       ],
     },
     {
       id: "quick-access",
       labelKey: "menuGroup.quickAccess",
-      icon: Zap,
+      icon: Star,
       defaultOpen: true,
       items: [
-        // Quick access items will be loaded dynamically from user_quick_access table
-        // This is a placeholder - actual items are loaded via API
-      ],
-    },
-    {
-      id: "dashboard-reports",
-      labelKey: "menuGroup.dashboardReports",
-      icon: BarChart3,
-      items: [
-        { id: "spc-report", icon: BarChart3, labelKey: "nav.spcReport", path: "/spc-report" },
-        { id: "plant-kpi", icon: Target, labelKey: "nav.plantKpi", path: "/plant-kpi" },
-        { id: "shift-report", icon: Clock, labelKey: "nav.shiftReport", path: "/shift-report-history" },
+        // Quick access items và categories sẽ được load động từ database
+        // Bao gồm cả categories tùy chỉnh của user
       ],
     },
   ],

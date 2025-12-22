@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks";
-import { ALL_SYSTEM_MENUS, MenuItem } from "@/config/systemMenu";
-import { Star, type LucideIcon } from "lucide-react";
+import { ALL_SYSTEM_MENUS, MenuItem, MenuGroup } from "@/config/systemMenu";
+import { Star, Folder, type LucideIcon } from "lucide-react";
 
 // Map icon names to actual icons
 const iconMap: Record<string, LucideIcon> = {};
@@ -23,13 +23,25 @@ export interface QuickAccessItem {
   menuPath: string;
   menuLabel: string;
   sortOrder: number;
+  categoryId: number | null;
   icon: LucideIcon;
+}
+
+export interface QuickAccessCategory {
+  id: number;
+  name: string;
+  icon: string;
+  color: string;
+  sortOrder: number;
+  isExpanded: boolean;
+  items: QuickAccessItem[];
 }
 
 export function useQuickAccess() {
   const { user } = useAuth();
   
-  const { data: quickAccessData, isLoading, refetch } = trpc.quickAccess.list.useQuery(
+  // Fetch items by category
+  const { data: categoryData, isLoading, refetch } = trpc.quickAccess.listByCategory.useQuery(
     undefined,
     {
       enabled: !!user,
@@ -37,21 +49,56 @@ export function useQuickAccess() {
     }
   );
 
-  // Transform quick access data to menu items
-  const quickAccessItems = useMemo(() => {
-    if (!quickAccessData) return [];
-    
-    return quickAccessData.map(item => ({
-      id: item.id,
-      menuId: item.menuId,
-      menuPath: item.menuPath,
-      menuLabel: item.menuLabel,
-      sortOrder: item.sortOrder,
-      icon: iconMap[item.menuPath] || Star,
-    }));
-  }, [quickAccessData]);
+  // Fetch categories list
+  const { data: categoriesData, refetch: refetchCategories } = trpc.quickAccess.listCategories.useQuery(
+    undefined,
+    {
+      enabled: !!user,
+      staleTime: 30000,
+    }
+  );
 
-  // Convert to MenuItem format for sidebar
+  // Transform to QuickAccessItem format
+  const transformItem = (item: any): QuickAccessItem => ({
+    id: item.id,
+    menuId: item.menuId,
+    menuPath: item.menuPath,
+    menuLabel: item.menuLabel,
+    sortOrder: item.sortOrder,
+    categoryId: item.categoryId,
+    icon: iconMap[item.menuPath] || Star,
+  });
+
+  // Categories with items
+  const categories: QuickAccessCategory[] = useMemo(() => {
+    if (!categoryData?.categories) return [];
+    
+    return categoryData.categories.map(cat => ({
+      id: cat.id,
+      name: cat.name,
+      icon: cat.icon || "Folder",
+      color: cat.color || "blue",
+      sortOrder: cat.sortOrder,
+      isExpanded: cat.isExpanded === 1,
+      items: cat.items.map(transformItem),
+    }));
+  }, [categoryData]);
+
+  // Uncategorized items
+  const uncategorizedItems: QuickAccessItem[] = useMemo(() => {
+    if (!categoryData?.uncategorized) return [];
+    return categoryData.uncategorized.map(transformItem);
+  }, [categoryData]);
+
+  // All items flat (for backward compatibility)
+  const quickAccessItems: QuickAccessItem[] = useMemo(() => {
+    const allItems: QuickAccessItem[] = [];
+    categories.forEach(cat => allItems.push(...cat.items));
+    allItems.push(...uncategorizedItems);
+    return allItems.sort((a, b) => a.sortOrder - b.sortOrder);
+  }, [categories, uncategorizedItems]);
+
+  // Convert to MenuItem format for sidebar (flat list)
   const quickAccessMenuItems: MenuItem[] = useMemo(() => {
     return quickAccessItems.map(item => ({
       id: `quick-${item.menuId}`,
@@ -61,11 +108,69 @@ export function useQuickAccess() {
     }));
   }, [quickAccessItems]);
 
+  // Convert to MenuGroup format for sidebar (with categories)
+  const quickAccessMenuGroups: MenuGroup[] = useMemo(() => {
+    const groups: MenuGroup[] = [];
+    
+    // Add category groups
+    categories.forEach(cat => {
+      if (cat.items.length > 0) {
+        groups.push({
+          id: `quick-cat-${cat.id}`,
+          labelKey: cat.name,
+          icon: Folder, // Will be replaced with dynamic icon
+          defaultOpen: cat.isExpanded,
+          items: cat.items.map(item => ({
+            id: `quick-${item.menuId}`,
+            icon: item.icon,
+            labelKey: item.menuLabel,
+            path: item.menuPath,
+          })),
+        });
+      }
+    });
+    
+    // Add uncategorized items as a group if any
+    if (uncategorizedItems.length > 0) {
+      groups.push({
+        id: "quick-uncategorized",
+        labelKey: "Chưa phân loại",
+        icon: Star,
+        defaultOpen: true,
+        items: uncategorizedItems.map(item => ({
+          id: `quick-${item.menuId}`,
+          icon: item.icon,
+          labelKey: item.menuLabel,
+          path: item.menuPath,
+        })),
+      });
+    }
+    
+    return groups;
+  }, [categories, uncategorizedItems]);
+
+  const refetchAll = () => {
+    refetch();
+    refetchCategories();
+  };
+
   return {
+    // Items
     quickAccessItems,
     quickAccessMenuItems,
+    uncategorizedItems,
+    
+    // Categories
+    categories,
+    categoriesData: categoriesData || [],
+    quickAccessMenuGroups,
+    
+    // State
     isLoading,
-    refetch,
     hasQuickAccess: quickAccessItems.length > 0,
+    hasCategories: categories.length > 0,
+    
+    // Actions
+    refetch: refetchAll,
   };
 }

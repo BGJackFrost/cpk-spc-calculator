@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Star, StarOff, Plus, Trash2, GripVertical, Search, 
   LayoutDashboard, TrendingUp, HardHat, Factory, Key, Settings,
-  RefreshCw, Download, Upload, FileJson
+  RefreshCw, Download, Upload, FileJson, Folder, FolderPlus, Pencil, Palette
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
@@ -231,6 +231,58 @@ export default function QuickAccessManagement() {
     },
   });
 
+  // Category queries and mutations
+  const { data: categories = [], refetch: refetchCategories } = trpc.quickAccess.listCategories.useQuery();
+  
+  const createCategoryMutation = trpc.quickAccess.createCategory.useMutation({
+    onSuccess: () => {
+      toast.success("Đã tạo danh mục mới");
+      refetchCategories();
+      setNewCategoryName("");
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  const updateCategoryMutation = trpc.quickAccess.updateCategory.useMutation({
+    onSuccess: () => {
+      toast.success("Đã cập nhật danh mục");
+      refetchCategories();
+      setEditingCategory(null);
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  const deleteCategoryMutation = trpc.quickAccess.deleteCategory.useMutation({
+    onSuccess: () => {
+      toast.success("Đã xóa danh mục");
+      refetchCategories();
+      refetch();
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  const moveToCategoryMutation = trpc.quickAccess.moveToCategory.useMutation({
+    onSuccess: () => {
+      toast.success("Đã chuyển item vào danh mục");
+      refetch();
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  // Category state
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [newCategoryColor, setNewCategoryColor] = useState("blue");
+  const [editingCategory, setEditingCategory] = useState<number | null>(null);
+  const [editCategoryName, setEditCategoryName] = useState("");
+
   // Export handler
   const handleExport = async () => {
     try {
@@ -387,7 +439,11 @@ export default function QuickAccessManagement() {
           <TabsList>
             <TabsTrigger value="my-quick-access">
               <Star className="h-4 w-4 mr-2" />
-              Quick Access của tôi ({quickAccessItems.length})
+              Quick Access ({quickAccessItems.length})
+            </TabsTrigger>
+            <TabsTrigger value="categories">
+              <Folder className="h-4 w-4 mr-2" />
+              Danh mục
             </TabsTrigger>
             <TabsTrigger value="add-new">
               <Plus className="h-4 w-4 mr-2" />
@@ -441,6 +497,197 @@ export default function QuickAccessManagement() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Categories Tab */}
+          <TabsContent value="categories">
+            <div className="grid gap-6 md:grid-cols-2">
+              {/* Create New Category */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FolderPlus className="h-5 w-5" />
+                    Tạo danh mục mới
+                  </CardTitle>
+                  <CardDescription>
+                    Tạo danh mục tùy chỉnh để nhóm các menu Quick Access
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Tên danh mục</label>
+                    <Input
+                      placeholder="Nhập tên danh mục..."
+                      value={newCategoryName}
+                      onChange={(e) => setNewCategoryName(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Màu sắc</label>
+                    <div className="flex gap-2 flex-wrap">
+                      {["blue", "green", "purple", "orange", "red", "pink", "cyan", "yellow"].map(color => (
+                        <button
+                          key={color}
+                          onClick={() => setNewCategoryColor(color)}
+                          className={`w-8 h-8 rounded-full transition-all ${
+                            newCategoryColor === color ? "ring-2 ring-offset-2 ring-primary" : ""
+                          }`}
+                          style={{ backgroundColor: `var(--${color}-500, ${color})` }}
+                          title={color}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  <Button
+                    onClick={() => createCategoryMutation.mutate({ name: newCategoryName, color: newCategoryColor })}
+                    disabled={!newCategoryName.trim() || createCategoryMutation.isPending}
+                    className="w-full"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Tạo danh mục
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Existing Categories */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Folder className="h-5 w-5" />
+                    Danh mục hiện có ({categories.length})
+                  </CardTitle>
+                  <CardDescription>
+                    Quản lý các danh mục Quick Access của bạn
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {categories.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Folder className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>Chưa có danh mục nào</p>
+                      <p className="text-sm mt-2">Tạo danh mục mới để nhóm các menu</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {categories.map((cat) => (
+                        <div
+                          key={cat.id}
+                          className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+                        >
+                          <div
+                            className="w-4 h-4 rounded-full shrink-0"
+                            style={{ backgroundColor: `var(--${cat.color}-500, ${cat.color})` }}
+                          />
+                          {editingCategory === cat.id ? (
+                            <Input
+                              value={editCategoryName}
+                              onChange={(e) => setEditCategoryName(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  updateCategoryMutation.mutate({ id: cat.id, name: editCategoryName });
+                                } else if (e.key === "Escape") {
+                                  setEditingCategory(null);
+                                }
+                              }}
+                              autoFocus
+                              className="flex-1"
+                            />
+                          ) : (
+                            <span className="flex-1 font-medium">{cat.name}</span>
+                          )}
+                          <div className="flex gap-1">
+                            {editingCategory === cat.id ? (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={() => updateCategoryMutation.mutate({ id: cat.id, name: editCategoryName })}
+                                >
+                                  <Star className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={() => setEditingCategory(null)}
+                                >
+                                  <StarOff className="h-4 w-4" />
+                                </Button>
+                              </>
+                            ) : (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={() => {
+                                    setEditingCategory(cat.id);
+                                    setEditCategoryName(cat.name);
+                                  }}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-destructive hover:text-destructive"
+                                  onClick={() => {
+                                    if (confirm(`Xóa danh mục "${cat.name}"? Các menu trong danh mục sẽ chuyển về "Chưa phân loại".`)) {
+                                      deleteCategoryMutation.mutate({ id: cat.id });
+                                    }
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Assign Items to Categories */}
+            {categories.length > 0 && quickAccessItems.length > 0 && (
+              <Card className="mt-6">
+                <CardHeader>
+                  <CardTitle>Phân loại Quick Access</CardTitle>
+                  <CardDescription>
+                    Kéo thả hoặc chọn danh mục cho các menu Quick Access
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {quickAccessItems.map((item) => (
+                      <div
+                        key={item.id}
+                        className="flex items-center gap-3 p-3 rounded-lg border bg-card"
+                      >
+                        <Star className="h-4 w-4 text-yellow-500 shrink-0" />
+                        <span className="flex-1 font-medium">{item.menuLabel}</span>
+                        <select
+                          value={item.categoryId || ""}
+                          onChange={(e) => {
+                            const categoryId = e.target.value ? parseInt(e.target.value) : null;
+                            moveToCategoryMutation.mutate({ itemId: item.id, categoryId });
+                          }}
+                          className="px-3 py-1.5 rounded-md border bg-background text-sm"
+                        >
+                          <option value="">Chưa phân loại</option>
+                          {categories.map(cat => (
+                            <option key={cat.id} value={cat.id}>{cat.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           {/* Add New Tab */}
