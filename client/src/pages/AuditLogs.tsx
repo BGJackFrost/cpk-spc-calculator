@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { trpc } from "@/lib/trpc";
-import { Loader2, Search, Eye, FileText, RefreshCw } from "lucide-react";
+import { Loader2, Search, Eye, FileText, RefreshCw, ChevronDown } from "lucide-react";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 
@@ -73,19 +73,47 @@ export default function AuditLogs() {
     module: "all",
     search: "",
   });
-  const [page, setPage] = useState(1);
+  
+  // Cursor pagination state
+  const [cursor, setCursor] = useState<string | undefined>(undefined);
+  const [allLogs, setAllLogs] = useState<AuditLog[]>([]);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const pageSize = 20;
 
-  const { data, isLoading, refetch } = trpc.audit.list.useQuery({
-    page,
-    pageSize,
+  // Fetch logs with cursor pagination
+  const { data, isLoading, refetch } = trpc.audit.listWithCursor.useQuery({
+    cursor,
+    limit: pageSize,
+    direction: 'forward',
     action: filters.action !== "all" ? filters.action : undefined,
     module: filters.module !== "all" ? filters.module : undefined,
     search: filters.search || undefined,
   });
 
-  const logs = data?.logs || [];
-  const totalPages = data?.totalPages || 1;
+  // Update allLogs when data changes
+  useEffect(() => {
+    if (data?.items) {
+      if (!cursor) {
+        // First load or filter change - replace all
+        setAllLogs(data.items as AuditLog[]);
+      } else if (isLoadingMore) {
+        // Loading more - append
+        setAllLogs(prev => {
+          const existingIds = new Set(prev.map(l => l.id));
+          const newItems = (data.items as AuditLog[]).filter(l => !existingIds.has(l.id));
+          return [...prev, ...newItems];
+        });
+        setIsLoadingMore(false);
+      }
+    }
+  }, [data, cursor, isLoadingMore]);
+
+  // Reset when filters change
+  useEffect(() => {
+    setAllLogs([]);
+    setCursor(undefined);
+    setIsLoadingMore(false);
+  }, [filters.action, filters.module, filters.search]);
 
   const openDetail = (log: AuditLog) => {
     setSelectedLog(log);
@@ -101,6 +129,22 @@ export default function AuditLogs() {
     }
   };
 
+  // Load more handler
+  const handleLoadMore = useCallback(() => {
+    if (data?.nextCursor && !isLoading && !isLoadingMore) {
+      setIsLoadingMore(true);
+      setCursor(data.nextCursor);
+    }
+  }, [data?.nextCursor, isLoading, isLoadingMore]);
+
+  // Refresh handler
+  const handleRefresh = useCallback(() => {
+    setAllLogs([]);
+    setCursor(undefined);
+    setIsLoadingMore(false);
+    refetch();
+  }, [refetch]);
+
   return (
     <DashboardLayout>
       <div className="p-6 space-y-6">
@@ -111,8 +155,8 @@ export default function AuditLogs() {
               Theo dõi các thao tác quan trọng trong hệ thống
             </p>
           </div>
-          <Button variant="outline" onClick={() => refetch()}>
-            <RefreshCw className="h-4 w-4 mr-2" />
+          <Button variant="outline" onClick={handleRefresh} disabled={isLoading}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
             Làm mới
           </Button>
         </div>
@@ -133,7 +177,6 @@ export default function AuditLogs() {
                   value={filters.action}
                   onValueChange={(value) => {
                     setFilters({ ...filters, action: value });
-                    setPage(1);
                   }}
                 >
                   <SelectTrigger>
@@ -157,7 +200,6 @@ export default function AuditLogs() {
                   value={filters.module}
                   onValueChange={(value) => {
                     setFilters({ ...filters, module: value });
-                    setPage(1);
                   }}
                 >
                   <SelectTrigger>
@@ -184,7 +226,6 @@ export default function AuditLogs() {
                   value={filters.search}
                   onChange={(e) => {
                     setFilters({ ...filters, search: e.target.value });
-                    setPage(1);
                   }}
                 />
               </div>
@@ -200,15 +241,15 @@ export default function AuditLogs() {
               Danh sách Nhật ký
             </CardTitle>
             <CardDescription>
-              Hiển thị {logs.length} / {data?.total || 0} bản ghi
+              Đang hiển thị {allLogs.length} / {data?.totalCount || 0} bản ghi
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {isLoading ? (
+            {isLoading && allLogs.length === 0 ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
               </div>
-            ) : logs.length === 0 ? (
+            ) : allLogs.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 Không có nhật ký nào
               </div>
@@ -227,7 +268,7 @@ export default function AuditLogs() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {logs.map((log: AuditLog) => (
+                    {allLogs.map((log: AuditLog) => (
                       <TableRow key={log.id}>
                         <TableCell className="text-sm">
                           {format(new Date(log.createdAt), "dd/MM/yyyy HH:mm:ss", { locale: vi })}
@@ -261,29 +302,48 @@ export default function AuditLogs() {
                   </TableBody>
                 </Table>
 
-                {/* Pagination */}
-                <div className="flex items-center justify-between mt-4">
-                  <div className="text-sm text-muted-foreground">
-                    Trang {page} / {totalPages}
-                  </div>
-                  <div className="flex gap-2">
+                {/* Load More Button */}
+                <div className="flex flex-col items-center gap-2 py-4 mt-4 border-t">
+                  {data?.totalCount !== undefined && (
+                    <div className="text-sm text-muted-foreground">
+                      Đang hiển thị {allLogs.length} / {data.totalCount} bản ghi
+                      {data.totalCount > 0 && ` (${Math.round((allLogs.length / data.totalCount) * 100)}%)`}
+                    </div>
+                  )}
+                  
+                  {data?.hasMore ? (
                     <Button
                       variant="outline"
-                      size="sm"
-                      onClick={() => setPage(page - 1)}
-                      disabled={page <= 1}
+                      onClick={handleLoadMore}
+                      disabled={isLoadingMore}
                     >
-                      Trước
+                      {isLoadingMore ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Đang tải...
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDown className="mr-2 h-4 w-4" />
+                          Tải thêm
+                        </>
+                      )}
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setPage(page + 1)}
-                      disabled={page >= totalPages}
-                    >
-                      Sau
-                    </Button>
-                  </div>
+                  ) : allLogs.length > 0 ? (
+                    <span className="text-sm text-muted-foreground">Đã hiển thị tất cả</span>
+                  ) : null}
+
+                  {/* Progress bar */}
+                  {data?.totalCount !== undefined && data.totalCount > 0 && (
+                    <div className="w-full max-w-xs">
+                      <div className="h-1 w-full bg-muted rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-primary transition-all duration-300"
+                          style={{ width: `${Math.round((allLogs.length / data.totalCount) * 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </>
             )}

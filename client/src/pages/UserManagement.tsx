@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,16 +10,17 @@ import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Checkbox } from "@/components/ui/checkbox";
+import { LoadMoreButton } from "@/components/LoadMoreButton";
 import { 
   Users, 
   Shield, 
   UserPlus,
   Pencil,
-  Trash2,
   Loader2,
   Search,
   CheckSquare,
-  UserCog
+  UserCog,
+  RefreshCw
 } from "lucide-react";
 
 export default function UserManagement() {
@@ -27,20 +28,49 @@ export default function UserManagement() {
   const [searchTerm, setSearchTerm] = useState("");
   const [editingUser, setEditingUser] = useState<any>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
   const [selectedUsers, setSelectedUsers] = useState<number[]>([]);
   const [isBulkDialogOpen, setIsBulkDialogOpen] = useState(false);
   const [bulkRole, setBulkRole] = useState<"user" | "manager" | "admin">("user");
-  const pageSize = 10;
+  
+  // Cursor pagination state
+  const [cursor, setCursor] = useState<string | undefined>(undefined);
+  const [allUsers, setAllUsers] = useState<any[]>([]);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const pageSize = 20;
 
-  // Fetch users
-  const { data: users, isLoading, refetch } = trpc.user.list.useQuery();
+  // Fetch users with cursor pagination
+  const { data: paginatedData, isLoading, refetch } = trpc.user.listWithCursor.useQuery({
+    cursor,
+    limit: pageSize,
+    direction: 'forward',
+  });
+
+  // Also fetch all users for stats (lightweight query)
+  const { data: allUsersStats } = trpc.user.list.useQuery();
+
+  // Update allUsers when data changes
+  useEffect(() => {
+    if (paginatedData?.items) {
+      if (!cursor) {
+        // First load - replace all
+        setAllUsers(paginatedData.items);
+      } else if (isLoadingMore) {
+        // Loading more - append
+        setAllUsers(prev => {
+          const existingIds = new Set(prev.map(u => u.id));
+          const newItems = paginatedData.items.filter(u => !existingIds.has(u.id));
+          return [...prev, ...newItems];
+        });
+        setIsLoadingMore(false);
+      }
+    }
+  }, [paginatedData, cursor, isLoadingMore]);
 
   // Update user role mutation
   const updateRoleMutation = trpc.user.updateRole.useMutation({
     onSuccess: () => {
       toast.success("Cập nhật quyền người dùng thành công");
-      refetch();
+      handleRefresh();
       setIsEditDialogOpen(false);
     },
     onError: (error) => {
@@ -52,7 +82,7 @@ export default function UserManagement() {
   const bulkUpdateRoleMutation = trpc.user.bulkUpdateRole.useMutation({
     onSuccess: (result) => {
       toast.success(`Đã cập nhật vai trò cho ${result.updated} người dùng`);
-      refetch();
+      handleRefresh();
       setIsBulkDialogOpen(false);
       setSelectedUsers([]);
     },
@@ -62,18 +92,13 @@ export default function UserManagement() {
   });
 
   // Filter users by search term
-  const filteredUsers = users?.filter(user => 
+  const filteredUsers = allUsers?.filter(user => 
     user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     user.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Pagination
-  const totalPages = Math.ceil((filteredUsers?.length || 0) / pageSize);
-  const paginatedUsers = filteredUsers?.slice((currentPage - 1) * pageSize, currentPage * pageSize);
-
   const handleSearchChange = (value: string) => {
     setSearchTerm(value);
-    setCurrentPage(1);
   };
 
   const handleUpdateRole = () => {
@@ -101,14 +126,30 @@ export default function UserManagement() {
   };
 
   const toggleSelectAll = () => {
-    if (!paginatedUsers) return;
-    const selectableUsers = paginatedUsers.filter(u => u.id !== currentUser?.id);
+    if (!filteredUsers) return;
+    const selectableUsers = filteredUsers.filter(u => u.id !== currentUser?.id);
     if (selectedUsers.length === selectableUsers.length) {
       setSelectedUsers([]);
     } else {
       setSelectedUsers(selectableUsers.map(u => u.id));
     }
   };
+
+  // Load more handler
+  const handleLoadMore = useCallback(() => {
+    if (paginatedData?.nextCursor && !isLoading && !isLoadingMore) {
+      setIsLoadingMore(true);
+      setCursor(paginatedData.nextCursor);
+    }
+  }, [paginatedData?.nextCursor, isLoading, isLoadingMore]);
+
+  // Refresh handler
+  const handleRefresh = useCallback(() => {
+    setAllUsers([]);
+    setCursor(undefined);
+    setIsLoadingMore(false);
+    refetch();
+  }, [refetch]);
 
   // Check if current user is admin
   if (currentUser?.role !== "admin") {
@@ -142,6 +183,10 @@ export default function UserManagement() {
               Quản lý tài khoản và phân quyền người dùng
             </p>
           </div>
+          <Button variant="outline" onClick={handleRefresh} disabled={isLoading}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+            Làm mới
+          </Button>
         </div>
 
         {/* Stats */}
@@ -152,7 +197,7 @@ export default function UserManagement() {
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{users?.length || 0}</div>
+              <div className="text-2xl font-bold">{paginatedData?.totalCount || allUsersStats?.length || 0}</div>
             </CardContent>
           </Card>
           <Card className="bg-card rounded-xl border border-border/50 shadow-md">
@@ -162,7 +207,7 @@ export default function UserManagement() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {users?.filter(u => u.role === "admin").length || 0}
+                {allUsersStats?.filter(u => u.role === "admin").length || 0}
               </div>
             </CardContent>
           </Card>
@@ -173,7 +218,7 @@ export default function UserManagement() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {users?.filter(u => u.role === "user").length || 0}
+                {allUsersStats?.filter(u => u.role === "user").length || 0}
               </div>
             </CardContent>
           </Card>
@@ -184,7 +229,7 @@ export default function UserManagement() {
           <CardHeader>
             <CardTitle>Danh sách người dùng</CardTitle>
             <CardDescription>
-              Tìm kiếm và quản lý quyền người dùng
+              Tìm kiếm và quản lý quyền người dùng • Đang hiển thị {filteredUsers?.length || 0} / {paginatedData?.totalCount || 0} người dùng
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -213,7 +258,7 @@ export default function UserManagement() {
               )}
             </div>
 
-            {isLoading ? (
+            {isLoading && allUsers.length === 0 ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
               </div>
@@ -224,8 +269,8 @@ export default function UserManagement() {
                     <tr>
                       <th className="px-4 py-3 w-10">
                         <Checkbox
-                          checked={paginatedUsers && paginatedUsers.filter(u => u.id !== currentUser?.id).length > 0 && 
-                            paginatedUsers.filter(u => u.id !== currentUser?.id).every(u => selectedUsers.includes(u.id))}
+                          checked={filteredUsers && filteredUsers.filter(u => u.id !== currentUser?.id).length > 0 && 
+                            filteredUsers.filter(u => u.id !== currentUser?.id).every(u => selectedUsers.includes(u.id))}
                           onCheckedChange={toggleSelectAll}
                         />
                       </th>
@@ -237,7 +282,7 @@ export default function UserManagement() {
                     </tr>
                   </thead>
                   <tbody>
-                    {paginatedUsers?.map((user) => (
+                    {filteredUsers?.map((user) => (
                       <tr key={user.id} className={`border-b hover:bg-muted/30 ${selectedUsers.includes(user.id) ? 'bg-primary/5' : ''}`}>
                         <td className="px-4 py-3">
                           <Checkbox
@@ -338,35 +383,16 @@ export default function UserManagement() {
                   </tbody>
                 </table>
                 
-                {/* Pagination */}
-                {totalPages > 1 && (
-                  <div className="flex items-center justify-between mt-4 pt-4 border-t">
-                    <div className="text-sm text-muted-foreground">
-                      Hiển thị {((currentPage - 1) * pageSize) + 1} - {Math.min(currentPage * pageSize, filteredUsers?.length || 0)} / {filteredUsers?.length || 0} người dùng
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                        disabled={currentPage === 1}
-                      >
-                        Trước
-                      </Button>
-                      <span className="text-sm">
-                        Trang {currentPage} / {totalPages}
-                      </span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                        disabled={currentPage >= totalPages}
-                      >
-                        Sau
-                      </Button>
-                    </div>
-                  </div>
-                )}
+                {/* Load More Button */}
+                <LoadMoreButton
+                  hasMore={paginatedData?.hasMore ?? false}
+                  isLoading={isLoadingMore}
+                  onLoadMore={handleLoadMore}
+                  onRefresh={handleRefresh}
+                  totalCount={paginatedData?.totalCount}
+                  loadedCount={allUsers.length}
+                  showRefresh={false}
+                />
               </div>
             )}
           </CardContent>

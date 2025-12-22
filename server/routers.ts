@@ -8924,6 +8924,86 @@ Hãy trả về JSON với format:
       }),
   }),
 
+  // Query Performance Monitoring Router
+  queryPerformance: router({
+    getStats: protectedProcedure
+      .query(async ({ ctx }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
+        }
+        const { getQueryStats } = await import('./services/queryPerformanceService');
+        return getQueryStats();
+      }),
+
+    getSlowQueries: protectedProcedure
+      .input(z.object({ limit: z.number().default(50) }))
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
+        }
+        const { getSlowQueries } = await import('./services/queryPerformanceService');
+        return getSlowQueries(input.limit);
+      }),
+
+    analyzeQuery: protectedProcedure
+      .input(z.object({ query: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
+        }
+        const { analyzeQuery } = await import('./services/queryPerformanceService');
+        return await analyzeQuery(input.query);
+      }),
+
+    getIndexStats: protectedProcedure
+      .query(async ({ ctx }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
+        }
+        const { getIndexUsageStats } = await import('./services/queryPerformanceService');
+        return await getIndexUsageStats();
+      }),
+
+    getTableStats: protectedProcedure
+      .query(async ({ ctx }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
+        }
+        const { getTableStats } = await import('./services/queryPerformanceService');
+        return await getTableStats();
+      }),
+  }),
+
+  // Connection Pool Monitoring Router
+  connectionPool: router({
+    getStats: protectedProcedure
+      .query(async ({ ctx }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
+        }
+        const { getPoolStats } = await import('./services/connectionPoolService');
+        return await getPoolStats();
+      }),
+
+    getHealth: protectedProcedure
+      .query(async ({ ctx }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
+        }
+        const { getPoolHealth } = await import('./services/connectionPoolService');
+        return await getPoolHealth();
+      }),
+
+    getRecommendedConfig: protectedProcedure
+      .query(async ({ ctx }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
+        }
+        const { getRecommendedPoolConfig } = await import('./services/connectionPoolService');
+        return await getRecommendedPoolConfig();
+      }),
+  }),
+
   shiftReport: router({
     list: protectedProcedure
       .input(z.object({
