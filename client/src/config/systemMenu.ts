@@ -343,6 +343,7 @@ export const SYSTEM_MENU: SystemMenuConfig = {
         { id: "export-history", icon: FolderClock, labelKey: "nav.exportHistory", path: "/export-history" },
         { id: "scheduled-jobs", icon: Clock, labelKey: "nav.scheduledJobs", path: "/scheduled-jobs", adminOnly: true },
         { id: "rate-limit-dashboard", icon: Shield, labelKey: "nav.rateLimitDashboard", path: "/rate-limit-dashboard", adminOnly: true },
+        { id: "admin-monitoring", icon: Activity, labelKey: "nav.adminMonitoring", path: "/admin-monitoring", adminOnly: true },
       ],
     },
     {

@@ -138,6 +138,7 @@ import BackupRestore from "./pages/BackupRestore";
 import AnomalyDetection from "./pages/AnomalyDetection";
 import AppSettings from "./pages/AppSettings";
 import QuickAccessManagement from "./pages/QuickAccessManagement";
+import AdminMonitoring from "./pages/AdminMonitoring";
 
 function Router() {
   return (
@@ -276,6 +277,7 @@ function Router() {
       <Route path="/spc-visualization/:type/:id" component={SpcVisualizationDetail} />
       <Route path="/custom-report-builder" component={CustomReportBuilder} />
       <Route path="/rate-limit-dashboard" component={RateLimitDashboard} />
+      <Route path="/admin-monitoring" component={AdminMonitoring} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

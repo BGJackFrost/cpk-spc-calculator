@@ -46,6 +46,7 @@ import {
   isRateLimitEnabled
 } from "./_core/rateLimiter";
 import { notifyOwner } from "./_core/notification";
+import { cache } from "./cache";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { spcDefectRecords, spcAnalysisHistory } from "../drizzle/schema";
@@ -6688,6 +6689,73 @@ organization: organizationRouter,
           ctx.user.name || 'Unknown'
         );
         return { success };
+      }),
+  }),
+
+  // Cache Management Router
+  cache: router({
+    getStats: protectedProcedure
+      .query(async ({ ctx }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
+        }
+        const stats = cache.stats();
+        // Group keys by category
+        const keysByCategory: Record<string, number> = {};
+        stats.keys.forEach(key => {
+          const category = key.split(':')[0];
+          keysByCategory[category] = (keysByCategory[category] || 0) + 1;
+        });
+        return {
+          size: stats.size,
+          maxSize: stats.maxSize,
+          hits: stats.metrics.hits,
+          misses: stats.metrics.misses,
+          evictions: stats.metrics.evictions,
+          hitRate: stats.hitRate,
+          keysByCategory,
+          expiredRemoved: 0,
+          lastCleanup: null as Date | null,
+        };
+      }),
+    
+    cleanup: protectedProcedure
+      .mutation(async ({ ctx }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
+        }
+        const removedCount = cache.cleanup();
+        return { removedCount };
+      }),
+    
+    clear: protectedProcedure
+      .mutation(async ({ ctx }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
+        }
+        cache.clear();
+        return { success: true };
+      }),
+    
+    resetMetrics: protectedProcedure
+      .mutation(async ({ ctx }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
+        }
+        cache.resetMetrics();
+        return { success: true };
+      }),
+    
+    invalidatePattern: protectedProcedure
+      .input(z.object({ pattern: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
+        }
+        const stats = cache.stats();
+        const beforeCount = stats.keys.filter(k => k.includes(input.pattern)).length;
+        cache.deletePattern(input.pattern);
+        return { removedCount: beforeCount };
       }),
   }),
 

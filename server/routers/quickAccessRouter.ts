@@ -458,28 +458,6 @@ export const quickAccessRouter = router({
     };
   }),
 
-  // Giới hạn số lượng items có thể ghim (mặc định)
-  DEFAULT_MAX_PINNED: 5,
-
-  // Helper: Lấy giới hạn pin từ system_settings
-  _getMaxPinned: async (db: any): Promise<number> => {
-    try {
-      const setting = await db
-        .select()
-        .from(systemSettings)
-        .where(eq(systemSettings.key, "quick_access_max_pinned"))
-        .limit(1);
-      
-      if (setting.length > 0 && setting[0].value) {
-        const value = parseInt(setting[0].value, 10);
-        if (!isNaN(value) && value > 0) return value;
-      }
-    } catch (e) {
-      // Ignore errors, use default
-    }
-    return 5; // Default
-  },
-
   // Lấy giới hạn số lượng pin
   getPinLimit: protectedProcedure.query(async ({ ctx }) => {
     const db = await getDb();
