@@ -59,6 +59,15 @@ export function useQuickAccess() {
     }
   );
 
+  // Fetch pin limit
+  const { data: pinLimitData, refetch: refetchPinLimit } = trpc.quickAccess.getPinLimit.useQuery(
+    undefined,
+    {
+      enabled: !!user,
+      staleTime: 30000,
+    }
+  );
+
   // Transform to QuickAccessItem format
   const transformItem = (item: any): QuickAccessItem => ({
     id: item.id,
@@ -161,6 +170,7 @@ export function useQuickAccess() {
   const refetchAll = () => {
     refetch();
     refetchCategories();
+    refetchPinLimit();
   };
 
   return {
@@ -174,6 +184,10 @@ export function useQuickAccess() {
     categories,
     categoriesData: categoriesData || [],
     quickAccessMenuGroups,
+    
+    // Pin limit
+    maxPinned: pinLimitData?.maxPinned ?? 5,
+    currentPinned: pinLimitData?.currentPinned ?? 0,
     
     // State
     isLoading,

@@ -2,7 +2,7 @@ import { z } from "zod";
 import { router, protectedProcedure } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { getDb } from "../db";
-import { userQuickAccess, userQuickAccessCategories } from "../../drizzle/schema";
+import { userQuickAccess, userQuickAccessCategories, systemSettings } from "../../drizzle/schema";
 import { eq, and, asc, isNull } from "drizzle-orm";
 
 export const quickAccessRouter = router({
@@ -458,13 +458,49 @@ export const quickAccessRouter = router({
     };
   }),
 
-  // Giới hạn số lượng items có thể ghim
-  MAX_PINNED_ITEMS: 5,
+  // Giới hạn số lượng items có thể ghim (mặc định)
+  DEFAULT_MAX_PINNED: 5,
+
+  // Helper: Lấy giới hạn pin từ system_settings
+  _getMaxPinned: async (db: any): Promise<number> => {
+    try {
+      const setting = await db
+        .select()
+        .from(systemSettings)
+        .where(eq(systemSettings.key, "quick_access_max_pinned"))
+        .limit(1);
+      
+      if (setting.length > 0 && setting[0].value) {
+        const value = parseInt(setting[0].value, 10);
+        if (!isNaN(value) && value > 0) return value;
+      }
+    } catch (e) {
+      // Ignore errors, use default
+    }
+    return 5; // Default
+  },
 
   // Lấy giới hạn số lượng pin
   getPinLimit: protectedProcedure.query(async ({ ctx }) => {
     const db = await getDb();
     if (!db) return { maxPinned: 5, currentPinned: 0 };
+
+    // Lấy giới hạn từ system_settings
+    let maxPinned = 5;
+    try {
+      const setting = await db
+        .select()
+        .from(systemSettings)
+        .where(eq(systemSettings.key, "quick_access_max_pinned"))
+        .limit(1);
+      
+      if (setting.length > 0 && setting[0].value) {
+        const value = parseInt(setting[0].value, 10);
+        if (!isNaN(value) && value > 0) maxPinned = value;
+      }
+    } catch (e) {
+      // Ignore errors, use default
+    }
 
     const pinnedCount = await db
       .select()
@@ -475,10 +511,49 @@ export const quickAccessRouter = router({
       ));
 
     return {
-      maxPinned: 5,
+      maxPinned,
       currentPinned: pinnedCount.length,
     };
   }),
+
+  // Cập nhật giới hạn pin (chỉ admin)
+  updatePinLimit: protectedProcedure
+    .input(z.object({ maxPinned: z.number().min(1).max(20) }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      // Kiểm tra quyền admin
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Chỉ admin mới có thể thay đổi cài đặt này" });
+      }
+
+      // Kiểm tra xem setting đã tồn tại chưa
+      const existing = await db
+        .select()
+        .from(systemSettings)
+        .where(eq(systemSettings.key, "quick_access_max_pinned"))
+        .limit(1);
+
+      if (existing.length > 0) {
+        await db
+          .update(systemSettings)
+          .set({ 
+            value: input.maxPinned.toString(),
+            updatedBy: ctx.user.id,
+          })
+          .where(eq(systemSettings.key, "quick_access_max_pinned"));
+      } else {
+        await db.insert(systemSettings).values({
+          key: "quick_access_max_pinned",
+          value: input.maxPinned.toString(),
+          description: "Số lượng mục tối đa có thể ghim trong Quick Access",
+          updatedBy: ctx.user.id,
+        });
+      }
+
+      return { success: true, maxPinned: input.maxPinned };
+    }),
 
   // Ghim/Bỏ ghim item
   togglePin: protectedProcedure
@@ -487,7 +562,22 @@ export const quickAccessRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
 
-      const MAX_PINNED = 5;
+      // Lấy giới hạn từ system_settings
+      let MAX_PINNED = 5;
+      try {
+        const setting = await db
+          .select()
+          .from(systemSettings)
+          .where(eq(systemSettings.key, "quick_access_max_pinned"))
+          .limit(1);
+        
+        if (setting.length > 0 && setting[0].value) {
+          const value = parseInt(setting[0].value, 10);
+          if (!isNaN(value) && value > 0) MAX_PINNED = value;
+        }
+      } catch (e) {
+        // Ignore errors, use default
+      }
 
       // Kiểm tra item thuộc về user
       const item = await db

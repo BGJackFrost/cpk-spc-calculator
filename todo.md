@@ -4626,3 +4626,24 @@
 ### Frontend
 - [x] Hiển thị toast thông báo khi đạt giới hạn pin (tự động từ error handler)
 - [x] Hiển thị số lượng pin hiện tại / tối đa trong sidebar (X/5)
+
+
+## Phase 225 - Nâng cấp Quick Access UX
+
+### Tìm kiếm nhanh Ctrl+K
+- [x] Tạo component QuickAccessSearch với dialog modal
+- [x] Lọc items theo tên khi gõ
+- [x] Keyboard navigation (arrow keys, enter để chọn)
+- [x] Đăng ký global shortcut Ctrl+K
+
+### Cấu hình giới hạn pin cho admin
+- [x] Sử dụng bảng system_settings với key "quick_access_max_pinned"
+- [x] Thêm API updatePinLimit (chỉ admin)
+- [x] Cập nhật API togglePin và getPinLimit đọc giới hạn từ database
+- [x] Hiển thị giới hạn động trong sidebar (X/maxPinned)
+
+### Animation pin/unpin
+- [x] Thêm animation fade-in và slide-in khi hiển thị pinned items
+- [x] Thêm animation stagger cho từng item (50ms delay)
+- [x] Thêm hover animation (scale icon, rotate pin)
+- [x] Thêm icon animation trong toast khi pin/unpin

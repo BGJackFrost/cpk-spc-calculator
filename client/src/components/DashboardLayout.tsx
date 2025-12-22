@@ -44,9 +44,10 @@ import { ThemeSelector } from "./ThemeSelector";
 import { useSystem } from "@/contexts/SystemContext";
 import { MenuGroup as SystemMenuGroup, MenuItem as SystemMenuItem } from "@/config/systemMenu";
 import { useQuickAccess } from "@/hooks/useQuickAccess";
-import { Star, Plus, Pin } from "lucide-react";
+import { Star, Plus, Pin, Search } from "lucide-react";
 import { QuickAccessAddDialog } from "./QuickAccessAddDialog";
 import { MenuItemContextMenu } from "./MenuItemContextMenu";
+import { QuickAccessSearch } from "./QuickAccessSearch";
 
 // Fallback labels for keys not in translation files (by language)
 const fallbackLabelsVi: Record<string, string> = {
@@ -364,7 +365,7 @@ function DashboardLayoutContent({
   const { theme, setTheme } = useTheme();
   
   // Load Quick Access items dynamically
-  const { quickAccessMenuItems, pinnedItems, hasQuickAccess, hasPinnedItems, refetch: refetchQuickAccess } = useQuickAccess();
+  const { quickAccessMenuItems, pinnedItems, hasQuickAccess, hasPinnedItems, maxPinned, refetch: refetchQuickAccess } = useQuickAccess();
   
   // Get menu groups from current system - memoized to prevent infinite loops
   // Inject Quick Access items dynamically for Dashboard system
@@ -598,19 +599,23 @@ function DashboardLayoutContent({
                     <CollapsibleContent className="mt-1 space-y-1">
                       {/* Pinned Items Section */}
                       {isQuickAccessGroup && hasPinnedItems && (
-                        <div className="mb-2">
+                        <div className="mb-2 animate-in fade-in-0 slide-in-from-top-2 duration-200">
                           <div className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium text-muted-foreground">
-                            <Pin className="h-3 w-3" />
+                            <Pin className="h-3 w-3 animate-pulse" />
                             <span>Đã ghim</span>
                             <span className="ml-auto text-[10px] bg-muted px-1.5 py-0.5 rounded">
-                              {pinnedItems.length}/5
+                              {pinnedItems.length}/{maxPinned}
                             </span>
                           </div>
                           <SidebarMenu>
-                            {pinnedItems.map(item => {
+                            {pinnedItems.map((item, index) => {
                               const isActive = location === item.menuPath;
                               return (
-                                <SidebarMenuItem key={`pinned-${item.id}`}>
+                                <SidebarMenuItem 
+                                  key={`pinned-${item.id}`}
+                                  className="animate-in fade-in-0 slide-in-from-left-2"
+                                  style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'backwards' }}
+                                >
                                   <MenuItemContextMenu
                                     menuId={item.menuId}
                                     menuPath={item.menuPath}
@@ -622,11 +627,11 @@ function DashboardLayoutContent({
                                       isActive={isActive}
                                       onClick={() => setLocation(item.menuPath)}
                                       tooltip={item.menuLabel}
-                                      className="h-9 pl-9 transition-all font-normal"
+                                      className="h-9 pl-9 transition-all font-normal group/pin-item"
                                     >
-                                      <item.icon className={`h-4 w-4 ${isActive ? "text-primary" : ""}`} />
+                                      <item.icon className={`h-4 w-4 transition-transform group-hover/pin-item:scale-110 ${isActive ? "text-primary" : ""}`} />
                                       <span className="truncate">{item.menuLabel}</span>
-                                      <Pin className="h-3 w-3 ml-auto text-amber-500" />
+                                      <Pin className="h-3 w-3 ml-auto text-amber-500 transition-transform group-hover/pin-item:rotate-12" />
                                     </SidebarMenuButton>
                                   </MenuItemContextMenu>
                                 </SidebarMenuItem>
@@ -795,6 +800,9 @@ function DashboardLayoutContent({
           {children}
         </main>
       </SidebarInset>
+      
+      {/* Quick Access Search Dialog - Ctrl+K */}
+      <QuickAccessSearch />
     </>
   );
 }

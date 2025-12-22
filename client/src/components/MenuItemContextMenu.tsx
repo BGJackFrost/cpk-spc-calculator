@@ -75,6 +75,7 @@ export function MenuItemContextMenu({
       toast.success(data.isPinned ? "Đã ghim menu" : "Đã bỏ ghim menu", {
         description: menuLabel,
         duration: 2000,
+        icon: data.isPinned ? <Pin className="h-4 w-4 text-amber-500 animate-bounce" /> : <PinOff className="h-4 w-4 text-muted-foreground" />,
       });
       refetch();
     },
