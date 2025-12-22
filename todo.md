@@ -4577,3 +4577,21 @@
 - [x] Thêm tab "Danh mục" trong QuickAccessManagement
 - [x] UI tạo/sửa/xóa category với màu sắc
 - [x] UI phân loại Quick Access items vào categories
+
+
+## Phase 222 - Nâng cấp Quick Access Categories
+
+### Hiển thị categories trong sidebar
+- [x] Hiển thị categories trong sidebar Dashboard thay vì flat list
+- [x] Nhóm items theo category với collapsible groups
+- [x] Hiển thị màu sắc category trong sidebar
+
+### Drag-and-drop giữa categories
+- [x] Thêm drag-and-drop để di chuyển items giữa các categories
+- [x] Cập nhật categoryId khi drop item vào category khác
+- [x] Visual feedback khi kéo item qua category
+
+### Sắp xếp thứ tự categories
+- [x] Sử dụng cột sortOrder đã có trong bảng user_quick_access_categories
+- [x] Cho phép drag-and-drop sắp xếp thứ tự categories
+- [x] Lưu thứ tự categories vào database
