@@ -46,6 +46,11 @@ import { MenuGroup as SystemMenuGroup, MenuItem as SystemMenuItem } from "@/conf
 
 // Fallback labels for keys not in translation files (by language)
 const fallbackLabelsVi: Record<string, string> = {
+  "menuGroup.dashboardOverview": "Tổng quan",
+  "menuGroup.quickAccess": "Truy cập nhanh",
+  "menuGroup.dashboardReports": "Báo cáo",
+  "nav.mainDashboard": "Dashboard chính",
+  "nav.shiftReport": "Báo cáo theo Ca",
   "menuGroup.spcOverview": "Tổng quan SPC",
   "menuGroup.spcAnalysis": "Phân tích",
   "menuGroup.spcQuality": "Chất lượng",
@@ -169,6 +174,11 @@ const fallbackLabelsVi: Record<string, string> = {
 };
 
 const fallbackLabelsEn: Record<string, string> = {
+  "menuGroup.dashboardOverview": "Overview",
+  "menuGroup.quickAccess": "Quick Access",
+  "menuGroup.dashboardReports": "Reports",
+  "nav.mainDashboard": "Main Dashboard",
+  "nav.shiftReport": "Shift Report",
   "menuGroup.spcOverview": "SPC Overview",
   "menuGroup.spcAnalysis": "Analysis",
   "menuGroup.spcQuality": "Quality",
@@ -449,6 +459,7 @@ function DashboardLayoutContent({
   // Get system color class
   const getSystemColorClass = () => {
     switch (activeSystem) {
+      case "dashboard": return "text-emerald-600 dark:text-emerald-400";
       case "spc": return "text-blue-600 dark:text-blue-400";
       case "mms": return "text-orange-600 dark:text-orange-400";
       case "production": return "text-green-600 dark:text-green-400";

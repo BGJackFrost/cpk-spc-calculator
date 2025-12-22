@@ -47,7 +47,7 @@ const systemLabels: Record<string, { vi: string; en: string; description: { vi: 
 // Default paths for each system
 const systemDefaultPaths: Record<string, string> = {
   dashboard: "/dashboard",
-  spc: "/spc-analysis",
+  spc: "/analyze",
   mms: "/oee-dashboard",
   production: "/production-line-management",
   license: "/license-server-dashboard",
@@ -61,7 +61,7 @@ export function TopNavigation() {
   const isVi = language === "vi";
 
   const systems = [
-    { id: "dashboard", config: { icon: () => <LayoutDashboard className="h-4 w-4" />, menuGroups: [] } },
+    { id: "dashboard", config: SYSTEMS.DASHBOARD },
     { id: "spc", config: SYSTEMS.SPC },
     { id: "mms", config: SYSTEMS.MMS },
     { id: "production", config: SYSTEMS.PRODUCTION },
@@ -70,25 +70,17 @@ export function TopNavigation() {
   ];
 
   const handleSystemClick = (systemId: string) => {
-    // Dashboard is a special case - just navigate without changing activeSystem
-    // This prevents the infinite loop error because "dashboard" is not a valid system
-    if (systemId === "dashboard") {
-      setLocation("/dashboard");
-      return;
-    }
-    
+    // Set active system and navigate to default path
     setActiveSystem(systemId);
     setLocation(systemDefaultPaths[systemId]);
   };
 
-  // Check if dashboard is active based on current location
-  const isDashboardActive = location === "/dashboard";
+
 
   return (
     <nav className="hidden lg:flex items-center gap-1">
       {systems.map(({ id, config }) => {
-        // Dashboard active state is based on location, others based on activeSystem
-        const isActive = id === "dashboard" ? isDashboardActive : activeSystem === id;
+        const isActive = activeSystem === id;
         const Icon = config.icon;
         const labels = systemLabels[id];
         

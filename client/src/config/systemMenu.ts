@@ -48,6 +48,15 @@ export interface SystemMenuConfig {
 
 // ===== SYSTEM DEFINITIONS =====
 export const SYSTEMS: Record<string, SystemConfig> = {
+  DASHBOARD: {
+    id: "dashboard",
+    name: "Dashboard",
+    shortName: "Dashboard",
+    icon: LayoutDashboard,
+    color: "emerald",
+    description: "System Overview & Quick Access",
+    licenseKey: "dashboard",
+  },
   SPC: {
     id: "spc",
     name: "SPC/CPK System",
@@ -347,8 +356,49 @@ export const SYSTEM_MENU: SystemMenuConfig = {
   ],
 };
 
+// ===== DASHBOARD SYSTEM MENU =====
+export const DASHBOARD_MENU: SystemMenuConfig = {
+  system: SYSTEMS.DASHBOARD,
+  menuGroups: [
+    {
+      id: "dashboard-overview",
+      labelKey: "menuGroup.dashboardOverview",
+      icon: LayoutDashboard,
+      defaultOpen: true,
+      items: [
+        { id: "main-dashboard", icon: LayoutDashboard, labelKey: "nav.mainDashboard", path: "/dashboard" },
+        { id: "realtime-line", icon: Zap, labelKey: "nav.realtimeLine", path: "/realtime-line" },
+        { id: "supervisor-dashboard", icon: Users, labelKey: "nav.supervisorDashboard", path: "/supervisor-dashboard" },
+        { id: "oee-dashboard", icon: Target, labelKey: "nav.oeeDashboard", path: "/oee-dashboard" },
+        { id: "unified-dashboard", icon: Gauge, labelKey: "nav.unifiedDashboard", path: "/unified-dashboard" },
+      ],
+    },
+    {
+      id: "quick-access",
+      labelKey: "menuGroup.quickAccess",
+      icon: Zap,
+      defaultOpen: true,
+      items: [
+        // Quick access items will be loaded dynamically from user_quick_access table
+        // This is a placeholder - actual items are loaded via API
+      ],
+    },
+    {
+      id: "dashboard-reports",
+      labelKey: "menuGroup.dashboardReports",
+      icon: BarChart3,
+      items: [
+        { id: "spc-report", icon: BarChart3, labelKey: "nav.spcReport", path: "/spc-report" },
+        { id: "plant-kpi", icon: Target, labelKey: "nav.plantKpi", path: "/plant-kpi" },
+        { id: "shift-report", icon: Clock, labelKey: "nav.shiftReport", path: "/shift-report-history" },
+      ],
+    },
+  ],
+};
+
 // All system menus
 export const ALL_SYSTEM_MENUS: Record<string, SystemMenuConfig> = {
+  dashboard: DASHBOARD_MENU,
   spc: SPC_MENU,
   mms: MMS_MENU,
   production: PRODUCTION_MENU,

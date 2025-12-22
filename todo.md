@@ -4463,3 +4463,24 @@
 
 ### Email Notification
 - [x] Cấu hình gửi thông báo (notifyOwner) khi có người dùng mới đăng ký
+
+
+## Phase 216 - Dashboard Menu Riêng và Kế hoạch Triển khai
+
+### Dashboard Menu Riêng
+- [x] Tạo system "dashboard" trong systemMenu.ts (SYSTEMS.DASHBOARD, DASHBOARD_MENU)
+- [x] Thêm group "Quick Access" cho phép người dùng gán menu yêu thích
+- [x] Tạo bảng user_quick_access để lưu menu yêu thích của từng user
+- [x] Cập nhật TopNavigation để click Dashboard chuyển sang system dashboard
+- [x] Thêm fallback labels và color class (emerald) cho Dashboard
+- [ ] Tạo trang quản lý Quick Access cho người dùng (chưa hoàn thành)
+
+### Sửa lỗi Top Menu
+- [x] Sửa lỗi SPC/CPK button: đổi path từ /spc-analysis sang /analyze
+
+### Kế hoạch Triển khai Hệ thống
+- [x] Đọc báo cáo rà soát và kế hoạch nâng cấp
+- [x] Lên kế hoạch Phase 1: Tối ưu hệ thống (ổn định, hiệu suất)
+- [x] Lên kế hoạch Phase 2: Bảo mật hệ thống
+- [x] Lên kế hoạch Phase 3: Nâng cấp mở rộng và tài liệu
+- [x] Tạo file kế hoạch triển khai chi tiết (IMPLEMENTATION_PLAN_2025.md)

@@ -3221,3 +3221,23 @@ export const customThemes = mysqlTable("custom_themes", {
 
 export type CustomTheme = typeof customThemes.$inferSelect;
 export type InsertCustomTheme = typeof customThemes.$inferInsert;
+
+
+// ==================== User Quick Access ====================
+/**
+ * User quick access - Lưu menu yêu thích của user để truy cập nhanh
+ */
+export const userQuickAccess = mysqlTable("user_quick_access", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull(),
+  menuId: varchar("menu_id", { length: 100 }).notNull(), // ID của menu item (e.g., "analyze", "dashboard")
+  menuPath: varchar("menu_path", { length: 255 }).notNull(), // Path của menu (e.g., "/analyze", "/dashboard")
+  menuLabel: varchar("menu_label", { length: 100 }).notNull(), // Label hiển thị
+  menuIcon: varchar("menu_icon", { length: 50 }), // Icon name (e.g., "TrendingUp")
+  systemId: varchar("system_id", { length: 50 }), // System mà menu thuộc về (e.g., "spc", "mms")
+  sortOrder: int("sort_order").notNull().default(0), // Thứ tự hiển thị
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type UserQuickAccess = typeof userQuickAccess.$inferSelect;
+export type InsertUserQuickAccess = typeof userQuickAccess.$inferInsert;

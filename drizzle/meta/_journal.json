@@ -456,6 +456,13 @@
       "when": 1766368256397,
       "tag": "0064_sudden_sinister_six",
       "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "5",
+      "when": 1766371815462,
+      "tag": "0065_cooing_ted_forrester",
+      "breakpoints": true
     }
   ]
 }
