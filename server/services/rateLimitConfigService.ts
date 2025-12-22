@@ -220,5 +220,107 @@ export async function updateRoleConfig(
   }
 }
 
+// Rate Limit Alert Config
+const ALERT_CONFIG_KEYS = {
+  EMAIL: 'rate_limit_alert_email',
+  THRESHOLD: 'rate_limit_alert_threshold',
+  COOLDOWN: 'rate_limit_alert_cooldown_minutes',
+  LAST_ALERT_TIME: 'rate_limit_last_alert_time',
+};
+
+export async function getRateLimitAlertConfig(): Promise<{
+  email: string | null;
+  threshold: number;
+  cooldownMinutes: number;
+  lastAlertTime: number | null;
+}> {
+  const email = await getConfigValue(ALERT_CONFIG_KEYS.EMAIL, '');
+  const threshold = await getNumberConfig(ALERT_CONFIG_KEYS.THRESHOLD, 5);
+  const cooldownMinutes = await getNumberConfig(ALERT_CONFIG_KEYS.COOLDOWN, 30);
+  const lastAlertTimeStr = await getConfigValue(ALERT_CONFIG_KEYS.LAST_ALERT_TIME, '');
+  const lastAlertTime = lastAlertTimeStr ? parseInt(lastAlertTimeStr, 10) : null;
+  
+  return {
+    email: email || null,
+    threshold,
+    cooldownMinutes,
+    lastAlertTime,
+  };
+}
+
+export async function updateRateLimitAlertConfig(
+  email: string,
+  threshold: number,
+  cooldownMinutes: number
+): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  
+  // Update or insert each config value
+  const configs = [
+    { key: ALERT_CONFIG_KEYS.EMAIL, value: email },
+    { key: ALERT_CONFIG_KEYS.THRESHOLD, value: String(threshold) },
+    { key: ALERT_CONFIG_KEYS.COOLDOWN, value: String(cooldownMinutes) },
+  ];
+  
+  for (const { key, value } of configs) {
+    const existing = await db.select().from(rateLimitConfig).where(eq(rateLimitConfig.configKey, key));
+    if (existing.length > 0) {
+      await db.update(rateLimitConfig)
+        .set({ configValue: value })
+        .where(eq(rateLimitConfig.configKey, key));
+    } else {
+      await db.insert(rateLimitConfig).values({
+        configKey: key,
+        configValue: value,
+      });
+    }
+    configCache.set(key, value);
+  }
+  
+  console.log(`[RateLimitConfig] Alert config updated: email=${email}, threshold=${threshold}%, cooldown=${cooldownMinutes}min`);
+}
+
+export async function setLastAlertTime(timestamp: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  
+  const key = ALERT_CONFIG_KEYS.LAST_ALERT_TIME;
+  const value = String(timestamp);
+  
+  const existing = await db.select().from(rateLimitConfig).where(eq(rateLimitConfig.configKey, key));
+  if (existing.length > 0) {
+    await db.update(rateLimitConfig)
+      .set({ configValue: value })
+      .where(eq(rateLimitConfig.configKey, key));
+  } else {
+    await db.insert(rateLimitConfig).values({
+      configKey: key,
+      configValue: value,
+    });
+  }
+  configCache.set(key, value);
+}
+
+export async function shouldSendAlert(currentBlockRate: number): Promise<boolean> {
+  const config = await getRateLimitAlertConfig();
+  
+  // Check if email is configured
+  if (!config.email) return false;
+  
+  // Check if block rate exceeds threshold
+  if (currentBlockRate < config.threshold) return false;
+  
+  // Check cooldown
+  if (config.lastAlertTime) {
+    const cooldownMs = config.cooldownMinutes * 60 * 1000;
+    if (Date.now() - config.lastAlertTime < cooldownMs) {
+      return false;
+    }
+  }
+  
+  return true;
+}
+
 // Initialize - load config on startup
 loadConfig().catch(console.error);
