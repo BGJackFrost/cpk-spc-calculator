@@ -4613,3 +4613,16 @@
 - [x] Thêm action pin/unpin trong context menu
 - [x] Hiển thị section "Đã ghim" riêng biệt ở đầu sidebar
 - [x] Visual feedback khi pin/unpin item
+
+
+## Phase 224 - Giới hạn số lượng Pin
+
+### Backend
+- [x] Thêm constant MAX_PINNED_ITEMS (mặc định 5)
+- [x] Cập nhật API togglePin để kiểm tra giới hạn trước khi ghim
+- [x] Trả về lỗi rõ ràng khi đạt giới hạn
+- [x] Thêm API getPinLimit để lấy thông tin giới hạn
+
+### Frontend
+- [x] Hiển thị toast thông báo khi đạt giới hạn pin (tự động từ error handler)
+- [x] Hiển thị số lượng pin hiện tại / tối đa trong sidebar (X/5)

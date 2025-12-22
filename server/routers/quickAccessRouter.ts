@@ -458,12 +458,36 @@ export const quickAccessRouter = router({
     };
   }),
 
+  // Giới hạn số lượng items có thể ghim
+  MAX_PINNED_ITEMS: 5,
+
+  // Lấy giới hạn số lượng pin
+  getPinLimit: protectedProcedure.query(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) return { maxPinned: 5, currentPinned: 0 };
+
+    const pinnedCount = await db
+      .select()
+      .from(userQuickAccess)
+      .where(and(
+        eq(userQuickAccess.userId, ctx.user.id),
+        eq(userQuickAccess.isPinned, 1)
+      ));
+
+    return {
+      maxPinned: 5,
+      currentPinned: pinnedCount.length,
+    };
+  }),
+
   // Ghim/Bỏ ghim item
   togglePin: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      const MAX_PINNED = 5;
 
       // Kiểm tra item thuộc về user
       const item = await db
@@ -481,6 +505,24 @@ export const quickAccessRouter = router({
 
       const currentPinned = item[0].isPinned;
       const newPinned = currentPinned === 1 ? 0 : 1;
+
+      // Nếu đang muốn ghim, kiểm tra giới hạn
+      if (newPinned === 1) {
+        const pinnedCount = await db
+          .select()
+          .from(userQuickAccess)
+          .where(and(
+            eq(userQuickAccess.userId, ctx.user.id),
+            eq(userQuickAccess.isPinned, 1)
+          ));
+
+        if (pinnedCount.length >= MAX_PINNED) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `Bạn chỉ có thể ghim tối đa ${MAX_PINNED} mục. Vui lòng bỏ ghim một mục khác trước.`,
+          });
+        }
+      }
 
       await db
         .update(userQuickAccess)

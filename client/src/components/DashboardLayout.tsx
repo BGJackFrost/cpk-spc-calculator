@@ -602,6 +602,9 @@ function DashboardLayoutContent({
                           <div className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium text-muted-foreground">
                             <Pin className="h-3 w-3" />
                             <span>Đã ghim</span>
+                            <span className="ml-auto text-[10px] bg-muted px-1.5 py-0.5 rounded">
+                              {pinnedItems.length}/5
+                            </span>
                           </div>
                           <SidebarMenu>
                             {pinnedItems.map(item => {
