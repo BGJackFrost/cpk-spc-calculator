@@ -30,6 +30,8 @@ import {
   Minus
 } from "lucide-react";
 import { toast } from "sonner";
+import PerformanceDashboardWidget from "@/components/PerformanceDashboardWidget";
+import QueryCacheWidget from "@/components/QueryCacheWidget";
 
 export default function AdminMonitoring() {
   const { user } = useAuth();
@@ -212,14 +214,22 @@ export default function AdminMonitoring() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsList className="grid w-full max-w-2xl grid-cols-4">
             <TabsTrigger value="cache" className="flex items-center gap-2">
               <Database className="h-4 w-4" />
-              Cache Statistics
+              Cache
             </TabsTrigger>
             <TabsTrigger value="ratelimit" className="flex items-center gap-2">
               <Shield className="h-4 w-4" />
-              Rate Limiting
+              Rate Limit
+            </TabsTrigger>
+            <TabsTrigger value="performance" className="flex items-center gap-2">
+              <Activity className="h-4 w-4" />
+              Performance
+            </TabsTrigger>
+            <TabsTrigger value="querycache" className="flex items-center gap-2">
+              <Zap className="h-4 w-4" />
+              Query Cache
             </TabsTrigger>
           </TabsList>
 
@@ -583,6 +593,19 @@ export default function AdminMonitoring() {
 
               </>
             )}
+          </TabsContent>
+
+          {/* Performance Tab */}
+          <TabsContent value="performance" className="space-y-6">
+            <PerformanceDashboardWidget 
+              autoRefresh={autoRefresh} 
+              refreshInterval={refreshInterval} 
+            />
+          </TabsContent>
+
+          {/* Query Cache Tab */}
+          <TabsContent value="querycache" className="space-y-6">
+            <QueryCacheWidget />
           </TabsContent>
         </Tabs>
       </div>

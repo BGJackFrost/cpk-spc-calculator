@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import LicenseCreateDialog from "@/components/license/LicenseCreateDialog";
 import LicenseActivationFlow from "@/components/license/LicenseActivationFlow";
@@ -14,6 +14,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
+import { useCursorPagination } from "@/hooks/useCursorPagination";
+import LoadMoreButton from "@/components/LoadMoreButton";
 import { toast } from "sonner";
 import { 
   Key, 
@@ -57,7 +59,7 @@ export default function LicenseManagement() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [currencyFilter, setCurrencyFilter] = useState<string>("all");
-  const [priceFilter, setPriceFilter] = useState<string>("all"); // all, free, paid, high
+  const [priceFilter, setPriceFilter] = useState<string>("all");
   
   // Dialogs
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -99,10 +101,39 @@ export default function LicenseManagement() {
   const [revenueYear, setRevenueYear] = useState(new Date().getFullYear());
   const [revenueCurrency, setRevenueCurrency] = useState("all");
   
+  // Use cursor pagination for licenses
+  const {
+    items: licenses,
+    hasMore,
+    isLoading,
+    isLoadingMore,
+    totalCount,
+    loadMore,
+    refresh: refreshLicenses,
+  } = useCursorPagination(
+    (params) => {
+      const query = trpc.license.listWithCursor.useQuery({
+        cursor: params.cursor,
+        limit: params.limit,
+        status: statusFilter !== 'all' ? statusFilter : undefined,
+        search: searchQuery || undefined,
+        licenseType: typeFilter !== 'all' ? typeFilter : undefined,
+        currency: currencyFilter !== 'all' ? currencyFilter : undefined,
+        priceFilter: priceFilter !== 'all' ? priceFilter as any : undefined,
+      });
+      return {
+        data: query.data,
+        isLoading: query.isLoading,
+        error: query.error as Error | null,
+        refetch: query.refetch,
+      };
+    },
+    { pageSize: 50 }
+  );
+  
   // Queries
   const statisticsQuery = trpc.license.statistics.useQuery();
   const analyticsQuery = trpc.license.getUsageAnalytics.useQuery();
-  const licensesQuery = trpc.license.list.useQuery();
   const generatedKeyQuery = trpc.license.generateKey.useQuery();
   const revenueQuery = trpc.license.getRevenue.useQuery();
   const revenueByPeriodQuery = trpc.license.getRevenueByPeriod.useQuery({
@@ -123,35 +154,6 @@ export default function LicenseManagement() {
   
   const stats = statisticsQuery.data;
   const analytics = analyticsQuery.data;
-  const licenses = licensesQuery.data || [];
-  
-  // Filter licenses
-  const filteredLicenses = licenses.filter(lic => {
-    const matchesSearch = !searchQuery || 
-      lic.licenseKey?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      lic.companyName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      lic.contactEmail?.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesStatus = statusFilter === "all" || 
-      (lic.licenseStatus === statusFilter) ||
-      (statusFilter === "active" && lic.isActive === 1) ||
-      (statusFilter === "pending" && lic.isActive === 0 && lic.licenseStatus !== 'revoked') ||
-      (statusFilter === "expired" && lic.expiresAt && new Date(lic.expiresAt) < new Date());
-    
-    const matchesType = typeFilter === "all" || lic.licenseType === typeFilter;
-    
-    const licPrice = Number((lic as any).price) || 0;
-    const licCurrency = (lic as any).currency || "VND";
-    
-    const matchesCurrency = currencyFilter === "all" || licCurrency === currencyFilter;
-    
-    const matchesPrice = priceFilter === "all" ||
-      (priceFilter === "free" && licPrice === 0) ||
-      (priceFilter === "paid" && licPrice > 0) ||
-      (priceFilter === "high" && licPrice >= 10000000); // >= 10M VND or equivalent
-    
-    return matchesSearch && matchesStatus && matchesType && matchesCurrency && matchesPrice;
-  });
   
   const handleCreate = async () => {
     try {
@@ -167,8 +169,6 @@ export default function LicenseManagement() {
         maxProductionLines: newLicense.maxProductionLines,
         maxSpcPlans: newLicense.maxSpcPlans,
         expiresAt,
-        // Note: price and currency are handled separately if needed
-        // currency: newLicense.currency || "VND"
       });
       
       toast.success(`Đã tạo license: ${result.licenseKey}`);
@@ -184,7 +184,7 @@ export default function LicenseManagement() {
         price: 0,
         currency: "VND"
       });
-      licensesQuery.refetch();
+      refreshLicenses();
       statisticsQuery.refetch();
       generatedKeyQuery.refetch();
     } catch (error: any) {
@@ -197,7 +197,7 @@ export default function LicenseManagement() {
       const result = await bulkCreateMutation.mutateAsync(bulkForm);
       toast.success(`Đã tạo ${result.count} license thành công`);
       setBulkCreateOpen(false);
-      licensesQuery.refetch();
+      refreshLicenses();
       statisticsQuery.refetch();
     } catch (error: any) {
       toast.error(error.message || "Tạo license thất bại");
@@ -213,7 +213,7 @@ export default function LicenseManagement() {
       });
       toast.success(`Đã gia hạn đến ${new Date(result.newExpiresAt).toLocaleDateString('vi-VN')}`);
       setExtendDialogOpen(false);
-      licensesQuery.refetch();
+      refreshLicenses();
     } catch (error: any) {
       toast.error(error.message || "Gia hạn thất bại");
     }
@@ -231,7 +231,7 @@ export default function LicenseManagement() {
       setTransferDialogOpen(false);
       setNewFingerprint("");
       setTransferReason("");
-      licensesQuery.refetch();
+      refreshLicenses();
     } catch (error: any) {
       toast.error(error.message || "Chuyển license thất bại");
     }
@@ -242,7 +242,7 @@ export default function LicenseManagement() {
     try {
       await revokeMutation.mutateAsync({ licenseKey });
       toast.success("Đã thu hồi license");
-      licensesQuery.refetch();
+      refreshLicenses();
       statisticsQuery.refetch();
     } catch (error: any) {
       toast.error(error.message || "Thu hồi thất bại");
@@ -253,7 +253,7 @@ export default function LicenseManagement() {
     try {
       await activateMutation.mutateAsync({ licenseKey });
       toast.success("Kích hoạt license thành công");
-      licensesQuery.refetch();
+      refreshLicenses();
       statisticsQuery.refetch();
     } catch (error: any) {
       toast.error(error.message || "Kích hoạt thất bại");
@@ -264,7 +264,7 @@ export default function LicenseManagement() {
     try {
       await deactivateMutation.mutateAsync({ id });
       toast.success("Hủy kích hoạt license thành công");
-      licensesQuery.refetch();
+      refreshLicenses();
       statisticsQuery.refetch();
     } catch (error: any) {
       toast.error(error.message || "Hủy kích hoạt thất bại");
@@ -276,95 +276,64 @@ export default function LicenseManagement() {
     try {
       await deleteMutation.mutateAsync({ id });
       toast.success("Đã xóa license");
-      licensesQuery.refetch();
+      refreshLicenses();
       statisticsQuery.refetch();
     } catch (error: any) {
       toast.error(error.message || "Xóa thất bại");
     }
   };
   
-  const handleExportCsv = async () => {
-    const headers = ["License Key", "Type", "Status", "Company", "Email", "Max Users", "Max Lines", "Max Plans", "Issued At", "Expires At", "Activated At"];
-    const rows = filteredLicenses.map(l => [
-      l.licenseKey,
-      l.licenseType,
-      l.isActive === 1 ? "Active" : (l.licenseStatus === 'revoked' ? "Revoked" : "Pending"),
-      l.companyName || "",
-      l.contactEmail || "",
-      l.maxUsers === -1 ? "Unlimited" : l.maxUsers,
-      l.maxProductionLines === -1 ? "Unlimited" : l.maxProductionLines,
-      l.maxSpcPlans === -1 ? "Unlimited" : l.maxSpcPlans,
-      l.issuedAt ? format(new Date(l.issuedAt), "dd/MM/yyyy") : "",
-      l.expiresAt ? format(new Date(l.expiresAt), "dd/MM/yyyy") : "Never",
-      l.activatedAt ? format(new Date(l.activatedAt), "dd/MM/yyyy") : ""
-    ]);
-    
-    const csv = [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `licenses_${format(new Date(), "yyyy-MM-dd")}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    toast.success(`Đã xuất ${filteredLicenses.length} license`);
-  };
-  
-  const getStatusBadge = (license: any) => {
-    const isExpired = license.expiresAt && new Date(license.expiresAt) < new Date();
-    if (license.licenseStatus === 'revoked') return <Badge variant="destructive">Thu hồi</Badge>;
-    if (isExpired) return <Badge variant="destructive">Hết hạn</Badge>;
-    if (license.isActive === 1) return <Badge className="bg-green-500">Hoạt động</Badge>;
-    return <Badge variant="outline">Chờ kích hoạt</Badge>;
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success("Đã copy vào clipboard");
   };
   
   const getTypeBadge = (type: string) => {
-    const colors: Record<string, string> = {
-      trial: "bg-gray-500",
-      standard: "bg-blue-500",
-      professional: "bg-purple-500",
-      enterprise: "bg-amber-500"
-    };
-    return <Badge className={colors[type] || "bg-gray-500"}>{type}</Badge>;
+    switch (type) {
+      case "trial":
+        return <Badge variant="outline">Trial</Badge>;
+      case "standard":
+        return <Badge className="bg-blue-500">Standard</Badge>;
+      case "professional":
+        return <Badge className="bg-purple-500">Professional</Badge>;
+      case "enterprise":
+        return <Badge className="bg-amber-500">Enterprise</Badge>;
+      default:
+        return <Badge variant="outline">{type}</Badge>;
+    }
   };
   
-  const getLicenseTypeDefaults = (type: string) => {
-    const defaults: Record<string, { maxUsers: number; maxProductionLines: number; maxSpcPlans: number; durationDays: number }> = {
-      trial: { maxUsers: 5, maxProductionLines: 3, maxSpcPlans: 10, durationDays: 30 },
-      standard: { maxUsers: 20, maxProductionLines: 10, maxSpcPlans: 50, durationDays: 365 },
-      professional: { maxUsers: 50, maxProductionLines: 20, maxSpcPlans: 200, durationDays: 365 },
-      enterprise: { maxUsers: 999, maxProductionLines: 100, maxSpcPlans: 999, durationDays: 730 },
-    };
-    return defaults[type] || defaults.standard;
+  const getStatusBadge = (lic: any) => {
+    if (lic.licenseStatus === 'revoked') {
+      return <Badge variant="destructive">Thu hồi</Badge>;
+    }
+    if (lic.expiresAt && new Date(lic.expiresAt) < new Date()) {
+      return <Badge variant="destructive">Hết hạn</Badge>;
+    }
+    if (lic.isActive === 1) {
+      return <Badge className="bg-green-500">Hoạt động</Badge>;
+    }
+    return <Badge variant="secondary">Chờ kích hoạt</Badge>;
   };
   
-  const handleTypeChange = (type: "trial" | "standard" | "professional" | "enterprise") => {
-    const defaults = getLicenseTypeDefaults(type);
-    setNewLicense({
-      ...newLicense,
-      licenseType: type,
-      ...defaults,
-    });
-  };
+  const clearFilters = useCallback(() => {
+    setSearchQuery("");
+    setStatusFilter("all");
+    setTypeFilter("all");
+    setCurrencyFilter("all");
+    setPriceFilter("all");
+    refreshLicenses();
+  }, [refreshLicenses]);
   
   return (
     <DashboardLayout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold flex items-center gap-2">
-              <Shield className="h-6 w-6 text-primary" />
-              Quản lý License
-            </h1>
-            <p className="text-muted-foreground">Quản lý và phân phối license cho khách hàng</p>
+            <h1 className="text-2xl font-bold">Quản lý License</h1>
+            <p className="text-muted-foreground">Quản lý license và theo dõi doanh thu</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={handleExportCsv}>
-              <Download className="h-4 w-4 mr-2" />
-              Xuất CSV
-            </Button>
             <Dialog open={bulkCreateOpen} onOpenChange={setBulkCreateOpen}>
               <DialogTrigger asChild>
                 <Button variant="outline">
@@ -375,14 +344,14 @@ export default function LicenseManagement() {
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Tạo License hàng loạt</DialogTitle>
-                  <DialogDescription>Tạo nhiều license cùng lúc để phân phối cho khách hàng</DialogDescription>
+                  <DialogDescription>Tạo nhiều license cùng lúc</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label>Số lượng</Label>
                     <Input 
-                      type="number" 
-                      min={1} 
+                      type="number"
+                      min={1}
                       max={100}
                       value={bulkForm.count}
                       onChange={(e) => setBulkForm({...bulkForm, count: parseInt(e.target.value) || 1})}
@@ -392,7 +361,7 @@ export default function LicenseManagement() {
                     <Label>Loại License</Label>
                     <Select 
                       value={bulkForm.licenseType}
-                      onValueChange={(v: any) => setBulkForm({...bulkForm, licenseType: v})}
+                      onValueChange={(v) => setBulkForm({...bulkForm, licenseType: v as any})}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -408,7 +377,7 @@ export default function LicenseManagement() {
                   <div className="space-y-2">
                     <Label>Thời hạn (ngày)</Label>
                     <Input 
-                      type="number" 
+                      type="number"
                       min={1}
                       value={bulkForm.durationDays}
                       onChange={(e) => setBulkForm({...bulkForm, durationDays: parseInt(e.target.value) || 365})}
@@ -424,152 +393,10 @@ export default function LicenseManagement() {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
-            <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-              <DialogTrigger asChild>
-                <Button onClick={() => generatedKeyQuery.refetch()}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Tạo License mới
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-lg">
-                <DialogHeader>
-                  <DialogTitle>Tạo License mới</DialogTitle>
-                  <DialogDescription>Tạo license key mới cho khách hàng</DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>License Key (tự động tạo)</Label>
-                    <div className="flex items-center gap-2">
-                      <code className="flex-1 bg-muted px-3 py-2 rounded font-mono text-sm">
-                        {generatedKeyQuery.data?.licenseKey || "Đang tạo..."}
-                      </code>
-                      <Button variant="outline" size="icon" onClick={() => generatedKeyQuery.refetch()}>
-                        <RefreshCw className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => {
-                          if (generatedKeyQuery.data?.licenseKey) {
-                            navigator.clipboard.writeText(generatedKeyQuery.data.licenseKey);
-                            toast.success("Đã copy license key");
-                          }
-                        }}
-                      >
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Loại License</Label>
-                    <Select 
-                      value={newLicense.licenseType}
-                      onValueChange={handleTypeChange}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="trial">Trial (30 ngày)</SelectItem>
-                        <SelectItem value="standard">Standard</SelectItem>
-                        <SelectItem value="professional">Professional</SelectItem>
-                        <SelectItem value="enterprise">Enterprise</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Tên công ty</Label>
-                    <Input 
-                      value={newLicense.companyName}
-                      onChange={(e) => setNewLicense({...newLicense, companyName: e.target.value})}
-                      placeholder="VD: Công ty ABC"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Email liên hệ</Label>
-                    <Input 
-                      type="email"
-                      value={newLicense.contactEmail}
-                      onChange={(e) => setNewLicense({...newLicense, contactEmail: e.target.value})}
-                      placeholder="contact@company.com"
-                    />
-                  </div>
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className="space-y-2">
-                      <Label>Max Users</Label>
-                      <Input 
-                        type="number"
-                        min={1}
-                        value={newLicense.maxUsers}
-                        onChange={(e) => setNewLicense({...newLicense, maxUsers: parseInt(e.target.value) || 1})}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Max Lines</Label>
-                      <Input 
-                        type="number"
-                        min={1}
-                        value={newLicense.maxProductionLines}
-                        onChange={(e) => setNewLicense({...newLicense, maxProductionLines: parseInt(e.target.value) || 1})}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Max Plans</Label>
-                      <Input 
-                        type="number"
-                        min={1}
-                        value={newLicense.maxSpcPlans}
-                        onChange={(e) => setNewLicense({...newLicense, maxSpcPlans: parseInt(e.target.value) || 1})}
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Thời hạn (ngày)</Label>
-                    <Input 
-                      type="number"
-                      min={1}
-                      value={newLicense.durationDays}
-                      onChange={(e) => setNewLicense({...newLicense, durationDays: parseInt(e.target.value) || 365})}
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="space-y-2">
-                      <Label>Giá tiền</Label>
-                      <Input 
-                        type="number"
-                        min={0}
-                        value={newLicense.price}
-                        onChange={(e) => setNewLicense({...newLicense, price: parseFloat(e.target.value) || 0})}
-                        placeholder="0"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Loại tiền</Label>
-                      <Select 
-                        value={newLicense.currency}
-                        onValueChange={(v) => setNewLicense({...newLicense, currency: v})}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="VND">VND</SelectItem>
-                          <SelectItem value="USD">USD</SelectItem>
-                          <SelectItem value="EUR">EUR</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>Hủy</Button>
-                  <Button onClick={handleCreate} disabled={createMutation.isPending}>
-                    {createMutation.isPending && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
-                    Tạo License
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+            <Button onClick={() => setCreateDialogOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Tạo License
+            </Button>
           </div>
         </div>
         
@@ -610,7 +437,7 @@ export default function LicenseManagement() {
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Tổng License</p>
-                      <p className="text-2xl font-bold">{licenses.length}</p>
+                      <p className="text-2xl font-bold">{totalCount || licenses.length}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -738,6 +565,12 @@ export default function LicenseManagement() {
                       <SelectItem value="high">Cao (≥10M)</SelectItem>
                     </SelectContent>
                   </Select>
+                  <Button variant="outline" size="sm" onClick={clearFilters}>
+                    Xóa bộ lọc
+                  </Button>
+                </div>
+                <div className="mt-4 text-sm text-muted-foreground">
+                  Hiển thị {licenses.length} {totalCount ? `/ ${totalCount}` : ''} license
                 </div>
               </CardContent>
             </Card>
@@ -759,14 +592,14 @@ export default function LicenseManagement() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredLicenses.length === 0 ? (
+                    {licenses.length === 0 && !isLoading ? (
                       <TableRow>
                         <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                           Không tìm thấy license nào
                         </TableCell>
                       </TableRow>
                     ) : (
-                      filteredLicenses.map((lic) => {
+                      licenses.map((lic) => {
                         const isExpired = lic.expiresAt && new Date(lic.expiresAt) < new Date();
                         return (
                           <TableRow key={lic.id}>
@@ -779,10 +612,7 @@ export default function LicenseManagement() {
                                   variant="ghost" 
                                   size="icon" 
                                   className="h-6 w-6"
-                                  onClick={() => {
-                                    navigator.clipboard.writeText(lic.licenseKey || "");
-                                    toast.success("Đã copy license key");
-                                  }}
+                                  onClick={() => copyToClipboard(lic.licenseKey || "")}
                                 >
                                   <Copy className="h-3 w-3" />
                                 </Button>
@@ -881,6 +711,17 @@ export default function LicenseManagement() {
                     )}
                   </TableBody>
                 </Table>
+                
+                {/* Load More Button */}
+                <LoadMoreButton
+                  hasMore={hasMore}
+                  isLoading={isLoading || isLoadingMore}
+                  onLoadMore={loadMore}
+                  onRefresh={refreshLicenses}
+                  totalCount={totalCount}
+                  loadedCount={licenses.length}
+                  showRefresh={false}
+                />
               </CardContent>
             </Card>
           </TabsContent>
@@ -900,119 +741,35 @@ export default function LicenseManagement() {
                           <div key={type} className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               {getTypeBadge(type)}
-                              <span className="capitalize">{type}</span>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <div className="w-32 h-2 bg-muted rounded-full overflow-hidden">
-                                <div 
-                                  className="h-full bg-primary rounded-full"
-                                  style={{ width: `${(count / stats.total) * 100}%` }}
-                                />
-                              </div>
-                              <span className="text-sm font-medium w-8 text-right">{count}</span>
-                            </div>
+                            <span className="font-medium">{count as number}</span>
                           </div>
                         ))}
                       </div>
                     </CardContent>
                   </Card>
-                  
                   <Card>
                     <CardHeader>
-                      <CardTitle>Kích hoạt gần đây</CardTitle>
+                      <CardTitle>Phân bố theo trạng thái</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      {analytics?.recentActivations && analytics.recentActivations.length > 0 ? (
-                        <div className="space-y-3">
-                          {analytics.recentActivations.slice(0, 5).map((lic, idx) => (
-                            <div key={idx} className="flex items-center justify-between p-2 bg-muted/50 rounded-lg">
-                              <div>
-                                <p className="font-medium text-sm">{lic.companyName || "N/A"}</p>
-                                <p className="text-xs text-muted-foreground font-mono">{lic.licenseKey?.substring(0, 20)}...</p>
-                              </div>
-                              <div className="text-right">
-                                {getTypeBadge(lic.licenseType || "trial")}
-                                <p className="text-xs text-muted-foreground mt-1">
-                                  {lic.activatedAt ? format(new Date(lic.activatedAt), "dd/MM/yyyy", { locale: vi }) : "N/A"}
-                                </p>
-                              </div>
-                            </div>
-                          ))}
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <Badge className="bg-green-500">Hoạt động</Badge>
+                          <span className="font-medium">{stats.byStatus.active}</span>
                         </div>
-                      ) : (
-                        <p className="text-muted-foreground text-center py-4">Chưa có kích hoạt nào</p>
-                      )}
-                    </CardContent>
-                  </Card>
-                </div>
-              </>
-            )}
-          </TabsContent>
-          
-          {/* Analytics Tab */}
-          <TabsContent value="analytics" className="space-y-6">
-            {analytics && (
-              <>
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Kích hoạt theo tháng</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {analytics.monthlyActivations && analytics.monthlyActivations.length > 0 ? (
-                      <div className="space-y-2">
-                        {analytics.monthlyActivations.map((item) => (
-                          <div key={item.month} className="flex items-center gap-4">
-                            <span className="w-20 text-sm text-muted-foreground">{item.month}</span>
-                            <div className="flex-1 h-6 bg-muted rounded-full overflow-hidden">
-                              <div 
-                                className="h-full bg-primary rounded-full flex items-center justify-end pr-2"
-                                style={{ 
-                                  width: `${Math.max(10, (item.count / Math.max(...analytics.monthlyActivations.map(m => m.count))) * 100)}%` 
-                                }}
-                              >
-                                <span className="text-xs text-primary-foreground font-medium">{item.count}</span>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-muted-foreground text-center py-8">Chưa có dữ liệu</p>
-                    )}
-                  </CardContent>
-                </Card>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Thống kê theo loại</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        {Object.entries(analytics.byType).map(([type, count]) => (
-                          <div key={type} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                            <div className="flex items-center gap-2">
-                              {getTypeBadge(type)}
-                            </div>
-                            <span className="text-2xl font-bold">{count}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                  
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Thống kê theo trạng thái</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        {Object.entries(analytics.byStatus).map(([status, count]) => (
-                          <div key={status} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                            <span className="capitalize">{status}</span>
-                            <span className="text-2xl font-bold">{count}</span>
-                          </div>
-                        ))}
+                        <div className="flex items-center justify-between">
+                          <Badge variant="secondary">Chờ kích hoạt</Badge>
+                          <span className="font-medium">{stats.byStatus.pending}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <Badge variant="destructive">Hết hạn</Badge>
+                          <span className="font-medium">{stats.byStatus.expired}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <Badge variant="outline">Thu hồi</Badge>
+                          <span className="font-medium">{stats.byStatus.revoked}</span>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
@@ -1023,211 +780,53 @@ export default function LicenseManagement() {
           
           {/* Revenue Tab */}
           <TabsContent value="revenue" className="space-y-6">
-            {/* Revenue Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-                      <DollarSign className="h-5 w-5 text-green-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Tổng VND</p>
-                      <p className="text-2xl font-bold">{(revenueQuery.data?.totalVND || 0).toLocaleString("vi-VN")} ₫</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                      <DollarSign className="h-5 w-5 text-blue-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Tổng USD</p>
-                      <p className="text-2xl font-bold">${(revenueQuery.data?.totalUSD || 0).toLocaleString("en-US")}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
-                      <DollarSign className="h-5 w-5 text-purple-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Tổng EUR</p>
-                      <p className="text-2xl font-bold">€{(revenueQuery.data?.totalEUR || 0).toLocaleString("de-DE")}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
-                      <Package className="h-5 w-5 text-orange-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">License có giá</p>
-                      <p className="text-2xl font-bold">{revenueQuery.data?.paidLicenses || 0} / {revenueQuery.data?.totalLicenses || 0}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-            
-            {/* Revenue by Type */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Doanh thu theo loại License</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {revenueQuery.data?.byType && Object.entries(revenueQuery.data.byType).map(([type, data]: [string, any]) => (
-                      <div key={type} className="p-3 bg-muted/50 rounded-lg">
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            {getTypeBadge(type)}
-                            <span className="text-sm text-muted-foreground">({data.count} licenses)</span>
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-3 gap-2 text-sm">
-                          <div>
-                            <span className="text-muted-foreground">VND: </span>
-                            <span className="font-medium">{(data.revenue?.VND || 0).toLocaleString("vi-VN")}</span>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">USD: </span>
-                            <span className="font-medium">${data.revenue?.USD || 0}</span>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">EUR: </span>
-                            <span className="font-medium">€{data.revenue?.EUR || 0}</span>
-                          </div>
-                        </div>
+            {revenueQuery.data && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-green-100 rounded-lg">
+                        <DollarSign className="h-5 w-5 text-green-600" />
                       </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-              
-              {/* Filters */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Báo cáo theo thời gian</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-3 gap-2">
-                      <div className="space-y-2">
-                        <Label>Chu kỳ</Label>
-                        <Select value={revenuePeriod} onValueChange={(v: any) => setRevenuePeriod(v)}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="month">Theo tháng</SelectItem>
-                            <SelectItem value="quarter">Theo quý</SelectItem>
-                            <SelectItem value="year">Theo năm</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Năm</Label>
-                        <Select value={String(revenueYear)} onValueChange={(v) => setRevenueYear(Number(v))}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {[2023, 2024, 2025, 2026].map(y => (
-                              <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Loại tiền</Label>
-                        <Select value={revenueCurrency} onValueChange={setRevenueCurrency}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">Tất cả</SelectItem>
-                            <SelectItem value="VND">VND</SelectItem>
-                            <SelectItem value="USD">USD</SelectItem>
-                            <SelectItem value="EUR">EUR</SelectItem>
-                          </SelectContent>
-                        </Select>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Tổng doanh thu (VND)</p>
+                        <p className="text-2xl font-bold">
+                          {revenueQuery.data.totalVND.toLocaleString('vi-VN')} ₫
+                        </p>
                       </div>
                     </div>
-                    
-                    {/* Summary */}
-                    {revenueByPeriodQuery.data?.summary && (
-                      <div className="p-4 bg-primary/5 rounded-lg">
-                        <h4 className="font-medium mb-2">Tổng kết {revenueByPeriodQuery.data.year}</h4>
-                        <div className="grid grid-cols-2 gap-2 text-sm">
-                          <div>Số license: <span className="font-bold">{('totalCount' in revenueByPeriodQuery.data.summary) ? revenueByPeriodQuery.data.summary.totalCount : 0}</span></div>
-                          <div>TB/kỳ: <span className="font-bold">{('avgPerPeriod' in revenueByPeriodQuery.data.summary) ? (revenueByPeriodQuery.data.summary.avgPerPeriod || 0).toFixed(1) : '0.0'}</span></div>
-                          <div>VND: <span className="font-bold">{('totalVND' in revenueByPeriodQuery.data.summary) ? (revenueByPeriodQuery.data.summary.totalVND || 0).toLocaleString("vi-VN") : '0'}</span></div>
-                          <div>USD: <span className="font-bold">${('totalUSD' in revenueByPeriodQuery.data.summary) ? revenueByPeriodQuery.data.summary.totalUSD || 0 : 0}</span></div>
-                        </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-blue-100 rounded-lg">
+                        <DollarSign className="h-5 w-5 text-blue-600" />
                       </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-            
-            {/* Revenue Chart */}
-            <Card>
-              <CardHeader>
-                <CardTitle>
-                  Biểu đồ doanh thu {revenuePeriod === "month" ? "theo tháng" : revenuePeriod === "quarter" ? "theo quý" : "theo năm"} - {revenueYear}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {revenueByPeriodQuery.data?.data && revenueByPeriodQuery.data.data.length > 0 ? (
-                  <div className="space-y-2">
-                    {revenueByPeriodQuery.data.data.map((item: any) => {
-                      const maxRevenue = Math.max(
-                        ...revenueByPeriodQuery.data!.data.map((d: any) => 
-                          Math.max(d.totalVND / 1000000, d.totalUSD * 25, d.totalEUR * 27)
-                        )
-                      ) || 1;
-                      const currentRevenue = Math.max(item.totalVND / 1000000, item.totalUSD * 25, item.totalEUR * 27);
-                      const percentage = (currentRevenue / maxRevenue) * 100;
-                      
-                      return (
-                        <div key={item.period} className="flex items-center gap-4">
-                          <span className="w-24 text-sm text-muted-foreground">{item.period}</span>
-                          <div className="flex-1 h-8 bg-muted rounded-full overflow-hidden">
-                            <div 
-                              className="h-full bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-end pr-3"
-                              style={{ width: `${Math.max(10, percentage)}%` }}
-                            >
-                              <span className="text-xs text-white font-medium">
-                                {item.count} licenses
-                              </span>
-                            </div>
-                          </div>
-                          <div className="w-40 text-right text-sm">
-                            {item.totalVND > 0 && <span className="text-green-600">{(item.totalVND / 1000000).toFixed(1)}M₫ </span>}
-                            {item.totalUSD > 0 && <span className="text-blue-600">${item.totalUSD} </span>}
-                            {item.totalEUR > 0 && <span className="text-purple-600">€{item.totalEUR}</span>}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <p className="text-muted-foreground text-center py-8">Chưa có dữ liệu doanh thu trong kỳ này</p>
-                )}
-              </CardContent>
-            </Card>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Tổng doanh thu (USD)</p>
+                        <p className="text-2xl font-bold">
+                          ${revenueQuery.data.totalUSD.toLocaleString('en-US')}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-purple-100 rounded-lg">
+                        <Key className="h-5 w-5 text-purple-600" />
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">License có giá</p>
+                        <p className="text-2xl font-bold">{revenueQuery.data.paidCount}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
           </TabsContent>
         </Tabs>
         
@@ -1236,15 +835,17 @@ export default function LicenseManagement() {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Gia hạn License</DialogTitle>
-              <DialogDescription>
-                License: {selectedLicenseKey.substring(0, 30)}...
-              </DialogDescription>
+              <DialogDescription>Thêm thời gian sử dụng cho license</DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label>Số ngày gia hạn thêm</Label>
+                <Label>License Key</Label>
+                <code className="block p-2 bg-muted rounded text-sm">{selectedLicenseKey}</code>
+              </div>
+              <div className="space-y-2">
+                <Label>Số ngày gia hạn</Label>
                 <Input 
-                  type="number" 
+                  type="number"
                   min={1}
                   value={extendDays}
                   onChange={(e) => setExtendDays(parseInt(e.target.value) || 30)}
@@ -1255,7 +856,7 @@ export default function LicenseManagement() {
               <Button variant="outline" onClick={() => setExtendDialogOpen(false)}>Hủy</Button>
               <Button onClick={handleExtend} disabled={extendMutation.isPending}>
                 {extendMutation.isPending && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
-                Gia hạn {extendDays} ngày
+                Gia hạn
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -1265,18 +866,20 @@ export default function LicenseManagement() {
         <Dialog open={transferDialogOpen} onOpenChange={setTransferDialogOpen}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Chuyển License sang thiết bị mới</DialogTitle>
-              <DialogDescription>
-                License: {selectedLicenseKey.substring(0, 30)}...
-              </DialogDescription>
+              <DialogTitle>Chuyển License</DialogTitle>
+              <DialogDescription>Chuyển license sang thiết bị mới</DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>License Key</Label>
+                <code className="block p-2 bg-muted rounded text-sm">{selectedLicenseKey}</code>
+              </div>
               <div className="space-y-2">
                 <Label>Hardware Fingerprint mới</Label>
                 <Input 
                   value={newFingerprint}
                   onChange={(e) => setNewFingerprint(e.target.value)}
-                  placeholder="Nhập fingerprint của thiết bị mới"
+                  placeholder="Nhập fingerprint thiết bị mới"
                 />
               </div>
               <div className="space-y-2">
@@ -1303,7 +906,7 @@ export default function LicenseManagement() {
           open={createDialogOpen}
           onOpenChange={setCreateDialogOpen}
           onSuccess={() => {
-            licensesQuery.refetch();
+            refreshLicenses();
             statisticsQuery.refetch();
           }}
         />
@@ -1314,7 +917,7 @@ export default function LicenseManagement() {
           onOpenChange={setActivationDialogOpen}
           licenseKey={selectedLicenseKey}
           onSuccess={() => {
-            licensesQuery.refetch();
+            refreshLicenses();
             statisticsQuery.refetch();
           }}
         />

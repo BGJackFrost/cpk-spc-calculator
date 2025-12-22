@@ -3775,17 +3775,49 @@ export async function getAuditLogsWithCursor(
  */
 export async function getLoginHistoryWithCursor(
   userId: number | null,
-  input: CursorPaginationInput
+  input: CursorPaginationInput & {
+    username?: string;
+    eventType?: 'login' | 'logout' | 'login_failed';
+    authType?: 'manus' | 'local';
+    startDate?: string;
+    endDate?: string;
+  }
 ): Promise<CursorPaginationResult<typeof loginHistory.$inferSelect>> {
   const db = await getDb();
   if (!db) return { items: [], nextCursor: null, prevCursor: null, hasMore: false };
   
   const { cursor, limit, direction } = normalizePaginationInput(input);
+  const { username, eventType, authType, startDate, endDate } = input;
   
   let conditions: any[] = [];
   
   if (userId) {
     conditions.push(eq(loginHistory.userId, userId));
+  }
+  
+  // Filter by username (partial match)
+  if (username) {
+    conditions.push(like(loginHistory.username, `%${username}%`));
+  }
+  
+  // Filter by event type
+  if (eventType) {
+    conditions.push(eq(loginHistory.eventType, eventType));
+  }
+  
+  // Filter by auth type
+  if (authType) {
+    conditions.push(eq(loginHistory.authType, authType));
+  }
+  
+  // Filter by date range
+  if (startDate) {
+    conditions.push(gte(loginHistory.createdAt, new Date(startDate)));
+  }
+  if (endDate) {
+    const endDateTime = new Date(endDate);
+    endDateTime.setHours(23, 59, 59, 999);
+    conditions.push(lte(loginHistory.createdAt, endDateTime));
   }
   
   if (cursor) {
@@ -3831,10 +3863,22 @@ export async function getLoginHistoryWithCursor(
     .orderBy(orderDirection(loginHistory.createdAt), orderDirection(loginHistory.id))
     .limit(limit + 1);
   
-  // Get total count
+  // Get total count with same filters
+  let countConditions: any[] = [];
+  if (userId) countConditions.push(eq(loginHistory.userId, userId));
+  if (username) countConditions.push(like(loginHistory.username, `%${username}%`));
+  if (eventType) countConditions.push(eq(loginHistory.eventType, eventType));
+  if (authType) countConditions.push(eq(loginHistory.authType, authType));
+  if (startDate) countConditions.push(gte(loginHistory.createdAt, new Date(startDate)));
+  if (endDate) {
+    const endDateTime = new Date(endDate);
+    endDateTime.setHours(23, 59, 59, 999);
+    countConditions.push(lte(loginHistory.createdAt, endDateTime));
+  }
+  
   let countQuery = db.select({ count: sql<number>`count(*)` }).from(loginHistory);
-  if (userId) {
-    countQuery = countQuery.where(eq(loginHistory.userId, userId)) as any;
+  if (countConditions.length > 0) {
+    countQuery = countQuery.where(and(...countConditions)) as any;
   }
   const countResult = await countQuery;
   const totalCount = countResult[0]?.count || 0;
@@ -3850,6 +3894,9 @@ export async function getLicensesWithCursor(
     status?: string;
     customerId?: number;
     search?: string;
+    licenseType?: string;
+    currency?: string;
+    priceFilter?: 'all' | 'free' | 'paid' | 'high';
   },
   input: CursorPaginationInput
 ): Promise<CursorPaginationResult<typeof licenses.$inferSelect>> {
@@ -3857,20 +3904,47 @@ export async function getLicensesWithCursor(
   if (!db) return { items: [], nextCursor: null, prevCursor: null, hasMore: false };
   
   const { cursor, limit, direction } = normalizePaginationInput(input);
-  const { status, customerId, search } = params;
+  const { status, customerId, search, licenseType, currency, priceFilter } = params;
   
   let conditions: any[] = [];
+  let filterConditions: any[] = []; // For counting without cursor
   
   if (status) {
-    conditions.push(eq(licenses.licenseStatus, status as any));
+    const statusCondition = status === 'active' 
+      ? eq(licenses.isActive, 1)
+      : status === 'pending'
+        ? and(eq(licenses.isActive, 0), sql`${licenses.licenseStatus} != 'revoked'`)
+        : status === 'expired'
+          ? sql`${licenses.expiresAt} < NOW()`
+          : eq(licenses.licenseStatus, status as any);
+    conditions.push(statusCondition);
+    filterConditions.push(statusCondition);
   }
   if (customerId) {
     conditions.push(eq(licenses.customerId, customerId));
+    filterConditions.push(eq(licenses.customerId, customerId));
   }
   if (search) {
-    conditions.push(
-      sql`(${licenses.licenseKey} LIKE ${`%${search}%`} OR ${licenses.customerName} LIKE ${`%${search}%`})`
-    );
+    const searchCondition = sql`(${licenses.licenseKey} LIKE ${`%${search}%`} OR ${licenses.companyName} LIKE ${`%${search}%`} OR ${licenses.contactEmail} LIKE ${`%${search}%`})`;
+    conditions.push(searchCondition);
+    filterConditions.push(searchCondition);
+  }
+  if (licenseType) {
+    conditions.push(eq(licenses.licenseType, licenseType as any));
+    filterConditions.push(eq(licenses.licenseType, licenseType as any));
+  }
+  if (currency) {
+    conditions.push(eq(licenses.currency, currency));
+    filterConditions.push(eq(licenses.currency, currency));
+  }
+  if (priceFilter && priceFilter !== 'all') {
+    const priceCondition = priceFilter === 'free'
+      ? sql`(${licenses.price} IS NULL OR ${licenses.price} = 0)`
+      : priceFilter === 'paid'
+        ? sql`${licenses.price} > 0`
+        : sql`${licenses.price} >= 10000000`; // high >= 10M
+    conditions.push(priceCondition);
+    filterConditions.push(priceCondition);
   }
   
   if (cursor) {
@@ -3892,7 +3966,6 @@ export async function getLicensesWithCursor(
     .limit(limit + 1);
   
   // Get total count with filters (excluding cursor condition)
-  const filterConditions = conditions.slice(0, -1);
   let countQuery = db.select({ count: sql<number>`count(*)` }).from(licenses);
   if (filterConditions.length > 0) {
     countQuery = countQuery.where(and(...filterConditions)) as any;

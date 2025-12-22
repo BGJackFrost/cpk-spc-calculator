@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { trpc } from "@/lib/trpc";
+import { useCursorPagination } from "@/hooks/useCursorPagination";
+import LoadMoreButton from "@/components/LoadMoreButton";
 import { 
   LogIn, 
   LogOut, 
@@ -42,43 +44,42 @@ export default function LoginHistoryPage() {
     dateTo: ""
   });
   
-  const loginHistoryQuery = trpc.localAuth.loginHistory.useQuery({ pageSize: 500 });
+  // Use cursor pagination hook
+  const {
+    items: loginHistory,
+    hasMore,
+    isLoading,
+    isLoadingMore,
+    totalCount,
+    loadMore,
+    refresh,
+  } = useCursorPagination(
+    (params) => {
+      const query = trpc.localAuth.loginHistoryWithCursor.useQuery({
+        cursor: params.cursor,
+        limit: params.limit,
+        username: filters.username || undefined,
+        eventType: filters.eventType !== 'all' ? filters.eventType as any : undefined,
+        authType: filters.authType !== 'all' ? filters.authType as any : undefined,
+        startDate: filters.dateFrom || undefined,
+        endDate: filters.dateTo || undefined,
+      });
+      return {
+        data: query.data,
+        isLoading: query.isLoading,
+        error: query.error as Error | null,
+        refetch: query.refetch,
+      };
+    },
+    { pageSize: 50 }
+  );
+  
   const loginStatsQuery = trpc.localAuth.loginStats.useQuery({});
   
+  // Filter locally for additional client-side filtering
   const filteredHistory = useMemo(() => {
-    if (!loginHistoryQuery.data?.logs) return [];
-    
-    return loginHistoryQuery.data.logs.filter((record: any) => {
-      // Filter by username
-      if (filters.username && !record.username.toLowerCase().includes(filters.username.toLowerCase())) {
-        return false;
-      }
-      
-      // Filter by event type
-      if (filters.eventType !== "all" && record.eventType !== filters.eventType) {
-        return false;
-      }
-      
-      // Filter by auth type
-      if (filters.authType !== "all" && record.authType !== filters.authType) {
-        return false;
-      }
-      
-      // Filter by date range
-      if (filters.dateFrom) {
-        const fromDate = new Date(filters.dateFrom);
-        if (new Date(record.createdAt) < fromDate) return false;
-      }
-      
-      if (filters.dateTo) {
-        const toDate = new Date(filters.dateTo);
-        toDate.setHours(23, 59, 59, 999);
-        if (new Date(record.createdAt) > toDate) return false;
-      }
-      
-      return true;
-    });
-  }, [loginHistoryQuery.data, filters]);
+    return loginHistory;
+  }, [loginHistory]);
   
   const getEventIcon = (eventType: string) => {
     switch (eventType) {
@@ -119,7 +120,7 @@ export default function LoginHistoryPage() {
   
   const stats = loginStatsQuery.data;
   
-  const clearFilters = () => {
+  const clearFilters = useCallback(() => {
     setFilters({
       username: "",
       eventType: "all",
@@ -127,7 +128,8 @@ export default function LoginHistoryPage() {
       dateFrom: "",
       dateTo: ""
     });
-  };
+    refresh();
+  }, [refresh]);
   
   const [isExporting, setIsExporting] = useState(false);
   
@@ -165,6 +167,12 @@ export default function LoginHistoryPage() {
     });
   };
   
+  // Handle filter changes - refresh data when filters change
+  const handleFilterChange = useCallback((newFilters: typeof filters) => {
+    setFilters(newFilters);
+    // Refresh will be triggered by the query when filters change
+  }, []);
+  
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -195,7 +203,7 @@ export default function LoginHistoryPage() {
             <Button 
               variant="outline" 
               onClick={() => {
-                loginHistoryQuery.refetch();
+                refresh();
                 loginStatsQuery.refetch();
               }}
             >
@@ -281,7 +289,7 @@ export default function LoginHistoryPage() {
                     className="pl-9"
                     placeholder="Tìm theo username..."
                     value={filters.username}
-                    onChange={(e) => setFilters({...filters, username: e.target.value})}
+                    onChange={(e) => handleFilterChange({...filters, username: e.target.value})}
                   />
                 </div>
               </div>
@@ -290,7 +298,7 @@ export default function LoginHistoryPage() {
                 <Label>Loại sự kiện</Label>
                 <Select 
                   value={filters.eventType} 
-                  onValueChange={(v) => setFilters({...filters, eventType: v})}
+                  onValueChange={(v) => handleFilterChange({...filters, eventType: v})}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -308,7 +316,7 @@ export default function LoginHistoryPage() {
                 <Label>Loại xác thực</Label>
                 <Select 
                   value={filters.authType} 
-                  onValueChange={(v) => setFilters({...filters, authType: v})}
+                  onValueChange={(v) => handleFilterChange({...filters, authType: v})}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -329,7 +337,7 @@ export default function LoginHistoryPage() {
                     type="date"
                     className="pl-9"
                     value={filters.dateFrom}
-                    onChange={(e) => setFilters({...filters, dateFrom: e.target.value})}
+                    onChange={(e) => handleFilterChange({...filters, dateFrom: e.target.value})}
                   />
                 </div>
               </div>
@@ -342,7 +350,7 @@ export default function LoginHistoryPage() {
                     type="date"
                     className="pl-9"
                     value={filters.dateTo}
-                    onChange={(e) => setFilters({...filters, dateTo: e.target.value})}
+                    onChange={(e) => handleFilterChange({...filters, dateTo: e.target.value})}
                   />
                 </div>
               </div>
@@ -350,7 +358,7 @@ export default function LoginHistoryPage() {
             
             <div className="flex items-center justify-between mt-4">
               <p className="text-sm text-muted-foreground">
-                Hiển thị {filteredHistory.length} / {loginHistoryQuery.data?.total || 0} bản ghi
+                Hiển thị {filteredHistory.length} {totalCount ? `/ ${totalCount}` : ''} bản ghi
               </p>
               <Button variant="outline" size="sm" onClick={clearFilters}>
                 Xóa bộ lọc
@@ -418,17 +426,26 @@ export default function LoginHistoryPage() {
                     </TableCell>
                   </TableRow>
                 ))}
-                {filteredHistory.length === 0 && (
+                {filteredHistory.length === 0 && !isLoading && (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                      {loginHistoryQuery.isLoading 
-                        ? "Đang tải..." 
-                        : "Không có dữ liệu phù hợp với bộ lọc"}
+                      Không có dữ liệu phù hợp với bộ lọc
                     </TableCell>
                   </TableRow>
                 )}
               </TableBody>
             </Table>
+            
+            {/* Load More Button */}
+            <LoadMoreButton
+              hasMore={hasMore}
+              isLoading={isLoading || isLoadingMore}
+              onLoadMore={loadMore}
+              onRefresh={refresh}
+              totalCount={totalCount}
+              loadedCount={filteredHistory.length}
+              showRefresh={false}
+            />
           </CardContent>
         </Card>
       </div>

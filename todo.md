@@ -4904,8 +4904,8 @@
 - [x] Tạo LoadMoreButton component (client/src/components/LoadMoreButton.tsx)
 - [x] Update UserManagement page với cursor pagination và infinite scroll
 - [x] Update AuditLogs page với cursor pagination và infinite scroll
-- [ ] Update LoginHistory page với cursor pagination
-- [ ] Update LicenseManagement page với cursor pagination
+- [x] Update LoginHistory page với cursor pagination
+- [x] Update LicenseManagement page với cursor pagination
 
 ### Connection Pool Optimization (P1-DB-04)
 - [x] Implement connection pool configuration (OPTIMIZED_POOL_CONFIG, HIGH_LOAD_POOL_CONFIG)
@@ -4921,4 +4921,33 @@
 - [x] Log slow queries (>100ms threshold, configurable)
 - [x] Tạo API endpoints: queryPerformance.getStats, queryPerformance.getSlowQueries, queryPerformance.analyzeQuery
 - [x] Tạo index usage statistics (getIndexUsageStats, getTableStats)
-- [ ] Tạo performance dashboard widget
+- [x] Tạo performance dashboard widget (PerformanceDashboardWidget.tsx)
+
+
+## Phase 233 - Performance Dashboard Widget, Cursor Pagination & Query Caching (22/12/2024)
+
+### Performance Dashboard Widget
+- [x] Tạo PerformanceDashboardWidget component
+- [x] Hiển thị realtime connection pool stats (active, idle, waiting)
+- [x] Hiển thị slow queries list với execution time
+- [x] Hiển thị index usage statistics
+- [x] Tích hợp vào Admin Monitoring page (tab Performance)
+- [x] Auto-refresh mỗi 10 giây
+
+### Cursor Pagination cho LoginHistory
+- [x] Cập nhật LoginHistoryPage với useCursorPagination hook
+- [x] Thêm LoadMoreButton component
+- [x] Giữ nguyên các bộ lọc hiện có (search, status)
+
+### Cursor Pagination cho LicenseManagement
+- [x] Cập nhật LicenseManagement với useCursorPagination hook
+- [x] Thêm LoadMoreButton component
+- [x] Giữ nguyên các chức năng CRUD
+
+### Query Caching
+- [x] Tạo QueryCacheService với TTL configurable (server/services/queryCacheService.ts)
+- [x] Cache kết quả các queries thường xuyên với category-based TTL
+- [x] Implement cache invalidation strategy (invalidateQuery, invalidatePattern)
+- [x] Tạo API endpoints: queryCache.getStats, queryCache.clear, queryCache.getEntries, queryCache.invalidateQuery
+- [x] Tạo QueryCacheWidget component trong Admin Monitoring (tab Query Cache)
+- [x] Viết unit tests cho QueryCacheService

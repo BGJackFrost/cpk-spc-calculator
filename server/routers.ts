@@ -3431,15 +3431,29 @@ export const appRouter = router({
       .input(z.object({
         userId: z.number().optional(),
         cursor: z.string().optional(),
-        limit: z.number().min(1).max(100).default(20),
+        limit: z.number().min(1).max(100).default(50),
         direction: z.enum(['forward', 'backward']).default('forward'),
+        username: z.string().optional(),
+        eventType: z.enum(['login', 'logout', 'login_failed']).optional(),
+        authType: z.enum(['manus', 'local']).optional(),
+        startDate: z.string().optional(),
+        endDate: z.string().optional(),
       }))
       .query(async ({ input, ctx }) => {
         if (ctx.user.role !== 'admin') {
           throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin access required' });
         }
-        const { userId, cursor, limit, direction } = input;
-        return getLoginHistoryWithCursor(userId || null, { cursor, limit, direction });
+        const { userId, cursor, limit, direction, username, eventType, authType, startDate, endDate } = input;
+        return getLoginHistoryWithCursor(userId || null, { 
+          cursor, 
+          limit, 
+          direction,
+          username,
+          eventType,
+          authType,
+          startDate,
+          endDate,
+        });
       }),
 
     // Get login stats
@@ -4206,11 +4220,14 @@ export const appRouter = router({
     listWithCursor: protectedProcedure
       .input(z.object({
         cursor: z.string().optional(),
-        limit: z.number().min(1).max(100).default(20),
+        limit: z.number().min(1).max(100).default(50),
         direction: z.enum(['forward', 'backward']).default('forward'),
         status: z.string().optional(),
         customerId: z.number().optional(),
         search: z.string().optional(),
+        licenseType: z.string().optional(),
+        currency: z.string().optional(),
+        priceFilter: z.enum(['all', 'free', 'paid', 'high']).optional(),
       }))
       .query(async ({ input }) => {
         const { cursor, limit, direction, ...filters } = input;
@@ -8955,7 +8972,7 @@ Hãy trả về JSON với format:
         return await analyzeQuery(input.query);
       }),
 
-    getIndexStats: protectedProcedure
+    getIndexUsageStats: protectedProcedure
       .query(async ({ ctx }) => {
         if (ctx.user.role !== 'admin') {
           throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin only' });
@@ -9049,6 +9066,115 @@ Hãy trả về JSON với format:
         const success = await sendShiftReportEmail(input.reportId, input.recipients);
         return { success };
       })
+  }),
+
+  // Query Cache Management router
+  queryCache: router({
+    // Get cache statistics
+    getStats: protectedProcedure.query(async ({ ctx }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+      }
+      const { queryCache } = await import("./services/queryCacheService");
+      return queryCache.getStats();
+    }),
+    
+    // Get cache entries
+    getEntries: protectedProcedure
+      .input(z.object({
+        limit: z.number().default(100),
+      }))
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { queryCache } = await import("./services/queryCacheService");
+        const entries = queryCache.getEntries();
+        return entries.slice(0, input.limit);
+      }),
+    
+    // Clear all cache
+    clear: protectedProcedure.mutation(async ({ ctx }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+      }
+      const { queryCache } = await import("./services/queryCacheService");
+      queryCache.clear();
+      return { success: true, message: "Cache cleared successfully" };
+    }),
+    
+    // Invalidate specific query
+    invalidateQuery: protectedProcedure
+      .input(z.object({ queryId: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { queryCache } = await import("./services/queryCacheService");
+        const count = queryCache.invalidateQuery(input.queryId);
+        return { success: true, invalidatedCount: count };
+      }),
+    
+    // Invalidate by pattern
+    invalidatePattern: protectedProcedure
+      .input(z.object({ pattern: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { queryCache } = await import("./services/queryCacheService");
+        const count = queryCache.invalidatePattern(input.pattern);
+        return { success: true, invalidatedCount: count };
+      }),
+    
+    // Cleanup expired entries
+    cleanup: protectedProcedure.mutation(async ({ ctx }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+      }
+      const { queryCache } = await import("./services/queryCacheService");
+      const count = queryCache.cleanup();
+      return { success: true, cleanedCount: count };
+    }),
+    
+    // Evict LRU entries
+    evictLRU: protectedProcedure
+      .input(z.object({ count: z.number().default(10) }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { queryCache } = await import("./services/queryCacheService");
+        const evicted = queryCache.evictLRU(input.count);
+        return { success: true, evictedCount: evicted };
+      }),
+    
+    // Configure TTL for category
+    setTTL: protectedProcedure
+      .input(z.object({
+        category: z.string(),
+        ttlSeconds: z.number().min(1).max(3600),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { queryCache } = await import("./services/queryCacheService");
+        queryCache.setTTLConfig(input.category, input.ttlSeconds * 1000);
+        return { success: true };
+      }),
+    
+    // Set max entries
+    setMaxEntries: protectedProcedure
+      .input(z.object({ maxEntries: z.number().min(100).max(10000) }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { queryCache } = await import("./services/queryCacheService");
+        queryCache.setMaxEntries(input.maxEntries);
+        return { success: true };
+      }),
   })
 });
 
