@@ -4595,3 +4595,21 @@
 - [x] Sử dụng cột sortOrder đã có trong bảng user_quick_access_categories
 - [x] Cho phép drag-and-drop sắp xếp thứ tự categories
 - [x] Lưu thứ tự categories vào database
+
+
+## Phase 223 - Pin/Unpin Quick Access Items
+
+### Database Schema
+- [x] Thêm cột isPinned vào bảng user_quick_access
+- [x] Chạy migration để cập nhật database
+
+### Backend API
+- [x] Thêm API togglePin để ghim/bỏ ghim item
+- [x] Cập nhật API listByCategory để sắp xếp pinned items lên đầu
+- [x] Cập nhật useQuickAccess hook hỗ trợ pinned items
+
+### Frontend UI
+- [x] Hiển thị icon pin cho các items đã ghim
+- [x] Thêm action pin/unpin trong context menu
+- [x] Hiển thị section "Đã ghim" riêng biệt ở đầu sidebar
+- [x] Visual feedback khi pin/unpin item

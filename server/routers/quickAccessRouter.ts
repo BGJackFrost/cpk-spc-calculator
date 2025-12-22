@@ -423,7 +423,7 @@ export const quickAccessRouter = router({
   // Lấy Quick Access items theo category
   listByCategory: protectedProcedure.query(async ({ ctx }) => {
     const db = await getDb();
-    if (!db) return { categories: [], uncategorized: [] };
+    if (!db) return { categories: [], uncategorized: [], pinned: [] };
     
     // Lấy tất cả categories
     const categories = await db
@@ -439,18 +439,54 @@ export const quickAccessRouter = router({
       .where(eq(userQuickAccess.userId, ctx.user.id))
       .orderBy(asc(userQuickAccess.sortOrder));
     
-    // Nhóm items theo category
+    // Lấy các items đã ghim
+    const pinned = items.filter(item => item.isPinned === 1);
+    
+    // Nhóm items theo category (không bao gồm pinned items)
     const categorizedItems = categories.map(cat => ({
       ...cat,
-      items: items.filter(item => item.categoryId === cat.id),
+      items: items.filter(item => item.categoryId === cat.id && item.isPinned !== 1),
     }));
     
-    // Items không có category
-    const uncategorized = items.filter(item => item.categoryId === null);
+    // Items không có category (không bao gồm pinned items)
+    const uncategorized = items.filter(item => item.categoryId === null && item.isPinned !== 1);
     
     return {
       categories: categorizedItems,
       uncategorized,
+      pinned,
     };
   }),
+
+  // Ghim/Bỏ ghim item
+  togglePin: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      // Kiểm tra item thuộc về user
+      const item = await db
+        .select()
+        .from(userQuickAccess)
+        .where(and(
+          eq(userQuickAccess.id, input.id),
+          eq(userQuickAccess.userId, ctx.user.id)
+        ))
+        .limit(1);
+
+      if (item.length === 0) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Không tìm thấy item" });
+      }
+
+      const currentPinned = item[0].isPinned;
+      const newPinned = currentPinned === 1 ? 0 : 1;
+
+      await db
+        .update(userQuickAccess)
+        .set({ isPinned: newPinned })
+        .where(eq(userQuickAccess.id, input.id));
+
+      return { success: true, isPinned: newPinned === 1 };
+    }),
 });

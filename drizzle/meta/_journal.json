@@ -470,6 +470,13 @@
       "when": 1766375956331,
       "tag": "0066_fancy_garia",
       "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "5",
+      "when": 1766379807177,
+      "tag": "0067_left_sersi",
+      "breakpoints": true
     }
   ]
 }

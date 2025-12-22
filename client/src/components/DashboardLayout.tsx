@@ -44,7 +44,7 @@ import { ThemeSelector } from "./ThemeSelector";
 import { useSystem } from "@/contexts/SystemContext";
 import { MenuGroup as SystemMenuGroup, MenuItem as SystemMenuItem } from "@/config/systemMenu";
 import { useQuickAccess } from "@/hooks/useQuickAccess";
-import { Star, Plus } from "lucide-react";
+import { Star, Plus, Pin } from "lucide-react";
 import { QuickAccessAddDialog } from "./QuickAccessAddDialog";
 import { MenuItemContextMenu } from "./MenuItemContextMenu";
 
@@ -364,7 +364,7 @@ function DashboardLayoutContent({
   const { theme, setTheme } = useTheme();
   
   // Load Quick Access items dynamically
-  const { quickAccessMenuItems, hasQuickAccess, refetch: refetchQuickAccess } = useQuickAccess();
+  const { quickAccessMenuItems, pinnedItems, hasQuickAccess, hasPinnedItems, refetch: refetchQuickAccess } = useQuickAccess();
   
   // Get menu groups from current system - memoized to prevent infinite loops
   // Inject Quick Access items dynamically for Dashboard system
@@ -596,6 +596,44 @@ function DashboardLayoutContent({
                       )}
                     </div>
                     <CollapsibleContent className="mt-1 space-y-1">
+                      {/* Pinned Items Section */}
+                      {isQuickAccessGroup && hasPinnedItems && (
+                        <div className="mb-2">
+                          <div className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium text-muted-foreground">
+                            <Pin className="h-3 w-3" />
+                            <span>Đã ghim</span>
+                          </div>
+                          <SidebarMenu>
+                            {pinnedItems.map(item => {
+                              const isActive = location === item.menuPath;
+                              return (
+                                <SidebarMenuItem key={`pinned-${item.id}`}>
+                                  <MenuItemContextMenu
+                                    menuId={item.menuId}
+                                    menuPath={item.menuPath}
+                                    menuLabel={item.menuLabel}
+                                    menuIcon={item.icon?.name}
+                                    systemId={activeSystem}
+                                  >
+                                    <SidebarMenuButton
+                                      isActive={isActive}
+                                      onClick={() => setLocation(item.menuPath)}
+                                      tooltip={item.menuLabel}
+                                      className="h-9 pl-9 transition-all font-normal"
+                                    >
+                                      <item.icon className={`h-4 w-4 ${isActive ? "text-primary" : ""}`} />
+                                      <span className="truncate">{item.menuLabel}</span>
+                                      <Pin className="h-3 w-3 ml-auto text-amber-500" />
+                                    </SidebarMenuButton>
+                                  </MenuItemContextMenu>
+                                </SidebarMenuItem>
+                              );
+                            })}
+                          </SidebarMenu>
+                        </div>
+                      )}
+                      
+                      {/* Regular Items */}
                       <SidebarMenu>
                         {filteredItems.map(item => {
                           const isActive = location === item.path;

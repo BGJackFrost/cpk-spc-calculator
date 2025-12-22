@@ -3236,6 +3236,7 @@ export const userQuickAccess = mysqlTable("user_quick_access", {
   menuIcon: varchar("menu_icon", { length: 50 }), // Icon name (e.g., "TrendingUp")
   systemId: varchar("system_id", { length: 50 }), // System mà menu thuộc về (e.g., "spc", "mms")
   categoryId: int("category_id"), // Category tùy chỉnh (null = Uncategorized)
+  isPinned: int("is_pinned").notNull().default(0), // Ghim item lên đầu (0 = không ghim, 1 = đã ghim)
   sortOrder: int("sort_order").notNull().default(0), // Thứ tự hiển thị
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),

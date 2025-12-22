@@ -24,6 +24,7 @@ export interface QuickAccessItem {
   menuLabel: string;
   sortOrder: number;
   categoryId: number | null;
+  isPinned: boolean;
   icon: LucideIcon;
 }
 
@@ -66,6 +67,7 @@ export function useQuickAccess() {
     menuLabel: item.menuLabel,
     sortOrder: item.sortOrder,
     categoryId: item.categoryId,
+    isPinned: item.isPinned === 1,
     icon: iconMap[item.menuPath] || Star,
   });
 
@@ -90,13 +92,20 @@ export function useQuickAccess() {
     return categoryData.uncategorized.map(transformItem);
   }, [categoryData]);
 
+  // Pinned items
+  const pinnedItems: QuickAccessItem[] = useMemo(() => {
+    if (!categoryData?.pinned) return [];
+    return categoryData.pinned.map(transformItem);
+  }, [categoryData]);
+
   // All items flat (for backward compatibility)
   const quickAccessItems: QuickAccessItem[] = useMemo(() => {
     const allItems: QuickAccessItem[] = [];
+    allItems.push(...pinnedItems); // Pinned items first
     categories.forEach(cat => allItems.push(...cat.items));
     allItems.push(...uncategorizedItems);
-    return allItems.sort((a, b) => a.sortOrder - b.sortOrder);
-  }, [categories, uncategorizedItems]);
+    return allItems;
+  }, [pinnedItems, categories, uncategorizedItems]);
 
   // Convert to MenuItem format for sidebar (flat list)
   const quickAccessMenuItems: MenuItem[] = useMemo(() => {
@@ -159,6 +168,7 @@ export function useQuickAccess() {
     quickAccessItems,
     quickAccessMenuItems,
     uncategorizedItems,
+    pinnedItems,
     
     // Categories
     categories,
@@ -169,6 +179,7 @@ export function useQuickAccess() {
     isLoading,
     hasQuickAccess: quickAccessItems.length > 0,
     hasCategories: categories.length > 0,
+    hasPinnedItems: pinnedItems.length > 0,
     
     // Actions
     refetch: refetchAll,

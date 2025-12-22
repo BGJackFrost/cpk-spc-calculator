@@ -6,7 +6,7 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
-import { Star, StarOff, ExternalLink, Copy } from "lucide-react";
+import { Star, StarOff, ExternalLink, Copy, Pin, PinOff } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { useQuickAccess } from "@/hooks/useQuickAccess";
@@ -69,6 +69,22 @@ export function MenuItemContextMenu({
     },
   });
 
+  // Toggle pin mutation
+  const togglePinMutation = trpc.quickAccess.togglePin.useMutation({
+    onSuccess: (data) => {
+      toast.success(data.isPinned ? "Đã ghim menu" : "Đã bỏ ghim menu", {
+        description: menuLabel,
+        duration: 2000,
+      });
+      refetch();
+    },
+    onError: (error) => {
+      toast.error("Không thể thay đổi trạng thái ghim", {
+        description: error.message,
+      });
+    },
+  });
+
   const handleToggleQuickAccess = () => {
     if (isInQuickAccess && quickAccessItem) {
       removeMutation.mutate({ id: quickAccessItem.id });
@@ -80,6 +96,13 @@ export function MenuItemContextMenu({
         menuIcon,
         systemId,
       });
+    }
+    setIsOpen(false);
+  };
+
+  const handleTogglePin = () => {
+    if (quickAccessItem) {
+      togglePinMutation.mutate({ id: quickAccessItem.id });
     }
     setIsOpen(false);
   };
@@ -117,6 +140,25 @@ export function MenuItemContextMenu({
             </>
           )}
         </ContextMenuItem>
+        
+        {isInQuickAccess && quickAccessItem && (
+          <ContextMenuItem
+            onClick={handleTogglePin}
+            className="flex items-center gap-2"
+          >
+            {quickAccessItem.isPinned ? (
+              <>
+                <PinOff className="h-4 w-4" />
+                <span>Bỏ ghim</span>
+              </>
+            ) : (
+              <>
+                <Pin className="h-4 w-4" />
+                <span>Ghim lên đầu</span>
+              </>
+            )}
+          </ContextMenuItem>
+        )}
         
         <ContextMenuSeparator />
         
