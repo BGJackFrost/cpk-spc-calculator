@@ -130,4 +130,94 @@ export const quickAccessRouter = router({
 
     return { success: true };
   }),
+
+  // Export Quick Access settings
+  export: protectedProcedure.query(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) return { version: 1, items: [] };
+    
+    const items = await db
+      .select({
+        menuId: userQuickAccess.menuId,
+        menuPath: userQuickAccess.menuPath,
+        menuLabel: userQuickAccess.menuLabel,
+        menuIcon: userQuickAccess.menuIcon,
+        systemId: userQuickAccess.systemId,
+        sortOrder: userQuickAccess.sortOrder,
+      })
+      .from(userQuickAccess)
+      .where(eq(userQuickAccess.userId, ctx.user.id))
+      .orderBy(asc(userQuickAccess.sortOrder));
+    
+    return {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      items,
+    };
+  }),
+
+  // Import Quick Access settings
+  import: protectedProcedure
+    .input(z.object({
+      version: z.number(),
+      items: z.array(z.object({
+        menuId: z.string(),
+        menuPath: z.string(),
+        menuLabel: z.string(),
+        menuIcon: z.string().nullable().optional(),
+        systemId: z.string().nullable().optional(),
+        sortOrder: z.number(),
+      })),
+      replaceExisting: z.boolean().default(true),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      // Validate version
+      if (input.version !== 1) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Phiên bản không được hỗ trợ" });
+      }
+
+      // Xóa cũ nếu replaceExisting = true
+      if (input.replaceExisting) {
+        await db.delete(userQuickAccess).where(eq(userQuickAccess.userId, ctx.user.id));
+      }
+
+      // Thêm mới
+      let imported = 0;
+      let skipped = 0;
+
+      for (const item of input.items) {
+        // Kiểm tra đã tồn tại chưa (nếu không replaceExisting)
+        if (!input.replaceExisting) {
+          const existing = await db
+            .select()
+            .from(userQuickAccess)
+            .where(and(
+              eq(userQuickAccess.userId, ctx.user.id),
+              eq(userQuickAccess.menuId, item.menuId)
+            ))
+            .limit(1);
+
+          if (existing.length > 0) {
+            skipped++;
+            continue;
+          }
+        }
+
+        await db.insert(userQuickAccess).values({
+          userId: ctx.user.id,
+          menuId: item.menuId,
+          menuPath: item.menuPath,
+          menuLabel: item.menuLabel,
+          menuIcon: item.menuIcon || null,
+          systemId: item.systemId || null,
+          sortOrder: item.sortOrder,
+        });
+        imported++;
+      }
+
+      return { success: true, imported, skipped };
+    }),
 });

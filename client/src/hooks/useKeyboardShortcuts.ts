@@ -165,6 +165,59 @@ export const NAVIGATION_SHORTCUTS = [
   { keys: "Ctrl + Shift + R", description: "Đi đến Tạo Báo cáo", descriptionEn: "Go to Report Builder", path: "/custom-report-builder" },
 ];
 
+// Quick Access shortcuts
+export const QUICK_ACCESS_SHORTCUTS = [
+  { keys: "Ctrl + 1", description: "Quick Access #1", descriptionEn: "Quick Access #1" },
+  { keys: "Ctrl + 2", description: "Quick Access #2", descriptionEn: "Quick Access #2" },
+  { keys: "Ctrl + 3", description: "Quick Access #3", descriptionEn: "Quick Access #3" },
+  { keys: "Ctrl + 4", description: "Quick Access #4", descriptionEn: "Quick Access #4" },
+  { keys: "Ctrl + 5", description: "Quick Access #5", descriptionEn: "Quick Access #5" },
+  { keys: "Ctrl + 6", description: "Quick Access #6", descriptionEn: "Quick Access #6" },
+  { keys: "Ctrl + 7", description: "Quick Access #7", descriptionEn: "Quick Access #7" },
+  { keys: "Ctrl + 8", description: "Quick Access #8", descriptionEn: "Quick Access #8" },
+  { keys: "Ctrl + 9", description: "Quick Access #9", descriptionEn: "Quick Access #9" },
+  { keys: "Ctrl + 0", description: "Quản lý Quick Access", descriptionEn: "Manage Quick Access" },
+];
+
+// Create Quick Access shortcuts config
+export function createQuickAccessShortcuts(
+  navigate: (path: string) => void,
+  quickAccessItems: Array<{ menuPath: string; menuLabel: string }>
+): ShortcutConfig[] {
+  const shortcuts: ShortcutConfig[] = [];
+  
+  // Ctrl+1 to Ctrl+9 for Quick Access items
+  for (let i = 0; i < 9; i++) {
+    const item = quickAccessItems[i];
+    shortcuts.push({
+      key: String(i + 1),
+      ctrl: true,
+      action: () => {
+        if (item) {
+          navigate(item.menuPath);
+          toast.info(`Đi đến: ${item.menuLabel}`, { duration: 1500 });
+        } else {
+          toast.warning(`Quick Access #${i + 1} chưa được thiết lập`, { duration: 1500 });
+        }
+      },
+      description: item ? `Đi đến ${item.menuLabel}` : `Quick Access #${i + 1}`,
+    });
+  }
+  
+  // Ctrl+0 for Quick Access management
+  shortcuts.push({
+    key: "0",
+    ctrl: true,
+    action: () => {
+      navigate("/quick-access");
+      toast.info("Mở Quản lý Quick Access", { duration: 1500 });
+    },
+    description: "Quản lý Quick Access",
+  });
+  
+  return shortcuts;
+}
+
 // Create navigation shortcuts config
 export function createNavigationShortcuts(navigate: (path: string) => void): ShortcutConfig[] {
   return [

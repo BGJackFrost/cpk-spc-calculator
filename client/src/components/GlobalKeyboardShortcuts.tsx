@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useLocation } from "wouter";
-import { useKeyboardShortcuts, createNavigationShortcuts, createCommonShortcuts } from "@/hooks/useKeyboardShortcuts";
+import { useKeyboardShortcuts, createNavigationShortcuts, createCommonShortcuts, createQuickAccessShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { KeyboardShortcutsDialog } from "./KeyboardShortcutsDialog";
+import { useQuickAccess } from "@/hooks/useQuickAccess";
 
 interface GlobalKeyboardShortcutsProps {
   children: React.ReactNode;
@@ -10,6 +11,7 @@ interface GlobalKeyboardShortcutsProps {
 export function GlobalKeyboardShortcuts({ children }: GlobalKeyboardShortcutsProps) {
   const [showShortcutsDialog, setShowShortcutsDialog] = useState(false);
   const [, navigate] = useLocation();
+  const { quickAccessItems } = useQuickAccess();
 
   // Create navigation shortcuts
   const navigationShortcuts = createNavigationShortcuts(navigate);
@@ -19,8 +21,14 @@ export function GlobalKeyboardShortcuts({ children }: GlobalKeyboardShortcutsPro
     onHelp: () => setShowShortcutsDialog(true),
   });
 
+  // Create Quick Access shortcuts
+  const quickAccessShortcuts = useMemo(
+    () => createQuickAccessShortcuts(navigate, quickAccessItems),
+    [navigate, quickAccessItems]
+  );
+
   // Combine all shortcuts
-  const allShortcuts = [...navigationShortcuts, ...commonShortcuts];
+  const allShortcuts = [...navigationShortcuts, ...commonShortcuts, ...quickAccessShortcuts];
 
   // Use the keyboard shortcuts hook
   useKeyboardShortcuts({

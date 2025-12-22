@@ -46,6 +46,7 @@ import { MenuGroup as SystemMenuGroup, MenuItem as SystemMenuItem } from "@/conf
 import { useQuickAccess } from "@/hooks/useQuickAccess";
 import { Star, Plus } from "lucide-react";
 import { QuickAccessAddDialog } from "./QuickAccessAddDialog";
+import { MenuItemContextMenu } from "./MenuItemContextMenu";
 
 // Fallback labels for keys not in translation files (by language)
 const fallbackLabelsVi: Record<string, string> = {
@@ -601,15 +602,23 @@ function DashboardLayoutContent({
                           const label = getLabel(item.labelKey);
                           return (
                             <SidebarMenuItem key={item.path}>
-                              <SidebarMenuButton
-                                isActive={isActive}
-                                onClick={() => setLocation(item.path)}
-                                tooltip={label}
-                                className="h-9 pl-9 transition-all font-normal"
+                              <MenuItemContextMenu
+                                menuId={item.id}
+                                menuPath={item.path}
+                                menuLabel={label}
+                                menuIcon={item.icon?.name}
+                                systemId={activeSystem}
                               >
-                                <item.icon className={`h-4 w-4 ${isActive ? "text-primary" : ""}`} />
-                                <span className="truncate">{label}</span>
-                              </SidebarMenuButton>
+                                <SidebarMenuButton
+                                  isActive={isActive}
+                                  onClick={() => setLocation(item.path)}
+                                  tooltip={label}
+                                  className="h-9 pl-9 transition-all font-normal"
+                                >
+                                  <item.icon className={`h-4 w-4 ${isActive ? "text-primary" : ""}`} />
+                                  <span className="truncate">{label}</span>
+                                </SidebarMenuButton>
+                              </MenuItemContextMenu>
                             </SidebarMenuItem>
                           );
                         })}

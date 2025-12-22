@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Star, StarOff, Plus, Trash2, GripVertical, Search, 
   LayoutDashboard, TrendingUp, HardHat, Factory, Key, Settings,
-  RefreshCw
+  RefreshCw, Download, Upload, FileJson
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
@@ -219,6 +219,69 @@ export default function QuickAccessManagement() {
     },
   });
 
+  const importMutation = trpc.quickAccess.import.useMutation({
+    onSuccess: (result) => {
+      toast.success(`Import thành công: ${result.imported} items`, {
+        description: result.skipped > 0 ? `Bỏ qua ${result.skipped} items trùng lặp` : undefined,
+      });
+      refetch();
+    },
+    onError: (error) => {
+      toast.error("Import thất bại", { description: error.message });
+    },
+  });
+
+  // Export handler
+  const handleExport = async () => {
+    try {
+      const data = await trpc.quickAccess.export.query();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `quick-access-settings-${new Date().toISOString().split("T")[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success("Export thành công");
+    } catch (error) {
+      toast.error("Export thất bại");
+    }
+  };
+
+  // Import handler
+  const handleImport = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json";
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+
+      try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+        
+        // Validate structure
+        if (!data.version || !Array.isArray(data.items)) {
+          throw new Error("File không hợp lệ");
+        }
+
+        importMutation.mutate({
+          version: data.version,
+          items: data.items,
+          replaceExisting: true,
+        });
+      } catch (error) {
+        toast.error("File không hợp lệ", {
+          description: error instanceof Error ? error.message : "Vui lòng chọn file JSON hợp lệ",
+        });
+      }
+    };
+    input.click();
+  };
+
   // Get all available menu items
   const allMenuItems = useMemo(() => getAllMenuItems(), []);
 
@@ -295,6 +358,14 @@ export default function QuickAccessManagement() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={handleExport} disabled={quickAccessItems.length === 0}>
+              <Download className="h-4 w-4 mr-2" />
+              Export
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleImport}>
+              <Upload className="h-4 w-4 mr-2" />
+              Import
+            </Button>
             <Button variant="outline" size="sm" onClick={() => refetch()}>
               <RefreshCw className="h-4 w-4 mr-2" />
               Làm mới
