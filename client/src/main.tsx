@@ -9,7 +9,6 @@ import { getLoginUrl } from "./const";
 import { LanguageProvider } from "./contexts/LanguageContext";
 import { SystemProvider } from "./contexts/SystemContext";
 import { LicenseAccessProvider } from "./contexts/LicenseAccessContext";
-import { AuthModeProvider } from "./contexts/AuthModeContext";
 import "./index.css";
 
 const queryClient = new QueryClient();
@@ -72,15 +71,13 @@ if ('serviceWorker' in navigator) {
 createRoot(document.getElementById("root")!).render(
   <trpc.Provider client={trpcClient} queryClient={queryClient}>
     <QueryClientProvider client={queryClient}>
-      <AuthModeProvider>
-        <LanguageProvider>
-          <SystemProvider>
-            <LicenseAccessProvider>
-              <App />
-            </LicenseAccessProvider>
-          </SystemProvider>
-        </LanguageProvider>
-      </AuthModeProvider>
+      <LanguageProvider>
+        <SystemProvider>
+          <LicenseAccessProvider>
+            <App />
+          </LicenseAccessProvider>
+        </SystemProvider>
+      </LanguageProvider>
     </QueryClientProvider>
   </trpc.Provider>
 );

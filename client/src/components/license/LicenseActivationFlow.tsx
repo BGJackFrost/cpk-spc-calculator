@@ -147,7 +147,9 @@ export default function LicenseActivationFlow({ open, onOpenChange, licenseKey: 
   const handleOnlineActivation = async () => {
     try {
       const result = await activateMutation.mutateAsync({
-        licenseKey
+        licenseKey,
+        hardwareFingerprint,
+        activationMode: "online"
       });
       setActivationResult(result);
       setStep(4);
@@ -164,7 +166,7 @@ export default function LicenseActivationFlow({ open, onOpenChange, licenseKey: 
         licenseKey,
         hardwareFingerprint
       });
-      setOfflineLicenseFile(result.offlineLicenseFile || '');
+      setOfflineLicenseFile(result.offlineLicenseFile);
       toast.success("Đã tạo file license offline");
     } catch (error: any) {
       toast.error(error.message || "Tạo license offline thất bại");
@@ -186,7 +188,10 @@ export default function LicenseActivationFlow({ open, onOpenChange, licenseKey: 
       if (result.valid) {
         // Activate with offline mode
         const activateResult = await activateMutation.mutateAsync({
-          licenseKey
+          licenseKey,
+          hardwareFingerprint,
+          activationMode: "offline",
+          offlineLicenseFile
         });
         setActivationResult(activateResult);
         setStep(4);

@@ -1,9 +1,0 @@
-{
-  "query": "INSERT INTO `security_settings` (`setting_key`, `setting_value`, `description`) VALUES \n('max_failed_attempts', '10', 'Số lần đăng nhập thất bại tối đa trước khi khóa tài khoản'),\n('alert_threshold', '5', 'Số lần thất bại để gửi cảnh báo'),\n('lockout_duration_minutes', '30', 'Thời gian khóa tài khoản (phút)'),\n('auto_unlock_enabled', 'true', 'Tự động mở khóa sau thời gian lockout'),\n('trusted_device_expiry_days', '30', 'Số ngày thiết bị tin cậy hết hạn')\nON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)",
-  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute INSERT INTO `security_settings` (`setting_key`, `setting_value`, `description`) VALUES \n('max_failed_attempts', '10', 'Số lần đăng nhập thất bại tối đa trước khi khóa tài khoản'),\n('alert_threshold', '5', 'Số lần thất bại để gửi cảnh báo'),\n('lockout_duration_minutes', '30', 'Thời gian khóa tài khoản (phút)'),\n('auto_unlock_enabled', 'true', 'Tự động mở khóa sau thời gian lockout'),\n('trusted_device_expiry_days', '30', 'Số ngày thiết bị tin cậy hết hạn')\nON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)",
-  "rows": [],
-  "messages": [],
-  "stdout": "",
-  "stderr": "",
-  "execution_time_ms": 1530
-}

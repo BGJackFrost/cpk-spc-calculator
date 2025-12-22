@@ -1,15 +1,12 @@
 import { useState } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { useAuthMode } from "@/contexts/AuthModeContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Switch } from "@/components/ui/switch";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { getLoginUrl } from "@/const";
 import { 
   BarChart3, 
   TrendingUp, 
@@ -24,25 +21,19 @@ import {
   User,
   Mail,
   UserPlus,
-  Loader2,
-  Globe,
-  Wifi,
-  WifiOff
+  Loader2
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { useEffect } from "react";
 
 export default function Home() {
   const { user, loading, isAuthenticated } = useAuth();
-  const { authMode, setAuthMode, isOnlineMode, isOfflineMode } = useAuthMode();
   const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState<"login" | "register">("login");
   
   // Login form state
   const [loginUsername, setLoginUsername] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
-  const [twoFactorCode, setTwoFactorCode] = useState("");
-  const [requires2FA, setRequires2FA] = useState(false);
   
   // Register form state
   const [regUsername, setRegUsername] = useState("");
@@ -59,20 +50,7 @@ export default function Home() {
 
   const loginMutation = trpc.localAuth.login.useMutation({
     onSuccess: (data) => {
-      // Check if 2FA is required
-      if (data.requires2FA) {
-        setRequires2FA(true);
-        toast.info("Vui lòng nhập mã xác thực 2 yếu tố");
-        return;
-      }
-      
       toast.success("Đăng nhập thành công!");
-      
-      // Show new device notification if applicable
-      if (data.isNewDevice) {
-        toast.info("Đăng nhập từ thiết bị mới. Email thông báo đã được gửi.", { duration: 5000 });
-      }
-      
       if (data.mustChangePassword) {
         setLocation("/change-password");
         window.location.reload();
@@ -82,10 +60,6 @@ export default function Home() {
       }
     },
     onError: (error) => {
-      // Reset 2FA state on error
-      if (requires2FA) {
-        setTwoFactorCode("");
-      }
       toast.error(error.message || "Đăng nhập thất bại");
     },
   });
@@ -112,24 +86,7 @@ export default function Home() {
       toast.error("Vui lòng nhập tên đăng nhập và mật khẩu");
       return;
     }
-    
-    // If 2FA is required, validate the code
-    if (requires2FA && !twoFactorCode) {
-      toast.error("Vui lòng nhập mã xác thực 2 yếu tố");
-      return;
-    }
-    
-    loginMutation.mutate({ 
-      username: loginUsername, 
-      password: loginPassword,
-      twoFactorCode: requires2FA ? twoFactorCode : undefined,
-    });
-  };
-  
-  const handleCancel2FA = () => {
-    setRequires2FA(false);
-    setTwoFactorCode("");
-    setLoginPassword("");
+    loginMutation.mutate({ username: loginUsername, password: loginPassword });
   };
 
   const handleRegister = (e: React.FormEvent) => {
@@ -152,19 +109,6 @@ export default function Home() {
       name: regName || undefined,
       email: regEmail || undefined,
     });
-  };
-
-  const handleOnlineLogin = () => {
-    window.location.href = getLoginUrl();
-  };
-
-  const handleAuthModeToggle = (checked: boolean) => {
-    setAuthMode(checked ? "offline" : "online");
-    // Reset form state when switching modes
-    setLoginUsername("");
-    setLoginPassword("");
-    setTwoFactorCode("");
-    setRequires2FA(false);
   };
 
   const features = [
@@ -226,18 +170,8 @@ export default function Home() {
             </div>
             <span className="font-semibold text-lg">SPC/CPK Calculator</span>
           </div>
-          <div className="flex items-center gap-3">
-            {isOnlineMode ? (
-              <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
-                <Wifi className="h-4 w-4" />
-                <span>Chế độ Online</span>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2 text-sm text-orange-600 dark:text-orange-400">
-                <WifiOff className="h-4 w-4" />
-                <span>Chế độ Offline</span>
-              </div>
-            )}
+          <div className="text-sm text-muted-foreground">
+            Chế độ Offline - Đăng nhập Local
           </div>
         </div>
       </header>
@@ -281,288 +215,173 @@ export default function Home() {
                   <CardDescription>
                     Đăng nhập để sử dụng hệ thống
                   </CardDescription>
-                  
-                  {/* Auth Mode Toggle */}
-                  <div className="flex items-center justify-center gap-3 pt-2">
-                    <div className={`flex items-center gap-1.5 text-sm ${isOnlineMode ? 'text-primary font-medium' : 'text-muted-foreground'}`}>
-                      <Globe className="h-4 w-4" />
-                      <span>Online</span>
-                    </div>
-                    <Switch
-                      checked={isOfflineMode}
-                      onCheckedChange={handleAuthModeToggle}
-                      className="data-[state=checked]:bg-orange-500"
-                    />
-                    <div className={`flex items-center gap-1.5 text-sm ${isOfflineMode ? 'text-orange-600 font-medium' : 'text-muted-foreground'}`}>
-                      <WifiOff className="h-4 w-4" />
-                      <span>Offline</span>
-                    </div>
-                  </div>
                 </CardHeader>
                 
                 <CardContent>
-                  {isOnlineMode ? (
-                    /* Online Mode - Manus OAuth */
-                    <div className="space-y-6">
-                      <div className="text-center space-y-2">
-                        <p className="text-sm text-muted-foreground">
-                          Đăng nhập bằng tài khoản Manus để truy cập đầy đủ tính năng
-                        </p>
-                        <div className="flex flex-wrap justify-center gap-2 text-xs text-muted-foreground">
-                          <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded">
-                            <CheckCircle2 className="h-3 w-3" /> Phân tích AI
-                          </span>
-                          <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded">
-                            <CheckCircle2 className="h-3 w-3" /> Lưu trữ Cloud
-                          </span>
-                          <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded">
-                            <CheckCircle2 className="h-3 w-3" /> Đồng bộ dữ liệu
-                          </span>
-                        </div>
-                      </div>
-                      
-                      <Button 
-                        onClick={handleOnlineLogin}
-                        className="w-full h-12 text-base"
-                        size="lg"
-                      >
-                        <Globe className="mr-2 h-5 w-5" />
-                        Đăng nhập với Manus
-                        <ArrowRight className="ml-2 h-5 w-5" />
-                      </Button>
-                      
-                      <div className="relative">
-                        <div className="absolute inset-0 flex items-center">
-                          <span className="w-full border-t" />
-                        </div>
-                        <div className="relative flex justify-center text-xs uppercase">
-                          <span className="bg-card px-2 text-muted-foreground">
-                            hoặc chuyển sang chế độ Offline
-                          </span>
-                        </div>
-                      </div>
-                      
-                      <p className="text-xs text-center text-muted-foreground">
-                        Chế độ Offline cho phép đăng nhập bằng tài khoản local khi không có kết nối Internet
-                      </p>
-                    </div>
-                  ) : (
-                    /* Offline Mode - Local Authentication */
-                    <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "login" | "register")}>
-                      <TabsList className="grid w-full grid-cols-2 mb-6">
-                        <TabsTrigger value="login">Đăng nhập</TabsTrigger>
-                        <TabsTrigger value="register">Đăng ký</TabsTrigger>
-                      </TabsList>
-                      
-                      <TabsContent value="login">
-                        <form onSubmit={handleLogin} className="space-y-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="login-username">Tên đăng nhập</Label>
-                            <div className="relative">
-                              <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                              <Input
-                                id="login-username"
-                                type="text"
-                                placeholder="Nhập tên đăng nhập"
-                                value={loginUsername}
-                                onChange={(e) => setLoginUsername(e.target.value)}
-                                className="pl-10"
-                                autoComplete="username"
-                              />
-                            </div>
+                  <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "login" | "register")}>
+                    <TabsList className="grid w-full grid-cols-2 mb-6">
+                      <TabsTrigger value="login">Đăng nhập</TabsTrigger>
+                      <TabsTrigger value="register">Đăng ký</TabsTrigger>
+                    </TabsList>
+                    
+                    <TabsContent value="login">
+                      <form onSubmit={handleLogin} className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="login-username">Tên đăng nhập</Label>
+                          <div className="relative">
+                            <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                              id="login-username"
+                              type="text"
+                              placeholder="Nhập tên đăng nhập"
+                              value={loginUsername}
+                              onChange={(e) => setLoginUsername(e.target.value)}
+                              className="pl-10"
+                              autoComplete="username"
+                            />
                           </div>
-                          
-                          <div className="space-y-2">
-                            <Label htmlFor="login-password">Mật khẩu</Label>
-                            <div className="relative">
-                              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                              <Input
-                                id="login-password"
-                                type="password"
-                                placeholder="Nhập mật khẩu"
-                                value={loginPassword}
-                                onChange={(e) => setLoginPassword(e.target.value)}
-                                className="pl-10"
-                                autoComplete="current-password"
-                                disabled={requires2FA}
-                              />
-                            </div>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="login-password">Mật khẩu</Label>
+                          <div className="relative">
+                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                              id="login-password"
+                              type="password"
+                              placeholder="Nhập mật khẩu"
+                              value={loginPassword}
+                              onChange={(e) => setLoginPassword(e.target.value)}
+                              className="pl-10"
+                              autoComplete="current-password"
+                            />
                           </div>
-                          
-                          {requires2FA && (
-                            <div className="space-y-2">
-                              <Label htmlFor="two-factor-code">Mã xác thực 2 yếu tố</Label>
-                              <div className="relative">
-                                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                <Input
-                                  id="two-factor-code"
-                                  type="text"
-                                  placeholder="Nhập mã 6 số từ ứng dụng Authenticator"
-                                  value={twoFactorCode}
-                                  onChange={(e) => setTwoFactorCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                                  className="pl-10 text-center text-lg tracking-widest"
-                                  maxLength={6}
-                                  autoFocus
-                                />
-                              </div>
-                              <p className="text-xs text-muted-foreground">
-                                Mở ứng dụng Google Authenticator hoặc tương tự để lấy mã
-                              </p>
-                            </div>
+                        </div>
+                        
+                        <Button 
+                          type="submit" 
+                          className="w-full"
+                          disabled={loginMutation.isPending}
+                        >
+                          {loginMutation.isPending ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Đang đăng nhập...
+                            </>
+                          ) : (
+                            <>
+                              Đăng nhập
+                              <ArrowRight className="ml-2 h-4 w-4" />
+                            </>
                           )}
-                          
-                          <div className="flex gap-2">
-                            {requires2FA && (
-                              <Button 
-                                type="button" 
-                                variant="outline"
-                                className="flex-1"
-                                onClick={handleCancel2FA}
-                              >
-                                Quay lại
-                              </Button>
-                            )}
-                            <Button 
-                              type="submit" 
-                              className={requires2FA ? "flex-1" : "w-full"}
-                              disabled={loginMutation.isPending}
-                            >
-                              {loginMutation.isPending ? (
-                                <>
-                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                  {requires2FA ? 'Đang xác thực...' : 'Đang đăng nhập...'}
-                                </>
-                              ) : (
-                                <>
-                                  {requires2FA ? 'Xác thực' : 'Đăng nhập'}
-                                  <ArrowRight className="ml-2 h-4 w-4" />
-                                </>
-                              )}
-                            </Button>
+                        </Button>
+                      </form>
+                    </TabsContent>
+                    
+                    <TabsContent value="register">
+                      <form onSubmit={handleRegister} className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="reg-username">Tên đăng nhập *</Label>
+                          <div className="relative">
+                            <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                              id="reg-username"
+                              type="text"
+                              placeholder="Nhập tên đăng nhập"
+                              value={regUsername}
+                              onChange={(e) => setRegUsername(e.target.value)}
+                              className="pl-10"
+                              autoComplete="username"
+                            />
                           </div>
-                          
-                          <div className="text-center">
-                            <a 
-                              href="/forgot-password" 
-                              className="text-sm text-primary hover:underline"
-                            >
-                              Quên mật khẩu?
-                            </a>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="reg-name">Họ và tên</Label>
+                          <div className="relative">
+                            <UserPlus className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                              id="reg-name"
+                              type="text"
+                              placeholder="Nhập họ và tên"
+                              value={regName}
+                              onChange={(e) => setRegName(e.target.value)}
+                              className="pl-10"
+                            />
                           </div>
-                        </form>
-                      </TabsContent>
-                      
-                      <TabsContent value="register">
-                        <form onSubmit={handleRegister} className="space-y-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="reg-username">Tên đăng nhập *</Label>
-                            <div className="relative">
-                              <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                              <Input
-                                id="reg-username"
-                                type="text"
-                                placeholder="Nhập tên đăng nhập"
-                                value={regUsername}
-                                onChange={(e) => setRegUsername(e.target.value)}
-                                className="pl-10"
-                                autoComplete="username"
-                              />
-                            </div>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="reg-email">Email</Label>
+                          <div className="relative">
+                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                              id="reg-email"
+                              type="email"
+                              placeholder="Nhập email"
+                              value={regEmail}
+                              onChange={(e) => setRegEmail(e.target.value)}
+                              className="pl-10"
+                            />
                           </div>
-                          
-                          <div className="space-y-2">
-                            <Label htmlFor="reg-name">Họ và tên</Label>
-                            <div className="relative">
-                              <UserPlus className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                              <Input
-                                id="reg-name"
-                                type="text"
-                                placeholder="Nhập họ và tên"
-                                value={regName}
-                                onChange={(e) => setRegName(e.target.value)}
-                                className="pl-10"
-                              />
-                            </div>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="reg-password">Mật khẩu *</Label>
+                          <div className="relative">
+                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                              id="reg-password"
+                              type="password"
+                              placeholder="Nhập mật khẩu (ít nhất 6 ký tự)"
+                              value={regPassword}
+                              onChange={(e) => setRegPassword(e.target.value)}
+                              className="pl-10"
+                              autoComplete="new-password"
+                            />
                           </div>
-                          
-                          <div className="space-y-2">
-                            <Label htmlFor="reg-email">Email</Label>
-                            <div className="relative">
-                              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                              <Input
-                                id="reg-email"
-                                type="email"
-                                placeholder="Nhập email"
-                                value={regEmail}
-                                onChange={(e) => setRegEmail(e.target.value)}
-                                className="pl-10"
-                              />
-                            </div>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="reg-confirm-password">Xác nhận mật khẩu *</Label>
+                          <div className="relative">
+                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                              id="reg-confirm-password"
+                              type="password"
+                              placeholder="Nhập lại mật khẩu"
+                              value={regConfirmPassword}
+                              onChange={(e) => setRegConfirmPassword(e.target.value)}
+                              className="pl-10"
+                              autoComplete="new-password"
+                            />
                           </div>
-                          
-                          <div className="space-y-2">
-                            <Label htmlFor="reg-password">Mật khẩu *</Label>
-                            <div className="relative">
-                              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                              <Input
-                                id="reg-password"
-                                type="password"
-                                placeholder="Nhập mật khẩu (ít nhất 6 ký tự)"
-                                value={regPassword}
-                                onChange={(e) => setRegPassword(e.target.value)}
-                                className="pl-10"
-                                autoComplete="new-password"
-                              />
-                            </div>
-                          </div>
-                          
-                          <div className="space-y-2">
-                            <Label htmlFor="reg-confirm-password">Xác nhận mật khẩu *</Label>
-                            <div className="relative">
-                              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                              <Input
-                                id="reg-confirm-password"
-                                type="password"
-                                placeholder="Nhập lại mật khẩu"
-                                value={regConfirmPassword}
-                                onChange={(e) => setRegConfirmPassword(e.target.value)}
-                                className="pl-10"
-                                autoComplete="new-password"
-                              />
-                            </div>
-                          </div>
-                          
-                          <Button 
-                            type="submit" 
-                            className="w-full"
-                            disabled={registerMutation.isPending}
-                          >
-                            {registerMutation.isPending ? (
-                              <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Đang đăng ký...
-                              </>
-                            ) : (
-                              "Đăng ký"
-                            )}
-                          </Button>
-                        </form>
-                      </TabsContent>
-                    </Tabs>
-                  )}
+                        </div>
+                        
+                        <Button 
+                          type="submit" 
+                          className="w-full"
+                          disabled={registerMutation.isPending}
+                        >
+                          {registerMutation.isPending ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Đang đăng ký...
+                            </>
+                          ) : (
+                            "Đăng ký"
+                          )}
+                        </Button>
+                      </form>
+                    </TabsContent>
+                  </Tabs>
                 </CardContent>
                 
                 <CardFooter className="flex flex-col space-y-2 text-center text-sm text-muted-foreground">
-                  {isOnlineMode ? (
-                    <p>Đăng nhập Online - Yêu cầu kết nối Internet</p>
-                  ) : (
-                    <>
-                      <p>Chế độ đăng nhập Local - Không cần Internet</p>
-                      <p className="text-xs">
-                        Tài khoản mặc định: <code className="bg-muted px-1 rounded">admin</code> / <code className="bg-muted px-1 rounded">Admin@2024!</code>
-                      </p>
-                    </>
-                  )}
+                  <p>Chế độ đăng nhập Local - Không cần Internet</p>
+                  <p className="text-xs">
+                    Tài khoản mặc định: <code className="bg-muted px-1 rounded">admin</code> / <code className="bg-muted px-1 rounded">admin123</code>
+                  </p>
                 </CardFooter>
               </Card>
             </div>
@@ -593,103 +412,6 @@ export default function Home() {
                 <p className="text-muted-foreground">{feature.description}</p>
               </div>
             ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Auth Mode Comparison */}
-      <section className="py-16">
-        <div className="container">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold mb-4">So sánh chế độ đăng nhập</h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
-              Chọn chế độ phù hợp với môi trường sử dụng của bạn
-            </p>
-          </div>
-          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-            {/* Online Mode */}
-            <Card className={`relative ${isOnlineMode ? 'ring-2 ring-primary' : ''}`}>
-              {isOnlineMode && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-primary text-primary-foreground text-xs font-medium rounded-full">
-                  Đang chọn
-                </div>
-              )}
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                    <Globe className="h-6 w-6 text-green-600 dark:text-green-400" />
-                  </div>
-                  <div>
-                    <CardTitle>Online Mode</CardTitle>
-                    <CardDescription>Đăng nhập qua Manus OAuth</CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex items-center gap-2 text-sm">
-                  <CheckCircle2 className="h-4 w-4 text-green-500" />
-                  <span>Phân tích AI với LLM</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <CheckCircle2 className="h-4 w-4 text-green-500" />
-                  <span>Lưu trữ Cloud (S3)</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <CheckCircle2 className="h-4 w-4 text-green-500" />
-                  <span>Đồng bộ dữ liệu đa thiết bị</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <CheckCircle2 className="h-4 w-4 text-green-500" />
-                  <span>Cập nhật tự động</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <span className="w-4 h-4 flex items-center justify-center">•</span>
-                  <span>Yêu cầu kết nối Internet</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Offline Mode */}
-            <Card className={`relative ${isOfflineMode ? 'ring-2 ring-orange-500' : ''}`}>
-              {isOfflineMode && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-orange-500 text-white text-xs font-medium rounded-full">
-                  Đang chọn
-                </div>
-              )}
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
-                    <WifiOff className="h-6 w-6 text-orange-600 dark:text-orange-400" />
-                  </div>
-                  <div>
-                    <CardTitle>Offline Mode</CardTitle>
-                    <CardDescription>Đăng nhập Local Database</CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex items-center gap-2 text-sm">
-                  <CheckCircle2 className="h-4 w-4 text-green-500" />
-                  <span>Hoạt động không cần Internet</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <CheckCircle2 className="h-4 w-4 text-green-500" />
-                  <span>Phân tích SPC/CPK đầy đủ</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <CheckCircle2 className="h-4 w-4 text-green-500" />
-                  <span>Xuất báo cáo PDF/Excel</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <CheckCircle2 className="h-4 w-4 text-green-500" />
-                  <span>Quản lý người dùng local</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <span className="w-4 h-4 flex items-center justify-center">•</span>
-                  <span>Không có phân tích AI</span>
-                </div>
-              </CardContent>
-            </Card>
           </div>
         </div>
       </section>

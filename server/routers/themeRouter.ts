@@ -16,7 +16,7 @@ const themeColorsSchema = z.object({
 });
 
 // Schema for CSS variables
-const cssVariablesSchema = z.record(z.string(), z.string());
+const cssVariablesSchema = z.record(z.string());
 
 export const themeRouter = router({
   // Get user's theme preference

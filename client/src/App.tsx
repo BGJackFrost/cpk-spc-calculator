@@ -136,13 +136,6 @@ import DatabaseUnified from "./pages/DatabaseUnified";
 import BackupRestore from "./pages/BackupRestore";
 import AnomalyDetection from "./pages/AnomalyDetection";
 import AppSettings from "./pages/AppSettings";
-import ForgotPassword from "./pages/ForgotPassword";
-import SessionManagement from "./pages/SessionManagement";
-import TwoFactorSettings from "./pages/TwoFactorSettings";
-import TrustedDevicesSettings from "./pages/TrustedDevicesSettings";
-import LoginHistoryDetail from "./pages/LoginHistoryDetail";
-import LockedAccountsAdmin from "./pages/LockedAccountsAdmin";
-import SecuritySettingsAdmin from "./pages/SecuritySettingsAdmin";
 
 function Router() {
   return (
@@ -161,13 +154,6 @@ function Router() {
       <Route path="/connection-manager" component={ConnectionManager} />
       <Route path="/company-info" component={CompanyInfo} />
       <Route path="/local-login" component={LocalLogin} />
-      <Route path="/forgot-password" component={ForgotPassword} />
-      <Route path="/session-management" component={SessionManagement} />
-      <Route path="/two-factor-settings" component={TwoFactorSettings} />
-      <Route path="/trusted-devices" component={TrustedDevicesSettings} />
-      <Route path="/login-history-detail" component={LoginHistoryDetail} />
-      <Route path="/locked-accounts" component={LockedAccountsAdmin} />
-      <Route path="/security-settings" component={SecuritySettingsAdmin} />
       <Route path="/change-password" component={ChangePassword} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/anomaly-detection" component={AnomalyDetection} />

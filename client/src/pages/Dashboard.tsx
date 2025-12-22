@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import DashboardLayout from "@/components/DashboardLayout";
 import GuidedTour from "@/components/GuidedTour";
@@ -54,13 +53,11 @@ export default function Dashboard() {
   const { data: defaultTemplate } = trpc.reportTemplate.getDefault.useQuery();
   const { data: validationRules } = trpc.validationRule.list.useQuery();
   
-  // NTF Statistics for widget - use stable date references to avoid infinite loops
-  const [ntfStartDate] = useState(() => new Date(Date.now() - 7 * 24 * 60 * 60 * 1000));
-  const [ntfEndDate] = useState(() => new Date());
+  // NTF Statistics for widget
   const { data: ntfStats } = trpc.defect.getNtfStatistics.useQuery({
     groupBy: "day",
-    startDate: ntfStartDate,
-    endDate: ntfEndDate,
+    startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // Last 7 days
+    endDate: new Date(),
   });
   
   // Guided Tour

@@ -1,55 +1,13 @@
-import { useState, useEffect } from "react";
-import { useLocation, Link } from "wouter";
+import { useState } from "react";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Checkbox } from "@/components/ui/checkbox";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { Loader2, Lock, User, Mail, UserPlus, Shield, Smartphone } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  InputOTP,
-  InputOTPGroup,
-  InputOTPSlot,
-} from "@/components/ui/input-otp";
-
-// Generate a simple device fingerprint
-function generateDeviceFingerprint(): string {
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d');
-  if (ctx) {
-    ctx.textBaseline = 'top';
-    ctx.font = '14px Arial';
-    ctx.fillText('device-fingerprint', 2, 2);
-  }
-  const canvasData = canvas.toDataURL();
-  
-  const data = [
-    navigator.userAgent,
-    navigator.language,
-    screen.width + 'x' + screen.height,
-    new Date().getTimezoneOffset(),
-    canvasData.slice(-50),
-  ].join('|');
-  
-  // Simple hash
-  let hash = 0;
-  for (let i = 0; i < data.length; i++) {
-    const char = data.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash;
-  }
-  return 'fp_' + Math.abs(hash).toString(36);
-}
+import { Loader2, Lock, User, Mail, UserPlus } from "lucide-react";
 
 export default function LocalLogin() {
   const [, setLocation] = useLocation();
@@ -58,13 +16,6 @@ export default function LocalLogin() {
   // Login form state
   const [loginUsername, setLoginUsername] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
-  const [deviceFingerprint, setDeviceFingerprint] = useState("");
-  
-  // 2FA state
-  const [show2FADialog, setShow2FADialog] = useState(false);
-  const [twoFactorCode, setTwoFactorCode] = useState("");
-  const [trustDevice, setTrustDevice] = useState(false);
-  const [pending2FAUserId, setPending2FAUserId] = useState<number | null>(null);
   
   // Register form state
   const [regUsername, setRegUsername] = useState("");
@@ -73,26 +24,9 @@ export default function LocalLogin() {
   const [regName, setRegName] = useState("");
   const [regEmail, setRegEmail] = useState("");
 
-  // Generate device fingerprint on mount
-  useEffect(() => {
-    setDeviceFingerprint(generateDeviceFingerprint());
-  }, []);
-
   const loginMutation = trpc.localAuth.login.useMutation({
     onSuccess: (data) => {
-      if (data.requires2FA) {
-        // Show 2FA dialog
-        setShow2FADialog(true);
-        setPending2FAUserId(data.userId || null);
-        return;
-      }
-      
-      if (data.trustedDeviceSkipped2FA) {
-        toast.success("Đăng nhập thành công! (Thiết bị tin cậy - bỏ qua 2FA)");
-      } else {
-        toast.success("Đăng nhập thành công!");
-      }
-      
+      toast.success("Đăng nhập thành công!");
       // Check if user must change password
       if (data.mustChangePassword) {
         setLocation("/change-password");
@@ -130,26 +64,7 @@ export default function LocalLogin() {
       toast.error("Vui lòng nhập tên đăng nhập và mật khẩu");
       return;
     }
-    loginMutation.mutate({ 
-      username: loginUsername, 
-      password: loginPassword,
-      deviceFingerprint,
-    });
-  };
-
-  const handleVerify2FA = () => {
-    if (!twoFactorCode || twoFactorCode.length < 6) {
-      toast.error("Vui lòng nhập mã xác thực 6 số");
-      return;
-    }
-    
-    loginMutation.mutate({
-      username: loginUsername,
-      password: loginPassword,
-      twoFactorCode,
-      deviceFingerprint,
-      trustDevice,
-    });
+    loginMutation.mutate({ username: loginUsername, password: loginPassword });
   };
 
   const handleRegister = (e: React.FormEvent) => {
@@ -215,12 +130,7 @@ export default function LocalLogin() {
                 </div>
                 
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="login-password">Mật khẩu</Label>
-                    <Link href="/forgot-password" className="text-xs text-primary hover:underline">
-                      Quên mật khẩu?
-                    </Link>
-                  </div>
+                  <Label htmlFor="login-password">Mật khẩu</Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
@@ -292,7 +202,7 @@ export default function LocalLogin() {
                     <Input
                       id="reg-email"
                       type="email"
-                      placeholder="Nhập email (tùy chọn)"
+                      placeholder="Nhập email"
                       value={regEmail}
                       onChange={(e) => setRegEmail(e.target.value)}
                       className="pl-10"
@@ -343,10 +253,7 @@ export default function LocalLogin() {
                       Đang đăng ký...
                     </>
                   ) : (
-                    <>
-                      <UserPlus className="mr-2 h-4 w-4" />
-                      Đăng ký
-                    </>
+                    "Đăng ký"
                   )}
                 </Button>
               </form>
@@ -354,72 +261,13 @@ export default function LocalLogin() {
           </Tabs>
         </CardContent>
         
-        <CardFooter className="flex flex-col gap-2 text-center text-sm text-muted-foreground">
-          <p>Phiên bản Local - Dữ liệu lưu trữ cục bộ</p>
+        <CardFooter className="flex flex-col space-y-2 text-center text-sm text-muted-foreground">
+          <p>Chế độ đăng nhập Local cho triển khai Offline</p>
+          <p className="text-xs">
+            Tài khoản mặc định: <code className="bg-muted px-1 rounded">admin</code> / <code className="bg-muted px-1 rounded">admin123</code>
+          </p>
         </CardFooter>
       </Card>
-
-      {/* 2FA Dialog */}
-      <Dialog open={show2FADialog} onOpenChange={setShow2FADialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-2">
-              <Shield className="w-6 h-6 text-primary" />
-            </div>
-            <DialogTitle className="text-center">Xác thực 2 yếu tố</DialogTitle>
-            <DialogDescription className="text-center">
-              Nhập mã 6 số từ ứng dụng xác thực của bạn
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="flex flex-col items-center gap-6 py-4">
-            <InputOTP
-              maxLength={6}
-              value={twoFactorCode}
-              onChange={(value) => setTwoFactorCode(value)}
-            >
-              <InputOTPGroup>
-                <InputOTPSlot index={0} />
-                <InputOTPSlot index={1} />
-                <InputOTPSlot index={2} />
-                <InputOTPSlot index={3} />
-                <InputOTPSlot index={4} />
-                <InputOTPSlot index={5} />
-              </InputOTPGroup>
-            </InputOTP>
-
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="trust-device"
-                checked={trustDevice}
-                onCheckedChange={(checked) => setTrustDevice(checked === true)}
-              />
-              <label
-                htmlFor="trust-device"
-                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-2"
-              >
-                <Smartphone className="h-4 w-4" />
-                Nhớ thiết bị này (30 ngày)
-              </label>
-            </div>
-
-            <Button 
-              onClick={handleVerify2FA}
-              disabled={loginMutation.isPending || twoFactorCode.length < 6}
-              className="w-full"
-            >
-              {loginMutation.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Đang xác thực...
-                </>
-              ) : (
-                "Xác thực"
-              )}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

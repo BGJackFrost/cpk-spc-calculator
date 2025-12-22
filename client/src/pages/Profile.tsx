@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { trpc } from "@/lib/trpc";
 import { useState, useRef } from "react";
-import { Link } from "wouter";
 import React from "react";
 import { toast } from "sonner";
 import { User, Mail, Lock, Save, Eye, EyeOff, Shield, Calendar, Camera, Loader2 } from "lucide-react";
@@ -458,62 +457,6 @@ export default function Profile() {
           </TabsContent>
 
           <TabsContent value="security">
-            {/* Security Quick Links */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-              <Link href="/two-factor-settings">
-                <Card className="cursor-pointer hover:bg-muted/50 transition-colors h-full">
-                  <CardContent className="p-4 flex items-center gap-3">
-                    <div className="p-2 bg-primary/10 rounded-lg">
-                      <Shield className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="font-medium">Xác thực 2 yếu tố</p>
-                      <p className="text-xs text-muted-foreground">Thiết lập 2FA</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-              <Link href="/trusted-devices">
-                <Card className="cursor-pointer hover:bg-muted/50 transition-colors h-full">
-                  <CardContent className="p-4 flex items-center gap-3">
-                    <div className="p-2 bg-green-500/10 rounded-lg">
-                      <Shield className="h-5 w-5 text-green-500" />
-                    </div>
-                    <div>
-                      <p className="font-medium">Thiết bị tin cậy</p>
-                      <p className="text-xs text-muted-foreground">Quản lý thiết bị</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-              <Link href="/session-management">
-                <Card className="cursor-pointer hover:bg-muted/50 transition-colors h-full">
-                  <CardContent className="p-4 flex items-center gap-3">
-                    <div className="p-2 bg-blue-500/10 rounded-lg">
-                      <Calendar className="h-5 w-5 text-blue-500" />
-                    </div>
-                    <div>
-                      <p className="font-medium">Phiên đăng nhập</p>
-                      <p className="text-xs text-muted-foreground">Quản lý sessions</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-              <Link href="/login-history-detail">
-                <Card className="cursor-pointer hover:bg-muted/50 transition-colors h-full">
-                  <CardContent className="p-4 flex items-center gap-3">
-                    <div className="p-2 bg-orange-500/10 rounded-lg">
-                      <Calendar className="h-5 w-5 text-orange-500" />
-                    </div>
-                    <div>
-                      <p className="font-medium">Lịch sử đăng nhập</p>
-                      <p className="text-xs text-muted-foreground">Xem vị trí IP</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-            </div>
-
             <Card>
               <CardHeader>
                 <CardTitle>Đổi mật khẩu</CardTitle>

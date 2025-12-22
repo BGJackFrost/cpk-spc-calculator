@@ -39,8 +39,7 @@ import {
   Search,
   Wifi,
   WifiOff,
-  Radio,
-  Shield
+  Radio
 } from "lucide-react";
 import DatabaseExplorer from "@/components/DatabaseExplorer";
 import Breadcrumb from "@/components/Breadcrumb";
@@ -262,12 +261,6 @@ export default function Settings() {
               <Radio className="h-4 w-4" />
               SSE
             </TabsTrigger>
-            {isAdmin && (
-              <TabsTrigger value="security" className="gap-2">
-                <Shield className="h-4 w-4" />
-                Bảo mật
-              </TabsTrigger>
-            )}
           </TabsList>
 
           {/* Kết nối & Dữ liệu Tab */}
@@ -569,41 +562,6 @@ export default function Settings() {
           <TabsContent value="sse">
             <SseSettings />
           </TabsContent>
-
-          {/* Security Tab */}
-          {isAdmin && (
-            <TabsContent value="security">
-              <Card className="bg-card rounded-xl border border-border/50 shadow-md">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Shield className="h-5 w-5 text-primary" />
-                    Cài đặt Bảo mật Đăng nhập
-                  </CardTitle>
-                  <CardDescription>
-                    Cấu hình các thông số bảo mật cho hệ thống đăng nhập
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <p className="text-muted-foreground">
-                    Truy cập trang cài đặt bảo mật để cấu hình:
-                  </p>
-                  <ul className="list-disc list-inside space-y-2 text-muted-foreground">
-                    <li>Số lần đăng nhập thất bại tối đa trước khi khóa tài khoản</li>
-                    <li>Ngưỡng cảnh báo khi có nhiều lần đăng nhập thất bại</li>
-                    <li>Thời gian khóa tài khoản</li>
-                    <li>Tự động mở khóa sau thời gian lockout</li>
-                    <li>Thời hạn thiết bị tin cậy</li>
-                  </ul>
-                  <Link href="/security-settings">
-                    <Button className="gap-2">
-                      <Shield className="h-4 w-4" />
-                      Mở Cài đặt Bảo mật
-                    </Button>
-                  </Link>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          )}
 
         </Tabs>
       </div>
