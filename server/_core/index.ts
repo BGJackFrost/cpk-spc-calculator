@@ -14,6 +14,7 @@ import { apiRateLimiter, authRateLimiter, setAlertCallback } from "./rateLimiter
 import { notifyOwner } from "./notification";
 import { storagePut } from "../storage";
 import { wsServer } from "../websocket";
+import addPerformanceIndexes from "../migrations/add-performance-indexes";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -302,6 +303,11 @@ async function startServer() {
     
     // Initialize scheduled jobs after server starts
     initScheduledJobs();
+    
+    // Run performance indexes migration (async, non-blocking)
+    addPerformanceIndexes().catch(err => {
+      console.error('[Migration] Failed to add performance indexes:', err.message);
+    });
   });
 }
 

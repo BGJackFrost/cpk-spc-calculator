@@ -1,28 +1,47 @@
 /**
- * Simple in-memory caching layer for frequently accessed data
+ * Enhanced in-memory caching layer with LRU eviction and hit tracking
  * Reduces database load for read-heavy operations
  */
 
 interface CacheEntry<T> {
   data: T;
   expiry: number;
+  lastAccess: number;
+  hits: number;
+}
+
+interface CacheMetrics {
+  hits: number;
+  misses: number;
+  evictions: number;
 }
 
 class MemoryCache {
   private cache: Map<string, CacheEntry<any>> = new Map();
   private defaultTTL: number = 60 * 1000; // 1 minute default
+  private maxSize: number = 10000; // Maximum cache entries
+  private metrics: CacheMetrics = { hits: 0, misses: 0, evictions: 0 };
 
   /**
    * Get cached data or return null if expired/missing
    */
   get<T>(key: string): T | null {
     const entry = this.cache.get(key);
-    if (!entry) return null;
+    if (!entry) {
+      this.metrics.misses++;
+      return null;
+    }
     
     if (Date.now() > entry.expiry) {
       this.cache.delete(key);
+      this.metrics.misses++;
       return null;
     }
+    
+    // Update access tracking for LRU
+    entry.lastAccess = Date.now();
+    entry.hits++;
+    this.metrics.hits++;
     
     return entry.data as T;
   }
@@ -31,10 +50,33 @@ class MemoryCache {
    * Set cache with optional TTL (in milliseconds)
    */
   set<T>(key: string, data: T, ttl?: number): void {
+    // Check if we need to evict entries
+    if (this.cache.size >= this.maxSize) {
+      this.evictLRU();
+    }
+    
+    const now = Date.now();
     this.cache.set(key, {
       data,
-      expiry: Date.now() + (ttl || this.defaultTTL),
+      expiry: now + (ttl || this.defaultTTL),
+      lastAccess: now,
+      hits: 0,
     });
+  }
+  
+  /**
+   * Evict least recently used entries
+   */
+  private evictLRU(): void {
+    // Find entries to evict (oldest 10%)
+    const entries = Array.from(this.cache.entries());
+    entries.sort((a, b) => a[1].lastAccess - b[1].lastAccess);
+    
+    const toEvict = Math.max(1, Math.floor(entries.length * 0.1));
+    for (let i = 0; i < toEvict; i++) {
+      this.cache.delete(entries[i][0]);
+      this.metrics.evictions++;
+    }
   }
 
   /**
@@ -66,13 +108,56 @@ class MemoryCache {
   }
 
   /**
-   * Get cache stats
+   * Get cache stats with metrics
    */
-  stats(): { size: number; keys: string[] } {
+  stats(): { 
+    size: number; 
+    maxSize: number;
+    keys: string[]; 
+    metrics: CacheMetrics;
+    hitRate: number;
+  } {
+    const totalRequests = this.metrics.hits + this.metrics.misses;
     return {
       size: this.cache.size,
+      maxSize: this.maxSize,
       keys: Array.from(this.cache.keys()),
+      metrics: { ...this.metrics },
+      hitRate: totalRequests > 0 ? (this.metrics.hits / totalRequests) * 100 : 0,
     };
+  }
+  
+  /**
+   * Reset metrics
+   */
+  resetMetrics(): void {
+    this.metrics = { hits: 0, misses: 0, evictions: 0 };
+  }
+  
+  /**
+   * Set max cache size
+   */
+  setMaxSize(size: number): void {
+    this.maxSize = size;
+    // Evict if current size exceeds new max
+    while (this.cache.size > this.maxSize) {
+      this.evictLRU();
+    }
+  }
+  
+  /**
+   * Cleanup expired entries
+   */
+  cleanup(): number {
+    const now = Date.now();
+    let cleaned = 0;
+    this.cache.forEach((entry, key) => {
+      if (now > entry.expiry) {
+        this.cache.delete(key);
+        cleaned++;
+      }
+    });
+    return cleaned;
   }
 }
 
@@ -202,12 +287,18 @@ export function invalidateRelatedCaches(entityType: keyof typeof invalidationPat
 }
 
 // Get cache statistics for monitoring
-export function getCacheStats(): {
-  size: number;
-  keys: string[];
-  hitRate?: number;
-} {
+export function getCacheStats() {
   return cache.stats();
+}
+
+// Cleanup expired cache entries (can be called periodically)
+export function cleanupCache(): number {
+  return cache.cleanup();
+}
+
+// Reset cache metrics
+export function resetCacheMetrics(): void {
+  cache.resetMetrics();
 }
 
 // Export for use in routers

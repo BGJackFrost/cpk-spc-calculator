@@ -44,7 +44,7 @@ import { ThemeSelector } from "./ThemeSelector";
 import { useSystem } from "@/contexts/SystemContext";
 import { MenuGroup as SystemMenuGroup, MenuItem as SystemMenuItem } from "@/config/systemMenu";
 import { useQuickAccess } from "@/hooks/useQuickAccess";
-import { Star, Plus, Pin, Search } from "lucide-react";
+import { Star, Plus, Pin, Search, Folder, FolderOpen } from "lucide-react";
 import { QuickAccessAddDialog } from "./QuickAccessAddDialog";
 import { MenuItemContextMenu } from "./MenuItemContextMenu";
 import { QuickAccessSearch } from "./QuickAccessSearch";
@@ -365,7 +365,17 @@ function DashboardLayoutContent({
   const { theme, setTheme } = useTheme();
   
   // Load Quick Access items dynamically
-  const { quickAccessMenuItems, pinnedItems, hasQuickAccess, hasPinnedItems, maxPinned, refetch: refetchQuickAccess } = useQuickAccess();
+  const { 
+    quickAccessMenuItems, 
+    pinnedItems, 
+    hasQuickAccess, 
+    hasPinnedItems, 
+    maxPinned, 
+    categories: quickAccessCategories,
+    uncategorizedItems,
+    hasCategories,
+    refetch: refetchQuickAccess 
+  } = useQuickAccess();
   
   // Get menu groups from current system - memoized to prevent infinite loops
   // Inject Quick Access items dynamically for Dashboard system
@@ -641,34 +651,135 @@ function DashboardLayoutContent({
                         </div>
                       )}
                       
-                      {/* Regular Items */}
-                      <SidebarMenu>
-                        {filteredItems.map(item => {
-                          const isActive = location === item.path;
-                          const label = getLabel(item.labelKey);
-                          return (
-                            <SidebarMenuItem key={item.path}>
-                              <MenuItemContextMenu
-                                menuId={item.id}
-                                menuPath={item.path}
-                                menuLabel={label}
-                                menuIcon={item.icon?.name}
-                                systemId={activeSystem}
-                              >
-                                <SidebarMenuButton
-                                  isActive={isActive}
-                                  onClick={() => setLocation(item.path)}
-                                  tooltip={label}
-                                  className="h-9 pl-9 transition-all font-normal"
+                      {/* Categories Section - Only for Quick Access */}
+                      {isQuickAccessGroup && hasCategories && (
+                        <div className="space-y-1">
+                          {quickAccessCategories.map((category) => (
+                            <Collapsible
+                              key={`cat-${category.id}`}
+                              defaultOpen={category.isExpanded}
+                              className="group/category"
+                            >
+                              <div className="flex items-center gap-1 px-3 py-1">
+                                <CollapsibleTrigger asChild>
+                                  <button className="flex items-center gap-1.5 flex-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
+                                    <Folder 
+                                      className="h-3 w-3 group-data-[state=open]/category:hidden" 
+                                      style={{ color: category.color }}
+                                    />
+                                    <FolderOpen 
+                                      className="h-3 w-3 hidden group-data-[state=open]/category:block" 
+                                      style={{ color: category.color }}
+                                    />
+                                    <span>{category.name}</span>
+                                    <span className="text-[10px] bg-muted px-1 py-0.5 rounded ml-auto">
+                                      {category.items.length}
+                                    </span>
+                                  </button>
+                                </CollapsibleTrigger>
+                              </div>
+                              <CollapsibleContent>
+                                <SidebarMenu>
+                                  {category.items.map(item => {
+                                    const isActive = location === item.menuPath;
+                                    return (
+                                      <SidebarMenuItem key={`cat-${category.id}-${item.id}`}>
+                                        <MenuItemContextMenu
+                                          menuId={item.menuId}
+                                          menuPath={item.menuPath}
+                                          menuLabel={item.menuLabel}
+                                          menuIcon={item.icon?.name}
+                                          systemId={activeSystem}
+                                        >
+                                          <SidebarMenuButton
+                                            isActive={isActive}
+                                            onClick={() => setLocation(item.menuPath)}
+                                            tooltip={item.menuLabel}
+                                            className="h-8 pl-11 transition-all font-normal text-sm"
+                                          >
+                                            <item.icon className={`h-3.5 w-3.5 ${isActive ? "text-primary" : ""}`} />
+                                            <span className="truncate">{item.menuLabel}</span>
+                                          </SidebarMenuButton>
+                                        </MenuItemContextMenu>
+                                      </SidebarMenuItem>
+                                    );
+                                  })}
+                                </SidebarMenu>
+                              </CollapsibleContent>
+                            </Collapsible>
+                          ))}
+                        </div>
+                      )}
+                      
+                      {/* Uncategorized Items - Only for Quick Access */}
+                      {isQuickAccessGroup && uncategorizedItems.length > 0 && (
+                        <div className="mt-1">
+                          <div className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium text-muted-foreground">
+                            <Star className="h-3 w-3" />
+                            <span>Chưa phân loại</span>
+                            <span className="text-[10px] bg-muted px-1 py-0.5 rounded ml-auto">
+                              {uncategorizedItems.length}
+                            </span>
+                          </div>
+                          <SidebarMenu>
+                            {uncategorizedItems.map(item => {
+                              const isActive = location === item.menuPath;
+                              return (
+                                <SidebarMenuItem key={`uncat-${item.id}`}>
+                                  <MenuItemContextMenu
+                                    menuId={item.menuId}
+                                    menuPath={item.menuPath}
+                                    menuLabel={item.menuLabel}
+                                    menuIcon={item.icon?.name}
+                                    systemId={activeSystem}
+                                  >
+                                    <SidebarMenuButton
+                                      isActive={isActive}
+                                      onClick={() => setLocation(item.menuPath)}
+                                      tooltip={item.menuLabel}
+                                      className="h-9 pl-9 transition-all font-normal"
+                                    >
+                                      <item.icon className={`h-4 w-4 ${isActive ? "text-primary" : ""}`} />
+                                      <span className="truncate">{item.menuLabel}</span>
+                                    </SidebarMenuButton>
+                                  </MenuItemContextMenu>
+                                </SidebarMenuItem>
+                              );
+                            })}
+                          </SidebarMenu>
+                        </div>
+                      )}
+                      
+                      {/* Regular Items - For non-Quick Access groups */}
+                      {!isQuickAccessGroup && (
+                        <SidebarMenu>
+                          {filteredItems.map(item => {
+                            const isActive = location === item.path;
+                            const label = getLabel(item.labelKey);
+                            return (
+                              <SidebarMenuItem key={item.path}>
+                                <MenuItemContextMenu
+                                  menuId={item.id}
+                                  menuPath={item.path}
+                                  menuLabel={label}
+                                  menuIcon={item.icon?.name}
+                                  systemId={activeSystem}
                                 >
-                                  <item.icon className={`h-4 w-4 ${isActive ? "text-primary" : ""}`} />
-                                  <span className="truncate">{label}</span>
-                                </SidebarMenuButton>
-                              </MenuItemContextMenu>
-                            </SidebarMenuItem>
-                          );
-                        })}
-                      </SidebarMenu>
+                                  <SidebarMenuButton
+                                    isActive={isActive}
+                                    onClick={() => setLocation(item.path)}
+                                    tooltip={label}
+                                    className="h-9 pl-9 transition-all font-normal"
+                                  >
+                                    <item.icon className={`h-4 w-4 ${isActive ? "text-primary" : ""}`} />
+                                    <span className="truncate">{label}</span>
+                                  </SidebarMenuButton>
+                                </MenuItemContextMenu>
+                              </SidebarMenuItem>
+                            );
+                          })}
+                        </SidebarMenu>
+                      )}
                     </CollapsibleContent>
                   </div>
                 </Collapsible>
