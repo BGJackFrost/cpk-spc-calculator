@@ -28,7 +28,10 @@ import {
   Check,
   X,
   RefreshCw,
-  Building2
+  Building2,
+  Pin,
+  Star,
+  Loader2
 } from "lucide-react";
 
 export default function AppSettings() {
@@ -42,6 +45,56 @@ export default function AppSettings() {
   const [appLogo, setAppLogo] = useState("");
   const [companyName, setCompanyName] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  
+  // Quick Access settings state
+  const [maxPinned, setMaxPinned] = useState(5);
+  const [isSavingPinLimit, setIsSavingPinLimit] = useState(false);
+  
+  // Fetch current pin limit
+  const { data: pinLimitData, refetch: refetchPinLimit } = trpc.quickAccess.getPinLimit.useQuery(
+    undefined,
+    {
+      enabled: !!user,
+      onSuccess: (data) => {
+        setMaxPinned(data.maxPinned);
+      },
+    }
+  );
+  
+  // Update pin limit mutation
+  const updatePinLimitMutation = trpc.quickAccess.updatePinLimit.useMutation({
+    onSuccess: (data) => {
+      toast.success(
+        language === "en" 
+          ? `Pin limit updated to ${data.maxPinned}` 
+          : `Đã cập nhật giới hạn ghim thành ${data.maxPinned}`
+      );
+      refetchPinLimit();
+      setIsSavingPinLimit(false);
+    },
+    onError: (error) => {
+      toast.error(
+        language === "en" 
+          ? "Failed to update pin limit" 
+          : "Không thể cập nhật giới hạn ghim",
+        { description: error.message }
+      );
+      setIsSavingPinLimit(false);
+    },
+  });
+  
+  const handleSavePinLimit = () => {
+    if (!isAdmin) {
+      toast.error(
+        language === "en" 
+          ? "Only admin can change this setting" 
+          : "Chỉ admin mới có thể thay đổi cài đặt này"
+      );
+      return;
+    }
+    setIsSavingPinLimit(true);
+    updatePinLimitMutation.mutate({ maxPinned });
+  };
   
   // Theme state
   const [selectedTheme, setSelectedTheme] = useState(getCurrentTheme());
@@ -176,6 +229,12 @@ export default function AppSettings() {
               <FileJson className="h-4 w-4" />
               {language === "en" ? "Export/Import" : "Xuất/Nhập"}
             </TabsTrigger>
+            {isAdmin && (
+              <TabsTrigger value="quickaccess" className="flex items-center gap-2">
+                <Star className="h-4 w-4" />
+                Quick Access
+              </TabsTrigger>
+            )}
           </TabsList>
           
           {/* Branding Tab */}
@@ -464,6 +523,117 @@ export default function AppSettings() {
               </CardContent>
             </Card>
           </TabsContent>
+          
+          {/* Quick Access Settings Tab - Admin Only */}
+          {isAdmin && (
+            <TabsContent value="quickaccess" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Pin className="h-5 w-5 text-amber-500" />
+                    {language === "en" ? "Quick Access Settings" : "Cài đặt Quick Access"}
+                  </CardTitle>
+                  <CardDescription>
+                    {language === "en" 
+                      ? "Configure Quick Access behavior for all users" 
+                      : "Cấu hình hành vi Quick Access cho tất cả người dùng"}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Pin Limit Setting */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-1">
+                        <Label className="text-base font-medium flex items-center gap-2">
+                          <Pin className="h-4 w-4" />
+                          {language === "en" ? "Maximum Pinned Items" : "Số mục ghim tối đa"}
+                        </Label>
+                        <p className="text-sm text-muted-foreground">
+                          {language === "en" 
+                            ? "Limit how many items each user can pin in Quick Access" 
+                            : "Giới hạn số mục mỗi người dùng có thể ghim trong Quick Access"}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          min={1}
+                          max={20}
+                          value={maxPinned}
+                          onChange={(e) => setMaxPinned(Math.min(20, Math.max(1, parseInt(e.target.value) || 1)))}
+                          className="w-24"
+                        />
+                        <span className="text-sm text-muted-foreground">
+                          {language === "en" ? "items (1-20)" : "mục (1-20)"}
+                        </span>
+                      </div>
+                      
+                      <Button 
+                        onClick={handleSavePinLimit}
+                        disabled={isSavingPinLimit || maxPinned === pinLimitData?.maxPinned}
+                        size="sm"
+                      >
+                        {isSavingPinLimit ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            {language === "en" ? "Saving..." : "Đang lưu..."}
+                          </>
+                        ) : (
+                          <>
+                            <Save className="h-4 w-4 mr-2" />
+                            {language === "en" ? "Save" : "Lưu"}
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                    
+                    {/* Current Status */}
+                    <div className="p-4 rounded-lg border bg-muted/30">
+                      <div className="flex items-center gap-4">
+                        <div className="p-2 rounded-full bg-amber-500/10">
+                          <Pin className="h-5 w-5 text-amber-500" />
+                        </div>
+                        <div>
+                          <p className="font-medium">
+                            {language === "en" ? "Current Setting" : "Cài đặt hiện tại"}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {language === "en" 
+                              ? `Users can pin up to ${pinLimitData?.maxPinned || 5} items` 
+                              : `Người dùng có thể ghim tối đa ${pinLimitData?.maxPinned || 5} mục`}
+                          </p>
+                        </div>
+                        <Badge variant="secondary" className="ml-auto">
+                          {pinLimitData?.maxPinned || 5} {language === "en" ? "max" : "tối đa"}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <Separator />
+                  
+                  {/* Info */}
+                  <div className="text-sm text-muted-foreground space-y-2">
+                    <p className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-500" />
+                      {language === "en" 
+                        ? "Changes apply immediately to all users" 
+                        : "Thay đổi được áp dụng ngay cho tất cả người dùng"}
+                    </p>
+                    <p className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-500" />
+                      {language === "en" 
+                        ? "Existing pins are not affected when reducing limit" 
+                        : "Các mục đã ghim không bị ảnh hưởng khi giảm giới hạn"}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
         </Tabs>
       </div>
     </DashboardLayout>

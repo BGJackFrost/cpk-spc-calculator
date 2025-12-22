@@ -4647,3 +4647,13 @@
 - [x] Thêm animation stagger cho từng item (50ms delay)
 - [x] Thêm hover animation (scale icon, rotate pin)
 - [x] Thêm icon animation trong toast khi pin/unpin
+
+
+## Phase 226 - UI Cấu hình giới hạn Pin trong Admin Settings
+
+- [x] Tìm trang Admin Settings hiện có (AppSettings.tsx)
+- [x] Thêm tab Quick Access Settings (chỉ hiển thị cho admin)
+- [x] Thêm input số để cấu hình giới hạn pin (1-20)
+- [x] Kết nối với API updatePinLimit
+- [x] Hiển thị giá trị hiện tại từ getPinLimit
+- [x] Hiển thị thông tin trạng thái và hướng dẫn
