@@ -4,6 +4,7 @@ import { SYSTEMS } from "@/config/systemMenu";
 import { LayoutDashboard } from "lucide-react";
 import { useLocation } from "wouter";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useQuickAccess } from "@/hooks/useQuickAccess";
 import {
   Tooltip,
   TooltipContent,
@@ -58,7 +59,9 @@ export function TopNavigation() {
   const { activeSystem, setActiveSystem } = useSystem();
   const [location, setLocation] = useLocation();
   const { language } = useLanguage();
+  const { quickAccessItems } = useQuickAccess();
   const isVi = language === "vi";
+  const quickAccessCount = quickAccessItems.length;
 
   const systems = [
     { id: "dashboard", config: SYSTEMS.DASHBOARD },
@@ -90,14 +93,26 @@ export function TopNavigation() {
               <button
                 onClick={() => handleSystemClick(id)}
                 className={cn(
-                  "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+                  "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 relative",
                   "hover:bg-accent/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                   isActive
                     ? "bg-primary text-primary-foreground shadow-md"
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >
-                <Icon className="h-4 w-4" />
+                <div className="relative">
+                  <Icon className="h-4 w-4" />
+                  {id === 'dashboard' && quickAccessCount > 0 && (
+                    <span className={cn(
+                      "absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 rounded-full text-[10px] font-bold flex items-center justify-center",
+                      isActive 
+                        ? "bg-primary-foreground text-primary" 
+                        : "bg-primary text-primary-foreground"
+                    )}>
+                      {quickAccessCount > 9 ? '9+' : quickAccessCount}
+                    </span>
+                  )}
+                </div>
                 <span>{isVi ? labels.vi : labels.en}</span>
               </button>
             </TooltipTrigger>

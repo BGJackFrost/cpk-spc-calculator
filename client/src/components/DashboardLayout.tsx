@@ -44,7 +44,8 @@ import { ThemeSelector } from "./ThemeSelector";
 import { useSystem } from "@/contexts/SystemContext";
 import { MenuGroup as SystemMenuGroup, MenuItem as SystemMenuItem } from "@/config/systemMenu";
 import { useQuickAccess } from "@/hooks/useQuickAccess";
-import { Star } from "lucide-react";
+import { Star, Plus } from "lucide-react";
+import { QuickAccessAddDialog } from "./QuickAccessAddDialog";
 
 // Fallback labels for keys not in translation files (by language)
 const fallbackLabelsVi: Record<string, string> = {
@@ -362,7 +363,7 @@ function DashboardLayoutContent({
   const { theme, setTheme } = useTheme();
   
   // Load Quick Access items dynamically
-  const { quickAccessMenuItems, hasQuickAccess } = useQuickAccess();
+  const { quickAccessMenuItems, hasQuickAccess, refetch: refetchQuickAccess } = useQuickAccess();
   
   // Get menu groups from current system - memoized to prevent infinite loops
   // Inject Quick Access items dynamically for Dashboard system
@@ -556,6 +557,9 @@ function DashboardLayoutContent({
                 );
               }
 
+              // Check if this is Quick Access group
+              const isQuickAccessGroup = group.id === 'quick-access';
+
               return (
                 <Collapsible
                   key={group.id}
@@ -564,17 +568,32 @@ function DashboardLayoutContent({
                   className="group/collapsible"
                 >
                   <div className="px-2 py-1">
-                    <CollapsibleTrigger asChild>
-                      <button
-                        className={`flex items-center gap-2 w-full px-3 py-2 text-sm font-medium rounded-md transition-colors hover:bg-accent ${
-                          isGroupActive ? "text-primary" : "text-muted-foreground"
-                        }`}
-                      >
-                        <group.icon className="h-4 w-4" />
-                        <span className="flex-1 text-left">{getLabel(group.labelKey)}</span>
-                        <ChevronRight className={`h-4 w-4 transition-transform duration-200 ${isOpen ? "rotate-90" : ""}`} />
-                      </button>
-                    </CollapsibleTrigger>
+                    <div className="flex items-center">
+                      <CollapsibleTrigger asChild>
+                        <button
+                          className={`flex items-center gap-2 flex-1 px-3 py-2 text-sm font-medium rounded-md transition-colors hover:bg-accent ${
+                            isGroupActive ? "text-primary" : "text-muted-foreground"
+                          }`}
+                        >
+                          <group.icon className="h-4 w-4" />
+                          <span className="flex-1 text-left">{getLabel(group.labelKey)}</span>
+                          <ChevronRight className={`h-4 w-4 transition-transform duration-200 ${isOpen ? "rotate-90" : ""}`} />
+                        </button>
+                      </CollapsibleTrigger>
+                      {isQuickAccessGroup && (
+                        <QuickAccessAddDialog 
+                          onSuccess={refetchQuickAccess}
+                          trigger={
+                            <button 
+                              className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+                              title="Thêm menu vào Quick Access"
+                            >
+                              <Plus className="h-4 w-4" />
+                            </button>
+                          }
+                        />
+                      )}
+                    </div>
                     <CollapsibleContent className="mt-1 space-y-1">
                       <SidebarMenu>
                         {filteredItems.map(item => {

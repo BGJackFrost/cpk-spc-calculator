@@ -24,6 +24,8 @@ import {
   useSensor,
   useSensors,
   DragEndEvent,
+  DragStartEvent,
+  DragOverlay,
 } from "@dnd-kit/core";
 import {
   arrayMove,
@@ -33,6 +35,13 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+
+// Spring animation config
+const springTransition = {
+  type: 'spring',
+  damping: 25,
+  stiffness: 300,
+};
 
 // Icon mapping
 const iconMap: Record<string, any> = {
@@ -91,29 +100,40 @@ function SortableItem({ item, onRemove }: SortableItemProps) {
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: item.id });
+  } = useSortable({ 
+    id: item.id,
+    transition: {
+      duration: 250,
+      easing: 'cubic-bezier(0.25, 1, 0.5, 1)',
+    },
+  });
 
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
+    transition: transition || 'transform 250ms cubic-bezier(0.25, 1, 0.5, 1)',
+    opacity: isDragging ? 0.8 : 1,
     zIndex: isDragging ? 1000 : 1,
+    scale: isDragging ? 1.02 : 1,
   };
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={`flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors ${
-        isDragging ? "shadow-lg ring-2 ring-primary" : ""
+      className={`flex items-center gap-3 p-3 rounded-lg border bg-card transition-all duration-200 ${
+        isDragging 
+          ? "shadow-xl ring-2 ring-primary bg-primary/5 border-primary" 
+          : "hover:bg-accent/50 hover:shadow-sm"
       }`}
     >
       <button
         {...attributes}
         {...listeners}
-        className="cursor-grab active:cursor-grabbing touch-none"
+        className={`cursor-grab active:cursor-grabbing touch-none p-1 rounded hover:bg-accent transition-colors ${
+          isDragging ? "text-primary" : "text-muted-foreground"
+        }`}
       >
-        <GripVertical className="h-5 w-5 text-muted-foreground" />
+        <GripVertical className="h-5 w-5" />
       </button>
       <div className="flex-1">
         <div className="flex items-center gap-2">
