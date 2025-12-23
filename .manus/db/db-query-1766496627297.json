@@ -1,0 +1,40 @@
+{
+  "query": "SELECT id, code, name FROM maintenance_types LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute SELECT id, code, name FROM maintenance_types LIMIT 10;",
+  "rows": [
+    {
+      "id": "1",
+      "code": "CM-EMRG",
+      "name": "Sửa chữa khẩn cấp"
+    },
+    {
+      "id": "2",
+      "code": "CM-NORM",
+      "name": "Sửa chữa thông thường"
+    },
+    {
+      "id": "3",
+      "code": "PM-SCHD",
+      "name": "Bảo trì định kỳ"
+    },
+    {
+      "id": "4",
+      "code": "PM-PREV",
+      "name": "Bảo trì dự phòng"
+    },
+    {
+      "id": "5",
+      "code": "PDM",
+      "name": "Bảo trì dự đoán"
+    },
+    {
+      "id": "6",
+      "code": "CBM",
+      "name": "Bảo trì theo tình trạng"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tcode\tname\n1\tCM-EMRG\tSửa chữa khẩn cấp\n2\tCM-NORM\tSửa chữa thông thường\n3\tPM-SCHD\tBảo trì định kỳ\n4\tPM-PREV\tBảo trì dự phòng\n5\tPDM\tBảo trì dự đoán\n6\tCBM\tBảo trì theo tình trạng\n",
+  "stderr": "",
+  "execution_time_ms": 1502
+}

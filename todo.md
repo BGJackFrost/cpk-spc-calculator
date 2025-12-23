@@ -5546,3 +5546,21 @@
 - [x] Tạo trang cấu hình email trong System Settings (đã có SmtpSettings.tsx)
 - [x] Tích hợp gửi email cho cảnh báo OEE/CPK (đã có trong emailService.ts)
 - [x] Tích hợp gửi email cho cảnh báo bảo trì (đã có maintenance_alert type)
+
+
+## Phase 114: Work Orders Sample Data, SMTP Config Guide, Mobile Test Guide
+
+### Dữ liệu mẫu Work Orders cho MTBF/MTTR
+- [x] Thêm work orders mẫu vào database cho máy MC02 (Máy Gắn Chip SMT)
+- [x] Thêm maintenance history records với startTime và endTime
+- [x] Kiểm tra MTBF/MTTR hiển thị giá trị thực trong Equipment QR Lookup
+
+### Hướng dẫn cấu hình SMTP
+- [x] Kiểm tra trang SMTP Settings hoạt động
+- [x] Tạo hướng dẫn cấu hình SMTP cho Gmail/Office 365
+- [x] Test gửi email cảnh báo tự động (có sẵn nút Gửi Test trong trang)
+
+### Hướng dẫn test mobile
+- [x] Tạo tài liệu hướng dẫn test QR Scanner trên mobile
+- [x] Tạo tài liệu hướng dẫn test Gantt Chart trên mobile
+- [x] Liệt kê các thiết bị và trình duyệt được hỗ trợ
