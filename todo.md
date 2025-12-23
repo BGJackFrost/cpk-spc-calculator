@@ -5632,3 +5632,25 @@
 - [x] Thêm Radar chart cho Fixture performance
 - [x] Thêm bảng chi tiết Fixture
 
+
+
+## Phase 37: Nâng cấp SPC/CPK Dashboard
+
+### Export Fixture Report
+- [x] Tạo API export báo cáo so sánh Fixture ra PDF
+- [x] Tạo API export báo cáo so sánh Fixture ra Excel
+- [ ] Thêm nút Export vào trang SPC Realtime Dashboard
+
+### WebSocket Integration
+- [x] Tích hợp WebSocket server cho realtime data
+- [x] Tạo hook useWebSocketRealtime cho client
+- [ ] Thay thế SSE bằng WebSocket trong SPC Realtime Dashboard
+- [x] Thêm reconnect logic và error handling
+
+### Shift Manager Dashboard
+- [x] Tạo trang ShiftManagerDashboard
+- [x] Hiển thị KPI theo ca (OEE, CPK, Defect Rate)
+- [x] Biểu đồ so sánh giữa các ca
+- [x] Bảng chi tiết performance theo máy/dây chuyền
+- [x] Thêm route và menu item
+

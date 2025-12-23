@@ -148,6 +148,7 @@ export const SPC_MENU: SystemMenuConfig = {
         { id: "validation-rules", icon: ShieldCheck, labelKey: "nav.customValidation", path: "/validation-rules", adminOnly: true },
         { id: "cpk-comparison", icon: BarChart3, labelKey: "nav.cpkBenchmark", path: "/cpk-comparison" },
         { id: "shift-cpk-comparison", icon: Clock, labelKey: "nav.shiftAnalysis", path: "/shift-cpk-comparison" },
+        { id: "shift-manager", icon: Users, labelKey: "nav.shiftManager", path: "/shift-manager" },
       ],
     },
     {

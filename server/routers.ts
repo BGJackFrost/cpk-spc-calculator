@@ -2462,6 +2462,75 @@ const exportRouter = router({
       
       return { success: true, message: `Report sent to ${input.recipientEmail}` };
     }),
+
+  // Export Fixture Comparison Report - HTML/PDF
+  fixtureReportHtml: protectedProcedure
+    .input(z.object({
+      fixtureIds: z.array(z.number()).min(1),
+      startDate: z.date(),
+      endDate: z.date(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const { generateFixtureReportHtml } = await import("./services/fixtureReportService");
+      const html = await generateFixtureReportHtml(input.fixtureIds, input.startDate, input.endDate);
+      const filename = `fixture_comparison_report_${Date.now()}.html`;
+      
+      // Upload to S3
+      let fileUrl: string | null = null;
+      try {
+        const s3Key = `exports/fixture-reports/${ctx.user.id}/${filename}`;
+        const { url } = await storagePut(s3Key, html, 'text/html');
+        fileUrl = url;
+      } catch (error) {
+        console.error('Failed to upload Fixture Report to S3:', error);
+      }
+      
+      return { content: html, filename, mimeType: "text/html", fileUrl };
+    }),
+
+  // Export Fixture Comparison Report - Excel
+  fixtureReportExcel: protectedProcedure
+    .input(z.object({
+      fixtureIds: z.array(z.number()).min(1),
+      startDate: z.date(),
+      endDate: z.date(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const { generateFixtureReportExcel } = await import("./services/fixtureReportService");
+      const buffer = await generateFixtureReportExcel(input.fixtureIds, input.startDate, input.endDate);
+      const base64 = buffer.toString("base64");
+      const filename = `fixture_comparison_report_${Date.now()}.xlsx`;
+      
+      // Upload to S3
+      let fileUrl: string | null = null;
+      try {
+        const s3Key = `exports/fixture-reports/${ctx.user.id}/${filename}`;
+        const { url } = await storagePut(s3Key, buffer, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        fileUrl = url;
+      } catch (error) {
+        console.error('Failed to upload Fixture Excel Report to S3:', error);
+      }
+      
+      return { 
+        content: base64, 
+        filename, 
+        mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        isBase64: true,
+        fileUrl
+      };
+    }),
+
+  // Get Fixture Comparison Data (for preview)
+  getFixtureComparisonData: protectedProcedure
+    .input(z.object({
+      fixtureIds: z.array(z.number()).min(1),
+      startDate: z.date(),
+      endDate: z.date(),
+    }))
+    .query(async ({ input }) => {
+      const { getFixtureComparisonData } = await import("./services/fixtureReportService");
+      return await getFixtureComparisonData(input.fixtureIds, input.startDate, input.endDate);
+    }),
 });
 
 // Alert Settings Router
