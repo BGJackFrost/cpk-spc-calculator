@@ -10,8 +10,25 @@ import { trpc } from "@/lib/trpc";
 import { 
   Activity, Wifi, WifiOff, AlertTriangle, CheckCircle2, XCircle,
   TrendingUp, TrendingDown, Minus, Bell, Settings, Play, Pause,
-  Cpu, Wrench, BarChart3, PieChart
+  Cpu, Wrench, BarChart3, PieChart, Download, FileText, FileSpreadsheet, Loader2
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, 
   ResponsiveContainer, ReferenceLine, ComposedChart, BarChart, Bar,
@@ -388,6 +405,13 @@ export default function RealtimeLineDashboard() {
   const [fixtureData, setFixtureData] = useState<Record<number, RealtimeDataPoint[]>>({});
   const [alerts, setAlerts] = useState<RealtimeAlert[]>([]);
   const [alarms, setAlarms] = useState<Alarm[]>([]);
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
+  const [selectedFixturesForExport, setSelectedFixturesForExport] = useState<number[]>([]);
+  const [exportDateRange, setExportDateRange] = useState<{ from: string; to: string }>({
+    from: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    to: new Date().toISOString().split('T')[0]
+  });
   const [oeeData, setOeeData] = useState<Array<{
     timestamp: Date;
     oee: number;
@@ -416,6 +440,87 @@ export default function RealtimeLineDashboard() {
   
   const handleClearAlarm = (alarmId: string) => {
     setAlarms(prev => prev.filter(a => a.id !== alarmId));
+  };
+  
+  // Export mutations
+  const exportHtmlMutation = trpc.export.fixtureReportHtml.useMutation();
+  const exportExcelMutation = trpc.export.fixtureReportExcel.useMutation();
+  
+  const handleExportPdf = async () => {
+    if (selectedFixturesForExport.length === 0) {
+      toast.error('Vui lòng chọn ít nhất một Fixture');
+      return;
+    }
+    
+    setExportLoading(true);
+    try {
+      const result = await exportHtmlMutation.mutateAsync({
+        fixtureIds: selectedFixturesForExport,
+        startDate: new Date(exportDateRange.from),
+        endDate: new Date(exportDateRange.to),
+      });
+      
+      const blob = new Blob([result.html], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      const printWindow = window.open(url, '_blank');
+      if (printWindow) {
+        printWindow.onload = () => {
+          printWindow.print();
+        };
+      }
+      
+      toast.success('Báo cáo đã được tạo. Vui lòng in hoặc lưu dưới dạng PDF.');
+      setExportDialogOpen(false);
+    } catch (error) {
+      console.error('Export error:', error);
+      toast.error('Lỗi khi xuất báo cáo');
+    } finally {
+      setExportLoading(false);
+    }
+  };
+  
+  const handleExportExcel = async () => {
+    const fixtureIds = selectedFixturesForExport.length > 0 
+      ? selectedFixturesForExport 
+      : (selectedMachine === 'demo' ? demoFixtures : fixtures || []).map((f: { id: number }) => f.id);
+    
+    if (fixtureIds.length === 0) {
+      toast.error('Không có Fixture nào để xuất');
+      return;
+    }
+    
+    setExportLoading(true);
+    try {
+      const result = await exportExcelMutation.mutateAsync({
+        fixtureIds,
+        startDate: new Date(exportDateRange.from),
+        endDate: new Date(exportDateRange.to),
+      });
+      
+      const byteCharacters = atob(result.data);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = result.filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      toast.success('Xuất Excel thành công!');
+    } catch (error) {
+      console.error('Export error:', error);
+      toast.error('Lỗi khi xuất Excel');
+    } finally {
+      setExportLoading(false);
+    }
   };
   
   const { data: machines } = trpc.machine.listAll.useQuery();
@@ -674,11 +779,103 @@ export default function RealtimeLineDashboard() {
               )}
             </Button>
             
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" disabled={viewMode !== 'machine' && viewMode !== 'fixture'}>
+                  <Download className="h-4 w-4 mr-1" />
+                  Export
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setExportDialogOpen(true)}>
+                  <FileText className="h-4 w-4 mr-2" />
+                  Export Fixture Report (PDF)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExportExcel()}>
+                  <FileSpreadsheet className="h-4 w-4 mr-2" />
+                  Export Fixture Report (Excel)
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            
             <Button variant="outline" size="icon">
               <Settings className="h-4 w-4" />
             </Button>
           </div>
         </div>
+        
+        {/* Export Dialog */}
+        <Dialog open={exportDialogOpen} onOpenChange={setExportDialogOpen}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Export Báo cáo So sánh Fixture</DialogTitle>
+              <DialogDescription>
+                Chọn các Fixture và khoảng thời gian để xuất báo cáo
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Khoảng thời gian</Label>
+                <div className="flex gap-2">
+                  <input
+                    type="date"
+                    value={exportDateRange.from}
+                    onChange={(e) => setExportDateRange(prev => ({ ...prev, from: e.target.value }))}
+                    className="flex-1 px-3 py-2 border rounded-md text-sm"
+                  />
+                  <span className="self-center">đến</span>
+                  <input
+                    type="date"
+                    value={exportDateRange.to}
+                    onChange={(e) => setExportDateRange(prev => ({ ...prev, to: e.target.value }))}
+                    className="flex-1 px-3 py-2 border rounded-md text-sm"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Chọn Fixture</Label>
+                <div className="border rounded-md p-3 max-h-[200px] overflow-y-auto space-y-2">
+                  {(selectedMachine === 'demo' ? demoFixtures : fixtures || []).map((f: { id: number; name: string }) => (
+                    <div key={f.id} className="flex items-center gap-2">
+                      <Checkbox
+                        id={`fixture-${f.id}`}
+                        checked={selectedFixturesForExport.includes(f.id)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setSelectedFixturesForExport(prev => [...prev, f.id]);
+                          } else {
+                            setSelectedFixturesForExport(prev => prev.filter(id => id !== f.id));
+                          }
+                        }}
+                      />
+                      <Label htmlFor={`fixture-${f.id}`} className="cursor-pointer">{f.name}</Label>
+                    </div>
+                  ))}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const allIds = (selectedMachine === 'demo' ? demoFixtures : fixtures || []).map((f: { id: number }) => f.id);
+                    setSelectedFixturesForExport(selectedFixturesForExport.length === allIds.length ? [] : allIds);
+                  }}
+                >
+                  {selectedFixturesForExport.length === (selectedMachine === 'demo' ? demoFixtures : fixtures || []).length ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
+                </Button>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setExportDialogOpen(false)}>Hủy</Button>
+              <Button onClick={() => handleExportPdf()} disabled={exportLoading || selectedFixturesForExport.length === 0}>
+                {exportLoading ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Đang xuất...</>
+                ) : (
+                  <><FileText className="h-4 w-4 mr-2" />Xuất PDF</>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
         
         {/* Connection Status */}
         <Card className={isRunning ? "border-green-500" : "border-muted"}>

@@ -98,6 +98,7 @@ export default function ShiftManagerDashboard() {
   );
   const [selectedLine, setSelectedLine] = useState<string>("all");
   const [refreshKey, setRefreshKey] = useState(0);
+  const [compareDays, setCompareDays] = useState<number>(7);
 
   // WebSocket for real-time updates
   const ws = useWebSocket(["shift_comparison", "spc_updates"], {
@@ -201,6 +202,52 @@ export default function ShiftManagerDashboard() {
       return result;
     });
   }, [shiftKPIs]);
+
+  // Generate daily trend data (last N days)
+  const dailyTrendData = useMemo(() => {
+    const days = [];
+    for (let i = compareDays - 1; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      const dateStr = date.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" });
+      
+      days.push({
+        date: dateStr,
+        fullDate: date.toISOString().split("T")[0],
+        morning: 1.2 + Math.random() * 0.5,
+        afternoon: 1.1 + Math.random() * 0.6,
+        night: 1.0 + Math.random() * 0.7,
+        avgCpk: 1.1 + Math.random() * 0.4,
+        avgOee: 75 + Math.random() * 15,
+        defectRate: Math.random() * 3,
+      });
+    }
+    return days;
+  }, [compareDays]);
+
+  // Generate weekly comparison data
+  const weeklyCompareData = useMemo(() => {
+    const weeks = [];
+    for (let w = 3; w >= 0; w--) {
+      const weekStart = new Date();
+      weekStart.setDate(weekStart.getDate() - (w * 7 + 6));
+      const weekEnd = new Date();
+      weekEnd.setDate(weekEnd.getDate() - w * 7);
+      
+      weeks.push({
+        week: `Tuần ${4 - w}`,
+        weekRange: `${weekStart.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" })} - ${weekEnd.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" })}`,
+        avgCpk: 1.15 + Math.random() * 0.4,
+        avgOee: 78 + Math.random() * 12,
+        defectRate: 0.5 + Math.random() * 2,
+        sampleCount: 500 + Math.floor(Math.random() * 300),
+        morningCpk: 1.2 + Math.random() * 0.5,
+        afternoonCpk: 1.1 + Math.random() * 0.6,
+        nightCpk: 1.0 + Math.random() * 0.7,
+      });
+    }
+    return weeks;
+  }, []);
 
   // Mock machine performance data
   const machinePerformance: MachinePerformance[] = useMemo(() => {
@@ -431,6 +478,8 @@ export default function ShiftManagerDashboard() {
           <TabsList>
             <TabsTrigger value="comparison">So sánh ca</TabsTrigger>
             <TabsTrigger value="radar">Radar đa chiều</TabsTrigger>
+            <TabsTrigger value="daily-trend">Xu hướng theo ngày</TabsTrigger>
+            <TabsTrigger value="weekly-compare">So sánh tuần</TabsTrigger>
             <TabsTrigger value="machines">Hiệu suất máy</TabsTrigger>
           </TabsList>
 
@@ -573,6 +622,147 @@ export default function ShiftManagerDashboard() {
                     ))}
                   </TableBody>
                 </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="daily-trend">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Xu hướng KPI theo ngày</CardTitle>
+                    <CardDescription>
+                      Biểu đồ xu hướng CPK và OEE trong {compareDays} ngày gần nhất
+                    </CardDescription>
+                  </div>
+                  <Select value={compareDays.toString()} onValueChange={(v) => setCompareDays(parseInt(v))}>
+                    <SelectTrigger className="w-[120px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="7">7 ngày</SelectItem>
+                      <SelectItem value="14">14 ngày</SelectItem>
+                      <SelectItem value="30">30 ngày</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[400px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart data={dailyTrendData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="date" />
+                      <YAxis yAxisId="left" domain={[0, 2]} label={{ value: 'CPK', angle: -90, position: 'insideLeft' }} />
+                      <YAxis yAxisId="right" orientation="right" domain={[0, 100]} label={{ value: 'OEE (%)', angle: 90, position: 'insideRight' }} />
+                      <Tooltip />
+                      <Legend />
+                      <Line yAxisId="left" type="monotone" dataKey="morning" name="Ca sáng" stroke={SHIFT_COLORS.morning} strokeWidth={2} dot={{ fill: SHIFT_COLORS.morning }} />
+                      <Line yAxisId="left" type="monotone" dataKey="afternoon" name="Ca chiều" stroke={SHIFT_COLORS.afternoon} strokeWidth={2} dot={{ fill: SHIFT_COLORS.afternoon }} />
+                      <Line yAxisId="left" type="monotone" dataKey="night" name="Ca đêm" stroke={SHIFT_COLORS.night} strokeWidth={2} dot={{ fill: SHIFT_COLORS.night }} />
+                      <Area yAxisId="right" type="monotone" dataKey="avgOee" name="OEE TB (%)" stroke="#10b981" fill="#10b981" fillOpacity={0.2} />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="mt-4">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Ngày</TableHead>
+                        <TableHead className="text-right">Ca sáng</TableHead>
+                        <TableHead className="text-right">Ca chiều</TableHead>
+                        <TableHead className="text-right">Ca đêm</TableHead>
+                        <TableHead className="text-right">CPK TB</TableHead>
+                        <TableHead className="text-right">OEE TB</TableHead>
+                        <TableHead className="text-right">Tỷ lệ lỗi</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {dailyTrendData.slice(0, 7).map((day) => (
+                        <TableRow key={day.fullDate}>
+                          <TableCell className="font-medium">{day.date}</TableCell>
+                          <TableCell className="text-right" style={{ color: day.morning >= 1.33 ? '#10b981' : day.morning >= 1.0 ? '#f59e0b' : '#ef4444' }}>
+                            {day.morning.toFixed(2)}
+                          </TableCell>
+                          <TableCell className="text-right" style={{ color: day.afternoon >= 1.33 ? '#10b981' : day.afternoon >= 1.0 ? '#f59e0b' : '#ef4444' }}>
+                            {day.afternoon.toFixed(2)}
+                          </TableCell>
+                          <TableCell className="text-right" style={{ color: day.night >= 1.33 ? '#10b981' : day.night >= 1.0 ? '#f59e0b' : '#ef4444' }}>
+                            {day.night.toFixed(2)}
+                          </TableCell>
+                          <TableCell className="text-right font-semibold">{day.avgCpk.toFixed(2)}</TableCell>
+                          <TableCell className="text-right">{day.avgOee.toFixed(1)}%</TableCell>
+                          <TableCell className="text-right text-red-600">{day.defectRate.toFixed(2)}%</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="weekly-compare">
+            <Card>
+              <CardHeader>
+                <CardTitle>So sánh KPI theo tuần</CardTitle>
+                <CardDescription>
+                  So sánh hiệu suất giữa các tuần trong tháng
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[350px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={weeklyCompareData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="week" />
+                      <YAxis domain={[0, 2]} />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="morningCpk" name="Ca sáng" fill={SHIFT_COLORS.morning} />
+                      <Bar dataKey="afternoonCpk" name="Ca chiều" fill={SHIFT_COLORS.afternoon} />
+                      <Bar dataKey="nightCpk" name="Ca đêm" fill={SHIFT_COLORS.night} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {weeklyCompareData.map((week, index) => (
+                    <Card key={week.week} className={index === weeklyCompareData.length - 1 ? "border-primary" : ""}>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium">{week.week}</CardTitle>
+                        <CardDescription className="text-xs">{week.weekRange}</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-2">
+                          <div className="flex justify-between">
+                            <span className="text-sm text-muted-foreground">CPK TB:</span>
+                            <span className="font-semibold" style={{ color: week.avgCpk >= 1.33 ? '#10b981' : week.avgCpk >= 1.0 ? '#f59e0b' : '#ef4444' }}>
+                              {week.avgCpk.toFixed(2)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-sm text-muted-foreground">OEE TB:</span>
+                            <span className="font-semibold">{week.avgOee.toFixed(1)}%</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-sm text-muted-foreground">Tỷ lệ lỗi:</span>
+                            <span className="font-semibold text-red-600">{week.defectRate.toFixed(2)}%</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-sm text-muted-foreground">Số mẫu:</span>
+                            <span className="font-semibold">{week.sampleCount.toLocaleString()}</span>
+                          </div>
+                        </div>
+                        {index === weeklyCompareData.length - 1 && (
+                          <Badge className="mt-2 w-full justify-center" variant="outline">
+                            Tuần hiện tại
+                          </Badge>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

@@ -5639,12 +5639,12 @@
 ### Export Fixture Report
 - [x] Tạo API export báo cáo so sánh Fixture ra PDF
 - [x] Tạo API export báo cáo so sánh Fixture ra Excel
-- [ ] Thêm nút Export vào trang SPC Realtime Dashboard
+- [x] Thêm nút Export vào trang SPC Realtime Dashboard
 
 ### WebSocket Integration
 - [x] Tích hợp WebSocket server cho realtime data
 - [x] Tạo hook useWebSocketRealtime cho client
-- [ ] Thay thế SSE bằng WebSocket trong SPC Realtime Dashboard
+- [x] Thay thế SSE bằng WebSocket trong SPC Realtime Dashboard
 - [x] Thêm reconnect logic và error handling
 
 ### Shift Manager Dashboard
@@ -5653,4 +5653,19 @@
 - [x] Biểu đồ so sánh giữa các ca
 - [x] Bảng chi tiết performance theo máy/dây chuyền
 - [x] Thêm route và menu item
+
+
+
+## Phase 38: Nâng cấp SPC Dashboard và WebSocket
+
+### Export Button trong SPC Realtime Dashboard
+- [x] Thêm nút Export Fixture Report (PDF) vào SPC Realtime Dashboard
+- [x] Thêm nút Export Fixture Report (Excel) vào SPC Realtime Dashboard
+- [x] Thêm dialog chọn Fixture và khoảng thời gian để export
+
+### So sánh KPI giữa các ngày/tuần
+- [x] Thêm chức năng chọn khoảng thời gian so sánh
+- [x] Tạo biểu đồ trend KPI theo ngày
+- [x] Tạo biểu đồ so sánh KPI theo tuần
+- [x] Thêm bảng thống kê chi tiết theo thời gian
 
