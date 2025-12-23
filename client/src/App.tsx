@@ -145,6 +145,7 @@ import SecurityDashboard from "./pages/SecurityDashboard";
 import IoTDashboard from "./pages/IoTDashboard";
 import AiMlDashboard from "./pages/AiMlDashboard";
 import AdvancedAnalyticsDashboard from "./pages/AdvancedAnalyticsDashboard";
+import NotificationPreferences from "./pages/NotificationPreferences";
 
 function Router() {
   return (
@@ -290,6 +291,7 @@ function Router() {
       <Route path="/iot-dashboard" component={IoTDashboard} />
       <Route path="/ai-ml-dashboard" component={AiMlDashboard} />
       <Route path="/advanced-analytics-dashboard" component={AdvancedAnalyticsDashboard} />
+      <Route path="/notification-preferences" component={NotificationPreferences} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

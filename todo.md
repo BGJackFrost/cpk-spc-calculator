@@ -5292,3 +5292,48 @@
 - [x] Tạo manual chunks cho vendor libraries
 - [x] Tạo LazyPageLoader component với retry logic
 - [x] Tạo lazy loaded wrappers cho các pages lớn
+
+## Phase 3.5 - AI/ML WebSocket, Notification Settings & Background Sync (23/12/2024)
+
+### AI/ML Dashboard WebSocket Integration
+- [ ] Tích hợp useAiPredictionData hook vào AI/ML Dashboard
+- [ ] Thêm realtime predictions display
+- [ ] Thêm model monitoring với live metrics
+- [ ] Thêm realtime anomaly detection alerts
+
+### Notification Settings UI
+- [ ] Tạo NotificationSettingsPage component
+- [ ] Thêm push notification toggle
+- [ ] Thêm notification channel preferences (SPC, OEE, Security, IoT)
+- [ ] Thêm notification schedule settings
+- [ ] Thêm sound/vibration preferences
+
+### Background Sync
+- [ ] Tạo BackgroundSyncService
+- [ ] Implement offline data queue
+- [ ] Thêm sync status indicator
+- [ ] Implement retry logic cho failed syncs
+- [ ] Thêm conflict resolution
+
+### Phase 3.5 Completed Tasks (23/12/2024)
+
+#### AI/ML Dashboard WebSocket Integration
+- [x] Tích hợp useAiPredictionData hook vào AI/ML Dashboard
+- [x] Thêm realtime predictions display
+- [x] Thêm realtime connection indicator
+
+#### Notification Settings UI
+- [x] Tạo NotificationPreferencesPage component
+- [x] Thêm push notification toggle
+- [x] Thêm notification channel preferences (SPC, OEE, Security, IoT, System)
+- [x] Thêm quiet hours settings
+- [x] Thêm sound/vibration preferences
+- [x] Thêm email digest settings
+
+#### Background Sync
+- [x] Tạo BackgroundSyncService với queue management
+- [x] Implement offline data queue với localStorage
+- [x] Tạo useBackgroundSync hook
+- [x] Tạo SyncStatusIndicator component
+- [x] Implement retry logic cho failed syncs
+- [x] Thêm service worker sync registration

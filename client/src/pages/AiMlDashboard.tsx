@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
+import { useAiPredictionData, useRealtimeData } from '@/hooks/useRealtimeData';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -44,6 +45,17 @@ import {
 export default function AiMlDashboard() {
   const [activeTab, setActiveTab] = useState('models');
   const [isCreatingModel, setIsCreatingModel] = useState(false);
+
+  // Real-time AI/ML data subscription
+  const { predictions: realtimePredictions, latestPrediction, isConnected, error: sseError } = useAiPredictionData();
+  
+  // Real-time data for AI/ML channels
+  const { messages: aiMessages, lastMessage } = useRealtimeData({
+    channels: ['ai:predictions', 'ai:anomalies', 'ai:model_updates'],
+    onMessage: (event) => {
+      console.log('[AI/ML] Realtime event:', event.type, event.data);
+    }
+  });
 
   // Mock AI/ML data
   const mlStats = {
@@ -175,9 +187,23 @@ export default function AiMlDashboard() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold">AI/ML Dashboard</h1>
-            <p className="text-muted-foreground">
-              Machine learning models, predictions, and anomaly detection
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="text-muted-foreground">
+                Machine learning models, predictions, and anomaly detection
+              </p>
+              {/* Realtime Connection Indicator */}
+              <div className="flex items-center gap-1">
+                <span className={`h-2 w-2 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
+                <span className="text-xs text-muted-foreground">
+                  {isConnected ? 'Live' : 'Offline'}
+                </span>
+              </div>
+              {realtimePredictions.length > 0 && (
+                <Badge variant="outline" className="ml-2">
+                  {realtimePredictions.length} new predictions
+                </Badge>
+              )}
+            </div>
           </div>
           <div className="flex gap-2">
             <Button variant="outline">
