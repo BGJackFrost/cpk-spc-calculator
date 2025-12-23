@@ -149,6 +149,9 @@ export const SPC_MENU: SystemMenuConfig = {
         { id: "cpk-comparison", icon: BarChart3, labelKey: "nav.cpkBenchmark", path: "/cpk-comparison" },
         { id: "shift-cpk-comparison", icon: Clock, labelKey: "nav.shiftAnalysis", path: "/shift-cpk-comparison" },
         { id: "shift-manager", icon: Users, labelKey: "nav.shiftManager", path: "/shift-manager" },
+        { id: "kpi-alert-thresholds", icon: AlertTriangle, labelKey: "nav.kpiAlertThresholds", path: "/kpi-alert-thresholds", adminOnly: true },
+        { id: "weekly-kpi-trend", icon: TrendingUp, labelKey: "nav.weeklyKpiTrend", path: "/weekly-kpi-trend" },
+        { id: "scheduled-kpi-reports", icon: Mail, labelKey: "nav.scheduledKpiReports", path: "/scheduled-kpi-reports", adminOnly: true },
       ],
     },
     {

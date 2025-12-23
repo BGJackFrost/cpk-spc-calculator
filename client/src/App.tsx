@@ -151,6 +151,9 @@ import IoTDashboard from "./pages/IoTDashboard";
 import AiMlDashboard from "./pages/AiMlDashboard";
 import AdvancedAnalyticsDashboard from "./pages/AdvancedAnalyticsDashboard";
 import NotificationPreferences from "./pages/NotificationPreferences";
+import KpiAlertThresholds from "./pages/KpiAlertThresholds";
+import WeeklyKpiTrend from "./pages/WeeklyKpiTrend";
+import ScheduledKpiReports from "./pages/ScheduledKpiReports";
 
 function Router() {
   return (
@@ -192,6 +195,9 @@ function Router() {
       <Route path="/cpk-comparison" component={CpkComparisonDashboard} />
       <Route path="/shift-cpk-comparison" component={ShiftCpkComparison} />
       <Route path="/shift-manager" component={ShiftManagerDashboard} />
+      <Route path="/kpi-alert-thresholds" component={KpiAlertThresholds} />
+      <Route path="/weekly-kpi-trend" component={WeeklyKpiTrend} />
+      <Route path="/scheduled-kpi-reports" component={ScheduledKpiReports} />
       <Route path="/spc-summary-report" component={SpcSummaryReport} />
       <Route path="/realtime-line" component={RealtimeLineDashboard} />
       <Route path="/realtime-machine-config" component={RealtimeMachineConfig} />

@@ -9659,6 +9659,212 @@ Hãy trả về JSON với format:
         }
         const { checkAndSendKPIAlerts } = await import("./services/kpiAlertService");
         return await checkAndSendKPIAlerts(input.productionLineId, input.machineId);
+      }),
+
+    // KPI Alert Thresholds CRUD
+    getAlertThresholds: protectedProcedure.query(async () => {
+      const { getKpiAlertThresholds } = await import("./services/kpiAlertThresholdService");
+      return await getKpiAlertThresholds();
+    }),
+
+    getAlertThresholdByLine: protectedProcedure
+      .input(z.object({ lineId: z.number() }))
+      .query(async ({ input }) => {
+        const { getKpiAlertThresholdByLineId } = await import("./services/kpiAlertThresholdService");
+        return await getKpiAlertThresholdByLineId(input.lineId);
+      }),
+
+    getEffectiveThresholds: protectedProcedure
+      .input(z.object({ lineId: z.number() }))
+      .query(async ({ input }) => {
+        const { getEffectiveThresholds } = await import("./services/kpiAlertThresholdService");
+        return await getEffectiveThresholds(input.lineId);
+      }),
+
+    getLinesWithoutThresholds: protectedProcedure.query(async () => {
+      const { getLinesWithoutThresholds } = await import("./services/kpiAlertThresholdService");
+      return await getLinesWithoutThresholds();
+    }),
+
+    createAlertThreshold: protectedProcedure
+      .input(z.object({
+        productionLineId: z.number(),
+        cpkWarning: z.number().optional(),
+        cpkCritical: z.number().optional(),
+        oeeWarning: z.number().optional(),
+        oeeCritical: z.number().optional(),
+        defectRateWarning: z.number().optional(),
+        defectRateCritical: z.number().optional(),
+        weeklyDeclineThreshold: z.number().optional(),
+        emailAlertEnabled: z.boolean().optional(),
+        alertEmails: z.string().optional()
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin" && ctx.user.role !== "manager") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin or Manager access required" });
+        }
+        const { createKpiAlertThreshold } = await import("./services/kpiAlertThresholdService");
+        return await createKpiAlertThreshold({ ...input, createdBy: ctx.user.id });
+      }),
+
+    updateAlertThreshold: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        cpkWarning: z.number().optional(),
+        cpkCritical: z.number().optional(),
+        oeeWarning: z.number().optional(),
+        oeeCritical: z.number().optional(),
+        defectRateWarning: z.number().optional(),
+        defectRateCritical: z.number().optional(),
+        weeklyDeclineThreshold: z.number().optional(),
+        emailAlertEnabled: z.boolean().optional(),
+        alertEmails: z.string().optional()
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin" && ctx.user.role !== "manager") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin or Manager access required" });
+        }
+        const { id, ...data } = input;
+        const { updateKpiAlertThreshold } = await import("./services/kpiAlertThresholdService");
+        return await updateKpiAlertThreshold(id, data);
+      }),
+
+    deleteAlertThreshold: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { deleteKpiAlertThreshold } = await import("./services/kpiAlertThresholdService");
+        return await deleteKpiAlertThreshold(input.id);
+      }),
+
+    // Weekly KPI Trend
+    getWeeklyTrend: protectedProcedure
+      .input(z.object({
+        lineId: z.number().nullable(),
+        weeks: z.number().default(12)
+      }))
+      .query(async ({ input }) => {
+        const { getWeeklyTrendData } = await import("./services/weeklyKpiService");
+        return await getWeeklyTrendData(input.lineId, input.weeks);
+      }),
+
+    getAllLinesWeeklyKpi: protectedProcedure.query(async () => {
+      const { getAllLinesWeeklyKpi } = await import("./services/weeklyKpiService");
+      return await getAllLinesWeeklyKpi();
+    }),
+
+    getWeekComparison: protectedProcedure
+      .input(z.object({
+        lineId: z.number().nullable(),
+        weeksToCompare: z.array(z.number())
+      }))
+      .query(async ({ input }) => {
+        const { getWeekComparison } = await import("./services/weeklyKpiService");
+        return await getWeekComparison(input.lineId, input.weeksToCompare);
+      }),
+
+    // Scheduled KPI Reports
+    getScheduledReports: protectedProcedure.query(async () => {
+      const { getScheduledKpiReports } = await import("./services/scheduledKpiReportService");
+      return await getScheduledKpiReports();
+    }),
+
+    getScheduledReportById: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        const { getScheduledKpiReportById } = await import("./services/scheduledKpiReportService");
+        return await getScheduledKpiReportById(input.id);
+      }),
+
+    createScheduledReport: protectedProcedure
+      .input(z.object({
+        name: z.string(),
+        description: z.string().optional(),
+        frequency: z.enum(["daily", "weekly", "monthly"]),
+        dayOfWeek: z.number().min(0).max(6).optional(),
+        dayOfMonth: z.number().min(1).max(31).optional(),
+        timeOfDay: z.string().optional(),
+        productionLineIds: z.array(z.number()).optional(),
+        reportType: z.enum(["shift_summary", "kpi_comparison", "trend_analysis", "full_report"]).optional(),
+        includeCharts: z.boolean().optional(),
+        includeDetails: z.boolean().optional(),
+        recipients: z.array(z.string().email()),
+        ccRecipients: z.array(z.string().email()).optional()
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin" && ctx.user.role !== "manager") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin or Manager access required" });
+        }
+        const { createScheduledKpiReport } = await import("./services/scheduledKpiReportService");
+        return await createScheduledKpiReport({ ...input, createdBy: ctx.user.id });
+      }),
+
+    updateScheduledReport: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        name: z.string().optional(),
+        description: z.string().optional(),
+        frequency: z.enum(["daily", "weekly", "monthly"]).optional(),
+        dayOfWeek: z.number().min(0).max(6).optional(),
+        dayOfMonth: z.number().min(1).max(31).optional(),
+        timeOfDay: z.string().optional(),
+        productionLineIds: z.array(z.number()).optional(),
+        reportType: z.enum(["shift_summary", "kpi_comparison", "trend_analysis", "full_report"]).optional(),
+        includeCharts: z.boolean().optional(),
+        includeDetails: z.boolean().optional(),
+        recipients: z.array(z.string().email()).optional(),
+        ccRecipients: z.array(z.string().email()).optional(),
+        isEnabled: z.boolean().optional()
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin" && ctx.user.role !== "manager") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin or Manager access required" });
+        }
+        const { id, ...data } = input;
+        const { updateScheduledKpiReport } = await import("./services/scheduledKpiReportService");
+        return await updateScheduledKpiReport(id, data);
+      }),
+
+    deleteScheduledReport: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { deleteScheduledKpiReport } = await import("./services/scheduledKpiReportService");
+        return await deleteScheduledKpiReport(input.id);
+      }),
+
+    toggleScheduledReport: protectedProcedure
+      .input(z.object({ id: z.number(), enabled: z.boolean() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin" && ctx.user.role !== "manager") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin or Manager access required" });
+        }
+        const { toggleScheduledReport } = await import("./services/scheduledKpiReportService");
+        return await toggleScheduledReport(input.id, input.enabled);
+      }),
+
+    sendReportNow: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin" && ctx.user.role !== "manager") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin or Manager access required" });
+        }
+        const { sendScheduledReport } = await import("./services/scheduledKpiReportService");
+        return await sendScheduledReport(input.id);
+      }),
+
+    getReportHistory: protectedProcedure
+      .input(z.object({
+        reportId: z.number().optional(),
+        limit: z.number().default(50)
+      }))
+      .query(async ({ input }) => {
+        const { getReportHistory } = await import("./services/scheduledKpiReportService");
+        return await getReportHistory(input.reportId, input.limit);
       })
   }),
 

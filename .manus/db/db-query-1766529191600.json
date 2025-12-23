@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `kpi_report_history` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `scheduled_report_id` int NOT NULL,\n  `report_name` varchar(255) NOT NULL,\n  `report_type` varchar(50) NOT NULL,\n  `frequency` varchar(20) NOT NULL,\n  `recipients` text NOT NULL,\n  `status` enum('sent','failed','pending') NOT NULL DEFAULT 'pending',\n  `error_message` text,\n  `report_data` text,\n  `file_url` varchar(500),\n  `sent_at` timestamp,\n  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  CONSTRAINT `kpi_report_history_id` PRIMARY KEY(`id`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute CREATE TABLE IF NOT EXISTS `kpi_report_history` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `scheduled_report_id` int NOT NULL,\n  `report_name` varchar(255) NOT NULL,\n  `report_type` varchar(50) NOT NULL,\n  `frequency` varchar(20) NOT NULL,\n  `recipients` text NOT NULL,\n  `status` enum('sent','failed','pending') NOT NULL DEFAULT 'pending',\n  `error_message` text,\n  `report_data` text,\n  `file_url` varchar(500),\n  `sent_at` timestamp,\n  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  CONSTRAINT `kpi_report_history_id` PRIMARY KEY(`id`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1675
+}

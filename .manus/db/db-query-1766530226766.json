@@ -1,0 +1,66 @@
+{
+  "query": "SELECT * FROM local_users LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute SELECT * FROM local_users LIMIT 5;",
+  "rows": [
+    {
+      "id": "30001",
+      "username": "dcnkid",
+      "passwordHash": "$2b$10$s/1Kj7031oFN2sofXOIG2.zVvZ51vX6dtoRVmvRy3KIfs5HyczB2a",
+      "name": "Nguyễn Văn Tiến",
+      "email": "dcnkid@gmail.com",
+      "role": "user",
+      "isActive": "1",
+      "mustChangePassword": "1",
+      "createdAt": "2025-12-15 03:46:14",
+      "updatedAt": "2025-12-15 03:46:14",
+      "lastSignedIn": "NULL",
+      "avatar": "NULL"
+    },
+    {
+      "id": "30002",
+      "username": "admin",
+      "passwordHash": "$2b$10$YrY2aJMmw/jr/2z7pEeABOgySQJrDxandM2DLPE/TNyl0Ggov76Pu",
+      "name": "Administrator",
+      "email": "admin@local.system",
+      "role": "admin",
+      "isActive": "1",
+      "mustChangePassword": "0",
+      "createdAt": "2025-12-15 03:51:39",
+      "updatedAt": "2025-12-16 09:22:24",
+      "lastSignedIn": "2025-12-16 09:22:25",
+      "avatar": "NULL"
+    },
+    {
+      "id": "30003",
+      "username": "operator",
+      "passwordHash": "$2b$10$VWzECmiJyu3dw0/WMudIROCv0LuWbNQQA56TEhjGY2XgvLKy012y2",
+      "name": "Operator User",
+      "email": "operator@local.system",
+      "role": "user",
+      "isActive": "1",
+      "mustChangePassword": "0",
+      "createdAt": "2025-12-15 03:58:59",
+      "updatedAt": "2025-12-15 03:58:59",
+      "lastSignedIn": "NULL",
+      "avatar": "NULL"
+    },
+    {
+      "id": "30004",
+      "username": "viewer",
+      "passwordHash": "$2b$10$u6/Kb5mKzX9EAZg6UtkkD.UrrHsI/wwgmdhpaZRU7bL8sM5pStxk6",
+      "name": "Viewer User",
+      "email": "viewer@local.system",
+      "role": "user",
+      "isActive": "1",
+      "mustChangePassword": "0",
+      "createdAt": "2025-12-15 03:59:00",
+      "updatedAt": "2025-12-15 03:59:00",
+      "lastSignedIn": "NULL",
+      "avatar": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tusername\tpasswordHash\tname\temail\trole\tisActive\tmustChangePassword\tcreatedAt\tupdatedAt\tlastSignedIn\tavatar\n30001\tdcnkid\t$2b$10$s/1Kj7031oFN2sofXOIG2.zVvZ51vX6dtoRVmvRy3KIfs5HyczB2a\tNguyễn Văn Tiến\tdcnkid@gmail.com\tuser\t1\t1\t2025-12-15 03:46:14\t2025-12-15 03:46:14\tNULL\tNULL\n30002\tadmin\t$2b$10$YrY2aJMmw/jr/2z7pEeABOgySQJrDxandM2DLPE/TNyl0Ggov76Pu\tAdministrator\tadmin@local.system\tadmin\t1\t0\t2025-12-15 03:51:39\t2025-12-16 09:22:24\t2025-12-16 09:22:25\tNULL\n30003\toperator\t$2b$10$VWzECmiJyu3dw0/WMudIROCv0LuWbNQQA56TEhjGY2XgvLKy012y2\tOperator User\toperator@local.system\tuser\t1\t0\t2025-12-15 03:58:59\t2025-12-15 03:58:59\tNULL\tNULL\n30004\tviewer\t$2b$10$u6/Kb5mKzX9EAZg6UtkkD.UrrHsI/wwgmdhpaZRU7bL8sM5pStxk6\tViewer User\tviewer@local.system\tuser\t1\t0\t2025-12-15 03:59:00\t2025-12-15 03:59:00\tNULL\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 1542
+}

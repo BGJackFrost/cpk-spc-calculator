@@ -5690,3 +5690,63 @@
 - [x] Gửi email cảnh báo khi KPI giảm quá ngưỡng
 - [x] Hiển thị cảnh báo trên Dashboard
 - [x] Cấu hình ngưỡng cảnh báo KPI
+
+
+## Phase 40: Cấu hình KPI Alert và Báo cáo tự động
+
+### Cấu hình ngưỡng cảnh báo KPI tùy chỉnh cho từng dây chuyền
+- [x] Tạo bảng kpi_alert_thresholds (productionLineId, cpkWarning, cpkCritical, oeeWarning, oeeCritical)
+- [x] Tạo API CRUD cho kpi_alert_thresholds
+- [x] Tạo trang cấu hình ngưỡng KPI cho từng dây chuyền (/kpi-alert-thresholds)
+- [ ] Tích hợp ngưỡng tùy chỉnh vào logic kiểm tra cảnh báo
+- [ ] Hiển thị ngưỡng đã cấu hình trên Shift Manager Dashboard
+
+### Biểu đồ trend so sánh nhiều tuần liên tiếp
+- [x] Tạo API lấy dữ liệu KPI cho nhiều tuần (4-12 tuần) - getWeeklyTrend
+- [x] Tạo biểu đồ ComposedChart so sánh CPK nhiều tuần
+- [x] Tạo biểu đồ ComposedChart so sánh OEE nhiều tuần
+- [x] Thêm bộ lọc chọn số tuần hiển thị (4/8/12 tuần)
+- [x] Thêm highlight tuần có KPI giảm mạnh (cảnh báo màu vàng)
+
+### Gửi báo cáo tự động qua email theo lịch định kỳ
+- [x] Tạo bảng scheduled_kpi_reports (userId, frequency, recipients, enabled)
+- [x] Tạo API CRUD cho scheduled_kpi_reports
+- [x] Tạo trang cấu hình lịch gửi báo cáo (/scheduled-kpi-reports)
+- [ ] Tạo scheduled job gửi báo cáo theo lịch (daily/weekly/monthly)
+- [ ] Tạo template email báo cáo KPI với biểu đồ và thống kê
+
+
+
+## Phase 40.1: Rà soát và Ưu tiên Nghiệp vụ
+
+### Tổng quan tiến độ
+- Tổng số task: 3440 (2805 hoàn thành + 635 chưa hoàn thành)
+- Tỷ lệ hoàn thành: 81.5%
+
+### Phân loại task chưa hoàn thành theo ưu tiên
+
+#### Ưu tiên 1: Nghiệp vụ/Chức năng cốt lõi
+- [ ] Tích hợp ngưỡng tùy chỉnh vào logic kiểm tra cảnh báo (Phase 40)
+- [ ] Hiển thị ngưỡng đã cấu hình trên Shift Manager Dashboard (Phase 40)
+- [ ] Tạo scheduled job gửi báo cáo theo lịch (daily/weekly/monthly) (Phase 40)
+- [ ] Tạo template email báo cáo KPI với biểu đồ và thống kê (Phase 40)
+- [ ] Tự động tổng hợp vào spc_summary_stats theo ca/ngày/tuần/tháng
+- [ ] Hiển thị cảnh báo CPK realtime khi có vi phạm
+
+#### Ưu tiên 2: Báo cáo/Thống kê
+- [ ] Xuất PDF với thống kê và biểu đồ
+- [ ] Hiển thị PDF trong modal trước khi tải xuống
+- [ ] Tích hợp template vào export PDF
+- [ ] Biểu đồ so sánh CPK giữa các ca
+
+#### Ưu tiên 3: Tài liệu/Đào tạo
+- [ ] Cập nhật UPGRADE_PLAN.md với tiến độ mới nhất
+- [ ] Đưa ra kế hoạch hoàn thiện hệ thống
+
+#### Ưu tiên 4: Tính năng nâng cao (tương lai)
+- [ ] Tạo module dataCollector.ts với các adapter cho database/file/API
+- [ ] Implement OPC UA Adapter
+- [ ] WebSocket realtime updates
+- [ ] Alarm management system
+- [ ] Machine overview dashboard
+

@@ -3523,3 +3523,100 @@ export const licenseNotificationLogs = mysqlTable("license_notification_logs", {
 });
 export type LicenseNotificationLog = typeof licenseNotificationLogs.$inferSelect;
 export type InsertLicenseNotificationLog = typeof licenseNotificationLogs.$inferInsert;
+
+
+/**
+ * KPI Alert Thresholds - Ngưỡng cảnh báo KPI cho từng dây chuyền
+ */
+export const kpiAlertThresholds = mysqlTable("kpi_alert_thresholds", {
+  id: int("id").autoincrement().primaryKey(),
+  productionLineId: int("production_line_id").notNull(),
+  cpkWarning: decimal("cpk_warning", { precision: 5, scale: 3 }).notNull().default("1.33"),
+  cpkCritical: decimal("cpk_critical", { precision: 5, scale: 3 }).notNull().default("1.00"),
+  oeeWarning: decimal("oee_warning", { precision: 5, scale: 2 }).notNull().default("75.00"),
+  oeeCritical: decimal("oee_critical", { precision: 5, scale: 2 }).notNull().default("60.00"),
+  defectRateWarning: decimal("defect_rate_warning", { precision: 5, scale: 2 }).notNull().default("2.00"),
+  defectRateCritical: decimal("defect_rate_critical", { precision: 5, scale: 2 }).notNull().default("5.00"),
+  weeklyDeclineThreshold: decimal("weekly_decline_threshold", { precision: 5, scale: 2 }).notNull().default("-5.00"),
+  emailAlertEnabled: int("email_alert_enabled").notNull().default(1),
+  alertEmails: text("alert_emails"), // Comma-separated emails
+  createdBy: int("created_by"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type KpiAlertThreshold = typeof kpiAlertThresholds.$inferSelect;
+export type InsertKpiAlertThreshold = typeof kpiAlertThresholds.$inferInsert;
+
+/**
+ * Scheduled KPI Reports - Lịch gửi báo cáo KPI tự động
+ */
+export const scheduledKpiReports = mysqlTable("scheduled_kpi_reports", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  frequency: mysqlEnum("frequency", ["daily", "weekly", "monthly"]).notNull().default("weekly"),
+  dayOfWeek: int("day_of_week"), // 0-6 for weekly (0=Sunday)
+  dayOfMonth: int("day_of_month"), // 1-31 for monthly
+  timeOfDay: varchar("time_of_day", { length: 5 }).notNull().default("08:00"), // HH:MM format
+  productionLineIds: text("production_line_ids"), // JSON array of line IDs, null = all
+  reportType: mysqlEnum("report_type", ["shift_summary", "kpi_comparison", "trend_analysis", "full_report"]).notNull().default("shift_summary"),
+  includeCharts: int("include_charts").notNull().default(1),
+  includeDetails: int("include_details").notNull().default(1),
+  recipients: text("recipients").notNull(), // Comma-separated emails
+  ccRecipients: text("cc_recipients"), // Comma-separated emails
+  isEnabled: int("is_enabled").notNull().default(1),
+  lastSentAt: timestamp("last_sent_at"),
+  lastStatus: mysqlEnum("last_status", ["success", "failed", "pending"]),
+  lastError: text("last_error"),
+  createdBy: int("created_by"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type ScheduledKpiReport = typeof scheduledKpiReports.$inferSelect;
+export type InsertScheduledKpiReport = typeof scheduledKpiReports.$inferInsert;
+
+/**
+ * KPI Report History - Lịch sử gửi báo cáo KPI
+ */
+export const kpiReportHistory = mysqlTable("kpi_report_history", {
+  id: int("id").autoincrement().primaryKey(),
+  scheduledReportId: int("scheduled_report_id").notNull(),
+  reportName: varchar("report_name", { length: 255 }).notNull(),
+  reportType: varchar("report_type", { length: 50 }).notNull(),
+  frequency: varchar("frequency", { length: 20 }).notNull(),
+  recipients: text("recipients").notNull(),
+  status: mysqlEnum("status", ["sent", "failed", "pending"]).notNull().default("pending"),
+  errorMessage: text("error_message"),
+  reportData: text("report_data"), // JSON summary of report content
+  fileUrl: varchar("file_url", { length: 500 }), // S3 URL if saved
+  sentAt: timestamp("sent_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+export type KpiReportHistory = typeof kpiReportHistory.$inferSelect;
+export type InsertKpiReportHistory = typeof kpiReportHistory.$inferInsert;
+
+/**
+ * Weekly KPI Snapshots - Lưu trữ KPI theo tuần để so sánh
+ */
+export const weeklyKpiSnapshots = mysqlTable("weekly_kpi_snapshots", {
+  id: int("id").autoincrement().primaryKey(),
+  productionLineId: int("production_line_id").notNull(),
+  weekNumber: int("week_number").notNull(), // ISO week number
+  year: int("year").notNull(),
+  weekStartDate: timestamp("week_start_date").notNull(),
+  weekEndDate: timestamp("week_end_date").notNull(),
+  avgCpk: decimal("avg_cpk", { precision: 6, scale: 4 }),
+  minCpk: decimal("min_cpk", { precision: 6, scale: 4 }),
+  maxCpk: decimal("max_cpk", { precision: 6, scale: 4 }),
+  avgOee: decimal("avg_oee", { precision: 5, scale: 2 }),
+  minOee: decimal("min_oee", { precision: 5, scale: 2 }),
+  maxOee: decimal("max_oee", { precision: 5, scale: 2 }),
+  avgDefectRate: decimal("avg_defect_rate", { precision: 5, scale: 2 }),
+  totalSamples: int("total_samples").notNull().default(0),
+  totalDefects: int("total_defects").notNull().default(0),
+  shiftData: text("shift_data"), // JSON with shift-level breakdown
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type WeeklyKpiSnapshot = typeof weeklyKpiSnapshots.$inferSelect;
+export type InsertWeeklyKpiSnapshot = typeof weeklyKpiSnapshots.$inferInsert;
