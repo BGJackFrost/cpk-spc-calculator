@@ -551,6 +551,15 @@ export function initScheduledJobs(): void {
   
   console.log('[ScheduledJob] Scheduled: KPI decline alert check at 8:00 AM (Asia/Ho_Chi_Minh)');
   
+  // Scheduled KPI reports processor - runs every minute to check for due reports
+  cron.schedule('0 * * * * *', async () => {
+    await processScheduledKpiReports();
+  }, {
+    timezone: 'Asia/Ho_Chi_Minh'
+  });
+  
+  console.log('[ScheduledJob] Scheduled: KPI report processor every minute (Asia/Ho_Chi_Minh)');
+  
   jobsInitialized = true;
   console.log('[ScheduledJob] All scheduled jobs initialized successfully');
 }
@@ -3073,35 +3082,55 @@ export async function triggerMySqlToPostgresSync(): Promise<{ tables: number; ro
 /**
  * Check KPI decline and send alerts
  * Runs daily to compare current week KPIs with previous week
+ * Uses custom thresholds from kpi_alert_thresholds table for each production line
  */
 export async function checkKPIDeclineAlerts(): Promise<{
   checked: boolean;
-  cpkAlert: boolean;
-  oeeAlert: boolean;
-  emailSent: boolean;
-  ownerNotified: boolean;
+  totalLines: number;
+  alertsTriggered: number;
+  emailsSent: number;
+  results: Array<{
+    productionLineId: number;
+    productionLineName: string;
+    cpkAlert: boolean;
+    oeeAlert: boolean;
+    cpkAbsoluteAlert: boolean;
+    oeeAbsoluteAlert: boolean;
+  }>;
 }> {
-  console.log('[ScheduledJob] Checking KPI decline alerts...');
+  console.log('[ScheduledJob] Checking KPI decline alerts with custom thresholds...');
   
   try {
-    const { checkAndSendKPIAlerts } = await import('./services/kpiAlertService');
-    const result = await checkAndSendKPIAlerts();
+    const { checkAllLinesKPIAlerts } = await import('./services/kpiAlertService');
+    const result = await checkAllLinesKPIAlerts();
     
-    if (result.cpkAlert || result.oeeAlert) {
-      console.log(`[ScheduledJob] KPI alerts triggered - CPK: ${result.cpkAlert}, OEE: ${result.oeeAlert}`);
+    console.log(`[ScheduledJob] Checked ${result.totalLines} production lines`);
+    console.log(`[ScheduledJob] Alerts triggered: ${result.alertsTriggered}`);
+    console.log(`[ScheduledJob] Emails sent: ${result.emailsSent}`);
+    
+    if (result.alertsTriggered > 0) {
+      console.log('[ScheduledJob] Lines with alerts:');
+      result.results
+        .filter(r => r.cpkAlert || r.oeeAlert || r.cpkAbsoluteAlert || r.oeeAbsoluteAlert)
+        .forEach(r => {
+          console.log(`  - ${r.productionLineName}: CPK=${r.cpkAlert || r.cpkAbsoluteAlert}, OEE=${r.oeeAlert || r.oeeAbsoluteAlert}`);
+        });
     } else {
-      console.log('[ScheduledJob] No KPI alerts - KPIs are stable');
+      console.log('[ScheduledJob] No KPI alerts - all KPIs are within thresholds');
     }
     
-    return result;
+    return {
+      checked: true,
+      ...result
+    };
   } catch (error) {
     console.error('[ScheduledJob] Error checking KPI decline alerts:', error);
     return {
       checked: false,
-      cpkAlert: false,
-      oeeAlert: false,
-      emailSent: false,
-      ownerNotified: false,
+      totalLines: 0,
+      alertsTriggered: 0,
+      emailsSent: 0,
+      results: [],
     };
   }
 }
@@ -3111,10 +3140,56 @@ export async function checkKPIDeclineAlerts(): Promise<{
  */
 export async function triggerKPIDeclineCheck(): Promise<{
   checked: boolean;
-  cpkAlert: boolean;
-  oeeAlert: boolean;
-  emailSent: boolean;
-  ownerNotified: boolean;
+  totalLines: number;
+  alertsTriggered: number;
+  emailsSent: number;
+  results: Array<{
+    productionLineId: number;
+    productionLineName: string;
+    cpkAlert: boolean;
+    oeeAlert: boolean;
+    cpkAbsoluteAlert: boolean;
+    oeeAbsoluteAlert: boolean;
+  }>;
 }> {
   return await checkKPIDeclineAlerts();
+}
+
+/**
+ * Process scheduled KPI reports
+ * Checks for due reports and sends them according to configured schedule
+ */
+export async function processScheduledKpiReports(): Promise<{
+  processed: number;
+  sent: number;
+  failed: number;
+}> {
+  console.log('[ScheduledJob] Processing scheduled KPI reports...');
+  
+  try {
+    const { processScheduledReports } = await import('./services/scheduledKpiReportService');
+    const result = await processScheduledReports();
+    
+    console.log(`[ScheduledJob] KPI Reports - Processed: ${result.processed}, Sent: ${result.sent}, Failed: ${result.failed}`);
+    
+    return result;
+  } catch (error) {
+    console.error('[ScheduledJob] Error processing scheduled KPI reports:', error);
+    return {
+      processed: 0,
+      sent: 0,
+      failed: 0,
+    };
+  }
+}
+
+/**
+ * Manually trigger scheduled KPI reports processing (for testing)
+ */
+export async function triggerScheduledKpiReports(): Promise<{
+  processed: number;
+  sent: number;
+  failed: number;
+}> {
+  return await processScheduledKpiReports();
 }

@@ -7,12 +7,16 @@ import { getDb } from "../db";
 import { 
   scheduledKpiReports, 
   kpiReportHistory,
-  productionLines 
+  productionLines,
+  kpiAlertThresholds,
+  spcAnalysisHistory
 } from "../../drizzle/schema";
-import { eq, and, desc, sql, lte, gte } from "drizzle-orm";
+import { eq, and, desc, sql, lte, gte, inArray } from "drizzle-orm";
 import { sendEmail } from "../emailService";
 import { getWeeklyTrendData } from "./weeklyKpiService";
 import { getShiftKPIData, getMachinePerformanceData } from "./shiftManagerService";
+import { generateKPIReportEmail, KPIReportData } from "./kpiReportEmailTemplate";
+import { getThresholdForLine } from "./kpiAlertService";
 
 export interface ScheduledKpiReport {
   id: number;
@@ -535,7 +539,7 @@ async function generateReportContent(
 }
 
 /**
- * Send scheduled report
+ * Send scheduled report using enhanced email template
  */
 export async function sendScheduledReport(reportId: number): Promise<{
   success: boolean;
@@ -548,18 +552,19 @@ export async function sendScheduledReport(reportId: number): Promise<{
   if (!report) return { success: false, error: "Report not found" };
 
   try {
-    // Generate report content
-    const { subject, htmlContent, summary } = await generateReportContent(report);
+    // Generate enhanced report data
+    const reportData = await generateEnhancedReportData(report);
+    
+    // Generate email content using the new template
+    const { html: htmlContent, text: textContent } = generateKPIReportEmail(reportData);
+    
+    const subject = `📊 ${report.name} - ${new Date().toLocaleDateString("vi-VN")}`;
 
     // Send email to all recipients
     const allRecipients = [...report.recipients, ...report.ccRecipients];
     
     for (const recipient of report.recipients) {
-      await sendEmail({
-        to: recipient,
-        subject,
-        html: htmlContent
-      });
+      await sendEmail(recipient, subject, htmlContent);
     }
 
     // Log success
@@ -570,7 +575,7 @@ export async function sendScheduledReport(reportId: number): Promise<{
       frequency: report.frequency,
       recipients: allRecipients.join(","),
       status: "sent",
-      reportData: JSON.stringify(summary),
+      reportData: JSON.stringify(reportData),
       sentAt: new Date()
     });
 
@@ -608,6 +613,196 @@ export async function sendScheduledReport(reportId: number): Promise<{
 
     return { success: false, error: errorMessage };
   }
+}
+
+/**
+ * Generate enhanced report data for the new email template
+ */
+async function generateEnhancedReportData(report: ScheduledKpiReport): Promise<KPIReportData> {
+  const db = await getDb();
+  const now = new Date();
+  
+  // Calculate date range based on frequency
+  let startDate: Date;
+  switch (report.frequency) {
+    case "daily":
+      startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      break;
+    case "weekly":
+      startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      break;
+    case "monthly":
+      startDate = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+      break;
+    default:
+      startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  }
+
+  // Get production lines data
+  const productionLinesData: KPIReportData["productionLines"] = [];
+  const alerts: KPIReportData["alerts"] = [];
+  const recommendations: string[] = [];
+
+  if (db) {
+    // Get production lines
+    let lines;
+    if (report.productionLineIds && report.productionLineIds.length > 0) {
+      lines = await db.select()
+        .from(productionLines)
+        .where(sql`${productionLines.id} IN (${report.productionLineIds.join(",")})`);
+    } else {
+      lines = await db.select().from(productionLines).limit(20);
+    }
+
+    // Get KPI data for each line
+    for (const line of lines) {
+      // Get threshold config for this line
+      const threshold = await getThresholdForLine(line.id);
+      
+      // Get SPC analysis data for this line
+      const analysisData = await db.select()
+        .from(spcAnalysisHistory)
+        .where(
+          and(
+            eq(spcAnalysisHistory.productionLineId, line.id),
+            gte(spcAnalysisHistory.createdAt, startDate),
+            lte(spcAnalysisHistory.createdAt, now)
+          )
+        )
+        .orderBy(desc(spcAnalysisHistory.createdAt));
+
+      // Calculate averages
+      const validCpk = analysisData.filter(a => a.cpk !== null).map(a => parseFloat(String(a.cpk)));
+      const validOee = analysisData.filter(a => a.oee !== null).map(a => parseFloat(String(a.oee)));
+      
+      const avgCpk = validCpk.length > 0 ? validCpk.reduce((a, b) => a + b, 0) / validCpk.length : null;
+      const avgOee = validOee.length > 0 ? validOee.reduce((a, b) => a + b, 0) / validOee.length : null;
+      
+      // Calculate defect rate (simplified)
+      const defectRate = analysisData.length > 0 
+        ? (analysisData.filter(a => a.cpk !== null && parseFloat(String(a.cpk)) < 1.0).length / analysisData.length) * 100
+        : null;
+
+      // Determine trends (compare with previous period)
+      let cpkTrend: "up" | "down" | "stable" = "stable";
+      let oeeTrend: "up" | "down" | "stable" = "stable";
+      
+      if (validCpk.length >= 4) {
+        const firstHalf = validCpk.slice(0, Math.floor(validCpk.length / 2));
+        const secondHalf = validCpk.slice(Math.floor(validCpk.length / 2));
+        const firstAvg = firstHalf.reduce((a, b) => a + b, 0) / firstHalf.length;
+        const secondAvg = secondHalf.reduce((a, b) => a + b, 0) / secondHalf.length;
+        if (secondAvg > firstAvg * 1.02) cpkTrend = "up";
+        else if (secondAvg < firstAvg * 0.98) cpkTrend = "down";
+      }
+
+      if (validOee.length >= 4) {
+        const firstHalf = validOee.slice(0, Math.floor(validOee.length / 2));
+        const secondHalf = validOee.slice(Math.floor(validOee.length / 2));
+        const firstAvg = firstHalf.reduce((a, b) => a + b, 0) / firstHalf.length;
+        const secondAvg = secondHalf.reduce((a, b) => a + b, 0) / secondHalf.length;
+        if (secondAvg > firstAvg * 1.02) oeeTrend = "up";
+        else if (secondAvg < firstAvg * 0.98) oeeTrend = "down";
+      }
+
+      productionLinesData.push({
+        id: line.id,
+        name: line.name,
+        avgCpk,
+        avgOee,
+        defectRate,
+        totalSamples: analysisData.length,
+        cpkTrend,
+        oeeTrend,
+      });
+
+      // Generate alerts based on thresholds
+      if (avgCpk !== null && avgCpk < threshold.cpkCritical) {
+        alerts.push({
+          type: "cpk_critical",
+          message: `CPK ${line.name} dưới ngưỡng critical (${threshold.cpkCritical})`,
+          productionLine: line.name,
+          value: avgCpk,
+          threshold: threshold.cpkCritical,
+        });
+      } else if (avgCpk !== null && avgCpk < threshold.cpkWarning) {
+        alerts.push({
+          type: "cpk_warning",
+          message: `CPK ${line.name} dưới ngưỡng warning (${threshold.cpkWarning})`,
+          productionLine: line.name,
+          value: avgCpk,
+          threshold: threshold.cpkWarning,
+        });
+      }
+
+      if (avgOee !== null && avgOee < threshold.oeeCritical) {
+        alerts.push({
+          type: "oee_critical",
+          message: `OEE ${line.name} dưới ngưỡng critical (${threshold.oeeCritical}%)`,
+          productionLine: line.name,
+          value: avgOee,
+          threshold: threshold.oeeCritical,
+        });
+      } else if (avgOee !== null && avgOee < threshold.oeeWarning) {
+        alerts.push({
+          type: "oee_warning",
+          message: `OEE ${line.name} dưới ngưỡng warning (${threshold.oeeWarning}%)`,
+          productionLine: line.name,
+          value: avgOee,
+          threshold: threshold.oeeWarning,
+        });
+      }
+
+      // Add trend decline alerts
+      if (cpkTrend === "down") {
+        alerts.push({
+          type: "decline",
+          message: `CPK ${line.name} có xu hướng giảm`,
+          productionLine: line.name,
+        });
+      }
+    }
+  }
+
+  // Generate recommendations based on alerts
+  if (alerts.filter(a => a.type.includes("cpk")).length > 0) {
+    recommendations.push("Kiểm tra và hiệu chỉnh máy móc trên các dây chuyền có CPK thấp");
+  }
+  if (alerts.filter(a => a.type.includes("oee")).length > 0) {
+    recommendations.push("Tối ưu hóa thời gian chạy máy và giảm thời gian dừng máy");
+  }
+  if (alerts.filter(a => a.type === "decline").length > 0) {
+    recommendations.push("Phân tích nguyên nhân xu hướng giảm và có biện pháp khắc phục kịp thời");
+  }
+  if (recommendations.length === 0) {
+    recommendations.push("Duy trì các quy trình hiện tại và tiếp tục giám sát KPI");
+  }
+
+  // Get shift data if report type requires it
+  let shiftData: KPIReportData["shiftData"];
+  if (report.reportType === "shift_summary" || report.reportType === "full_report") {
+    const shifts = await getShiftKPIData({ date: now });
+    shiftData = shifts.map(s => ({
+      shift: s.shiftName,
+      avgCpk: s.avgCpk,
+      avgOee: s.avgOee,
+      defectRate: s.defectRate,
+    }));
+  }
+
+  return {
+    reportName: report.name,
+    reportType: report.reportType,
+    frequency: report.frequency,
+    dateRange: {
+      start: startDate,
+      end: now,
+    },
+    productionLines: productionLinesData,
+    shiftData,
+    alerts,
+    recommendations,
+  };
 }
 
 /**

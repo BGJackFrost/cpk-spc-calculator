@@ -5750,3 +5750,23 @@
 - [ ] Alarm management system
 - [ ] Machine overview dashboard
 
+
+## Phase 41: Tích hợp KPI Alert và Scheduled Reports
+
+### 1. Tích hợp ngưỡng KPI tùy chỉnh vào logic kiểm tra cảnh báo
+- [x] Cập nhật kpiAlertService để đọc ngưỡng từ bảng kpi_alert_thresholds
+- [x] Sử dụng ngưỡng tùy chỉnh thay vì ngưỡng mặc định 5%
+- [x] Hiển thị ngưỡng đã cấu hình trên Shift Manager Dashboard
+- [x] Thêm badge cảnh báo khi KPI vi phạm ngưỡng
+
+### 2. Tạo scheduled job gửi báo cáo KPI theo lịch
+- [x] Tạo hàm processScheduledKpiReports trong scheduledJobs.ts
+- [x] Đọc cấu hình từ bảng scheduled_kpi_reports
+- [x] Gửi email báo cáo theo frequency (daily/weekly/monthly)
+- [x] Ghi log kết quả gửi báo cáo
+
+### 3. Thêm template email báo cáo KPI
+- [x] Tạo kpiReportEmailTemplate.ts với HTML template
+- [x] Bao gồm bảng thống kê CPK/OEE theo dây chuyền
+- [x] Bao gồm biểu đồ trend (inline image hoặc base64)
+- [x] Bao gồm danh sách cảnh báo và khuyến nghị

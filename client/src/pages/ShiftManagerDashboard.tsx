@@ -395,23 +395,66 @@ export default function ShiftManagerDashboard() {
           </div>
         </div>
 
-        {/* KPI Decline Alert */}
+        {/* KPI Decline Alert with Custom Thresholds */}
         {kpiComparison && (kpiComparison.cpkDeclineAlert || kpiComparison.oeeDeclineAlert) && (
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Cảnh báo KPI giảm so với tuần trước</AlertTitle>
+            <AlertTitle className="flex items-center gap-2">
+              Cảnh báo KPI giảm so với tuần trước
+              <Badge variant="outline" className="text-xs font-normal">
+                Ngưỡng: {kpiComparison.alertThreshold}%
+              </Badge>
+            </AlertTitle>
             <AlertDescription>
               {kpiComparison.cpkDeclineAlert && (
-                <span className="block">
-                  CPK giảm {Math.abs(kpiComparison.cpkChange || 0).toFixed(1)}% 
-                  (từ {kpiComparison.previousWeek.avgCpk?.toFixed(2)} xuống {kpiComparison.currentWeek.avgCpk?.toFixed(2)})
-                </span>
+                <div className="flex items-center gap-2 mt-1">
+                  <TrendingDown className="h-4 w-4 text-red-500" />
+                  <span>
+                    CPK giảm <strong>{Math.abs(kpiComparison.cpkChange || 0).toFixed(1)}%</strong>
+                    {" "}(từ {kpiComparison.previousWeek.avgCpk?.toFixed(3)} xuống {kpiComparison.currentWeek.avgCpk?.toFixed(3)})
+                  </span>
+                </div>
               )}
               {kpiComparison.oeeDeclineAlert && (
-                <span className="block">
-                  OEE giảm {Math.abs(kpiComparison.oeeChange || 0).toFixed(1)}% 
-                  (từ {kpiComparison.previousWeek.avgOee?.toFixed(1)}% xuống {kpiComparison.currentWeek.avgOee?.toFixed(1)}%)
-                </span>
+                <div className="flex items-center gap-2 mt-1">
+                  <TrendingDown className="h-4 w-4 text-orange-500" />
+                  <span>
+                    OEE giảm <strong>{Math.abs(kpiComparison.oeeChange || 0).toFixed(1)}%</strong>
+                    {" "}(từ {kpiComparison.previousWeek.avgOee?.toFixed(1)}% xuống {kpiComparison.currentWeek.avgOee?.toFixed(1)}%)
+                  </span>
+                </div>
+              )}
+              <div className="mt-2 text-xs text-muted-foreground">
+                Ngưỡng cảnh báo có thể được tùy chỉnh trong phần Cài đặt Ngưỡng KPI
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Absolute KPI Warning (below threshold values) */}
+        {kpiComparison && (
+          (kpiComparison.currentWeek.avgCpk !== null && kpiComparison.currentWeek.avgCpk < 1.33) ||
+          (kpiComparison.currentWeek.avgOee !== null && kpiComparison.currentWeek.avgOee < 75)
+        ) && (
+          <Alert variant="default" className="border-yellow-500 bg-yellow-50 dark:bg-yellow-950">
+            <AlertTriangle className="h-4 w-4 text-yellow-600" />
+            <AlertTitle className="text-yellow-800 dark:text-yellow-200">KPI dưới ngưỡng khuyến nghị</AlertTitle>
+            <AlertDescription className="text-yellow-700 dark:text-yellow-300">
+              {kpiComparison.currentWeek.avgCpk !== null && kpiComparison.currentWeek.avgCpk < 1.33 && (
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-300">
+                    CPK: {kpiComparison.currentWeek.avgCpk.toFixed(3)}
+                  </Badge>
+                  <span className="text-sm">Khuyến nghị CPK ≥ 1.33</span>
+                </div>
+              )}
+              {kpiComparison.currentWeek.avgOee !== null && kpiComparison.currentWeek.avgOee < 75 && (
+                <div className="flex items-center gap-2 mt-1">
+                  <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-300">
+                    OEE: {kpiComparison.currentWeek.avgOee.toFixed(1)}%
+                  </Badge>
+                  <span className="text-sm">Khuyến nghị OEE ≥ 75%</span>
+                </div>
               )}
             </AlertDescription>
           </Alert>
