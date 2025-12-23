@@ -3,6 +3,8 @@
  * Template email báo cáo KPI với biểu đồ và thống kê chi tiết
  */
 
+import { generateTrendChartSvg, generateBarChartSvg, generateGaugeChartSvg, svgToBase64, TrendDataPoint } from "./chartImageService";
+
 export interface KPIReportData {
   reportName: string;
   reportType: "shift_summary" | "kpi_comparison" | "trend_analysis" | "full_report";
@@ -261,6 +263,14 @@ Báo cáo được tạo tự động bởi Hệ thống SPC/CPK Calculator
         </table>
       </div>
       
+      <!-- Inline Charts Section -->
+      <div class="section">
+        <h3 class="section-title">📈 Biểu đồ xu hướng KPI</h3>
+        <div style="text-align: center; margin-bottom: 20px;">
+          ${generateInlineCharts(data)}
+        </div>
+      </div>
+      
       ${data.shiftData && data.shiftData.length > 0 ? `
       <!-- Shift Data -->
       <div class="section">
@@ -392,6 +402,100 @@ function getAlertIcon(type: string): string {
   if (type.includes("warning")) return "🟡";
   if (type.includes("decline")) return "📉";
   return "⚠️";
+}
+
+/**
+ * Tạo biểu đồ inline cho email
+ */
+function generateInlineCharts(data: KPIReportData): string {
+  const charts: string[] = [];
+  
+  // Generate trend chart if weekly trend data exists
+  if (data.weeklyTrend && data.weeklyTrend.length > 0) {
+    const trendData: TrendDataPoint[] = data.weeklyTrend.map(w => ({
+      label: `W${w.week}`,
+      cpk: w.avgCpk,
+      oee: w.avgOee,
+    }));
+    
+    const trendSvg = generateTrendChartSvg(trendData, {
+      width: 600,
+      height: 250,
+      title: "Xu hướng CPK/OEE theo tuần",
+    });
+    const trendBase64 = svgToBase64(trendSvg);
+    charts.push(`<img src="${trendBase64}" alt="Biểu đồ xu hướng" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);" />`);
+  } else if (data.productionLines.length > 0) {
+    // Generate comparison bar chart from production lines
+    const barData = {
+      labels: data.productionLines.map(l => l.name),
+      datasets: [
+        {
+          label: "CPK",
+          data: data.productionLines.map(l => l.avgCpk || 0),
+          color: "#3b82f6",
+        },
+        {
+          label: "OEE/50",
+          data: data.productionLines.map(l => (l.avgOee || 0) / 50),
+          color: "#10b981",
+        },
+      ],
+    };
+    
+    const barSvg = generateBarChartSvg(barData, {
+      width: 600,
+      height: 250,
+      title: "So sánh KPI theo dây chuyền",
+    });
+    const barBase64 = svgToBase64(barSvg);
+    charts.push(`<img src="${barBase64}" alt="Biểu đồ so sánh" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);" />`);
+  }
+  
+  // Generate gauge charts for overall KPI
+  const avgCpk = calculateAverage(data.productionLines.map(l => l.avgCpk));
+  const avgOee = calculateAverage(data.productionLines.map(l => l.avgOee));
+  
+  const gaugeContainer: string[] = [];
+  
+  if (avgCpk !== null) {
+    const cpkGaugeSvg = generateGaugeChartSvg(avgCpk, {
+      width: 180,
+      height: 130,
+      title: "CPK Tổng hợp",
+      min: 0,
+      max: 2,
+      warningThreshold: 1.33,
+      criticalThreshold: 1.0,
+    });
+    const cpkGaugeBase64 = svgToBase64(cpkGaugeSvg);
+    gaugeContainer.push(`<img src="${cpkGaugeBase64}" alt="CPK Gauge" style="display: inline-block; margin: 0 10px;" />`);
+  }
+  
+  if (avgOee !== null) {
+    const oeeGaugeSvg = generateGaugeChartSvg(avgOee, {
+      width: 180,
+      height: 130,
+      title: "OEE Tổng hợp",
+      min: 0,
+      max: 100,
+      warningThreshold: 75,
+      criticalThreshold: 60,
+      unit: "%",
+    });
+    const oeeGaugeBase64 = svgToBase64(oeeGaugeSvg);
+    gaugeContainer.push(`<img src="${oeeGaugeBase64}" alt="OEE Gauge" style="display: inline-block; margin: 0 10px;" />`);
+  }
+  
+  if (gaugeContainer.length > 0) {
+    charts.push(`<div style="margin-top: 20px; text-align: center;">${gaugeContainer.join("")}</div>`);
+  }
+  
+  return charts.length > 0 ? charts.join("") : `
+    <div style="background: #f1f5f9; border-radius: 12px; padding: 40px; text-align: center; color: #64748b;">
+      <p>📊 Biểu đồ sẽ được hiển thị khi có dữ liệu xu hướng</p>
+    </div>
+  `;
 }
 
 /**

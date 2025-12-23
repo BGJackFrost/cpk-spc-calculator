@@ -129,10 +129,11 @@ describe("Phase 39 - Nâng cấp Shift Manager Dashboard", () => {
       const result = await jobs.checkKPIDeclineAlerts();
       
       expect(result).toHaveProperty("checked");
-      expect(result).toHaveProperty("cpkAlert");
-      expect(result).toHaveProperty("oeeAlert");
-      expect(result).toHaveProperty("emailSent");
-      expect(result).toHaveProperty("ownerNotified");
+      expect(result).toHaveProperty("totalLines");
+      expect(result).toHaveProperty("alertsTriggered");
+      expect(result).toHaveProperty("emailsSent");
+      expect(result).toHaveProperty("results");
+      expect(Array.isArray(result.results)).toBe(true);
     });
   });
 

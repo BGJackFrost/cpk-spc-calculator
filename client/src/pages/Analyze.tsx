@@ -43,6 +43,7 @@ import {
 } from "recharts";
 import { Streamdown } from "streamdown";
 import AdvancedCharts from "@/components/AdvancedCharts";
+import SpcChartSelector from "@/components/SpcChartSelector";
 import { useKeyboardShortcuts, createCommonShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { KeyboardShortcutsHelp } from "@/components/KeyboardShortcutsHelp";
 
@@ -1274,6 +1275,25 @@ export default function Analyze() {
               mean={result.mean}
               usl={result.usl}
               lsl={result.lsl}
+            />
+
+            {/* Additional Statistical Charts with Selection */}
+            <SpcChartSelector
+              xBarData={result.xBarData}
+              rangeData={result.rangeData}
+              rawData={result.rawData}
+              mean={result.mean}
+              stdDev={result.stdDev}
+              ucl={result.ucl}
+              lcl={result.lcl}
+              uclR={result.uclR}
+              lclR={result.lclR}
+              usl={result.usl}
+              lsl={result.lsl}
+              cp={result.cp}
+              cpk={result.cpk}
+              cpu={result.cpu}
+              cpl={result.cpl}
             />
 
             {/* LLM Analysis */}

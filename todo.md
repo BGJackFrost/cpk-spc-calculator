@@ -5770,3 +5770,34 @@
 - [x] Bao gồm bảng thống kê CPK/OEE theo dây chuyền
 - [x] Bao gồm biểu đồ trend (inline image hoặc base64)
 - [x] Bao gồm danh sách cảnh báo và khuyến nghị
+
+## Phase 42: UI Cấu hình KPI và Biểu đồ Phân tích
+
+### 1. Trang UI cấu hình ngưỡng KPI
+- [x] Tạo trang KpiThresholdSettings.tsx với CRUD cho kpi_alert_thresholds
+- [x] Thêm API endpoints cho CRUD ngưỡng KPI
+- [x] Form cấu hình ngưỡng CPK/OEE warning/critical
+- [x] Danh sách ngưỡng theo dây chuyền với edit/delete
+- [x] Thêm route và menu vào sidebar
+
+### 2. Biểu đồ inline trong email báo cáo KPI
+- [x] Tạo hàm generateChartImage() để render biểu đồ thành base64
+- [x] Tích hợp biểu đồ CPK trend vào email template
+- [x] Tích hợp biểu đồ OEE trend vào email template
+- [x] Tích hợp biểu đồ so sánh dây chuyền
+
+### 3. Trang quản lý lịch gửi báo cáo KPI
+- [x] Tạo trang ScheduledKpiReports.tsx
+- [x] CRUD cho scheduled_kpi_reports
+- [x] Preview template email trước khi gửi
+- [x] Lịch sử gửi báo cáo với trạng thái
+
+### 4. Biểu đồ phân tích thống kê trong Phân tích SPC
+- [x] Thêm biểu đồ Histogram phân bố dữ liệu
+- [x] Thêm biểu đồ Box Plot
+- [x] Thêm biểu đồ Scatter Plot (tương quan)
+- [x] Thêm biểu đồ Pareto
+- [x] Thêm biểu đồ Run Chart
+- [x] Tạo panel tùy chọn hiển thị biểu đồ
+- [ ] Lưu cấu hình biểu đồ theo user
+
