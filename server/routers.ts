@@ -5230,6 +5230,112 @@ export const appRouter = router({
         return await getLicenseNotificationStats(input?.days || 30);
       }),
 
+    // Dashboard stats
+    getDashboardStats: protectedProcedure.query(async ({ ctx }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+      }
+      const { getLicenseDashboardStats } = await import("./db");
+      return await getLicenseDashboardStats();
+    }),
+
+    // Retry failed notification
+    retryNotification: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        
+        const { getNotificationLogById, updateLicenseNotificationLog } = await import("./db");
+        const log = await getNotificationLogById(input.id);
+        
+        if (!log) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Notification log not found" });
+        }
+        
+        if (log.status !== "failed") {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Only failed notifications can be retried" });
+        }
+        
+        try {
+          const { notifyOwner } = await import("./_core/notification");
+          const success = await notifyOwner({
+            title: log.subject || "License Notification",
+            content: log.content || "",
+          });
+          
+          if (success) {
+            await updateLicenseNotificationLog(input.id, {
+              status: "sent",
+              sentAt: new Date(),
+              retryCount: (log.retryCount || 0) + 1,
+            });
+            return { success: true, message: "Notification sent successfully" };
+          } else {
+            await updateLicenseNotificationLog(input.id, {
+              retryCount: (log.retryCount || 0) + 1,
+              errorMessage: "Failed to send notification",
+            });
+            return { success: false, message: "Failed to send notification" };
+          }
+        } catch (error: any) {
+          await updateLicenseNotificationLog(input.id, {
+            retryCount: (log.retryCount || 0) + 1,
+            errorMessage: error.message || "Unknown error",
+          });
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: error.message || "Failed to retry notification" });
+        }
+      }),
+
+    // Bulk retry failed notifications
+    bulkRetryNotifications: protectedProcedure
+      .input(z.object({ ids: z.array(z.number()) }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        
+        const { getNotificationLogById, updateLicenseNotificationLog } = await import("./db");
+        const { notifyOwner } = await import("./_core/notification");
+        
+        let successCount = 0;
+        let failCount = 0;
+        
+        for (const id of input.ids) {
+          const log = await getNotificationLogById(id);
+          if (!log || log.status !== "failed") {
+            failCount++;
+            continue;
+          }
+          
+          try {
+            const success = await notifyOwner({
+              title: log.subject || "License Notification",
+              content: log.content || "",
+            });
+            
+            if (success) {
+              await updateLicenseNotificationLog(id, {
+                status: "sent",
+                sentAt: new Date(),
+                retryCount: (log.retryCount || 0) + 1,
+              });
+              successCount++;
+            } else {
+              await updateLicenseNotificationLog(id, {
+                retryCount: (log.retryCount || 0) + 1,
+              });
+              failCount++;
+            }
+          } catch (error) {
+            failCount++;
+          }
+        }
+        
+        return { success: true, successCount, failCount, total: input.ids.length };
+      }),
+
     // Check and send scheduled notifications
     processExpiryNotifications: protectedProcedure.mutation(async ({ ctx }) => {
       if (ctx.user.role !== "admin") {

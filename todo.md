@@ -5503,3 +5503,25 @@
 - [ ] Tích hợp lightbox vào WorkstationManagement (chưa có ảnh trong table)
 - [x] Tích hợp lightbox vào FixtureManagement
 - [x] Tích hợp lightbox vào JigManagement
+
+
+### Phase 3.13 Tasks (23/12/2024)
+
+#### Ảnh thumbnail + lightbox cho Machine/Workstation
+- [x] Thêm cột ảnh thumbnail vào bảng MachineManagement
+- [x] Thêm cột ảnh thumbnail vào bảng WorkstationManagement
+- [x] Tích hợp ImageLightbox vào MachineManagement
+- [x] Tích hợp ImageLightbox vào WorkstationManagement
+
+#### Retry email notification failed
+- [x] Thêm API retryNotification trong license router
+- [x] Thêm nút Retry vào trang LicenseNotificationReport
+- [x] Cập nhật trạng thái sau khi retry thành công/thất bại
+- [x] Thêm bulk retry cho nhiều notification cùng lúc
+
+#### Dashboard license với pie chart
+- [x] Tạo trang LicenseDashboard.tsx
+- [x] Pie chart theo loại license (trial/standard/professional/enterprise)
+- [x] Pie chart theo trạng thái (active/pending/expired/revoked)
+- [x] Thống kê tổng quan (tổng số, sắp hết hạn, đã hết hạn)
+- [x] Biểu đồ trend kích hoạt theo tháng

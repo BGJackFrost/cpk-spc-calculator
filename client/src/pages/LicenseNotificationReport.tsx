@@ -31,7 +31,10 @@ import {
   RefreshCw,
   BarChart3,
   Calendar,
-  TrendingUp
+  TrendingUp,
+  RotateCw,
+  CheckSquare,
+  Square
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -59,6 +62,8 @@ export default function LicenseNotificationReport() {
     offset: 0,
   });
   const [statsDays, setStatsDays] = useState(30);
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [retryingId, setRetryingId] = useState<number | null>(null);
 
   const { data: logsData, isLoading, refetch } = trpc.license.getNotificationLogs.useQuery({
     notificationType: filters.notificationType !== "all" ? filters.notificationType : undefined,
@@ -70,6 +75,52 @@ export default function LicenseNotificationReport() {
   });
 
   const { data: stats, isLoading: statsLoading } = trpc.license.getNotificationStats.useQuery({ days: statsDays });
+
+  const retryMutation = trpc.license.retryNotification.useMutation({
+    onSuccess: () => {
+      toast.success("Gửi lại thành công");
+      refetch();
+    },
+    onError: (error) => toast.error(`Lỗi: ${error.message}`),
+    onSettled: () => setRetryingId(null),
+  });
+
+  const bulkRetryMutation = trpc.license.bulkRetryNotifications.useMutation({
+    onSuccess: (result) => {
+      toast.success(`Gửi lại: ${result.successCount} thành công, ${result.failCount} thất bại`);
+      setSelectedIds([]);
+      refetch();
+    },
+    onError: (error) => toast.error(`Lỗi: ${error.message}`),
+  });
+
+  const handleRetry = (id: number) => {
+    setRetryingId(id);
+    retryMutation.mutate({ id });
+  };
+
+  const handleBulkRetry = () => {
+    if (selectedIds.length === 0) {
+      toast.error("Vui lòng chọn ít nhất 1 email");
+      return;
+    }
+    bulkRetryMutation.mutate({ ids: selectedIds });
+  };
+
+  const toggleSelect = (id: number) => {
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
+  const toggleSelectAll = () => {
+    const failedLogs = logsData?.logs.filter(log => log.status === "failed") || [];
+    if (selectedIds.length === failedLogs.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(failedLogs.map(log => log.id));
+    }
+  };
 
   const getTypeBadge = (type: string) => {
     const opt = NOTIFICATION_TYPES.find((t) => t.value === type);
@@ -326,20 +377,74 @@ export default function LicenseNotificationReport() {
               </div>
             ) : (
               <>
+                {/* Bulk Retry Button */}
+                {selectedIds.length > 0 && (
+                  <div className="flex items-center gap-2 mb-4 p-3 bg-muted rounded-lg">
+                    <span className="text-sm">Đã chọn {selectedIds.length} email thất bại</span>
+                    <Button 
+                      size="sm" 
+                      onClick={handleBulkRetry}
+                      disabled={bulkRetryMutation.isPending}
+                    >
+                      {bulkRetryMutation.isPending ? (
+                        <RefreshCw className="h-4 w-4 mr-1 animate-spin" />
+                      ) : (
+                        <RotateCw className="h-4 w-4 mr-1" />
+                      )}
+                      Gửi lại tất cả
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => setSelectedIds([])}
+                    >
+                      Bỏ chọn
+                    </Button>
+                  </div>
+                )}
+
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-[40px]">
+                        <button 
+                          onClick={toggleSelectAll}
+                          className="p-1 hover:bg-muted rounded"
+                          title="Chọn tất cả email thất bại"
+                        >
+                          {selectedIds.length > 0 && selectedIds.length === (logsData?.logs.filter(l => l.status === "failed").length || 0) ? (
+                            <CheckSquare className="h-4 w-4" />
+                          ) : (
+                            <Square className="h-4 w-4" />
+                          )}
+                        </button>
+                      </TableHead>
                       <TableHead>Thời gian</TableHead>
                       <TableHead>License Key</TableHead>
                       <TableHead>Email</TableHead>
                       <TableHead>Loại</TableHead>
                       <TableHead>Trạng thái</TableHead>
                       <TableHead>Tiêu đề</TableHead>
+                      <TableHead className="text-right">Thao tác</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {logsData.logs.map((log) => (
                       <TableRow key={log.id}>
+                        <TableCell>
+                          {log.status === "failed" && (
+                            <button 
+                              onClick={() => toggleSelect(log.id)}
+                              className="p-1 hover:bg-muted rounded"
+                            >
+                              {selectedIds.includes(log.id) ? (
+                                <CheckSquare className="h-4 w-4 text-primary" />
+                              ) : (
+                                <Square className="h-4 w-4" />
+                              )}
+                            </button>
+                          )}
+                        </TableCell>
                         <TableCell className="whitespace-nowrap">
                           {log.createdAt ? new Date(log.createdAt).toLocaleString("vi-VN") : "-"}
                         </TableCell>
@@ -348,6 +453,28 @@ export default function LicenseNotificationReport() {
                         <TableCell>{getTypeBadge(log.notificationType)}</TableCell>
                         <TableCell>{getStatusBadge(log.status)}</TableCell>
                         <TableCell className="max-w-xs truncate">{log.subject}</TableCell>
+                        <TableCell className="text-right">
+                          {log.status === "failed" && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleRetry(log.id)}
+                              disabled={retryingId === log.id}
+                              title="Gửi lại"
+                            >
+                              {retryingId === log.id ? (
+                                <RefreshCw className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <RotateCw className="h-4 w-4" />
+                              )}
+                            </Button>
+                          )}
+                          {log.retryCount && log.retryCount > 0 && (
+                            <span className="text-xs text-muted-foreground ml-1">
+                              ({log.retryCount}x)
+                            </span>
+                          )}
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

@@ -62,6 +62,7 @@ import CpkComparisonDashboard from "./pages/CpkComparisonDashboard";
 import ShiftCpkComparison from "./pages/ShiftCpkComparison";
 import LicenseManagement from "./pages/LicenseManagement";
 import LicenseNotificationReport from "./pages/LicenseNotificationReport";
+import LicenseDashboard from "./pages/LicenseDashboard";
 import LicenseCustomers from "./pages/LicenseCustomers";
 import LicenseRevenue from "./pages/LicenseRevenue";
 import LicenseServerSettings from "./pages/LicenseServerSettings";
@@ -275,6 +276,7 @@ function Router() {
       <Route path="/license-admin" component={LicenseAdmin} />
       <Route path="/license-management" component={LicenseManagement} />
       <Route path="/license-notification-report" component={LicenseNotificationReport} />
+      <Route path="/license-dashboard" component={LicenseDashboard} />
       <Route path="/license-customers" component={LicenseCustomers} />
       <Route path="/license-revenue" component={LicenseRevenue} />
       <Route path="/license-server-settings" component={LicenseServerSettings} />

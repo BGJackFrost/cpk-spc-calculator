@@ -268,6 +268,7 @@ export const LICENSE_MENU: SystemMenuConfig = {
         { id: "license-server-dashboard", icon: Gauge, labelKey: "nav.licenseServerDashboard", path: "/license-server-dashboard", adminOnly: true },
         { id: "license-management", icon: Key, labelKey: "nav.licenseManagement", path: "/license-management", adminOnly: true },
         { id: "license-notification-report", icon: Mail, labelKey: "nav.licenseNotificationReport", path: "/license-notification-report", adminOnly: true },
+        { id: "license-dashboard", icon: BarChart3, labelKey: "nav.licenseDashboard", path: "/license-dashboard", adminOnly: true },
       ],
     },
     {

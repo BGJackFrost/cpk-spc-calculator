@@ -11,7 +11,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { Loader2, Plus, Pencil, Trash2, Cog, Search, Filter, Camera, X } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, Cog, Search, Filter, Camera, X, Image as ImageIcon } from "lucide-react";
+import ImageLightbox, { useImageLightbox } from "@/components/ImageLightbox";
 import { useRef } from "react";
 
 interface Machine {
@@ -69,6 +70,7 @@ export default function MachineManagement() {
   });
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { openLightbox, LightboxComponent } = useImageLightbox();
 
   const { data: machines, isLoading, refetch } = trpc.machine.listAll.useQuery();
   const { data: workstations } = trpc.workstation.listAll.useQuery();
@@ -312,6 +314,7 @@ export default function MachineManagement() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-[60px]">Ảnh</TableHead>
                   <TableHead>Mã</TableHead>
                   <TableHead>Tên máy</TableHead>
                   <TableHead>Công trạm</TableHead>
@@ -324,13 +327,27 @@ export default function MachineManagement() {
               <TableBody>
                 {paginatedMachines?.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                       Chưa có máy nào
                     </TableCell>
                   </TableRow>
                 ) : (
                   paginatedMachines?.map((m: Machine) => (
                     <TableRow key={m.id}>
+                      <TableCell>
+                        {m.imageUrl ? (
+                          <img 
+                            src={m.imageUrl} 
+                            alt={m.name} 
+                            className="w-10 h-10 rounded object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                            onClick={() => openLightbox(m.imageUrl!)}
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded bg-muted flex items-center justify-center">
+                            <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                        )}
+                      </TableCell>
                       <TableCell className="font-mono text-sm">{m.code}</TableCell>
                       <TableCell className="font-medium">{m.name}</TableCell>
                       <TableCell>{getWorkstationName(m.workstationId)}</TableCell>
@@ -579,6 +596,7 @@ export default function MachineManagement() {
           </DialogContent>
         </Dialog>
       </div>
+      <LightboxComponent />
     </DashboardLayout>
   );
 }

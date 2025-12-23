@@ -11,7 +11,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { Loader2, Plus, Pencil, Trash2, Monitor, Search, Filter, Camera, X } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, Monitor, Search, Filter, Camera, X, Image as ImageIcon } from "lucide-react";
+import ImageLightbox, { useImageLightbox } from "@/components/ImageLightbox";
 import { useRef } from "react";
 
 interface Workstation {
@@ -44,6 +45,7 @@ export default function WorkstationManagement() {
   });
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { openLightbox, LightboxComponent } = useImageLightbox();
 
   const { data: workstations, isLoading, refetch } = trpc.workstation.listAll.useQuery();
   const { data: productionLines } = trpc.productionLine.list.useQuery();
@@ -262,6 +264,7 @@ export default function WorkstationManagement() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-[60px]">Ảnh</TableHead>
                   <TableHead>Mã</TableHead>
                   <TableHead>Tên công trạm</TableHead>
                   <TableHead>Dây chuyền</TableHead>
@@ -273,13 +276,27 @@ export default function WorkstationManagement() {
               <TableBody>
                 {filteredWorkstations?.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                       Chưa có công trạm nào
                     </TableCell>
                   </TableRow>
                 ) : (
                   filteredWorkstations?.map((ws: Workstation) => (
                     <TableRow key={ws.id}>
+                      <TableCell>
+                        {ws.imageUrl ? (
+                          <img 
+                            src={ws.imageUrl} 
+                            alt={ws.name} 
+                            className="w-10 h-10 rounded object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                            onClick={() => openLightbox(ws.imageUrl!)}
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded bg-muted flex items-center justify-center">
+                            <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                        )}
+                      </TableCell>
                       <TableCell className="font-mono text-sm">{ws.code}</TableCell>
                       <TableCell className="font-medium">{ws.name}</TableCell>
                       <TableCell>{getProductionLineName(ws.productionLineId)}</TableCell>
@@ -456,6 +473,7 @@ export default function WorkstationManagement() {
           </DialogContent>
         </Dialog>
       </div>
+      <LightboxComponent />
     </DashboardLayout>
   );
 }

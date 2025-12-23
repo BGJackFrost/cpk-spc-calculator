@@ -4140,3 +4140,115 @@ export async function updateLicenseNotificationLog(id: number, data: Partial<Ins
   if (!db) return;
   await db.update(licenseNotificationLogs).set(data).where(eq(licenseNotificationLogs.id, id));
 }
+
+
+export async function getNotificationLogById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const [log] = await db.select().from(licenseNotificationLogs).where(eq(licenseNotificationLogs.id, id));
+  return log || null;
+}
+
+export async function getFailedNotificationLogs(limit: number = 100) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select()
+    .from(licenseNotificationLogs)
+    .where(eq(licenseNotificationLogs.status, "failed"))
+    .orderBy(desc(licenseNotificationLogs.createdAt))
+    .limit(limit);
+}
+
+
+// ============ License Dashboard Stats ============
+export async function getLicenseDashboardStats() {
+  const db = await getDb();
+  if (!db) return {
+    total: 0,
+    byType: [],
+    byStatus: [],
+    expiringIn7Days: 0,
+    expiringIn30Days: 0,
+    expired: 0,
+    activationsByMonth: [],
+  };
+  
+  const now = new Date();
+  const in7Days = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+  const in30Days = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+  
+  // Total count
+  const totalResult = await db.select({ count: sql<number>`count(*)` }).from(licenses);
+  const total = totalResult[0]?.count || 0;
+  
+  // By license type
+  const byType = await db.select({
+    licenseType: licenses.licenseType,
+    count: sql<number>`count(*)`,
+  })
+    .from(licenses)
+    .groupBy(licenses.licenseType);
+  
+  // By status
+  const byStatus = await db.select({
+    status: licenses.licenseStatus,
+    count: sql<number>`count(*)`,
+  })
+    .from(licenses)
+    .groupBy(licenses.licenseStatus);
+  
+  // Expiring in 7 days
+  const expiring7Result = await db.select({ count: sql<number>`count(*)` })
+    .from(licenses)
+    .where(
+      and(
+        eq(licenses.licenseStatus, "active"),
+        gte(licenses.expiresAt, now),
+        lte(licenses.expiresAt, in7Days)
+      )
+    );
+  const expiringIn7Days = expiring7Result[0]?.count || 0;
+  
+  // Expiring in 30 days
+  const expiring30Result = await db.select({ count: sql<number>`count(*)` })
+    .from(licenses)
+    .where(
+      and(
+        eq(licenses.licenseStatus, "active"),
+        gte(licenses.expiresAt, in7Days),
+        lte(licenses.expiresAt, in30Days)
+      )
+    );
+  const expiringIn30Days = expiring30Result[0]?.count || 0;
+  
+  // Already expired
+  const expiredResult = await db.select({ count: sql<number>`count(*)` })
+    .from(licenses)
+    .where(eq(licenses.licenseStatus, "expired"));
+  const expired = expiredResult[0]?.count || 0;
+  
+  // Activations by month (last 12 months)
+  const activationsByMonth = await db.select({
+    month: sql<string>`DATE_FORMAT(activated_at, '%Y-%m')`.as('month'),
+    count: sql<number>`count(*)`,
+  })
+    .from(licenses)
+    .where(
+      and(
+        sql`activated_at IS NOT NULL`,
+        gte(licenses.activatedAt, new Date(now.getFullYear() - 1, now.getMonth(), 1))
+      )
+    )
+    .groupBy(sql`DATE_FORMAT(activated_at, '%Y-%m')`)
+    .orderBy(sql`DATE_FORMAT(activated_at, '%Y-%m')`);
+  
+  return {
+    total,
+    byType,
+    byStatus,
+    expiringIn7Days,
+    expiringIn30Days,
+    expired,
+    activationsByMonth,
+  };
+}
