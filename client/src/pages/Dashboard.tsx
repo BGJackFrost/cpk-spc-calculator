@@ -43,6 +43,7 @@ import NtfStatsWidget from "@/components/NtfStatsWidget";
 import NtfAiMonitor from "@/components/NtfAiMonitor";
 import UnifiedSummaryWidget from "@/components/UnifiedSummaryWidget";
 import { ConnectionPoolWidget } from "@/components/ConnectionPoolWidget";
+import CpkRealtimeAlertWidget from "@/components/CpkRealtimeAlertWidget";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -328,6 +329,9 @@ export default function Dashboard() {
             
             {/* Unified OEE & CPK Summary Widget */}
             <UnifiedSummaryWidget />
+            
+            {/* CPK Realtime Alert Widget */}
+            <CpkRealtimeAlertWidget />
             
             {/* Connection Pool Monitoring Widget */}
             {user?.role === 'admin' && isWidgetVisible("connection_pool") && <ConnectionPoolWidget />}

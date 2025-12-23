@@ -1325,6 +1325,144 @@ const spcRouter = router({
       );
     }),
 
+  // Tổng hợp dữ liệu SPC cho một kế hoạch
+  aggregatePlan: protectedProcedure
+    .input(z.object({
+      planId: z.number(),
+      periodType: z.enum(["shift", "day", "week", "month"]),
+      periodStart: z.date(),
+      periodEnd: z.date(),
+    }))
+    .mutation(async ({ input }) => {
+      const { aggregateSpcData } = await import("./spcAggregationService");
+      const success = await aggregateSpcData(
+        input.planId,
+        input.periodType,
+        input.periodStart,
+        input.periodEnd
+      );
+      return { success };
+    }),
+
+  // Tổng hợp dữ liệu SPC cho tất cả kế hoạch đang hoạt động
+  aggregateAllActivePlans: protectedProcedure
+    .input(z.object({
+      periodType: z.enum(["shift", "day", "week", "month"]),
+    }))
+    .mutation(async ({ input }) => {
+      const { aggregateAllActivePlans } = await import("./spcAggregationService");
+      const count = await aggregateAllActivePlans(input.periodType);
+      return { successCount: count };
+    }),
+
+  // Tổng hợp dữ liệu SPC cho một kế hoạch (tất cả các chu kỳ)
+  aggregatePlanAllPeriods: protectedProcedure
+    .input(z.object({
+      planId: z.number(),
+    }))
+    .mutation(async ({ input }) => {
+      const { aggregatePlanAllPeriods } = await import("./spcAggregationService");
+      const success = await aggregatePlanAllPeriods(input.planId);
+      return { success };
+    }),
+
+  // Backfill dữ liệu lịch sử
+  backfillSummary: protectedProcedure
+    .input(z.object({
+      planId: z.number(),
+      periodType: z.enum(["shift", "day", "week", "month"]),
+      startDate: z.date(),
+      endDate: z.date(),
+    }))
+    .mutation(async ({ input }) => {
+      const { backfillSpcSummary } = await import("./spcAggregationService");
+      const count = await backfillSpcSummary(
+        input.planId,
+        input.periodType,
+        input.startDate,
+        input.endDate
+      );
+      return { successCount: count };
+    }),
+
+  // So sánh CPK giữa các ca
+  compareShiftCpk: protectedProcedure
+    .input(z.object({
+      planId: z.number(),
+      days: z.number().optional().default(7),
+    }))
+    .query(async ({ input }) => {
+      const { compareShiftCpk } = await import("./spcAggregationService");
+      return await compareShiftCpk(input.planId, input.days);
+    }),
+
+  // Lấy thống kê theo ca cho một ngày
+  getShiftSummaryForDay: protectedProcedure
+    .input(z.object({
+      planId: z.number(),
+      date: z.date(),
+    }))
+    .query(async ({ input }) => {
+      const { getShiftSummaryForDay } = await import("./spcAggregationService");
+      return await getShiftSummaryForDay(input.planId, input.date);
+    }),
+
+  // Lấy dữ liệu báo cáo SPC Summary
+  getSummaryReportData: protectedProcedure
+    .input(z.object({
+      planId: z.number(),
+      periodType: z.enum(["shift", "day", "week", "month"]),
+      startDate: z.date(),
+      endDate: z.date(),
+    }))
+    .query(async ({ input }) => {
+      const { getSpcSummaryReportData } = await import("./services/spcSummaryReportService");
+      return await getSpcSummaryReportData(
+        input.planId,
+        input.periodType,
+        input.startDate,
+        input.endDate
+      );
+    }),
+
+  // Xuất báo cáo SPC Summary dạng HTML
+  exportSummaryReportHtml: protectedProcedure
+    .input(z.object({
+      planId: z.number(),
+      periodType: z.enum(["shift", "day", "week", "month"]),
+      startDate: z.date(),
+      endDate: z.date(),
+    }))
+    .mutation(async ({ input }) => {
+      const { generateSpcSummaryReportHtml } = await import("./services/spcSummaryReportService");
+      const html = await generateSpcSummaryReportHtml(
+        input.planId,
+        input.periodType,
+        input.startDate,
+        input.endDate
+      );
+      return { html };
+    }),
+
+  // Xuất báo cáo SPC Summary dạng CSV
+  exportSummaryReportCsv: protectedProcedure
+    .input(z.object({
+      planId: z.number(),
+      periodType: z.enum(["shift", "day", "week", "month"]),
+      startDate: z.date(),
+      endDate: z.date(),
+    }))
+    .mutation(async ({ input }) => {
+      const { generateSpcSummaryCsv } = await import("./services/spcSummaryReportService");
+      const csv = await generateSpcSummaryCsv(
+        input.planId,
+        input.periodType,
+        input.startDate,
+        input.endDate
+      );
+      return { csv };
+    }),
+
   llmAnalysis: protectedProcedure
     .input(z.object({
       productCode: z.string(),

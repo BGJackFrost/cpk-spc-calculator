@@ -5564,3 +5564,48 @@
 - [x] Tạo tài liệu hướng dẫn test QR Scanner trên mobile
 - [x] Tạo tài liệu hướng dẫn test Gantt Chart trên mobile
 - [x] Liệt kê các thiết bị và trình duyệt được hỗ trợ
+
+
+## Phase 35 - SPC Aggregation Service và Cải tiến hệ thống
+
+### SPC Aggregation Service
+- [x] Tạo spcAggregationService.ts với các hàm tổng hợp dữ liệu
+- [x] Hàm getShiftFromHour xác định ca từ giờ
+- [x] Hàm getShiftTimeRange lấy khoảng thời gian ca
+- [x] Hàm getDayTimeRange lấy khoảng thời gian ngày
+- [x] Hàm getWeekTimeRange lấy khoảng thời gian tuần
+- [x] Hàm getMonthTimeRange lấy khoảng thời gian tháng
+- [x] Hàm aggregateSpcData tổng hợp dữ liệu cho một kế hoạch
+- [x] Hàm aggregateAllActivePlans tổng hợp cho tất cả kế hoạch active
+- [x] Hàm aggregatePlanAllPeriods tổng hợp tất cả chu kỳ cho một kế hoạch
+- [x] Hàm backfillSpcSummary backfill dữ liệu lịch sử
+- [x] Hàm getShiftSummaryForDay lấy thống kê theo ca cho một ngày
+- [x] Hàm compareShiftCpk so sánh CPK giữa các ca
+- [x] Hàm triggerAggregationAfterAnalysis trigger sau mỗi phân tích
+
+### API Endpoints cho Aggregation
+- [x] API aggregatePlan tổng hợp dữ liệu cho một kế hoạch
+- [x] API aggregateAllActivePlans tổng hợp cho tất cả kế hoạch active
+- [x] API aggregatePlanAllPeriods tổng hợp tất cả chu kỳ
+- [x] API backfillSummary backfill dữ liệu lịch sử
+- [x] API compareShiftCpk so sánh CPK giữa các ca
+- [x] API getShiftSummaryForDay lấy thống kê theo ca
+
+
+### CPK Realtime Alert Widget
+- [x] Tạo CpkRealtimeAlertWidget component
+- [x] Hiển thị so sánh CPK theo ca (sáng/chiều/đêm)
+- [x] Hiển thị cảnh báo khi CPK dưới ngưỡng
+- [x] Tích hợp với API compareShiftCpk
+- [x] Thêm widget vào Dashboard
+
+
+### SPC Summary Report Service
+- [x] Tạo spcSummaryReportService.ts với các hàm xuất báo cáo
+- [x] Hàm getSpcSummaryReportData - lấy dữ liệu báo cáo
+- [x] Hàm generateSpcSummaryReportHtml - xuất báo cáo HTML
+- [x] Hàm generateSpcSummaryCsv - xuất báo cáo CSV
+- [x] Thêm API endpoints: getSummaryReportData, exportSummaryReportHtml, exportSummaryReportCsv
+- [x] Tạo trang UI SpcSummaryReport.tsx
+- [x] Thêm route /spc-summary-report vào App.tsx
+

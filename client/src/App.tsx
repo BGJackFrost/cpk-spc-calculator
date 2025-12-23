@@ -60,6 +60,7 @@ import QuickSpcPlan from "./pages/QuickSpcPlan";
 import ValidationRulesManagement from "./pages/ValidationRulesManagement";
 import CpkComparisonDashboard from "./pages/CpkComparisonDashboard";
 import ShiftCpkComparison from "./pages/ShiftCpkComparison";
+import SpcSummaryReport from "./pages/SpcSummaryReport";
 import LicenseManagement from "./pages/LicenseManagement";
 import LicenseNotificationReport from "./pages/LicenseNotificationReport";
 import LicenseDashboard from "./pages/LicenseDashboard";
@@ -189,6 +190,7 @@ function Router() {
       <Route path="/validation-rules" component={ValidationRulesManagement} />
       <Route path="/cpk-comparison" component={CpkComparisonDashboard} />
       <Route path="/shift-cpk-comparison" component={ShiftCpkComparison} />
+      <Route path="/spc-summary-report" component={SpcSummaryReport} />
       <Route path="/realtime-line" component={RealtimeLineDashboard} />
       <Route path="/realtime-machine-config" component={RealtimeMachineConfig} />
       <Route path="/realtime-history" component={RealtimeHistory} />
