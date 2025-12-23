@@ -31,6 +31,18 @@ interface SpcViolation {
   description: string;
 }
 
+// SPC Rules configuration from plan
+interface SpcRulesConfig {
+  rule1Enabled?: boolean;
+  rule2Enabled?: boolean;
+  rule3Enabled?: boolean;
+  rule4Enabled?: boolean;
+  rule5Enabled?: boolean;
+  rule6Enabled?: boolean;
+  rule7Enabled?: boolean;
+  rule8Enabled?: boolean;
+}
+
 interface AdvancedChartsProps {
   xBarData: ChartData[];
   rangeData: ChartData[];
@@ -42,6 +54,7 @@ interface AdvancedChartsProps {
   lclR: number;
   usl?: number | null;
   lsl?: number | null;
+  rulesConfig?: SpcRulesConfig;
   violations?: SpcViolation[];
 }
 
@@ -50,7 +63,8 @@ function checkSpcRules(
   data: ChartData[],
   mean: number,
   ucl: number,
-  lcl: number
+  lcl: number,
+  rulesConfig?: SpcRulesConfig
 ): SpcViolation[] {
   const violations: SpcViolation[] = [];
   const sigma = (ucl - mean) / 3;
@@ -61,7 +75,7 @@ function checkSpcRules(
 
   data.forEach((point, idx) => {
     // Rule 1: Point beyond 3σ (UCL/LCL)
-    if (point.value > ucl || point.value < lcl) {
+    if (rulesConfig?.rule1Enabled !== false && (point.value > ucl || point.value < lcl)) {
       violations.push({
         index: point.index,
         ruleNumber: 1,
@@ -71,7 +85,7 @@ function checkSpcRules(
     }
 
     // Rule 2: 9 consecutive points on same side of center
-    if (idx >= 8) {
+    if (rulesConfig?.rule2Enabled !== false && idx >= 8) {
       const last9 = data.slice(idx - 8, idx + 1);
       const allAbove = last9.every(p => p.value > mean);
       const allBelow = last9.every(p => p.value < mean);
@@ -86,7 +100,7 @@ function checkSpcRules(
     }
 
     // Rule 3: 6 consecutive points trending up or down
-    if (idx >= 5) {
+    if (rulesConfig?.rule3Enabled !== false && idx >= 5) {
       const last6 = data.slice(idx - 5, idx + 1);
       let allIncreasing = true;
       let allDecreasing = true;
@@ -105,7 +119,7 @@ function checkSpcRules(
     }
 
     // Rule 4: 14 consecutive points alternating
-    if (idx >= 13) {
+    if (rulesConfig?.rule4Enabled !== false && idx >= 13) {
       const last14 = data.slice(idx - 13, idx + 1);
       let alternating = true;
       for (let i = 2; i < last14.length; i++) {
@@ -127,7 +141,7 @@ function checkSpcRules(
     }
 
     // Rule 5: 2 of 3 consecutive points beyond 2σ
-    if (idx >= 2) {
+    if (rulesConfig?.rule5Enabled !== false && idx >= 2) {
       const last3 = data.slice(idx - 2, idx + 1);
       const beyond2Sigma = last3.filter(p => p.value > sigma2Up || p.value < sigma2Down).length;
       if (beyond2Sigma >= 2) {
@@ -141,7 +155,7 @@ function checkSpcRules(
     }
 
     // Rule 6: 4 of 5 consecutive points beyond 1σ
-    if (idx >= 4) {
+    if (rulesConfig?.rule6Enabled !== false && idx >= 4) {
       const last5 = data.slice(idx - 4, idx + 1);
       const beyond1Sigma = last5.filter(p => p.value > sigma1Up || p.value < sigma1Down).length;
       if (beyond1Sigma >= 4) {
@@ -155,7 +169,7 @@ function checkSpcRules(
     }
 
     // Rule 7: 15 consecutive points within 1σ
-    if (idx >= 14) {
+    if (rulesConfig?.rule7Enabled !== false && idx >= 14) {
       const last15 = data.slice(idx - 14, idx + 1);
       const allWithin1Sigma = last15.every(p => p.value <= sigma1Up && p.value >= sigma1Down);
       if (allWithin1Sigma) {
@@ -169,7 +183,7 @@ function checkSpcRules(
     }
 
     // Rule 8: 8 consecutive points beyond 1σ on both sides
-    if (idx >= 7) {
+    if (rulesConfig?.rule8Enabled !== false && idx >= 7) {
       const last8 = data.slice(idx - 7, idx + 1);
       const allBeyond1Sigma = last8.every(p => p.value > sigma1Up || p.value < sigma1Down);
       const hasAbove = last8.some(p => p.value > sigma1Up);
@@ -476,20 +490,55 @@ function RChart({ rangeData, uclR, lclR }: {
 }
 
 /**
- * Sample Data Table with NG highlighting
+ * Sample Data Table with NG highlighting and Pagination
  */
 function SampleDataTable({ rawData, usl, lsl }: { 
   rawData: { value: number; timestamp: Date }[];
   usl?: number | null;
   lsl?: number | null;
 }) {
-  const displayData = rawData.slice(0, 50);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  
+  const totalPages = Math.ceil(rawData.length / pageSize);
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const displayData = rawData.slice(startIndex, endIndex);
+  
+  // Count NG items
+  const ngCount = rawData.filter(item => isOutOfSpec(item.value, usl, lsl)).length;
+  const okCount = rawData.length - ngCount;
 
   return (
     <Card className="w-full">
       <CardHeader>
-        <CardTitle className="text-lg">Bảng dữ liệu mẫu</CardTitle>
-        <CardDescription>Hiển thị {displayData.length} mẫu gần nhất (tổng: {rawData.length})</CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="text-lg">Bảng dữ liệu mẫu</CardTitle>
+            <CardDescription>
+              Hiển thị {startIndex + 1}-{Math.min(endIndex, rawData.length)} / {rawData.length} mẫu
+              <span className="ml-2">
+                (<span className="text-green-600">{okCount} OK</span>, <span className="text-red-600">{ngCount} NG</span>)
+              </span>
+            </CardDescription>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Hiển thị:</span>
+            <select 
+              value={pageSize} 
+              onChange={(e) => {
+                setPageSize(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+              className="px-2 py-1 text-sm border rounded-md bg-background"
+            >
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+          </div>
+        </div>
       </CardHeader>
       <CardContent>
         <div className="max-h-[400px] overflow-y-auto">
@@ -505,9 +554,10 @@ function SampleDataTable({ rawData, usl, lsl }: {
             <tbody>
               {displayData.map((item, idx) => {
                 const isNG = isOutOfSpec(item.value, usl, lsl);
+                const globalIndex = startIndex + idx + 1;
                 return (
-                  <tr key={idx} className={`border-b ${isNG ? "bg-red-50" : "hover:bg-muted/50"}`}>
-                    <td className="px-3 py-2">{idx + 1}</td>
+                  <tr key={idx} className={`border-b ${isNG ? "bg-red-50 dark:bg-red-900/20" : "hover:bg-muted/50"}`}>
+                    <td className="px-3 py-2">{globalIndex}</td>
                     <td className="px-3 py-2 text-muted-foreground">
                       {new Date(item.timestamp).toLocaleString("vi-VN")}
                     </td>
@@ -516,12 +566,12 @@ function SampleDataTable({ rawData, usl, lsl }: {
                     </td>
                     <td className="px-3 py-2 text-center">
                       {isNG ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-xs font-medium">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-xs font-medium dark:bg-red-900/50 dark:text-red-300">
                           <AlertTriangle className="h-3 w-3" />
                           NG
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-xs font-medium">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-xs font-medium dark:bg-green-900/50 dark:text-green-300">
                           <CheckCircle2 className="h-3 w-3" />
                           OK
                         </span>
@@ -533,6 +583,73 @@ function SampleDataTable({ rawData, usl, lsl }: {
             </tbody>
           </table>
         </div>
+        
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between mt-4 pt-4 border-t">
+            <div className="text-sm text-muted-foreground">
+              Trang {currentPage} / {totalPages}
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setCurrentPage(1)}
+                disabled={currentPage === 1}
+                className="px-2 py-1 text-sm border rounded-md hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                «
+              </button>
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1 text-sm border rounded-md hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Trước
+              </button>
+              
+              {/* Page numbers */}
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                let pageNum;
+                if (totalPages <= 5) {
+                  pageNum = i + 1;
+                } else if (currentPage <= 3) {
+                  pageNum = i + 1;
+                } else if (currentPage >= totalPages - 2) {
+                  pageNum = totalPages - 4 + i;
+                } else {
+                  pageNum = currentPage - 2 + i;
+                }
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => setCurrentPage(pageNum)}
+                    className={`px-3 py-1 text-sm border rounded-md ${
+                      currentPage === pageNum 
+                        ? "bg-primary text-primary-foreground" 
+                        : "hover:bg-muted"
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
+              
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1 text-sm border rounded-md hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Sau
+              </button>
+              <button
+                onClick={() => setCurrentPage(totalPages)}
+                disabled={currentPage === totalPages}
+                className="px-2 py-1 text-sm border rounded-md hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                »
+              </button>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

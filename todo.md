@@ -350,7 +350,7 @@
 - [x] Tạo component Pagination tái sử dụng (Pagination.tsx)
 - [x] Thêm pagination cho trang Lịch sử phân tích (History.tsx)
 - [x] Thêm pagination cho Audit Logs (getAuditLogsPaginated)
-- [ ] Thêm pagination cho bảng dữ liệu mẫu (chưa hoàn thành)
+- [x] Thêm pagination cho bảng dữ liệu mẫu
 
 ### Hoàn thiện Fixture vào SPC Plan
 - [x] Thêm trường machineId và fixtureId vào bảng spc_sampling_plans
@@ -378,17 +378,17 @@
 ## Phase 12.1 - Sửa lỗi và trang About
 
 ### Rà soát trang bị lỗi mất thanh menu
-- [ ] Tìm các trang có SelectItem value="" gây crash
-- [ ] Sửa tất cả SelectItem value="" thành value="all"
-- [ ] Kiểm tra các trang có lỗi khác gây mất DashboardLayout
+- [x] Tìm các trang có SelectItem value="" gây crash
+- [x] Sửa tất cả SelectItem value="" thành value="all"
+- [x] Kiểm tra các trang có lỗi khác gây mất DashboardLayout
 
 ### Trang About
-- [ ] Tạo trang About.tsx với thông tin hệ thống
-- [ ] Hiển thị phiên bản ứng dụng
-- [ ] Hiển thị thông tin license/bản quyền
+- [x] Tạo trang About.tsx với thông tin hệ thống
+- [x] Hiển thị phiên bản ứng dụng
+- [x] Hiển thị thông tin license/bản quyền
 - [ ] Thêm chức năng nhập mã kích hoạt bản quyền
 - [ ] Lưu trạng thái kích hoạt vào database
-- [ ] Thêm menu About vào sidebar
+- [x] Thêm menu About vào sidebar (đã có trong systemMenu.ts)
 
 
 ## Phase 13 - Sửa lỗi Sidebar và Trang About
@@ -427,7 +427,7 @@
 - [x] Thêm trường enabledCaRules (JSON array) vào bảng spc_sampling_plans
 - [x] Thêm trường enabledCpkRules (JSON array) vào bảng spc_sampling_plans
 - [x] Cập nhật form SPC Plan với checkboxes để bật/tắt từng rule
-- [ ] Cập nhật logic phân tích SPC để chỉ kiểm tra các rules đã bật
+- [x] Cập nhật logic phân tích SPC để chỉ kiểm tra các rules đã bật
 
 ### Tăng giới hạn Dây chuyền Realtime
 - [x] Tăng giới hạn hiển thị từ 12 lên 30 kế hoạch
@@ -461,8 +461,8 @@
 - [x] Cập nhật hàm detectSpcViolations để nhận danh sách rules đã bật
 - [x] Cập nhật hàm calculateSpcMetrics để truyền enabledSpcRules
 - [x] Chỉ kiểm tra các SPC Rules được bật trong kế hoạch
-- [ ] Chỉ kiểm tra các CA Rules được bật trong kế hoạch
-- [ ] Chỉ kiểm tra các CPK Rules được bật trong kế hoạch
+- [x] Chỉ kiểm tra các CA Rules được bật trong kế hoạch
+- [x] Chỉ kiểm tra các CPK Rules được bật trong kế hoạch
 
 ### Realtime Data trên Visualization
 - [x] Tạo API getRealtimeDataMultiple để lấy dữ liệu nhiều plans
@@ -603,11 +603,11 @@
 ## Phase 22 - Scheduled Job License Check và Keyboard Shortcuts mở rộng
 
 ### Scheduled Job cho License Check
-- [ ] Tạo module scheduledJobs.ts với node-cron
+- [x] Tạo module scheduledJobs.ts với node-cron
 - [ ] Tạo job kiểm tra license hàng ngày lúc 8:00 sáng
 - [ ] Gọi API checkExpiry và sendExpiryNotifications
 - [ ] Ghi log kết quả vào audit_logs
-- [ ] Khởi động jobs khi server start
+- [x] Khởi động jobs khi server start
 
 ### Keyboard Shortcuts mở rộng
 - [ ] Tích hợp vào ProductManagement (Ctrl+S, Ctrl+N, Esc, Ctrl+/)
@@ -715,11 +715,11 @@
 ## Bug Fixes - Phase 24.1
 
 ### Lỗi hệ thống treo khi thay đổi ngôn ngữ
-- [ ] Kiểm tra và sửa lỗi LanguageContext/LanguageSwitcher
-- [ ] Test lại chức năng thay đổi ngôn ngữ
+- [x] Kiểm tra và sửa lỗi LanguageContext/LanguageSwitcher (đã kiểm tra - hoạt động tốt)
+- [x] Test lại chức năng thay đổi ngôn ngữ
 
 ### Rà soát hệ thống
-- [ ] Rà soát toàn bộ chức năng hiện tại
+- [x] Rà soát toàn bộ chức năng hiện tại
 - [ ] Cập nhật UPGRADE_PLAN.md với tiến độ mới nhất
 - [ ] Đưa ra kế hoạch hoàn thiện hệ thống
 
@@ -5432,5 +5432,28 @@
 #### Rà soát và hoàn thành các chức năng còn thiếu
 - [x] Kiểm tra SelectItem value="" gây crash và sửa thành value="none"
 - [ ] Hoàn thành trang About.tsx với thông tin hệ thống
-- [ ] Kiểm tra và sửa lỗi LanguageContext/LanguageSwitcher
-- [ ] Cập nhật logic phân tích SPC để chỉ kiểm tra các rules đã bật trong kế hoạch
+- [x] Kiểm tra và sửa lỗi LanguageContext/LanguageSwitcher (đã kiểm tra - hoạt động tốt)
+- [x] Cập nhật logic phân tích SPC để chỉ kiểm tra các rules đã bật trong kế hoạch
+
+
+### Phase 3.10 Tasks (23/12/2024)
+
+#### Trang About.tsx
+- [x] Tạo trang About.tsx với thông tin hệ thống
+- [x] Hiển thị phiên bản ứng dụng
+- [x] Hiển thị thông tin license/bản quyền
+- [x] Thêm menu About vào sidebar (đã có trong systemMenu.ts)
+
+#### Logic SPC Rules từ kế hoạch
+- [x] Cập nhật logic phân tích SPC để chỉ kiểm tra các rules đã bật trong kế hoạch
+- [x] Chỉ kiểm tra các CA Rules được bật trong kế hoạch
+- [x] Chỉ kiểm tra các CPK Rules được bật trong kế hoạch
+
+#### Pagination cho bảng dữ liệu mẫu
+- [x] Thêm pagination component cho bảng dữ liệu mẫu trong AdvancedCharts.tsx
+- [x] Hiển thị số trang và điều hướng
+
+#### Hoàn thiện các tasks còn lại
+- [x] Kiểm tra và sửa lỗi LanguageContext/LanguageSwitcher (đã kiểm tra - hoạt động tốt)
+- [ ] Cải thiện giao diện SPC Plan Overview
+- [ ] Hiển thị cảnh báo CPK realtime khi có vi phạm

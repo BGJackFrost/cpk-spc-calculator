@@ -23,18 +23,23 @@ import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 
-const SYSTEM_VERSION = "2.0.0";
-const BUILD_DATE = "2024-12-12";
+const SYSTEM_VERSION = "3.10.0";
+const BUILD_DATE = "2024-12-23";
+const BUILD_NUMBER = "fdd1e8ad";
 
 const FEATURES = [
   { icon: BarChart3, name: "Tính toán SPC/CPK", description: "Tính toán Cp, Cpk, Pp, Ppk, Ca với control chart động" },
   { icon: Activity, name: "Giám sát Realtime", description: "Theo dõi dây chuyền sản xuất theo thời gian thực với SSE" },
   { icon: Database, name: "Quản lý Database", description: "Kết nối và truy vấn dữ liệu từ nhiều nguồn database" },
-  { icon: FileText, name: "Báo cáo & Xuất Excel", description: "Tạo báo cáo SPC và xuất dữ liệu ra Excel" },
+  { icon: FileText, name: "Báo cáo & Xuất Excel/PDF", description: "Tạo báo cáo SPC và xuất dữ liệu ra Excel/PDF" },
   { icon: Shield, name: "8 SPC Rules", description: "Phát hiện vi phạm theo 8 quy tắc SPC tiêu chuẩn" },
   { icon: Users, name: "Phân quyền người dùng", description: "Quản lý vai trò và quyền truy cập chi tiết" },
   { icon: Cpu, name: "Quản lý Máy & Fixture", description: "Theo dõi máy móc, loại máy và fixture" },
   { icon: Clock, name: "Kế hoạch SPC", description: "Lập lịch lấy mẫu và phân tích tự động" },
+  { icon: Activity, name: "OEE Monitoring", description: "Theo dõi hiệu suất thiết bị tổng thể (OEE)" },
+  { icon: Shield, name: "MMS Bảo trì", description: "Hệ thống quản lý bảo trì thiết bị" },
+  { icon: Clock, name: "Offline Mode", description: "Hoạt động offline với đồng bộ dữ liệu" },
+  { icon: Activity, name: "Push Notifications", description: "Thông báo đẩy realtime với âm thanh" },
 ];
 
 const TECH_STACK = [
@@ -141,6 +146,11 @@ export default function About() {
                   <div className="flex justify-between items-center">
                     <span className="text-muted-foreground">Ngày build</span>
                     <span className="font-mono">{BUILD_DATE}</span>
+                  </div>
+                  <Separator />
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">Build Number</span>
+                    <span className="font-mono text-xs">{BUILD_NUMBER}</span>
                   </div>
                   <Separator />
                   <div className="flex justify-between items-center">
