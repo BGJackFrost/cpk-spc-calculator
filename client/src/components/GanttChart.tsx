@@ -1,7 +1,7 @@
 import { useMemo, useState, useRef, useCallback } from "react";
 import { format, addDays, startOfWeek, endOfWeek, eachDayOfInterval, isWithinInterval, differenceInDays, isSameDay } from "date-fns";
 import { vi } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Calendar, GripVertical, Move, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar, GripVertical, Move, Trash2, Undo2, Redo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -21,6 +21,14 @@ export interface GanttTask {
   priority?: "low" | "medium" | "high" | "critical";
 }
 
+interface TaskChange {
+  taskId: number;
+  oldStartDate: Date;
+  oldEndDate: Date;
+  newStartDate: Date;
+  newEndDate: Date;
+}
+
 interface GanttChartProps {
   tasks: GanttTask[];
   onTaskClick?: (task: GanttTask) => void;
@@ -28,6 +36,7 @@ interface GanttChartProps {
   onTaskDelete?: (taskId: number) => void;
   viewMode?: "week" | "month";
   enableDragDrop?: boolean;
+  enableResize?: boolean;
 }
 
 const statusColors: Record<string, string> = {
@@ -56,12 +65,22 @@ export function GanttChart({
   onTaskUpdate,
   onTaskDelete,
   viewMode = "week",
-  enableDragDrop = true 
+  enableDragDrop = true,
+  enableResize = true
 }: GanttChartProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [draggedTask, setDraggedTask] = useState<GanttTask | null>(null);
   const [dragOffset, setDragOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
+  const [isResizing, setIsResizing] = useState(false);
+  const [resizeDirection, setResizeDirection] = useState<"left" | "right" | null>(null);
+  const [resizingTask, setResizingTask] = useState<GanttTask | null>(null);
+  const [previewDates, setPreviewDates] = useState<{ start: Date; end: Date } | null>(null);
+  
+  // Undo/Redo stacks
+  const [undoStack, setUndoStack] = useState<TaskChange[]>([]);
+  const [redoStack, setRedoStack] = useState<TaskChange[]>([]);
+  
   const containerRef = useRef<HTMLDivElement>(null);
   
   const { startDate, endDate, days } = useMemo(() => {
@@ -132,19 +151,54 @@ export function GanttChart({
            (task.startDate <= startDate && task.endDate >= endDate);
   };
 
+  // Undo/Redo handlers
+  const handleUndo = useCallback(() => {
+    if (undoStack.length === 0 || !onTaskUpdate) return;
+    
+    const lastChange = undoStack[undoStack.length - 1];
+    setUndoStack(prev => prev.slice(0, -1));
+    setRedoStack(prev => [...prev, lastChange]);
+    
+    onTaskUpdate(lastChange.taskId, lastChange.oldStartDate, lastChange.oldEndDate);
+    toast.info("Đã hoàn tác thay đổi");
+  }, [undoStack, onTaskUpdate]);
+
+  const handleRedo = useCallback(() => {
+    if (redoStack.length === 0 || !onTaskUpdate) return;
+    
+    const lastChange = redoStack[redoStack.length - 1];
+    setRedoStack(prev => prev.slice(0, -1));
+    setUndoStack(prev => [...prev, lastChange]);
+    
+    onTaskUpdate(lastChange.taskId, lastChange.newStartDate, lastChange.newEndDate);
+    toast.info("Đã làm lại thay đổi");
+  }, [redoStack, onTaskUpdate]);
+
+  const recordChange = useCallback((task: GanttTask, newStartDate: Date, newEndDate: Date) => {
+    const change: TaskChange = {
+      taskId: task.id,
+      oldStartDate: task.startDate,
+      oldEndDate: task.endDate,
+      newStartDate,
+      newEndDate,
+    };
+    setUndoStack(prev => [...prev.slice(-19), change]); // Keep last 20 changes
+    setRedoStack([]); // Clear redo stack on new change
+  }, []);
+
   // Drag and drop handlers
   const handleDragStart = useCallback((e: React.DragEvent | React.TouchEvent, task: GanttTask) => {
     if (!enableDragDrop) return;
     
     setDraggedTask(task);
     setIsDragging(true);
+    setPreviewDates({ start: task.startDate, end: task.endDate });
     
     if ('dataTransfer' in e) {
       e.dataTransfer.effectAllowed = 'move';
       e.dataTransfer.setData('text/plain', String(task.id));
     }
     
-    // Calculate offset from task start
     const rect = (e.target as HTMLElement).getBoundingClientRect();
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     setDragOffset(clientX - rect.left);
@@ -164,35 +218,131 @@ export function GanttChart({
     const newStartDate = targetDate;
     const newEndDate = addDays(targetDate, duration);
     
+    recordChange(draggedTask, newStartDate, newEndDate);
     onTaskUpdate(draggedTask.id, newStartDate, newEndDate);
     toast.success(`Đã cập nhật lịch trình: ${draggedTask.title}`);
     
     setDraggedTask(null);
     setIsDragging(false);
-  }, [draggedTask, onTaskUpdate]);
+    setPreviewDates(null);
+  }, [draggedTask, onTaskUpdate, recordChange]);
 
   const handleDragEnd = useCallback(() => {
     setDraggedTask(null);
     setIsDragging(false);
+    setPreviewDates(null);
   }, []);
 
-  // Touch handlers for mobile
+  // Resize handlers
+  const handleResizeStart = useCallback((e: React.MouseEvent | React.TouchEvent, task: GanttTask, direction: "left" | "right") => {
+    if (!enableResize) return;
+    e.stopPropagation();
+    e.preventDefault();
+    
+    setResizingTask(task);
+    setResizeDirection(direction);
+    setIsResizing(true);
+    setPreviewDates({ start: task.startDate, end: task.endDate });
+  }, [enableResize]);
+
+  const handleResizeMove = useCallback((e: MouseEvent | TouchEvent) => {
+    if (!isResizing || !resizingTask || !containerRef.current) return;
+    
+    const container = containerRef.current;
+    const rect = container.getBoundingClientRect();
+    const timelineStart = 192; // Width of assignee column
+    
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const x = clientX - rect.left - timelineStart;
+    const timelineWidth = rect.width - timelineStart;
+    const dayIndex = Math.floor((x / timelineWidth) * days.length);
+    
+    if (dayIndex >= 0 && dayIndex < days.length) {
+      const targetDate = days[dayIndex];
+      
+      if (resizeDirection === "left") {
+        if (targetDate <= resizingTask.endDate) {
+          setPreviewDates({ start: targetDate, end: resizingTask.endDate });
+        }
+      } else {
+        if (targetDate >= resizingTask.startDate) {
+          setPreviewDates({ start: resizingTask.startDate, end: targetDate });
+        }
+      }
+    }
+  }, [isResizing, resizingTask, resizeDirection, days]);
+
+  const handleResizeEnd = useCallback(() => {
+    if (!isResizing || !resizingTask || !previewDates || !onTaskUpdate) {
+      setIsResizing(false);
+      setResizingTask(null);
+      setResizeDirection(null);
+      setPreviewDates(null);
+      return;
+    }
+    
+    recordChange(resizingTask, previewDates.start, previewDates.end);
+    onTaskUpdate(resizingTask.id, previewDates.start, previewDates.end);
+    toast.success(`Đã thay đổi thời gian: ${resizingTask.title}`);
+    
+    setIsResizing(false);
+    setResizingTask(null);
+    setResizeDirection(null);
+    setPreviewDates(null);
+  }, [isResizing, resizingTask, previewDates, onTaskUpdate, recordChange]);
+
+  // Add global mouse/touch listeners for resize
+  const handleGlobalMouseMove = useCallback((e: MouseEvent) => {
+    handleResizeMove(e);
+  }, [handleResizeMove]);
+
+  const handleGlobalMouseUp = useCallback(() => {
+    handleResizeEnd();
+  }, [handleResizeEnd]);
+
+  const handleGlobalTouchMove = useCallback((e: TouchEvent) => {
+    handleResizeMove(e);
+  }, [handleResizeMove]);
+
+  const handleGlobalTouchEnd = useCallback(() => {
+    handleResizeEnd();
+  }, [handleResizeEnd]);
+
+  // Attach/detach global listeners
+  useState(() => {
+    if (isResizing) {
+      document.addEventListener('mousemove', handleGlobalMouseMove);
+      document.addEventListener('mouseup', handleGlobalMouseUp);
+      document.addEventListener('touchmove', handleGlobalTouchMove);
+      document.addEventListener('touchend', handleGlobalTouchEnd);
+    }
+    return () => {
+      document.removeEventListener('mousemove', handleGlobalMouseMove);
+      document.removeEventListener('mouseup', handleGlobalMouseUp);
+      document.removeEventListener('touchmove', handleGlobalTouchMove);
+      document.removeEventListener('touchend', handleGlobalTouchEnd);
+    };
+  });
+
+  // Touch handlers for mobile drag
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     if (!draggedTask || !containerRef.current) return;
     
     const touch = e.touches[0];
     const container = containerRef.current;
     const rect = container.getBoundingClientRect();
-    const timelineStart = 192; // Width of assignee column
+    const timelineStart = 192;
     
     const x = touch.clientX - rect.left - timelineStart;
     const timelineWidth = rect.width - timelineStart;
     const dayIndex = Math.floor((x / timelineWidth) * days.length);
     
     if (dayIndex >= 0 && dayIndex < days.length) {
-      // Visual feedback could be added here
+      const targetDate = days[dayIndex];
+      const duration = differenceInDays(draggedTask.endDate, draggedTask.startDate);
+      setPreviewDates({ start: targetDate, end: addDays(targetDate, duration) });
     }
-  }, [draggedTask, days.length]);
+  }, [draggedTask, days]);
 
   const handleTouchEnd = useCallback((e: React.TouchEvent) => {
     if (!draggedTask || !containerRef.current || !onTaskUpdate) return;
@@ -212,13 +362,15 @@ export function GanttChart({
       const newStartDate = targetDate;
       const newEndDate = addDays(targetDate, duration);
       
+      recordChange(draggedTask, newStartDate, newEndDate);
       onTaskUpdate(draggedTask.id, newStartDate, newEndDate);
       toast.success(`Đã cập nhật lịch trình: ${draggedTask.title}`);
     }
     
     setDraggedTask(null);
     setIsDragging(false);
-  }, [draggedTask, days, onTaskUpdate]);
+    setPreviewDates(null);
+  }, [draggedTask, days, onTaskUpdate, recordChange]);
 
   return (
     <div 
@@ -227,7 +379,7 @@ export function GanttChart({
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      {/* Header - Mobile responsive */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-2 sm:p-4 border-b bg-muted/50 gap-2">
         <div className="flex items-center gap-1 sm:gap-2">
           <Button variant="outline" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={navigatePrev}>
@@ -240,6 +392,38 @@ export function GanttChart({
           <Button variant="outline" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={navigateNext}>
             <ChevronRight className="h-4 w-4" />
           </Button>
+          
+          {/* Undo/Redo buttons */}
+          <div className="flex items-center gap-1 ml-2 border-l pl-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-8 w-8" 
+                  onClick={handleUndo}
+                  disabled={undoStack.length === 0}
+                >
+                  <Undo2 className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Hoàn tác (Ctrl+Z)</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-8 w-8" 
+                  onClick={handleRedo}
+                  disabled={redoStack.length === 0}
+                >
+                  <Redo2 className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Làm lại (Ctrl+Y)</TooltipContent>
+            </Tooltip>
+          </div>
         </div>
         <div className="font-semibold text-sm sm:text-base">
           {viewMode === "week" 
@@ -262,15 +446,33 @@ export function GanttChart({
         </div>
       </div>
 
-      {/* Drag instruction */}
-      {enableDragDrop && (
-        <div className="px-4 py-1 bg-blue-50 dark:bg-blue-950 text-xs text-blue-600 dark:text-blue-400 flex items-center gap-1">
-          <Move className="h-3 w-3" />
-          <span>Kéo thả để điều chỉnh lịch trình</span>
+      {/* Drag/Resize instruction */}
+      {(enableDragDrop || enableResize) && (
+        <div className="px-4 py-1 bg-blue-50 dark:bg-blue-950 text-xs text-blue-600 dark:text-blue-400 flex items-center gap-2 flex-wrap">
+          {enableDragDrop && (
+            <span className="flex items-center gap-1">
+              <Move className="h-3 w-3" />
+              Kéo để di chuyển
+            </span>
+          )}
+          {enableResize && (
+            <span className="flex items-center gap-1">
+              <span className="text-lg">↔</span>
+              Kéo cạnh để thay đổi thời gian
+            </span>
+          )}
         </div>
       )}
 
-      {/* Timeline header - Scrollable on mobile */}
+      {/* Preview dates */}
+      {previewDates && (isDragging || isResizing) && (
+        <div className="px-4 py-1 bg-yellow-50 dark:bg-yellow-950 text-xs text-yellow-700 dark:text-yellow-300">
+          Preview: {format(previewDates.start, "dd/MM/yyyy")} - {format(previewDates.end, "dd/MM/yyyy")}
+          ({differenceInDays(previewDates.end, previewDates.start) + 1} ngày)
+        </div>
+      )}
+
+      {/* Timeline header */}
       <div className="flex border-b overflow-x-auto">
         <div className="w-32 sm:w-48 flex-shrink-0 p-2 font-medium border-r bg-muted/30 text-xs sm:text-sm">
           Kỹ thuật viên
@@ -325,37 +527,58 @@ export function GanttChart({
                   const position = getTaskPosition(task);
                   const priority = priorityBadges[task.priority || "medium"];
                   const isBeingDragged = draggedTask?.id === task.id;
+                  const isBeingResized = resizingTask?.id === task.id;
                   
                   return (
                     <Tooltip key={task.id}>
                       <TooltipTrigger asChild>
                         <div
-                          draggable={enableDragDrop}
+                          draggable={enableDragDrop && !isResizing}
                           onDragStart={(e) => handleDragStart(e, task)}
                           onDragEnd={handleDragEnd}
-                          onTouchStart={(e) => handleDragStart(e, task)}
+                          onTouchStart={(e) => !isResizing && handleDragStart(e, task)}
                           className={cn(
-                            "absolute h-6 sm:h-8 rounded cursor-pointer transition-all",
+                            "absolute h-6 sm:h-8 rounded cursor-pointer transition-all group",
                             "hover:opacity-80 hover:shadow-md",
                             "active:scale-105 active:shadow-lg",
                             statusColors[task.status],
                             typeColors[task.type],
                             enableDragDrop && "cursor-grab active:cursor-grabbing",
-                            isBeingDragged && "opacity-50 scale-95"
+                            (isBeingDragged || isBeingResized) && "opacity-50 scale-95 ring-2 ring-blue-500"
                           )}
                           style={{
                             left: position.left,
                             width: position.width,
                             top: `${idx * 30 + 4}px`,
                           }}
-                          onClick={() => !isDragging && onTaskClick?.(task)}
+                          onClick={() => !isDragging && !isResizing && onTaskClick?.(task)}
                         >
+                          {/* Left resize handle */}
+                          {enableResize && (
+                            <div
+                              className="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize opacity-0 group-hover:opacity-100 bg-white/30 hover:bg-white/50 rounded-l"
+                              onMouseDown={(e) => handleResizeStart(e, task, "left")}
+                              onTouchStart={(e) => handleResizeStart(e, task, "left")}
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          )}
+                          
                           <div className="px-1 sm:px-2 py-0.5 sm:py-1 text-[10px] sm:text-xs text-white truncate flex items-center gap-1">
                             {enableDragDrop && (
                               <GripVertical className="h-3 w-3 flex-shrink-0 opacity-70" />
                             )}
                             <span className="truncate">{task.title}</span>
                           </div>
+                          
+                          {/* Right resize handle */}
+                          {enableResize && (
+                            <div
+                              className="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize opacity-0 group-hover:opacity-100 bg-white/30 hover:bg-white/50 rounded-r"
+                              onMouseDown={(e) => handleResizeStart(e, task, "right")}
+                              onTouchStart={(e) => handleResizeStart(e, task, "right")}
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          )}
                         </div>
                       </TooltipTrigger>
                       <TooltipContent side="top" className="max-w-xs">
@@ -377,9 +600,11 @@ export function GanttChart({
                                task.status === "completed" ? "Hoàn thành" : "Quá hạn"}
                             </Badge>
                           </div>
-                          {enableDragDrop && (
+                          {(enableDragDrop || enableResize) && (
                             <div className="text-xs text-muted-foreground italic">
-                              Kéo để thay đổi lịch
+                              {enableDragDrop && "Kéo để di chuyển"}
+                              {enableDragDrop && enableResize && " • "}
+                              {enableResize && "Kéo cạnh để resize"}
                             </div>
                           )}
                           {onTaskDelete && (

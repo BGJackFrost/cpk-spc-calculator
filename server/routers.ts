@@ -4214,6 +4214,50 @@ export const appRouter = router({
           "<h1>Test Email</h1><p>This is a test email from SPC/CPK Calculator.</p>"
         );
       }),
+    testCpkAlert: protectedProcedure
+      .input(z.object({
+        email: z.string().email(),
+        productCode: z.string(),
+        stationName: z.string(),
+        cpkValue: z.number(),
+        threshold: z.number(),
+      }))
+      .mutation(async ({ input }) => {
+        const { sendCpkWarningEmail } = await import("./emailService");
+        return await sendCpkWarningEmail(input.email, {
+          productCode: input.productCode,
+          stationName: input.stationName,
+          cpkValue: input.cpkValue,
+          threshold: input.threshold,
+          recommendation: input.cpkValue < 1.0 
+            ? "Quy trình không đủ năng lực. Cần điều tra nguyên nhân gốc và thực hiện cải tiến ngay."
+            : "Quy trình cần cải tiến để đạt mức năng lực tốt hơn.",
+          timestamp: new Date(),
+        });
+      }),
+    testSpcViolation: protectedProcedure
+      .input(z.object({
+        email: z.string().email(),
+        productCode: z.string(),
+        stationName: z.string(),
+        violationType: z.string(),
+        currentValue: z.number(),
+        ucl: z.number(),
+        lcl: z.number(),
+      }))
+      .mutation(async ({ input }) => {
+        const { sendSpcViolationEmail } = await import("./emailService");
+        return await sendSpcViolationEmail(input.email, {
+          productCode: input.productCode,
+          stationName: input.stationName,
+          violationType: input.violationType,
+          violationDetails: `Giá trị ${input.currentValue.toFixed(2)} ${input.currentValue > input.ucl ? 'vượt UCL' : 'dưới LCL'}`,
+          currentValue: input.currentValue,
+          ucl: input.ucl,
+          lcl: input.lcl,
+          timestamp: new Date(),
+        });
+      }),
   }),
 
   // Audit Logs router

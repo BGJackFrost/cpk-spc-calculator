@@ -4,7 +4,7 @@
  */
 
 import { getDb } from "../db";
-import { spcSummaryStats, spcPlans, productionLines, products } from "../../drizzle/schema";
+import { spcSummaryStats, spcSamplingPlans, productionLines, products } from "../../drizzle/schema";
 import { eq, and, gte, lte, desc, asc } from "drizzle-orm";
 import { getDefaultReportTemplate } from "../db";
 
@@ -108,8 +108,8 @@ export async function getSpcSummaryReportData(
   // Get plan info
   const [plan] = await db
     .select()
-    .from(spcPlans)
-    .where(eq(spcPlans.id, planId))
+    .from(spcSamplingPlans)
+    .where(eq(spcSamplingPlans.id, planId))
     .limit(1);
 
   if (!plan) {

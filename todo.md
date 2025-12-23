@@ -5609,3 +5609,26 @@
 - [x] Tạo trang UI SpcSummaryReport.tsx
 - [x] Thêm route /spc-summary-report vào App.tsx
 
+
+
+## Phase 36 - SMTP, Gantt Drag-Resize, SPC Realtime Machine/Fixture View
+
+### SMTP Test Email với CPK/SPC Alert
+- [x] Nâng cấp trang SmtpSettings với test email CPK Alert
+- [x] Thêm test email SPC Violation
+- [x] Thêm API testCpkAlert và testSpcViolation
+- [x] Thêm hàm sendCpkWarningEmail và sendSpcViolationEmail
+
+### Gantt Chart Drag & Resize
+- [x] Thêm resize handles để thay đổi duration
+- [x] Thêm undo/redo cho các thay đổi
+- [x] Cải tiến preview khi drag/resize
+- [x] Thêm touch support cho mobile
+
+### SPC Realtime Dashboard - Machine/Fixture View
+- [x] Thêm chế độ xem theo Machine
+- [x] Thêm chế độ xem theo Fixture
+- [x] Thêm biểu đồ so sánh CPK giữa các Fixture
+- [x] Thêm Radar chart cho Fixture performance
+- [x] Thêm bảng chi tiết Fixture
+

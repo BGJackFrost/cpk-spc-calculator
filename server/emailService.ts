@@ -797,3 +797,26 @@ export async function notifyApprovalResult(data: ApprovalResultEmailData): Promi
   console.log(`[Email] Sent approval result notification to ${data.requesterEmail}: ${result.success ? "success" : result.error}`);
   return { success: result.success, sentCount: result.sentCount || 0 };
 }
+
+
+/**
+ * Send CPK warning email to a specific recipient (for testing)
+ */
+export async function sendCpkWarningEmail(
+  to: string,
+  data: CpkWarningEmailData
+): Promise<{ success: boolean; error?: string }> {
+  const { subject, html } = generateCpkWarningEmail(data);
+  return await sendEmail(to, subject, html);
+}
+
+/**
+ * Send SPC violation email to a specific recipient (for testing)
+ */
+export async function sendSpcViolationEmail(
+  to: string,
+  data: SpcViolationEmailData
+): Promise<{ success: boolean; error?: string }> {
+  const { subject, html } = generateSpcViolationEmail(data);
+  return await sendEmail(to, subject, html);
+}
