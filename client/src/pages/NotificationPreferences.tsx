@@ -3,7 +3,7 @@
  * Allows users to configure push notification preferences
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -39,6 +39,8 @@ import {
   Sparkles
 } from 'lucide-react';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
+import { NotificationSoundPreview, NotificationSoundType } from '@/components/NotificationSoundPreview';
+import { NotificationSettingsExport, NotificationPreferencesData } from '@/components/NotificationSettingsExport';
 import { toast } from 'sonner';
 
 // Types
@@ -67,7 +69,8 @@ export default function NotificationPreferences() {
     requestPermission,
     subscribe,
     unsubscribe,
-    toggleSubscription
+    toggleSubscription,
+    showNotification
   } = usePushNotifications();
 
   // Notification channels
@@ -116,8 +119,9 @@ export default function NotificationPreferences() {
 
   // Sound and vibration settings
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [soundType, setSoundType] = useState<NotificationSoundType>('default');
+  const [soundVolume, setSoundVolume] = useState(70);
   const [vibrationEnabled, setVibrationEnabled] = useState(true);
-  const [soundVolume, setSoundVolume] = useState([70]);
 
   // Quiet hours
   const [quietHours, setQuietHours] = useState<QuietHours>({
@@ -150,12 +154,17 @@ export default function NotificationPreferences() {
   // Save preferences
   const savePreferences = async () => {
     try {
-      // TODO: Save to server via tRPC
       const preferences = {
-        channels,
+        channels: channels.map(ch => ({
+          id: ch.id,
+          name: ch.name,
+          enabled: ch.enabled,
+          priority: ch.priority
+        })),
         soundEnabled,
+        soundType,
+        soundVolume,
         vibrationEnabled,
-        soundVolume: soundVolume[0],
         quietHours,
         emailDigest
       };
@@ -177,16 +186,48 @@ export default function NotificationPreferences() {
     if (saved) {
       try {
         const prefs = JSON.parse(saved);
-        if (prefs.channels) setChannels(prefs.channels);
+        if (prefs.channels) {
+          // Merge saved channels with default icons
+          setChannels(prev => prev.map(ch => {
+            const savedCh = prefs.channels.find((s: any) => s.id === ch.id);
+            if (savedCh) {
+              return { ...ch, enabled: savedCh.enabled, priority: savedCh.priority };
+            }
+            return ch;
+          }));
+        }
         if (prefs.soundEnabled !== undefined) setSoundEnabled(prefs.soundEnabled);
+        if (prefs.soundType) setSoundType(prefs.soundType);
+        if (prefs.soundVolume !== undefined) setSoundVolume(prefs.soundVolume);
         if (prefs.vibrationEnabled !== undefined) setVibrationEnabled(prefs.vibrationEnabled);
-        if (prefs.soundVolume !== undefined) setSoundVolume([prefs.soundVolume]);
         if (prefs.quietHours) setQuietHours(prefs.quietHours);
         if (prefs.emailDigest) setEmailDigest(prefs.emailDigest);
       } catch (e) {
         console.error('Error loading preferences:', e);
       }
     }
+  }, []);
+
+  // Handle import settings
+  const handleImportSettings = useCallback((settings: Partial<NotificationPreferencesData>) => {
+    if (settings.channels) {
+      setChannels(prev => prev.map(ch => {
+        const importedCh = settings.channels?.find(s => s.id === ch.id);
+        if (importedCh) {
+          return { ...ch, enabled: importedCh.enabled, priority: importedCh.priority };
+        }
+        return ch;
+      }));
+    }
+    if (settings.soundEnabled !== undefined) setSoundEnabled(settings.soundEnabled);
+    if (settings.soundType) setSoundType(settings.soundType as NotificationSoundType);
+    if (settings.soundVolume !== undefined) setSoundVolume(settings.soundVolume);
+    if (settings.vibrationEnabled !== undefined) setVibrationEnabled(settings.vibrationEnabled);
+    if (settings.quietHours) setQuietHours(settings.quietHours);
+    if (settings.emailDigest) setEmailDigest(settings.emailDigest);
+    
+    // Auto-save after import
+    setTimeout(() => savePreferences(), 100);
   }, []);
 
   // Get priority badge
@@ -407,6 +448,14 @@ export default function NotificationPreferences() {
           </CardContent>
         </Card>
 
+        {/* Sound Preview - New Component */}
+        <NotificationSoundPreview
+          selectedSound={soundType}
+          onSoundChange={setSoundType}
+          volume={soundVolume}
+          onVolumeChange={setSoundVolume}
+        />
+
         {/* Sound & Vibration */}
         <Card>
           <CardHeader>
@@ -436,18 +485,6 @@ export default function NotificationPreferences() {
                 onCheckedChange={setSoundEnabled}
               />
             </div>
-
-            {soundEnabled && (
-              <div className="space-y-2">
-                <Label>Âm lượng: {soundVolume[0]}%</Label>
-                <Slider
-                  value={soundVolume}
-                  onValueChange={setSoundVolume}
-                  max={100}
-                  step={5}
-                />
-              </div>
-            )}
 
             <Separator />
 
@@ -500,7 +537,7 @@ export default function NotificationPreferences() {
                     type="time"
                     value={quietHours.startTime}
                     onChange={(e) => setQuietHours(prev => ({ ...prev, startTime: e.target.value }))}
-                    className="w-full px-3 py-2 border rounded-md"
+                    className="w-full px-3 py-2 border rounded-md bg-background"
                   />
                 </div>
                 <div className="space-y-2">
@@ -509,7 +546,7 @@ export default function NotificationPreferences() {
                     type="time"
                     value={quietHours.endTime}
                     onChange={(e) => setQuietHours(prev => ({ ...prev, endTime: e.target.value }))}
-                    className="w-full px-3 py-2 border rounded-md"
+                    className="w-full px-3 py-2 border rounded-md bg-background"
                   />
                 </div>
               </div>
@@ -560,6 +597,23 @@ export default function NotificationPreferences() {
             )}
           </CardContent>
         </Card>
+
+        {/* Export/Import Settings - New Component */}
+        <NotificationSettingsExport
+          channels={channels.map(ch => ({
+            id: ch.id,
+            name: ch.name,
+            enabled: ch.enabled,
+            priority: ch.priority
+          }))}
+          soundEnabled={soundEnabled}
+          soundType={soundType}
+          soundVolume={soundVolume}
+          vibrationEnabled={vibrationEnabled}
+          quietHours={quietHours}
+          emailDigest={emailDigest}
+          onImport={handleImportSettings}
+        />
       </div>
     </DashboardLayout>
   );

@@ -5376,3 +5376,20 @@
 - [x] Global strategy để áp dụng cho tất cả conflicts
 - [x] Tạo useConflictResolution hook với conflict detection
 - [x] Auto-resolve với history-based strategy
+
+### Phase 3.7 Tasks (23/12/2024)
+
+#### ConflictResolutionDialog Integration
+- [x] Tích hợp ConflictResolutionDialog vào BackgroundSyncService
+- [x] Tự động hiển thị dialog khi phát hiện xung đột trong quá trình sync
+- [x] Xử lý resolution và tiếp tục sync sau khi resolve
+
+#### Notification Sound Preview
+- [x] Tạo các file âm thanh notification
+- [x] Thêm audio player preview trong NotificationPreferences
+- [x] Cho phép users nghe preview trước khi chọn
+
+#### Export/Import Settings
+- [x] Export notification preferences ra JSON file
+- [x] Import notification preferences từ JSON file
+- [x] Validation và error handling cho import
