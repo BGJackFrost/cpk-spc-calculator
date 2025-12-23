@@ -2,7 +2,7 @@
  * AlertSoundSettings - Component for configuring sounds per alert type
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -70,6 +70,8 @@ export function AlertSoundSettings({ className = '' }: AlertSoundSettingsProps) 
     alertSoundService.getPreferences()
   );
   const [playingAlert, setPlayingAlert] = useState<string | null>(null);
+  const [testingAll, setTestingAll] = useState(false);
+  const playTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Load preferences on mount
   useEffect(() => {
@@ -115,11 +117,29 @@ export function AlertSoundSettings({ className = '' }: AlertSoundSettingsProps) 
     toast.success('Đã reset tất cả về mặc định');
   }, []);
 
-  // Play alert sound
+  // Play alert sound with animation
   const handlePlaySound = useCallback((alertType: AlertType) => {
+    // Clear any existing timeout
+    if (playTimeoutRef.current) {
+      clearTimeout(playTimeoutRef.current);
+    }
+    
     setPlayingAlert(alertType);
     alertSoundService.playAlertSound(alertType);
-    setTimeout(() => setPlayingAlert(null), 1000);
+    
+    // Reset after sound plays
+    playTimeoutRef.current = setTimeout(() => {
+      setPlayingAlert(null);
+    }, 1500);
+  }, []);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (playTimeoutRef.current) {
+        clearTimeout(playTimeoutRef.current);
+      }
+    };
   }, []);
 
   // Get alert types grouped by category
@@ -150,6 +170,31 @@ export function AlertSoundSettings({ className = '' }: AlertSoundSettingsProps) 
     return override?.volume ?? preferences.globalVolume;
   };
 
+  // Test all sounds in sequence
+  const handleTestAllSounds = useCallback(async () => {
+    if (testingAll) return;
+    
+    setTestingAll(true);
+    const enabledAlerts = alertTypes.filter(alert => {
+      if (!preferences.enabled) return false;
+      const override = preferences.alertOverrides[alert.type];
+      return override?.enabled !== false;
+    });
+    
+    for (let i = 0; i < enabledAlerts.length; i++) {
+      const alert = enabledAlerts[i];
+      setPlayingAlert(alert.type);
+      alertSoundService.playAlertSound(alert.type);
+      
+      // Wait for sound to finish before playing next
+      await new Promise(resolve => setTimeout(resolve, 1500));
+    }
+    
+    setPlayingAlert(null);
+    setTestingAll(false);
+    toast.success(`Đã test ${enabledAlerts.length} âm thanh cảnh báo`);
+  }, [testingAll, alertTypes, preferences]);
+
   return (
     <Card className={className}>
       <CardHeader>
@@ -163,10 +208,25 @@ export function AlertSoundSettings({ className = '' }: AlertSoundSettingsProps) 
               Cấu hình âm thanh cho từng loại cảnh báo SPC/OEE
             </CardDescription>
           </div>
-          <Button variant="outline" size="sm" onClick={handleResetAll}>
-            <RotateCcw className="mr-2 h-4 w-4" />
-            Reset All
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleTestAllSounds}
+              disabled={testingAll || !preferences.enabled}
+            >
+              {testingAll ? (
+                <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Play className="mr-2 h-4 w-4" />
+              )}
+              {testingAll ? 'Testing...' : 'Test All'}
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleResetAll}>
+              <RotateCcw className="mr-2 h-4 w-4" />
+              Reset All
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -237,8 +297,31 @@ export function AlertSoundSettings({ className = '' }: AlertSoundSettingsProps) 
                     <AccordionItem key={alert.type} value={alert.type}>
                       <AccordionTrigger className="hover:no-underline">
                         <div className="flex items-center gap-3 flex-1">
-                          {ALERT_ICONS[alert.type] || <Bell className="h-4 w-4" />}
+                          <div className={`transition-transform duration-200 ${
+                            playingAlert === alert.type ? 'scale-125 animate-pulse' : ''
+                          }`}>
+                            {ALERT_ICONS[alert.type] || <Bell className="h-4 w-4" />}
+                          </div>
                           <span className="text-sm font-medium">{alert.name}</span>
+                          
+                          {/* Quick Test Button */}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 ml-2"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handlePlaySound(alert.type);
+                            }}
+                            disabled={!isAlertEnabled(alert.type) || playingAlert === alert.type}
+                          >
+                            {playingAlert === alert.type ? (
+                              <Volume2 className="h-3 w-3 animate-pulse text-primary" />
+                            ) : (
+                              <Play className="h-3 w-3" />
+                            )}
+                          </Button>
+                          
                           <div className="flex items-center gap-2 ml-auto mr-4">
                             {hasCustomSettings(alert.type) && (
                               <Badge variant="outline" className="text-xs">
@@ -247,9 +330,11 @@ export function AlertSoundSettings({ className = '' }: AlertSoundSettingsProps) 
                             )}
                             <Badge 
                               variant={isAlertEnabled(alert.type) ? 'default' : 'secondary'}
-                              className="text-xs"
+                              className={`text-xs transition-colors ${
+                                playingAlert === alert.type ? 'bg-primary animate-pulse' : ''
+                              }`}
                             >
-                              {isAlertEnabled(alert.type) ? 'ON' : 'OFF'}
+                              {playingAlert === alert.type ? 'Playing' : isAlertEnabled(alert.type) ? 'ON' : 'OFF'}
                             </Badge>
                           </div>
                         </div>
@@ -291,9 +376,23 @@ export function AlertSoundSettings({ className = '' }: AlertSoundSettingsProps) 
                               size="sm"
                               onClick={() => handlePlaySound(alert.type)}
                               disabled={!isAlertEnabled(alert.type) || playingAlert === alert.type}
+                              className={`transition-all ${
+                                playingAlert === alert.type 
+                                  ? 'bg-primary text-primary-foreground border-primary' 
+                                  : ''
+                              }`}
                             >
-                              <Play className="h-3 w-3 mr-1" />
-                              {playingAlert === alert.type ? 'Playing...' : 'Preview'}
+                              {playingAlert === alert.type ? (
+                                <>
+                                  <Volume2 className="h-3 w-3 mr-1 animate-pulse" />
+                                  <span className="animate-pulse">Playing...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Play className="h-3 w-3 mr-1" />
+                                  Preview Sound
+                                </>
+                              )}
                             </Button>
                             {hasCustomSettings(alert.type) && (
                               <Button

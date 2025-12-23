@@ -932,7 +932,7 @@ export default function OrganizationManagement() {
                     <SelectValue placeholder="Chọn phòng ban cha (nếu có)" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Không có</SelectItem>
+                    <SelectItem value="none">Không có</SelectItem>
                     {departments?.filter((d: Department) => d.companyId === Number(deptForm.companyId)).map((d: Department) => (
                       <SelectItem key={d.id} value={String(d.id)}>{d.name}</SelectItem>
                     ))}

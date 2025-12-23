@@ -40,6 +40,7 @@ import { NotificationBell } from "./NotificationBell";
 import { WebSocketIndicator } from "./WebSocketIndicator";
 import { SseIndicator } from "./SseIndicator";
 import { SyncStatusIndicator } from "./SyncStatusIndicator";
+import { MobileOfflineSyncIndicator } from "./MobileOfflineSyncIndicator";
 import { TopNavigation } from "./TopNavigation";
 import { ThemeSelector } from "./ThemeSelector";
 import { useSystem } from "@/contexts/SystemContext";
@@ -863,7 +864,12 @@ function DashboardLayoutContent({
               )}
             </Button>
             
-            <SyncStatusIndicator />
+            {/* Desktop: SyncStatusIndicator, Mobile: MobileOfflineSyncIndicator */}
+            {isMobile ? (
+              <MobileOfflineSyncIndicator />
+            ) : (
+              <SyncStatusIndicator />
+            )}
             <SseIndicator />
             <WebSocketIndicator />
             <NotificationBell />

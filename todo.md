@@ -5415,3 +5415,22 @@
 - [x] Giới hạn số lượng backup (giữ 5 bản gần nhất)
 - [x] UI hiển thị danh sách backup và restore
 - [x] Thêm option backup khi có thay đổi quan trọng
+
+
+### Phase 3.9 Tasks (23/12/2024)
+
+#### Notification Sound Test trong AlertSoundSettings
+- [x] Thêm nút test sound cho từng loại alert trong AlertSoundSettings
+- [x] Preview âm thanh khi click test button
+- [x] Hiển thị animation khi đang phát âm thanh
+
+#### MobileOfflineSyncIndicator Integration
+- [x] Tích hợp MobileOfflineSyncIndicator vào DashboardLayout
+- [x] Hiển thị sync indicator trên mobile navigation
+- [x] Responsive design cho mobile devices
+
+#### Rà soát và hoàn thành các chức năng còn thiếu
+- [x] Kiểm tra SelectItem value="" gây crash và sửa thành value="none"
+- [ ] Hoàn thành trang About.tsx với thông tin hệ thống
+- [ ] Kiểm tra và sửa lỗi LanguageContext/LanguageSwitcher
+- [ ] Cập nhật logic phân tích SPC để chỉ kiểm tra các rules đã bật trong kế hoạch
