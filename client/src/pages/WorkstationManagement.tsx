@@ -125,7 +125,12 @@ export default function WorkstationManagement() {
         const response = await fetch("/api/upload", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ image: base64, type: "workstation" }),
+          body: JSON.stringify({ 
+            data: base64, 
+            filename: file.name,
+            contentType: file.type,
+            folder: "workstations" 
+          }),
         });
         const result = await response.json();
         if (result.url) {

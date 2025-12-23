@@ -1159,6 +1159,7 @@ export const fixtures = mysqlTable("fixtures", {
   code: varchar("code", { length: 50 }).notNull(), // Mã fixture: FIX001, FIX002...
   name: varchar("name", { length: 200 }).notNull(), // Tên fixture
   description: text("description"), // Mô tả
+  imageUrl: varchar("imageUrl", { length: 500 }), // Ảnh fixture
   position: int("position").notNull().default(1), // Vị trí trên máy
   status: mysqlEnum("status", ["active", "maintenance", "inactive"]).default("active").notNull(),
   installDate: timestamp("installDate"),
@@ -3503,3 +3504,22 @@ export const analyticsCache = mysqlTable("analytics_cache", {
 });
 export type AnalyticsCache = typeof analyticsCache.$inferSelect;
 export type InsertAnalyticsCache = typeof analyticsCache.$inferInsert;
+
+
+/**
+ * License Notification Logs - Lưu log các email thông báo license đã gửi
+ */
+export const licenseNotificationLogs = mysqlTable("license_notification_logs", {
+  id: int("id").autoincrement().primaryKey(),
+  licenseId: int("license_id").notNull(),
+  licenseKey: varchar("license_key", { length: 255 }).notNull(),
+  notificationType: mysqlEnum("notification_type", ["7_days_warning", "30_days_warning", "expired", "activated", "deactivated"]).notNull(),
+  recipientEmail: varchar("recipient_email", { length: 320 }).notNull(),
+  subject: varchar("subject", { length: 500 }),
+  status: mysqlEnum("status", ["sent", "failed", "pending"]).notNull().default("pending"),
+  errorMessage: text("error_message"),
+  sentAt: timestamp("sent_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+export type LicenseNotificationLog = typeof licenseNotificationLogs.$inferSelect;
+export type InsertLicenseNotificationLog = typeof licenseNotificationLogs.$inferInsert;

@@ -5457,3 +5457,26 @@
 - [x] Kiểm tra và sửa lỗi LanguageContext/LanguageSwitcher (đã kiểm tra - hoạt động tốt)
 - [ ] Cải thiện giao diện SPC Plan Overview
 - [ ] Hiển thị cảnh báo CPK realtime khi có vi phạm
+
+
+### Phase 3.11 Tasks (23/12/2024)
+
+#### License Activation - Nhập mã kích hoạt bản quyền
+- [x] Thêm form nhập mã kích hoạt bản quyền vào trang License (đã có sẵn trong LicenseActivation.tsx)
+- [x] API validateLicenseKey để kiểm tra mã hợp lệ (đã có)
+- [x] API activateLicense để kích hoạt license (đã có)
+- [x] Hiển thị thông tin license sau khi kích hoạt thành công (đã có)
+- [x] Lưu trạng thái kích hoạt vào database (đã có)
+
+#### License Expiry Check Job
+- [x] Tạo scheduled job kiểm tra license hết hạn hàng ngày (8:00 AM)
+- [x] Gửi email thông báo trước 7 ngày và 30 ngày
+- [x] Gửi email khi license đã hết hạn
+- [x] Lưu log các email đã gửi (license_notification_logs table)
+
+#### Image Upload for Machine/Jig/Workstation
+- [x] Thêm chức năng upload ảnh cho Máy (Machine) - đã có
+- [x] Thêm chức năng upload ảnh cho Fixture - cập nhật API và UI
+- [x] Thêm chức năng upload ảnh cho Công trạm (Workstation) - đã có
+- [x] Hiển thị ảnh trong danh sách và chi tiết
+- [x] Hỗ trợ xóa/thay đổi ảnh

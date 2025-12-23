@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -29,7 +29,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Pencil, Trash2, Wrench, Filter } from "lucide-react";
+import { Plus, Pencil, Trash2, Wrench, Filter, Camera, X, Loader2, Image as ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 
 const STATUS_OPTIONS = [
@@ -48,9 +48,12 @@ export default function FixtureManagement() {
     code: "",
     name: "",
     description: "",
+    imageUrl: "",
     position: 1,
     status: "active" as "active" | "maintenance" | "inactive",
   });
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: fixtures, isLoading, refetch } = trpc.fixture.listWithMachineInfo.useQuery();
   const { data: machines } = trpc.machine.listAll.useQuery();
@@ -93,10 +96,51 @@ export default function FixtureManagement() {
       code: "",
       name: "",
       description: "",
+      imageUrl: "",
       position: 1,
       status: "active",
     });
     setSelectedFixture(null);
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Ảnh không được vượt quá 2MB");
+      return;
+    }
+    
+    setUploading(true);
+    try {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const base64 = reader.result as string;
+        const response = await fetch("/api/upload", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            data: base64, 
+            filename: file.name,
+            contentType: file.type,
+            folder: "fixtures" 
+          }),
+        });
+        const result = await response.json();
+        if (result.url) {
+          setFormData(prev => ({ ...prev, imageUrl: result.url }));
+          toast.success("Đã tải ảnh lên");
+        } else {
+          toast.error("Lỗi tải ảnh");
+        }
+        setUploading(false);
+      };
+      reader.readAsDataURL(file);
+    } catch {
+      toast.error("Lỗi tải ảnh");
+      setUploading(false);
+    }
   };
 
   const handleCreate = () => {
@@ -104,12 +148,19 @@ export default function FixtureManagement() {
       toast.error("Vui lòng nhập đầy đủ thông tin bắt buộc");
       return;
     }
-    createMutation.mutate(formData);
+    createMutation.mutate({
+      ...formData,
+      imageUrl: formData.imageUrl || undefined,
+    });
   };
 
   const handleUpdate = () => {
     if (!selectedFixture) return;
-    updateMutation.mutate({ id: selectedFixture.id, ...formData });
+    updateMutation.mutate({ 
+      id: selectedFixture.id, 
+      ...formData,
+      imageUrl: formData.imageUrl || undefined,
+    });
   };
 
   const handleDelete = (id: number) => {
@@ -125,6 +176,7 @@ export default function FixtureManagement() {
       code: fixture.code,
       name: fixture.name,
       description: fixture.description || "",
+      imageUrl: fixture.imageUrl || "",
       position: fixture.position || 1,
       status: fixture.status || "active",
     });
@@ -155,6 +207,54 @@ export default function FixtureManagement() {
     return acc;
   }, {} as Record<string, typeof filteredFixtures>);
 
+  // Image upload component
+  const ImageUploadSection = () => (
+    <div className="space-y-2">
+      <Label>Ảnh Fixture</Label>
+      <div className="flex items-center gap-4">
+        <div className="relative w-24 h-24 rounded-lg border-2 border-dashed border-muted-foreground/25 flex items-center justify-center overflow-hidden bg-muted">
+          {formData.imageUrl ? (
+            <>
+              <img src={formData.imageUrl} alt="Fixture" className="w-full h-full object-cover" />
+              <Button
+                variant="destructive"
+                size="icon"
+                className="absolute top-1 right-1 h-6 w-6"
+                onClick={() => setFormData(prev => ({ ...prev, imageUrl: "" }))}
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </>
+          ) : (
+            <Camera className="h-8 w-8 text-muted-foreground" />
+          )}
+        </div>
+        <div className="flex-1">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleImageUpload}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+          >
+            {uploading ? (
+              <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Đang tải...</>
+            ) : (
+              <><Camera className="mr-2 h-4 w-4" /> Chọn ảnh</>
+            )}
+          </Button>
+          <p className="text-xs text-muted-foreground mt-1">Tối đa 2MB, định dạng JPG/PNG</p>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <DashboardLayout>
     <div className="container py-6 space-y-6">
@@ -175,7 +275,7 @@ export default function FixtureManagement() {
               Thêm Fixture
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
               <DialogTitle>Thêm Fixture Mới</DialogTitle>
             </DialogHeader>
@@ -253,6 +353,7 @@ export default function FixtureManagement() {
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 />
               </div>
+              <ImageUploadSection />
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
                   Hủy
@@ -308,6 +409,7 @@ export default function FixtureManagement() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-[60px]">Ảnh</TableHead>
                     <TableHead>Mã</TableHead>
                     <TableHead>Tên</TableHead>
                     <TableHead>Vị trí</TableHead>
@@ -319,6 +421,19 @@ export default function FixtureManagement() {
                 <TableBody>
                   {machineFixtures?.map((fixture) => (
                     <TableRow key={fixture.id}>
+                      <TableCell>
+                        {fixture.imageUrl ? (
+                          <img 
+                            src={fixture.imageUrl} 
+                            alt={fixture.name} 
+                            className="w-10 h-10 rounded object-cover"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded bg-muted flex items-center justify-center">
+                            <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                        )}
+                      </TableCell>
                       <TableCell className="font-mono font-medium">{fixture.code}</TableCell>
                       <TableCell>{fixture.name}</TableCell>
                       <TableCell>{fixture.position}</TableCell>
@@ -351,7 +466,7 @@ export default function FixtureManagement() {
 
       {/* Edit Dialog */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>Chỉnh sửa Fixture</DialogTitle>
           </DialogHeader>
@@ -426,6 +541,7 @@ export default function FixtureManagement() {
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               />
             </div>
+            <ImageUploadSection />
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setIsEditOpen(false)}>
                 Hủy

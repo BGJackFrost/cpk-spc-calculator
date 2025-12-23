@@ -12,34 +12,109 @@ import { triggerWebhooks } from './webhookService';
 import { notifyOwner } from './_core/notification';
 import { processWebhookRetries, getRetryStats } from './webhookService';
 import { sendEmail } from './emailService';
-import { spareParts, sparePartsInventory, suppliers } from '../drizzle/schema';
+import { spareParts, sparePartsInventory, suppliers, licenseNotificationLogs } from '../drizzle/schema';
 
 // Track if jobs are already initialized
 let jobsInitialized = false;
 
 /**
+ * Log license notification to database
+ */
+async function logLicenseNotification(
+  licenseId: number,
+  licenseKey: string,
+  notificationType: '7_days_warning' | '30_days_warning' | 'expired' | 'activated' | 'deactivated',
+  recipientEmail: string,
+  subject: string,
+  status: 'sent' | 'failed' | 'pending',
+  errorMessage?: string
+): Promise<void> {
+  try {
+    const db = await getDb();
+    if (!db) return;
+    
+    await db.insert(licenseNotificationLogs).values({
+      licenseId,
+      licenseKey,
+      notificationType,
+      recipientEmail,
+      subject,
+      status,
+      errorMessage: errorMessage || null,
+      sentAt: status === 'sent' ? new Date() : null,
+    });
+  } catch (error) {
+    console.error('[ScheduledJob] Error logging license notification:', error);
+  }
+}
+
+/**
+ * Check if notification was already sent today for this license
+ */
+async function wasNotificationSentToday(
+  licenseKey: string,
+  notificationType: '7_days_warning' | '30_days_warning' | 'expired'
+): Promise<boolean> {
+  try {
+    const db = await getDb();
+    if (!db) return false;
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const logs = await db.select()
+      .from(licenseNotificationLogs)
+      .where(
+        and(
+          eq(licenseNotificationLogs.licenseKey, licenseKey),
+          eq(licenseNotificationLogs.notificationType, notificationType),
+          eq(licenseNotificationLogs.status, 'sent'),
+          gte(licenseNotificationLogs.sentAt, today)
+        )
+      )
+      .limit(1);
+    
+    return logs.length > 0;
+  } catch (error) {
+    console.error('[ScheduledJob] Error checking notification history:', error);
+    return false;
+  }
+}
+
+/**
  * Send license renewal email notifications
  */
-async function sendLicenseRenewalEmails(): Promise<{ sent: number; failed: number }> {
+async function sendLicenseRenewalEmails(): Promise<{ sent: number; failed: number; skipped: number }> {
   console.log('[ScheduledJob] Sending license renewal emails...');
   
   let sent = 0;
   let failed = 0;
+  let skipped = 0;
   
   try {
     // Get licenses expiring in 30 days
     const expiringSoon30 = await getLicensesExpiringSoon(30);
     // Get licenses expiring in 7 days
     const expiringSoon7 = await getLicensesExpiringSoon(7);
+    // Get expired licenses
+    const expiredLicenses = await getExpiredLicenses();
     
     // Send urgent emails for licenses expiring in 7 days
     for (const license of expiringSoon7) {
       const daysLeft = Math.ceil((new Date(license.expiresAt!).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
       
       if (daysLeft <= 7 && daysLeft > 0 && license.contactEmail) {
+        // Check if already sent today
+        const alreadySent = await wasNotificationSentToday(license.licenseKey, '7_days_warning');
+        if (alreadySent) {
+          skipped++;
+          continue;
+        }
+        
+        const subject = `⚠️ Cảnh báo: License SPC/CPK Calculator sẽ hết hạn trong ${daysLeft} ngày`;
         const result = await sendEmail(
           license.contactEmail,
-          `⚠️ Cảnh báo: License SPC/CPK Calculator sẽ hết hạn trong ${daysLeft} ngày`,
+          subject,
           `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
               <h2 style="color: #dc2626;">⚠️ License sắp hết hạn!</h2>
@@ -56,6 +131,17 @@ async function sendLicenseRenewalEmails(): Promise<{ sent: number; failed: numbe
           `
         );
         
+        // Log to database
+        await logLicenseNotification(
+          license.id,
+          license.licenseKey,
+          '7_days_warning',
+          license.contactEmail,
+          subject,
+          result.success ? 'sent' : 'failed',
+          result.success ? undefined : result.error
+        );
+        
         if (result.success) sent++;
         else failed++;
       }
@@ -66,9 +152,17 @@ async function sendLicenseRenewalEmails(): Promise<{ sent: number; failed: numbe
       const daysLeft = Math.ceil((new Date(license.expiresAt!).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
       
       if (daysLeft > 7 && daysLeft <= 30 && license.contactEmail) {
+        // Check if already sent today
+        const alreadySent = await wasNotificationSentToday(license.licenseKey, '30_days_warning');
+        if (alreadySent) {
+          skipped++;
+          continue;
+        }
+        
+        const subject = `📅 Nhắc nhở: License SPC/CPK Calculator sẽ hết hạn trong ${daysLeft} ngày`;
         const result = await sendEmail(
           license.contactEmail,
-          `📅 Nhắc nhở: License SPC/CPK Calculator sẽ hết hạn trong ${daysLeft} ngày`,
+          subject,
           `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
               <h2 style="color: #f59e0b;">📅 Nhắc nhở gia hạn License</h2>
@@ -85,18 +179,75 @@ async function sendLicenseRenewalEmails(): Promise<{ sent: number; failed: numbe
           `
         );
         
+        // Log to database
+        await logLicenseNotification(
+          license.id,
+          license.licenseKey,
+          '30_days_warning',
+          license.contactEmail,
+          subject,
+          result.success ? 'sent' : 'failed',
+          result.success ? undefined : result.error
+        );
+        
         if (result.success) sent++;
         else failed++;
       }
     }
     
-    console.log(`[ScheduledJob] License renewal emails: sent=${sent}, failed=${failed}`);
+    // Send expired notification emails
+    for (const license of expiredLicenses) {
+      if (license.contactEmail) {
+        // Check if already sent today
+        const alreadySent = await wasNotificationSentToday(license.licenseKey, 'expired');
+        if (alreadySent) {
+          skipped++;
+          continue;
+        }
+        
+        const subject = `🚨 License SPC/CPK Calculator đã hết hạn`;
+        const result = await sendEmail(
+          license.contactEmail,
+          subject,
+          `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h2 style="color: #dc2626;">🚨 License đã hết hạn!</h2>
+              <p>Kính gửi <strong>${license.companyName || 'Quý khách'}</strong>,</p>
+              <p>License <strong>${license.licenseType?.toUpperCase()}</strong> của bạn đã hết hạn vào ngày <strong style="color: #dc2626;">${new Date(license.expiresAt!).toLocaleDateString('vi-VN')}</strong>.</p>
+              <table style="border-collapse: collapse; width: 100%; margin: 20px 0;">
+                <tr><td style="padding: 8px; border: 1px solid #ddd;"><strong>License Key:</strong></td><td style="padding: 8px; border: 1px solid #ddd;">${license.licenseKey}</td></tr>
+                <tr><td style="padding: 8px; border: 1px solid #ddd;"><strong>Loại:</strong></td><td style="padding: 8px; border: 1px solid #ddd;">${license.licenseType?.toUpperCase()}</td></tr>
+                <tr><td style="padding: 8px; border: 1px solid #ddd;"><strong>Ngày hết hạn:</strong></td><td style="padding: 8px; border: 1px solid #ddd;">${new Date(license.expiresAt!).toLocaleDateString('vi-VN')}</td></tr>
+              </table>
+              <p style="color: #dc2626;"><strong>Vui lòng gia hạn license ngay để tiếp tục sử dụng dịch vụ.</strong></p>
+              <p style="color: #666; font-size: 12px;">Email này được gửi tự động từ hệ thống SPC/CPK Calculator.</p>
+            </div>
+          `
+        );
+        
+        // Log to database
+        await logLicenseNotification(
+          license.id,
+          license.licenseKey,
+          'expired',
+          license.contactEmail,
+          subject,
+          result.success ? 'sent' : 'failed',
+          result.success ? undefined : result.error
+        );
+        
+        if (result.success) sent++;
+        else failed++;
+      }
+    }
+    
+    console.log(`[ScheduledJob] License renewal emails: sent=${sent}, failed=${failed}, skipped=${skipped}`);
     
   } catch (error) {
     console.error('[ScheduledJob] Error sending license renewal emails:', error);
   }
   
-  return { sent, failed };
+  return { sent, failed, skipped };
 }
 
 /**
