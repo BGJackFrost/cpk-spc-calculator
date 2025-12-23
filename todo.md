@@ -5393,3 +5393,25 @@
 - [x] Export notification preferences ra JSON file
 - [x] Import notification preferences từ JSON file
 - [x] Validation và error handling cho import
+
+### Phase 3.8 Tasks (23/12/2024)
+
+#### Notification Sound cho SPC/OEE Alerts
+- [x] Tạo mapping âm thanh cho từng loại cảnh báo SPC (CPK thấp, vi phạm rule, trend)
+- [x] Tạo mapping âm thanh cho từng loại cảnh báo OEE (availability, performance, quality)
+- [x] Tích hợp sound player vào SseNotificationProvider
+- [x] Cho phép cấu hình âm thanh riêng cho từng loại alert
+
+#### Conflict Resolution với Offline Mode cho Mobile
+- [x] Tạo OfflineSyncManager cho mobile với IndexedDB storage
+- [x] Thêm conflict queue riêng cho offline changes
+- [x] Tự động detect và resolve conflicts khi reconnect
+- [x] UI responsive cho conflict dialog trên mobile
+- [x] Thêm sync indicator trên mobile navigation
+
+#### Scheduled Backup cho Notification Settings
+- [x] Tạo service tự động backup settings theo lịch
+- [x] Lưu backup vào localStorage với versioning
+- [x] Giới hạn số lượng backup (giữ 5 bản gần nhất)
+- [x] UI hiển thị danh sách backup và restore
+- [x] Thêm option backup khi có thay đổi quan trọng

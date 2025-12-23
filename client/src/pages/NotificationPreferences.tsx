@@ -41,6 +41,8 @@ import {
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { NotificationSoundPreview, NotificationSoundType } from '@/components/NotificationSoundPreview';
 import { NotificationSettingsExport, NotificationPreferencesData } from '@/components/NotificationSettingsExport';
+import { AlertSoundSettings } from '@/components/AlertSoundSettings';
+import { SettingsBackupManager } from '@/components/SettingsBackupManager';
 import { toast } from 'sonner';
 
 // Types
@@ -598,6 +600,9 @@ export default function NotificationPreferences() {
           </CardContent>
         </Card>
 
+        {/* Alert Sound Settings - Per Alert Type */}
+        <AlertSoundSettings />
+
         {/* Export/Import Settings - New Component */}
         <NotificationSettingsExport
           channels={channels.map(ch => ({
@@ -614,6 +619,9 @@ export default function NotificationPreferences() {
           emailDigest={emailDigest}
           onImport={handleImportSettings}
         />
+
+        {/* Settings Backup Manager */}
+        <SettingsBackupManager />
       </div>
     </DashboardLayout>
   );
