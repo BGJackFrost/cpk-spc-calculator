@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
+import { useIotDeviceData, useRealtimeData } from '@/hooks/useRealtimeData';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -43,6 +44,17 @@ import {
 export default function IoTDashboard() {
   const [activeTab, setActiveTab] = useState('devices');
   const [isAddingDevice, setIsAddingDevice] = useState(false);
+
+  // Real-time IoT device data subscription
+  const { devices: realtimeDevices, isConnected, error: sseError } = useIotDeviceData();
+  
+  // Real-time data for IoT channels
+  const { messages: iotMessages, lastMessage } = useRealtimeData({
+    channels: ['iot:devices', 'iot:telemetry', 'iot:alerts'],
+    onMessage: (event) => {
+      console.log('[IoT] Realtime event:', event.type, event.data);
+    }
+  });
 
   // Mock IoT data
   const iotStats = {
@@ -162,9 +174,23 @@ export default function IoTDashboard() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold">IoT Device Dashboard</h1>
-            <p className="text-muted-foreground">
-              Monitor and manage connected IoT devices
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="text-muted-foreground">
+                Monitor and manage connected IoT devices
+              </p>
+              {/* Realtime Connection Indicator */}
+              <div className="flex items-center gap-1">
+                <span className={`h-2 w-2 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
+                <span className="text-xs text-muted-foreground">
+                  {isConnected ? 'Live' : 'Offline'}
+                </span>
+              </div>
+              {realtimeDevices.length > 0 && (
+                <Badge variant="outline" className="ml-2">
+                  {realtimeDevices.length} active streams
+                </Badge>
+              )}
+            </div>
           </div>
           <div className="flex gap-2">
             <Button variant="outline">

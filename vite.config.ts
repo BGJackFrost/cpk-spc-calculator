@@ -24,6 +24,39 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    // Code splitting configuration
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          // Vendor chunks based on module path
+          if (id.includes('node_modules')) {
+            if (id.includes('react') || id.includes('wouter')) {
+              return 'vendor-react';
+            }
+            if (id.includes('@radix-ui')) {
+              return 'vendor-ui';
+            }
+            if (id.includes('recharts') || id.includes('d3')) {
+              return 'vendor-charts';
+            }
+            if (id.includes('@trpc') || id.includes('@tanstack')) {
+              return 'vendor-trpc';
+            }
+            if (id.includes('date-fns') || id.includes('lodash') || id.includes('zod')) {
+              return 'vendor-utils';
+            }
+          }
+        },
+        // Chunk naming
+        chunkFileNames: 'assets/[name]-[hash].js',
+        entryFileNames: 'assets/[name]-[hash].js',
+        assetFileNames: 'assets/[name]-[hash].[ext]',
+      },
+    },
+    // Performance optimizations
+    chunkSizeWarningLimit: 1000,
+    sourcemap: false,
+    minify: 'esbuild',
   },
   server: {
     host: true,

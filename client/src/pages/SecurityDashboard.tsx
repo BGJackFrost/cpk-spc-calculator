@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
+import { useSecurityEvents, useRealtimeData } from '@/hooks/useRealtimeData';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -26,6 +27,17 @@ import {
 export default function SecurityDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
   const [isScanning, setIsScanning] = useState(false);
+
+  // Real-time security events subscription
+  const { events: realtimeSecurityEvents, isConnected, error: sseError, clearEvents } = useSecurityEvents();
+  
+  // Real-time data for multiple security channels
+  const { messages: securityMessages, lastMessage } = useRealtimeData({
+    channels: ['security:events', 'security:audit', 'security:alerts'],
+    onMessage: (event) => {
+      console.log('[Security] Realtime event:', event.type, event.data);
+    }
+  });
 
   // Mock security data
   const securityScore = {
@@ -108,9 +120,23 @@ export default function SecurityDashboard() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold">Security Dashboard</h1>
-            <p className="text-muted-foreground">
-              Security audit, OWASP compliance, and access control monitoring
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="text-muted-foreground">
+                Security audit, OWASP compliance, and access control monitoring
+              </p>
+              {/* Realtime Connection Indicator */}
+              <div className="flex items-center gap-1">
+                <span className={`h-2 w-2 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
+                <span className="text-xs text-muted-foreground">
+                  {isConnected ? 'Live' : 'Offline'}
+                </span>
+              </div>
+              {realtimeSecurityEvents.length > 0 && (
+                <Badge variant="destructive" className="ml-2">
+                  {realtimeSecurityEvents.length} new events
+                </Badge>
+              )}
+            </div>
           </div>
           <Button onClick={handleRunAudit} disabled={isScanning}>
             {isScanning ? (

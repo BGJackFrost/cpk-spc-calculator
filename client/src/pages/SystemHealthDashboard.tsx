@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
+import { useSystemHealthData, useRealtimeData } from '@/hooks/useRealtimeData';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -27,6 +28,17 @@ import { trpc } from '@/lib/trpc';
 export default function SystemHealthDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Real-time data subscription
+  const { data: realtimeHealth, isConnected, lastUpdate } = useSystemHealthData();
+  
+  // Real-time event subscription for multiple channels
+  const { messages: realtimeEvents } = useRealtimeData({
+    channels: ['system:health', 'system:metrics', 'system:errors'],
+    onMessage: (event) => {
+      console.log('[SystemHealth] Realtime event:', event.type);
+    }
+  });
 
   // Mock data for demonstration
   const systemHealth = {
@@ -106,14 +118,30 @@ export default function SystemHealthDashboard() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold">System Health Dashboard</h1>
-            <p className="text-muted-foreground">
-              Monitor system performance, errors, and resource usage
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="text-muted-foreground">
+                Monitor system performance, errors, and resource usage
+              </p>
+              {/* Realtime Connection Indicator */}
+              <div className="flex items-center gap-1">
+                <span className={`h-2 w-2 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
+                <span className="text-xs text-muted-foreground">
+                  {isConnected ? 'Live' : 'Offline'}
+                </span>
+              </div>
+            </div>
           </div>
-          <Button onClick={handleRefresh} disabled={isRefreshing}>
-            <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
+          <div className="flex items-center gap-2">
+            {lastUpdate && (
+              <span className="text-xs text-muted-foreground">
+                Last update: {lastUpdate.toLocaleTimeString()}
+              </span>
+            )}
+            <Button onClick={handleRefresh} disabled={isRefreshing}>
+              <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+          </div>
         </div>
 
         {/* Quick Stats */}

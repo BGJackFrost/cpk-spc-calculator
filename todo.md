@@ -5236,3 +5236,59 @@
 - [x] Thêm bảng analytics_cache vào schema
 - [x] Tạo các bảng trong database
 - [x] Tạo DatabaseIntegration service với CRUD helpers (server/services/databaseIntegration.ts)
+
+## Phase 3.4 - WebSocket Integration, PWA & Performance (23/12/2024)
+
+### WebSocket Integration vào Dashboards
+- [ ] Tích hợp useRealtimeData hook vào System Health Dashboard
+- [ ] Tích hợp useRealtimeData hook vào Security Dashboard
+- [ ] Tích hợp useRealtimeData hook vào IoT Dashboard
+- [ ] Tích hợp useRealtimeData hook vào AI/ML Dashboard
+- [ ] Thêm realtime indicators cho các metrics
+
+### PWA Features
+- [ ] Tạo Service Worker với offline caching
+- [ ] Cập nhật manifest.json với shortcuts và icons
+- [ ] Tạo offline fallback page
+- [ ] Thêm install prompt cho PWA
+- [ ] Cache API responses cho offline access
+
+### Push Notifications
+- [ ] Tạo Push Notification service
+- [ ] Tích hợp push notifications cho SPC alerts
+- [ ] Tích hợp push notifications cho Security alerts
+- [ ] Tích hợp push notifications cho IoT device alerts
+- [ ] Thêm notification permission request
+
+### Performance Optimization
+- [ ] Cấu hình code splitting trong vite.config.ts
+- [ ] Lazy load các pages lớn
+- [ ] Tối ưu bundle size với tree shaking
+- [ ] Thêm prefetch cho critical routes
+
+## Phase 3.4 Implementation Status (23/12/2024)
+
+### Completed Tasks:
+
+#### WebSocket Integration vào Dashboards
+- [x] Tích hợp useRealtimeData hook vào System Health Dashboard
+- [x] Tích hợp useRealtimeData hook vào Security Dashboard
+- [x] Tích hợp useRealtimeData hook vào IoT Dashboard
+- [x] Thêm realtime connection indicators cho các dashboards
+
+#### PWA Features
+- [x] Cập nhật Service Worker với offline caching nâng cao (sw.js)
+- [x] Cập nhật manifest.json với shortcuts và PWA features
+- [x] Tạo offline fallback page (offline.html)
+- [x] Thêm intelligent caching strategies (static, dynamic, API)
+
+#### Push Notifications
+- [x] Tạo Push Notification service (pushNotificationService.ts)
+- [x] Tạo usePushNotifications hook
+- [x] Hỗ trợ các loại alerts: SPC, OEE, Security, IoT, System
+
+#### Performance Optimization
+- [x] Cấu hình code splitting trong vite.config.ts
+- [x] Tạo manual chunks cho vendor libraries
+- [x] Tạo LazyPageLoader component với retry logic
+- [x] Tạo lazy loaded wrappers cho các pages lớn
