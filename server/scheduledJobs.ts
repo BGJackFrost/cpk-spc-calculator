@@ -541,6 +541,16 @@ export function initScheduledJobs(): void {
   
   console.log('[ScheduledJob] Scheduled: Machine Integration OEE report processor every hour (Asia/Ho_Chi_Minh)');
   
+  // KPI decline alert check - runs daily at 8:00 AM
+  cron.schedule('0 0 8 * * *', async () => {
+    console.log('[ScheduledJob] Triggered: KPI decline alert check');
+    await checkKPIDeclineAlerts();
+  }, {
+    timezone: 'Asia/Ho_Chi_Minh'
+  });
+  
+  console.log('[ScheduledJob] Scheduled: KPI decline alert check at 8:00 AM (Asia/Ho_Chi_Minh)');
+  
   jobsInitialized = true;
   console.log('[ScheduledJob] All scheduled jobs initialized successfully');
 }
@@ -3057,4 +3067,54 @@ console.log('[ScheduledJob] Scheduled: MySQL → PostgreSQL sync at 2:30 AM dail
  */
 export async function triggerMySqlToPostgresSync(): Promise<{ tables: number; rows: number; errors: number }> {
   return await syncMySqlToPostgres();
+}
+
+
+/**
+ * Check KPI decline and send alerts
+ * Runs daily to compare current week KPIs with previous week
+ */
+export async function checkKPIDeclineAlerts(): Promise<{
+  checked: boolean;
+  cpkAlert: boolean;
+  oeeAlert: boolean;
+  emailSent: boolean;
+  ownerNotified: boolean;
+}> {
+  console.log('[ScheduledJob] Checking KPI decline alerts...');
+  
+  try {
+    const { checkAndSendKPIAlerts } = await import('./services/kpiAlertService');
+    const result = await checkAndSendKPIAlerts();
+    
+    if (result.cpkAlert || result.oeeAlert) {
+      console.log(`[ScheduledJob] KPI alerts triggered - CPK: ${result.cpkAlert}, OEE: ${result.oeeAlert}`);
+    } else {
+      console.log('[ScheduledJob] No KPI alerts - KPIs are stable');
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('[ScheduledJob] Error checking KPI decline alerts:', error);
+    return {
+      checked: false,
+      cpkAlert: false,
+      oeeAlert: false,
+      emailSent: false,
+      ownerNotified: false,
+    };
+  }
+}
+
+/**
+ * Manually trigger KPI decline alert check (for testing)
+ */
+export async function triggerKPIDeclineCheck(): Promise<{
+  checked: boolean;
+  cpkAlert: boolean;
+  oeeAlert: boolean;
+  emailSent: boolean;
+  ownerNotified: boolean;
+}> {
+  return await checkKPIDeclineAlerts();
 }

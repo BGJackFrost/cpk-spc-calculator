@@ -9558,6 +9558,110 @@ Hãy trả về JSON với format:
       })
   }),
 
+  // Shift Manager Dashboard router
+  shiftManager: router({
+    // Get shift KPI data with filters
+    getShiftKPIs: protectedProcedure
+      .input(z.object({
+        date: z.date(),
+        productionLineId: z.number().optional(),
+        machineId: z.number().optional()
+      }))
+      .query(async ({ input }) => {
+        const { getShiftKPIData } = await import("./services/shiftManagerService");
+        return await getShiftKPIData(input);
+      }),
+
+    // Get machine performance data
+    getMachinePerformance: protectedProcedure
+      .input(z.object({
+        date: z.date(),
+        productionLineId: z.number().optional(),
+        machineId: z.number().optional()
+      }))
+      .query(async ({ input }) => {
+        const { getMachinePerformanceData } = await import("./services/shiftManagerService");
+        return await getMachinePerformanceData(input);
+      }),
+
+    // Get daily trend data
+    getDailyTrend: protectedProcedure
+      .input(z.object({
+        date: z.date(),
+        days: z.number().default(7),
+        productionLineId: z.number().optional(),
+        machineId: z.number().optional()
+      }))
+      .query(async ({ input }) => {
+        const { getDailyTrendData } = await import("./services/shiftManagerService");
+        return await getDailyTrendData(input);
+      }),
+
+    // Get weekly comparison data
+    getWeeklyCompare: protectedProcedure
+      .input(z.object({
+        date: z.date(),
+        weeks: z.number().default(4),
+        productionLineId: z.number().optional(),
+        machineId: z.number().optional()
+      }))
+      .query(async ({ input }) => {
+        const { getWeeklyCompareData } = await import("./services/shiftManagerService");
+        return await getWeeklyCompareData(input);
+      }),
+
+    // Compare KPI with previous week (for alerts)
+    compareWithPreviousWeek: protectedProcedure
+      .input(z.object({
+        date: z.date(),
+        productionLineId: z.number().optional(),
+        machineId: z.number().optional()
+      }))
+      .query(async ({ input }) => {
+        const { compareKPIWithPreviousWeek } = await import("./services/shiftManagerService");
+        return await compareKPIWithPreviousWeek(input);
+      }),
+
+    // Export to Excel
+    exportExcel: protectedProcedure
+      .input(z.object({
+        date: z.date(),
+        days: z.number().default(7),
+        productionLineId: z.number().optional(),
+        machineId: z.number().optional()
+      }))
+      .mutation(async ({ input }) => {
+        const { exportShiftManagerExcel } = await import("./services/shiftManagerService");
+        return await exportShiftManagerExcel(input);
+      }),
+
+    // Export to PDF
+    exportPdf: protectedProcedure
+      .input(z.object({
+        date: z.date(),
+        productionLineId: z.number().optional(),
+        machineId: z.number().optional()
+      }))
+      .mutation(async ({ input }) => {
+        const { exportShiftManagerPdf } = await import("./services/shiftManagerService");
+        return await exportShiftManagerPdf(input);
+      }),
+
+    // Manually trigger KPI alert check
+    triggerKPIAlertCheck: protectedProcedure
+      .input(z.object({
+        productionLineId: z.number().optional(),
+        machineId: z.number().optional()
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { checkAndSendKPIAlerts } = await import("./services/kpiAlertService");
+        return await checkAndSendKPIAlerts(input.productionLineId, input.machineId);
+      })
+  }),
+
   // Query Cache Management router
   queryCache: router({
     // Get cache statistics

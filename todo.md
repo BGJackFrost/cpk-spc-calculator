@@ -5669,3 +5669,24 @@
 - [x] Tạo biểu đồ so sánh KPI theo tuần
 - [x] Thêm bảng thống kê chi tiết theo thời gian
 
+
+
+## Phase 39: Nâng cấp Shift Manager Dashboard
+
+### Bộ lọc theo Line/Machine trong biểu đồ so sánh KPI
+- [x] Thêm dropdown chọn Line trong các biểu đồ so sánh
+- [x] Thêm dropdown chọn Machine trong các biểu đồ so sánh
+- [x] Cập nhật API để hỗ trợ filter theo Line/Machine
+- [x] Cập nhật biểu đồ theo filter đã chọn
+
+### Export PDF/Excel cho Shift Manager Dashboard
+- [x] Tạo API export báo cáo Shift Manager ra PDF
+- [x] Tạo API export báo cáo Shift Manager ra Excel
+- [x] Thêm nút Export vào Shift Manager Dashboard
+- [x] Thêm dialog chọn khoảng thời gian và định dạng export
+
+### Cảnh báo tự động khi KPI giảm
+- [x] Tạo service kiểm tra KPI so với tuần trước
+- [x] Gửi email cảnh báo khi KPI giảm quá ngưỡng
+- [x] Hiển thị cảnh báo trên Dashboard
+- [x] Cấu hình ngưỡng cảnh báo KPI

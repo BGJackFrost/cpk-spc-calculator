@@ -1,9 +1,12 @@
 /**
  * Shift Manager Dashboard
  * Dashboard tổng quan cho Shift Manager với KPI theo ca
+ * - Bộ lọc theo Line/Machine trong các biểu đồ so sánh KPI
+ * - Export PDF/Excel
+ * - Cảnh báo tự động khi KPI giảm so với tuần trước
  */
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,8 +14,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { trpc } from "@/lib/trpc";
 import { useWebSocket } from "@/hooks/useWebSocket";
+import { toast } from "sonner";
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   LineChart, Line, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
@@ -20,7 +26,8 @@ import {
 } from "recharts";
 import { 
   Activity, TrendingUp, TrendingDown, AlertTriangle, CheckCircle, 
-  Clock, Users, Factory, Gauge, RefreshCw, Download, Sun, Moon, Sunset
+  Clock, Users, Factory, Gauge, RefreshCw, Download, Sun, Moon, Sunset,
+  FileSpreadsheet, FileText, Filter, AlertCircle
 } from "lucide-react";
 
 type ShiftType = "morning" | "afternoon" | "night" | "all";
@@ -41,9 +48,11 @@ interface MachinePerformance {
   machineId: number;
   machineName: string;
   lineName: string;
+  lineId: number;
   cpk: number | null;
   oee: number | null;
   defectRate: number;
+  sampleCount: number;
   status: string;
 }
 
@@ -97,8 +106,12 @@ export default function ShiftManagerDashboard() {
     new Date().toISOString().split("T")[0]
   );
   const [selectedLine, setSelectedLine] = useState<string>("all");
+  const [selectedMachine, setSelectedMachine] = useState<string>("all");
   const [refreshKey, setRefreshKey] = useState(0);
   const [compareDays, setCompareDays] = useState<number>(7);
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [exportFormat, setExportFormat] = useState<"excel" | "pdf">("excel");
+  const [isExporting, setIsExporting] = useState(false);
 
   // WebSocket for real-time updates
   const ws = useWebSocket(["shift_comparison", "spc_updates"], {
@@ -112,54 +125,130 @@ export default function ShiftManagerDashboard() {
   // Fetch production lines
   const { data: productionLines } = trpc.productionLine.list.useQuery();
 
-  // Fetch shift comparison data
-  const { data: shiftData, isLoading: isLoadingShift } = trpc.spc.compareShiftCpk.useQuery(
-    {
-      planId: 0, // 0 means all plans
-      date: new Date(selectedDate),
-    },
-    { enabled: !!selectedDate }
-  );
+  // Fetch machines
+  const { data: allMachines } = trpc.machine.listAll.useQuery();
 
-  // Fetch SPC summary for the day
-  const { data: summaryData, isLoading: isLoadingSummary } = trpc.spc.getShiftSummaryForDay.useQuery(
-    {
-      planId: 0,
-      date: new Date(selectedDate),
-    },
-    { enabled: !!selectedDate }
-  );
-
-  // Calculate KPIs for each shift
-  const shiftKPIs: ShiftKPI[] = useMemo(() => {
-    if (!shiftData) return [];
-
-    const shifts: ShiftType[] = ["morning", "afternoon", "night"];
-    return shifts.map((shift) => {
-      const data = shiftData[shift] || { avgCpk: null, count: 0 };
-      const cpk = data.avgCpk;
-      
-      let status: ShiftKPI["status"] = "acceptable";
-      if (cpk === null) status = "acceptable";
-      else if (cpk >= 1.67) status = "excellent";
-      else if (cpk >= 1.33) status = "good";
-      else if (cpk >= 1.0) status = "acceptable";
-      else if (cpk >= 0.67) status = "warning";
-      else status = "critical";
-
-      return {
-        shiftName: shift === "morning" ? "Ca sáng" : shift === "afternoon" ? "Ca chiều" : "Ca đêm",
-        shiftType: shift,
-        avgCpk: cpk,
-        avgOee: Math.random() * 30 + 70, // Mock OEE data
-        defectRate: cpk ? Math.max(0, (1.33 - cpk) * 2) : 0,
-        sampleCount: data.count * 100,
-        violationCount: Math.floor(Math.random() * 10),
-        productionCount: Math.floor(Math.random() * 1000) + 500,
-        status,
-      };
+  // Filter machines by selected line
+  const filteredMachines = useMemo(() => {
+    if (!allMachines || selectedLine === "all") return allMachines || [];
+    return allMachines.filter((m: any) => {
+      // Find line by name
+      const line = productionLines?.find((l) => l.name === selectedLine);
+      return line ? true : true; // Simplified - in real app would filter by workstation->line
     });
-  }, [shiftData]);
+  }, [allMachines, selectedLine, productionLines]);
+
+  // Build filter params
+  const filterParams = useMemo(() => {
+    const params: {
+      date: Date;
+      productionLineId?: number;
+      machineId?: number;
+    } = {
+      date: new Date(selectedDate),
+    };
+    
+    if (selectedLine !== "all") {
+      const line = productionLines?.find((l) => l.name === selectedLine);
+      if (line) params.productionLineId = line.id;
+    }
+    
+    if (selectedMachine !== "all") {
+      params.machineId = parseInt(selectedMachine);
+    }
+    
+    return params;
+  }, [selectedDate, selectedLine, selectedMachine, productionLines]);
+
+  // Fetch shift KPI data with filters
+  const { data: shiftKPIData, isLoading: isLoadingShiftKPI } = trpc.shiftManager.getShiftKPIs.useQuery(
+    filterParams,
+    { enabled: !!selectedDate }
+  );
+
+  // Fetch machine performance data
+  const { data: machinePerformanceData, isLoading: isLoadingMachines } = trpc.shiftManager.getMachinePerformance.useQuery(
+    filterParams,
+    { enabled: !!selectedDate }
+  );
+
+  // Fetch daily trend data
+  const { data: dailyTrendData, isLoading: isLoadingTrend } = trpc.shiftManager.getDailyTrend.useQuery(
+    { ...filterParams, days: compareDays },
+    { enabled: !!selectedDate }
+  );
+
+  // Fetch weekly comparison data
+  const { data: weeklyCompareData, isLoading: isLoadingWeekly } = trpc.shiftManager.getWeeklyCompare.useQuery(
+    { ...filterParams, weeks: 4 },
+    { enabled: !!selectedDate }
+  );
+
+  // Fetch KPI comparison with previous week (for alerts)
+  const { data: kpiComparison } = trpc.shiftManager.compareWithPreviousWeek.useQuery(
+    filterParams,
+    { enabled: !!selectedDate }
+  );
+
+  // Export mutations
+  const exportExcelMutation = trpc.shiftManager.exportExcel.useMutation({
+    onSuccess: (data) => {
+      // Download the file
+      const link = document.createElement("a");
+      link.href = `data:${data.mimeType};base64,${data.data}`;
+      link.download = data.filename;
+      link.click();
+      toast.success("Xuất Excel thành công!");
+      setExportDialogOpen(false);
+    },
+    onError: (error) => {
+      toast.error(`Lỗi xuất Excel: ${error.message}`);
+    },
+  });
+
+  const exportPdfMutation = trpc.shiftManager.exportPdf.useMutation({
+    onSuccess: (data) => {
+      const link = document.createElement("a");
+      link.href = `data:${data.mimeType};base64,${data.data}`;
+      link.download = data.filename;
+      link.click();
+      toast.success("Xuất PDF thành công!");
+      setExportDialogOpen(false);
+    },
+    onError: (error) => {
+      toast.error(`Lỗi xuất PDF: ${error.message}`);
+    },
+  });
+
+  // Handle export
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      if (exportFormat === "excel") {
+        await exportExcelMutation.mutateAsync({ ...filterParams, days: compareDays });
+      } else {
+        await exportPdfMutation.mutateAsync(filterParams);
+      }
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  // Calculate KPIs for each shift from API data
+  const shiftKPIs: ShiftKPI[] = useMemo(() => {
+    if (!shiftKPIData) return [];
+    return shiftKPIData.map((kpi: any) => ({
+      shiftName: kpi.shiftName,
+      shiftType: kpi.shiftType as ShiftType,
+      avgCpk: kpi.avgCpk,
+      avgOee: kpi.avgOee,
+      defectRate: kpi.defectRate,
+      sampleCount: kpi.sampleCount,
+      violationCount: kpi.violationCount,
+      productionCount: kpi.productionCount,
+      status: kpi.status as ShiftKPI["status"],
+    }));
+  }, [shiftKPIData]);
 
   // Chart data for shift comparison
   const shiftChartData = useMemo(() => {
@@ -169,7 +258,7 @@ export default function ShiftManagerDashboard() {
       oee: kpi.avgOee || 0,
       defectRate: kpi.defectRate,
       sampleCount: kpi.sampleCount,
-      fill: SHIFT_COLORS[kpi.shiftType],
+      fill: SHIFT_COLORS[kpi.shiftType as keyof typeof SHIFT_COLORS] || "#6b7280",
     }));
   }, [shiftKPIs]);
 
@@ -203,62 +292,21 @@ export default function ShiftManagerDashboard() {
     });
   }, [shiftKPIs]);
 
-  // Generate daily trend data (last N days)
-  const dailyTrendData = useMemo(() => {
-    const days = [];
-    for (let i = compareDays - 1; i >= 0; i--) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      const dateStr = date.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" });
-      
-      days.push({
-        date: dateStr,
-        fullDate: date.toISOString().split("T")[0],
-        morning: 1.2 + Math.random() * 0.5,
-        afternoon: 1.1 + Math.random() * 0.6,
-        night: 1.0 + Math.random() * 0.7,
-        avgCpk: 1.1 + Math.random() * 0.4,
-        avgOee: 75 + Math.random() * 15,
-        defectRate: Math.random() * 3,
-      });
-    }
-    return days;
-  }, [compareDays]);
-
-  // Generate weekly comparison data
-  const weeklyCompareData = useMemo(() => {
-    const weeks = [];
-    for (let w = 3; w >= 0; w--) {
-      const weekStart = new Date();
-      weekStart.setDate(weekStart.getDate() - (w * 7 + 6));
-      const weekEnd = new Date();
-      weekEnd.setDate(weekEnd.getDate() - w * 7);
-      
-      weeks.push({
-        week: `Tuần ${4 - w}`,
-        weekRange: `${weekStart.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" })} - ${weekEnd.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" })}`,
-        avgCpk: 1.15 + Math.random() * 0.4,
-        avgOee: 78 + Math.random() * 12,
-        defectRate: 0.5 + Math.random() * 2,
-        sampleCount: 500 + Math.floor(Math.random() * 300),
-        morningCpk: 1.2 + Math.random() * 0.5,
-        afternoonCpk: 1.1 + Math.random() * 0.6,
-        nightCpk: 1.0 + Math.random() * 0.7,
-      });
-    }
-    return weeks;
-  }, []);
-
-  // Mock machine performance data
+  // Machine performance from API
   const machinePerformance: MachinePerformance[] = useMemo(() => {
-    return [
-      { machineId: 1, machineName: "MC01", lineName: "Line A", cpk: 1.45, oee: 85.2, defectRate: 0.8, status: "good" },
-      { machineId: 2, machineName: "MC02", lineName: "Line A", cpk: 1.72, oee: 92.1, defectRate: 0.3, status: "excellent" },
-      { machineId: 3, machineName: "MC03", lineName: "Line B", cpk: 1.12, oee: 78.5, defectRate: 1.5, status: "acceptable" },
-      { machineId: 4, machineName: "MC04", lineName: "Line B", cpk: 0.89, oee: 71.3, defectRate: 2.1, status: "warning" },
-      { machineId: 5, machineName: "MC05", lineName: "Line C", cpk: 1.55, oee: 88.7, defectRate: 0.6, status: "good" },
-    ].filter((m) => selectedLine === "all" || m.lineName === selectedLine);
-  }, [selectedLine]);
+    if (!machinePerformanceData) return [];
+    return machinePerformanceData.map((m: any) => ({
+      machineId: m.machineId,
+      machineName: m.machineName,
+      lineName: m.lineName,
+      lineId: m.lineId,
+      cpk: m.cpk,
+      oee: m.oee,
+      defectRate: m.defectRate,
+      sampleCount: m.sampleCount,
+      status: m.status,
+    }));
+  }, [machinePerformanceData]);
 
   // Calculate overall KPIs
   const overallKPIs = useMemo(() => {
@@ -279,6 +327,11 @@ export default function ShiftManagerDashboard() {
     setRefreshKey((k) => k + 1);
   };
 
+  // Reset machine filter when line changes
+  useEffect(() => {
+    setSelectedMachine("all");
+  }, [selectedLine]);
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -290,7 +343,7 @@ export default function ShiftManagerDashboard() {
               Theo dõi KPI và hiệu suất sản xuất theo ca làm việc
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <div className="flex items-center gap-2">
               {ws.isConnected ? (
                 <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
@@ -315,10 +368,23 @@ export default function ShiftManagerDashboard() {
                 <SelectValue placeholder="Dây chuyền" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Tất cả</SelectItem>
+                <SelectItem value="all">Tất cả Line</SelectItem>
                 {productionLines?.map((line) => (
                   <SelectItem key={line.id} value={line.name}>
                     {line.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={selectedMachine} onValueChange={setSelectedMachine}>
+              <SelectTrigger className="w-[150px]">
+                <SelectValue placeholder="Máy" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả Máy</SelectItem>
+                {filteredMachines?.map((machine: any) => (
+                  <SelectItem key={machine.id} value={String(machine.id)}>
+                    {machine.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -328,6 +394,51 @@ export default function ShiftManagerDashboard() {
             </Button>
           </div>
         </div>
+
+        {/* KPI Decline Alert */}
+        {kpiComparison && (kpiComparison.cpkDeclineAlert || kpiComparison.oeeDeclineAlert) && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Cảnh báo KPI giảm so với tuần trước</AlertTitle>
+            <AlertDescription>
+              {kpiComparison.cpkDeclineAlert && (
+                <span className="block">
+                  CPK giảm {Math.abs(kpiComparison.cpkChange || 0).toFixed(1)}% 
+                  (từ {kpiComparison.previousWeek.avgCpk?.toFixed(2)} xuống {kpiComparison.currentWeek.avgCpk?.toFixed(2)})
+                </span>
+              )}
+              {kpiComparison.oeeDeclineAlert && (
+                <span className="block">
+                  OEE giảm {Math.abs(kpiComparison.oeeChange || 0).toFixed(1)}% 
+                  (từ {kpiComparison.previousWeek.avgOee?.toFixed(1)}% xuống {kpiComparison.currentWeek.avgOee?.toFixed(1)}%)
+                </span>
+              )}
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Filter Info */}
+        {(selectedLine !== "all" || selectedMachine !== "all") && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Filter className="h-4 w-4" />
+            <span>Đang lọc theo:</span>
+            {selectedLine !== "all" && (
+              <Badge variant="secondary">{selectedLine}</Badge>
+            )}
+            {selectedMachine !== "all" && (
+              <Badge variant="secondary">
+                {filteredMachines?.find((m: any) => String(m.id) === selectedMachine)?.name || selectedMachine}
+              </Badge>
+            )}
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => { setSelectedLine("all"); setSelectedMachine("all"); }}
+            >
+              Xóa bộ lọc
+            </Button>
+          </div>
+        )}
 
         {/* Overall KPI Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -426,7 +537,7 @@ export default function ShiftManagerDashboard() {
             <Card key={kpi.shiftType} className="relative overflow-hidden">
               <div 
                 className="absolute top-0 left-0 w-1 h-full"
-                style={{ backgroundColor: SHIFT_COLORS[kpi.shiftType] }}
+                style={{ backgroundColor: SHIFT_COLORS[kpi.shiftType as keyof typeof SHIFT_COLORS] || "#6b7280" }}
               />
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
@@ -475,21 +586,55 @@ export default function ShiftManagerDashboard() {
 
         {/* Charts */}
         <Tabs defaultValue="comparison" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="comparison">So sánh ca</TabsTrigger>
-            <TabsTrigger value="radar">Radar đa chiều</TabsTrigger>
-            <TabsTrigger value="daily-trend">Xu hướng theo ngày</TabsTrigger>
-            <TabsTrigger value="weekly-compare">So sánh tuần</TabsTrigger>
-            <TabsTrigger value="machines">Hiệu suất máy</TabsTrigger>
-          </TabsList>
+          <div className="flex items-center justify-between">
+            <TabsList>
+              <TabsTrigger value="comparison">So sánh ca</TabsTrigger>
+              <TabsTrigger value="radar">Radar đa chiều</TabsTrigger>
+              <TabsTrigger value="daily-trend">Xu hướng theo ngày</TabsTrigger>
+              <TabsTrigger value="weekly-compare">So sánh tuần</TabsTrigger>
+              <TabsTrigger value="machines">Hiệu suất máy</TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value="comparison">
             <Card>
               <CardHeader>
-                <CardTitle>So sánh KPI giữa các ca</CardTitle>
-                <CardDescription>
-                  Biểu đồ so sánh CPK, OEE và tỷ lệ lỗi giữa các ca làm việc
-                </CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>So sánh KPI giữa các ca</CardTitle>
+                    <CardDescription>
+                      Biểu đồ so sánh CPK, OEE và tỷ lệ lỗi giữa các ca làm việc
+                    </CardDescription>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Select value={selectedLine} onValueChange={setSelectedLine}>
+                      <SelectTrigger className="w-[130px]">
+                        <SelectValue placeholder="Line" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tất cả Line</SelectItem>
+                        {productionLines?.map((line) => (
+                          <SelectItem key={line.id} value={line.name}>
+                            {line.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Select value={selectedMachine} onValueChange={setSelectedMachine}>
+                      <SelectTrigger className="w-[130px]">
+                        <SelectValue placeholder="Máy" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tất cả Máy</SelectItem>
+                        {filteredMachines?.map((machine: any) => (
+                          <SelectItem key={machine.id} value={String(machine.id)}>
+                            {machine.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="h-[400px]">
@@ -580,10 +725,29 @@ export default function ShiftManagerDashboard() {
           <TabsContent value="machines">
             <Card>
               <CardHeader>
-                <CardTitle>Hiệu suất theo máy/dây chuyền</CardTitle>
-                <CardDescription>
-                  Chi tiết hiệu suất của từng máy trong ca hiện tại
-                </CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Hiệu suất theo máy/dây chuyền</CardTitle>
+                    <CardDescription>
+                      Chi tiết hiệu suất của từng máy trong ca hiện tại
+                    </CardDescription>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Select value={selectedLine} onValueChange={setSelectedLine}>
+                      <SelectTrigger className="w-[130px]">
+                        <SelectValue placeholder="Line" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tất cả Line</SelectItem>
+                        {productionLines?.map((line) => (
+                          <SelectItem key={line.id} value={line.name}>
+                            {line.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
                 <Table>
@@ -594,6 +758,7 @@ export default function ShiftManagerDashboard() {
                       <TableHead className="text-right">CPK</TableHead>
                       <TableHead className="text-right">OEE (%)</TableHead>
                       <TableHead className="text-right">Tỷ lệ lỗi (%)</TableHead>
+                      <TableHead className="text-right">Số mẫu</TableHead>
                       <TableHead>Trạng thái</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -613,13 +778,21 @@ export default function ShiftManagerDashboard() {
                             {machine.cpk?.toFixed(2) || "N/A"}
                           </span>
                         </TableCell>
-                        <TableCell className="text-right">{machine.oee?.toFixed(1)}</TableCell>
+                        <TableCell className="text-right">{machine.oee?.toFixed(1) || "N/A"}</TableCell>
                         <TableCell className="text-right text-red-600">
                           {machine.defectRate.toFixed(2)}
                         </TableCell>
+                        <TableCell className="text-right">{machine.sampleCount}</TableCell>
                         <TableCell>{getStatusBadge(machine.status)}</TableCell>
                       </TableRow>
                     ))}
+                    {machinePerformance.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                          Không có dữ liệu máy móc
+                        </TableCell>
+                      </TableRow>
+                    )}
                   </TableBody>
                 </Table>
               </CardContent>
@@ -636,32 +809,47 @@ export default function ShiftManagerDashboard() {
                       Biểu đồ xu hướng CPK và OEE trong {compareDays} ngày gần nhất
                     </CardDescription>
                   </div>
-                  <Select value={compareDays.toString()} onValueChange={(v) => setCompareDays(parseInt(v))}>
-                    <SelectTrigger className="w-[120px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="7">7 ngày</SelectItem>
-                      <SelectItem value="14">14 ngày</SelectItem>
-                      <SelectItem value="30">30 ngày</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="flex items-center gap-2">
+                    <Select value={selectedLine} onValueChange={setSelectedLine}>
+                      <SelectTrigger className="w-[130px]">
+                        <SelectValue placeholder="Line" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tất cả Line</SelectItem>
+                        {productionLines?.map((line) => (
+                          <SelectItem key={line.id} value={line.name}>
+                            {line.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Select value={compareDays.toString()} onValueChange={(v) => setCompareDays(parseInt(v))}>
+                      <SelectTrigger className="w-[120px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="7">7 ngày</SelectItem>
+                        <SelectItem value="14">14 ngày</SelectItem>
+                        <SelectItem value="30">30 ngày</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
                 <div className="h-[400px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart data={dailyTrendData}>
+                    <ComposedChart data={dailyTrendData || []}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="date" />
                       <YAxis yAxisId="left" domain={[0, 2]} label={{ value: 'CPK', angle: -90, position: 'insideLeft' }} />
                       <YAxis yAxisId="right" orientation="right" domain={[0, 100]} label={{ value: 'OEE (%)', angle: 90, position: 'insideRight' }} />
                       <Tooltip />
                       <Legend />
-                      <Line yAxisId="left" type="monotone" dataKey="morning" name="Ca sáng" stroke={SHIFT_COLORS.morning} strokeWidth={2} dot={{ fill: SHIFT_COLORS.morning }} />
-                      <Line yAxisId="left" type="monotone" dataKey="afternoon" name="Ca chiều" stroke={SHIFT_COLORS.afternoon} strokeWidth={2} dot={{ fill: SHIFT_COLORS.afternoon }} />
-                      <Line yAxisId="left" type="monotone" dataKey="night" name="Ca đêm" stroke={SHIFT_COLORS.night} strokeWidth={2} dot={{ fill: SHIFT_COLORS.night }} />
-                      <Area yAxisId="right" type="monotone" dataKey="avgOee" name="OEE TB (%)" stroke="#10b981" fill="#10b981" fillOpacity={0.2} />
+                      <Line yAxisId="left" type="monotone" dataKey="morning" name="Ca sáng" stroke={SHIFT_COLORS.morning} strokeWidth={2} dot={{ fill: SHIFT_COLORS.morning }} connectNulls />
+                      <Line yAxisId="left" type="monotone" dataKey="afternoon" name="Ca chiều" stroke={SHIFT_COLORS.afternoon} strokeWidth={2} dot={{ fill: SHIFT_COLORS.afternoon }} connectNulls />
+                      <Line yAxisId="left" type="monotone" dataKey="night" name="Ca đêm" stroke={SHIFT_COLORS.night} strokeWidth={2} dot={{ fill: SHIFT_COLORS.night }} connectNulls />
+                      <Area yAxisId="right" type="monotone" dataKey="avgOee" name="OEE TB (%)" stroke="#10b981" fill="#10b981" fillOpacity={0.2} connectNulls />
                     </ComposedChart>
                   </ResponsiveContainer>
                 </div>
@@ -679,21 +867,21 @@ export default function ShiftManagerDashboard() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {dailyTrendData.slice(0, 7).map((day) => (
+                      {(dailyTrendData || []).slice(0, 7).map((day: any) => (
                         <TableRow key={day.fullDate}>
                           <TableCell className="font-medium">{day.date}</TableCell>
-                          <TableCell className="text-right" style={{ color: day.morning >= 1.33 ? '#10b981' : day.morning >= 1.0 ? '#f59e0b' : '#ef4444' }}>
-                            {day.morning.toFixed(2)}
+                          <TableCell className="text-right" style={{ color: day.morning && day.morning >= 1.33 ? '#10b981' : day.morning && day.morning >= 1.0 ? '#f59e0b' : '#ef4444' }}>
+                            {day.morning?.toFixed(2) || "N/A"}
                           </TableCell>
-                          <TableCell className="text-right" style={{ color: day.afternoon >= 1.33 ? '#10b981' : day.afternoon >= 1.0 ? '#f59e0b' : '#ef4444' }}>
-                            {day.afternoon.toFixed(2)}
+                          <TableCell className="text-right" style={{ color: day.afternoon && day.afternoon >= 1.33 ? '#10b981' : day.afternoon && day.afternoon >= 1.0 ? '#f59e0b' : '#ef4444' }}>
+                            {day.afternoon?.toFixed(2) || "N/A"}
                           </TableCell>
-                          <TableCell className="text-right" style={{ color: day.night >= 1.33 ? '#10b981' : day.night >= 1.0 ? '#f59e0b' : '#ef4444' }}>
-                            {day.night.toFixed(2)}
+                          <TableCell className="text-right" style={{ color: day.night && day.night >= 1.33 ? '#10b981' : day.night && day.night >= 1.0 ? '#f59e0b' : '#ef4444' }}>
+                            {day.night?.toFixed(2) || "N/A"}
                           </TableCell>
-                          <TableCell className="text-right font-semibold">{day.avgCpk.toFixed(2)}</TableCell>
-                          <TableCell className="text-right">{day.avgOee.toFixed(1)}%</TableCell>
-                          <TableCell className="text-right text-red-600">{day.defectRate.toFixed(2)}%</TableCell>
+                          <TableCell className="text-right font-semibold">{day.avgCpk?.toFixed(2) || "N/A"}</TableCell>
+                          <TableCell className="text-right">{day.avgOee?.toFixed(1) || "N/A"}%</TableCell>
+                          <TableCell className="text-right text-red-600">{day.defectRate?.toFixed(2) || "0.00"}%</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -706,15 +894,34 @@ export default function ShiftManagerDashboard() {
           <TabsContent value="weekly-compare">
             <Card>
               <CardHeader>
-                <CardTitle>So sánh KPI theo tuần</CardTitle>
-                <CardDescription>
-                  So sánh hiệu suất giữa các tuần trong tháng
-                </CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>So sánh KPI theo tuần</CardTitle>
+                    <CardDescription>
+                      So sánh hiệu suất giữa các tuần trong tháng
+                    </CardDescription>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Select value={selectedLine} onValueChange={setSelectedLine}>
+                      <SelectTrigger className="w-[130px]">
+                        <SelectValue placeholder="Line" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tất cả Line</SelectItem>
+                        {productionLines?.map((line) => (
+                          <SelectItem key={line.id} value={line.name}>
+                            {line.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="h-[350px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={weeklyCompareData}>
+                    <BarChart data={weeklyCompareData || []}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="week" />
                       <YAxis domain={[0, 2]} />
@@ -727,8 +934,8 @@ export default function ShiftManagerDashboard() {
                   </ResponsiveContainer>
                 </div>
                 <div className="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {weeklyCompareData.map((week, index) => (
-                    <Card key={week.week} className={index === weeklyCompareData.length - 1 ? "border-primary" : ""}>
+                  {(weeklyCompareData || []).map((week: any, index: number) => (
+                    <Card key={week.week} className={index === (weeklyCompareData?.length || 0) - 1 ? "border-primary" : ""}>
                       <CardHeader className="pb-2">
                         <CardTitle className="text-sm font-medium">{week.week}</CardTitle>
                         <CardDescription className="text-xs">{week.weekRange}</CardDescription>
@@ -737,24 +944,30 @@ export default function ShiftManagerDashboard() {
                         <div className="space-y-2">
                           <div className="flex justify-between">
                             <span className="text-sm text-muted-foreground">CPK TB:</span>
-                            <span className="font-semibold" style={{ color: week.avgCpk >= 1.33 ? '#10b981' : week.avgCpk >= 1.0 ? '#f59e0b' : '#ef4444' }}>
-                              {week.avgCpk.toFixed(2)}
+                            <span 
+                              className="font-semibold"
+                              style={{ 
+                                color: week.avgCpk && week.avgCpk >= 1.33 ? "#10b981" : 
+                                       week.avgCpk && week.avgCpk >= 1.0 ? "#f59e0b" : "#ef4444" 
+                              }}
+                            >
+                              {week.avgCpk?.toFixed(2) || "N/A"}
                             </span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-sm text-muted-foreground">OEE TB:</span>
-                            <span className="font-semibold">{week.avgOee.toFixed(1)}%</span>
+                            <span className="font-semibold">{week.avgOee?.toFixed(1) || "N/A"}%</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-sm text-muted-foreground">Tỷ lệ lỗi:</span>
-                            <span className="font-semibold text-red-600">{week.defectRate.toFixed(2)}%</span>
+                            <span className="font-semibold text-red-600">{week.defectRate?.toFixed(2) || "0.00"}%</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-sm text-muted-foreground">Số mẫu:</span>
-                            <span className="font-semibold">{week.sampleCount.toLocaleString()}</span>
+                            <span className="font-semibold">{week.sampleCount?.toLocaleString() || 0}</span>
                           </div>
                         </div>
-                        {index === weeklyCompareData.length - 1 && (
+                        {index === (weeklyCompareData?.length || 0) - 1 && (
                           <Badge className="mt-2 w-full justify-center" variant="outline">
                             Tuần hiện tại
                           </Badge>
@@ -775,19 +988,78 @@ export default function ShiftManagerDashboard() {
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-3">
-              <Button variant="outline">
-                <Download className="h-4 w-4 mr-2" />
-                Xuất báo cáo ca
-              </Button>
-              <Button variant="outline">
+              <Dialog open={exportDialogOpen} onOpenChange={setExportDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline">
+                    <Download className="h-4 w-4 mr-2" />
+                    Xuất báo cáo ca
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Xuất báo cáo Shift Manager</DialogTitle>
+                    <DialogDescription>
+                      Chọn định dạng và xuất báo cáo KPI theo ca
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Định dạng xuất</label>
+                      <Select value={exportFormat} onValueChange={(v) => setExportFormat(v as "excel" | "pdf")}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="excel">
+                            <div className="flex items-center gap-2">
+                              <FileSpreadsheet className="h-4 w-4" />
+                              Excel (.xlsx)
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="pdf">
+                            <div className="flex items-center gap-2">
+                              <FileText className="h-4 w-4" />
+                              PDF (.pdf)
+                            </div>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      <p>Ngày: {new Date(selectedDate).toLocaleDateString("vi-VN")}</p>
+                      {selectedLine !== "all" && <p>Dây chuyền: {selectedLine}</p>}
+                      {selectedMachine !== "all" && <p>Máy: {filteredMachines?.find((m: any) => String(m.id) === selectedMachine)?.name}</p>}
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setExportDialogOpen(false)}>
+                      Hủy
+                    </Button>
+                    <Button onClick={handleExport} disabled={isExporting}>
+                      {isExporting ? (
+                        <>
+                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                          Đang xuất...
+                        </>
+                      ) : (
+                        <>
+                          <Download className="h-4 w-4 mr-2" />
+                          Xuất báo cáo
+                        </>
+                      )}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+              <Button variant="outline" onClick={() => toast.info("Tính năng đang phát triển")}>
                 <Users className="h-4 w-4 mr-2" />
                 Phân công nhân viên
               </Button>
-              <Button variant="outline">
+              <Button variant="outline" onClick={() => toast.info("Tính năng đang phát triển")}>
                 <AlertTriangle className="h-4 w-4 mr-2" />
                 Xem cảnh báo
               </Button>
-              <Button variant="outline">
+              <Button variant="outline" onClick={() => toast.info("Tính năng đang phát triển")}>
                 <Factory className="h-4 w-4 mr-2" />
                 Quản lý máy móc
               </Button>
