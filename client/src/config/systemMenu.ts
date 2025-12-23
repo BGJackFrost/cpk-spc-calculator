@@ -235,6 +235,7 @@ export const PRODUCTION_MENU: SystemMenuConfig = {
         { id: "machine-types", icon: Cpu, labelKey: "nav.machineType", path: "/machine-types", adminOnly: true },
         { id: "machine-areas", icon: Layers, labelKey: "nav.machineAreas", path: "/machine-areas", adminOnly: true },
         { id: "fixtures", icon: Wrench, labelKey: "nav.fixture", path: "/fixtures", adminOnly: true },
+        { id: "jigs", icon: Cog, labelKey: "nav.jig", path: "/jigs", adminOnly: true },
         { id: "processes", icon: GitBranch, labelKey: "nav.process", path: "/processes", adminOnly: true },
       ],
     },
@@ -266,6 +267,7 @@ export const LICENSE_MENU: SystemMenuConfig = {
       items: [
         { id: "license-server-dashboard", icon: Gauge, labelKey: "nav.licenseServerDashboard", path: "/license-server-dashboard", adminOnly: true },
         { id: "license-management", icon: Key, labelKey: "nav.licenseManagement", path: "/license-management", adminOnly: true },
+        { id: "license-notification-report", icon: Mail, labelKey: "nav.licenseNotificationReport", path: "/license-notification-report", adminOnly: true },
       ],
     },
     {

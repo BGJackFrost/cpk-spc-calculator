@@ -141,6 +141,12 @@ import {
   updateFixture,
   deleteFixture,
   getFixturesWithMachineInfo,
+  getJigs,
+  getJigById,
+  createJig,
+  updateJig,
+  deleteJig,
+  getJigsWithMachineInfo,
   getProductionLineById,
   updateProductionLine,
   deleteProductionLine,
@@ -2825,6 +2831,70 @@ const fixtureRouter = router({
     }),
 });
 
+// Jig Router - Quản lý Jig (tương tự Fixture)
+const jigRouter = router({
+  list: protectedProcedure
+    .input(z.object({ machineId: z.number().optional() }).optional())
+    .query(async ({ input }) => {
+      return await getJigs(input?.machineId);
+    }),
+
+  listWithMachineInfo: protectedProcedure.query(async () => {
+    return await getJigsWithMachineInfo();
+  }),
+
+  getById: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .query(async ({ input }) => {
+      return await getJigById(input.id);
+    }),
+
+  create: protectedProcedure
+    .input(z.object({
+      machineId: z.number(),
+      code: z.string().min(1),
+      name: z.string().min(1),
+      description: z.string().optional(),
+      imageUrl: z.string().optional(),
+      position: z.number().optional(),
+      status: z.enum(["active", "maintenance", "inactive"]).optional(),
+      installDate: z.date().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const id = await createJig({
+        ...input,
+        createdBy: ctx.user.id,
+      });
+      return { id };
+    }),
+
+  update: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      machineId: z.number().optional(),
+      code: z.string().optional(),
+      name: z.string().optional(),
+      description: z.string().optional(),
+      imageUrl: z.string().optional(),
+      position: z.number().optional(),
+      status: z.enum(["active", "maintenance", "inactive"]).optional(),
+      installDate: z.date().optional(),
+      lastMaintenanceDate: z.date().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const { id, ...data } = input;
+      await updateJig(id, data);
+      return { success: true };
+    }),
+
+  delete: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      await deleteJig(input.id);
+      return { success: true };
+    }),
+});
+
 // Defect Router - Quản lý lỗi SPC
 const defectRouter = router({
   // Defect Categories
@@ -3673,6 +3743,7 @@ export const appRouter = router({
   defect: defectRouter,
   machineType: machineTypeRouter,
   fixture: fixtureRouter,
+  jig: jigRouter,
 
   // Report Template router
   reportTemplate: router({
@@ -5130,6 +5201,35 @@ export const appRouter = router({
         };
       }),
     
+    // License Notification Logs
+    getNotificationLogs: protectedProcedure
+      .input(z.object({
+        licenseId: z.number().optional(),
+        notificationType: z.string().optional(),
+        status: z.string().optional(),
+        startDate: z.date().optional(),
+        endDate: z.date().optional(),
+        limit: z.number().default(50),
+        offset: z.number().default(0),
+      }).optional())
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { getLicenseNotificationLogs } = await import("./db");
+        return await getLicenseNotificationLogs(input || {});
+      }),
+    
+    getNotificationStats: protectedProcedure
+      .input(z.object({ days: z.number().default(30) }).optional())
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { getLicenseNotificationStats } = await import("./db");
+        return await getLicenseNotificationStats(input?.days || 30);
+      }),
+
     // Check and send scheduled notifications
     processExpiryNotifications: protectedProcedure.mutation(async ({ ctx }) => {
       if (ctx.user.role !== "admin") {

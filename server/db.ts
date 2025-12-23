@@ -50,6 +50,8 @@ import {
   InsertMachineType,
   fixtures,
   InsertFixture,
+  jigs,
+  InsertJig,
   spcRealtimeData,
   InsertSpcRealtimeData,
   spcSummaryStats,
@@ -75,7 +77,9 @@ import {
   customValidationRules,
   InsertCustomValidationRule,
   validationRuleLogs,
-  InsertValidationRuleLog
+  InsertValidationRuleLog,
+  licenseNotificationLogs,
+  InsertLicenseNotificationLog
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -2161,6 +2165,61 @@ export async function getFixturesWithMachineInfo() {
   });
 }
 
+// ============ Jigs CRUD ============
+export async function getJigs(machineId?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  if (machineId) {
+    return await db.select().from(jigs)
+      .where(and(eq(jigs.machineId, machineId), eq(jigs.isActive, 1)));
+  }
+  return await db.select().from(jigs).where(eq(jigs.isActive, 1));
+}
+
+export async function getJigById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(jigs).where(eq(jigs.id, id));
+  return result[0] || null;
+}
+
+export async function createJig(data: Omit<InsertJig, "id" | "createdAt" | "updatedAt">) {
+  const db = await getDb();
+  if (!db) return 0;
+  const result = await db.insert(jigs).values(data);
+  return result[0].insertId;
+}
+
+export async function updateJig(id: number, data: Partial<InsertJig>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(jigs).set(data).where(eq(jigs.id, id));
+}
+
+export async function deleteJig(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(jigs).set({ isActive: 0 }).where(eq(jigs.id, id));
+}
+
+// Lấy jigs theo máy với thông tin máy
+export async function getJigsWithMachineInfo() {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const allJigs = await db.select().from(jigs).where(eq(jigs.isActive, 1));
+  const allMachines = await getAllMachines();
+  
+  return allJigs.map(jig => {
+    const machine = allMachines.find(m => m.id === jig.machineId);
+    return {
+      ...jig,
+      machineName: machine?.name || "Unknown",
+      machineCode: machine?.code || "Unknown",
+    };
+  });
+}
+
 // ==================== SPC Realtime Data ====================
 
 export async function saveSpcRealtimeData(data: Omit<InsertSpcRealtimeData, "id" | "createdAt">) {
@@ -3974,4 +4033,110 @@ export async function getLicensesWithCursor(
   const totalCount = countResult[0]?.count || 0;
   
   return buildPaginationResult(items, limit, direction, totalCount);
+}
+
+
+// ============ License Notification Logs ============
+export async function getLicenseNotificationLogs(filters?: {
+  licenseId?: number;
+  notificationType?: string;
+  status?: string;
+  startDate?: Date;
+  endDate?: Date;
+  limit?: number;
+  offset?: number;
+}) {
+  const db = await getDb();
+  if (!db) return { logs: [], total: 0 };
+  
+  const conditions: any[] = [];
+  
+  if (filters?.licenseId) {
+    conditions.push(eq(licenseNotificationLogs.licenseId, filters.licenseId));
+  }
+  if (filters?.notificationType) {
+    conditions.push(eq(licenseNotificationLogs.notificationType, filters.notificationType as any));
+  }
+  if (filters?.status) {
+    conditions.push(eq(licenseNotificationLogs.status, filters.status as any));
+  }
+  if (filters?.startDate) {
+    conditions.push(gte(licenseNotificationLogs.createdAt, filters.startDate));
+  }
+  if (filters?.endDate) {
+    conditions.push(lte(licenseNotificationLogs.createdAt, filters.endDate));
+  }
+  
+  let query = db.select().from(licenseNotificationLogs);
+  if (conditions.length > 0) {
+    query = query.where(and(...conditions)) as any;
+  }
+  
+  const logs = await query
+    .orderBy(desc(licenseNotificationLogs.createdAt))
+    .limit(filters?.limit || 50)
+    .offset(filters?.offset || 0);
+  
+  // Get total count
+  let countQuery = db.select({ count: sql<number>`count(*)` }).from(licenseNotificationLogs);
+  if (conditions.length > 0) {
+    countQuery = countQuery.where(and(...conditions)) as any;
+  }
+  const countResult = await countQuery;
+  const total = countResult[0]?.count || 0;
+  
+  return { logs, total };
+}
+
+export async function getLicenseNotificationStats(days: number = 30) {
+  const db = await getDb();
+  if (!db) return { byType: [], byStatus: [], byDay: [] };
+  
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
+  
+  // Stats by notification type
+  const byType = await db.select({
+    notificationType: licenseNotificationLogs.notificationType,
+    count: sql<number>`count(*)`,
+  })
+    .from(licenseNotificationLogs)
+    .where(gte(licenseNotificationLogs.createdAt, startDate))
+    .groupBy(licenseNotificationLogs.notificationType);
+  
+  // Stats by status
+  const byStatus = await db.select({
+    status: licenseNotificationLogs.status,
+    count: sql<number>`count(*)`,
+  })
+    .from(licenseNotificationLogs)
+    .where(gte(licenseNotificationLogs.createdAt, startDate))
+    .groupBy(licenseNotificationLogs.status);
+  
+  // Stats by day
+  const byDay = await db.select({
+    date: sql<string>`DATE(created_at)`.as('date'),
+    sent: sql<number>`SUM(CASE WHEN status = 'sent' THEN 1 ELSE 0 END)`.as('sent'),
+    failed: sql<number>`SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END)`.as('failed'),
+    pending: sql<number>`SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END)`.as('pending'),
+  })
+    .from(licenseNotificationLogs)
+    .where(gte(licenseNotificationLogs.createdAt, startDate))
+    .groupBy(sql`DATE(created_at)`)
+    .orderBy(sql`DATE(created_at)`);
+  
+  return { byType, byStatus, byDay };
+}
+
+export async function createLicenseNotificationLog(data: Omit<InsertLicenseNotificationLog, "id" | "createdAt">) {
+  const db = await getDb();
+  if (!db) return 0;
+  const result = await db.insert(licenseNotificationLogs).values(data);
+  return result[0].insertId;
+}
+
+export async function updateLicenseNotificationLog(id: number, data: Partial<InsertLicenseNotificationLog>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(licenseNotificationLogs).set(data).where(eq(licenseNotificationLogs.id, id));
 }

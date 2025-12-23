@@ -29,7 +29,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Pencil, Trash2, Wrench, Filter, Camera, X, Loader2, Image as ImageIcon } from "lucide-react";
+import { Plus, Pencil, Trash2, Cog, Filter, Camera, X, Loader2, Image as ImageIcon } from "lucide-react";
 import ImageLightbox, { useImageLightbox } from "@/components/ImageLightbox";
 import { toast } from "sonner";
 
@@ -39,10 +39,10 @@ const STATUS_OPTIONS = [
   { value: "inactive", label: "Ngừng hoạt động", color: "bg-red-100 text-red-800" },
 ];
 
-export default function FixtureManagement() {
+export default function JigManagement() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
-  const [selectedFixture, setSelectedFixture] = useState<any>(null);
+  const [selectedJig, setSelectedJig] = useState<any>(null);
   const [filterMachineId, setFilterMachineId] = useState<string>("all");
   const [formData, setFormData] = useState({
     machineId: 0,
@@ -56,12 +56,12 @@ export default function FixtureManagement() {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { data: fixtures, isLoading, refetch } = trpc.fixture.listWithMachineInfo.useQuery();
+  const { data: jigs, isLoading, refetch } = trpc.jig.listWithMachineInfo.useQuery();
   const { data: machines } = trpc.machine.listAll.useQuery();
   
-  const createMutation = trpc.fixture.create.useMutation({
+  const createMutation = trpc.jig.create.useMutation({
     onSuccess: () => {
-      toast.success("Tạo Fixture thành công");
+      toast.success("Tạo Jig thành công");
       setIsCreateOpen(false);
       resetForm();
       refetch();
@@ -70,9 +70,9 @@ export default function FixtureManagement() {
       toast.error("Lỗi: " + error.message);
     },
   });
-  const updateMutation = trpc.fixture.update.useMutation({
+  const updateMutation = trpc.jig.update.useMutation({
     onSuccess: () => {
-      toast.success("Cập nhật Fixture thành công");
+      toast.success("Cập nhật Jig thành công");
       setIsEditOpen(false);
       resetForm();
       refetch();
@@ -81,9 +81,9 @@ export default function FixtureManagement() {
       toast.error("Lỗi: " + error.message);
     },
   });
-  const deleteMutation = trpc.fixture.delete.useMutation({
+  const deleteMutation = trpc.jig.delete.useMutation({
     onSuccess: () => {
-      toast.success("Xóa Fixture thành công");
+      toast.success("Xóa Jig thành công");
       refetch();
     },
     onError: (error) => {
@@ -101,7 +101,7 @@ export default function FixtureManagement() {
       position: 1,
       status: "active",
     });
-    setSelectedFixture(null);
+    setSelectedJig(null);
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -125,7 +125,7 @@ export default function FixtureManagement() {
             data: base64, 
             filename: file.name,
             contentType: file.type,
-            folder: "fixtures" 
+            folder: "jigs" 
           }),
         });
         const result = await response.json();
@@ -156,30 +156,30 @@ export default function FixtureManagement() {
   };
 
   const handleUpdate = () => {
-    if (!selectedFixture) return;
+    if (!selectedJig) return;
     updateMutation.mutate({ 
-      id: selectedFixture.id, 
+      id: selectedJig.id, 
       ...formData,
       imageUrl: formData.imageUrl || undefined,
     });
   };
 
   const handleDelete = (id: number) => {
-    if (confirm("Bạn có chắc chắn muốn xóa Fixture này?")) {
+    if (confirm("Bạn có chắc chắn muốn xóa Jig này?")) {
       deleteMutation.mutate({ id });
     }
   };
 
-  const openEditDialog = (fixture: any) => {
-    setSelectedFixture(fixture);
+  const openEditDialog = (jig: any) => {
+    setSelectedJig(jig);
     setFormData({
-      machineId: fixture.machineId,
-      code: fixture.code,
-      name: fixture.name,
-      description: fixture.description || "",
-      imageUrl: fixture.imageUrl || "",
-      position: fixture.position || 1,
-      status: fixture.status || "active",
+      machineId: jig.machineId,
+      code: jig.code,
+      name: jig.name,
+      description: jig.description || "",
+      imageUrl: jig.imageUrl || "",
+      position: jig.position || 1,
+      status: jig.status || "active",
     });
     setIsEditOpen(true);
   };
@@ -195,30 +195,30 @@ export default function FixtureManagement() {
 
   const { isOpen, currentImage, openLightbox, closeLightbox, LightboxComponent } = useImageLightbox();
 
-  const filteredFixtures = fixtures?.filter((f) => {
+  const filteredJigs = jigs?.filter((j) => {
     if (filterMachineId === "all") return true;
-    return f.machineId === parseInt(filterMachineId);
+    return j.machineId === parseInt(filterMachineId);
   });
 
-  // Group fixtures by machine
-  const groupedByMachine = filteredFixtures?.reduce((acc, fixture) => {
-    const key = `${fixture.machineCode} - ${fixture.machineName}`;
+  // Group jigs by machine
+  const groupedByMachine = filteredJigs?.reduce((acc, jig) => {
+    const key = `${jig.machineCode} - ${jig.machineName}`;
     if (!acc[key]) {
       acc[key] = [];
     }
-    acc[key].push(fixture);
+    acc[key].push(jig);
     return acc;
-  }, {} as Record<string, typeof filteredFixtures>);
+  }, {} as Record<string, typeof filteredJigs>);
 
   // Image upload component
   const ImageUploadSection = () => (
     <div className="space-y-2">
-      <Label>Ảnh Fixture</Label>
+      <Label>Ảnh Jig</Label>
       <div className="flex items-center gap-4">
         <div className="relative w-24 h-24 rounded-lg border-2 border-dashed border-muted-foreground/25 flex items-center justify-center overflow-hidden bg-muted">
           {formData.imageUrl ? (
             <>
-              <img src={formData.imageUrl} alt="Fixture" className="w-full h-full object-cover" />
+              <img src={formData.imageUrl} alt="Jig" className="w-full h-full object-cover" />
               <Button
                 variant="destructive"
                 size="icon"
@@ -264,23 +264,23 @@ export default function FixtureManagement() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Wrench className="h-6 w-6" />
-            Quản lý Fixture
+            <Cog className="h-6 w-6" />
+            Quản lý Jig (Đồ gá)
           </h1>
           <p className="text-muted-foreground">
-            Quản lý các Fixture thuộc từng máy trong hệ thống
+            Quản lý các Jig/Đồ gá thuộc từng máy trong hệ thống
           </p>
         </div>
         <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
           <DialogTrigger asChild>
             <Button onClick={() => resetForm()}>
               <Plus className="h-4 w-4 mr-2" />
-              Thêm Fixture
+              Thêm Jig
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
-              <DialogTitle>Thêm Fixture Mới</DialogTitle>
+              <DialogTitle>Thêm Jig Mới</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
@@ -303,17 +303,17 @@ export default function FixtureManagement() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Mã Fixture *</Label>
+                  <Label>Mã Jig *</Label>
                   <Input
-                    placeholder="VD: FIX001"
+                    placeholder="VD: JIG001"
                     value={formData.code}
                     onChange={(e) => setFormData({ ...formData, code: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Tên Fixture *</Label>
+                  <Label>Tên Jig *</Label>
                   <Input
-                    placeholder="VD: Fixture Left"
+                    placeholder="VD: Jig Left"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   />
@@ -351,7 +351,7 @@ export default function FixtureManagement() {
               <div className="space-y-2">
                 <Label>Mô tả</Label>
                 <Textarea
-                  placeholder="Mô tả chi tiết về Fixture"
+                  placeholder="Mô tả chi tiết về Jig"
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 />
@@ -393,17 +393,17 @@ export default function FixtureManagement() {
         </CardContent>
       </Card>
 
-      {/* Fixtures grouped by machine */}
+      {/* Jigs grouped by machine */}
       {isLoading ? (
         <div className="text-center py-8 text-muted-foreground">Đang tải...</div>
-      ) : !filteredFixtures?.length ? (
+      ) : !filteredJigs?.length ? (
         <Card>
           <CardContent className="py-8 text-center text-muted-foreground">
-            Chưa có Fixture nào. Nhấn "Thêm Fixture" để bắt đầu.
+            Chưa có Jig nào. Nhấn "Thêm Jig" để bắt đầu.
           </CardContent>
         </Card>
       ) : (
-        Object.entries(groupedByMachine || {}).map(([machineName, machineFixtures]) => (
+        Object.entries(groupedByMachine || {}).map(([machineName, machineJigs]) => (
           <Card key={machineName}>
             <CardHeader>
               <CardTitle className="text-lg">{machineName}</CardTitle>
@@ -422,15 +422,15 @@ export default function FixtureManagement() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {machineFixtures?.map((fixture) => (
-                    <TableRow key={fixture.id}>
+                  {machineJigs?.map((jig) => (
+                    <TableRow key={jig.id}>
                       <TableCell>
-                        {fixture.imageUrl ? (
+                        {jig.imageUrl ? (
                           <img 
-                            src={fixture.imageUrl} 
-                            alt={fixture.name} 
+                            src={jig.imageUrl} 
+                            alt={jig.name} 
                             className="w-10 h-10 rounded object-cover cursor-pointer hover:opacity-80 transition-opacity"
-                            onClick={() => openLightbox(fixture.imageUrl!)}
+                            onClick={() => openLightbox(jig.imageUrl!)}
                           />
                         ) : (
                           <div className="w-10 h-10 rounded bg-muted flex items-center justify-center">
@@ -438,23 +438,23 @@ export default function FixtureManagement() {
                           </div>
                         )}
                       </TableCell>
-                      <TableCell className="font-mono font-medium">{fixture.code}</TableCell>
-                      <TableCell>{fixture.name}</TableCell>
-                      <TableCell>{fixture.position}</TableCell>
-                      <TableCell>{getStatusBadge(fixture.status)}</TableCell>
-                      <TableCell className="max-w-xs truncate">{fixture.description}</TableCell>
+                      <TableCell className="font-mono font-medium">{jig.code}</TableCell>
+                      <TableCell>{jig.name}</TableCell>
+                      <TableCell>{jig.position}</TableCell>
+                      <TableCell>{getStatusBadge(jig.status)}</TableCell>
+                      <TableCell className="max-w-xs truncate">{jig.description}</TableCell>
                       <TableCell className="text-right">
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => openEditDialog(fixture)}
+                          onClick={() => openEditDialog(jig)}
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => handleDelete(fixture.id)}
+                          onClick={() => handleDelete(jig.id)}
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
@@ -472,7 +472,7 @@ export default function FixtureManagement() {
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>Chỉnh sửa Fixture</DialogTitle>
+            <DialogTitle>Chỉnh sửa Jig</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -495,14 +495,14 @@ export default function FixtureManagement() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Mã Fixture *</Label>
+                <Label>Mã Jig *</Label>
                 <Input
                   value={formData.code}
                   onChange={(e) => setFormData({ ...formData, code: e.target.value })}
                 />
               </div>
               <div className="space-y-2">
-                <Label>Tên Fixture *</Label>
+                <Label>Tên Jig *</Label>
                 <Input
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}

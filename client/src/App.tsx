@@ -31,6 +31,7 @@ import DefectManagement from "./pages/DefectManagement";
 import DefectStatistics from "./pages/DefectStatistics";
 import MachineTypeManagement from "./pages/MachineTypeManagement";
 import FixtureManagement from "./pages/FixtureManagement";
+import JigManagement from "./pages/JigManagement";
 import MultiAnalysis from "./pages/MultiAnalysis";
 import ProductionLineComparison from "./pages/ProductionLineComparison";
 import About from "./pages/About";
@@ -60,6 +61,7 @@ import ValidationRulesManagement from "./pages/ValidationRulesManagement";
 import CpkComparisonDashboard from "./pages/CpkComparisonDashboard";
 import ShiftCpkComparison from "./pages/ShiftCpkComparison";
 import LicenseManagement from "./pages/LicenseManagement";
+import LicenseNotificationReport from "./pages/LicenseNotificationReport";
 import LicenseCustomers from "./pages/LicenseCustomers";
 import LicenseRevenue from "./pages/LicenseRevenue";
 import LicenseServerSettings from "./pages/LicenseServerSettings";
@@ -260,6 +262,7 @@ function Router() {
       <Route path="/spc-report" component={SpcReport} />
       <Route path="/machine-types" component={MachineTypeManagement} />
       <Route path="/fixtures" component={FixtureManagement} />
+      <Route path="/jigs" component={JigManagement} />
       <Route path="/multi-analysis" component={MultiAnalysis} />
       <Route path="/line-comparison" component={ProductionLineComparison} />
       <Route path="/about" component={About} />
@@ -271,6 +274,7 @@ function Router() {
       <Route path="/license-activation" component={LicenseActivation} />
       <Route path="/license-admin" component={LicenseAdmin} />
       <Route path="/license-management" component={LicenseManagement} />
+      <Route path="/license-notification-report" component={LicenseNotificationReport} />
       <Route path="/license-customers" component={LicenseCustomers} />
       <Route path="/license-revenue" component={LicenseRevenue} />
       <Route path="/license-server-settings" component={LicenseServerSettings} />

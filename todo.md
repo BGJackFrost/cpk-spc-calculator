@@ -5480,3 +5480,26 @@
 - [x] Thêm chức năng upload ảnh cho Công trạm (Workstation) - đã có
 - [x] Hiển thị ảnh trong danh sách và chi tiết
 - [x] Hỗ trợ xóa/thay đổi ảnh
+
+
+### Phase 3.12 Tasks (23/12/2024)
+
+#### Trang quản lý Jig
+- [x] Tạo trang JigManagement.tsx (tương tự FixtureManagement)
+- [x] Tạo API CRUD cho Jig trong routers.ts
+- [x] Thêm chức năng upload ảnh cho Jig
+- [x] Thêm route /jigs vào App.tsx
+- [x] Thêm menu Jig vào sidebar
+
+#### Báo cáo License Notification Logs
+- [x] Tạo trang LicenseNotificationReport.tsx
+- [x] Tạo API getLicenseNotificationLogs trong routers.ts
+- [x] Hiển thị danh sách email đã gửi với filter theo loại/trạng thái
+- [x] Thống kê số lượng email sent/failed theo ngày
+
+#### Lightbox xem ảnh phóng to
+- [x] Tạo component ImageLightbox.tsx
+- [ ] Tích hợp lightbox vào MachineManagement (chưa có ảnh trong table)
+- [ ] Tích hợp lightbox vào WorkstationManagement (chưa có ảnh trong table)
+- [x] Tích hợp lightbox vào FixtureManagement
+- [x] Tích hợp lightbox vào JigManagement
