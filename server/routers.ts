@@ -9424,6 +9424,156 @@ Hãy trả về JSON với format:
           endDate: new Date(input.endDate),
         });
       }),
+
+    // === Scheduled Performance Checks ===
+    
+    // Get scheduled check config
+    getScheduledCheckConfig: protectedProcedure
+      .query(async ({ ctx }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { getScheduledCheckConfig } = await import("./services/scheduledPerformanceChecks");
+        return getScheduledCheckConfig();
+      }),
+
+    // Update scheduled check config
+    updateScheduledCheckConfig: protectedProcedure
+      .input(z.object({
+        enabled: z.boolean().optional(),
+        intervalMinutes: z.number().min(1).max(60).optional(),
+        notifyEmail: z.boolean().optional(),
+        notifyOwner: z.boolean().optional(),
+        emailRecipients: z.array(z.string()).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { updateScheduledCheckConfig } = await import("./services/scheduledPerformanceChecks");
+        return updateScheduledCheckConfig(input);
+      }),
+
+    // Get check history
+    getCheckHistory: protectedProcedure
+      .input(z.object({ limit: z.number().default(50) }))
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { getCheckHistory } = await import("./services/scheduledPerformanceChecks");
+        return getCheckHistory(input.limit);
+      }),
+
+    // Get check stats
+    getCheckStats: protectedProcedure
+      .query(async ({ ctx }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { getCheckStats } = await import("./services/scheduledPerformanceChecks");
+        return getCheckStats();
+      }),
+
+    // Run single check manually
+    runSingleCheck: protectedProcedure
+      .mutation(async ({ ctx }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { runSingleCheck } = await import("./services/scheduledPerformanceChecks");
+        return await runSingleCheck();
+      }),
+
+    // Clear check history
+    clearCheckHistory: protectedProcedure
+      .mutation(async ({ ctx }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { clearCheckHistory } = await import("./services/scheduledPerformanceChecks");
+        clearCheckHistory();
+        return { success: true };
+      }),
+
+    // === Notification Channels ===
+    
+    // Get all notification channels
+    getChannels: protectedProcedure
+      .query(async ({ ctx }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { getChannels } = await import("./services/notificationChannelService");
+        return getChannels();
+      }),
+
+    // Get channel stats
+    getChannelStats: protectedProcedure
+      .query(async ({ ctx }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { getChannelStats } = await import("./services/notificationChannelService");
+        return getChannelStats();
+      }),
+
+    // Create notification channel
+    createChannel: protectedProcedure
+      .input(z.object({
+        name: z.string().min(1),
+        type: z.enum(["email", "webhook", "owner"]),
+        config: z.record(z.string(), z.any()),
+        enabled: z.boolean().default(true),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { createChannel } = await import("./services/notificationChannelService");
+        return createChannel(input);
+      }),
+
+    // Toggle channel enabled status
+    toggleChannel: protectedProcedure
+      .input(z.object({ id: z.number(), enabled: z.boolean() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { toggleChannel } = await import("./services/notificationChannelService");
+        const success = toggleChannel(input.id, input.enabled);
+        if (!success) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Channel not found" });
+        }
+        return { success: true };
+      }),
+
+    // Delete notification channel
+    deleteChannel: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { deleteChannel } = await import("./services/notificationChannelService");
+        const success = deleteChannel(input.id);
+        if (!success) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Channel not found" });
+        }
+        return { success: true };
+      }),
+
+    // Test notification channel
+    testChannel: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { testChannel } = await import("./services/notificationChannelService");
+        return await testChannel(input.id);
+      }),
   }),
 });
 

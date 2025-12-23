@@ -139,6 +139,7 @@ import AnomalyDetection from "./pages/AnomalyDetection";
 import AppSettings from "./pages/AppSettings";
 import QuickAccessManagement from "./pages/QuickAccessManagement";
 import AdminMonitoring from "./pages/AdminMonitoring";
+import PerformanceTrendsDashboard from "./pages/PerformanceTrendsDashboard";
 
 function Router() {
   return (
@@ -278,6 +279,7 @@ function Router() {
       <Route path="/custom-report-builder" component={CustomReportBuilder} />
       <Route path="/rate-limit-dashboard" component={RateLimitDashboard} />
       <Route path="/admin-monitoring" component={AdminMonitoring} />
+      <Route path="/performance-trends" component={PerformanceTrendsDashboard} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

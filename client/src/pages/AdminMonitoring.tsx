@@ -34,6 +34,9 @@ import PerformanceDashboardWidget from "@/components/PerformanceDashboardWidget"
 import QueryCacheWidget from "@/components/QueryCacheWidget";
 import PerformanceAlertWidget from "@/components/PerformanceAlertWidget";
 import PerformanceReportExport from "@/components/PerformanceReportExport";
+import ScheduledChecksWidget from "@/components/ScheduledChecksWidget";
+import NotificationChannelsWidget from "@/components/NotificationChannelsWidget";
+import { Bell, Timer } from "lucide-react";
 
 export default function AdminMonitoring() {
   const { user } = useAuth();
@@ -216,7 +219,7 @@ export default function AdminMonitoring() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full max-w-4xl grid-cols-6">
+          <TabsList className="grid w-full max-w-5xl grid-cols-8">
             <TabsTrigger value="cache" className="flex items-center gap-2">
               <Database className="h-4 w-4" />
               Cache
@@ -240,6 +243,14 @@ export default function AdminMonitoring() {
             <TabsTrigger value="reports" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
               Reports
+            </TabsTrigger>
+            <TabsTrigger value="scheduled" className="flex items-center gap-2">
+              <Timer className="h-4 w-4" />
+              Scheduled
+            </TabsTrigger>
+            <TabsTrigger value="channels" className="flex items-center gap-2">
+              <Bell className="h-4 w-4" />
+              Channels
             </TabsTrigger>
           </TabsList>
 
@@ -626,6 +637,16 @@ export default function AdminMonitoring() {
           {/* Reports Tab */}
           <TabsContent value="reports" className="space-y-6">
             <PerformanceReportExport />
+          </TabsContent>
+
+          {/* Scheduled Checks Tab */}
+          <TabsContent value="scheduled" className="space-y-6">
+            <ScheduledChecksWidget />
+          </TabsContent>
+
+          {/* Notification Channels Tab */}
+          <TabsContent value="channels" className="space-y-6">
+            <NotificationChannelsWidget />
           </TabsContent>
         </Tabs>
       </div>
