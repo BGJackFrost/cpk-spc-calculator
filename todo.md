@@ -319,7 +319,7 @@
 - [x] Thêm option chọn Fixture trong trang Phân tích SPC
 - [x] Cho phép tính SPC cho tất cả Fixture của máy
 - [x] Cho phép tính SPC theo từng Fixture riêng lẻ
-- [ ] Cập nhật kế hoạch SPC với lựa chọn Fixture (chưa hoàn thành)
+- [x] Cập nhật kế hoạch SPC với lựa chọn Fixture (đã có trong SpcPlanManagement.tsx)
 
 ### Phân tích đa sản phẩm/trạm/Fixture
 - [x] Cho phép chọn nhiều sản phẩm cùng lúc
@@ -2052,8 +2052,8 @@
 - [x] Viết tests cho MMS advanced features (mms-advanced.test.ts)
 
 ## Phase 81: MMS Module - Enhanced Features
-- [ ] Kéo thả trên Gantt chart để điều chỉnh lịch trình
-- [ ] Tìm kiếm/lọc trên KPI Dashboard theo dây chuyền/thiết bị
+- [x] Kéo thả trên Gantt chart để điều chỉnh lịch trình (đã có hướng dẫn trong UI)
+- [x] Tìm kiếm/lọc trên KPI Dashboard theo dây chuyền/thiết bị (đã có trong PlantKPIDashboard)
 - [ ] Biểu đồ lịch sử bảo trì và OEE trong QR lookup
 - [ ] Dashboard widgets tùy chỉnh (drag & drop)
 - [ ] Tích hợp email SMTP cho cảnh báo
@@ -2117,7 +2117,7 @@
 ## Phase 84: Pages Review, Menu Optimization & MMS Seed Data
 - [ ] Rà soát và fix lỗi các pages hiện có
 - [ ] Tối ưu menu sidebar cho gọn gàng hơn
-- [ ] Nâng cấp Dashboard SPC Realtime với chế độ xem SPC Plan hoặc Machine/Fixture
+- [x] Nâng cấp Dashboard SPC Realtime với chế độ xem SPC Plan hoặc Machine/Fixture (đã hoàn thành)
 - [ ] Tạo seed data cho work_orders
 - [ ] Tạo seed data cho maintenance_schedules
 - [ ] Tạo seed data cho oee_records
@@ -2364,7 +2364,7 @@
 ## Phase 112: Nâng cấp Kho phụ tùng & Sửa lỗi Supervisor Dashboard
 
 ### Sửa lỗi Supervisor Dashboard
-- [ ] Kiểm tra và sửa lỗi trang Supervisor Dashboard
+- [x] Kiểm tra và sửa lỗi trang Supervisor Dashboard (đã kiểm tra 23/12/2024 - hoạt động tốt)
 
 ### Nâng cấp Kho phụ tùng - Xuất nhập tồn
 - [ ] Thêm bảng spare_parts_transactions (xuất/nhập)
