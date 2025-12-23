@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, decimal, json, boolean } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, decimal, json, boolean, bigint } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -3260,3 +3260,246 @@ export const userQuickAccessCategories = mysqlTable("user_quick_access_categorie
 });
 export type UserQuickAccessCategory = typeof userQuickAccessCategories.$inferSelect;
 export type InsertUserQuickAccessCategory = typeof userQuickAccessCategories.$inferInsert;
+
+
+// ==================== Phase 3 - Database Integration ====================
+
+/**
+ * Slow Query Logs - Lưu trữ các truy vấn chậm
+ */
+export const slowQueryLogs = mysqlTable("slow_query_logs", {
+  id: int("id").autoincrement().primaryKey(),
+  queryHash: varchar("query_hash", { length: 64 }).notNull(),
+  queryText: text("query_text").notNull(),
+  executionTime: int("execution_time").notNull(), // milliseconds
+  rowsExamined: int("rows_examined"),
+  rowsReturned: int("rows_returned"),
+  connectionId: varchar("connection_id", { length: 100 }),
+  userId: int("user_id"),
+  databaseName: varchar("database_name", { length: 100 }),
+  tableName: varchar("table_name", { length: 100 }),
+  queryType: mysqlEnum("query_type", ["SELECT", "INSERT", "UPDATE", "DELETE", "OTHER"]).default("SELECT"),
+  isOptimized: int("is_optimized").notNull().default(0),
+  optimizationSuggestion: text("optimization_suggestion"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+export type SlowQueryLog = typeof slowQueryLogs.$inferSelect;
+export type InsertSlowQueryLog = typeof slowQueryLogs.$inferInsert;
+
+/**
+ * Batch Operation Logs - Lưu trữ các thao tác batch
+ */
+export const batchOperationLogs = mysqlTable("batch_operation_logs", {
+  id: int("id").autoincrement().primaryKey(),
+  operationId: varchar("operation_id", { length: 64 }).notNull().unique(),
+  operationType: varchar("operation_type", { length: 50 }).notNull(),
+  status: mysqlEnum("status", ["pending", "running", "completed", "failed", "cancelled"]).default("pending").notNull(),
+  totalItems: int("total_items").notNull().default(0),
+  processedItems: int("processed_items").notNull().default(0),
+  successItems: int("success_items").notNull().default(0),
+  failedItems: int("failed_items").notNull().default(0),
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+  userId: int("user_id"),
+  metadata: text("metadata"), // JSON string
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type BatchOperationLog = typeof batchOperationLogs.$inferSelect;
+export type InsertBatchOperationLog = typeof batchOperationLogs.$inferInsert;
+
+/**
+ * Memory Leak Reports - Báo cáo memory leak
+ */
+export const memoryLeakReports = mysqlTable("memory_leak_reports", {
+  id: int("id").autoincrement().primaryKey(),
+  reportId: varchar("report_id", { length: 64 }).notNull().unique(),
+  heapUsed: bigint("heap_used", { mode: "number" }).notNull(),
+  heapTotal: bigint("heap_total", { mode: "number" }).notNull(),
+  external: bigint("external", { mode: "number" }),
+  arrayBuffers: bigint("array_buffers", { mode: "number" }),
+  rss: bigint("rss", { mode: "number" }),
+  threshold: bigint("threshold", { mode: "number" }),
+  leakSuspected: int("leak_suspected").notNull().default(0),
+  growthRate: decimal("growth_rate", { precision: 10, scale: 4 }),
+  stackTrace: text("stack_trace"),
+  processId: varchar("process_id", { length: 50 }),
+  hostname: varchar("hostname", { length: 100 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+export type MemoryLeakReport = typeof memoryLeakReports.$inferSelect;
+export type InsertMemoryLeakReport = typeof memoryLeakReports.$inferInsert;
+
+/**
+ * Error Logs - Lưu trữ lỗi hệ thống
+ */
+export const errorLogs = mysqlTable("error_logs", {
+  id: int("id").autoincrement().primaryKey(),
+  errorId: varchar("error_id", { length: 64 }).notNull().unique(),
+  errorType: varchar("error_type", { length: 100 }).notNull(),
+  errorCode: varchar("error_code", { length: 50 }),
+  message: text("message").notNull(),
+  stackTrace: text("stack_trace"),
+  severity: mysqlEnum("severity", ["low", "medium", "high", "critical"]).default("medium").notNull(),
+  source: varchar("source", { length: 100 }),
+  userId: int("user_id"),
+  requestId: varchar("request_id", { length: 64 }),
+  requestPath: varchar("request_path", { length: 500 }),
+  requestMethod: varchar("request_method", { length: 10 }),
+  userAgent: text("user_agent"),
+  ipAddress: varchar("ip_address", { length: 45 }),
+  metadata: text("metadata"), // JSON string
+  isResolved: int("is_resolved").notNull().default(0),
+  resolvedAt: timestamp("resolved_at"),
+  resolvedBy: int("resolved_by"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+export type ErrorLog = typeof errorLogs.$inferSelect;
+export type InsertErrorLog = typeof errorLogs.$inferInsert;
+
+/**
+ * Structured Logs - Logs có cấu trúc
+ */
+export const structuredLogs = mysqlTable("structured_logs", {
+  id: int("id").autoincrement().primaryKey(),
+  logId: varchar("log_id", { length: 64 }).notNull(),
+  level: mysqlEnum("level", ["trace", "debug", "info", "warn", "error", "fatal"]).default("info").notNull(),
+  message: text("message").notNull(),
+  category: varchar("category", { length: 50 }),
+  service: varchar("service", { length: 50 }),
+  traceId: varchar("trace_id", { length: 64 }),
+  spanId: varchar("span_id", { length: 64 }),
+  parentSpanId: varchar("parent_span_id", { length: 64 }),
+  userId: int("user_id"),
+  sessionId: varchar("session_id", { length: 64 }),
+  requestId: varchar("request_id", { length: 64 }),
+  duration: int("duration"), // milliseconds
+  metadata: text("metadata"), // JSON string
+  tags: text("tags"), // JSON array
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+export type StructuredLog = typeof structuredLogs.$inferSelect;
+export type InsertStructuredLog = typeof structuredLogs.$inferInsert;
+
+/**
+ * Security Audit Logs - Logs bảo mật
+ */
+export const securityAuditLogs = mysqlTable("security_audit_logs", {
+  id: int("id").autoincrement().primaryKey(),
+  eventId: varchar("event_id", { length: 64 }).notNull().unique(),
+  eventType: varchar("event_type", { length: 50 }).notNull(),
+  eventCategory: mysqlEnum("event_category", ["authentication", "authorization", "data_access", "configuration", "system"]).default("system").notNull(),
+  severity: mysqlEnum("severity", ["info", "warning", "error", "critical"]).default("info").notNull(),
+  userId: int("user_id"),
+  username: varchar("username", { length: 100 }),
+  ipAddress: varchar("ip_address", { length: 45 }),
+  userAgent: text("user_agent"),
+  resource: varchar("resource", { length: 255 }),
+  action: varchar("action", { length: 50 }),
+  outcome: mysqlEnum("outcome", ["success", "failure", "blocked"]).default("success").notNull(),
+  details: text("details"), // JSON string
+  riskScore: int("risk_score"), // 0-100
+  geoLocation: varchar("geo_location", { length: 100 }),
+  deviceFingerprint: varchar("device_fingerprint", { length: 64 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+export type SecurityAuditLog = typeof securityAuditLogs.$inferSelect;
+export type InsertSecurityAuditLog = typeof securityAuditLogs.$inferInsert;
+
+/**
+ * IoT Device Data - Dữ liệu thiết bị IoT
+ */
+export const iotDeviceData = mysqlTable("iot_device_data", {
+  id: int("id").autoincrement().primaryKey(),
+  deviceId: varchar("device_id", { length: 64 }).notNull(),
+  deviceName: varchar("device_name", { length: 100 }),
+  deviceType: varchar("device_type", { length: 50 }),
+  status: mysqlEnum("status", ["online", "offline", "error", "maintenance"]).default("offline").notNull(),
+  lastSeen: timestamp("last_seen"),
+  firmwareVersion: varchar("firmware_version", { length: 50 }),
+  ipAddress: varchar("ip_address", { length: 45 }),
+  macAddress: varchar("mac_address", { length: 17 }),
+  location: varchar("location", { length: 255 }),
+  metrics: text("metrics"), // JSON string with sensor data
+  temperature: decimal("temperature", { precision: 5, scale: 2 }),
+  humidity: decimal("humidity", { precision: 5, scale: 2 }),
+  pressure: decimal("pressure", { precision: 8, scale: 2 }),
+  batteryLevel: int("battery_level"),
+  signalStrength: int("signal_strength"),
+  errorCount: int("error_count").notNull().default(0),
+  lastError: text("last_error"),
+  metadata: text("metadata"), // JSON string
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type IotDeviceData = typeof iotDeviceData.$inferSelect;
+export type InsertIotDeviceData = typeof iotDeviceData.$inferInsert;
+
+/**
+ * AI/ML Predictions - Dự đoán từ AI/ML
+ */
+export const aiMlPredictions = mysqlTable("ai_ml_predictions", {
+  id: int("id").autoincrement().primaryKey(),
+  predictionId: varchar("prediction_id", { length: 64 }).notNull().unique(),
+  modelId: varchar("model_id", { length: 64 }).notNull(),
+  modelName: varchar("model_name", { length: 100 }),
+  modelVersion: varchar("model_version", { length: 20 }),
+  predictionType: varchar("prediction_type", { length: 50 }).notNull(),
+  inputData: text("input_data"), // JSON string
+  outputData: text("output_data"), // JSON string
+  confidence: decimal("confidence", { precision: 5, scale: 4 }),
+  probability: decimal("probability", { precision: 5, scale: 4 }),
+  predictedValue: decimal("predicted_value", { precision: 15, scale: 4 }),
+  actualValue: decimal("actual_value", { precision: 15, scale: 4 }),
+  error: decimal("error", { precision: 15, scale: 4 }),
+  isCorrect: int("is_correct"),
+  latency: int("latency"), // milliseconds
+  featureImportance: text("feature_importance"), // JSON string
+  explanation: text("explanation"),
+  metadata: text("metadata"), // JSON string
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+export type AiMlPrediction = typeof aiMlPredictions.$inferSelect;
+export type InsertAiMlPrediction = typeof aiMlPredictions.$inferInsert;
+
+/**
+ * Realtime Data Streams - Cấu hình data streams
+ */
+export const realtimeDataStreams = mysqlTable("realtime_data_streams", {
+  id: int("id").autoincrement().primaryKey(),
+  streamId: varchar("stream_id", { length: 64 }).notNull().unique(),
+  name: varchar("name", { length: 100 }).notNull(),
+  streamType: mysqlEnum("stream_type", ["spc", "oee", "iot", "system", "security", "ai"]).notNull(),
+  source: varchar("source", { length: 100 }).notNull(),
+  interval: int("interval").notNull().default(5000), // milliseconds
+  isActive: int("is_active").notNull().default(0),
+  lastDataAt: timestamp("last_data_at"),
+  subscriberCount: int("subscriber_count").notNull().default(0),
+  errorCount: int("error_count").notNull().default(0),
+  config: text("config"), // JSON string
+  metadata: text("metadata"), // JSON string
+  createdBy: int("created_by"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type RealtimeDataStream = typeof realtimeDataStreams.$inferSelect;
+export type InsertRealtimeDataStream = typeof realtimeDataStreams.$inferInsert;
+
+/**
+ * Analytics Cache - Cache cho analytics
+ */
+export const analyticsCache = mysqlTable("analytics_cache", {
+  id: int("id").autoincrement().primaryKey(),
+  cacheKey: varchar("cache_key", { length: 255 }).notNull().unique(),
+  cacheType: varchar("cache_type", { length: 50 }).notNull(),
+  data: text("data").notNull(), // JSON string
+  computedAt: timestamp("computed_at").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  hitCount: int("hit_count").notNull().default(0),
+  lastAccessedAt: timestamp("last_accessed_at"),
+  metadata: text("metadata"), // JSON string
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+export type AnalyticsCache = typeof analyticsCache.$inferSelect;
+export type InsertAnalyticsCache = typeof analyticsCache.$inferInsert;

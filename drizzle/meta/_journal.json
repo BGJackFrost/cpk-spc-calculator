@@ -477,6 +477,13 @@
       "when": 1766379807177,
       "tag": "0067_left_sersi",
       "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "5",
+      "when": 1766460144229,
+      "tag": "0068_simple_cable",
+      "breakpoints": true
     }
   ]
 }

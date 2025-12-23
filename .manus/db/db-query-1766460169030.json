@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `ai_ml_predictions` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `prediction_id` varchar(64) NOT NULL,\n  `model_id` varchar(64) NOT NULL,\n  `model_name` varchar(100),\n  `model_version` varchar(20),\n  `prediction_type` varchar(50) NOT NULL,\n  `input_data` text,\n  `output_data` text,\n  `confidence` decimal(5,4),\n  `probability` decimal(5,4),\n  `predicted_value` decimal(15,4),\n  `actual_value` decimal(15,4),\n  `error` decimal(15,4),\n  `is_correct` int,\n  `latency` int,\n  `feature_importance` text,\n  `explanation` text,\n  `metadata` text,\n  `created_at` timestamp NOT NULL DEFAULT (now()),\n  CONSTRAINT `ai_ml_predictions_id` PRIMARY KEY(`id`),\n  CONSTRAINT `ai_ml_predictions_prediction_id_unique` UNIQUE(`prediction_id`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute CREATE TABLE IF NOT EXISTS `ai_ml_predictions` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `prediction_id` varchar(64) NOT NULL,\n  `model_id` varchar(64) NOT NULL,\n  `model_name` varchar(100),\n  `model_version` varchar(20),\n  `prediction_type` varchar(50) NOT NULL,\n  `input_data` text,\n  `output_data` text,\n  `confidence` decimal(5,4),\n  `probability` decimal(5,4),\n  `predicted_value` decimal(15,4),\n  `actual_value` decimal(15,4),\n  `error` decimal(15,4),\n  `is_correct` int,\n  `latency` int,\n  `feature_importance` text,\n  `explanation` text,\n  `metadata` text,\n  `created_at` timestamp NOT NULL DEFAULT (now()),\n  CONSTRAINT `ai_ml_predictions_id` PRIMARY KEY(`id`),\n  CONSTRAINT `ai_ml_predictions_prediction_id_unique` UNIQUE(`prediction_id`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1695
+}
