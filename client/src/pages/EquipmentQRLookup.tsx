@@ -402,6 +402,49 @@ export default function EquipmentQRLookup() {
                       </div>
                     </div>
                     
+                    {/* MTBF/MTTR Statistics */}
+                    <div className="grid grid-cols-2 gap-4 mt-4">
+                      <div className="p-4 bg-cyan-50 dark:bg-cyan-950 rounded-lg">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-xs text-muted-foreground">MTBF</p>
+                            <p className="text-sm text-muted-foreground">Mean Time Between Failures</p>
+                          </div>
+                          <Clock className="h-5 w-5 text-cyan-500" />
+                        </div>
+                        <div className="text-2xl font-bold text-cyan-600 mt-2">
+                          {workOrders && workOrders.length > 0 
+                            ? Math.round((30 * 24) / Math.max(workOrders.filter(w => w.typeCategory === 'corrective').length, 1))
+                            : 'N/A'
+                          }h
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">Thời gian trung bình giữa các lần hỏng</p>
+                      </div>
+                      <div className="p-4 bg-orange-50 dark:bg-orange-950 rounded-lg">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-xs text-muted-foreground">MTTR</p>
+                            <p className="text-sm text-muted-foreground">Mean Time To Repair</p>
+                          </div>
+                          <Wrench className="h-5 w-5 text-orange-500" />
+                        </div>
+                        <div className="text-2xl font-bold text-orange-600 mt-2">
+                          {workOrders && workOrders.filter(w => w.status === 'completed').length > 0
+                            ? (workOrders.filter(w => w.status === 'completed').reduce((sum, w) => {
+                                const start = w.scheduledStartAt ? new Date(w.scheduledStartAt) : null;
+                                const end = w.completedAt ? new Date(w.completedAt) : null;
+                                if (start && end) {
+                                  return sum + (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+                                }
+                                return sum;
+                              }, 0) / workOrders.filter(w => w.status === 'completed').length).toFixed(1)
+                            : 'N/A'
+                          }h
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">Thời gian trung bình sửa chữa</p>
+                      </div>
+                    </div>
+
                     {/* OEE Trend Chart */}
                     <div className="h-[250px]">
                       <p className="text-sm font-medium mb-2">Xu hướng OEE (30 ngày gần nhất)</p>

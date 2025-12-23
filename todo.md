@@ -5525,3 +5525,24 @@
 - [x] Pie chart theo trạng thái (active/pending/expired/revoked)
 - [x] Thống kê tổng quan (tổng số, sắp hết hạn, đã hết hạn)
 - [x] Biểu đồ trend kích hoạt theo tháng
+
+
+## Phase 113: Mobile Responsive, Biểu đồ lịch sử bảo trì, Email SMTP
+
+### Mobile Responsive (ĐÃ CÓ SẴN)
+- [x] Tối ưu QR Scanner cho mobile (đã có html5-qrcode với facingMode: environment)
+- [x] Tối ưu Gantt chart cho mobile (đã có touch handlers, horizontal scroll, responsive breakpoints)
+- [x] Responsive sidebar và navigation (đã có trong DashboardLayout)
+- [x] Touch-friendly buttons và controls (đã có trong GanttChart và QRScanner)
+
+### Biểu đồ lịch sử bảo trì trong QR Lookup (ĐÃ CÓ SẴN)
+- [x] Thêm biểu đồ OEE trend vào QR Lookup (đã có trong tab OEE - 30 ngày)
+- [x] Thêm biểu đồ lịch sử bảo trì (timeline) (đã có trong tab Charts - BarChart theo tháng)
+- [x] Hiển thị thống kê MTBF/MTTR (đã thêm vào tab OEE trong EquipmentQRLookup)
+
+### Tích hợp Email SMTP (ĐÃ CÓ SẴN)
+- [x] Tạo bảng email_config trong database (đã có smtpConfig table)
+- [x] Tạo API cấu hình SMTP (đã có smtp router: getConfig, saveConfig, testEmail)
+- [x] Tạo trang cấu hình email trong System Settings (đã có SmtpSettings.tsx)
+- [x] Tích hợp gửi email cho cảnh báo OEE/CPK (đã có trong emailService.ts)
+- [x] Tích hợp gửi email cho cảnh báo bảo trì (đã có maintenance_alert type)
