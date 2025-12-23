@@ -5,7 +5,7 @@
  * when thresholds are exceeded.
  */
 
-import { db } from '../db';
+import { getDb } from '../db';
 import { sql, eq, desc, and, gte, lte } from 'drizzle-orm';
 
 // Alert rule types
@@ -472,18 +472,20 @@ export async function runPerformanceChecks(): Promise<{
   try {
     // Get pool stats
     const { getPoolStats } = await import('./connectionPoolService');
-    const poolStats = getPoolStats();
+    const poolStats = await getPoolStats();
     
     // Calculate pool utilization
-    const poolUtilization = poolStats.totalConnections > 0
+    const poolUtilization = poolStats && poolStats.totalConnections > 0
       ? (poolStats.activeConnections / poolStats.totalConnections) * 100
       : 0;
     
     // Check pool utilization
-    triggeredAlerts.push(...checkPoolUtilization(poolUtilization, poolStats));
+    if (poolStats) {
+      triggeredAlerts.push(...checkPoolUtilization(poolUtilization, poolStats));
+    }
     
     // Check queue length
-    triggeredAlerts.push(...checkPoolQueueLength(poolStats.waitingRequests));
+    triggeredAlerts.push(...checkPoolQueueLength(poolStats?.waitingRequests || 0));
     
     // Get cache stats
     const { queryCache } = await import('./queryCacheService');
@@ -497,7 +499,7 @@ export async function runPerformanceChecks(): Promise<{
       alerts: triggeredAlerts,
       stats: {
         poolUtilization,
-        queueLength: poolStats.waitingRequests,
+        queueLength: poolStats?.waitingRequests || 0,
         cacheHitRate,
       },
     };

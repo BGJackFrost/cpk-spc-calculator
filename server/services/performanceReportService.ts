@@ -76,11 +76,11 @@ export async function generatePerformanceReportData(
       const { getSlowQueries } = await import('./queryPerformanceService');
       const queries = getSlowQueries(100);
       slowQueries = queries
-        .filter(q => {
+        .filter((q: any) => {
           const timestamp = new Date(q.timestamp);
           return timestamp >= startDate && timestamp <= endDate;
         })
-        .map(q => ({
+        .map((q: any) => ({
           query: q.query.substring(0, 500),
           executionTime: q.executionTime,
           timestamp: new Date(q.timestamp),
@@ -95,22 +95,32 @@ export async function generatePerformanceReportData(
   let poolStats: PerformanceReportData['poolStats'] = [];
   if (options.includePoolStats !== false) {
     try {
-      const { getPoolStats, getPoolHistory } = await import('./connectionPoolService');
-      const history = getPoolHistory();
-      poolStats = history
-        .filter(h => {
-          const timestamp = new Date(h.timestamp);
-          return timestamp >= startDate && timestamp <= endDate;
-        })
-        .map(h => ({
-          timestamp: new Date(h.timestamp),
-          activeConnections: h.activeConnections,
-          idleConnections: h.idleConnections,
-          waitingRequests: h.waitingRequests,
-          utilization: h.totalConnections > 0 
-            ? (h.activeConnections / h.totalConnections) * 100 
-            : 0,
-        }));
+      const { getPoolStats } = await import('./connectionPoolService');
+      const stats = await getPoolStats();
+      // Use current stats as single data point since history is not available
+      if (stats) {
+        const currentStats = [{
+          timestamp: new Date(),
+          activeConnections: stats.activeConnections,
+          idleConnections: stats.idleConnections,
+          waitingRequests: stats.waitingRequests,
+          totalConnections: stats.totalConnections,
+        }];
+        poolStats = currentStats
+          .filter((h: any) => {
+            const timestamp = new Date(h.timestamp);
+            return timestamp >= startDate && timestamp <= endDate;
+          })
+          .map((h: any) => ({
+            timestamp: new Date(h.timestamp),
+            activeConnections: h.activeConnections,
+            idleConnections: h.idleConnections,
+            waitingRequests: h.waitingRequests,
+            utilization: h.totalConnections > 0 
+              ? (h.activeConnections / h.totalConnections) * 100 
+              : 0,
+          }));
+      }
     } catch (error) {
       console.error('Error getting pool stats:', error);
     }

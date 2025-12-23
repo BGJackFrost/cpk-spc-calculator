@@ -140,6 +140,10 @@ import AppSettings from "./pages/AppSettings";
 import QuickAccessManagement from "./pages/QuickAccessManagement";
 import AdminMonitoring from "./pages/AdminMonitoring";
 import PerformanceTrendsDashboard from "./pages/PerformanceTrendsDashboard";
+import SystemHealthDashboard from "./pages/SystemHealthDashboard";
+import SecurityDashboard from "./pages/SecurityDashboard";
+import IoTDashboard from "./pages/IoTDashboard";
+import AiMlDashboard from "./pages/AiMlDashboard";
 
 function Router() {
   return (
@@ -280,6 +284,10 @@ function Router() {
       <Route path="/rate-limit-dashboard" component={RateLimitDashboard} />
       <Route path="/admin-monitoring" component={AdminMonitoring} />
       <Route path="/performance-trends" component={PerformanceTrendsDashboard} />
+      <Route path="/system-health" component={SystemHealthDashboard} />
+      <Route path="/security-dashboard" component={SecurityDashboard} />
+      <Route path="/iot-dashboard" component={IoTDashboard} />
+      <Route path="/ai-ml-dashboard" component={AiMlDashboard} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

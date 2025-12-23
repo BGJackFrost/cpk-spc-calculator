@@ -21,6 +21,10 @@ interface CacheStats {
   oldestEntry: number | null;
   newestEntry: number | null;
   entriesByCategory: Record<string, number>;
+  // Additional fields for compatibility
+  size: number;
+  evictions: number;
+  byCategory: Record<string, number>;
 }
 
 class QueryCacheService {
@@ -182,12 +186,12 @@ class QueryCacheService {
     let count = 0;
     const regex = new RegExp(pattern);
     
-    for (const key of this.cache.keys()) {
+    Array.from(this.cache.keys()).forEach((key) => {
       if (regex.test(key)) {
         this.cache.delete(key);
         count++;
       }
-    }
+    });
     
     return count;
   }
@@ -198,12 +202,12 @@ class QueryCacheService {
   invalidateQuery(queryId: string): number {
     let count = 0;
     
-    for (const key of this.cache.keys()) {
+    Array.from(this.cache.keys()).forEach((key) => {
       if (key === queryId || key.startsWith(`${queryId}:`)) {
         this.cache.delete(key);
         count++;
       }
-    }
+    });
     
     return count;
   }
@@ -224,12 +228,12 @@ class QueryCacheService {
     let oldestKey: string | null = null;
     let oldestTime = Infinity;
     
-    for (const [key, entry] of this.cache.entries()) {
+    Array.from(this.cache.entries()).forEach(([key, entry]) => {
       if (entry.timestamp < oldestTime) {
         oldestTime = entry.timestamp;
         oldestKey = key;
       }
-    }
+    });
     
     if (oldestKey) {
       this.cache.delete(oldestKey);
@@ -259,12 +263,12 @@ class QueryCacheService {
     let count = 0;
     const now = Date.now();
     
-    for (const [key, entry] of this.cache.entries()) {
+    Array.from(this.cache.entries()).forEach(([key, entry]) => {
       if (now - entry.timestamp > entry.ttl) {
         this.cache.delete(key);
         count++;
       }
-    }
+    });
     
     return count;
   }
@@ -277,7 +281,7 @@ class QueryCacheService {
     let newestEntry: number | null = null;
     const entriesByCategory: Record<string, number> = {};
     
-    for (const [key, entry] of this.cache.entries()) {
+    Array.from(this.cache.entries()).forEach(([key, entry]) => {
       // Track oldest/newest
       if (oldestEntry === null || entry.timestamp < oldestEntry) {
         oldestEntry = entry.timestamp;
@@ -289,7 +293,7 @@ class QueryCacheService {
       // Count by category
       const category = key.split(':')[0].split('_')[0];
       entriesByCategory[category] = (entriesByCategory[category] || 0) + 1;
-    }
+    });
     
     const totalRequests = this.totalHits + this.totalMisses;
     
@@ -302,6 +306,10 @@ class QueryCacheService {
       oldestEntry,
       newestEntry,
       entriesByCategory,
+      // Additional fields for compatibility
+      size: this.cache.size,
+      evictions: 0, // Track separately if needed
+      byCategory: entriesByCategory,
     };
   }
   
@@ -311,12 +319,12 @@ class QueryCacheService {
   private estimateMemoryUsage(): number {
     let size = 0;
     
-    for (const [key, entry] of this.cache.entries()) {
+    Array.from(this.cache.entries()).forEach(([key, entry]) => {
       // Rough estimation: key size + JSON stringified data size
       size += key.length * 2; // UTF-16
       size += JSON.stringify(entry.data).length * 2;
       size += 32; // Overhead for entry metadata
-    }
+    });
     
     return size;
   }
@@ -409,7 +417,7 @@ export function cached(queryId: string, ttl?: number) {
   ): TypedPropertyDescriptor<T> {
     const originalMethod = descriptor.value!;
     
-    descriptor.value = async function (...args: any[]) {
+    descriptor.value = async function (this: any, ...args: any[]) {
       const params = args.length > 0 ? { args: JSON.stringify(args) } : undefined;
       return queryCache.getOrSet(queryId, params, () => originalMethod.apply(this, args), ttl);
     } as T;

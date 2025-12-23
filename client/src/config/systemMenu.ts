@@ -345,6 +345,10 @@ export const SYSTEM_MENU: SystemMenuConfig = {
         { id: "rate-limit-dashboard", icon: Shield, labelKey: "nav.rateLimitDashboard", path: "/rate-limit-dashboard", adminOnly: true },
         { id: "admin-monitoring", icon: Activity, labelKey: "nav.adminMonitoring", path: "/admin-monitoring", adminOnly: true },
         { id: "performance-trends", icon: TrendingUp, labelKey: "nav.performanceTrends", path: "/performance-trends", adminOnly: true },
+        { id: "system-health", icon: Activity, labelKey: "nav.systemHealth", path: "/system-health", adminOnly: true },
+        { id: "security-dashboard", icon: Shield, labelKey: "nav.securityDashboard", path: "/security-dashboard", adminOnly: true },
+        { id: "iot-dashboard", icon: Cpu, labelKey: "nav.iotDashboard", path: "/iot-dashboard", adminOnly: true },
+        { id: "ai-ml-dashboard", icon: Brain, labelKey: "nav.aiMlDashboard", path: "/ai-ml-dashboard", adminOnly: true },
       ],
     },
     {
