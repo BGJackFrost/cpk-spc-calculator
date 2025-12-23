@@ -5337,3 +5337,42 @@
 - [x] Tạo SyncStatusIndicator component
 - [x] Implement retry logic cho failed syncs
 - [x] Thêm service worker sync registration
+
+## Phase 3.6 - Sync Integration, Test Notifications & Conflict Resolution (23/12/2024)
+
+### SyncStatusIndicator Integration
+- [ ] Tích hợp SyncStatusIndicator vào DashboardLayout header
+- [ ] Hiển thị sync status cho tất cả dashboard pages
+- [ ] Thêm tooltip với chi tiết sync
+
+### Test Notification Button
+- [ ] Thêm Test Notification button vào NotificationPreferences
+- [ ] Implement test notification với các loại khác nhau
+- [ ] Hiển thị preview notification
+
+### Conflict Resolution UI
+- [ ] Tạo ConflictResolutionDialog component
+- [ ] Implement conflict detection logic
+- [ ] Hiển thị diff giữa local và server data
+- [ ] Thêm options: Keep Local, Keep Server, Merge
+- [ ] Tích hợp với BackgroundSyncService
+
+### Phase 3.6 Completed Tasks (23/12/2024)
+
+#### SyncStatusIndicator Integration
+- [x] Tích hợp SyncStatusIndicator vào DashboardLayout header
+- [x] Hiển thị sync status cho tất cả dashboard pages
+- [x] Popover với chi tiết sync (pending, failed, last sync time)
+
+#### Test Notification Button
+- [x] Thêm Test Notification section vào NotificationPreferences
+- [x] Implement test notification cho từng loại (SPC, OEE, Security, IoT, System)
+- [x] Toast feedback khi gửi test notification
+
+#### Conflict Resolution UI
+- [x] Tạo ConflictResolutionDialog component
+- [x] Hiển thị diff giữa local và server data
+- [x] Thêm options: Keep Local, Keep Server, Merge
+- [x] Global strategy để áp dụng cho tất cả conflicts
+- [x] Tạo useConflictResolution hook với conflict detection
+- [x] Auto-resolve với history-based strategy

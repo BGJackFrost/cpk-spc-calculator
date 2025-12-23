@@ -34,7 +34,9 @@ import {
   CheckCircle,
   Settings,
   Save,
-  RefreshCw
+  RefreshCw,
+  Send,
+  Sparkles
 } from 'lucide-react';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { toast } from 'sonner';
@@ -278,6 +280,79 @@ export default function NotificationPreferences() {
                       Notifications bị chặn. Vui lòng cho phép trong cài đặt trình duyệt.
                     </span>
                   </div>
+                )}
+
+                {/* Test Notification Section */}
+                {isSubscribed && (
+                  <>
+                    <Separator />
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="h-4 w-4 text-primary" />
+                        <span className="font-medium">Test Notification</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Gửi thông báo test để kiểm tra cài đặt của bạn
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            showNotification('spc_alert', 'SPC Alert Test', 'Đây là thông báo test cho SPC alerts');
+                            toast.success('Đã gửi test notification SPC');
+                          }}
+                        >
+                          <Activity className="mr-1 h-3 w-3" />
+                          Test SPC
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            showNotification('oee_alert', 'OEE Alert Test', 'Đây là thông báo test cho OEE alerts');
+                            toast.success('Đã gửi test notification OEE');
+                          }}
+                        >
+                          <AlertTriangle className="mr-1 h-3 w-3" />
+                          Test OEE
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            showNotification('security_alert', 'Security Alert Test', 'Đây là thông báo test cho Security alerts');
+                            toast.success('Đã gửi test notification Security');
+                          }}
+                        >
+                          <Shield className="mr-1 h-3 w-3" />
+                          Test Security
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            showNotification('iot_alert', 'IoT Alert Test', 'Đây là thông báo test cho IoT alerts');
+                            toast.success('Đã gửi test notification IoT');
+                          }}
+                        >
+                          <Cpu className="mr-1 h-3 w-3" />
+                          Test IoT
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            showNotification('system_alert', 'System Alert Test', 'Đây là thông báo test cho System alerts');
+                            toast.success('Đã gửi test notification System');
+                          }}
+                        >
+                          <Server className="mr-1 h-3 w-3" />
+                          Test System
+                        </Button>
+                      </div>
+                    </div>
+                  </>
                 )}
               </>
             )}

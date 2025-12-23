@@ -39,6 +39,7 @@ import { useLanguage } from "../contexts/LanguageContext";
 import { NotificationBell } from "./NotificationBell";
 import { WebSocketIndicator } from "./WebSocketIndicator";
 import { SseIndicator } from "./SseIndicator";
+import { SyncStatusIndicator } from "./SyncStatusIndicator";
 import { TopNavigation } from "./TopNavigation";
 import { ThemeSelector } from "./ThemeSelector";
 import { useSystem } from "@/contexts/SystemContext";
@@ -862,6 +863,7 @@ function DashboardLayoutContent({
               )}
             </Button>
             
+            <SyncStatusIndicator />
             <SseIndicator />
             <WebSocketIndicator />
             <NotificationBell />
