@@ -15,7 +15,12 @@ export type SseEventType =
   | "oee_update"
   | "machine_status_change"
   | "maintenance_alert"
-  | "realtime_alert";
+  | "realtime_alert"
+  | "iot_device_status"
+  | "iot_metric_update"
+  | "iot_alarm"
+  | "iot_alarm_ack"
+  | "iot_batch_metrics";
 
 export interface SseEvent {
   type: SseEventType;
@@ -334,6 +339,85 @@ export function notifyRealtimeAlert(data: {
 }) {
   broadcastEvent({
     type: "realtime_alert",
+    data,
+    timestamp: new Date(),
+  });
+}
+
+// ============ IoT Events ============
+
+// Send IoT device status change event
+export function notifyIotDeviceStatus(data: {
+  deviceId: string;
+  deviceName: string;
+  oldStatus?: string;
+  newStatus: string;
+  deviceType: string;
+  lastSeen: Date;
+}) {
+  broadcastEvent({
+    type: "iot_device_status",
+    data,
+    timestamp: new Date(),
+  });
+}
+
+// Send IoT metric update event
+export function notifyIotMetricUpdate(data: {
+  deviceId: string;
+  metricName: string;
+  value: number;
+  unit: string;
+  quality: "good" | "uncertain" | "bad";
+}) {
+  broadcastEvent({
+    type: "iot_metric_update",
+    data,
+    timestamp: new Date(),
+  });
+}
+
+// Send IoT alarm event
+export function notifyIotAlarm(data: {
+  alarmId: string;
+  deviceId: string;
+  deviceName?: string;
+  type: "threshold" | "connection" | "quality" | "system";
+  severity: "info" | "warning" | "critical" | "emergency";
+  message: string;
+}) {
+  broadcastEvent({
+    type: "iot_alarm",
+    data,
+    timestamp: new Date(),
+  });
+}
+
+// Send IoT alarm acknowledgment event
+export function notifyIotAlarmAck(data: {
+  alarmId: string;
+  acknowledgedBy: string;
+  acknowledgedAt: Date;
+}) {
+  broadcastEvent({
+    type: "iot_alarm_ack",
+    data,
+    timestamp: new Date(),
+  });
+}
+
+// Send IoT batch metrics event
+export function notifyIotBatchMetrics(data: {
+  metrics: Array<{
+    deviceId: string;
+    metricName: string;
+    value: number;
+    unit: string;
+  }>;
+  count: number;
+}) {
+  broadcastEvent({
+    type: "iot_batch_metrics",
     data,
     timestamp: new Date(),
   });

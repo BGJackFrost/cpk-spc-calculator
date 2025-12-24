@@ -3,6 +3,14 @@ import { router, protectedProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { aiAnomalyModels, aiPredictions } from "../../drizzle/schema";
 import { eq, desc, and, gte, lte } from "drizzle-orm";
+import {
+  generateQuickInsights,
+  generateAiAnalysis,
+  chatAboutSpc,
+  type SpcMetrics,
+  type SpcDataPoint,
+  type SpcViolation,
+} from "../services/aiSpcAnalysisService";
 
 // Simple anomaly detection using Z-score
 function detectAnomaliesZScore(data: number[], threshold: number = 2.5): { index: number; value: number; score: number; severity: string }[] {
@@ -231,4 +239,86 @@ export const aiRouter = router({
       avgAccuracy: models.filter(m => m.accuracy).reduce((sum, m) => sum + (m.accuracy || 0), 0) / Math.max(1, models.filter(m => m.accuracy).length),
     };
   }),
+
+  // ============ AI SPC Analysis with LLM ============
+
+  // Get quick insights (no LLM required)
+  getQuickInsights: protectedProcedure
+    .input(z.object({
+      mean: z.number(),
+      stdDev: z.number(),
+      cp: z.number(),
+      cpk: z.number(),
+      usl: z.number(),
+      lsl: z.number(),
+      ucl: z.number(),
+      lcl: z.number(),
+      sampleSize: z.number(),
+      pp: z.number().optional(),
+      ppk: z.number().optional(),
+    }))
+    .query(({ input }) => {
+      return generateQuickInsights(input);
+    }),
+
+  // Full AI analysis with LLM
+  analyzeSpc: protectedProcedure
+    .input(z.object({
+      productCode: z.string(),
+      stationName: z.string(),
+      metrics: z.object({
+        mean: z.number(),
+        stdDev: z.number(),
+        cp: z.number(),
+        cpk: z.number(),
+        usl: z.number(),
+        lsl: z.number(),
+        ucl: z.number(),
+        lcl: z.number(),
+        sampleSize: z.number(),
+        pp: z.number().optional(),
+        ppk: z.number().optional(),
+      }),
+      recentData: z.array(z.object({
+        value: z.number(),
+        timestamp: z.date(),
+        isViolation: z.boolean().optional(),
+        violationRules: z.array(z.string()).optional(),
+      })),
+      violations: z.array(z.object({
+        rule: z.string(),
+        description: z.string(),
+        severity: z.enum(["low", "medium", "high", "critical"]),
+        affectedPoints: z.array(z.number()),
+      })),
+      historicalCpk: z.array(z.number()).optional(),
+    }))
+    .mutation(async ({ input }) => {
+      return await generateAiAnalysis(
+        input.productCode,
+        input.stationName,
+        input.metrics as SpcMetrics,
+        input.recentData as SpcDataPoint[],
+        input.violations as SpcViolation[],
+        input.historicalCpk
+      );
+    }),
+
+  // Chat about SPC data
+  chatAboutSpc: protectedProcedure
+    .input(z.object({
+      question: z.string(),
+      context: z.object({
+        productCode: z.string(),
+        stationName: z.string(),
+        cpk: z.number(),
+        mean: z.number(),
+        stdDev: z.number(),
+        violations: z.array(z.string()),
+      }),
+    }))
+    .mutation(async ({ input }) => {
+      const answer = await chatAboutSpc(input.question, input.context);
+      return { answer };
+    }),
 });

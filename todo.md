@@ -5892,3 +5892,31 @@
 ### Tests
 - [x] AI Router tests (3 tests pass)
 - [x] ERP Integration tests (3 tests pass)
+
+
+## Phase 46: AI Integration & IoT Realtime Dashboard
+
+### AI Integration với LLM
+- [ ] Tạo AI SPC Analysis Service với invokeLLM
+- [ ] Cập nhật aiRouter với endpoints phân tích AI thực
+- [ ] Tạo AI Recommendations component
+
+### IoT Dashboard Realtime
+- [ ] Tạo IoT WebSocket service
+- [ ] Thêm IoT events vào SSE
+- [ ] Tạo useIotRealtime hook
+- [ ] Tạo IotRealtimeDashboard component với live charts
+- [ ] Viết tests cho AI và IoT features
+
+## Phase 46: AI Integration & IoT Realtime
+
+### AI Integration với LLM
+- [x] Tạo AI SPC Analysis Service với LLM (aiSpcAnalysisService.ts)
+- [x] Cập nhật aiRouter với endpoints phân tích AI thực
+- [x] Tạo AI Recommendations component (AiRecommendations.tsx)
+
+### IoT Dashboard Realtime
+- [x] Tạo IoT WebSocket Service (iotWebSocketService.ts)
+- [x] Thêm IoT events vào SSE (sse.ts)
+- [x] Tạo useIotRealtime hook (useIotRealtime.ts)
+- [x] Tạo IotRealtimeDashboard component (IotRealtimeDashboard.tsx)
