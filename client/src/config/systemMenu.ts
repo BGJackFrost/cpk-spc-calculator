@@ -343,6 +343,7 @@ export const SYSTEM_MENU: SystemMenuConfig = {
         { id: "webhooks", icon: Webhook, labelKey: "nav.webhookManagement", path: "/webhooks", adminOnly: true },
         { id: "notification-center", icon: Bell, labelKey: "nav.notificationCenter", path: "/notification-center" },
         { id: "alert-analytics", icon: BarChart3, labelKey: "nav.alertAnalytics", path: "/alert-analytics", adminOnly: true },
+        { id: "unified-alert-kpi", icon: BarChart3, labelKey: "nav.unifiedAlertKpi", path: "/unified-alert-kpi", adminOnly: true },
       ],
     },
     {

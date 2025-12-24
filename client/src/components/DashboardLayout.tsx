@@ -190,6 +190,10 @@ const fallbackLabelsVi: Record<string, string> = {
   "menuGroup.licenseSettings": "Cài đặt License",
   "nav.licenseActivation": "Kích hoạt License",
   "menuGroup.systemInfo": "Thông tin",
+  "nav.unifiedAlertKpi": "Dashboard Alert & KPI",
+  "nav.alertAnalytics": "Phân tích Cảnh báo",
+  "nav.twilioSettings": "Cấu hình Twilio",
+  "nav.webhookSettings": "Cấu hình Webhook",
 };
 
 const fallbackLabelsEn: Record<string, string> = {
@@ -330,6 +334,10 @@ const fallbackLabelsEn: Record<string, string> = {
   "menuGroup.licenseSettings": "License Settings",
   "nav.licenseActivation": "License Activation",
   "menuGroup.systemInfo": "Information",
+  "nav.unifiedAlertKpi": "Unified Alert & KPI Dashboard",
+  "nav.alertAnalytics": "Alert Analytics",
+  "nav.twilioSettings": "Twilio Settings",
+  "nav.webhookSettings": "Webhook Settings",
 };
 
 const MIN_WIDTH = 200;

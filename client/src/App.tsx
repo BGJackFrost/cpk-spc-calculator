@@ -168,6 +168,7 @@ import SensorDashboard from "./pages/SensorDashboard";
 import TwilioSettings from "./pages/TwilioSettings";
 import WebhookSettings from "./pages/WebhookSettings";
 import AlertAnalytics from "./pages/AlertAnalytics";
+import UnifiedAlertKpiDashboard from "./pages/UnifiedAlertKpiDashboard";
 
 function Router() {
   return (
@@ -333,6 +334,7 @@ function Router() {
       <Route path="/twilio-settings" component={TwilioSettings} />
       <Route path="/webhook-settings" component={WebhookSettings} />
       <Route path="/alert-analytics" component={AlertAnalytics} />
+      <Route path="/unified-alert-kpi" component={UnifiedAlertKpiDashboard} />
       <Route path="/ai-ml-dashboard" component={AiMlDashboard} />
       <Route path="/advanced-analytics-dashboard" component={AdvancedAnalyticsDashboard} />
       <Route path="/notification-preferences" component={NotificationPreferences} />

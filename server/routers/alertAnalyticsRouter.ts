@@ -4,6 +4,8 @@ import { getDb } from "../db";
 import { alertAnalytics, kpiAlertStats, realtimeAlerts } from "../../drizzle/schema";
 import { eq, sql, desc, and, gte, lte, count } from "drizzle-orm";
 import { subDays, startOfDay, endOfDay, format, eachDayOfInterval, eachWeekOfInterval, startOfWeek, eachMonthOfInterval, startOfMonth } from "date-fns";
+import * as twilioService from "../services/twilioService";
+import * as webhookHistoryService from "../services/webhookHistoryService";
 
 export const alertAnalyticsRouter = router({
   // Get alert analytics with trend data
@@ -239,5 +241,133 @@ export const alertAnalyticsRouter = router({
       }
 
       return { success: true };
+    }),
+
+  // ==================== TWILIO SMS ====================
+  
+  // Get Twilio configuration
+  getTwilioConfig: adminProcedure.query(async () => {
+    const config = await twilioService.getTwilioConfig();
+    return config || {
+      accountSid: '',
+      authToken: '',
+      fromNumber: '',
+      enabled: false,
+    };
+  }),
+
+  // Save Twilio configuration
+  saveTwilioConfig: adminProcedure
+    .input(z.object({
+      accountSid: z.string(),
+      authToken: z.string(),
+      fromNumber: z.string(),
+      enabled: z.boolean(),
+    }))
+    .mutation(async ({ input }) => {
+      const success = await twilioService.saveTwilioConfig(input);
+      return { success };
+    }),
+
+  // Verify Twilio credentials
+  verifyTwilioCredentials: adminProcedure
+    .input(z.object({
+      accountSid: z.string(),
+      authToken: z.string(),
+    }))
+    .mutation(async ({ input }) => {
+      return twilioService.verifyTwilioCredentials(input.accountSid, input.authToken);
+    }),
+
+  // Send test SMS
+  sendTestSms: adminProcedure
+    .input(z.object({
+      to: z.string(),
+    }))
+    .mutation(async ({ input }) => {
+      return twilioService.sendTestSms(input.to);
+    }),
+
+  // Send alert SMS
+  sendAlertSms: protectedProcedure
+    .input(z.object({
+      to: z.string(),
+      alertType: z.string(),
+      alertMessage: z.string(),
+      alertId: z.number().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      return twilioService.sendAlertSms(input.to, input.alertType, input.alertMessage, input.alertId);
+    }),
+
+  // Get SMS history
+  getSmsHistory: protectedProcedure
+    .input(z.object({
+      limit: z.number().min(1).max(500).default(100),
+    }))
+    .query(({ input }) => {
+      return twilioService.getSmsHistory(input.limit);
+    }),
+
+  // Get SMS statistics
+  getSmsStatistics: protectedProcedure.query(() => {
+    return twilioService.getSmsStatistics();
+  }),
+
+  // ==================== WEBHOOK HISTORY ====================
+
+  // Get webhook delivery history
+  getWebhookHistory: protectedProcedure
+    .input(z.object({
+      limit: z.number().min(1).max(500).default(100),
+      webhookId: z.number().optional(),
+      status: z.enum(['pending', 'success', 'failed', 'retrying']).optional(),
+      alertId: z.number().optional(),
+    }))
+    .query(({ input }) => {
+      return webhookHistoryService.getDeliveryHistory(input);
+    }),
+
+  // Get webhook statistics
+  getWebhookStatistics: protectedProcedure.query(() => {
+    return webhookHistoryService.getWebhookStatistics();
+  }),
+
+  // Get retry statistics
+  getRetryStatistics: protectedProcedure.query(() => {
+    return webhookHistoryService.getRetryStatistics();
+  }),
+
+  // Retry a specific delivery
+  retryWebhookDelivery: protectedProcedure
+    .input(z.object({
+      deliveryId: z.string(),
+    }))
+    .mutation(async ({ input }) => {
+      return webhookHistoryService.retryDelivery(input.deliveryId);
+    }),
+
+  // Process all pending retries
+  processWebhookRetries: adminProcedure.mutation(async () => {
+    return webhookHistoryService.processRetries();
+  }),
+
+  // Clear webhook history
+  clearWebhookHistory: adminProcedure
+    .input(z.object({
+      olderThanDays: z.number().optional(),
+    }))
+    .mutation(({ input }) => {
+      const count = webhookHistoryService.clearDeliveryHistory(input.olderThanDays);
+      return { cleared: count };
+    }),
+
+  // Get delivery by ID
+  getWebhookDeliveryById: protectedProcedure
+    .input(z.object({
+      deliveryId: z.string(),
+    }))
+    .query(({ input }) => {
+      return webhookHistoryService.getDeliveryById(input.deliveryId);
     }),
 });
