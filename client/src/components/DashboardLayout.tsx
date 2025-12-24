@@ -193,6 +193,8 @@ const fallbackLabelsVi: Record<string, string> = {
   "nav.unifiedAlertKpi": "Dashboard Alert & KPI",
   "nav.alertAnalytics": "Phân tích Cảnh báo",
   "nav.twilioSettings": "Cấu hình Twilio",
+  "nav.smsConfig": "Cấu hình SMS",
+  "nav.performanceDropAlert": "Cảnh báo Hiệu suất",
   "nav.webhookSettings": "Cấu hình Webhook",
 };
 
@@ -337,6 +339,8 @@ const fallbackLabelsEn: Record<string, string> = {
   "nav.unifiedAlertKpi": "Unified Alert & KPI Dashboard",
   "nav.alertAnalytics": "Alert Analytics",
   "nav.twilioSettings": "Twilio Settings",
+  "nav.smsConfig": "SMS Configuration",
+  "nav.performanceDropAlert": "Performance Drop Alert",
   "nav.webhookSettings": "Webhook Settings",
 };
 

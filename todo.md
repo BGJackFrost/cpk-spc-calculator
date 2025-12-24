@@ -6092,3 +6092,22 @@
   - [x] Biểu đồ xu hướng theo thời gian
   - [x] Bảng chi tiết với ranking
   - [x] Tích hợp vào UnifiedDashboard tab "Dây chuyền"
+
+## Phase 55: SMS Config, Line Comparison Export, Performance Alert - COMPLETED
+- [x] Trang cấu hình SMS với form nhập thông tin provider và test SMS
+  - [x] Form cấu hình Twilio (Account SID, Auth Token, From Number)
+  - [x] Form cấu hình Nexmo (API Key, API Secret, From Number)
+  - [x] Form cấu hình Custom endpoint
+  - [x] Nút Test SMS gửi tin nhắn thử
+  - [x] Lưu cấu hình vào database
+- [x] Export báo cáo so sánh dây chuyền ra PDF/Excel
+  - [x] Service tạo báo cáo PDF với biểu đồ
+  - [x] Service tạo báo cáo Excel với nhiều sheets
+  - [x] Nút export trong ProductionLineComparison
+- [x] Alert khi hiệu suất dây chuyền giảm đột ngột
+  - [x] Service phát hiện giảm đột ngột (so sánh với baseline)
+  - [x] Cấu hình ngưỡng giảm (%)
+  - [x] Gửi notification khi phát hiện
+  - [x] Scheduled job kiểm tra định kỳ (mỗi 30 phút)
+  - [x] Trang cấu hình và xem cảnh báo (PerformanceDropAlertConfig.tsx)
+  - [x] Unit tests cho các tính năng mới

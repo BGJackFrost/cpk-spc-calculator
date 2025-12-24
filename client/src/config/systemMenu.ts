@@ -8,6 +8,7 @@ import {
   Target, HardHat, Hammer, Truck, Brain, Bell, Download, BellRing, Award,
   Thermometer, DollarSign, CreditCard, Receipt, FileCheck, Lock, Unlock,
   Star,
+  MessageSquare,
   type LucideIcon
 } from "lucide-react";
 
@@ -339,6 +340,8 @@ export const SYSTEM_MENU: SystemMenuConfig = {
         { id: "email-notifications", icon: Mail, labelKey: "nav.emailNotification", path: "/email-notifications", adminOnly: true },
         { id: "smtp-settings", icon: Server, labelKey: "nav.smtpConfig", path: "/smtp-settings", adminOnly: true },
         { id: "twilio-settings", icon: Bell, labelKey: "nav.twilioSettings", path: "/twilio-settings", adminOnly: true },
+        { id: "sms-config", icon: MessageSquare, labelKey: "nav.smsConfig", path: "/sms-config", adminOnly: true },
+        { id: "performance-drop-alert", icon: TrendingUp, labelKey: "nav.performanceDropAlert", path: "/performance-drop-alert", adminOnly: true },
         { id: "webhook-settings", icon: Webhook, labelKey: "nav.webhookSettings", path: "/webhook-settings", adminOnly: true },
         { id: "webhooks", icon: Webhook, labelKey: "nav.webhookManagement", path: "/webhooks", adminOnly: true },
         { id: "notification-center", icon: Bell, labelKey: "nav.notificationCenter", path: "/notification-center" },

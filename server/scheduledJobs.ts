@@ -560,6 +560,16 @@ export function initScheduledJobs(): void {
   
   console.log('[ScheduledJob] Scheduled: KPI report processor every minute (Asia/Ho_Chi_Minh)');
   
+  // Performance drop alert check - runs every 30 minutes
+  cron.schedule('0 */30 * * * *', async () => {
+    console.log('[ScheduledJob] Triggered: Performance drop alert check');
+    await checkPerformanceDropAlerts();
+  }, {
+    timezone: 'Asia/Ho_Chi_Minh'
+  });
+  
+  console.log('[ScheduledJob] Scheduled: Performance drop alert check every 30 minutes (Asia/Ho_Chi_Minh)');
+  
   jobsInitialized = true;
   console.log('[ScheduledJob] All scheduled jobs initialized successfully');
 }
@@ -3430,3 +3440,47 @@ cron.schedule('0 */15 * * * *', async () => {
 });
 
 console.log('[ScheduledJob] Scheduled: KPI alert stats recording every 15 minutes (Asia/Ho_Chi_Minh)');
+
+
+/**
+ * Check for performance drop alerts
+ */
+async function checkPerformanceDropAlerts(): Promise<void> {
+  try {
+    const db = await getDb();
+    if (!db) {
+      console.log('[ScheduledJob] Database not available for performance drop check');
+      return;
+    }
+    
+    // Import the performance drop alert service
+    const { checkPerformanceDrops } = await import('./services/performanceDropAlertService');
+    
+    const result = await checkPerformanceDrops();
+    
+    console.log(`[ScheduledJob] Performance drop check completed: ${result.alertsFound} alerts found`);
+    
+    if (result.alertsFound > 0) {
+      // Notify owner about new alerts
+      await notifyOwner({
+        title: '⚠️ Cảnh báo hiệu suất giảm đột ngột',
+        content: `Phát hiện ${result.alertsFound} cảnh báo hiệu suất giảm trên các dây chuyền sản xuất. Vui lòng kiểm tra trong hệ thống.`,
+      });
+    }
+  } catch (error) {
+    console.error('[ScheduledJob] Error checking performance drops:', error);
+  }
+}
+
+/**
+ * Manually trigger performance drop check (for testing)
+ */
+export async function triggerPerformanceDropCheck(): Promise<{ alertsFound: number }> {
+  try {
+    const { checkPerformanceDrops } = await import('./services/performanceDropAlertService');
+    return await checkPerformanceDrops();
+  } catch (error) {
+    console.error('[ScheduledJob] Error triggering performance drop check:', error);
+    return { alertsFound: 0 };
+  }
+}

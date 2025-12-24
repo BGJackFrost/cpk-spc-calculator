@@ -166,6 +166,8 @@ import MqttConnectionManagement from "./pages/MqttConnectionManagement";
 import OpcuaConnectionManagement from "./pages/OpcuaConnectionManagement";
 import SensorDashboard from "./pages/SensorDashboard";
 import TwilioSettings from "./pages/TwilioSettings";
+import SmsConfigSettings from "./pages/SmsConfigSettings";
+import PerformanceDropAlertConfig from "./pages/PerformanceDropAlertConfig";
 import WebhookSettings from "./pages/WebhookSettings";
 import AlertAnalytics from "./pages/AlertAnalytics";
 import UnifiedAlertKpiDashboard from "./pages/UnifiedAlertKpiDashboard";
@@ -334,6 +336,8 @@ function Router() {
       <Route path="/opcua-connections" component={OpcuaConnectionManagement} />
       <Route path="/sensor-dashboard" component={SensorDashboard} />
       <Route path="/twilio-settings" component={TwilioSettings} />
+      <Route path="/sms-config" component={SmsConfigSettings} />
+      <Route path="/performance-drop-alert" component={PerformanceDropAlertConfig} />
       <Route path="/webhook-settings" component={WebhookSettings} />
       <Route path="/alert-analytics" component={AlertAnalytics} />
       <Route path="/unified-alert-kpi" component={UnifiedAlertKpiDashboard} />

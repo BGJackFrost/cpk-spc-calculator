@@ -16,7 +16,10 @@ import {
   ArrowUpDown,
   CheckCircle2,
   AlertTriangle,
-  XCircle
+  XCircle,
+  Download,
+  FileSpreadsheet,
+  FileText
 } from "lucide-react";
 import {
   BarChart,
@@ -53,6 +56,66 @@ export default function ProductionLineComparison() {
   const [dateRange, setDateRange] = useState<string>("30");
   const [results, setResults] = useState<LineComparisonResult[]>([]);
   const [isComparing, setIsComparing] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+
+  // Export mutations
+  const exportExcelMutation = trpc.lineComparisonExport.exportExcel.useMutation({
+    onSuccess: (data) => {
+      window.open(data.url, '_blank');
+      toast.success('Đã xuất báo cáo Excel thành công');
+      setIsExporting(false);
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Không thể xuất báo cáo Excel');
+      setIsExporting(false);
+    },
+  });
+
+  const exportPdfMutation = trpc.lineComparisonExport.exportPdf.useMutation({
+    onSuccess: (data) => {
+      window.open(data.url, '_blank');
+      toast.success('Đã xuất báo cáo PDF thành công');
+      setIsExporting(false);
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Không thể xuất báo cáo PDF');
+      setIsExporting(false);
+    },
+  });
+
+  const handleExportExcel = () => {
+    if (selectedLines.length < 2) {
+      toast.error('Vui lòng chọn ít nhất 2 dây chuyền');
+      return;
+    }
+    setIsExporting(true);
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - parseInt(dateRange));
+    
+    exportExcelMutation.mutate({
+      lineIds: selectedLines.map(id => parseInt(id)),
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
+    });
+  };
+
+  const handleExportPdf = () => {
+    if (selectedLines.length < 2) {
+      toast.error('Vui lòng chọn ít nhất 2 dây chuyền');
+      return;
+    }
+    setIsExporting(true);
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - parseInt(dateRange));
+    
+    exportPdfMutation.mutate({
+      lineIds: selectedLines.map(id => parseInt(id)),
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
+    });
+  };
 
   const { data: productionLines } = trpc.productionLine.list.useQuery();
 
@@ -256,6 +319,36 @@ export default function ProductionLineComparison() {
                 </div>
 
                 {/* Charts */}
+                {/* Export Buttons */}
+                <div className="flex justify-end gap-2 mb-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleExportExcel}
+                    disabled={isExporting || results.length === 0}
+                  >
+                    {isExporting ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <FileSpreadsheet className="h-4 w-4 mr-2" />
+                    )}
+                    Xuất Excel
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleExportPdf}
+                    disabled={isExporting || results.length === 0}
+                  >
+                    {isExporting ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <FileText className="h-4 w-4 mr-2" />
+                    )}
+                    Xuất PDF
+                  </Button>
+                </div>
+
                 <Tabs defaultValue="bar" className="w-full">
                   <TabsList>
                     <TabsTrigger value="bar">Biểu đồ Cột</TabsTrigger>

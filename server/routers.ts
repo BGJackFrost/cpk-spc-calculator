@@ -10819,6 +10819,248 @@ Hãy trả về JSON với format:
       }),
   }),
 
+  // Critical Alert SMS Router
+  criticalAlertSms: router({
+    // Get SMS config
+    getSmsConfig: protectedProcedure.query(async () => {
+      const { getSmsConfig } = await import("./services/criticalAlertSmsService");
+      return await getSmsConfig();
+    }),
+
+    // Save SMS config
+    saveSmsConfig: protectedProcedure
+      .input(z.object({
+        enabled: z.boolean().optional(),
+        provider: z.enum(['twilio', 'nexmo', 'custom']).optional(),
+        apiKey: z.string().optional(),
+        apiSecret: z.string().optional(),
+        fromNumber: z.string().optional(),
+        customEndpoint: z.string().optional(),
+        timeoutMinutes: z.number().optional(),
+        recipients: z.array(z.string()).optional(),
+        escalationEnabled: z.boolean().optional(),
+        escalationIntervalMinutes: z.number().optional(),
+        maxEscalations: z.number().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin" && ctx.user.role !== "manager") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin or Manager access required" });
+        }
+        const { saveSmsConfig } = await import("./services/criticalAlertSmsService");
+        const success = await saveSmsConfig(input);
+        return { success };
+      }),
+
+    // Test SMS
+    testSms: protectedProcedure
+      .input(z.object({
+        phoneNumber: z.string(),
+        message: z.string(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin" && ctx.user.role !== "manager") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin or Manager access required" });
+        }
+        const { getSmsConfig } = await import("./services/criticalAlertSmsService");
+        const config = await getSmsConfig();
+        
+        if (!config.enabled) {
+          return { success: false, error: "SMS notifications are disabled" };
+        }
+        
+        // Send test SMS based on provider
+        try {
+          let success = false;
+          
+          if (config.provider === 'twilio' && config.apiKey && config.apiSecret && config.fromNumber) {
+            const response = await fetch(
+              `https://api.twilio.com/2010-04-01/Accounts/${config.apiKey}/Messages.json`,
+              {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Basic ${Buffer.from(`${config.apiKey}:${config.apiSecret}`).toString('base64')}`,
+                  'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams({
+                  To: input.phoneNumber,
+                  From: config.fromNumber,
+                  Body: input.message,
+                }),
+              }
+            );
+            success = response.ok;
+          } else if (config.provider === 'nexmo' && config.apiKey && config.apiSecret) {
+            const response = await fetch('https://rest.nexmo.com/sms/json', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                api_key: config.apiKey,
+                api_secret: config.apiSecret,
+                to: input.phoneNumber,
+                from: config.fromNumber || 'SPC-CPK',
+                text: input.message,
+              }),
+            });
+            const data = await response.json();
+            success = data.messages?.[0]?.status === '0';
+          } else if (config.provider === 'custom' && config.customEndpoint) {
+            const response = await fetch(config.customEndpoint, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                ...(config.apiKey ? { 'Authorization': `Bearer ${config.apiKey}` } : {}),
+              },
+              body: JSON.stringify({
+                to: input.phoneNumber,
+                message: input.message,
+                from: config.fromNumber,
+              }),
+            });
+            success = response.ok;
+          }
+          
+          return { success, error: success ? undefined : "Failed to send SMS" };
+        } catch (error: any) {
+          return { success: false, error: error.message || "Unknown error" };
+        }
+      }),
+
+    // Get SMS stats
+    getSmsStats: protectedProcedure
+      .input(z.object({ days: z.number().default(7) }))
+      .query(async ({ input }) => {
+        const { getSmsStats } = await import("./services/criticalAlertSmsService");
+        return await getSmsStats(input.days);
+      }),
+  }),
+
+  // Line Comparison Export Router
+  lineComparisonExport: router({
+    // Get comparison data
+    getData: protectedProcedure
+      .input(z.object({
+        lineIds: z.array(z.number()),
+        startDate: z.string(),
+        endDate: z.string(),
+      }))
+      .query(async ({ input }) => {
+        const { getLineComparisonData } = await import("./services/lineComparisonExportService");
+        return await getLineComparisonData({
+          lineIds: input.lineIds,
+          startDate: new Date(input.startDate),
+          endDate: new Date(input.endDate),
+        });
+      }),
+
+    // Export to Excel
+    exportExcel: protectedProcedure
+      .input(z.object({
+        lineIds: z.array(z.number()),
+        startDate: z.string(),
+        endDate: z.string(),
+      }))
+      .mutation(async ({ input }) => {
+        const { exportLineComparisonExcel } = await import("./services/lineComparisonExportService");
+        const buffer = await exportLineComparisonExcel({
+          lineIds: input.lineIds,
+          startDate: new Date(input.startDate),
+          endDate: new Date(input.endDate),
+        });
+        
+        // Upload to S3
+        const filename = `line-comparison-${Date.now()}.xlsx`;
+        const { url } = await storagePut(filename, buffer, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        
+        return { url, filename };
+      }),
+
+    // Export to PDF (HTML)
+    exportPdf: protectedProcedure
+      .input(z.object({
+        lineIds: z.array(z.number()),
+        startDate: z.string(),
+        endDate: z.string(),
+      }))
+      .mutation(async ({ input }) => {
+        const { exportLineComparisonPdf } = await import("./services/lineComparisonExportService");
+        const html = await exportLineComparisonPdf({
+          lineIds: input.lineIds,
+          startDate: new Date(input.startDate),
+          endDate: new Date(input.endDate),
+        });
+        
+        // Upload HTML as file
+        const filename = `line-comparison-${Date.now()}.html`;
+        const { url } = await storagePut(filename, Buffer.from(html), 'text/html');
+        
+        return { url, filename, html };
+      }),
+  }),
+
+  // Performance Drop Alert Router
+  performanceDropAlert: router({
+    // Get config
+    getConfig: protectedProcedure.query(async () => {
+      const { getPerformanceDropConfig } = await import("./services/performanceDropAlertService");
+      return await getPerformanceDropConfig();
+    }),
+
+    // Save config
+    saveConfig: protectedProcedure
+      .input(z.object({
+        enabled: z.boolean().optional(),
+        oeeDropThreshold: z.number().optional(),
+        cpkDropThreshold: z.number().optional(),
+        comparisonPeriodHours: z.number().optional(),
+        checkIntervalMinutes: z.number().optional(),
+        notifyOwner: z.boolean().optional(),
+        notifyEmail: z.boolean().optional(),
+        notifySms: z.boolean().optional(),
+        minSamplesRequired: z.number().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin" && ctx.user.role !== "manager") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin or Manager access required" });
+        }
+        const { savePerformanceDropConfig } = await import("./services/performanceDropAlertService");
+        const success = await savePerformanceDropConfig(input);
+        return { success };
+      }),
+
+    // Get unresolved alerts
+    getUnresolvedAlerts: protectedProcedure.query(async () => {
+      const { getUnresolvedPerformanceDropAlerts } = await import("./services/performanceDropAlertService");
+      return await getUnresolvedPerformanceDropAlerts();
+    }),
+
+    // Resolve alert
+    resolveAlert: protectedProcedure
+      .input(z.object({ alertId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const { resolvePerformanceDropAlert } = await import("./services/performanceDropAlertService");
+        const success = await resolvePerformanceDropAlert(input.alertId, ctx.user.name || ctx.user.id);
+        return { success };
+      }),
+
+    // Get stats
+    getStats: protectedProcedure
+      .input(z.object({ days: z.number().default(7) }))
+      .query(async ({ input }) => {
+        const { getPerformanceDropStats } = await import("./services/performanceDropAlertService");
+        return await getPerformanceDropStats(input.days);
+      }),
+
+    // Manually trigger check
+    checkNow: protectedProcedure.mutation(async ({ ctx }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+      }
+      const { checkPerformanceDrops } = await import("./services/performanceDropAlertService");
+      const alerts = await checkPerformanceDrops();
+      return { alertsFound: alerts.length, alerts };
+    }),
+  }),
+
   // Escalation Router
   escalation: router({
     // Get escalation config
