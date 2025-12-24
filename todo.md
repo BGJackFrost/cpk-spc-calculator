@@ -5963,3 +5963,33 @@
 - [x] Đọc dữ liệu từ PLC/SCADA nodes
 - [x] Tích hợp vào iotConnectionService
 
+
+## Phase 49: IoT Connection Management UI, Sensor Dashboard, SPC Alert Integration
+
+### Trang quản lý MQTT Connections
+- [x] Tạo MqttConnectionManagement.tsx với CRUD connections
+- [x] Form thêm/sửa MQTT connection (broker URL, port, credentials)
+- [x] Danh sách topics với subscribe/unsubscribe
+- [x] Test connection button
+- [x] Hiển thị trạng thái kết nối realtime
+
+### Trang quản lý OPC-UA Connections
+- [x] Tạo OpcuaConnectionManagement.tsx với CRUD connections
+- [x] Form thêm/sửa OPC-UA connection (endpoint, security, credentials)
+- [x] Browse nodes tree view
+- [x] Danh sách nodes đã subscribe
+- [x] Test connection button
+
+### Dashboard tổng hợp Sensors
+- [x] Tạo SensorDashboard.tsx với grid layout
+- [x] Hiển thị tất cả sensors với IoTRealtimeChart
+- [x] Cấu hình số lượng charts hiển thị
+- [x] Filter theo device type, protocol
+- [x] Export data to CSV
+
+### Tích hợp Alert Thresholds vào SPC Plan
+- [x] Thêm trường alertThresholdId vào spc_sampling_plans
+- [x] Cập nhật form SPC Plan để chọn alert threshold
+- [x] Tự động kiểm tra CPK và trigger alert
+- [ ] Hiển thị alerts trong SPC Plan detail
+

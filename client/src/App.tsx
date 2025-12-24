@@ -159,6 +159,9 @@ import ScheduledKpiReports from "./pages/ScheduledKpiReports";
 import KpiThresholdSettings from "./pages/KpiThresholdSettings";
 import ScheduledKpiReportsPage from "./pages/ScheduledKpiReportsPage";
 import KpiAlertStats from "./pages/KpiAlertStats";
+import MqttConnectionManagement from "./pages/MqttConnectionManagement";
+import OpcuaConnectionManagement from "./pages/OpcuaConnectionManagement";
+import SensorDashboard from "./pages/SensorDashboard";
 
 function Router() {
   return (
@@ -315,6 +318,9 @@ function Router() {
       <Route path="/security-dashboard" component={SecurityDashboard} />
       <Route path="/iot-dashboard" component={IoTDashboard} />
       <Route path="/iot-realtime-dashboard" component={IotRealtimeDashboard} />
+      <Route path="/mqtt-connections" component={MqttConnectionManagement} />
+      <Route path="/opcua-connections" component={OpcuaConnectionManagement} />
+      <Route path="/sensor-dashboard" component={SensorDashboard} />
           <Route path="/ai-dashboard" element={<AiDashboard />} />
           <Route path="/erp-integration" element={<ErpIntegration />} />
       <Route path="/ai-ml-dashboard" component={AiMlDashboard} />

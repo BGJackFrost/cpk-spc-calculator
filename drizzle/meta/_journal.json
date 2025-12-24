@@ -526,6 +526,13 @@
       "when": 1766566771201,
       "tag": "0074_purple_rafael_vega",
       "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "5",
+      "when": 1766567434390,
+      "tag": "0075_brave_satana",
+      "breakpoints": true
     }
   ]
 }

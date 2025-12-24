@@ -730,6 +730,11 @@ export const spcSamplingPlans = mysqlTable("spc_sampling_plans", {
   enabledSpcRules: text("enabledSpcRules"), // JSON array: [1,2,3,4,5,6,7,8]
   enabledCaRules: text("enabledCaRules"), // JSON array: [1,2,3,4]
   enabledCpkRules: text("enabledCpkRules"), // JSON array: [1,2,3,4,5]
+  // Alert threshold integration
+  alertThresholdId: int("alertThresholdId"), // Link to iot_alert_thresholds
+  cpkAlertEnabled: int("cpkAlertEnabled").notNull().default(0),
+  cpkUpperLimit: varchar("cpkUpperLimit", { length: 20 }), // CPK upper threshold
+  cpkLowerLimit: varchar("cpkLowerLimit", { length: 20 }), // CPK lower threshold (e.g., 1.33)
   // Metadata
   isActive: int("isActive").notNull().default(1),
   createdBy: int("createdBy").notNull(),

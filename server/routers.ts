@@ -2665,9 +2665,14 @@ const spcPlanRouter = router({
       enabledSpcRules: z.string().optional(), // JSON array of rule IDs
       enabledCaRules: z.string().optional(),
       enabledCpkRules: z.string().optional(),
+      // CPK Alert settings
+      cpkAlertEnabled: z.boolean().optional(),
+      cpkLowerLimit: z.number().optional(),
+      cpkUpperLimit: z.number().optional(),
+      alertThresholdId: z.number().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const { startTime, endTime, ...rest } = input;
+      const { startTime, endTime, cpkAlertEnabled, cpkLowerLimit, cpkUpperLimit, alertThresholdId, ...rest } = input;
       return await createSpcSamplingPlan({ 
         ...rest, 
         startTime: startTime ? new Date(startTime) : undefined,
@@ -2697,11 +2702,24 @@ const spcPlanRouter = router({
       enabledSpcRules: z.string().optional(), // JSON array of rule IDs
       enabledCaRules: z.string().optional(),
       enabledCpkRules: z.string().optional(),
+      // CPK Alert settings
+      cpkAlertEnabled: z.boolean().optional(),
+      cpkLowerLimit: z.number().optional(),
+      cpkUpperLimit: z.number().optional(),
+      alertThresholdId: z.number().optional(),
     }))
     .mutation(async ({ input }) => {
-      const { id, startTime, endTime, ...data } = input;
+      const { id, startTime, endTime, cpkAlertEnabled, cpkLowerLimit, cpkUpperLimit, alertThresholdId, ...data } = input;
+      
+      // Handle CPK alert settings
+      const cpkAlertData: Record<string, any> = {};
+      if (cpkAlertEnabled !== undefined) cpkAlertData.cpkAlertEnabled = cpkAlertEnabled ? 1 : 0;
+      if (cpkLowerLimit !== undefined) cpkAlertData.cpkLowerLimit = cpkLowerLimit?.toString();
+      if (cpkUpperLimit !== undefined) cpkAlertData.cpkUpperLimit = cpkUpperLimit?.toString();
+      if (alertThresholdId !== undefined) cpkAlertData.alertThresholdId = alertThresholdId;
       await updateSpcSamplingPlan(id, {
         ...data,
+        ...cpkAlertData,
         startTime: startTime ? new Date(startTime) : undefined,
         endTime: endTime ? new Date(endTime) : undefined,
       });
