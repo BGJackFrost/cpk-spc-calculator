@@ -169,6 +169,7 @@ import TwilioSettings from "./pages/TwilioSettings";
 import WebhookSettings from "./pages/WebhookSettings";
 import AlertAnalytics from "./pages/AlertAnalytics";
 import UnifiedAlertKpiDashboard from "./pages/UnifiedAlertKpiDashboard";
+import WebhookHistoryManagement from "./pages/WebhookHistoryManagement";
 
 function Router() {
   return (
@@ -302,6 +303,7 @@ function Router() {
       <Route path="/profile" component={Profile} />
       <Route path="/rules" component={RulesManagement} />
       <Route path="/webhooks" component={WebhookManagement} />
+      <Route path="/webhook-history" component={WebhookHistoryManagement} />
       <Route path="/report-templates" component={ReportTemplateManagement} />
       <Route path="/export-history" component={ExportHistory} />
       <Route path="/license-activation" component={LicenseActivation} />

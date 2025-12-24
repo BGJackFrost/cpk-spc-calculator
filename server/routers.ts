@@ -24,6 +24,7 @@ import { themeRouter } from "./routers/themeRouter";
 import { databaseConnectionRouter as dbConnectionRouter } from "./routers/databaseConnectionRouter";
 import { quickAccessRouter } from "./routers/quickAccessRouter";
 import { alertAnalyticsRouter } from "./routers/alertAnalyticsRouter";
+import { webhookHistoryRouter } from "./routers/webhookHistoryRouter";
 import { triggerLicenseExpiryCheck } from "./scheduledJobs";
 import { triggerWebhooks, testWebhook } from "./webhookService";
 import { storagePut } from "./storage";
@@ -3662,6 +3663,7 @@ export const appRouter = router({
   machineApi: machinePublicRouter,
   quickAccess: quickAccessRouter,
   alerts: alertAnalyticsRouter,
+  webhookHistory: webhookHistoryRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {

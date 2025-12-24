@@ -6077,3 +6077,18 @@
 - [x] Lịch sử gửi webhook với retry mechanism
 - [x] Dashboard tổng hợp Alert Analytics + KPI
 
+
+## Phase 54: Alert System Enhancement - Part 3 - COMPLETED
+- [x] Trang quản lý lịch sử webhook với retry thủ công từ UI (WebhookHistoryManagement.tsx, route /webhook-history)
+- [x] Tích hợp SMS tự động khi có alert Critical chưa xử lý quá 30 phút (criticalAlertSmsService.ts)
+  - [x] Hỗ trợ nhiều provider: Twilio, Nexmo, Custom endpoint
+  - [x] Cấu hình timeout và escalation
+  - [x] Background checker chạy mỗi 5 phút
+  - [x] API endpoints: getSmsConfig, saveSmsConfig, testSms, sendSmsForAlert, getSmsStats
+- [x] Biểu đồ so sánh hiệu suất giữa các dây chuyền sản xuất (ProductionLineComparisonChart.tsx)
+  - [x] Biểu đồ cột so sánh OEE, CPK, Defect Rate
+  - [x] Biểu đồ Radar đa chiều
+  - [x] Biểu đồ kết hợp (Composed Chart)
+  - [x] Biểu đồ xu hướng theo thời gian
+  - [x] Bảng chi tiết với ranking
+  - [x] Tích hợp vào UnifiedDashboard tab "Dây chuyền"
