@@ -133,7 +133,13 @@
     "ntfSupplierAnalysis": "NTF theo NCC",
     "ntfEnvironment": "NTF & Môi trường",
     "environmentAlerts": "Cảnh báo Môi trường",
-    "ceoDashboard": "Dashboard CEO"
+    "ceoDashboard": "Dashboard CEO",
+    "kpiAlertThresholds": "Ngưỡng Cảnh báo KPI",
+    "kpiAlertStats": "Thống kê Cảnh báo KPI",
+    "alertDashboard": "Dashboard Cảnh báo",
+    "weeklyKpiTrend": "Xu hướng KPI Tuần",
+    "scheduledKpiReports": "Báo cáo KPI Định kỳ",
+    "shiftManager": "Quản lý Ca"
   },
   "dashboard": {
     "welcome": "Xin chào",

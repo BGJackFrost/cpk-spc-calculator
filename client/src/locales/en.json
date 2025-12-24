@@ -133,7 +133,13 @@
     "ntfSupplierAnalysis": "NTF by Supplier",
     "ntfEnvironment": "NTF & Environment",
     "environmentAlerts": "Environment Alerts",
-    "ceoDashboard": "CEO Dashboard"
+    "ceoDashboard": "CEO Dashboard",
+    "kpiAlertThresholds": "KPI Alert Thresholds",
+    "kpiAlertStats": "KPI Alert Stats",
+    "alertDashboard": "Alert Dashboard",
+    "weeklyKpiTrend": "Weekly KPI Trend",
+    "scheduledKpiReports": "Scheduled KPI Reports",
+    "shiftManager": "Shift Manager"
   },
   "dashboard": {
     "welcome": "Welcome",

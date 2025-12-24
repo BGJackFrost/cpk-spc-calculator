@@ -4001,3 +4001,52 @@ export const mqttTopics = mysqlTable("mqtt_topics", {
 });
 export type MqttTopic = typeof mqttTopics.$inferSelect;
 export type InsertMqttTopic = typeof mqttTopics.$inferInsert;
+
+
+/**
+ * Alert Notification Logs - Lịch sử gửi thông báo cảnh báo
+ */
+export const alertNotificationLogs = mysqlTable("alert_notification_logs", {
+  id: int("id").autoincrement().primaryKey(),
+  alertId: int("alert_id").notNull(),
+  emailSent: int("email_sent").notNull().default(0),
+  emailError: text("email_error"),
+  smsSent: int("sms_sent").notNull().default(0),
+  smsError: text("sms_error"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+export type AlertNotificationLog = typeof alertNotificationLogs.$inferSelect;
+export type InsertAlertNotificationLog = typeof alertNotificationLogs.$inferInsert;
+
+/**
+ * Alert Escalation Logs - Lịch sử escalation cảnh báo
+ */
+export const alertEscalationLogs = mysqlTable("alert_escalation_logs", {
+  id: int("id").autoincrement().primaryKey(),
+  alertId: int("alert_id").notNull(),
+  escalationLevel: int("escalation_level").notNull(),
+  levelName: varchar("level_name", { length: 100 }).notNull(),
+  notifiedEmails: text("notified_emails"),
+  notifiedPhones: text("notified_phones"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+export type AlertEscalationLog = typeof alertEscalationLogs.$inferSelect;
+export type InsertAlertEscalationLog = typeof alertEscalationLogs.$inferInsert;
+
+/**
+ * Escalation Config - Cấu hình escalation
+ */
+export const escalationConfigs = mysqlTable("escalation_configs", {
+  id: int("id").autoincrement().primaryKey(),
+  level: int("level").notNull().unique(),
+  name: varchar("name", { length: 100 }).notNull(),
+  timeoutMinutes: int("timeout_minutes").notNull().default(15),
+  notifyEmails: text("notify_emails"), // Comma-separated
+  notifyPhones: text("notify_phones"), // Comma-separated
+  notifyOwner: int("notify_owner").notNull().default(0),
+  isActive: int("is_active").notNull().default(1),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type EscalationConfig = typeof escalationConfigs.$inferSelect;
+export type InsertEscalationConfig = typeof escalationConfigs.$inferInsert;

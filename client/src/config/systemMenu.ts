@@ -151,6 +151,7 @@ export const SPC_MENU: SystemMenuConfig = {
         { id: "shift-manager", icon: Users, labelKey: "nav.shiftManager", path: "/shift-manager" },
         { id: "kpi-alert-thresholds", icon: AlertTriangle, labelKey: "nav.kpiAlertThresholds", path: "/kpi-alert-thresholds", adminOnly: true },
         { id: "kpi-alert-stats", icon: BarChart3, labelKey: "nav.kpiAlertStats", path: "/kpi-alert-stats" },
+        { id: "alert-dashboard", icon: BellRing, labelKey: "nav.alertDashboard", path: "/alert-dashboard" },
         { id: "weekly-kpi-trend", icon: TrendingUp, labelKey: "nav.weeklyKpiTrend", path: "/weekly-kpi-trend" },
         { id: "scheduled-kpi-reports", icon: Mail, labelKey: "nav.scheduledKpiReports", path: "/scheduled-kpi-reports", adminOnly: true },
       ],

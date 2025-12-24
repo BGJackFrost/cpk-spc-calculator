@@ -533,6 +533,13 @@
       "when": 1766567434390,
       "tag": "0075_brave_satana",
       "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "5",
+      "when": 1766585626585,
+      "tag": "0076_zippy_slipstream",
+      "breakpoints": true
     }
   ]
 }

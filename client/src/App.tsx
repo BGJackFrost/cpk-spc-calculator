@@ -160,6 +160,8 @@ import KpiThresholdSettings from "./pages/KpiThresholdSettings";
 import ScheduledKpiReportsPage from "./pages/ScheduledKpiReportsPage";
 import KpiAlertStats from "./pages/KpiAlertStats";
 import AlertHistory from "./pages/AlertHistory";
+import AlertDashboard from "./pages/AlertDashboard";
+import AlertNotificationConfig from "./pages/AlertNotificationConfig";
 import MqttConnectionManagement from "./pages/MqttConnectionManagement";
 import OpcuaConnectionManagement from "./pages/OpcuaConnectionManagement";
 import SensorDashboard from "./pages/SensorDashboard";
@@ -211,6 +213,8 @@ function Router() {
       <Route path="/scheduled-kpi-reports-management" component={ScheduledKpiReportsPage} />
       <Route path="/kpi-alert-stats" component={KpiAlertStats} />
       <Route path="/alert-history" component={AlertHistory} />
+      <Route path="/alert-dashboard" component={AlertDashboard} />
+      <Route path="/alert-notification-config" component={AlertNotificationConfig} />
       <Route path="/spc-summary-report" component={SpcSummaryReport} />
       <Route path="/realtime-line" component={RealtimeLineDashboard} />
       <Route path="/realtime-machine-config" component={RealtimeMachineConfig} />

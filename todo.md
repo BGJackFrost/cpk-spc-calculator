@@ -6007,3 +6007,47 @@
 - [x] Tạo trang Alert History để xem lịch sử tất cả alerts với filters (AlertHistory.tsx, route /alert-history)
 - [x] Tích hợp WebSocket/SSE để nhận alerts realtime trên dashboard (kpi_alert event, onKpiAlert handler)
 - [x] Sửa lỗi trang AI Dashboard (xóa route trùng lặp, sửa cú pháp route)
+
+## Phase 51: Alert Notification & Escalation
+
+- [ ] Gửi email khi có alert critical
+- [ ] Gửi SMS khi có alert critical (Twilio integration)
+- [ ] Dashboard tổng hợp alerts realtime với biểu đồ
+- [ ] Biểu đồ xu hướng alerts theo thời gian
+- [ ] Biểu đồ phân bố alerts theo loại/mức độ
+- [ ] Escalation tự động khi alert không được xử lý
+- [ ] Cấu hình thời gian escalation
+- [ ] Thông báo escalation cho manager
+
+
+
+## Phase 51: Alert Notification & Escalation System
+
+### Email/SMS Notification for Critical Alerts
+- [x] Tạo service gửi email cho critical alerts (criticalAlertNotificationService.ts)
+- [x] Tích hợp Twilio API để gửi SMS
+- [x] Lấy cấu hình recipients từ system settings
+- [x] Log notification history vào database
+
+### Alert Dashboard Realtime
+- [x] Tạo trang Alert Dashboard với biểu đồ realtime (AlertDashboard.tsx)
+- [x] Biểu đồ xu hướng alerts theo thời gian (Line Chart)
+- [x] Biểu đồ phân bố alerts theo severity (Pie Chart)
+- [x] Biểu đồ alerts theo dây chuyền (Bar Chart)
+- [x] Bảng alerts chưa xử lý với actions
+
+### Auto Escalation System
+- [x] Tạo service escalation tự động (alertEscalationService.ts)
+- [x] Cấu hình các level escalation (Supervisor, Manager, Director)
+- [x] Tự động escalate khi alert không được xử lý trong thời gian quy định
+- [x] Log escalation history vào database
+- [x] Tạo trang cấu hình Notification Settings (AlertNotificationConfig.tsx)
+
+### Database Tables
+- [x] Tạo bảng alert_notification_logs
+- [x] Tạo bảng alert_escalation_logs
+- [x] Tạo bảng escalation_configs
+
+### Tests
+- [x] Viết tests cho criticalAlertNotificationService
+- [x] Viết tests cho alertEscalationService

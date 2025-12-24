@@ -10641,6 +10641,235 @@ Hãy trả về JSON với format:
         return { success: true };
       }),
   }),
+
+  // KPI Alert Router - API cho Alert Dashboard
+  kpiAlert: router({
+    // Get alert stats for dashboard
+    getStats: protectedProcedure
+      .input(z.object({ days: z.number().default(7) }))
+      .query(async ({ input }) => {
+        const { getDb } = await import("./db");
+        const { kpiAlertStats, productionLines } = await import("../drizzle/schema");
+        const { eq, gte, sql, and, isNull, isNotNull } = await import("drizzle-orm");
+        
+        const db = await getDb();
+        if (!db) return { total: 0, pending: 0, acknowledged: 0, resolved: 0, critical: 0, warning: 0, byType: [], byDay: [], avgResolveTime: 0 };
+        
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - input.days);
+        
+        // Get all alerts in period
+        const alerts = await db.select()
+          .from(kpiAlertStats)
+          .where(gte(kpiAlertStats.createdAt, startDate));
+        
+        const total = alerts.length;
+        const pending = alerts.filter(a => !a.acknowledgedAt && !a.resolvedAt).length;
+        const acknowledged = alerts.filter(a => a.acknowledgedAt && !a.resolvedAt).length;
+        const resolved = alerts.filter(a => a.resolvedAt).length;
+        const critical = alerts.filter(a => a.severity === 'critical').length;
+        const warning = alerts.filter(a => a.severity === 'warning').length;
+        
+        // By type
+        const byTypeMap = new Map<string, number>();
+        alerts.forEach(a => {
+          byTypeMap.set(a.alertType, (byTypeMap.get(a.alertType) || 0) + 1);
+        });
+        const byType = Array.from(byTypeMap.entries()).map(([type, count]) => ({ type, count }));
+        
+        // By day
+        const byDayMap = new Map<string, { critical: number; warning: number }>();
+        alerts.forEach(a => {
+          const date = new Date(a.createdAt).toISOString().split('T')[0];
+          const existing = byDayMap.get(date) || { critical: 0, warning: 0 };
+          if (a.severity === 'critical') existing.critical++;
+          else existing.warning++;
+          byDayMap.set(date, existing);
+        });
+        const byDay = Array.from(byDayMap.entries()).map(([date, data]) => ({ date, ...data })).sort((a, b) => a.date.localeCompare(b.date));
+        
+        // Avg resolve time
+        const resolvedAlerts = alerts.filter(a => a.resolvedAt);
+        const avgResolveTime = resolvedAlerts.length > 0
+          ? resolvedAlerts.reduce((sum, a) => sum + (new Date(a.resolvedAt!).getTime() - new Date(a.createdAt).getTime()) / 60000, 0) / resolvedAlerts.length
+          : 0;
+        
+        return { total, pending, acknowledged, resolved, critical, warning, byType, byDay, avgResolveTime };
+      }),
+
+    // Get pending alerts
+    getPending: protectedProcedure.query(async () => {
+      const { getDb } = await import("./db");
+      const { kpiAlertStats, productionLines, machines } = await import("../drizzle/schema");
+      const { eq, isNull, and, desc } = await import("drizzle-orm");
+      
+      const db = await getDb();
+      if (!db) return [];
+      
+      const alerts = await db.select({
+        id: kpiAlertStats.id,
+        alertType: kpiAlertStats.alertType,
+        severity: kpiAlertStats.severity,
+        alertMessage: kpiAlertStats.alertMessage,
+        currentValue: kpiAlertStats.currentValue,
+        thresholdValue: kpiAlertStats.thresholdValue,
+        productionLineId: kpiAlertStats.productionLineId,
+        machineId: kpiAlertStats.machineId,
+        createdAt: kpiAlertStats.createdAt,
+        acknowledgedAt: kpiAlertStats.acknowledgedAt,
+        escalationLevel: sql<number>`COALESCE(${kpiAlertStats.id}, 0)`.as('escalationLevel'),
+      })
+        .from(kpiAlertStats)
+        .where(isNull(kpiAlertStats.resolvedAt))
+        .orderBy(desc(kpiAlertStats.createdAt))
+        .limit(50);
+      
+      // Get production line names
+      const lineIds = [...new Set(alerts.filter(a => a.productionLineId).map(a => a.productionLineId!))];
+      const lines = lineIds.length > 0 
+        ? await db.select({ id: productionLines.id, name: productionLines.name }).from(productionLines)
+        : [];
+      const lineMap = new Map(lines.map(l => [l.id, l.name]));
+      
+      return alerts.map(a => ({
+        ...a,
+        currentValue: Number(a.currentValue),
+        thresholdValue: Number(a.thresholdValue),
+        productionLineName: a.productionLineId ? lineMap.get(a.productionLineId) : undefined,
+        escalationLevel: 0, // Will be updated when escalation is implemented
+      }));
+    }),
+
+    // Acknowledge alert
+    acknowledge: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const { getDb } = await import("./db");
+        const { kpiAlertStats } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+        
+        await db.update(kpiAlertStats)
+          .set({ acknowledgedBy: ctx.user.id, acknowledgedAt: new Date() })
+          .where(eq(kpiAlertStats.id, input.id));
+        
+        return { success: true };
+      }),
+
+    // Resolve alert
+    resolve: protectedProcedure
+      .input(z.object({ id: z.number(), notes: z.string().optional() }))
+      .mutation(async ({ ctx, input }) => {
+        const { getDb } = await import("./db");
+        const { kpiAlertStats } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+        
+        await db.update(kpiAlertStats)
+          .set({ resolvedBy: ctx.user.id, resolvedAt: new Date(), resolutionNotes: input.notes || null })
+          .where(eq(kpiAlertStats.id, input.id));
+        
+        return { success: true };
+      }),
+
+    // Send critical alert notification (email + SMS)
+    sendCriticalNotification: protectedProcedure
+      .input(z.object({ alertId: z.number() }))
+      .mutation(async ({ input }) => {
+        const { getDb } = await import("./db");
+        const { kpiAlertStats, productionLines } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        const { sendCriticalAlertNotification } = await import("./services/criticalAlertNotificationService");
+        
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+        
+        // Get alert details
+        const [alert] = await db.select().from(kpiAlertStats).where(eq(kpiAlertStats.id, input.alertId));
+        if (!alert) throw new TRPCError({ code: "NOT_FOUND", message: "Alert not found" });
+        
+        // Get production line name
+        let productionLineName: string | undefined;
+        if (alert.productionLineId) {
+          const [line] = await db.select().from(productionLines).where(eq(productionLines.id, alert.productionLineId));
+          productionLineName = line?.name;
+        }
+        
+        const result = await sendCriticalAlertNotification({
+          id: alert.id,
+          alertType: alert.alertType,
+          severity: alert.severity as 'warning' | 'critical',
+          alertMessage: alert.alertMessage || '',
+          currentValue: Number(alert.currentValue),
+          thresholdValue: Number(alert.thresholdValue),
+          productionLineId: alert.productionLineId || undefined,
+          productionLineName,
+          createdAt: new Date(alert.createdAt),
+        });
+        
+        return result;
+      }),
+  }),
+
+  // Escalation Router
+  escalation: router({
+    // Get escalation config
+    getConfig: protectedProcedure.query(async () => {
+      const { getEscalationConfig } = await import("./services/alertEscalationService");
+      return await getEscalationConfig();
+    }),
+
+    // Save escalation config
+    saveConfig: protectedProcedure
+      .input(z.object({
+        enabled: z.boolean(),
+        levels: z.array(z.object({
+          level: z.number(),
+          name: z.string(),
+          timeoutMinutes: z.number(),
+          notifyEmails: z.array(z.string()),
+          notifyPhones: z.array(z.string()),
+          notifyOwner: z.boolean(),
+        })),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin" && ctx.user.role !== "manager") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin or Manager access required" });
+        }
+        const { saveEscalationConfig } = await import("./services/alertEscalationService");
+        await saveEscalationConfig(input);
+        return { success: true };
+      }),
+
+    // Get escalation stats
+    getStats: protectedProcedure
+      .input(z.object({ days: z.number().default(30) }))
+      .query(async ({ input }) => {
+        const { getEscalationStats } = await import("./services/alertEscalationService");
+        return await getEscalationStats(input.days);
+      }),
+
+    // Get escalation history for an alert
+    getHistory: protectedProcedure
+      .input(z.object({ alertId: z.number() }))
+      .query(async ({ input }) => {
+        const { getEscalationHistory } = await import("./services/alertEscalationService");
+        return await getEscalationHistory(input.alertId);
+      }),
+
+    // Manually trigger escalation processing
+    processEscalations: protectedProcedure.mutation(async ({ ctx }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+      }
+      const { processEscalations } = await import("./services/alertEscalationService");
+      return await processEscalations();
+    }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;
