@@ -338,8 +338,11 @@ export const SYSTEM_MENU: SystemMenuConfig = {
       items: [
         { id: "email-notifications", icon: Mail, labelKey: "nav.emailNotification", path: "/email-notifications", adminOnly: true },
         { id: "smtp-settings", icon: Server, labelKey: "nav.smtpConfig", path: "/smtp-settings", adminOnly: true },
+        { id: "twilio-settings", icon: Bell, labelKey: "nav.twilioSettings", path: "/twilio-settings", adminOnly: true },
+        { id: "webhook-settings", icon: Webhook, labelKey: "nav.webhookSettings", path: "/webhook-settings", adminOnly: true },
         { id: "webhooks", icon: Webhook, labelKey: "nav.webhookManagement", path: "/webhooks", adminOnly: true },
         { id: "notification-center", icon: Bell, labelKey: "nav.notificationCenter", path: "/notification-center" },
+        { id: "alert-analytics", icon: BarChart3, labelKey: "nav.alertAnalytics", path: "/alert-analytics", adminOnly: true },
       ],
     },
     {

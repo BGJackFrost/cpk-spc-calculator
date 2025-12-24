@@ -540,6 +540,13 @@
       "when": 1766585626585,
       "tag": "0076_zippy_slipstream",
       "breakpoints": true
+    },
+    {
+      "idx": 77,
+      "version": "5",
+      "when": 1766587132587,
+      "tag": "0077_happy_black_panther",
+      "breakpoints": true
     }
   ]
 }

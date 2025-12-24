@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `alert_analytics` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `date` timestamp NOT NULL,\n  `alert_type` varchar(100) NOT NULL,\n  `severity` enum('info','warning','critical') NOT NULL DEFAULT 'info',\n  `source` varchar(255),\n  `count` int NOT NULL DEFAULT 0,\n  `resolved_count` int NOT NULL DEFAULT 0,\n  `total_resolution_time_ms` bigint DEFAULT 0,\n  `created_at` timestamp NOT NULL DEFAULT (now()),\n  CONSTRAINT `alert_analytics_id` PRIMARY KEY(`id`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute CREATE TABLE IF NOT EXISTS `alert_analytics` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `date` timestamp NOT NULL,\n  `alert_type` varchar(100) NOT NULL,\n  `severity` enum('info','warning','critical') NOT NULL DEFAULT 'info',\n  `source` varchar(255),\n  `count` int NOT NULL DEFAULT 0,\n  `resolved_count` int NOT NULL DEFAULT 0,\n  `total_resolution_time_ms` bigint DEFAULT 0,\n  `created_at` timestamp NOT NULL DEFAULT (now()),\n  CONSTRAINT `alert_analytics_id` PRIMARY KEY(`id`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1617
+}

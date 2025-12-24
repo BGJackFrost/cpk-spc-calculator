@@ -4050,3 +4050,52 @@ export const escalationConfigs = mysqlTable("escalation_configs", {
 });
 export type EscalationConfig = typeof escalationConfigs.$inferSelect;
 export type InsertEscalationConfig = typeof escalationConfigs.$inferInsert;
+
+
+/**
+ * Twilio SMS Configuration
+ */
+export const twilioConfig = mysqlTable("twilio_config", {
+  id: int("id").autoincrement().primaryKey(),
+  accountSid: varchar("account_sid", { length: 100 }),
+  authToken: varchar("auth_token", { length: 100 }),
+  fromNumber: varchar("from_number", { length: 50 }),
+  enabled: int("enabled").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type TwilioConfig = typeof twilioConfig.$inferSelect;
+export type InsertTwilioConfig = typeof twilioConfig.$inferInsert;
+
+/**
+ * Webhook Configuration for Slack/Teams
+ */
+export const webhookConfig = mysqlTable("webhook_config", {
+  id: int("id").autoincrement().primaryKey(),
+  slackWebhookUrl: varchar("slack_webhook_url", { length: 500 }),
+  slackChannel: varchar("slack_channel", { length: 100 }),
+  slackEnabled: int("slack_enabled").notNull().default(0),
+  teamsWebhookUrl: varchar("teams_webhook_url", { length: 500 }),
+  teamsEnabled: int("teams_enabled").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type WebhookConfig = typeof webhookConfig.$inferSelect;
+export type InsertWebhookConfig = typeof webhookConfig.$inferInsert;
+
+/**
+ * Alert Analytics - Lưu trữ thống kê alerts
+ */
+export const alertAnalytics = mysqlTable("alert_analytics", {
+  id: int("id").autoincrement().primaryKey(),
+  date: timestamp("date").notNull(),
+  alertType: varchar("alert_type", { length: 100 }).notNull(),
+  severity: mysqlEnum("severity", ["info", "warning", "critical"]).notNull().default("info"),
+  source: varchar("source", { length: 255 }), // Dây chuyền, công trạm, etc.
+  count: int("count").notNull().default(0),
+  resolvedCount: int("resolved_count").notNull().default(0),
+  totalResolutionTimeMs: bigint("total_resolution_time_ms", { mode: "number" }).default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+export type AlertAnalytics = typeof alertAnalytics.$inferSelect;
+export type InsertAlertAnalytics = typeof alertAnalytics.$inferInsert;

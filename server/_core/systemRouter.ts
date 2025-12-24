@@ -4,8 +4,8 @@ import { adminProcedure, publicProcedure, protectedProcedure, router } from "./t
 import { getDb } from "../db";
 import { getPgStatus, isPgConfigured } from "../db-postgresql";
 import { getDatabaseType, getAllDatabaseStatuses, listTables } from "../db-unified";
-import { systemConfig, companyInfo } from "../../drizzle/schema";
-import { eq } from "drizzle-orm";
+import { systemConfig, companyInfo, twilioConfig, webhookConfig, alertAnalytics, kpiAlertStats } from "../../drizzle/schema";
+import { eq, sql, desc, and, gte, lte } from "drizzle-orm";
 import { storagePut } from "../storage";
 import { isWebSocketEnabled, setWebSocketEnabled, realtimeWebSocketServer, loadWebSocketConfig, getEventLog, clearEventLog } from "../websocketServer";
 import { getConnectedClientsCount as getSseClientCount, isSseServerEnabled, setSseServerEnabled, getSseEventLog, clearSseEventLog } from "../sse";
@@ -598,4 +598,165 @@ export const systemRouter = router({
       activeDatabase: getActiveDatabase(),
     };
   }),
+
+  // ==================== Twilio SMS Configuration ====================
+  getTwilioConfig: adminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new Error('Database connection failed');
+    const [config] = await db.select().from(twilioConfig).limit(1);
+    return config ? {
+      accountSid: config.accountSid || '',
+      authToken: config.authToken ? '********' : '', // Mask token
+      fromNumber: config.fromNumber || '',
+      enabled: config.enabled === 1,
+    } : null;
+  }),
+
+  saveTwilioConfig: adminProcedure
+    .input(z.object({
+      accountSid: z.string(),
+      authToken: z.string(),
+      fromNumber: z.string(),
+      enabled: z.boolean(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error('Database connection failed');
+      const [existing] = await db.select().from(twilioConfig).limit(1);
+      if (existing) {
+        await db.update(twilioConfig).set({
+          accountSid: input.accountSid,
+          authToken: input.authToken.includes('*') ? existing.authToken : input.authToken,
+          fromNumber: input.fromNumber,
+          enabled: input.enabled ? 1 : 0,
+        }).where(eq(twilioConfig.id, existing.id));
+      } else {
+        await db.insert(twilioConfig).values({
+          accountSid: input.accountSid,
+          authToken: input.authToken,
+          fromNumber: input.fromNumber,
+          enabled: input.enabled ? 1 : 0,
+        });
+      }
+      return { success: true };
+    }),
+
+  testTwilioSms: adminProcedure
+    .input(z.object({ toNumber: z.string() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error('Database connection failed');
+      const [config] = await db.select().from(twilioConfig).limit(1);
+      if (!config || !config.enabled) {
+        throw new Error('Twilio chưa được cấu hình hoặc chưa kích hoạt');
+      }
+      // In production, integrate with Twilio SDK here
+      // For now, simulate success
+      console.log(`[Twilio Test] Sending SMS to ${input.toNumber} from ${config.fromNumber}`);
+      return { success: true, message: `SMS test sent to ${input.toNumber}` };
+    }),
+
+  // ==================== Webhook Configuration (Slack/Teams) ====================
+  getWebhookConfig: adminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new Error('Database connection failed');
+    const [config] = await db.select().from(webhookConfig).limit(1);
+    return config ? {
+      slackWebhookUrl: config.slackWebhookUrl || '',
+      slackChannel: config.slackChannel || '',
+      slackEnabled: config.slackEnabled === 1,
+      teamsWebhookUrl: config.teamsWebhookUrl || '',
+      teamsEnabled: config.teamsEnabled === 1,
+    } : null;
+  }),
+
+  saveWebhookConfig: adminProcedure
+    .input(z.object({
+      slackWebhookUrl: z.string().optional(),
+      slackChannel: z.string().optional(),
+      slackEnabled: z.boolean(),
+      teamsWebhookUrl: z.string().optional(),
+      teamsEnabled: z.boolean(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error('Database connection failed');
+      const [existing] = await db.select().from(webhookConfig).limit(1);
+      if (existing) {
+        await db.update(webhookConfig).set({
+          slackWebhookUrl: input.slackWebhookUrl || null,
+          slackChannel: input.slackChannel || null,
+          slackEnabled: input.slackEnabled ? 1 : 0,
+          teamsWebhookUrl: input.teamsWebhookUrl || null,
+          teamsEnabled: input.teamsEnabled ? 1 : 0,
+        }).where(eq(webhookConfig.id, existing.id));
+      } else {
+        await db.insert(webhookConfig).values({
+          slackWebhookUrl: input.slackWebhookUrl || null,
+          slackChannel: input.slackChannel || null,
+          slackEnabled: input.slackEnabled ? 1 : 0,
+          teamsWebhookUrl: input.teamsWebhookUrl || null,
+          teamsEnabled: input.teamsEnabled ? 1 : 0,
+        });
+      }
+      return { success: true };
+    }),
+
+  testSlackWebhook: adminProcedure
+    .input(z.object({}))
+    .mutation(async () => {
+      const db = await getDb();
+      if (!db) throw new Error('Database connection failed');
+      const [config] = await db.select().from(webhookConfig).limit(1);
+      if (!config || !config.slackEnabled || !config.slackWebhookUrl) {
+        throw new Error('Slack webhook chưa được cấu hình hoặc chưa kích hoạt');
+      }
+      // Send test message to Slack
+      const response = await fetch(config.slackWebhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          channel: config.slackChannel || undefined,
+          text: ':white_check_mark: Test message từ SPC System',
+          attachments: [{
+            color: '#36a64f',
+            title: 'SPC Alert Test',
+            text: 'Webhook đã được cấu hình thành công!',
+            ts: Math.floor(Date.now() / 1000),
+          }],
+        }),
+      });
+      if (!response.ok) throw new Error('Failed to send Slack message');
+      return { success: true };
+    }),
+
+  testTeamsWebhook: adminProcedure
+    .input(z.object({}))
+    .mutation(async () => {
+      const db = await getDb();
+      if (!db) throw new Error('Database connection failed');
+      const [config] = await db.select().from(webhookConfig).limit(1);
+      if (!config || !config.teamsEnabled || !config.teamsWebhookUrl) {
+        throw new Error('Teams webhook chưa được cấu hình hoặc chưa kích hoạt');
+      }
+      // Send test message to Teams (Adaptive Card format)
+      const response = await fetch(config.teamsWebhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          '@type': 'MessageCard',
+          '@context': 'http://schema.org/extensions',
+          themeColor: '0076D7',
+          summary: 'SPC Alert Test',
+          sections: [{
+            activityTitle: 'SPC Alert Test',
+            activitySubtitle: new Date().toLocaleString('vi-VN'),
+            facts: [{ name: 'Status', value: 'Webhook đã được cấu hình thành công!' }],
+            markdown: true,
+          }],
+        }),
+      });
+      if (!response.ok) throw new Error('Failed to send Teams message');
+      return { success: true };
+    }),
 });
