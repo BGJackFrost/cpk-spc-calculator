@@ -241,6 +241,20 @@ export default function Analyze() {
     },
   });
 
+  const exportAiPdfMutation = trpc.export.aiAnalysisPdf.useMutation({
+    onSuccess: (data) => {
+      downloadFile(data.content, data.filename, data.mimeType);
+      if (data.fileUrl) {
+        setLastExportedFileUrl(data.fileUrl);
+        setLastExportType("pdf");
+      }
+      toast.success(language === 'vi' ? 'Đã xuất báo cáo AI Analysis!' : 'AI Analysis report exported!');
+    },
+    onError: (error) => {
+      toast.error((t.export?.exportError || "Lỗi xuất file") + ": " + error.message);
+    },
+  });
+
   // Mutation phân tích từ SPC Plan
   const analyzeFromPlanMutation = trpc.spcPlan.analyzeFromPlan.useMutation({
     onSuccess: (data) => {
@@ -1299,11 +1313,53 @@ export default function Analyze() {
             {/* LLM Analysis */}
             {llmAnalysis && (
               <Card className="bg-card rounded-xl border border-border/50 shadow-md">
-                <CardHeader>
+                <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle className="flex items-center gap-2">
                     <Brain className="h-5 w-5 text-primary" />
                     Phân tích AI
                   </CardTitle>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      if (!result) return;
+                      const now = new Date();
+                      exportAiPdfMutation.mutate({
+                        productCode: selectedProduct || "Manual",
+                        stationName: selectedStation || "Manual Input",
+                        startDate: startDate || now,
+                        endDate: endDate || now,
+                        aiAnalysis: llmAnalysis,
+                        spcResult: {
+                          sampleCount: result.sampleCount,
+                          mean: result.mean,
+                          stdDev: result.stdDev,
+                          min: result.min,
+                          max: result.max,
+                          range: result.range,
+                          cp: result.cp,
+                          cpk: result.cpk,
+                          cpu: result.cpu,
+                          cpl: result.cpl,
+                          ucl: result.ucl,
+                          lcl: result.lcl,
+                          uclR: result.uclR,
+                          lclR: result.lclR,
+                        },
+                        usl: result.usl,
+                        lsl: result.lsl,
+                        target: result.target,
+                      });
+                    }}
+                    disabled={exportAiPdfMutation.isPending}
+                  >
+                    {exportAiPdfMutation.isPending ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Download className="mr-2 h-4 w-4" />
+                    )}
+                    {language === 'vi' ? 'Xuất PDF' : 'Export PDF'}
+                  </Button>
                 </CardHeader>
                 <CardContent>
                   <div className="prose prose-sm max-w-none dark:prose-invert">

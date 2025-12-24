@@ -2536,6 +2536,80 @@ const exportRouter = router({
       const { getFixtureComparisonData } = await import("./services/fixtureReportService");
       return await getFixtureComparisonData(input.fixtureIds, input.startDate, input.endDate);
     }),
+
+  // Export AI Analysis Report to PDF
+  aiAnalysisPdf: protectedProcedure
+    .input(z.object({
+      productCode: z.string(),
+      stationName: z.string(),
+      startDate: z.date(),
+      endDate: z.date(),
+      aiAnalysis: z.string(),
+      spcResult: z.object({
+        sampleCount: z.number(),
+        mean: z.number(),
+        stdDev: z.number(),
+        min: z.number(),
+        max: z.number(),
+        range: z.number(),
+        cp: z.number().nullable(),
+        cpk: z.number().nullable(),
+        cpu: z.number().nullable(),
+        cpl: z.number().nullable(),
+        ucl: z.number(),
+        lcl: z.number(),
+        uclR: z.number(),
+        lclR: z.number(),
+      }),
+      usl: z.number().nullable().optional(),
+      lsl: z.number().nullable().optional(),
+      target: z.number().nullable().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const { generateAiAnalysisPdfHtml } = await import("./services/aiReportService");
+      const html = await generateAiAnalysisPdfHtml({
+        productCode: input.productCode,
+        stationName: input.stationName,
+        startDate: input.startDate,
+        endDate: input.endDate,
+        aiAnalysis: input.aiAnalysis,
+        spcResult: input.spcResult,
+        usl: input.usl,
+        lsl: input.lsl,
+        target: input.target,
+        generatedBy: ctx.user.name || ctx.user.email || 'Unknown',
+      });
+      const filename = `ai_analysis_report_${input.productCode}_${Date.now()}.html`;
+      
+      // Upload to S3
+      let fileUrl: string | null = null;
+      try {
+        const s3Key = `exports/ai-reports/${ctx.user.id}/${filename}`;
+        const { url } = await storagePut(s3Key, html, 'text/html');
+        fileUrl = url;
+      } catch (error) {
+        console.error('Failed to upload AI Report to S3:', error);
+      }
+      
+      // Save to export history
+      await createExportHistory({
+        userId: ctx.user.id,
+        exportType: 'ai-pdf',
+        productCode: input.productCode,
+        stationName: input.stationName,
+        analysisType: 'ai-analysis',
+        startDate: input.startDate,
+        endDate: input.endDate,
+        sampleCount: input.spcResult.sampleCount,
+        mean: Math.round(input.spcResult.mean * 10000),
+        cpk: input.spcResult.cpk ? Math.round(input.spcResult.cpk * 10000) : null,
+        fileName: filename,
+        fileSize: html.length,
+        fileUrl: fileUrl,
+      });
+      
+      return { content: html, filename, mimeType: "text/html", fileUrl };
+    }),
 });
 
 // Alert Settings Router

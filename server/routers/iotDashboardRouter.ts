@@ -166,4 +166,138 @@ export const iotDashboardRouter = router({
         .execute();
       return alarm;
     }),
+
+  // ============ IoT Connection Management (MQTT/OPC-UA) ============
+
+  // List all connections
+  listConnections: protectedProcedure.query(async () => {
+    const { getAllIoTConnections } = await import("../services/iotConnectionService");
+    return getAllIoTConnections();
+  }),
+
+  // Create new connection
+  createConnection: protectedProcedure
+    .input(z.object({
+      name: z.string(),
+      description: z.string().optional(),
+      protocol: z.enum(["mqtt", "opcua", "modbus"]),
+      config: z.any(), // Flexible config based on protocol
+    }))
+    .mutation(async ({ input }) => {
+      const { createIoTConnection } = await import("../services/iotConnectionService");
+      return createIoTConnection({
+        name: input.name,
+        description: input.description,
+        config: { protocol: input.protocol, ...input.config },
+      });
+    }),
+
+  // Update connection
+  updateConnection: protectedProcedure
+    .input(z.object({
+      id: z.string(),
+      name: z.string().optional(),
+      description: z.string().optional(),
+      config: z.any().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const { updateIoTConnection } = await import("../services/iotConnectionService");
+      return updateIoTConnection(input.id, {
+        name: input.name,
+        description: input.description,
+        config: input.config,
+      });
+    }),
+
+  // Delete connection
+  deleteConnection: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ input }) => {
+      const { deleteIoTConnection } = await import("../services/iotConnectionService");
+      return { success: deleteIoTConnection(input.id) };
+    }),
+
+  // Connect to IoT broker/device
+  connect: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ input }) => {
+      const { connectIoT } = await import("../services/iotConnectionService");
+      return await connectIoT(input.id);
+    }),
+
+  // Disconnect from IoT broker/device
+  disconnect: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ input }) => {
+      const { disconnectIoT } = await import("../services/iotConnectionService");
+      return { success: disconnectIoT(input.id) };
+    }),
+
+  // Test connection
+  testConnection: protectedProcedure
+    .input(z.object({
+      protocol: z.enum(["mqtt", "opcua", "modbus"]),
+      config: z.any(),
+    }))
+    .mutation(async ({ input }) => {
+      const { testIoTConnection } = await import("../services/iotConnectionService");
+      return await testIoTConnection({ protocol: input.protocol, ...input.config });
+    }),
+
+  // Start simulation for testing
+  startSimulation: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ input }) => {
+      const { startIoTSimulation } = await import("../services/iotConnectionService");
+      return { success: startIoTSimulation(input.id) };
+    }),
+
+  // Stop simulation
+  stopSimulation: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ input }) => {
+      const { stopIoTSimulation } = await import("../services/iotConnectionService");
+      return { success: stopIoTSimulation(input.id) };
+    }),
+
+  // Get recent data from connection
+  getConnectionData: protectedProcedure
+    .input(z.object({
+      connectionId: z.string(),
+      limit: z.number().default(100),
+    }))
+    .query(async ({ input }) => {
+      const { getIoTRecentData } = await import("../services/iotConnectionService");
+      return getIoTRecentData(input.connectionId, input.limit);
+    }),
+
+  // Get connection statistics
+  getConnectionStats: protectedProcedure.query(async () => {
+    const { getIoTConnectionStats } = await import("../services/iotConnectionService");
+    return getIoTConnectionStats();
+  }),
+
+  // Publish MQTT message
+  publishMessage: protectedProcedure
+    .input(z.object({
+      connectionId: z.string(),
+      topic: z.string(),
+      message: z.any(),
+    }))
+    .mutation(async ({ input }) => {
+      const { publishIoTMessage } = await import("../services/iotConnectionService");
+      return { success: await publishIoTMessage(input.connectionId, input.topic, input.message) };
+    }),
+
+  // Write value to OPC-UA/Modbus
+  writeValue: protectedProcedure
+    .input(z.object({
+      connectionId: z.string(),
+      nodeIdOrRegister: z.union([z.string(), z.number()]),
+      value: z.any(),
+    }))
+    .mutation(async ({ input }) => {
+      const { writeIoTValue } = await import("../services/iotConnectionService");
+      return { success: await writeIoTValue(input.connectionId, input.nodeIdOrRegister, input.value) };
+    }),
 });

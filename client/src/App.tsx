@@ -149,6 +149,7 @@ import PerformanceTrendsDashboard from "./pages/PerformanceTrendsDashboard";
 import SystemHealthDashboard from "./pages/SystemHealthDashboard";
 import SecurityDashboard from "./pages/SecurityDashboard";
 import IoTDashboard from "./pages/IoTDashboard";
+import IotRealtimeDashboard from "./pages/IotRealtimeDashboard";
 import AiMlDashboard from "./pages/AiMlDashboard";
 import AdvancedAnalyticsDashboard from "./pages/AdvancedAnalyticsDashboard";
 import NotificationPreferences from "./pages/NotificationPreferences";
@@ -313,6 +314,7 @@ function Router() {
       <Route path="/system-health" component={SystemHealthDashboard} />
       <Route path="/security-dashboard" component={SecurityDashboard} />
       <Route path="/iot-dashboard" component={IoTDashboard} />
+      <Route path="/iot-realtime-dashboard" component={IotRealtimeDashboard} />
           <Route path="/ai-dashboard" element={<AiDashboard />} />
           <Route path="/erp-integration" element={<ErpIntegration />} />
       <Route path="/ai-ml-dashboard" component={AiMlDashboard} />

@@ -5920,3 +5920,16 @@
 - [x] Thêm IoT events vào SSE (sse.ts)
 - [x] Tạo useIotRealtime hook (useIotRealtime.ts)
 - [x] Tạo IotRealtimeDashboard component (IotRealtimeDashboard.tsx)
+
+## Phase 47: IoT Dashboard Integration, AI Export PDF, MQTT/OPC-UA
+- [x] Tích hợp IotRealtimeDashboard vào menu sidebar
+- [x] Thêm route /iot-realtime-dashboard vào App.tsx
+- [x] Thêm chức năng export báo cáo AI analysis ra PDF
+- [x] Kết nối IoT service với thiết bị thực qua MQTT
+- [x] Kết nối IoT service với thiết bị thực qua OPC-UA
+- [x] Tạo iotConnectionService.ts cho MQTT/OPC-UA/Modbus
+- [x] Thêm endpoints vào iotDashboardRouter cho connection management
+- [x] Cập nhật IotRealtimeDashboard với tRPC API thực
+- [x] Viết tests cho IoT Connection Service (13 tests pass)
+- [x] Viết tests cho AI Report Service (10 tests pass)i
+

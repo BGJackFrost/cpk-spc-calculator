@@ -163,6 +163,7 @@ export const SPC_MENU: SystemMenuConfig = {
         { id: "realtime-machine-config", icon: Settings, labelKey: "nav.realtimeMachineConfig", path: "/realtime-machine-config", adminOnly: true },
         { id: "realtime-history", icon: History, labelKey: "nav.realtimeHistory", path: "/realtime-history" },
         { id: "alarm-threshold-config", icon: AlertTriangle, labelKey: "nav.alarmThreshold", path: "/alarm-threshold-config", adminOnly: true },
+        { id: "iot-realtime-dashboard", icon: Zap, labelKey: "nav.iotRealtimeDashboard", path: "/iot-realtime-dashboard", licenseFeature: "spc_iot" },
       ],
     },
   ],
