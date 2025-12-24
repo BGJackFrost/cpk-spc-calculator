@@ -159,6 +159,7 @@ import ScheduledKpiReports from "./pages/ScheduledKpiReports";
 import KpiThresholdSettings from "./pages/KpiThresholdSettings";
 import ScheduledKpiReportsPage from "./pages/ScheduledKpiReportsPage";
 import KpiAlertStats from "./pages/KpiAlertStats";
+import AlertHistory from "./pages/AlertHistory";
 import MqttConnectionManagement from "./pages/MqttConnectionManagement";
 import OpcuaConnectionManagement from "./pages/OpcuaConnectionManagement";
 import SensorDashboard from "./pages/SensorDashboard";
@@ -209,6 +210,7 @@ function Router() {
       <Route path="/kpi-threshold-settings" component={KpiThresholdSettings} />
       <Route path="/scheduled-kpi-reports-management" component={ScheduledKpiReportsPage} />
       <Route path="/kpi-alert-stats" component={KpiAlertStats} />
+      <Route path="/alert-history" component={AlertHistory} />
       <Route path="/spc-summary-report" component={SpcSummaryReport} />
       <Route path="/realtime-line" component={RealtimeLineDashboard} />
       <Route path="/realtime-machine-config" component={RealtimeMachineConfig} />
@@ -321,8 +323,6 @@ function Router() {
       <Route path="/mqtt-connections" component={MqttConnectionManagement} />
       <Route path="/opcua-connections" component={OpcuaConnectionManagement} />
       <Route path="/sensor-dashboard" component={SensorDashboard} />
-          <Route path="/ai-dashboard" element={<AiDashboard />} />
-          <Route path="/erp-integration" element={<ErpIntegration />} />
       <Route path="/ai-ml-dashboard" component={AiMlDashboard} />
       <Route path="/advanced-analytics-dashboard" component={AdvancedAnalyticsDashboard} />
       <Route path="/notification-preferences" component={NotificationPreferences} />

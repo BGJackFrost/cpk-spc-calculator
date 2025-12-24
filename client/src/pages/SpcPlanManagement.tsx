@@ -62,6 +62,11 @@ interface SpcPlan {
   lastRunAt?: Date | null;
   nextRunAt?: Date | null;
   isActive: number;
+  // CPK Alert fields
+  cpkAlertEnabled?: number | null;
+  cpkUpperLimit?: string | null;
+  cpkLowerLimit?: string | null;
+  alertThresholdId?: number | null;
 }
 
 const statusColors: Record<string, string> = {
@@ -106,6 +111,10 @@ export default function SpcPlanManagement() {
     enabledCaRules: [] as number[],
     enabledCpkRules: [] as number[],
     measurementStandardId: 0,
+    // CPK Alert fields
+    cpkAlertEnabled: false,
+    cpkUpperLimit: "",
+    cpkLowerLimit: "1.33",
   });
 
   // Fetch data
@@ -181,6 +190,9 @@ export default function SpcPlanManagement() {
       enabledCaRules: [],
       enabledCpkRules: [],
       measurementStandardId: 0,
+      cpkAlertEnabled: false,
+      cpkUpperLimit: "",
+      cpkLowerLimit: "1.33",
     });
   };
 
@@ -207,6 +219,9 @@ export default function SpcPlanManagement() {
       enabledSpcRules: JSON.stringify(formData.enabledSpcRules),
       enabledCaRules: JSON.stringify(formData.enabledCaRules),
       enabledCpkRules: JSON.stringify(formData.enabledCpkRules),
+      cpkAlertEnabled: formData.cpkAlertEnabled,
+      cpkUpperLimit: formData.cpkUpperLimit || undefined,
+      cpkLowerLimit: formData.cpkLowerLimit || undefined,
     });
   };
 
@@ -226,6 +241,9 @@ export default function SpcPlanManagement() {
       enabledSpcRules: JSON.stringify(formData.enabledSpcRules),
       enabledCaRules: JSON.stringify(formData.enabledCaRules),
       enabledCpkRules: JSON.stringify(formData.enabledCpkRules),
+      cpkAlertEnabled: formData.cpkAlertEnabled,
+      cpkUpperLimit: formData.cpkUpperLimit || undefined,
+      cpkLowerLimit: formData.cpkLowerLimit || undefined,
     });
   };
 
@@ -289,6 +307,9 @@ export default function SpcPlanManagement() {
       enabledCaRules: plan.enabledCaRules ? JSON.parse(plan.enabledCaRules) : [],
       enabledCpkRules: plan.enabledCpkRules ? JSON.parse(plan.enabledCpkRules) : [],
       measurementStandardId: (plan as any).measurementStandardId || 0,
+      cpkAlertEnabled: plan.cpkAlertEnabled === 1,
+      cpkUpperLimit: plan.cpkUpperLimit || "",
+      cpkLowerLimit: plan.cpkLowerLimit || "1.33",
     });
   };
 
@@ -849,6 +870,49 @@ export default function SpcPlanManagement() {
                     </TabsContent>
                   </Tabs>
                 </div>
+
+                {/* CPK Alert Configuration */}
+                <div className="border rounded-lg p-4 space-y-4 border-orange-200 bg-orange-50/30">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="h-5 w-5 text-orange-600" />
+                      <Label className="text-base font-medium">Cấu hình CPK Alert</Label>
+                    </div>
+                    <Switch
+                      checked={formData.cpkAlertEnabled}
+                      onCheckedChange={(v) => setFormData({ ...formData, cpkAlertEnabled: v })}
+                    />
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Kích hoạt cảnh báo khi chỉ số CPK vượt ngưỡng cho phép
+                  </p>
+                  {formData.cpkAlertEnabled && (
+                    <div className="grid grid-cols-2 gap-4 pt-2">
+                      <div className="space-y-2">
+                        <Label className="text-sm">Ngưỡng CPK tối thiểu</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={formData.cpkLowerLimit}
+                          onChange={(e) => setFormData({ ...formData, cpkLowerLimit: e.target.value })}
+                          placeholder="1.33"
+                        />
+                        <p className="text-xs text-muted-foreground">Cảnh báo khi CPK &lt; giá trị này (mặc định: 1.33)</p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-sm">Ngưỡng CPK tối đa (tùy chọn)</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={formData.cpkUpperLimit}
+                          onChange={(e) => setFormData({ ...formData, cpkUpperLimit: e.target.value })}
+                          placeholder="Không giới hạn"
+                        />
+                        <p className="text-xs text-muted-foreground">Cảnh báo khi CPK &gt; giá trị này (để trống = không giới hạn)</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>Hủy</Button>
@@ -1032,6 +1096,43 @@ export default function SpcPlanManagement() {
                                       <Input type="email" value={formData.notifyEmail} onChange={(e) => setFormData({ ...formData, notifyEmail: e.target.value })} />
                                     </div>
                                   )}
+                                  {/* CPK Alert Configuration */}
+                                  <div className="border rounded-lg p-4 space-y-4 border-orange-200 bg-orange-50/30">
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-2">
+                                        <AlertTriangle className="h-5 w-5 text-orange-600" />
+                                        <Label className="text-base font-medium">Cấu hình CPK Alert</Label>
+                                      </div>
+                                      <Switch
+                                        checked={formData.cpkAlertEnabled}
+                                        onCheckedChange={(v) => setFormData({ ...formData, cpkAlertEnabled: v })}
+                                      />
+                                    </div>
+                                    {formData.cpkAlertEnabled && (
+                                      <div className="grid grid-cols-2 gap-4 pt-2">
+                                        <div className="space-y-2">
+                                          <Label className="text-sm">Ngưỡng CPK tối thiểu</Label>
+                                          <Input
+                                            type="number"
+                                            step="0.01"
+                                            value={formData.cpkLowerLimit}
+                                            onChange={(e) => setFormData({ ...formData, cpkLowerLimit: e.target.value })}
+                                            placeholder="1.33"
+                                          />
+                                        </div>
+                                        <div className="space-y-2">
+                                          <Label className="text-sm">Ngưỡng CPK tối đa</Label>
+                                          <Input
+                                            type="number"
+                                            step="0.01"
+                                            value={formData.cpkUpperLimit}
+                                            onChange={(e) => setFormData({ ...formData, cpkUpperLimit: e.target.value })}
+                                            placeholder="Không giới hạn"
+                                          />
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
                                 <DialogFooter>
                                   <Button variant="outline" onClick={() => setEditingPlan(null)}>Hủy</Button>

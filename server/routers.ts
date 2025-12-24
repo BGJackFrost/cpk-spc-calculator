@@ -2673,8 +2673,17 @@ const spcPlanRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       const { startTime, endTime, cpkAlertEnabled, cpkLowerLimit, cpkUpperLimit, alertThresholdId, ...rest } = input;
+      
+      // Handle CPK alert settings
+      const cpkAlertData: Record<string, any> = {};
+      if (cpkAlertEnabled !== undefined) cpkAlertData.cpkAlertEnabled = cpkAlertEnabled ? 1 : 0;
+      if (cpkLowerLimit !== undefined) cpkAlertData.cpkLowerLimit = cpkLowerLimit?.toString();
+      if (cpkUpperLimit !== undefined) cpkAlertData.cpkUpperLimit = cpkUpperLimit?.toString();
+      if (alertThresholdId !== undefined) cpkAlertData.alertThresholdId = alertThresholdId;
+      
       return await createSpcSamplingPlan({ 
         ...rest, 
+        ...cpkAlertData,
         startTime: startTime ? new Date(startTime) : undefined,
         endTime: endTime ? new Date(endTime) : undefined,
         createdBy: ctx.user.id 

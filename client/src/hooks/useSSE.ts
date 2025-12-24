@@ -4,6 +4,7 @@ export type SseEventType =
   | "spc_analysis_complete"
   | "cpk_alert"
   | "plan_status_change"
+  | "kpi_alert"
   | "heartbeat";
 
 export interface SseEvent {
@@ -16,6 +17,7 @@ interface UseSSEOptions {
   onSpcAnalysisComplete?: (data: any) => void;
   onCpkAlert?: (data: any) => void;
   onPlanStatusChange?: (data: any) => void;
+  onKpiAlert?: (data: any) => void;
   onHeartbeat?: (data: any) => void;
   onOeeUpdate?: (data: any) => void;
   onMachineStatus?: (data: any) => void;
@@ -98,7 +100,7 @@ function initGlobalSSE() {
     };
 
     // Setup event listeners
-    const eventTypes = ["spc_analysis_complete", "cpk_alert", "plan_status_change", "heartbeat"];
+    const eventTypes = ["spc_analysis_complete", "cpk_alert", "plan_status_change", "kpi_alert", "heartbeat"];
     eventTypes.forEach((eventType) => {
       globalEventSource!.addEventListener(eventType, (event) => {
         try {
@@ -178,6 +180,7 @@ export function useSSE(options: UseSSEOptions = {}) {
     onSpcAnalysisComplete,
     onCpkAlert,
     onPlanStatusChange,
+    onKpiAlert,
     onHeartbeat,
     onConnect,
     onDisconnect,
@@ -187,12 +190,12 @@ export function useSSE(options: UseSSEOptions = {}) {
   const [isConnected, setIsConnected] = useState(globalConnected);
   const [lastEvent, setLastEvent] = useState<SseEvent | null>(null);
   const [connectionError, setConnectionError] = useState<string | null>(null);
-  const callbacksRef = useRef({ onSpcAnalysisComplete, onCpkAlert, onPlanStatusChange, onHeartbeat, onConnect, onDisconnect });
+  const callbacksRef = useRef({ onSpcAnalysisComplete, onCpkAlert, onPlanStatusChange, onKpiAlert, onHeartbeat, onConnect, onDisconnect });
 
   // Update callbacks ref
   useEffect(() => {
-    callbacksRef.current = { onSpcAnalysisComplete, onCpkAlert, onPlanStatusChange, onHeartbeat, onConnect, onDisconnect };
-  }, [onSpcAnalysisComplete, onCpkAlert, onPlanStatusChange, onHeartbeat, onConnect, onDisconnect]);
+    callbacksRef.current = { onSpcAnalysisComplete, onCpkAlert, onPlanStatusChange, onKpiAlert, onHeartbeat, onConnect, onDisconnect };
+  }, [onSpcAnalysisComplete, onCpkAlert, onPlanStatusChange, onKpiAlert, onHeartbeat, onConnect, onDisconnect]);
 
   useEffect(() => {
     if (!enabled) {
@@ -213,6 +216,9 @@ export function useSSE(options: UseSSEOptions = {}) {
           break;
         case "plan_status_change":
           callbacksRef.current.onPlanStatusChange?.(event.data);
+          break;
+        case "kpi_alert":
+          callbacksRef.current.onKpiAlert?.(event.data);
           break;
         case "heartbeat":
           if (event.data?.connected) {

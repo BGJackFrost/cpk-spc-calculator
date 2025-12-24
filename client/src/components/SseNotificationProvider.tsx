@@ -361,6 +361,45 @@ export function SseNotificationProvider({ children }: SseNotificationProviderPro
         { duration: 10000 }
       );
     },
+    onKpiAlert: (data: any) => {
+      // KPI Alert handler for realtime alerts
+      const alertType = data.severity === 'critical' ? 'cpk_critical' : 'cpk_low';
+      playAlertSound(alertType);
+      
+      // Add to notification store
+      addNotification({
+        type: data.severity === 'critical' ? 'cpk_critical' : 'cpk_warning',
+        title: `Cảnh báo KPI: ${data.alertType || 'Unknown'}`,
+        message: data.alertMessage || `Giá trị: ${data.currentValue}`,
+        data: {
+          alertType: data.alertType,
+          severity: data.severity,
+          currentValue: data.currentValue,
+          thresholdValue: data.thresholdValue,
+        },
+      });
+      
+      const toastFn = data.severity === 'critical' ? toast.error : toast.warning;
+      toastFn(
+        <div className="flex items-start gap-3">
+          <AlertTriangle className={`h-5 w-5 ${data.severity === 'critical' ? 'text-red-500' : 'text-yellow-500'} mt-0.5`} />
+          <div>
+            <p className="font-semibold">
+              {data.severity === 'critical' ? 'Cảnh báo KPI nghiêm trọng!' : 'Cảnh báo KPI'}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              {data.alertType}
+            </p>
+            <p className="text-sm">
+              Giá trị: <span className={`font-medium ${data.severity === 'critical' ? 'text-red-600' : 'text-yellow-600'}`}>
+                {typeof data.currentValue === 'number' ? data.currentValue.toFixed(4) : data.currentValue}
+              </span>
+            </p>
+          </div>
+        </div>,
+        { duration: 10000 }
+      );
+    },
     onConnect: () => {
       playAlertSound('connection_restored');
     },

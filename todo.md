@@ -5993,3 +5993,17 @@
 - [x] Tự động kiểm tra CPK và trigger alert
 - [ ] Hiển thị alerts trong SPC Plan detail
 
+
+## Phase 50: CPK Alert, Alert History, WebSocket Alerts, AI Dashboard Fix
+
+- [ ] Thêm form cấu hình CPK alert trong trang SPC Plan detail
+- [ ] Tạo trang Alert History để xem lịch sử tất cả alerts với filters
+- [ ] Tích hợp WebSocket để nhận alerts realtime trên dashboard
+- [ ] Sửa lỗi trang AI Dashboard
+
+
+## Phase 50 - COMPLETED
+- [x] Thêm form cấu hình CPK alert trong trang SPC Plan detail (Ngưỡng CPK thấp, Ngưỡng CPK cao)
+- [x] Tạo trang Alert History để xem lịch sử tất cả alerts với filters (AlertHistory.tsx, route /alert-history)
+- [x] Tích hợp WebSocket/SSE để nhận alerts realtime trên dashboard (kpi_alert event, onKpiAlert handler)
+- [x] Sửa lỗi trang AI Dashboard (xóa route trùng lặp, sửa cú pháp route)
