@@ -505,6 +505,13 @@
       "when": 1766529151651,
       "tag": "0071_stormy_legion",
       "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "5",
+      "when": 1766540148298,
+      "tag": "0072_thin_grandmaster",
+      "breakpoints": true
     }
   ]
 }

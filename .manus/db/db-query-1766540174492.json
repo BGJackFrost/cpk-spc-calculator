@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS kpi_alert_stats (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  production_line_id INT,\n  machine_id INT,\n  alert_type ENUM('cpk_decline', 'oee_decline', 'cpk_below_warning', 'cpk_below_critical', 'oee_below_warning', 'oee_below_critical') NOT NULL,\n  severity ENUM('warning', 'critical') NOT NULL DEFAULT 'warning',\n  current_value DECIMAL(10, 4),\n  previous_value DECIMAL(10, 4),\n  threshold_value DECIMAL(10, 4),\n  change_percent DECIMAL(6, 2),\n  alert_message TEXT,\n  email_sent INT NOT NULL DEFAULT 0,\n  notification_sent INT NOT NULL DEFAULT 0,\n  acknowledged_by INT,\n  acknowledged_at TIMESTAMP NULL,\n  resolved_by INT,\n  resolved_at TIMESTAMP NULL,\n  resolution_notes TEXT,\n  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP\n)",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute CREATE TABLE IF NOT EXISTS kpi_alert_stats (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  production_line_id INT,\n  machine_id INT,\n  alert_type ENUM('cpk_decline', 'oee_decline', 'cpk_below_warning', 'cpk_below_critical', 'oee_below_warning', 'oee_below_critical') NOT NULL,\n  severity ENUM('warning', 'critical') NOT NULL DEFAULT 'warning',\n  current_value DECIMAL(10, 4),\n  previous_value DECIMAL(10, 4),\n  threshold_value DECIMAL(10, 4),\n  change_percent DECIMAL(6, 2),\n  alert_message TEXT,\n  email_sent INT NOT NULL DEFAULT 0,\n  notification_sent INT NOT NULL DEFAULT 0,\n  acknowledged_by INT,\n  acknowledged_at TIMESTAMP NULL,\n  resolved_by INT,\n  resolved_at TIMESTAMP NULL,\n  resolution_notes TEXT,\n  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP\n)",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1765
+}

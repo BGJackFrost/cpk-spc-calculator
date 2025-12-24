@@ -10344,6 +10344,186 @@ Hãy trả về JSON với format:
         return await testChannel(input.id);
       }),
   }),
+
+  // KPI Alert Stats Router - Thống kê cảnh báo KPI
+  kpiAlertStats: router({
+    // Get alert stats with filters
+    getAlerts: protectedProcedure
+      .input(z.object({
+        startDate: z.string().optional(),
+        endDate: z.string().optional(),
+        productionLineId: z.number().optional(),
+        alertType: z.string().optional(),
+        severity: z.string().optional(),
+        limit: z.number().default(100),
+        offset: z.number().default(0),
+      }).optional())
+      .query(async ({ input }) => {
+        const { getKpiAlertStats } = await import("./services/kpiAlertStatsService");
+        return await getKpiAlertStats({
+          startDate: input?.startDate ? new Date(input.startDate) : undefined,
+          endDate: input?.endDate ? new Date(input.endDate) : undefined,
+          productionLineId: input?.productionLineId,
+          alertType: input?.alertType,
+          severity: input?.severity,
+          limit: input?.limit || 100,
+          offset: input?.offset || 0,
+        });
+      }),
+
+    // Get summary statistics
+    getSummary: protectedProcedure
+      .input(z.object({ days: z.number().default(30) }).optional())
+      .query(async ({ input }) => {
+        const { getKpiAlertSummary } = await import("./services/kpiAlertStatsService");
+        return await getKpiAlertSummary(input?.days || 30);
+      }),
+
+    // Get daily stats
+    getByDay: protectedProcedure
+      .input(z.object({ days: z.number().default(7) }).optional())
+      .query(async ({ input }) => {
+        const { getKpiAlertStatsByDay } = await import("./services/kpiAlertStatsService");
+        return await getKpiAlertStatsByDay(input?.days || 7);
+      }),
+
+    // Get weekly stats
+    getByWeek: protectedProcedure
+      .input(z.object({ weeks: z.number().default(4) }).optional())
+      .query(async ({ input }) => {
+        const { getKpiAlertStatsByWeek } = await import("./services/kpiAlertStatsService");
+        return await getKpiAlertStatsByWeek(input?.weeks || 4);
+      }),
+
+    // Record new alert
+    recordAlert: protectedProcedure
+      .input(z.object({
+        productionLineId: z.number().optional(),
+        machineId: z.number().optional(),
+        alertType: z.enum(["cpk_decline", "oee_decline", "cpk_below_warning", "cpk_below_critical", "oee_below_warning", "oee_below_critical"]),
+        severity: z.enum(["warning", "critical"]),
+        currentValue: z.number().optional(),
+        previousValue: z.number().optional(),
+        thresholdValue: z.number().optional(),
+        changePercent: z.number().optional(),
+        alertMessage: z.string().optional(),
+        sendEmail: z.boolean().default(false),
+        sendNotification: z.boolean().default(true),
+      }))
+      .mutation(async ({ input }) => {
+        const { recordKpiAlert, sendKpiAlertPushNotification, sendKpiAlertEmail } = await import("./services/kpiAlertStatsService");
+        const alertId = await recordKpiAlert({
+          ...input,
+          emailSent: false,
+          notificationSent: false,
+        });
+        
+        if (alertId) {
+          // Send notification if requested
+          if (input.sendNotification) {
+            await sendKpiAlertPushNotification(alertId);
+          }
+          // Send email if requested (would need recipients)
+          // if (input.sendEmail) {
+          //   await sendKpiAlertEmail(alertId, recipients);
+          // }
+        }
+        
+        return { success: !!alertId, alertId };
+      }),
+
+    // Export to Excel
+    exportExcel: protectedProcedure
+      .input(z.object({
+        startDate: z.string().optional(),
+        endDate: z.string().optional(),
+        productionLineId: z.number().optional(),
+      }).optional())
+      .mutation(async ({ input }) => {
+        const { exportKpiAlertStatsToExcel } = await import("./services/kpiAlertStatsService");
+        const buffer = await exportKpiAlertStatsToExcel({
+          startDate: input?.startDate ? new Date(input.startDate) : undefined,
+          endDate: input?.endDate ? new Date(input.endDate) : undefined,
+          productionLineId: input?.productionLineId,
+        });
+        
+        // Upload to S3
+        const { storagePut } = await import("./storage");
+        const filename = `kpi-alert-stats-${Date.now()}.xlsx`;
+        const { url } = await storagePut(`exports/${filename}`, buffer, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        
+        return { url, filename };
+      }),
+
+    // Export to PDF (HTML)
+    exportPdf: protectedProcedure
+      .input(z.object({
+        startDate: z.string().optional(),
+        endDate: z.string().optional(),
+        productionLineId: z.number().optional(),
+      }).optional())
+      .mutation(async ({ input }) => {
+        const { exportKpiAlertStatsToPdf } = await import("./services/kpiAlertStatsService");
+        const html = await exportKpiAlertStatsToPdf({
+          startDate: input?.startDate ? new Date(input.startDate) : undefined,
+          endDate: input?.endDate ? new Date(input.endDate) : undefined,
+          productionLineId: input?.productionLineId,
+        });
+        
+        // Upload HTML as PDF-ready file
+        const { storagePut } = await import("./storage");
+        const filename = `kpi-alert-stats-${Date.now()}.html`;
+        const { url } = await storagePut(`exports/${filename}`, Buffer.from(html), "text/html");
+        
+        return { url, filename, html };
+      }),
+
+    // Acknowledge alert
+    acknowledgeAlert: protectedProcedure
+      .input(z.object({ alertId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const { getDb } = await import("./db");
+        const { kpiAlertStats } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+        
+        await db.update(kpiAlertStats)
+          .set({ 
+            acknowledgedBy: ctx.user.id,
+            acknowledgedAt: new Date()
+          })
+          .where(eq(kpiAlertStats.id, input.alertId));
+        
+        return { success: true };
+      }),
+
+    // Resolve alert
+    resolveAlert: protectedProcedure
+      .input(z.object({ 
+        alertId: z.number(),
+        resolutionNotes: z.string().optional()
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const { getDb } = await import("./db");
+        const { kpiAlertStats } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+        
+        await db.update(kpiAlertStats)
+          .set({ 
+            resolvedBy: ctx.user.id,
+            resolvedAt: new Date(),
+            resolutionNotes: input.resolutionNotes || null
+          })
+          .where(eq(kpiAlertStats.id, input.alertId));
+        
+        return { success: true };
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

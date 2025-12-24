@@ -5801,3 +5801,16 @@
 - [x] Tạo panel tùy chọn hiển thị biểu đồ
 - [ ] Lưu cấu hình biểu đồ theo user
 
+
+
+## Phase 44: KPI Alert Enhancement
+- [x] Export thống kê cảnh báo KPI ra Excel/PDF
+- [x] Scheduled job tự động ghi nhận cảnh báo KPI vào bảng kpi_alert_stats
+- [x] Notification push khi có cảnh báo KPI mới
+- [x] Tạo trang UI Thống kê Cảnh báo KPI (KpiAlertStats.tsx)
+- [x] Thêm bảng kpi_alert_stats vào schema
+- [x] Tạo service kpiAlertStatsService.ts với các chức năng CRUD và export
+- [x] Thêm router kpiAlertStats với các endpoints API
+- [x] Tích hợp biểu đồ xu hướng và phân bổ cảnh báo
+- [x] Thêm menu KPI Alert Stats vào sidebari
+

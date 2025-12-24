@@ -10,6 +10,7 @@ import { eq } from "drizzle-orm";
 import { sendEmail } from "../emailService";
 import { notifyOwner } from "../_core/notification";
 import { compareKPIWithPreviousWeek, getShiftKPIData } from "./shiftManagerService";
+import { recordKpiAlert, sendKpiAlertPushNotification } from "./kpiAlertStatsService";
 
 export interface KPIAlertConfig {
   cpkThreshold: number; // Ngưỡng giảm CPK (%, mặc định -5%)
@@ -198,6 +199,75 @@ export async function checkAndSendKPIAlerts(
           console.error("Failed to notify owner:", error);
         }
       }
+
+      // Ghi nhận cảnh báo vào database và gửi push notification
+      try {
+        if (cpkAlert) {
+          const alertId = await recordKpiAlert({
+            productionLineId,
+            machineId,
+            alertType: 'cpk_decline',
+            severity: 'warning',
+            currentValue: currentCpk || undefined,
+            previousValue: comparison.previousWeek.avgCpk || undefined,
+            changePercent: comparison.cpkChange || undefined,
+            alertMessage: `CPK giảm ${Math.abs(comparison.cpkChange || 0).toFixed(2)}% so với tuần trước`,
+            emailSent,
+            notificationSent: ownerNotified,
+          });
+          if (alertId) await sendKpiAlertPushNotification(alertId);
+        }
+        
+        if (oeeAlert) {
+          const alertId = await recordKpiAlert({
+            productionLineId,
+            machineId,
+            alertType: 'oee_decline',
+            severity: 'warning',
+            currentValue: currentOee || undefined,
+            previousValue: comparison.previousWeek.avgOee || undefined,
+            changePercent: comparison.oeeChange || undefined,
+            alertMessage: `OEE giảm ${Math.abs(comparison.oeeChange || 0).toFixed(2)}% so với tuần trước`,
+            emailSent,
+            notificationSent: ownerNotified,
+          });
+          if (alertId) await sendKpiAlertPushNotification(alertId);
+        }
+        
+        if (cpkAbsoluteAlert) {
+          const isCritical = currentCpk !== null && currentCpk < finalConfig.cpkCritical;
+          const alertId = await recordKpiAlert({
+            productionLineId,
+            machineId,
+            alertType: isCritical ? 'cpk_below_critical' : 'cpk_below_warning',
+            severity: isCritical ? 'critical' : 'warning',
+            currentValue: currentCpk || undefined,
+            thresholdValue: isCritical ? finalConfig.cpkCritical : finalConfig.cpkWarning,
+            alertMessage: `CPK (${currentCpk?.toFixed(3)}) dưới ngưỡng ${isCritical ? 'nghiêm trọng' : 'cảnh báo'}`,
+            emailSent,
+            notificationSent: ownerNotified,
+          });
+          if (alertId) await sendKpiAlertPushNotification(alertId);
+        }
+        
+        if (oeeAbsoluteAlert) {
+          const isCritical = currentOee !== null && currentOee < finalConfig.oeeCritical;
+          const alertId = await recordKpiAlert({
+            productionLineId,
+            machineId,
+            alertType: isCritical ? 'oee_below_critical' : 'oee_below_warning',
+            severity: isCritical ? 'critical' : 'warning',
+            currentValue: currentOee || undefined,
+            thresholdValue: isCritical ? finalConfig.oeeCritical : finalConfig.oeeWarning,
+            alertMessage: `OEE (${currentOee?.toFixed(1)}%) dưới ngưỡng ${isCritical ? 'nghiêm trọng' : 'cảnh báo'}`,
+            emailSent,
+            notificationSent: ownerNotified,
+          });
+          if (alertId) await sendKpiAlertPushNotification(alertId);
+        }
+      } catch (recordError) {
+        console.error("Failed to record KPI alert stats:", recordError);
+      }
     }
 
     return {
@@ -303,7 +373,7 @@ async function getAlertRecipients(): Promise<string[]> {
     // Lấy email từ cài đặt thông báo
     const settings = await db.select().from(emailNotificationSettings);
     const emails = settings
-      .filter((s) => s.email && s.cpkAlertEnabled === 1)
+      .filter((s) => s.email && s.notifyOnCpkViolation === 1)
       .map((s) => s.email!);
 
     // Nếu không có, lấy email của admin

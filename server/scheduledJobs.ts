@@ -3193,3 +3193,240 @@ export async function triggerScheduledKpiReports(): Promise<{
 }> {
   return await processScheduledKpiReports();
 }
+
+
+// ============================================================
+// KPI Alert Stats Recording Job
+// ============================================================
+
+/**
+ * Record KPI alerts to kpi_alert_stats table
+ * Runs every 15 minutes to check for KPI violations and record them
+ */
+export async function recordKpiAlertStats(): Promise<{
+  checked: boolean;
+  alertsRecorded: number;
+  notificationsSent: number;
+  errors: number;
+}> {
+  console.log('[ScheduledJob] Recording KPI alert stats...');
+  
+  let alertsRecorded = 0;
+  let notificationsSent = 0;
+  let errors = 0;
+  
+  try {
+    const db = await getDb();
+    if (!db) {
+      console.log('[ScheduledJob] Database not available');
+      return { checked: false, alertsRecorded: 0, notificationsSent: 0, errors: 1 };
+    }
+    
+    // Import services
+    const { recordKpiAlert, sendKpiAlertPushNotification } = await import('./services/kpiAlertStatsService');
+    const { checkAndSendKPIAlerts, getAllThresholds } = await import('./services/kpiAlertService');
+    const { compareKPIWithPreviousWeek } = await import('./services/shiftManagerService');
+    
+    // Get all production lines with thresholds
+    const thresholds = await getAllThresholds();
+    
+    // If no thresholds configured, check with default
+    if (thresholds.length === 0) {
+      console.log('[ScheduledJob] No custom thresholds configured, checking with defaults');
+      const result = await checkAndSendKPIAlerts();
+      
+      if (result.cpkAlert || result.oeeAlert || result.cpkAbsoluteAlert || result.oeeAbsoluteAlert) {
+        // Record the alert
+        const comparison = await compareKPIWithPreviousWeek({ date: new Date() });
+        
+        if (result.cpkAlert) {
+          const alertId = await recordKpiAlert({
+            alertType: 'cpk_decline',
+            severity: 'warning',
+            currentValue: comparison.currentWeek.avgCpk || undefined,
+            previousValue: comparison.previousWeek.avgCpk || undefined,
+            changePercent: comparison.cpkChange || undefined,
+            alertMessage: `CPK giảm ${comparison.cpkChange?.toFixed(2)}% so với tuần trước`,
+          });
+          if (alertId) {
+            alertsRecorded++;
+            await sendKpiAlertPushNotification(alertId);
+            notificationsSent++;
+          }
+        }
+        
+        if (result.oeeAlert) {
+          const alertId = await recordKpiAlert({
+            alertType: 'oee_decline',
+            severity: 'warning',
+            currentValue: comparison.currentWeek.avgOee || undefined,
+            previousValue: comparison.previousWeek.avgOee || undefined,
+            changePercent: comparison.oeeChange || undefined,
+            alertMessage: `OEE giảm ${comparison.oeeChange?.toFixed(2)}% so với tuần trước`,
+          });
+          if (alertId) {
+            alertsRecorded++;
+            await sendKpiAlertPushNotification(alertId);
+            notificationsSent++;
+          }
+        }
+        
+        if (result.cpkAbsoluteAlert) {
+          const severity = comparison.currentWeek.avgCpk !== null && comparison.currentWeek.avgCpk < result.thresholdUsed.cpkCritical ? 'critical' : 'warning';
+          const alertId = await recordKpiAlert({
+            alertType: severity === 'critical' ? 'cpk_below_critical' : 'cpk_below_warning',
+            severity,
+            currentValue: comparison.currentWeek.avgCpk || undefined,
+            thresholdValue: severity === 'critical' ? result.thresholdUsed.cpkCritical : result.thresholdUsed.cpkWarning,
+            alertMessage: `CPK (${comparison.currentWeek.avgCpk?.toFixed(3)}) dưới ngưỡng ${severity === 'critical' ? 'nghiêm trọng' : 'cảnh báo'}`,
+          });
+          if (alertId) {
+            alertsRecorded++;
+            await sendKpiAlertPushNotification(alertId);
+            notificationsSent++;
+          }
+        }
+        
+        if (result.oeeAbsoluteAlert) {
+          const severity = comparison.currentWeek.avgOee !== null && comparison.currentWeek.avgOee < result.thresholdUsed.oeeCritical ? 'critical' : 'warning';
+          const alertId = await recordKpiAlert({
+            alertType: severity === 'critical' ? 'oee_below_critical' : 'oee_below_warning',
+            severity,
+            currentValue: comparison.currentWeek.avgOee || undefined,
+            thresholdValue: severity === 'critical' ? result.thresholdUsed.oeeCritical : result.thresholdUsed.oeeWarning,
+            alertMessage: `OEE (${comparison.currentWeek.avgOee?.toFixed(1)}%) dưới ngưỡng ${severity === 'critical' ? 'nghiêm trọng' : 'cảnh báo'}`,
+          });
+          if (alertId) {
+            alertsRecorded++;
+            await sendKpiAlertPushNotification(alertId);
+            notificationsSent++;
+          }
+        }
+      }
+    } else {
+      // Check each production line with its custom threshold
+      for (const threshold of thresholds) {
+        try {
+          const result = await checkAndSendKPIAlerts(threshold.productionLineId, undefined, threshold.config);
+          
+          if (result.cpkAlert || result.oeeAlert || result.cpkAbsoluteAlert || result.oeeAbsoluteAlert) {
+            const comparison = await compareKPIWithPreviousWeek({
+              date: new Date(),
+              productionLineId: threshold.productionLineId,
+            });
+            
+            if (result.cpkAlert) {
+              const alertId = await recordKpiAlert({
+                productionLineId: threshold.productionLineId,
+                alertType: 'cpk_decline',
+                severity: 'warning',
+                currentValue: comparison.currentWeek.avgCpk || undefined,
+                previousValue: comparison.previousWeek.avgCpk || undefined,
+                changePercent: comparison.cpkChange || undefined,
+                alertMessage: `[${threshold.productionLineName}] CPK giảm ${comparison.cpkChange?.toFixed(2)}% so với tuần trước`,
+              });
+              if (alertId) {
+                alertsRecorded++;
+                await sendKpiAlertPushNotification(alertId);
+                notificationsSent++;
+              }
+            }
+            
+            if (result.oeeAlert) {
+              const alertId = await recordKpiAlert({
+                productionLineId: threshold.productionLineId,
+                alertType: 'oee_decline',
+                severity: 'warning',
+                currentValue: comparison.currentWeek.avgOee || undefined,
+                previousValue: comparison.previousWeek.avgOee || undefined,
+                changePercent: comparison.oeeChange || undefined,
+                alertMessage: `[${threshold.productionLineName}] OEE giảm ${comparison.oeeChange?.toFixed(2)}% so với tuần trước`,
+              });
+              if (alertId) {
+                alertsRecorded++;
+                await sendKpiAlertPushNotification(alertId);
+                notificationsSent++;
+              }
+            }
+            
+            if (result.cpkAbsoluteAlert) {
+              const severity = comparison.currentWeek.avgCpk !== null && comparison.currentWeek.avgCpk < result.thresholdUsed.cpkCritical ? 'critical' : 'warning';
+              const alertId = await recordKpiAlert({
+                productionLineId: threshold.productionLineId,
+                alertType: severity === 'critical' ? 'cpk_below_critical' : 'cpk_below_warning',
+                severity,
+                currentValue: comparison.currentWeek.avgCpk || undefined,
+                thresholdValue: severity === 'critical' ? result.thresholdUsed.cpkCritical : result.thresholdUsed.cpkWarning,
+                alertMessage: `[${threshold.productionLineName}] CPK (${comparison.currentWeek.avgCpk?.toFixed(3)}) dưới ngưỡng ${severity === 'critical' ? 'nghiêm trọng' : 'cảnh báo'}`,
+              });
+              if (alertId) {
+                alertsRecorded++;
+                await sendKpiAlertPushNotification(alertId);
+                notificationsSent++;
+              }
+            }
+            
+            if (result.oeeAbsoluteAlert) {
+              const severity = comparison.currentWeek.avgOee !== null && comparison.currentWeek.avgOee < result.thresholdUsed.oeeCritical ? 'critical' : 'warning';
+              const alertId = await recordKpiAlert({
+                productionLineId: threshold.productionLineId,
+                alertType: severity === 'critical' ? 'oee_below_critical' : 'oee_below_warning',
+                severity,
+                currentValue: comparison.currentWeek.avgOee || undefined,
+                thresholdValue: severity === 'critical' ? result.thresholdUsed.oeeCritical : result.thresholdUsed.oeeWarning,
+                alertMessage: `[${threshold.productionLineName}] OEE (${comparison.currentWeek.avgOee?.toFixed(1)}%) dưới ngưỡng ${severity === 'critical' ? 'nghiêm trọng' : 'cảnh báo'}`,
+              });
+              if (alertId) {
+                alertsRecorded++;
+                await sendKpiAlertPushNotification(alertId);
+                notificationsSent++;
+              }
+            }
+          }
+        } catch (lineError) {
+          console.error(`[ScheduledJob] Error checking line ${threshold.productionLineName}:`, lineError);
+          errors++;
+        }
+      }
+    }
+    
+    console.log(`[ScheduledJob] KPI alert stats recorded: ${alertsRecorded}, notifications sent: ${notificationsSent}, errors: ${errors}`);
+    
+    return {
+      checked: true,
+      alertsRecorded,
+      notificationsSent,
+      errors,
+    };
+  } catch (error) {
+    console.error('[ScheduledJob] Error recording KPI alert stats:', error);
+    return {
+      checked: false,
+      alertsRecorded,
+      notificationsSent,
+      errors: errors + 1,
+    };
+  }
+}
+
+/**
+ * Manually trigger KPI alert stats recording (for testing)
+ */
+export async function triggerRecordKpiAlertStats(): Promise<{
+  checked: boolean;
+  alertsRecorded: number;
+  notificationsSent: number;
+  errors: number;
+}> {
+  return await recordKpiAlertStats();
+}
+
+// Schedule KPI alert stats recording - runs every 15 minutes
+cron.schedule('0 */15 * * * *', async () => {
+  console.log('[ScheduledJob] Triggered: KPI alert stats recording');
+  await recordKpiAlertStats();
+}, {
+  timezone: 'Asia/Ho_Chi_Minh'
+});
+
+console.log('[ScheduledJob] Scheduled: KPI alert stats recording every 15 minutes (Asia/Ho_Chi_Minh)');

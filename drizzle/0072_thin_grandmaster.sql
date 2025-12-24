@@ -1,0 +1,21 @@
+CREATE TABLE `kpi_alert_stats` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`production_line_id` int,
+	`machine_id` int,
+	`alert_type` enum('cpk_decline','oee_decline','cpk_below_warning','cpk_below_critical','oee_below_warning','oee_below_critical') NOT NULL,
+	`severity` enum('warning','critical') NOT NULL DEFAULT 'warning',
+	`current_value` decimal(10,4),
+	`previous_value` decimal(10,4),
+	`threshold_value` decimal(10,4),
+	`change_percent` decimal(6,2),
+	`alert_message` text,
+	`email_sent` int NOT NULL DEFAULT 0,
+	`notification_sent` int NOT NULL DEFAULT 0,
+	`acknowledged_by` int,
+	`acknowledged_at` timestamp,
+	`resolved_by` int,
+	`resolved_at` timestamp,
+	`resolution_notes` text,
+	`created_at` timestamp NOT NULL DEFAULT (now()),
+	CONSTRAINT `kpi_alert_stats_id` PRIMARY KEY(`id`)
+);

@@ -3620,3 +3620,31 @@ export const weeklyKpiSnapshots = mysqlTable("weekly_kpi_snapshots", {
 });
 export type WeeklyKpiSnapshot = typeof weeklyKpiSnapshots.$inferSelect;
 export type InsertWeeklyKpiSnapshot = typeof weeklyKpiSnapshots.$inferInsert;
+
+
+/**
+ * KPI Alert Stats - Thống kê cảnh báo KPI
+ * Lưu trữ lịch sử cảnh báo KPI để phân tích và báo cáo
+ */
+export const kpiAlertStats = mysqlTable("kpi_alert_stats", {
+  id: int("id").autoincrement().primaryKey(),
+  productionLineId: int("production_line_id"),
+  machineId: int("machine_id"),
+  alertType: mysqlEnum("alert_type", ["cpk_decline", "oee_decline", "cpk_below_warning", "cpk_below_critical", "oee_below_warning", "oee_below_critical"]).notNull(),
+  severity: mysqlEnum("severity", ["warning", "critical"]).notNull().default("warning"),
+  currentValue: decimal("current_value", { precision: 10, scale: 4 }),
+  previousValue: decimal("previous_value", { precision: 10, scale: 4 }),
+  thresholdValue: decimal("threshold_value", { precision: 10, scale: 4 }),
+  changePercent: decimal("change_percent", { precision: 6, scale: 2 }),
+  alertMessage: text("alert_message"),
+  emailSent: int("email_sent").notNull().default(0),
+  notificationSent: int("notification_sent").notNull().default(0),
+  acknowledgedBy: int("acknowledged_by"),
+  acknowledgedAt: timestamp("acknowledged_at"),
+  resolvedBy: int("resolved_by"),
+  resolvedAt: timestamp("resolved_at"),
+  resolutionNotes: text("resolution_notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+export type KpiAlertStat = typeof kpiAlertStats.$inferSelect;
+export type InsertKpiAlertStat = typeof kpiAlertStats.$inferInsert;

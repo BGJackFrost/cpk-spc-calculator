@@ -156,6 +156,7 @@ import WeeklyKpiTrend from "./pages/WeeklyKpiTrend";
 import ScheduledKpiReports from "./pages/ScheduledKpiReports";
 import KpiThresholdSettings from "./pages/KpiThresholdSettings";
 import ScheduledKpiReportsPage from "./pages/ScheduledKpiReportsPage";
+import KpiAlertStats from "./pages/KpiAlertStats";
 
 function Router() {
   return (
@@ -202,6 +203,7 @@ function Router() {
       <Route path="/scheduled-kpi-reports" component={ScheduledKpiReports} />
       <Route path="/kpi-threshold-settings" component={KpiThresholdSettings} />
       <Route path="/scheduled-kpi-reports-management" component={ScheduledKpiReportsPage} />
+      <Route path="/kpi-alert-stats" component={KpiAlertStats} />
       <Route path="/spc-summary-report" component={SpcSummaryReport} />
       <Route path="/realtime-line" component={RealtimeLineDashboard} />
       <Route path="/realtime-machine-config" component={RealtimeMachineConfig} />
