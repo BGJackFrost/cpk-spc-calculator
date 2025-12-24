@@ -5814,3 +5814,81 @@
 - [x] Tích hợp biểu đồ xu hướng và phân bổ cảnh báo
 - [x] Thêm menu KPI Alert Stats vào sidebari
 
+
+
+## ═══════════════════════════════════════════════════════════════════
+## PHẦN MỚI - HOÀN THÀNH THEO TODO_NEW.MD (24/12/2024)
+## ═══════════════════════════════════════════════════════════════════
+
+### Phần I - Chức năng cốt lõi
+- [x] Lưu cấu hình biểu đồ theo user (userChartConfigs table)
+- [x] Cải tiến biểu đồ SPC với annotations và markers (chartAnnotations table)
+- [x] Dashboard giám sát IoT tập trung (IotDashboard.tsx, iotDashboardRouter)
+
+### Phần V - API Documentation
+- [x] OpenAPI/Swagger specification (openapi.yaml)
+- [x] API Documentation page (ApiDocumentation.tsx)
+- [x] Interactive API explorer
+
+### Phần VI.1 - Performance Optimization
+- [x] Query optimization service (performanceOptimization.ts)
+- [x] Data caching (cachedQueries.ts)
+- [x] Data archiving (dataArchiveConfigs table)
+- [x] Performance monitoring router (performanceRouter)
+
+### Phần VI.2 - Security Enhancement
+- [x] Security audit logging (securityAuditLogs table)
+- [x] Rate limiting (apiRateLimits table)
+- [x] Security service (securityService.ts)
+- [x] Security router (securityRouter)
+
+### Phần VI.3 - Integration & API
+- [x] ERP Integration (erpIntegrationConfigs table, erpIntegrationRouter)
+- [x] MES Integration (mesIntegration.ts)
+- [x] Webhook subscriptions (webhookSubscriptionsV2 table)
+
+### Phần VI.4 - AI/ML Features
+- [x] AI Anomaly Detection (aiAnomalyModels table)
+- [x] AI Predictions (aiPredictions table)
+- [x] AI Router (aiRouter)
+- [x] AI Dashboard (AiDashboard.tsx)
+- [x] CPK Prediction
+- [x] Trend Analysis
+
+### Database Tables Created
+- [x] user_chart_configs
+- [x] chart_annotations
+- [x] iot_devices
+- [x] iot_device_data
+- [x] iot_alarms
+- [x] data_archive_configs
+- [x] api_rate_limits
+- [x] webhook_subscriptions_v2
+- [x] ai_anomaly_models
+- [x] ai_predictions
+- [x] erp_integration_configs
+- [x] security_audit_logs
+
+### Routers Created
+- [x] chartConfigRouter
+- [x] iotDashboardRouter
+- [x] aiRouter
+- [x] erpIntegrationRouter
+- [x] securityRouter
+- [x] performanceRouter
+
+### Pages Created
+- [x] IotDashboard.tsx
+- [x] AiDashboard.tsx
+- [x] ErpIntegration.tsx
+- [x] ApiDocumentation.tsx
+
+### Services Created
+- [x] performanceOptimization.ts
+- [x] securityService.ts
+- [x] mesIntegration.ts
+- [x] aiMlService.ts
+
+### Tests
+- [x] AI Router tests (3 tests pass)
+- [x] ERP Integration tests (3 tests pass)

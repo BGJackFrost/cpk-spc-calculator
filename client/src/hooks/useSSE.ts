@@ -17,6 +17,9 @@ interface UseSSEOptions {
   onCpkAlert?: (data: any) => void;
   onPlanStatusChange?: (data: any) => void;
   onHeartbeat?: (data: any) => void;
+  onOeeUpdate?: (data: any) => void;
+  onMachineStatus?: (data: any) => void;
+  onSpcRuleViolation?: (data: any) => void;
   onError?: (error: Event) => void;
   onConnect?: () => void;
   onDisconnect?: () => void;

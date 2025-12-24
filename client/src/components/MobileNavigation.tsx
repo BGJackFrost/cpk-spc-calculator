@@ -15,7 +15,7 @@ import {
   Activity, Bell, ChevronDown, ChevronRight, Gauge, Factory,
   Wrench, Shield, Brain, Wifi, AlertTriangle, TrendingUp
 } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/_core/hooks/useAuth';
 
 interface NavItem {
   title: string;

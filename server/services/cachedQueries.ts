@@ -170,7 +170,7 @@ export async function getCachedWorkstationsByLine(productionLineId: number) {
     async () => {
       const db = await getDb();
       if (!db) return [];
-      return db.select().from(workstations).where(eq(workstations.productionLineId, productionLineId)).orderBy(asc(workstations.orderIndex));
+      return db.select().from(workstations).where(eq(workstations.productionLineId, productionLineId)).orderBy(asc(workstations.id));
     },
     TTL.MEDIUM
   );

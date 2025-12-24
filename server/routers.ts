@@ -9,6 +9,11 @@ import { permissionRouter as permissionModuleRouter } from "./routers/permission
 import { predictiveRouter } from "./routers/predictiveRouter";
 import { reportRouter as mmsReportRouter } from "./routers/reportRouter";
 import { alertRouter as mmsAlertRouter } from "./routers/alertRouter";
+import { iotDashboardRouter } from "./routers/iotDashboardRouter";
+import { aiRouter } from "./routers/aiRouter";
+import { erpIntegrationRouter } from "./routers/erpIntegrationRouter";
+import { securityRouter } from "./routers/securityRouter";
+import { chartConfigRouter } from "./routers/chartConfigRouter";
 import { mmsDashboardConfigRouter } from "./routers/dashboardConfigRouter";
 import { machineIntegrationRouter, machinePublicRouter } from "./routers/machineIntegrationRouter";
 import { systemRouter } from "./_core/systemRouter";
@@ -3933,6 +3938,11 @@ export const appRouter = router({
   mappingTemplate: mappingTemplateRouter,
   spc: spcRouter,
   alert: alertRouter,
+  iotDashboard: iotDashboardRouter,
+  ai: aiRouter,
+  erpIntegration: erpIntegrationRouter,
+  security: securityRouter,
+  chartConfig: chartConfigRouter,
   export: exportRouter,
   productionLine: productionLineRouter,
   workstation: workstationRouter,
@@ -5513,26 +5523,26 @@ export const appRouter = router({
           const { notifyOwner } = await import("./_core/notification");
           const success = await notifyOwner({
             title: log.subject || "License Notification",
-            content: log.content || "",
+            content: log.subject || "",
           });
           
           if (success) {
             await updateLicenseNotificationLog(input.id, {
               status: "sent",
               sentAt: new Date(),
-              retryCount: (log.retryCount || 0) + 1,
+              
             });
             return { success: true, message: "Notification sent successfully" };
           } else {
             await updateLicenseNotificationLog(input.id, {
-              retryCount: (log.retryCount || 0) + 1,
+              
               errorMessage: "Failed to send notification",
             });
             return { success: false, message: "Failed to send notification" };
           }
         } catch (error: any) {
           await updateLicenseNotificationLog(input.id, {
-            retryCount: (log.retryCount || 0) + 1,
+            
             errorMessage: error.message || "Unknown error",
           });
           throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: error.message || "Failed to retry notification" });
@@ -5563,19 +5573,19 @@ export const appRouter = router({
           try {
             const success = await notifyOwner({
               title: log.subject || "License Notification",
-              content: log.content || "",
+              content: log.subject || "",
             });
             
             if (success) {
               await updateLicenseNotificationLog(id, {
                 status: "sent",
                 sentAt: new Date(),
-                retryCount: (log.retryCount || 0) + 1,
+                
               });
               successCount++;
             } else {
               await updateLicenseNotificationLog(id, {
-                retryCount: (log.retryCount || 0) + 1,
+                
               });
               failCount++;
             }
@@ -10231,7 +10241,7 @@ Hãy trả về JSON với format:
           throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
         }
         const { getCheckHistory } = await import("./services/scheduledPerformanceChecks");
-        return getCheckHistory(input.limit);
+        return getCheckHistory({ limit: input.limit });
       }),
 
     // Get check stats

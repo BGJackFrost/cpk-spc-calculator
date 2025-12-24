@@ -86,15 +86,15 @@ export default function ScheduledKpiReportsPage() {
   const [selectedReportId, setSelectedReportId] = useState<number | null>(null);
 
   // Fetch data
-  const { data: reports, isLoading, refetch } = trpc.kpiDashboard.getScheduledReports.useQuery();
+  const { data: reports, isLoading, refetch } = trpc.shiftManager.getScheduledReports.useQuery();
   const { data: productionLines } = trpc.productionLine.list.useQuery();
-  const { data: reportHistory } = trpc.kpiDashboard.getReportHistory.useQuery(
+  const { data: reportHistory } = trpc.shiftManager.getReportHistory.useQuery(
     { reportId: selectedReportId!, limit: 20 },
     { enabled: !!selectedReportId }
   );
 
   // Mutations
-  const createMutation = trpc.kpiDashboard.createScheduledReport.useMutation({
+  const createMutation = trpc.shiftManager.createScheduledReport.useMutation({
     onSuccess: () => {
       toast.success("Đã tạo lịch báo cáo thành công");
       setIsDialogOpen(false);
@@ -106,7 +106,7 @@ export default function ScheduledKpiReportsPage() {
     },
   });
 
-  const updateMutation = trpc.kpiDashboard.updateScheduledReport.useMutation({
+  const updateMutation = trpc.shiftManager.updateScheduledReport.useMutation({
     onSuccess: () => {
       toast.success("Đã cập nhật lịch báo cáo thành công");
       setIsDialogOpen(false);
@@ -118,7 +118,7 @@ export default function ScheduledKpiReportsPage() {
     },
   });
 
-  const deleteMutation = trpc.kpiDashboard.deleteScheduledReport.useMutation({
+  const deleteMutation = trpc.shiftManager.deleteScheduledReport.useMutation({
     onSuccess: () => {
       toast.success("Đã xóa lịch báo cáo thành công");
       refetch();
@@ -128,7 +128,7 @@ export default function ScheduledKpiReportsPage() {
     },
   });
 
-  const toggleMutation = trpc.kpiDashboard.toggleScheduledReport.useMutation({
+  const toggleMutation = trpc.shiftManager.toggleScheduledReport.useMutation({
     onSuccess: () => {
       toast.success("Đã cập nhật trạng thái");
       refetch();
@@ -138,7 +138,7 @@ export default function ScheduledKpiReportsPage() {
     },
   });
 
-  const sendNowMutation = trpc.kpiDashboard.sendReportNow.useMutation({
+  const sendNowMutation = trpc.shiftManager.sendReportNow.useMutation({
     onSuccess: () => {
       toast.success("Đã gửi báo cáo thành công");
       refetch();

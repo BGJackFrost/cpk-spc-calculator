@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE ai_anomaly_models \nADD COLUMN IF NOT EXISTS trained_at DATETIME,\nADD COLUMN IF NOT EXISTS model_type VARCHAR(100) DEFAULT 'anomaly_detection',\nADD COLUMN IF NOT EXISTS target_metric VARCHAR(100),\nADD COLUMN IF NOT EXISTS training_data TEXT;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute ALTER TABLE ai_anomaly_models \nADD COLUMN IF NOT EXISTS trained_at DATETIME,\nADD COLUMN IF NOT EXISTS model_type VARCHAR(100) DEFAULT 'anomaly_detection',\nADD COLUMN IF NOT EXISTS target_metric VARCHAR(100),\nADD COLUMN IF NOT EXISTS training_data TEXT;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1931
+}

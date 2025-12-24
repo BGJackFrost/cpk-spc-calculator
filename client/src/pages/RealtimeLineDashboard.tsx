@@ -460,7 +460,7 @@ export default function RealtimeLineDashboard() {
         endDate: new Date(exportDateRange.to),
       });
       
-      const blob = new Blob([result.html], { type: 'text/html' });
+      const blob = new Blob([result.content], { type: 'text/html' });
       const url = URL.createObjectURL(blob);
       const printWindow = window.open(url, '_blank');
       if (printWindow) {

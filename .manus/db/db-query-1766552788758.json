@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `api_rate_limits` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `endpoint` varchar(255) NOT NULL,\n  `method` varchar(10) NOT NULL DEFAULT '*',\n  `max_requests` int NOT NULL DEFAULT 100,\n  `window_seconds` int NOT NULL DEFAULT 60,\n  `is_active` int NOT NULL DEFAULT 1,\n  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  CONSTRAINT `api_rate_limits_id` PRIMARY KEY(`id`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute CREATE TABLE IF NOT EXISTS `api_rate_limits` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `endpoint` varchar(255) NOT NULL,\n  `method` varchar(10) NOT NULL DEFAULT '*',\n  `max_requests` int NOT NULL DEFAULT 100,\n  `window_seconds` int NOT NULL DEFAULT 60,\n  `is_active` int NOT NULL DEFAULT 1,\n  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  CONSTRAINT `api_rate_limits_id` PRIMARY KEY(`id`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1525
+}

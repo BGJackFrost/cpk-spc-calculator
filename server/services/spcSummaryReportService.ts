@@ -10,6 +10,14 @@ import { getDefaultReportTemplate } from "../db";
 
 export type PeriodType = "shift" | "day" | "week" | "month";
 
+// Helper function to determine shift name based on time
+function getShiftName(date: Date): string {
+  const hour = date.getHours();
+  if (hour >= 6 && hour < 14) return "Ca sáng";
+  if (hour >= 14 && hour < 22) return "Ca chiều";
+  return "Ca đêm";
+}
+
 export interface SpcSummaryReportData {
   title: string;
   subtitle: string;
@@ -129,11 +137,11 @@ export async function getSpcSummaryReportData(
     productName = product?.name || "";
   }
 
-  if (plan.lineId) {
+  if (plan.mappingId) {
     const [line] = await db
       .select()
       .from(productionLines)
-      .where(eq(productionLines.id, plan.lineId))
+      .where(eq(productionLines.id, plan.mappingId))
       .limit(1);
     lineName = line?.name || "";
   }
@@ -154,10 +162,10 @@ export async function getSpcSummaryReportData(
 
   // Calculate summary statistics
   const cpkValues = summaryData
-    .map((d) => d.avgCpk)
+    .map((d) => d.cpk)
     .filter((v): v is number => v !== null);
   const cpValues = summaryData
-    .map((d) => d.avgCp)
+    .map((d) => d.cp)
     .filter((v): v is number => v !== null);
 
   const avgCpk = cpkValues.length > 0
@@ -179,7 +187,7 @@ export async function getSpcSummaryReportData(
   let criticalCount = 0;
 
   summaryData.forEach((d) => {
-    const status = getCpkStatus(d.avgCpk);
+    const status = getCpkStatus(d.cpk);
     switch (status) {
       case "excellent": excellentCount++; break;
       case "good": goodCount++; break;
@@ -193,25 +201,25 @@ export async function getSpcSummaryReportData(
   const periodData = summaryData.map((d) => ({
     periodStart: d.periodStart,
     periodEnd: d.periodEnd,
-    shiftName: d.shiftName || undefined,
-    cpk: d.avgCpk,
-    cp: d.avgCp,
-    ppk: d.avgPpk,
-    mean: d.avgMean,
-    stdDev: d.avgStdDev,
+    shiftName: getShiftName(d.periodStart) || undefined,
+    cpk: d.cpk,
+    cp: d.cp,
+    ppk: d.ppk,
+    mean: d.mean,
+    stdDev: d.stdDev,
     sampleCount: d.sampleCount || 0,
-    status: getCpkStatus(d.avgCpk),
+    status: getCpkStatus(d.cpk),
   }));
 
   // Calculate shift comparison if period type is shift
   let shiftComparison: SpcSummaryReportData["shiftComparison"];
   if (periodType === "shift") {
-    const morningData = summaryData.filter((d) => d.shiftName === "Ca sáng");
-    const afternoonData = summaryData.filter((d) => d.shiftName === "Ca chiều");
-    const nightData = summaryData.filter((d) => d.shiftName === "Ca đêm");
+    const morningData = summaryData.filter((d) => getShiftName(d.periodStart) === "Ca sáng");
+    const afternoonData = summaryData.filter((d) => getShiftName(d.periodStart) === "Ca chiều");
+    const nightData = summaryData.filter((d) => getShiftName(d.periodStart) === "Ca đêm");
 
     const calcAvg = (data: typeof summaryData) => {
-      const values = data.map((d) => d.avgCpk).filter((v): v is number => v !== null);
+      const values = data.map((d) => d.cpk).filter((v): v is number => v !== null);
       return values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : null;
     };
 

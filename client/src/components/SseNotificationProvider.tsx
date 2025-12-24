@@ -281,7 +281,7 @@ export function SseNotificationProvider({ children }: SseNotificationProviderPro
         );
       }
     },
-    onMachineStatusChange: (data: any) => {
+    onMachineStatus: (data: any) => {
       if (!notificationPrefs.machine_status_change) return;
       
       // Play sound for downtime events

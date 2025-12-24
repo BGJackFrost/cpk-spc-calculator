@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 
 export interface Notification {
   id: string;
-  type: "cpk_warning" | "cpk_critical" | "spc_violation" | "plan_status" | "info";
+  type: "cpk_warning" | "cpk_critical" | "spc_violation" | "plan_status" | "info" | "oee_alert" | "machine_status" | "spc_rule_violation";
   title: string;
   message: string;
   timestamp: Date;
@@ -23,6 +23,11 @@ export interface Notification {
     productCode?: string;
     stationName?: string;
     planName?: string;
+    oee?: number;
+    machineName?: string;
+    machineStatus?: string;
+    rule?: string;
+    [key: string]: unknown;
   };
 }
 

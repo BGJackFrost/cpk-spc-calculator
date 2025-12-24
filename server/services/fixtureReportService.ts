@@ -9,7 +9,7 @@ import { fixtures, machines, spcAnalysisHistory, spcSummaryStats } from "../../d
 import { eq, and, gte, lte, desc, inArray } from "drizzle-orm";
 
 export interface FixtureComparisonData {
-  fixtureId: number;
+  mappingId: number;
   fixtureName: string;
   machineName: string;
   avgCpk: number | null;
@@ -63,7 +63,7 @@ function getCpkStatusLabel(status: string): string {
  * Get Fixture Comparison Data
  */
 export async function getFixtureComparisonData(
-  fixtureIds: number[],
+  mappingIds: number[],
   startDate: Date,
   endDate: Date
 ): Promise<FixtureReportData> {
@@ -78,7 +78,7 @@ export async function getFixtureComparisonData(
       machineId: fixtures.machineId,
     })
     .from(fixtures)
-    .where(inArray(fixtures.id, fixtureIds));
+    .where(inArray(fixtures.id, mappingIds));
 
   // Get machine names
   const machineIds = [...new Set(fixtureList.map((f) => f.machineId).filter(Boolean))];
@@ -101,7 +101,7 @@ export async function getFixtureComparisonData(
       .from(spcAnalysisHistory)
       .where(
         and(
-          eq(spcAnalysisHistory.fixtureId, fixture.id),
+          eq(spcAnalysisHistory.mappingId, fixture.id),
           gte(spcAnalysisHistory.createdAt, startDate),
           lte(spcAnalysisHistory.createdAt, endDate)
         )
@@ -109,7 +109,7 @@ export async function getFixtureComparisonData(
 
     if (analysisData.length === 0) {
       fixtureData.push({
-        fixtureId: fixture.id,
+        mappingId: fixture.id,
         fixtureName: fixture.name,
         machineName: fixture.machineId ? machineMap.get(fixture.machineId) || "N/A" : "N/A",
         avgCpk: null,
@@ -153,7 +153,7 @@ export async function getFixtureComparisonData(
     const oocRate = sampleCount > 0 ? (oocCount / sampleCount) * 100 : 0;
 
     fixtureData.push({
-      fixtureId: fixture.id,
+      mappingId: fixture.id,
       fixtureName: fixture.name,
       machineName: fixture.machineId ? machineMap.get(fixture.machineId) || "N/A" : "N/A",
       avgCpk,
@@ -212,11 +212,11 @@ export async function getFixtureComparisonData(
  * Generate HTML Report for Fixture Comparison
  */
 export async function generateFixtureReportHtml(
-  fixtureIds: number[],
+  mappingIds: number[],
   startDate: Date,
   endDate: Date
 ): Promise<string> {
-  const data = await getFixtureComparisonData(fixtureIds, startDate, endDate);
+  const data = await getFixtureComparisonData(mappingIds, startDate, endDate);
 
   const formatDate = (d: Date) => d.toLocaleDateString("vi-VN");
   const formatNumber = (n: number | null, decimals = 3) =>
@@ -390,11 +390,11 @@ export async function generateFixtureReportHtml(
  * Generate Excel Report for Fixture Comparison
  */
 export async function generateFixtureReportExcel(
-  fixtureIds: number[],
+  mappingIds: number[],
   startDate: Date,
   endDate: Date
 ): Promise<Buffer> {
-  const data = await getFixtureComparisonData(fixtureIds, startDate, endDate);
+  const data = await getFixtureComparisonData(mappingIds, startDate, endDate);
 
   const workbook = new ExcelJS.Workbook();
   workbook.creator = "SPC/CPK System";

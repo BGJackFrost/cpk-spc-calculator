@@ -35,6 +35,7 @@ import JigManagement from "./pages/JigManagement";
 import MultiAnalysis from "./pages/MultiAnalysis";
 import ProductionLineComparison from "./pages/ProductionLineComparison";
 import About from "./pages/About";
+import ApiDocumentation from "@/pages/ApiDocumentation";
 import Profile from "./pages/Profile";
 import RulesManagement from "./pages/RulesManagement";
 import SpcPlanVisualization from "./pages/SpcPlanVisualization";
@@ -283,6 +284,7 @@ function Router() {
       <Route path="/multi-analysis" component={MultiAnalysis} />
       <Route path="/line-comparison" component={ProductionLineComparison} />
       <Route path="/about" component={About} />
+          <Route path="/api-docs" component={ApiDocumentation} />
       <Route path="/profile" component={Profile} />
       <Route path="/rules" component={RulesManagement} />
       <Route path="/webhooks" component={WebhookManagement} />
@@ -311,6 +313,8 @@ function Router() {
       <Route path="/system-health" component={SystemHealthDashboard} />
       <Route path="/security-dashboard" component={SecurityDashboard} />
       <Route path="/iot-dashboard" component={IoTDashboard} />
+          <Route path="/ai-dashboard" element={<AiDashboard />} />
+          <Route path="/erp-integration" element={<ErpIntegration />} />
       <Route path="/ai-ml-dashboard" component={AiMlDashboard} />
       <Route path="/advanced-analytics-dashboard" component={AdvancedAnalyticsDashboard} />
       <Route path="/notification-preferences" component={NotificationPreferences} />

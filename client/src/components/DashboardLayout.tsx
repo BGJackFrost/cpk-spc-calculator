@@ -339,11 +339,11 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { user, isLoading } = useAuth();
+  const { user, loading } = useAuth();
   const [sidebarWidth, setSidebarWidth] = useState(280);
   const { systemConfig, activeSystem } = useSystem();
 
-  if (isLoading) {
+  if (loading) {
     return <DashboardLayoutSkeleton />;
   }
 

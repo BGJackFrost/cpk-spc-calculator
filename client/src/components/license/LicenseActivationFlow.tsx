@@ -92,7 +92,7 @@ export default function LicenseActivationFlow({ open, onOpenChange, licenseKey: 
   const [step, setStep] = useState(1); // 1: Enter Key, 2: Choose Mode, 3: Activate, 4: Success
   const [licenseKey, setLicenseKey] = useState(initialKey || "");
   const [activationMode, setActivationMode] = useState<"online" | "offline">("online");
-  const [hardwareFingerprint, setHardwareFingerprint] = useState("");
+  const [deviceId, setHardwareFingerprint] = useState("");
   const [offlineLicenseFile, setOfflineLicenseFile] = useState("");
   const [isGeneratingFingerprint, setIsGeneratingFingerprint] = useState(false);
   const [activationResult, setActivationResult] = useState<any>(null);
@@ -140,16 +140,14 @@ export default function LicenseActivationFlow({ open, onOpenChange, licenseKey: 
   };
   
   const copyFingerprint = () => {
-    navigator.clipboard.writeText(hardwareFingerprint);
+    navigator.clipboard.writeText(deviceId);
     toast.success("Đã sao chép Hardware Fingerprint");
   };
   
   const handleOnlineActivation = async () => {
     try {
       const result = await activateMutation.mutateAsync({
-        licenseKey,
-        hardwareFingerprint,
-        activationMode: "online"
+        licenseKey
       });
       setActivationResult(result);
       setStep(4);
@@ -164,7 +162,7 @@ export default function LicenseActivationFlow({ open, onOpenChange, licenseKey: 
     try {
       const result = await generateOfflineMutation.mutateAsync({
         licenseKey,
-        hardwareFingerprint
+        hardwareFingerprint: deviceId
       });
       setOfflineLicenseFile(result.offlineLicenseFile);
       toast.success("Đã tạo file license offline");
@@ -182,16 +180,13 @@ export default function LicenseActivationFlow({ open, onOpenChange, licenseKey: 
     try {
       const result = await validateOfflineMutation.mutateAsync({
         offlineLicenseFile,
-        hardwareFingerprint
+        hardwareFingerprint: deviceId
       });
       
       if (result.valid) {
         // Activate with offline mode
         const activateResult = await activateMutation.mutateAsync({
-          licenseKey,
-          hardwareFingerprint,
-          activationMode: "offline",
-          offlineLicenseFile
+          licenseKey
         });
         setActivationResult(activateResult);
         setStep(4);
@@ -336,7 +331,7 @@ export default function LicenseActivationFlow({ open, onOpenChange, licenseKey: 
                 <CardContent>
                   <div className="flex items-center gap-2">
                     <Input 
-                      value={hardwareFingerprint}
+                      value={deviceId}
                       readOnly
                       className="font-mono text-sm"
                     />
@@ -446,7 +441,7 @@ export default function LicenseActivationFlow({ open, onOpenChange, licenseKey: 
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Hardware Fingerprint:</span>
-                        <span className="font-mono text-xs">{hardwareFingerprint.substring(0, 16)}...</span>
+                        <span className="font-mono text-xs">{deviceId.substring(0, 16)}...</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Phương thức:</span>

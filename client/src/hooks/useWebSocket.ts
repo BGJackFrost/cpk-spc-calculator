@@ -65,10 +65,15 @@ export interface ShiftComparisonData {
   timestamp: string;
 }
 
-interface WebSocketMessage {
+export interface WebSocketMessage {
   type: string;
   channel?: string;
   data?: any;
+  // Additional fields for specific message types
+  planId?: number;
+  machineId?: number;
+  fixtureId?: number;
+  [key: string]: unknown;
 }
 
 interface UseWebSocketOptions {

@@ -30,10 +30,8 @@ interface ThresholdFormData {
   cpkCritical: number;
   oeeWarning: number;
   oeeCritical: number;
-  cpkDeclineThreshold: number;
-  oeeDeclineThreshold: number;
-  enableEmailAlert: boolean;
-  enableOwnerNotification: boolean;
+  weeklyDeclineThreshold: number;
+  emailAlertEnabled: boolean;
   alertRecipients: string;
 }
 
@@ -43,10 +41,8 @@ const DEFAULT_THRESHOLD: ThresholdFormData = {
   cpkCritical: 1.0,
   oeeWarning: 75,
   oeeCritical: 60,
-  cpkDeclineThreshold: 5,
-  oeeDeclineThreshold: 5,
-  enableEmailAlert: true,
-  enableOwnerNotification: true,
+  weeklyDeclineThreshold: 5,
+  emailAlertEnabled: true,
   alertRecipients: "",
 };
 
@@ -57,12 +53,12 @@ export default function KpiThresholdSettings() {
   const [selectedTab, setSelectedTab] = useState("list");
 
   // Fetch data
-  const { data: thresholds, isLoading, refetch } = trpc.kpiDashboard.getAlertThresholds.useQuery();
+  const { data: thresholds, isLoading, refetch } = trpc.shiftManager.getAlertThresholds.useQuery();
   const { data: productionLines } = trpc.productionLine.list.useQuery();
-  const { data: linesWithoutThresholds } = trpc.kpiDashboard.getLinesWithoutThresholds.useQuery();
+  const { data: linesWithoutThresholds } = trpc.shiftManager.getLinesWithoutThresholds.useQuery();
 
   // Mutations
-  const createMutation = trpc.kpiDashboard.createAlertThreshold.useMutation({
+  const createMutation = trpc.shiftManager.createAlertThreshold.useMutation({
     onSuccess: () => {
       toast.success("Đã tạo ngưỡng KPI thành công");
       setIsDialogOpen(false);
@@ -74,7 +70,7 @@ export default function KpiThresholdSettings() {
     },
   });
 
-  const updateMutation = trpc.kpiDashboard.updateAlertThreshold.useMutation({
+  const updateMutation = trpc.shiftManager.updateAlertThreshold.useMutation({
     onSuccess: () => {
       toast.success("Đã cập nhật ngưỡng KPI thành công");
       setIsDialogOpen(false);
@@ -86,7 +82,7 @@ export default function KpiThresholdSettings() {
     },
   });
 
-  const deleteMutation = trpc.kpiDashboard.deleteAlertThreshold.useMutation({
+  const deleteMutation = trpc.shiftManager.deleteAlertThreshold.useMutation({
     onSuccess: () => {
       toast.success("Đã xóa ngưỡng KPI thành công");
       refetch();
@@ -109,10 +105,8 @@ export default function KpiThresholdSettings() {
       cpkCritical: parseFloat(threshold.cpkCritical) || 1.0,
       oeeWarning: parseFloat(threshold.oeeWarning) || 75,
       oeeCritical: parseFloat(threshold.oeeCritical) || 60,
-      cpkDeclineThreshold: parseFloat(threshold.cpkDeclineThreshold) || 5,
-      oeeDeclineThreshold: parseFloat(threshold.oeeDeclineThreshold) || 5,
-      enableEmailAlert: threshold.enableEmailAlert ?? true,
-      enableOwnerNotification: threshold.enableOwnerNotification ?? true,
+      weeklyDeclineThreshold: parseFloat(threshold.weeklyDeclineThreshold) || 5,
+      emailAlertEnabled: threshold.emailAlertEnabled ?? true,
       alertRecipients: threshold.alertRecipients || "",
     });
     setIsDialogOpen(true);
@@ -136,10 +130,8 @@ export default function KpiThresholdSettings() {
       cpkCritical: formData.cpkCritical,
       oeeWarning: formData.oeeWarning,
       oeeCritical: formData.oeeCritical,
-      cpkDeclineThreshold: formData.cpkDeclineThreshold,
-      oeeDeclineThreshold: formData.oeeDeclineThreshold,
-      enableEmailAlert: formData.enableEmailAlert,
-      enableOwnerNotification: formData.enableOwnerNotification,
+      weeklyDeclineThreshold: formData.weeklyDeclineThreshold,
+      emailAlertEnabled: formData.emailAlertEnabled,
       alertRecipients: formData.alertRecipients,
     };
 
@@ -164,10 +156,8 @@ export default function KpiThresholdSettings() {
           cpkCritical: parseFloat(threshold.cpkCritical),
           oeeWarning: parseFloat(threshold.oeeWarning),
           oeeCritical: parseFloat(threshold.oeeCritical),
-          cpkDeclineThreshold: parseFloat(threshold.cpkDeclineThreshold),
-          oeeDeclineThreshold: parseFloat(threshold.oeeDeclineThreshold),
-          enableEmailAlert: threshold.enableEmailAlert,
-          enableOwnerNotification: threshold.enableOwnerNotification,
+          weeklyDeclineThreshold: parseFloat(threshold.weeklyDeclineThreshold),
+          emailAlertEnabled: threshold.emailAlertEnabled,
           alertRecipients: threshold.alertRecipients || "",
         });
       });
@@ -279,11 +269,11 @@ export default function KpiThresholdSettings() {
                       <Input
                         type="number"
                         step="0.1"
-                        value={formData.cpkDeclineThreshold}
-                        onChange={(e) => setFormData({ ...formData, cpkDeclineThreshold: parseFloat(e.target.value) })}
+                        value={formData.weeklyDeclineThreshold}
+                        onChange={(e) => setFormData({ ...formData, weeklyDeclineThreshold: parseFloat(e.target.value) })}
                       />
                       <p className="text-xs text-muted-foreground">
-                        Cảnh báo khi CPK giảm hơn {formData.cpkDeclineThreshold}% so với tuần trước
+                        Cảnh báo khi CPK giảm hơn {formData.weeklyDeclineThreshold}% so với tuần trước
                       </p>
                     </div>
                   </div>
@@ -323,11 +313,11 @@ export default function KpiThresholdSettings() {
                       <Input
                         type="number"
                         step="0.1"
-                        value={formData.oeeDeclineThreshold}
-                        onChange={(e) => setFormData({ ...formData, oeeDeclineThreshold: parseFloat(e.target.value) })}
+                        value={formData.weeklyDeclineThreshold}
+                        onChange={(e) => setFormData({ ...formData, weeklyDeclineThreshold: parseFloat(e.target.value) })}
                       />
                       <p className="text-xs text-muted-foreground">
-                        Cảnh báo khi OEE giảm hơn {formData.oeeDeclineThreshold}% so với tuần trước
+                        Cảnh báo khi OEE giảm hơn {formData.weeklyDeclineThreshold}% so với tuần trước
                       </p>
                     </div>
                   </div>
@@ -343,8 +333,8 @@ export default function KpiThresholdSettings() {
                         <p className="text-xs text-muted-foreground">Gửi email khi KPI vi phạm ngưỡng</p>
                       </div>
                       <Switch
-                        checked={formData.enableEmailAlert}
-                        onCheckedChange={(checked) => setFormData({ ...formData, enableEmailAlert: checked })}
+                        checked={formData.emailAlertEnabled}
+                        onCheckedChange={(checked) => setFormData({ ...formData, emailAlertEnabled: checked })}
                       />
                     </div>
                     <div className="flex items-center justify-between">
@@ -353,8 +343,6 @@ export default function KpiThresholdSettings() {
                         <p className="text-xs text-muted-foreground">Gửi thông báo cho chủ sở hữu hệ thống</p>
                       </div>
                       <Switch
-                        checked={formData.enableOwnerNotification}
-                        onCheckedChange={(checked) => setFormData({ ...formData, enableOwnerNotification: checked })}
                       />
                     </div>
                     <div className="space-y-2">
@@ -465,18 +453,16 @@ export default function KpiThresholdSettings() {
                           </TableCell>
                           <TableCell className="text-center">
                             <span className="text-sm text-muted-foreground">
-                              CPK: {parseFloat(threshold.cpkDeclineThreshold).toFixed(1)}% | 
-                              OEE: {parseFloat(threshold.oeeDeclineThreshold).toFixed(1)}%
+                              CPK: {parseFloat(threshold.weeklyDeclineThreshold).toFixed(1)}% | 
+                              OEE: {parseFloat(threshold.weeklyDeclineThreshold).toFixed(1)}%
                             </span>
                           </TableCell>
                           <TableCell className="text-center">
                             <div className="flex items-center justify-center gap-1">
-                              {threshold.enableEmailAlert && (
+                              {threshold.emailAlertEnabled && (
                                 <Badge variant="secondary" className="text-xs">Email</Badge>
                               )}
-                              {threshold.enableOwnerNotification && (
-                                <Badge variant="secondary" className="text-xs">Owner</Badge>
-                              )}
+                              <Badge variant="secondary" className="text-xs">Owner</Badge>
                             </div>
                           </TableCell>
                           <TableCell className="text-right">

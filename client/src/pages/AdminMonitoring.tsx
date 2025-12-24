@@ -472,7 +472,7 @@ export default function AdminMonitoring() {
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="text-2xl font-bold">{rateLimitStats?.alertsTriggered ?? 0}</div>
+                      <div className="text-2xl font-bold">{(rateLimitStats as any)?.alertsTriggered ?? 0}</div>
                       <p className="text-xs text-muted-foreground">triggered</p>
                     </CardContent>
                   </Card>

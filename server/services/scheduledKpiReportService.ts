@@ -26,7 +26,7 @@ export interface ScheduledKpiReport {
   dayOfWeek: number | null;
   dayOfMonth: number | null;
   timeOfDay: string;
-  productionLineIds: number[] | null;
+  mappingIds: number[] | null;
   reportType: "shift_summary" | "kpi_comparison" | "trend_analysis" | "full_report";
   includeCharts: boolean;
   includeDetails: boolean;
@@ -48,7 +48,7 @@ export interface CreateScheduledReportInput {
   dayOfWeek?: number;
   dayOfMonth?: number;
   timeOfDay?: string;
-  productionLineIds?: number[];
+  mappingIds?: number[];
   reportType?: "shift_summary" | "kpi_comparison" | "trend_analysis" | "full_report";
   includeCharts?: boolean;
   includeDetails?: boolean;
@@ -64,7 +64,7 @@ export interface UpdateScheduledReportInput {
   dayOfWeek?: number;
   dayOfMonth?: number;
   timeOfDay?: string;
-  productionLineIds?: number[];
+  mappingIds?: number[];
   reportType?: "shift_summary" | "kpi_comparison" | "trend_analysis" | "full_report";
   includeCharts?: boolean;
   includeDetails?: boolean;
@@ -87,7 +87,7 @@ export async function getScheduledKpiReports(): Promise<ScheduledKpiReport[]> {
 
   return results.map(r => ({
     ...r,
-    productionLineIds: r.productionLineIds ? JSON.parse(r.productionLineIds) : null,
+    mappingIds: r.mappingIds ? JSON.parse(r.mappingIds) : null,
     recipients: r.recipients.split(",").map(e => e.trim()).filter(Boolean),
     ccRecipients: r.ccRecipients ? r.ccRecipients.split(",").map(e => e.trim()).filter(Boolean) : [],
     includeCharts: r.includeCharts === 1,
@@ -114,7 +114,7 @@ export async function getScheduledKpiReportById(id: number): Promise<ScheduledKp
   const r = results[0];
   return {
     ...r,
-    productionLineIds: r.productionLineIds ? JSON.parse(r.productionLineIds) : null,
+    mappingIds: r.mappingIds ? JSON.parse(r.mappingIds) : null,
     recipients: r.recipients.split(",").map(e => e.trim()).filter(Boolean),
     ccRecipients: r.ccRecipients ? r.ccRecipients.split(",").map(e => e.trim()).filter(Boolean) : [],
     includeCharts: r.includeCharts === 1,
@@ -137,7 +137,7 @@ export async function createScheduledKpiReport(input: CreateScheduledReportInput
     dayOfWeek: input.dayOfWeek ?? null,
     dayOfMonth: input.dayOfMonth ?? null,
     timeOfDay: input.timeOfDay || "08:00",
-    productionLineIds: input.productionLineIds ? JSON.stringify(input.productionLineIds) : null,
+    mappingIds: input.mappingIds ? JSON.stringify(input.mappingIds) : null,
     reportType: input.reportType || "shift_summary",
     includeCharts: input.includeCharts !== false ? 1 : 0,
     includeDetails: input.includeDetails !== false ? 1 : 0,
@@ -169,7 +169,7 @@ export async function updateScheduledKpiReport(id: number, input: UpdateSchedule
   if (input.dayOfWeek !== undefined) updateData.dayOfWeek = input.dayOfWeek;
   if (input.dayOfMonth !== undefined) updateData.dayOfMonth = input.dayOfMonth;
   if (input.timeOfDay !== undefined) updateData.timeOfDay = input.timeOfDay;
-  if (input.productionLineIds !== undefined) updateData.productionLineIds = JSON.stringify(input.productionLineIds);
+  if (input.mappingIds !== undefined) updateData.mappingIds = JSON.stringify(input.mappingIds);
   if (input.reportType !== undefined) updateData.reportType = input.reportType;
   if (input.includeCharts !== undefined) updateData.includeCharts = input.includeCharts ? 1 : 0;
   if (input.includeDetails !== undefined) updateData.includeDetails = input.includeDetails ? 1 : 0;
@@ -265,10 +265,10 @@ async function generateReportContent(
 
   // Get production lines
   let lineNames: string[] = [];
-  if (report.productionLineIds && report.productionLineIds.length > 0 && db) {
+  if (report.mappingIds && report.mappingIds.length > 0 && db) {
     const lines = await db.select({ name: productionLines.name })
       .from(productionLines)
-      .where(sql`${productionLines.id} IN (${report.productionLineIds.join(",")})`);
+      .where(sql`${productionLines.id} IN (${report.mappingIds.join(",")})`);
     lineNames = lines.map(l => l.name);
   } else {
     lineNames = ["Tất cả dây chuyền"];
@@ -304,7 +304,7 @@ async function generateReportContent(
                 <td>${s.shiftName}</td>
                 <td>${s.avgCpk?.toFixed(3) || "N/A"}</td>
                 <td>${s.avgOee?.toFixed(1) || "N/A"}%</td>
-                <td>${s.defectRate.toFixed(2)}%</td>
+                <td>${s.defectRate || 0}%</td>
                 <td>${s.sampleCount}</td>
                 <td style="color: ${s.status === 'critical' ? 'red' : s.status === 'warning' ? 'orange' : 'green'};">
                   ${s.status.toUpperCase()}
@@ -321,7 +321,7 @@ async function generateReportContent(
       subject = `[KPI Report] So sánh KPI tuần - ${now.toLocaleDateString("vi-VN")}`;
       
       const trendData = await getWeeklyTrendData(
-        report.productionLineIds?.[0] || null,
+        report.mappingIds?.[0] || null,
         4
       );
       summary.weeklyTrend = trendData;
@@ -368,7 +368,7 @@ async function generateReportContent(
       subject = `[KPI Report] Phân tích xu hướng - ${now.toLocaleDateString("vi-VN")}`;
       
       const trendData = await getWeeklyTrendData(
-        report.productionLineIds?.[0] || null,
+        report.mappingIds?.[0] || null,
         12
       );
       summary.trend = trendData;
@@ -436,7 +436,7 @@ async function generateReportContent(
       const shiftData = await getShiftKPIData({ date: now });
       const machineData = await getMachinePerformanceData({ date: now });
       const trendData = await getWeeklyTrendData(
-        report.productionLineIds?.[0] || null,
+        report.mappingIds?.[0] || null,
         4
       );
       
@@ -466,7 +466,7 @@ async function generateReportContent(
                 <td>${s.shiftName}</td>
                 <td>${s.avgCpk?.toFixed(3) || "N/A"}</td>
                 <td>${s.avgOee?.toFixed(1) || "N/A"}%</td>
-                <td>${s.defectRate.toFixed(2)}%</td>
+                <td>${s.defectRate || 0}%</td>
                 <td style="color: ${s.status === 'critical' ? 'red' : s.status === 'warning' ? 'orange' : 'green'};">
                   ${s.status.toUpperCase()}
                 </td>
@@ -492,8 +492,8 @@ async function generateReportContent(
                 <td>${m.machineName}</td>
                 <td>${m.lineName}</td>
                 <td>${m.cpk?.toFixed(3) || "N/A"}</td>
-                <td>${m.oee?.toFixed(1) || "N/A"}%</td>
-                <td>${m.defectRate.toFixed(2)}%</td>
+                <td>${m?.toFixed(1) || "N/A"}%</td>
+                <td>${m.defectRate || 0}%</td>
               </tr>
             `).join("")}
           </tbody>
@@ -646,10 +646,10 @@ async function generateEnhancedReportData(report: ScheduledKpiReport): Promise<K
   if (db) {
     // Get production lines
     let lines;
-    if (report.productionLineIds && report.productionLineIds.length > 0) {
+    if (report.mappingIds && report.mappingIds.length > 0) {
       lines = await db.select()
         .from(productionLines)
-        .where(sql`${productionLines.id} IN (${report.productionLineIds.join(",")})`);
+        .where(sql`${productionLines.id} IN (${report.mappingIds.join(",")})`);
     } else {
       lines = await db.select().from(productionLines).limit(20);
     }
@@ -664,7 +664,7 @@ async function generateEnhancedReportData(report: ScheduledKpiReport): Promise<K
         .from(spcAnalysisHistory)
         .where(
           and(
-            eq(spcAnalysisHistory.productionLineId, line.id),
+            eq(spcAnalysisHistory.mappingId, line.id),
             gte(spcAnalysisHistory.createdAt, startDate),
             lte(spcAnalysisHistory.createdAt, now)
           )
@@ -673,7 +673,7 @@ async function generateEnhancedReportData(report: ScheduledKpiReport): Promise<K
 
       // Calculate averages
       const validCpk = analysisData.filter(a => a.cpk !== null).map(a => parseFloat(String(a.cpk)));
-      const validOee = analysisData.filter(a => a.oee !== null).map(a => parseFloat(String(a.oee)));
+      const validOee = analysisData.filter(a => a !== null).map(a => parseFloat(String(a)));
       
       const avgCpk = validCpk.length > 0 ? validCpk.reduce((a, b) => a + b, 0) / validCpk.length : null;
       const avgOee = validOee.length > 0 ? validOee.reduce((a, b) => a + b, 0) / validOee.length : null;
@@ -735,21 +735,21 @@ async function generateEnhancedReportData(report: ScheduledKpiReport): Promise<K
         });
       }
 
-      if (avgOee !== null && avgOee < threshold.oeeCritical) {
+      if (avgOee !== null && avgOee < config.thresholdCritical) {
         alerts.push({
           type: "oee_critical",
-          message: `OEE ${line.name} dưới ngưỡng critical (${threshold.oeeCritical}%)`,
+          message: `OEE ${line.name} dưới ngưỡng critical (${config.thresholdCritical}%)`,
           productionLine: line.name,
           value: avgOee,
-          threshold: threshold.oeeCritical,
+          threshold: config.thresholdCritical,
         });
-      } else if (avgOee !== null && avgOee < threshold.oeeWarning) {
+      } else if (avgOee !== null && avgOee < config.thresholdWarning) {
         alerts.push({
           type: "oee_warning",
-          message: `OEE ${line.name} dưới ngưỡng warning (${threshold.oeeWarning}%)`,
+          message: `OEE ${line.name} dưới ngưỡng warning (${config.thresholdWarning}%)`,
           productionLine: line.name,
           value: avgOee,
-          threshold: threshold.oeeWarning,
+          threshold: config.thresholdWarning,
         });
       }
 

@@ -120,7 +120,7 @@ export function MenuItemContextMenu({
   };
 
   return (
-    <ContextMenu open={isOpen} onOpenChange={setIsOpen}>
+    <ContextMenu  >
       <ContextMenuTrigger asChild>
         {children}
       </ContextMenuTrigger>

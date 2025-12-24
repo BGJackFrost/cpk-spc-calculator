@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `ai_predictions` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `model_id` int NOT NULL,\n  `input_data` text NOT NULL,\n  `prediction` text NOT NULL,\n  `confidence` decimal(5, 2),\n  `is_anomaly` int NOT NULL DEFAULT 0,\n  `feedback` enum('correct', 'incorrect', 'unknown'),\n  `feedback_by` int,\n  `feedback_at` timestamp,\n  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  CONSTRAINT `ai_predictions_id` PRIMARY KEY(`id`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute CREATE TABLE IF NOT EXISTS `ai_predictions` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `model_id` int NOT NULL,\n  `input_data` text NOT NULL,\n  `prediction` text NOT NULL,\n  `confidence` decimal(5, 2),\n  `is_anomaly` int NOT NULL DEFAULT 0,\n  `feedback` enum('correct', 'incorrect', 'unknown'),\n  `feedback_by` int,\n  `feedback_at` timestamp,\n  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  CONSTRAINT `ai_predictions_id` PRIMARY KEY(`id`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1530
+}

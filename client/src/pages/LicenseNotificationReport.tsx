@@ -469,9 +469,9 @@ export default function LicenseNotificationReport() {
                               )}
                             </Button>
                           )}
-                          {log.retryCount && log.retryCount > 0 && (
+                          {(log?.retryCount ?? 0) > 0 && (
                             <span className="text-xs text-muted-foreground ml-1">
-                              ({log.retryCount}x)
+                              ({log?.retryCount ?? 0}x)
                             </span>
                           )}
                         </TableCell>

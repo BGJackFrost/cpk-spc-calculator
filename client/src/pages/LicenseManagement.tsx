@@ -53,6 +53,26 @@ import {
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 
+// License type definition
+type License = {
+  id: number;
+  licenseKey: string;
+  licenseType: string;
+  companyName: string | null;
+  contactEmail: string | null;
+  isActive: number;
+  licenseStatus: string;
+  expiresAt: Date | null;
+  activatedAt: Date | null;
+  maxUsers: number;
+  maxProductionLines: number;
+  maxSpcPlans: number;
+  price: number | null;
+  currency: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
 export default function LicenseManagement() {
   const [activeTab, setActiveTab] = useState("licenses");
   const [searchQuery, setSearchQuery] = useState("");
@@ -110,7 +130,7 @@ export default function LicenseManagement() {
     totalCount,
     loadMore,
     refresh: refreshLicenses,
-  } = useCursorPagination(
+  } = useCursorPagination<License, { items: License[]; nextCursor: string | null; prevCursor: string | null; hasMore: boolean; totalCount?: number }>(
     (params) => {
       const query = trpc.license.listWithCursor.useQuery({
         cursor: params.cursor,

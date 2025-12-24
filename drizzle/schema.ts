@@ -3648,3 +3648,203 @@ export const kpiAlertStats = mysqlTable("kpi_alert_stats", {
 });
 export type KpiAlertStat = typeof kpiAlertStats.$inferSelect;
 export type InsertKpiAlertStat = typeof kpiAlertStats.$inferInsert;
+
+
+/**
+ * User Chart Configs - Lưu cấu hình biểu đồ theo user
+ */
+export const userChartConfigs = mysqlTable("user_chart_configs", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull(),
+  chartType: varchar("chart_type", { length: 50 }).notNull(), // xbar, rbar, histogram, cusum, ewma, etc.
+  configName: varchar("config_name", { length: 255 }).notNull(),
+  config: text("config").notNull(), // JSON configuration
+  isDefault: int("is_default").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type UserChartConfig = typeof userChartConfigs.$inferSelect;
+export type InsertUserChartConfig = typeof userChartConfigs.$inferInsert;
+
+/**
+ * Chart Annotations - Annotations trên biểu đồ
+ */
+export const chartAnnotations = mysqlTable("chart_annotations", {
+  id: int("id").autoincrement().primaryKey(),
+  mappingId: int("mapping_id").notNull(),
+  chartType: varchar("chart_type", { length: 50 }).notNull(),
+  annotationType: mysqlEnum("annotation_type", ["point", "line", "area", "text"]).notNull(),
+  xValue: decimal("x_value", { precision: 20, scale: 6 }),
+  yValue: decimal("y_value", { precision: 20, scale: 6 }),
+  xStart: decimal("x_start", { precision: 20, scale: 6 }),
+  xEnd: decimal("x_end", { precision: 20, scale: 6 }),
+  yStart: decimal("y_start", { precision: 20, scale: 6 }),
+  yEnd: decimal("y_end", { precision: 20, scale: 6 }),
+  label: varchar("label", { length: 255 }),
+  description: text("description"),
+  color: varchar("color", { length: 20 }).default("#ff0000"),
+  createdBy: int("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type ChartAnnotation = typeof chartAnnotations.$inferSelect;
+export type InsertChartAnnotation = typeof chartAnnotations.$inferInsert;
+
+/**
+ * IoT Devices - Thiết bị IoT
+ */
+export const iotDevices = mysqlTable("iot_devices", {
+  id: int("id").autoincrement().primaryKey(),
+  deviceCode: varchar("device_code", { length: 100 }).notNull().unique(),
+  deviceName: varchar("device_name", { length: 255 }).notNull(),
+  deviceType: mysqlEnum("device_type", ["sensor", "plc", "gateway", "controller", "other"]).notNull().default("sensor"),
+  protocol: mysqlEnum("protocol", ["mqtt", "modbus", "opcua", "http", "tcp"]).notNull().default("mqtt"),
+  connectionString: text("connection_string"),
+  machineId: int("machine_id"),
+  productionLineId: int("production_line_id"),
+  status: mysqlEnum("status", ["online", "offline", "error", "maintenance"]).notNull().default("offline"),
+  lastHeartbeat: timestamp("last_heartbeat"),
+  metadata: text("metadata"), // JSON
+  isActive: int("is_active").notNull().default(1),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type IotDevice = typeof iotDevices.$inferSelect;
+export type InsertIotDevice = typeof iotDevices.$inferInsert;
+
+
+/**
+ * IoT Alarms - Cảnh báo IoT
+ */
+export const iotAlarms = mysqlTable("iot_alarms", {
+  id: int("id").autoincrement().primaryKey(),
+  deviceId: int("device_id").notNull(),
+  alarmType: mysqlEnum("alarm_type", ["threshold", "connection", "quality", "custom"]).notNull(),
+  severity: mysqlEnum("severity", ["info", "warning", "critical"]).notNull().default("warning"),
+  message: text("message").notNull(),
+  value: decimal("value", { precision: 20, scale: 6 }),
+  threshold: decimal("threshold", { precision: 20, scale: 6 }),
+  acknowledgedBy: int("acknowledged_by"),
+  acknowledgedAt: timestamp("acknowledged_at"),
+  resolvedAt: timestamp("resolved_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+export type IotAlarm = typeof iotAlarms.$inferSelect;
+export type InsertIotAlarm = typeof iotAlarms.$inferInsert;
+
+/**
+ * Data Archive Configs - Cấu hình lưu trữ dữ liệu
+ */
+export const dataArchiveConfigs = mysqlTable("data_archive_configs", {
+  id: int("id").autoincrement().primaryKey(),
+  tableName: varchar("table_name", { length: 100 }).notNull(),
+  retentionDays: int("retention_days").notNull().default(365),
+  archiveEnabled: int("archive_enabled").notNull().default(1),
+  deleteAfterArchive: int("delete_after_archive").notNull().default(0),
+  archiveLocation: varchar("archive_location", { length: 500 }),
+  lastArchiveAt: timestamp("last_archive_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type DataArchiveConfig = typeof dataArchiveConfigs.$inferSelect;
+export type InsertDataArchiveConfig = typeof dataArchiveConfigs.$inferInsert;
+
+/**
+ * API Rate Limits - Giới hạn API
+ */
+export const apiRateLimits = mysqlTable("api_rate_limits", {
+  id: int("id").autoincrement().primaryKey(),
+  endpoint: varchar("endpoint", { length: 255 }).notNull(),
+  method: varchar("method", { length: 10 }).notNull().default("*"),
+  maxRequests: int("max_requests").notNull().default(100),
+  windowSeconds: int("window_seconds").notNull().default(60),
+  isActive: int("is_active").notNull().default(1),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type ApiRateLimit = typeof apiRateLimits.$inferSelect;
+export type InsertApiRateLimit = typeof apiRateLimits.$inferInsert;
+
+/**
+ * Webhook Subscriptions V2 - Đăng ký webhook nâng cao
+ */
+export const webhookSubscriptionsV2 = mysqlTable("webhook_subscriptions_v2", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  url: varchar("url", { length: 500 }).notNull(),
+  secret: varchar("secret", { length: 255 }),
+  events: text("events").notNull(), // JSON array of event types
+  headers: text("headers"), // JSON object of custom headers
+  retryCount: int("retry_count").notNull().default(3),
+  retryDelay: int("retry_delay").notNull().default(60), // seconds
+  isActive: int("is_active").notNull().default(1),
+  lastTriggeredAt: timestamp("last_triggered_at"),
+  lastStatus: mysqlEnum("last_status", ["success", "failed", "pending"]),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type WebhookSubscriptionV2 = typeof webhookSubscriptionsV2.$inferSelect;
+export type InsertWebhookSubscriptionV2 = typeof webhookSubscriptionsV2.$inferInsert;
+
+/**
+ * AI Anomaly Models - Mô hình AI phát hiện bất thường
+ */
+export const aiAnomalyModels = mysqlTable("ai_anomaly_models", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  modelType: mysqlEnum("model_type", ["zscore", "iqr", "isolation_forest", "lstm", "custom"]).notNull(),
+  targetMetric: varchar("target_metric", { length: 100 }).notNull(), // cpk, oee, defect_rate, etc.
+  parameters: text("parameters"), // JSON
+  trainingData: text("training_data"), // JSON summary
+  accuracy: decimal("accuracy", { precision: 5, scale: 2 }),
+  status: mysqlEnum("status", ["training", "active", "inactive", "deprecated"]).notNull().default("training"),
+  trainedAt: timestamp("trained_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type AiAnomalyModel = typeof aiAnomalyModels.$inferSelect;
+export type InsertAiAnomalyModel = typeof aiAnomalyModels.$inferInsert;
+
+/**
+ * AI Predictions - Dự đoán AI
+ */
+export const aiPredictions = mysqlTable("ai_predictions", {
+  id: int("id").autoincrement().primaryKey(),
+  modelId: int("model_id").notNull(),
+  inputData: text("input_data").notNull(), // JSON
+  prediction: text("prediction").notNull(), // JSON
+  confidence: decimal("confidence", { precision: 5, scale: 2 }),
+  isAnomaly: int("is_anomaly").notNull().default(0),
+  feedback: mysqlEnum("feedback", ["correct", "incorrect", "unknown"]),
+  feedbackBy: int("feedback_by"),
+  feedbackAt: timestamp("feedback_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+export type AiPrediction = typeof aiPredictions.$inferSelect;
+export type InsertAiPrediction = typeof aiPredictions.$inferInsert;
+
+/**
+ * ERP Integration Configs - Cấu hình tích hợp ERP
+ */
+export const erpIntegrationConfigs = mysqlTable("erp_integration_configs", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  erpType: mysqlEnum("erp_type", ["sap", "oracle", "dynamics", "mes", "custom"]).notNull(),
+  connectionUrl: varchar("connection_url", { length: 500 }).notNull(),
+  authType: mysqlEnum("auth_type", ["basic", "oauth", "api_key", "certificate"]).notNull().default("api_key"),
+  credentials: text("credentials"), // Encrypted JSON
+  syncDirection: mysqlEnum("sync_direction", ["inbound", "outbound", "bidirectional"]).notNull().default("bidirectional"),
+  syncInterval: int("sync_interval").notNull().default(300), // seconds
+  mappingConfig: text("mapping_config"), // JSON field mapping
+  isActive: int("is_active").notNull().default(1),
+  lastSyncAt: timestamp("last_sync_at"),
+  lastSyncStatus: mysqlEnum("last_sync_status", ["success", "failed", "partial"]),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type ErpIntegrationConfig = typeof erpIntegrationConfigs.$inferSelect;
+export type InsertErpIntegrationConfig = typeof erpIntegrationConfigs.$inferInsert;
+
+/**
+ * Security Audit Logs - Nhật ký bảo mật
+ */

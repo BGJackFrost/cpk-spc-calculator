@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `iot_devices` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `device_code` varchar(100) NOT NULL UNIQUE,\n  `device_name` varchar(255) NOT NULL,\n  `device_type` enum('sensor', 'plc', 'gateway', 'controller', 'other') NOT NULL DEFAULT 'sensor',\n  `protocol` enum('mqtt', 'modbus', 'opcua', 'http', 'tcp') NOT NULL DEFAULT 'mqtt',\n  `connection_string` text,\n  `machine_id` int,\n  `production_line_id` int,\n  `status` enum('online', 'offline', 'error', 'maintenance') NOT NULL DEFAULT 'offline',\n  `last_heartbeat` timestamp,\n  `metadata` text,\n  `is_active` int NOT NULL DEFAULT 1,\n  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  CONSTRAINT `iot_devices_id` PRIMARY KEY(`id`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute CREATE TABLE IF NOT EXISTS `iot_devices` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `device_code` varchar(100) NOT NULL UNIQUE,\n  `device_name` varchar(255) NOT NULL,\n  `device_type` enum('sensor', 'plc', 'gateway', 'controller', 'other') NOT NULL DEFAULT 'sensor',\n  `protocol` enum('mqtt', 'modbus', 'opcua', 'http', 'tcp') NOT NULL DEFAULT 'mqtt',\n  `connection_string` text,\n  `machine_id` int,\n  `production_line_id` int,\n  `status` enum('online', 'offline', 'error', 'maintenance') NOT NULL DEFAULT 'offline',\n  `last_heartbeat` timestamp,\n  `metadata` text,\n  `is_active` int NOT NULL DEFAULT 1,\n  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  CONSTRAINT `iot_devices_id` PRIMARY KEY(`id`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1531
+}

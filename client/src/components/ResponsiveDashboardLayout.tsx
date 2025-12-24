@@ -10,7 +10,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { Menu, Bell, Search, User, ChevronLeft } from 'lucide-react';
 import { useLocation, Link } from 'wouter';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/_core/hooks/useAuth';
 
 interface ResponsiveDashboardLayoutProps {
   children: ReactNode;

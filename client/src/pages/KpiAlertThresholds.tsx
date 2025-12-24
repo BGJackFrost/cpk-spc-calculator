@@ -80,7 +80,7 @@ export default function KpiAlertThresholds() {
 
   const { data: thresholds, refetch } = trpc.shiftManager.getAlertThresholds.useQuery();
   const { data: linesWithoutThresholds } = trpc.shiftManager.getLinesWithoutThresholds.useQuery();
-  const { data: allLines } = trpc.productionLine.getAll.useQuery();
+  const { data: allLines } = trpc.productionLine.list.useQuery();
 
   const createMutation = trpc.shiftManager.createAlertThreshold.useMutation({
     onSuccess: () => {
