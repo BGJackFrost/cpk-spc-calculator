@@ -3848,3 +3848,151 @@ export type InsertErpIntegrationConfig = typeof erpIntegrationConfigs.$inferInse
 /**
  * Security Audit Logs - Nhật ký bảo mật
  */
+
+/**
+ * IoT Alert Thresholds - Ngưỡng cảnh báo IoT
+ */
+export const iotAlertThresholds = mysqlTable("iot_alert_thresholds", {
+  id: int("id").autoincrement().primaryKey(),
+  deviceId: int("device_id").notNull(),
+  metric: varchar("metric", { length: 100 }).notNull(),
+  upperLimit: decimal("upper_limit", { precision: 20, scale: 6 }),
+  lowerLimit: decimal("lower_limit", { precision: 20, scale: 6 }),
+  upperWarning: decimal("upper_warning", { precision: 20, scale: 6 }),
+  lowerWarning: decimal("lower_warning", { precision: 20, scale: 6 }),
+  unit: varchar("unit", { length: 50 }),
+  notifyEmail: int("notify_email").notNull().default(0),
+  notifyPush: int("notify_push").notNull().default(1),
+  notifySms: int("notify_sms").notNull().default(0),
+  cooldownMinutes: int("cooldown_minutes").notNull().default(5), // Thời gian chờ giữa các cảnh báo
+  isActive: int("is_active").notNull().default(1),
+  createdBy: int("created_by"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type IotAlertThreshold = typeof iotAlertThresholds.$inferSelect;
+export type InsertIotAlertThreshold = typeof iotAlertThresholds.$inferInsert;
+
+/**
+ * IoT Alert History - Lịch sử cảnh báo IoT
+ */
+export const iotAlertHistory = mysqlTable("iot_alert_history", {
+  id: int("id").autoincrement().primaryKey(),
+  thresholdId: int("threshold_id").notNull(),
+  deviceId: int("device_id").notNull(),
+  metric: varchar("metric", { length: 100 }).notNull(),
+  alertType: mysqlEnum("alert_type", ["upper_limit", "lower_limit", "upper_warning", "lower_warning"]).notNull(),
+  value: decimal("value", { precision: 20, scale: 6 }).notNull(),
+  threshold: decimal("threshold", { precision: 20, scale: 6 }).notNull(),
+  message: text("message"),
+  notificationSent: int("notification_sent").notNull().default(0),
+  notificationChannels: text("notification_channels"), // JSON: ["email", "push", "sms"]
+  acknowledgedBy: int("acknowledged_by"),
+  acknowledgedAt: timestamp("acknowledged_at"),
+  resolvedAt: timestamp("resolved_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+export type IotAlertHistoryRecord = typeof iotAlertHistory.$inferSelect;
+export type InsertIotAlertHistory = typeof iotAlertHistory.$inferInsert;
+
+/**
+ * OPC-UA Connections - Kết nối OPC-UA
+ */
+export const opcuaConnections = mysqlTable("opcua_connections", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  endpointUrl: varchar("endpoint_url", { length: 500 }).notNull(),
+  securityMode: mysqlEnum("security_mode", ["None", "Sign", "SignAndEncrypt"]).notNull().default("None"),
+  securityPolicy: varchar("security_policy", { length: 100 }),
+  username: varchar("username", { length: 100 }),
+  password: varchar("password", { length: 255 }), // Encrypted
+  certificatePath: varchar("certificate_path", { length: 500 }),
+  privateKeyPath: varchar("private_key_path", { length: 500 }),
+  applicationName: varchar("application_name", { length: 255 }).default("SPC Calculator"),
+  applicationUri: varchar("application_uri", { length: 500 }),
+  sessionTimeout: int("session_timeout").notNull().default(60000), // ms
+  keepAliveInterval: int("keep_alive_interval").notNull().default(10000), // ms
+  isActive: int("is_active").notNull().default(1),
+  lastConnectedAt: timestamp("last_connected_at"),
+  lastError: text("last_error"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type OpcuaConnection = typeof opcuaConnections.$inferSelect;
+export type InsertOpcuaConnection = typeof opcuaConnections.$inferInsert;
+
+/**
+ * OPC-UA Nodes - Node OPC-UA để đọc dữ liệu
+ */
+export const opcuaNodes = mysqlTable("opcua_nodes", {
+  id: int("id").autoincrement().primaryKey(),
+  connectionId: int("connection_id").notNull(),
+  nodeId: varchar("node_id", { length: 255 }).notNull(), // ns=2;s=Temperature
+  displayName: varchar("display_name", { length: 255 }).notNull(),
+  browseName: varchar("browse_name", { length: 255 }),
+  dataType: varchar("data_type", { length: 50 }), // Double, Int32, String, etc.
+  unit: varchar("unit", { length: 50 }),
+  samplingInterval: int("sampling_interval").notNull().default(1000), // ms
+  queueSize: int("queue_size").notNull().default(10),
+  discardOldest: int("discard_oldest").notNull().default(1),
+  mappedDeviceId: int("mapped_device_id"), // Link to iot_devices
+  mappedMetric: varchar("mapped_metric", { length: 100 }),
+  isActive: int("is_active").notNull().default(1),
+  lastValue: text("last_value"),
+  lastQuality: varchar("last_quality", { length: 50 }),
+  lastTimestamp: timestamp("last_timestamp"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type OpcuaNode = typeof opcuaNodes.$inferSelect;
+export type InsertOpcuaNode = typeof opcuaNodes.$inferInsert;
+
+/**
+ * MQTT Connections - Kết nối MQTT
+ */
+export const mqttConnections = mysqlTable("mqtt_connections", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  brokerUrl: varchar("broker_url", { length: 500 }).notNull(),
+  port: int("port").notNull().default(1883),
+  clientId: varchar("client_id", { length: 100 }),
+  username: varchar("username", { length: 100 }),
+  password: varchar("password", { length: 255 }), // Encrypted
+  useTls: int("use_tls").notNull().default(0),
+  caCertPath: varchar("ca_cert_path", { length: 500 }),
+  clientCertPath: varchar("client_cert_path", { length: 500 }),
+  clientKeyPath: varchar("client_key_path", { length: 500 }),
+  keepAlive: int("keep_alive").notNull().default(60), // seconds
+  reconnectPeriod: int("reconnect_period").notNull().default(5000), // ms
+  connectTimeout: int("connect_timeout").notNull().default(30000), // ms
+  cleanSession: int("clean_session").notNull().default(1),
+  isActive: int("is_active").notNull().default(1),
+  lastConnectedAt: timestamp("last_connected_at"),
+  lastError: text("last_error"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type MqttConnection = typeof mqttConnections.$inferSelect;
+export type InsertMqttConnection = typeof mqttConnections.$inferInsert;
+
+/**
+ * MQTT Topics - Topic MQTT để subscribe
+ */
+export const mqttTopics = mysqlTable("mqtt_topics", {
+  id: int("id").autoincrement().primaryKey(),
+  connectionId: int("connection_id").notNull(),
+  topic: varchar("topic", { length: 500 }).notNull(),
+  qos: int("qos").notNull().default(1), // 0, 1, 2
+  payloadFormat: mysqlEnum("payload_format", ["json", "text", "binary"]).notNull().default("json"),
+  jsonPath: varchar("json_path", { length: 255 }), // Path to extract value from JSON
+  mappedDeviceId: int("mapped_device_id"), // Link to iot_devices
+  mappedMetric: varchar("mapped_metric", { length: 100 }),
+  isActive: int("is_active").notNull().default(1),
+  lastMessage: text("last_message"),
+  lastReceivedAt: timestamp("last_received_at"),
+  messageCount: int("message_count").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type MqttTopic = typeof mqttTopics.$inferSelect;
+export type InsertMqttTopic = typeof mqttTopics.$inferInsert;

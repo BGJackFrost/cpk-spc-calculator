@@ -1,0 +1,123 @@
+CREATE TABLE `iot_alert_history` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`threshold_id` int NOT NULL,
+	`device_id` int NOT NULL,
+	`metric` varchar(100) NOT NULL,
+	`alert_type` enum('upper_limit','lower_limit','upper_warning','lower_warning') NOT NULL,
+	`value` decimal(20,6) NOT NULL,
+	`threshold` decimal(20,6) NOT NULL,
+	`message` text,
+	`notification_sent` int NOT NULL DEFAULT 0,
+	`notification_channels` text,
+	`acknowledged_by` int,
+	`acknowledged_at` timestamp,
+	`resolved_at` timestamp,
+	`created_at` timestamp NOT NULL DEFAULT (now()),
+	CONSTRAINT `iot_alert_history_id` PRIMARY KEY(`id`)
+);
+--> statement-breakpoint
+CREATE TABLE `iot_alert_thresholds` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`device_id` int NOT NULL,
+	`metric` varchar(100) NOT NULL,
+	`upper_limit` decimal(20,6),
+	`lower_limit` decimal(20,6),
+	`upper_warning` decimal(20,6),
+	`lower_warning` decimal(20,6),
+	`unit` varchar(50),
+	`notify_email` int NOT NULL DEFAULT 0,
+	`notify_push` int NOT NULL DEFAULT 1,
+	`notify_sms` int NOT NULL DEFAULT 0,
+	`cooldown_minutes` int NOT NULL DEFAULT 5,
+	`is_active` int NOT NULL DEFAULT 1,
+	`created_by` int,
+	`created_at` timestamp NOT NULL DEFAULT (now()),
+	`updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `iot_alert_thresholds_id` PRIMARY KEY(`id`)
+);
+--> statement-breakpoint
+CREATE TABLE `mqtt_connections` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`name` varchar(255) NOT NULL,
+	`broker_url` varchar(500) NOT NULL,
+	`port` int NOT NULL DEFAULT 1883,
+	`client_id` varchar(100),
+	`username` varchar(100),
+	`password` varchar(255),
+	`use_tls` int NOT NULL DEFAULT 0,
+	`ca_cert_path` varchar(500),
+	`client_cert_path` varchar(500),
+	`client_key_path` varchar(500),
+	`keep_alive` int NOT NULL DEFAULT 60,
+	`reconnect_period` int NOT NULL DEFAULT 5000,
+	`connect_timeout` int NOT NULL DEFAULT 30000,
+	`clean_session` int NOT NULL DEFAULT 1,
+	`is_active` int NOT NULL DEFAULT 1,
+	`last_connected_at` timestamp,
+	`last_error` text,
+	`created_at` timestamp NOT NULL DEFAULT (now()),
+	`updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `mqtt_connections_id` PRIMARY KEY(`id`)
+);
+--> statement-breakpoint
+CREATE TABLE `mqtt_topics` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`connection_id` int NOT NULL,
+	`topic` varchar(500) NOT NULL,
+	`qos` int NOT NULL DEFAULT 1,
+	`payload_format` enum('json','text','binary') NOT NULL DEFAULT 'json',
+	`json_path` varchar(255),
+	`mapped_device_id` int,
+	`mapped_metric` varchar(100),
+	`is_active` int NOT NULL DEFAULT 1,
+	`last_message` text,
+	`last_received_at` timestamp,
+	`message_count` int NOT NULL DEFAULT 0,
+	`created_at` timestamp NOT NULL DEFAULT (now()),
+	`updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `mqtt_topics_id` PRIMARY KEY(`id`)
+);
+--> statement-breakpoint
+CREATE TABLE `opcua_connections` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`name` varchar(255) NOT NULL,
+	`endpoint_url` varchar(500) NOT NULL,
+	`security_mode` enum('None','Sign','SignAndEncrypt') NOT NULL DEFAULT 'None',
+	`security_policy` varchar(100),
+	`username` varchar(100),
+	`password` varchar(255),
+	`certificate_path` varchar(500),
+	`private_key_path` varchar(500),
+	`application_name` varchar(255) DEFAULT 'SPC Calculator',
+	`application_uri` varchar(500),
+	`session_timeout` int NOT NULL DEFAULT 60000,
+	`keep_alive_interval` int NOT NULL DEFAULT 10000,
+	`is_active` int NOT NULL DEFAULT 1,
+	`last_connected_at` timestamp,
+	`last_error` text,
+	`created_at` timestamp NOT NULL DEFAULT (now()),
+	`updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `opcua_connections_id` PRIMARY KEY(`id`)
+);
+--> statement-breakpoint
+CREATE TABLE `opcua_nodes` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`connection_id` int NOT NULL,
+	`node_id` varchar(255) NOT NULL,
+	`display_name` varchar(255) NOT NULL,
+	`browse_name` varchar(255),
+	`data_type` varchar(50),
+	`unit` varchar(50),
+	`sampling_interval` int NOT NULL DEFAULT 1000,
+	`queue_size` int NOT NULL DEFAULT 10,
+	`discard_oldest` int NOT NULL DEFAULT 1,
+	`mapped_device_id` int,
+	`mapped_metric` varchar(100),
+	`is_active` int NOT NULL DEFAULT 1,
+	`last_value` text,
+	`last_quality` varchar(50),
+	`last_timestamp` timestamp,
+	`created_at` timestamp NOT NULL DEFAULT (now()),
+	`updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `opcua_nodes_id` PRIMARY KEY(`id`)
+);

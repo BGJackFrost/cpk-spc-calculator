@@ -5931,5 +5931,35 @@
 - [x] Thêm endpoints vào iotDashboardRouter cho connection management
 - [x] Cập nhật IotRealtimeDashboard với tRPC API thực
 - [x] Viết tests cho IoT Connection Service (13 tests pass)
-- [x] Viết tests cho AI Report Service (10 tests pass)i
+- [x] Viết tests cho AI Report Service (10 tests pass)
+
+## Phase 48: IoT Advanced Features - MQTT Broker, Realtime Charts, OPC-UA
+
+### MQTT Broker Mosquitto
+- [x] Cài đặt Mosquitto MQTT broker trên sandbox
+- [x] Cấu hình Mosquitto với authentication
+- [x] Tạo MQTT client service với mqtt.js
+- [x] Test kết nối publish/subscribe
+- [x] Tích hợp MQTT vào iotConnectionService
+
+### Biểu đồ Realtime IoT
+- [x] Tạo component IoTRealtimeChart với auto-refresh
+- [x] Thêm Line Chart cho dữ liệu sensor
+- [x] Thêm Gauge Chart cho giá trị hiện tại
+- [x] Cấu hình refresh interval (1s, 5s, 10s, 30s)
+- [x] Lưu history data trong memory (tối đa 100 points)
+
+### Alerts khi vượt ngưỡng
+- [x] Tạo bảng iot_alert_thresholds trong database
+- [x] Tạo service kiểm tra ngưỡng realtime
+- [x] Gửi notification khi vượt ngưỡng
+- [x] Hiển thị alerts trên dashboard
+- [x] Gửi email cảnh báo (nếu cấu hình)
+
+### OPC-UA Integration
+- [x] Cài đặt node-opcua package
+- [x] Tạo OPC-UA client service
+- [x] Kết nối với OPC-UA server demo
+- [x] Đọc dữ liệu từ PLC/SCADA nodes
+- [x] Tích hợp vào iotConnectionService
 

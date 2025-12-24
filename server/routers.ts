@@ -10,6 +10,9 @@ import { predictiveRouter } from "./routers/predictiveRouter";
 import { reportRouter as mmsReportRouter } from "./routers/reportRouter";
 import { alertRouter as mmsAlertRouter } from "./routers/alertRouter";
 import { iotDashboardRouter } from "./routers/iotDashboardRouter";
+import { mqttRouter } from "./services/mqttRouter";
+import { iotAlertRouter } from "./services/iotAlertRouter";
+import { opcuaRouter } from "./services/opcuaRouter";
 import { aiRouter } from "./routers/aiRouter";
 import { erpIntegrationRouter } from "./routers/erpIntegrationRouter";
 import { securityRouter } from "./routers/securityRouter";
@@ -4013,6 +4016,9 @@ export const appRouter = router({
   spc: spcRouter,
   alert: alertRouter,
   iotDashboard: iotDashboardRouter,
+  mqtt: mqttRouter,
+  iotAlert: iotAlertRouter,
+  opcua: opcuaRouter,
   ai: aiRouter,
   erpIntegration: erpIntegrationRouter,
   security: securityRouter,

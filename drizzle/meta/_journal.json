@@ -519,6 +519,13 @@
       "when": 1766556436452,
       "tag": "0073_complete_mulholland_black",
       "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "5",
+      "when": 1766566771201,
+      "tag": "0074_purple_rafael_vega",
+      "breakpoints": true
     }
   ]
 }
