@@ -179,6 +179,7 @@ import WebhookSettings from "./pages/WebhookSettings";
 import AlertAnalytics from "./pages/AlertAnalytics";
 import UnifiedAlertKpiDashboard from "./pages/UnifiedAlertKpiDashboard";
 import WebhookHistoryManagement from "./pages/WebhookHistoryManagement";
+import UserGuide from "./pages/UserGuide";
 
 function Router() {
   return (
@@ -358,6 +359,7 @@ function Router() {
       <Route path="/ai-ml-dashboard" component={AiMlDashboard} />
       <Route path="/advanced-analytics-dashboard" component={AdvancedAnalyticsDashboard} />
       <Route path="/notification-preferences" component={NotificationPreferences} />
+      <Route path="/user-guide" component={UserGuide} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

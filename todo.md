@@ -6507,3 +6507,32 @@
 - [x] Cấu hình SMTP Gmail (st4ijsc@gmail.com)
 - [x] Test gửi email cảnh báo CPK
 - [x] Xác nhận hệ thống hoạt động
+
+
+## Phase 56: User Guide & Training Documentation
+- [ ] Test cảnh báo CPK với email thực
+- [ ] Kiểm tra cấu hình email nhận thông báo
+- [ ] Tạo trang User Guide với hướng dẫn chi tiết
+- [ ] Flow tổng thể các hệ thống (SPC, MMS, Production, License, System)
+- [ ] Hướng dẫn từng chức năng với screenshots
+- [ ] Video tutorials và training materials
+
+
+## Phase 57: User Guide Page Implementation
+- [x] Tạo trang UserGuide.tsx với nội dung hướng dẫn chi tiết
+- [x] Thêm route /user-guide vào App.tsx
+- [x] Thêm menu User Guide vào System → Thông tin
+- [x] Nội dung bao gồm:
+  - [x] Tổng quan hệ thống (6 modules chính)
+  - [x] Quy trình làm việc tổng thể (6 bước)
+  - [x] Hướng dẫn Bắt đầu sử dụng
+  - [x] Hướng dẫn Phân tích SPC/CPK
+  - [x] Hướng dẫn Thiết lập Sản xuất
+  - [x] Hướng dẫn Kế hoạch lấy mẫu SPC
+  - [x] Hướng dẫn Giám sát Realtime
+  - [x] Hướng dẫn Cảnh báo & Thông báo
+  - [x] Hướng dẫn Báo cáo & Xuất dữ liệu
+  - [x] Hướng dẫn Quản lý Người dùng
+  - [x] Hướng dẫn Quản lý Thiết bị (MMS)
+  - [x] Bảng tham khảo các chỉ số SPC/CPK
+  - [x] Bảng 8 SPC Rules (Western Electric Rules)
