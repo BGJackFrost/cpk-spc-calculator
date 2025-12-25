@@ -6702,3 +6702,42 @@
 - [x] AI-TRAIN-05: Biểu đồ so sánh Models (Radar Chart, Bar Chart)
 - [x] AI-TRAIN-06: Thêm procedures vào aiRouter cho model management
 - [x] AI-TRAIN-07: Thêm route /ai-model-training vào App.tsx
+
+## Phase AI Enhancement - Backend Integration (Completed)
+
+### Database Schema cho AI Training
+- [x] Tạo bảng ai_training_jobs (quản lý jobs training)
+- [x] Tạo bảng ai_trained_models (lưu models đã train)
+- [x] Tạo bảng ai_model_predictions (lưu predictions)
+- [x] Tạo bảng ai_training_history (lịch sử training theo epoch)
+- [x] Tạo bảng ai_prediction_reports (báo cáo predictions)
+- [x] Tạo indexes cho các bảng AI
+
+### API Backend cho AI Training
+- [x] Tạo aiTrainingRouter với đầy đủ CRUD operations
+- [x] API tạo và quản lý training jobs
+- [x] API quản lý trained models (list, get, update, delete)
+- [x] API tạo predictions và submit feedback
+- [x] API tạo và download reports
+
+### Kết nối Frontend với Backend
+- [x] Cập nhật AiModelTraining.tsx sử dụng tRPC API thực
+- [x] Real-time training progress với SSE events
+- [x] Hiển thị training history và metrics
+
+### Export Báo cáo AI Predictions
+- [x] Export báo cáo ra Excel (.xlsx) với ExcelJS
+- [x] Export báo cáo ra HTML (styled report)
+- [x] Export báo cáo ra JSON
+- [x] Upload báo cáo lên S3 storage
+
+### Real-time Notifications
+- [x] Cập nhật SSE events cho AI training (progress, complete, failed, report_complete)
+- [x] Cập nhật useSSE hook hỗ trợ AI events
+- [x] Tích hợp notifyOwner khi training hoàn thành
+- [x] Tích hợp notifyOwner khi report được tạo xong
+
+### Unit Tests
+- [x] Viết vitest tests cho AI Training functions
+- [x] Test database functions (mock)
+- [x] Test business logic validation
