@@ -436,6 +436,8 @@ export const AI_MENU: SystemMenuConfig = {
       items: [
         { id: "ai-overview", icon: Brain, labelKey: "nav.aiOverview", path: "/ai-dashboard" },
         { id: "ai-ml-dashboard", icon: Activity, labelKey: "nav.aiMlDashboard", path: "/ai-ml-dashboard" },
+        { id: "ai-ml-health", icon: Activity, labelKey: "nav.aiMlHealth", path: "/ai-ml-health" },
+        { id: "ai-data-drift", icon: AlertTriangle, labelKey: "nav.aiDataDrift", path: "/ai-data-drift" },
         { id: "ai-predictions", icon: TrendingUp, labelKey: "nav.aiPredictions", path: "/ai-predictions" },
         { id: "ai-alerts", icon: AlertTriangle, labelKey: "nav.aiAlerts", path: "/ai-alerts" },
       ],

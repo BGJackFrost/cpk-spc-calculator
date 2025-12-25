@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE `ai_drift_metrics_history` \nADD COLUMN `accuracy_drop` decimal(10,6),\nADD COLUMN `feature_drift` decimal(10,6),\nADD COLUMN `prediction_drift` decimal(10,6),\nADD COLUMN `severity` varchar(20),\nADD COLUMN `timestamp` timestamp DEFAULT CURRENT_TIMESTAMP;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute ALTER TABLE `ai_drift_metrics_history` \nADD COLUMN `accuracy_drop` decimal(10,6),\nADD COLUMN `feature_drift` decimal(10,6),\nADD COLUMN `prediction_drift` decimal(10,6),\nADD COLUMN `severity` varchar(20),\nADD COLUMN `timestamp` timestamp DEFAULT CURRENT_TIMESTAMP;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 12538
+}

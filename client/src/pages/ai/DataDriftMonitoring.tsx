@@ -12,7 +12,11 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { AlertTriangle, Bell, Settings, RefreshCw, CheckCircle2, XCircle, Eye, Activity, Shield, Clock, TrendingUp, TrendingDown, Minus, BarChart3, LineChart as LineChartIcon, Webhook } from "lucide-react";
+import { AlertTriangle, Bell, Settings, RefreshCw, CheckCircle2, XCircle, Eye, Activity, Shield, Clock, TrendingUp, TrendingDown, Minus, BarChart3, LineChart as LineChartIcon, Webhook, Download, FileSpreadsheet, FileText, Calendar, Sliders } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { format, subDays } from "date-fns";
+import { vi } from "date-fns/locale";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area, BarChart, Bar, ComposedChart, ReferenceLine } from "recharts";
 
 export default function DataDriftMonitoring() {
@@ -29,6 +33,21 @@ export default function DataDriftMonitoring() {
   const [webhookData, setWebhookData] = useState({
     slackWebhookUrl: "", slackChannel: "", slackEnabled: false,
     teamsWebhookUrl: "", teamsEnabled: false,
+  });
+  const [isExportOpen, setIsExportOpen] = useState(false);
+  const [isAutoScalingOpen, setIsAutoScalingOpen] = useState(false);
+  const [exportDateRange, setExportDateRange] = useState<{ from: Date; to: Date }>({
+    from: subDays(new Date(), 30),
+    to: new Date(),
+  });
+  const [autoScalingConfig, setAutoScalingConfig] = useState({
+    enabled: false,
+    algorithm: 'adaptive' as 'moving_average' | 'percentile' | 'std_deviation' | 'adaptive',
+    windowSize: 100,
+    sensitivityFactor: 1.0,
+    minThreshold: 0.01,
+    maxThreshold: 0.5,
+    updateFrequency: 'daily' as 'hourly' | 'daily' | 'weekly',
   });
 
   const { data: alerts, refetch: refetchAlerts, isLoading } = trpc.aiAdvanced.drift.listAlerts.useQuery({
@@ -64,6 +83,80 @@ export default function DataDriftMonitoring() {
   const testTeams = trpc.aiAdvanced.webhook.testTeams.useMutation({
     onSuccess: (result) => { toast({ title: result.success ? "Thành công" : "Lỗi", description: result.success ? "Đã gửi test message đến Teams" : result.error, variant: result.success ? "default" : "destructive" }); },
   });
+
+  // Export mutations
+  const exportPdf = trpc.aiAdvanced.driftReport.exportPdf.useMutation({
+    onSuccess: (result) => {
+      const blob = new Blob([result.html], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = result.filename;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast({ title: "Thành công", description: "Đã xuất báo cáo PDF" });
+      setIsExportOpen(false);
+    },
+    onError: (error) => { toast({ title: "Lỗi", description: error.message, variant: "destructive" }); },
+  });
+
+  const exportExcel = trpc.aiAdvanced.driftReport.exportExcel.useMutation({
+    onSuccess: (result) => {
+      const byteCharacters = atob(result.data);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = result.filename;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast({ title: "Thành công", description: "Đã xuất báo cáo Excel" });
+      setIsExportOpen(false);
+    },
+    onError: (error) => { toast({ title: "Lỗi", description: error.message, variant: "destructive" }); },
+  });
+
+  // Auto-scaling mutations
+  const { data: autoScalingData, refetch: refetchAutoScaling } = trpc.aiAdvanced.autoScaling.getConfig.useQuery({ modelId: selectedModelId });
+  const { data: suggestedAlgorithm } = trpc.aiAdvanced.autoScaling.suggestAlgorithm.useQuery({ modelId: selectedModelId });
+  const { data: thresholdEffectiveness } = trpc.aiAdvanced.autoScaling.analyzeEffectiveness.useQuery({ modelId: selectedModelId });
+
+  const updateAutoScaling = trpc.aiAdvanced.autoScaling.updateConfig.useMutation({
+    onSuccess: () => {
+      toast({ title: "Thành công", description: "Đã cập nhật cấu hình auto-scaling" });
+      refetchAutoScaling();
+    },
+    onError: (error) => { toast({ title: "Lỗi", description: error.message, variant: "destructive" }); },
+  });
+
+  const calculateThresholds = trpc.aiAdvanced.autoScaling.calculateThresholds.useMutation({
+    onSuccess: (result) => {
+      toast({ title: "Thành công", description: `Đã tính toán thresholds mới. Confidence: ${(result.confidence * 100).toFixed(0)}%` });
+      refetchAutoScaling();
+    },
+    onError: (error) => { toast({ title: "Lỗi", description: error.message, variant: "destructive" }); },
+  });
+
+  const handleExportPdf = () => {
+    exportPdf.mutate({
+      modelId: selectedModelId,
+      startDate: exportDateRange.from,
+      endDate: exportDateRange.to,
+    });
+  };
+
+  const handleExportExcel = () => {
+    exportExcel.mutate({
+      modelId: selectedModelId,
+      startDate: exportDateRange.from,
+      endDate: exportDateRange.to,
+    });
+  };
 
   const handleSaveConfig = () => { 
     if (config?.id) {
@@ -151,6 +244,144 @@ export default function DataDriftMonitoring() {
             <Button variant="outline" onClick={() => runScheduledCheck.mutate()} disabled={runScheduledCheck.isPending}>
               <Activity className={`w-4 h-4 mr-2 ${runScheduledCheck.isPending ? 'animate-spin' : ''}`} />Kiểm tra tất cả
             </Button>
+            {/* Export Dialog */}
+            <Dialog open={isExportOpen} onOpenChange={setIsExportOpen}>
+              <DialogTrigger asChild><Button variant="outline"><Download className="w-4 h-4 mr-2" />Export</Button></DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Xuất Báo cáo Drift Check</DialogTitle>
+                  <DialogDescription>Chọn khoảng thời gian và định dạng xuất</DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid gap-2">
+                    <Label>Khoảng thời gian</Label>
+                    <div className="flex gap-2">
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" className="w-full justify-start text-left font-normal">
+                            <Calendar className="mr-2 h-4 w-4" />
+                            {format(exportDateRange.from, 'dd/MM/yyyy', { locale: vi })}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <CalendarComponent mode="single" selected={exportDateRange.from} onSelect={(date) => date && setExportDateRange({ ...exportDateRange, from: date })} />
+                        </PopoverContent>
+                      </Popover>
+                      <span className="flex items-center">-</span>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" className="w-full justify-start text-left font-normal">
+                            <Calendar className="mr-2 h-4 w-4" />
+                            {format(exportDateRange.to, 'dd/MM/yyyy', { locale: vi })}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <CalendarComponent mode="single" selected={exportDateRange.to} onSelect={(date) => date && setExportDateRange({ ...exportDateRange, to: date })} />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <Button onClick={handleExportPdf} disabled={exportPdf.isPending} className="flex items-center gap-2">
+                      <FileText className="w-4 h-4" />
+                      {exportPdf.isPending ? 'Đang xuất...' : 'Xuất HTML/PDF'}
+                    </Button>
+                    <Button onClick={handleExportExcel} disabled={exportExcel.isPending} className="flex items-center gap-2">
+                      <FileSpreadsheet className="w-4 h-4" />
+                      {exportExcel.isPending ? 'Đang xuất...' : 'Xuất Excel'}
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+            {/* Auto-scaling Dialog */}
+            <Dialog open={isAutoScalingOpen} onOpenChange={setIsAutoScalingOpen}>
+              <DialogTrigger asChild><Button variant="outline"><Sliders className="w-4 h-4 mr-2" />Auto-scaling</Button></DialogTrigger>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>Cấu hình Auto-scaling Threshold</DialogTitle>
+                  <DialogDescription>Tự động điều chỉnh ngưỡng dựa trên dữ liệu lịch sử</DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="flex items-center justify-between p-4 border rounded-lg">
+                    <div>
+                      <Label className="text-base">Kích hoạt Auto-scaling</Label>
+                      <p className="text-sm text-muted-foreground">Tự động tính toán và cập nhật threshold</p>
+                    </div>
+                    <Switch checked={autoScalingConfig.enabled} onCheckedChange={(v) => setAutoScalingConfig({ ...autoScalingConfig, enabled: v })} />
+                  </div>
+                  {suggestedAlgorithm && (
+                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <p className="text-sm font-medium text-blue-800">Đề xuất: {suggestedAlgorithm.algorithm}</p>
+                      <p className="text-xs text-blue-600">{suggestedAlgorithm.reason}</p>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="grid gap-2">
+                      <Label>Thuật toán</Label>
+                      <Select value={autoScalingConfig.algorithm} onValueChange={(v: any) => setAutoScalingConfig({ ...autoScalingConfig, algorithm: v })}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="moving_average">Moving Average</SelectItem>
+                          <SelectItem value="percentile">Percentile</SelectItem>
+                          <SelectItem value="std_deviation">Standard Deviation</SelectItem>
+                          <SelectItem value="adaptive">Adaptive (EWMA)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label>Tần suất cập nhật</Label>
+                      <Select value={autoScalingConfig.updateFrequency} onValueChange={(v: any) => setAutoScalingConfig({ ...autoScalingConfig, updateFrequency: v })}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="hourly">Mỗi giờ</SelectItem>
+                          <SelectItem value="daily">Mỗi ngày</SelectItem>
+                          <SelectItem value="weekly">Mỗi tuần</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="grid gap-2">
+                      <Label>Window Size</Label>
+                      <Input type="number" value={autoScalingConfig.windowSize} onChange={(e) => setAutoScalingConfig({ ...autoScalingConfig, windowSize: parseInt(e.target.value) })} />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label>Sensitivity Factor</Label>
+                      <Input type="number" step="0.1" value={autoScalingConfig.sensitivityFactor} onChange={(e) => setAutoScalingConfig({ ...autoScalingConfig, sensitivityFactor: parseFloat(e.target.value) })} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="grid gap-2">
+                      <Label>Min Threshold</Label>
+                      <Input type="number" step="0.01" value={autoScalingConfig.minThreshold} onChange={(e) => setAutoScalingConfig({ ...autoScalingConfig, minThreshold: parseFloat(e.target.value) })} />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label>Max Threshold</Label>
+                      <Input type="number" step="0.01" value={autoScalingConfig.maxThreshold} onChange={(e) => setAutoScalingConfig({ ...autoScalingConfig, maxThreshold: parseFloat(e.target.value) })} />
+                    </div>
+                  </div>
+                  {thresholdEffectiveness && (
+                    <div className="p-3 bg-gray-50 border rounded-lg">
+                      <p className="text-sm font-medium">Hiệu quả Threshold hiện tại</p>
+                      <div className="grid grid-cols-2 gap-2 mt-2 text-sm">
+                        <div>False Positive Rate: <span className="font-medium">{(thresholdEffectiveness.falsePositiveRate * 100).toFixed(1)}%</span></div>
+                        <div>False Negative Rate: <span className="font-medium">{(thresholdEffectiveness.falseNegativeRate * 100).toFixed(1)}%</span></div>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-2">{thresholdEffectiveness.recommendation}</p>
+                    </div>
+                  )}
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => calculateThresholds.mutate({ modelId: selectedModelId })} disabled={calculateThresholds.isPending}>
+                    {calculateThresholds.isPending ? 'Tính toán...' : 'Tính toán Thresholds'}
+                  </Button>
+                  <Button onClick={() => updateAutoScaling.mutate({ modelId: selectedModelId, ...autoScalingConfig })} disabled={updateAutoScaling.isPending}>
+                    {updateAutoScaling.isPending ? 'Lưu...' : 'Lưu cấu hình'}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
             <Dialog open={isWebhookOpen} onOpenChange={setIsWebhookOpen}>
               <DialogTrigger asChild><Button variant="outline"><Webhook className="w-4 h-4 mr-2" />Webhook</Button></DialogTrigger>
               <DialogContent className="max-w-2xl">

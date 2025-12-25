@@ -6804,3 +6804,27 @@
 - [x] Tích hợp Teams webhook cho drift alerts
 - [x] Cấu hình webhook URL trong UI
 - [x] Template message cho các loại alert
+
+## Phase AI Enhancement - Phase 3
+
+### Export Báo cáo Drift Check
+- [x] Tạo service driftReportExportService.ts
+- [x] Export báo cáo drift ra PDF với template chuyên nghiệp
+- [x] Export báo cáo drift ra Excel với nhiều sheets
+- [x] API endpoints cho export PDF/Excel
+- [x] UI nút export trong DataDriftMonitoring page
+
+### Auto-scaling Threshold
+- [x] Tạo service autoScalingThresholdService.ts
+- [x] Phân tích historical data để tính threshold động
+- [x] Thuật toán adaptive threshold (moving average, percentile, std_deviation, adaptive/EWMA)
+- [x] API endpoints cho auto-scaling config
+- [x] UI cấu hình auto-scaling trong drift settings
+
+### AI/ML Health Dashboard
+- [x] Tạo trang AiMlHealthDashboard.tsx
+- [x] KPIs: Model accuracy, drift rate, prediction latency
+- [x] Biểu đồ tổng hợp health status
+- [x] Alert summary và recent issues
+- [x] Route và menu item cho dashboard
+- [x] Unit tests cho các tính năng mới

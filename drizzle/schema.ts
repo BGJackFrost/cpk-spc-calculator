@@ -4309,10 +4309,15 @@ export const aiDriftMetricsHistory = mysqlTable("ai_drift_metrics_history", {
   id: int("id").autoincrement().primaryKey(),
   modelId: int("model_id").notNull(),
   accuracy: decimal("accuracy", { precision: 10, scale: 6 }),
+  accuracyDrop: decimal("accuracy_drop", { precision: 10, scale: 6 }),
+  featureDrift: decimal("feature_drift", { precision: 10, scale: 6 }),
+  predictionDrift: decimal("prediction_drift", { precision: 10, scale: 6 }),
   precision: decimal("precision", { precision: 10, scale: 6 }),
   recall: decimal("recall", { precision: 10, scale: 6 }),
   f1Score: decimal("f1_score", { precision: 10, scale: 6 }),
+  severity: varchar("severity", { length: 20 }),
   predictionCount: int("prediction_count").notNull().default(0),
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
   recordedAt: timestamp("recorded_at").defaultNow().notNull(),
 });
 export type AiDriftMetricsHistory = typeof aiDriftMetricsHistory.$inferSelect;
@@ -4339,3 +4344,25 @@ export const aiFeatureStatistics = mysqlTable("ai_feature_statistics", {
 });
 export type AiFeatureStatistics = typeof aiFeatureStatistics.$inferSelect;
 export type InsertAiFeatureStatistics = typeof aiFeatureStatistics.$inferInsert;
+
+
+/**
+ * AI Auto-scaling Configs - Cấu hình auto-scaling threshold
+ */
+export const aiAutoScalingConfigs = mysqlTable("ai_auto_scaling_configs", {
+  id: int("id").autoincrement().primaryKey(),
+  modelId: int("model_id").notNull(),
+  enabled: int("enabled").notNull().default(0),
+  algorithm: mysqlEnum("algorithm", ["moving_average", "percentile", "std_deviation", "adaptive"]).notNull().default("adaptive"),
+  windowSize: int("window_size").notNull().default(100),
+  sensitivityFactor: decimal("sensitivity_factor", { precision: 5, scale: 2 }).notNull().default("1.00"),
+  minThreshold: decimal("min_threshold", { precision: 5, scale: 4 }).notNull().default("0.01"),
+  maxThreshold: decimal("max_threshold", { precision: 5, scale: 4 }).notNull().default("0.50"),
+  updateFrequency: mysqlEnum("update_frequency", ["hourly", "daily", "weekly"]).notNull().default("daily"),
+  lastCalculatedThresholds: json("last_calculated_thresholds"),
+  lastUpdated: timestamp("last_updated"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type AiAutoScalingConfig = typeof aiAutoScalingConfigs.$inferSelect;
+export type InsertAiAutoScalingConfig = typeof aiAutoScalingConfigs.$inferInsert;
