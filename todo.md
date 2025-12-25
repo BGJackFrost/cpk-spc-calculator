@@ -6785,3 +6785,22 @@
 - [x] Tạo UI trang Data Drift Monitoring (DataDriftMonitoring.tsx)
 - [x] Auto-alerting khi accuracy giảm đột ngột
 - [x] Unit tests cho Data Drift Service
+
+## Phase AI Enhancement - Phase 2
+
+### Scheduled Job Drift Check
+- [x] Tạo scheduled job tự động chạy drift check định kỳ
+- [x] Cấu hình interval (mỗi giờ/ngày)
+- [x] Lưu lịch sử drift check vào database
+- [x] Gửi notification khi phát hiện drift
+
+### Biểu đồ Visualization
+- [x] Biểu đồ drift metrics history (Line Chart)
+- [x] Biểu đồ A/B test comparison (Bar Chart, Radar Chart)
+- [x] Biểu đồ model version performance trend
+
+### Slack/Teams Webhook Notification
+- [x] Tích hợp Slack webhook cho drift alerts
+- [x] Tích hợp Teams webhook cho drift alerts
+- [x] Cấu hình webhook URL trong UI
+- [x] Template message cho các loại alert

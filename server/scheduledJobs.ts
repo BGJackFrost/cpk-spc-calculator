@@ -12,6 +12,7 @@ import { triggerWebhooks } from './webhookService';
 import { notifyOwner } from './_core/notification';
 import { processWebhookRetries, getRetryStats } from './webhookService';
 import { runScheduledRetrainCheck, getRetrainStats } from './services/autoRetrainService';
+import { runScheduledDriftCheck } from './services/scheduledDriftCheckService';
 import { sendEmail } from './emailService';
 import { spareParts, sparePartsInventory, suppliers, licenseNotificationLogs } from '../drizzle/schema';
 
@@ -585,6 +586,21 @@ export function initScheduledJobs(): void {
   });
   
   console.log('[ScheduledJob] Scheduled: Auto-retrain ML models check every 6 hours (Asia/Ho_Chi_Minh)');
+  
+  // Scheduled drift check - runs every hour
+  cron.schedule('0 0 * * * *', async () => {
+    console.log('[ScheduledJob] Triggered: Scheduled drift check');
+    try {
+      const result = await runScheduledDriftCheck();
+      console.log(`[ScheduledJob] Drift check completed: ${result.modelsChecked} models checked, ${result.alertsCreated} alerts created`);
+    } catch (error) {
+      console.error('[ScheduledJob] Error in scheduled drift check:', error);
+    }
+  }, {
+    timezone: 'Asia/Ho_Chi_Minh'
+  });
+  
+  console.log('[ScheduledJob] Scheduled: Drift check every hour (Asia/Ho_Chi_Minh)');
   
   jobsInitialized = true;
   console.log('[ScheduledJob] All scheduled jobs initialized successfully');

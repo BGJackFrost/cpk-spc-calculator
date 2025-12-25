@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import DashboardLayout from "@/components/DashboardLayout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,17 +12,23 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { AlertTriangle, Bell, Settings, RefreshCw, CheckCircle2, XCircle, Eye, Activity, Shield, Clock } from "lucide-react";
+import { AlertTriangle, Bell, Settings, RefreshCw, CheckCircle2, XCircle, Eye, Activity, Shield, Clock, TrendingUp, TrendingDown, Minus, BarChart3, LineChart as LineChartIcon, Webhook } from "lucide-react";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area, BarChart, Bar, ComposedChart, ReferenceLine } from "recharts";
 
 export default function DataDriftMonitoring() {
   const { toast } = useToast();
   const [selectedModelId, setSelectedModelId] = useState<number>(1);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [isConfigOpen, setIsConfigOpen] = useState(false);
+  const [isWebhookOpen, setIsWebhookOpen] = useState(false);
   const [configData, setConfigData] = useState({
     accuracyDropThreshold: 0.05, featureDriftThreshold: 0.10, predictionDriftThreshold: 0.10,
     monitoringWindowHours: 24, alertCooldownMinutes: 60, autoRollbackEnabled: false,
     autoRollbackThreshold: 0.15, notifyOwner: true, notifyEmail: "",
+  });
+  const [webhookData, setWebhookData] = useState({
+    slackWebhookUrl: "", slackChannel: "", slackEnabled: false,
+    teamsWebhookUrl: "", teamsEnabled: false,
   });
 
   const { data: alerts, refetch: refetchAlerts, isLoading } = trpc.aiAdvanced.drift.listAlerts.useQuery({
@@ -32,6 +38,9 @@ export default function DataDriftMonitoring() {
   const { data: config, refetch: refetchConfig } = trpc.aiAdvanced.drift.getConfig.useQuery({ modelId: selectedModelId });
   const { data: metricsHistory } = trpc.aiAdvanced.drift.getMetricsHistory.useQuery({ modelId: selectedModelId, hours: 168 });
   const { data: featureStats } = trpc.aiAdvanced.drift.getFeatureStatistics.useQuery({ modelId: selectedModelId });
+  const { data: dashboardStats } = trpc.aiAdvanced.drift.getDashboardStats.useQuery({ modelId: selectedModelId });
+  const { data: webhookConfig, refetch: refetchWebhook } = trpc.aiAdvanced.webhook.getConfig.useQuery();
+  const { data: lastCheckSummary } = trpc.aiAdvanced.scheduledCheck.getLastSummary.useQuery();
 
   const acknowledgeAlert = trpc.aiAdvanced.drift.acknowledgeAlert.useMutation({ onSuccess: () => { toast({ title: "Thành công", description: "Đã xác nhận alert" }); refetchAlerts(); } });
   const resolveAlert = trpc.aiAdvanced.drift.resolveAlert.useMutation({ onSuccess: () => { toast({ title: "Thành công", description: "Đã giải quyết alert" }); refetchAlerts(); } });
@@ -43,8 +52,58 @@ export default function DataDriftMonitoring() {
   const runDriftCheck = trpc.aiAdvanced.drift.runDriftCheck.useMutation({
     onSuccess: (result) => { toast({ title: "Hoàn thành", description: `Đã kiểm tra drift. ${result.alertsCreated} alerts mới.` }); refetchAlerts(); },
   });
+  const runScheduledCheck = trpc.aiAdvanced.scheduledCheck.runNow.useMutation({
+    onSuccess: (result) => { toast({ title: "Hoàn thành", description: `Đã kiểm tra ${result.modelsChecked} models, tạo ${result.alertsCreated} alerts.` }); refetchAlerts(); },
+  });
+  const updateWebhook = trpc.aiAdvanced.webhook.updateConfig.useMutation({
+    onSuccess: () => { toast({ title: "Thành công", description: "Đã cập nhật webhook" }); setIsWebhookOpen(false); refetchWebhook(); },
+  });
+  const testSlack = trpc.aiAdvanced.webhook.testSlack.useMutation({
+    onSuccess: (result) => { toast({ title: result.success ? "Thành công" : "Lỗi", description: result.success ? "Đã gửi test message đến Slack" : result.error, variant: result.success ? "default" : "destructive" }); },
+  });
+  const testTeams = trpc.aiAdvanced.webhook.testTeams.useMutation({
+    onSuccess: (result) => { toast({ title: result.success ? "Thành công" : "Lỗi", description: result.success ? "Đã gửi test message đến Teams" : result.error, variant: result.success ? "default" : "destructive" }); },
+  });
 
-  const handleSaveConfig = () => { updateConfig.mutate({ modelId: selectedModelId, ...configData }); };
+  const handleSaveConfig = () => { 
+    if (config?.id) {
+      updateConfig.mutate({ configId: config.id, ...configData }); 
+    }
+  };
+  const handleSaveWebhook = () => { updateWebhook.mutate(webhookData); };
+
+  // Prepare chart data
+  const chartData = metricsHistory?.map((m, i) => ({
+    time: new Date(m.recordedAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }),
+    accuracy: parseFloat(m.accuracy as string || '0') * 100,
+    precision: m.precision ? parseFloat(m.precision as string) * 100 : null,
+    recall: m.recall ? parseFloat(m.recall as string) * 100 : null,
+    f1Score: m.f1Score ? parseFloat(m.f1Score as string) * 100 : null,
+    predictions: m.predictionCount || 0,
+  })) || [];
+
+  // Alert trend data
+  const alertTrendData = alerts?.alerts?.reduce((acc: any[], alert) => {
+    const date = new Date(alert.createdAt).toLocaleDateString('vi-VN');
+    const existing = acc.find(a => a.date === date);
+    if (existing) {
+      existing.count++;
+      if (alert.severity === 'critical') existing.critical++;
+      if (alert.severity === 'high') existing.high++;
+      if (alert.severity === 'medium') existing.medium++;
+      if (alert.severity === 'low') existing.low++;
+    } else {
+      acc.push({
+        date,
+        count: 1,
+        critical: alert.severity === 'critical' ? 1 : 0,
+        high: alert.severity === 'high' ? 1 : 0,
+        medium: alert.severity === 'medium' ? 1 : 0,
+        low: alert.severity === 'low' ? 1 : 0,
+      });
+    }
+    return acc;
+  }, []) || [];
 
   const getSeverityBadge = (severity: string) => {
     const variants: Record<string, string> = { low: "bg-blue-500", medium: "bg-yellow-500", high: "bg-orange-500", critical: "bg-red-500" };
@@ -67,6 +126,12 @@ export default function DataDriftMonitoring() {
     return <Badge variant="outline">{labels[type] || type}</Badge>;
   };
 
+  const getTrendIcon = (trend: string) => {
+    if (trend === 'improving') return <TrendingUp className="w-4 h-4 text-green-500" />;
+    if (trend === 'declining') return <TrendingDown className="w-4 h-4 text-red-500" />;
+    return <Minus className="w-4 h-4 text-gray-500" />;
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -83,6 +148,35 @@ export default function DataDriftMonitoring() {
             <Button variant="outline" onClick={() => runDriftCheck.mutate({ modelId: selectedModelId })} disabled={runDriftCheck.isPending}>
               <RefreshCw className={`w-4 h-4 mr-2 ${runDriftCheck.isPending ? 'animate-spin' : ''}`} />Kiểm tra ngay
             </Button>
+            <Button variant="outline" onClick={() => runScheduledCheck.mutate()} disabled={runScheduledCheck.isPending}>
+              <Activity className={`w-4 h-4 mr-2 ${runScheduledCheck.isPending ? 'animate-spin' : ''}`} />Kiểm tra tất cả
+            </Button>
+            <Dialog open={isWebhookOpen} onOpenChange={setIsWebhookOpen}>
+              <DialogTrigger asChild><Button variant="outline"><Webhook className="w-4 h-4 mr-2" />Webhook</Button></DialogTrigger>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader><DialogTitle>Cấu hình Webhook Notification</DialogTitle><DialogDescription>Thiết lập Slack/Teams webhook để nhận thông báo realtime</DialogDescription></DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="space-y-4 p-4 border rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2"><img src="https://cdn.worldvectorlogo.com/logos/slack-new-logo.svg" className="w-6 h-6" alt="Slack" /><Label className="text-lg font-semibold">Slack</Label></div>
+                      <Switch checked={webhookData.slackEnabled} onCheckedChange={(v) => setWebhookData({ ...webhookData, slackEnabled: v })} />
+                    </div>
+                    <div className="grid gap-2"><Label>Webhook URL</Label><Input value={webhookData.slackWebhookUrl} onChange={(e) => setWebhookData({ ...webhookData, slackWebhookUrl: e.target.value })} placeholder="https://hooks.slack.com/services/..." disabled={!webhookData.slackEnabled} /></div>
+                    <div className="grid gap-2"><Label>Channel (optional)</Label><Input value={webhookData.slackChannel} onChange={(e) => setWebhookData({ ...webhookData, slackChannel: e.target.value })} placeholder="#alerts" disabled={!webhookData.slackEnabled} /></div>
+                    <Button variant="outline" size="sm" onClick={() => testSlack.mutate()} disabled={!webhookData.slackEnabled || testSlack.isPending}>Test Slack</Button>
+                  </div>
+                  <div className="space-y-4 p-4 border rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2"><img src="https://cdn.worldvectorlogo.com/logos/microsoft-teams-1.svg" className="w-6 h-6" alt="Teams" /><Label className="text-lg font-semibold">Microsoft Teams</Label></div>
+                      <Switch checked={webhookData.teamsEnabled} onCheckedChange={(v) => setWebhookData({ ...webhookData, teamsEnabled: v })} />
+                    </div>
+                    <div className="grid gap-2"><Label>Webhook URL</Label><Input value={webhookData.teamsWebhookUrl} onChange={(e) => setWebhookData({ ...webhookData, teamsWebhookUrl: e.target.value })} placeholder="https://outlook.office.com/webhook/..." disabled={!webhookData.teamsEnabled} /></div>
+                    <Button variant="outline" size="sm" onClick={() => testTeams.mutate()} disabled={!webhookData.teamsEnabled || testTeams.isPending}>Test Teams</Button>
+                  </div>
+                </div>
+                <DialogFooter><Button variant="outline" onClick={() => setIsWebhookOpen(false)}>Hủy</Button><Button onClick={handleSaveWebhook} disabled={updateWebhook.isPending}>{updateWebhook.isPending ? "Đang lưu..." : "Lưu cấu hình"}</Button></DialogFooter>
+              </DialogContent>
+            </Dialog>
             <Dialog open={isConfigOpen} onOpenChange={setIsConfigOpen}>
               <DialogTrigger asChild><Button variant="outline"><Settings className="w-4 h-4 mr-2" />Cấu hình</Button></DialogTrigger>
               <DialogContent className="max-w-2xl">
@@ -112,18 +206,100 @@ export default function DataDriftMonitoring() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <Card className={activeAlerts && activeAlerts.length > 0 ? "border-red-500" : ""}>
             <CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Active Alerts</CardTitle><AlertTriangle className={`w-4 h-4 ${activeAlerts && activeAlerts.length > 0 ? 'text-red-500 animate-pulse' : 'text-muted-foreground'}`} /></CardHeader>
             <CardContent><div className={`text-2xl font-bold ${activeAlerts && activeAlerts.length > 0 ? 'text-red-500' : ''}`}>{activeAlerts?.length || 0}</div></CardContent>
           </Card>
-          <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Tổng Alerts</CardTitle><Bell className="w-4 h-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{alerts?.total || 0}</div></CardContent></Card>
-          <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Auto Rollback</CardTitle><Shield className="w-4 h-4 text-blue-500" /></CardHeader><CardContent><div className="text-2xl font-bold">{config?.autoRollbackEnabled ? <Badge className="bg-green-500">Bật</Badge> : <Badge variant="secondary">Tắt</Badge>}</div></CardContent></Card>
-          <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Monitoring Window</CardTitle><Clock className="w-4 h-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{config?.monitoringWindowHours || 24}h</div></CardContent></Card>
+          <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Tổng Alerts</CardTitle><Bell className="w-4 h-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{dashboardStats?.totalAlerts || 0}</div></CardContent></Card>
+          <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Critical</CardTitle><AlertTriangle className="w-4 h-4 text-red-500" /></CardHeader><CardContent><div className="text-2xl font-bold text-red-500">{dashboardStats?.criticalAlerts || 0}</div></CardContent></Card>
+          <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Avg Drift Score</CardTitle><BarChart3 className="w-4 h-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{((dashboardStats?.avgDriftScore || 0) * 100).toFixed(1)}%</div></CardContent></Card>
+          <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Trend</CardTitle>{getTrendIcon(dashboardStats?.recentTrend || 'stable')}</CardHeader><CardContent><div className="text-2xl font-bold capitalize">{dashboardStats?.recentTrend || 'Stable'}</div></CardContent></Card>
         </div>
 
-        <Tabs defaultValue="alerts" className="space-y-4">
-          <TabsList><TabsTrigger value="alerts">Alerts</TabsTrigger><TabsTrigger value="metrics">Metrics History</TabsTrigger><TabsTrigger value="features">Feature Statistics</TabsTrigger></TabsList>
+        <Tabs defaultValue="charts" className="space-y-4">
+          <TabsList><TabsTrigger value="charts">Biểu đồ</TabsTrigger><TabsTrigger value="alerts">Alerts</TabsTrigger><TabsTrigger value="metrics">Metrics History</TabsTrigger><TabsTrigger value="features">Feature Statistics</TabsTrigger></TabsList>
+          
+          {/* Charts Tab */}
+          <TabsContent value="charts" className="space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* Accuracy Trend Chart */}
+              <Card>
+                <CardHeader><CardTitle className="flex items-center gap-2"><LineChartIcon className="w-5 h-5" />Accuracy Trend (7 ngày)</CardTitle><CardDescription>Biến động accuracy của model theo thời gian</CardDescription></CardHeader>
+                <CardContent>
+                  {chartData.length === 0 ? <div className="h-[300px] flex items-center justify-center text-muted-foreground">Chưa có dữ liệu</div> : (
+                    <ResponsiveContainer width="100%" height={300}>
+                      <AreaChart data={chartData}>
+                        <defs>
+                          <linearGradient id="colorAccuracy" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
+                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="time" tick={{ fontSize: 10 }} />
+                        <YAxis domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
+                        <Tooltip formatter={(value: number) => `${value.toFixed(2)}%`} />
+                        <Legend />
+                        <ReferenceLine y={95} stroke="#22c55e" strokeDasharray="5 5" label="Target" />
+                        <ReferenceLine y={parseFloat(config?.accuracyDropThreshold as string || '0.05') * 100} stroke="#ef4444" strokeDasharray="5 5" label="Threshold" />
+                        <Area type="monotone" dataKey="accuracy" stroke="#3b82f6" fillOpacity={1} fill="url(#colorAccuracy)" name="Accuracy" />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Alert Trend Chart */}
+              <Card>
+                <CardHeader><CardTitle className="flex items-center gap-2"><BarChart3 className="w-5 h-5" />Alert Distribution</CardTitle><CardDescription>Phân bố alerts theo severity</CardDescription></CardHeader>
+                <CardContent>
+                  {alertTrendData.length === 0 ? <div className="h-[300px] flex items-center justify-center text-muted-foreground">Chưa có dữ liệu</div> : (
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart data={alertTrendData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="date" tick={{ fontSize: 10 }} />
+                        <YAxis />
+                        <Tooltip />
+                        <Legend />
+                        <Bar dataKey="critical" stackId="a" fill="#ef4444" name="Critical" />
+                        <Bar dataKey="high" stackId="a" fill="#f97316" name="High" />
+                        <Bar dataKey="medium" stackId="a" fill="#eab308" name="Medium" />
+                        <Bar dataKey="low" stackId="a" fill="#3b82f6" name="Low" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Multi-metric Chart */}
+              <Card className="lg:col-span-2">
+                <CardHeader><CardTitle className="flex items-center gap-2"><Activity className="w-5 h-5" />Model Performance Metrics</CardTitle><CardDescription>So sánh các metrics: Accuracy, Precision, Recall, F1 Score</CardDescription></CardHeader>
+                <CardContent>
+                  {chartData.length === 0 ? <div className="h-[300px] flex items-center justify-center text-muted-foreground">Chưa có dữ liệu</div> : (
+                    <ResponsiveContainer width="100%" height={300}>
+                      <ComposedChart data={chartData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="time" tick={{ fontSize: 10 }} />
+                        <YAxis yAxisId="left" domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
+                        <YAxis yAxisId="right" orientation="right" />
+                        <Tooltip formatter={(value: number, name: string) => name === 'predictions' ? value : `${value?.toFixed(2) || 0}%`} />
+                        <Legend />
+                        <Line yAxisId="left" type="monotone" dataKey="accuracy" stroke="#3b82f6" strokeWidth={2} name="Accuracy" dot={false} />
+                        <Line yAxisId="left" type="monotone" dataKey="precision" stroke="#22c55e" strokeWidth={2} name="Precision" dot={false} />
+                        <Line yAxisId="left" type="monotone" dataKey="recall" stroke="#f97316" strokeWidth={2} name="Recall" dot={false} />
+                        <Line yAxisId="left" type="monotone" dataKey="f1Score" stroke="#8b5cf6" strokeWidth={2} name="F1 Score" dot={false} />
+                        <Bar yAxisId="right" dataKey="predictions" fill="#94a3b8" opacity={0.3} name="Predictions" />
+                      </ComposedChart>
+                    </ResponsiveContainer>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* Alerts Tab */}
           <TabsContent value="alerts" className="space-y-4">
             <div className="flex items-center gap-4">
               <Select value={statusFilter} onValueChange={setStatusFilter}><SelectTrigger className="w-[180px]"><SelectValue placeholder="Lọc theo trạng thái" /></SelectTrigger><SelectContent><SelectItem value="all">Tất cả</SelectItem><SelectItem value="active">Active</SelectItem><SelectItem value="acknowledged">Acknowledged</SelectItem><SelectItem value="resolved">Resolved</SelectItem><SelectItem value="ignored">Ignored</SelectItem></SelectContent></Select>
@@ -146,7 +322,7 @@ export default function DataDriftMonitoring() {
                         <div className="flex items-center justify-end gap-2">
                           {alert.status === 'active' && <Button variant="ghost" size="icon" onClick={() => acknowledgeAlert.mutate({ alertId: alert.id })}><Eye className="w-4 h-4 text-yellow-500" /></Button>}
                           {(alert.status === 'active' || alert.status === 'acknowledged') && <Button variant="ghost" size="icon" onClick={() => resolveAlert.mutate({ alertId: alert.id, resolution: "Đã xử lý" })}><CheckCircle2 className="w-4 h-4 text-green-500" /></Button>}
-                          {alert.status === 'active' && <Button variant="ghost" size="icon" onClick={() => ignoreAlert.mutate({ alertId: alert.id })}><XCircle className="w-4 h-4 text-gray-500" /></Button>}
+                          {alert.status === 'active' && <Button variant="ghost" size="icon" onClick={() => ignoreAlert.mutate({ alertId: alert.id, reason: "Bỏ qua" })}><XCircle className="w-4 h-4 text-gray-500" /></Button>}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -155,12 +331,16 @@ export default function DataDriftMonitoring() {
               </Table>
             </CardContent></Card>
           </TabsContent>
+
+          {/* Metrics Tab */}
           <TabsContent value="metrics" className="space-y-4">
             <Card><CardHeader><CardTitle className="flex items-center gap-2"><Activity className="w-5 h-5" />Metrics History (7 ngày)</CardTitle></CardHeader><CardContent>
               {metricsHistory?.length === 0 ? <div className="text-center py-8 text-muted-foreground">Chưa có dữ liệu metrics</div>
               : <div className="space-y-4">{metricsHistory?.slice(0, 20).map((m, i) => (<div key={i} className="flex items-center gap-4 p-2 border rounded"><div className="w-32 text-sm">{new Date(m.recordedAt).toLocaleDateString('vi-VN')}</div><div className="flex-1"><div className="flex items-center gap-2"><span className="text-sm text-muted-foreground w-16">Accuracy:</span><div className="flex-1 h-2 bg-muted rounded-full overflow-hidden"><div className="h-full bg-blue-500 rounded-full" style={{ width: `${(parseFloat(m.accuracy as string) || 0) * 100}%` }} /></div><span className="text-sm w-16 text-right">{((parseFloat(m.accuracy as string) || 0) * 100).toFixed(2)}%</span></div></div><div className="w-20 text-sm text-muted-foreground text-right">{m.predictionCount} preds</div></div>))}</div>}
             </CardContent></Card>
           </TabsContent>
+
+          {/* Features Tab */}
           <TabsContent value="features" className="space-y-4">
             <Card><CardContent className="p-0">
               <Table><TableHeader><TableRow><TableHead>Feature</TableHead><TableHead>Mean</TableHead><TableHead>Std Dev</TableHead><TableHead>Min</TableHead><TableHead>Max</TableHead><TableHead>Baseline</TableHead></TableRow></TableHeader>
@@ -181,6 +361,23 @@ export default function DataDriftMonitoring() {
             </CardContent></Card>
           </TabsContent>
         </Tabs>
+
+        {/* Scheduled Check Info */}
+        <Card>
+          <CardHeader><CardTitle className="flex items-center gap-2"><Clock className="w-5 h-5" />Scheduled Drift Check</CardTitle><CardDescription>Hệ thống tự động kiểm tra drift mỗi giờ</CardDescription></CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">Lần kiểm tra cuối: {lastCheckSummary?.lastCheck ? new Date(lastCheckSummary.lastCheck).toLocaleString('vi-VN') : 'Chưa có'}</p>
+                <p className="text-sm text-muted-foreground">Webhook: {webhookConfig?.slackEnabled ? '✅ Slack' : ''} {webhookConfig?.teamsEnabled ? '✅ Teams' : ''} {!webhookConfig?.slackEnabled && !webhookConfig?.teamsEnabled ? '❌ Chưa cấu hình' : ''}</p>
+              </div>
+              <Button onClick={() => runScheduledCheck.mutate()} disabled={runScheduledCheck.isPending}>
+                <RefreshCw className={`w-4 h-4 mr-2 ${runScheduledCheck.isPending ? 'animate-spin' : ''}`} />
+                Chạy ngay
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </DashboardLayout>
   );

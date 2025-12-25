@@ -8,6 +8,8 @@ import { router, protectedProcedure, publicProcedure } from "../_core/trpc";
 import { abTestingService, type ABTestStatus } from "../services/abTestingService";
 import { modelVersioningService, type RollbackType } from "../services/modelVersioningService";
 import { dataDriftService, type AlertStatus, type DriftSeverity } from "../services/dataDriftService";
+import { webhookNotificationService } from "../services/webhookNotificationService";
+import { scheduledDriftCheckService, runScheduledDriftCheck } from "../services/scheduledDriftCheckService";
 
 export const aiAdvancedRouter = router({
   // ========== A/B Testing ==========
@@ -408,6 +410,87 @@ export const aiAdvancedRouter = router({
       .input(z.object({ modelId: z.number().optional() }))
       .query(async ({ input }) => {
         return await dataDriftService.getDashboardStats(input.modelId);
+      }),
+
+    getFeatureStatistics: protectedProcedure
+      .input(z.object({ modelId: z.number() }))
+      .query(async ({ input }) => {
+        const db = await import("../db").then(m => m.getDb());
+        if (!db) return [];
+        const { aiFeatureStatistics } = await import("../../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        return await db.select().from(aiFeatureStatistics).where(eq(aiFeatureStatistics.modelId, input.modelId));
+      }),
+
+    // Run drift check manually
+    runDriftCheck: protectedProcedure
+      .input(z.object({ modelId: z.number() }))
+      .mutation(async ({ input }) => {
+        const result = await scheduledDriftCheckService.checkModel(input.modelId, `Model #${input.modelId}`);
+        return { alertsCreated: result.alertCreated ? 1 : 0, ...result };
+      }),
+  }),
+
+  // ========== Webhook Configuration ==========
+  webhook: router({
+    getConfig: protectedProcedure
+      .query(async () => {
+        return await webhookNotificationService.getConfig();
+      }),
+
+    updateConfig: protectedProcedure
+      .input(z.object({
+        slackWebhookUrl: z.string().optional(),
+        slackChannel: z.string().optional(),
+        slackEnabled: z.boolean().optional(),
+        teamsWebhookUrl: z.string().optional(),
+        teamsEnabled: z.boolean().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        return await webhookNotificationService.updateConfig(input);
+      }),
+
+    testSlack: protectedProcedure
+      .mutation(async () => {
+        return await webhookNotificationService.testWebhook('slack');
+      }),
+
+    testTeams: protectedProcedure
+      .mutation(async () => {
+        return await webhookNotificationService.testWebhook('teams');
+      }),
+
+    sendTestAlert: protectedProcedure
+      .input(z.object({
+        title: z.string(),
+        message: z.string(),
+        severity: z.enum(['info', 'warning', 'critical']).default('info'),
+      }))
+      .mutation(async ({ input }) => {
+        return await webhookNotificationService.sendNotification({
+          title: input.title,
+          message: input.message,
+          severity: input.severity,
+          timestamp: new Date(),
+        });
+      }),
+  }),
+
+  // ========== Scheduled Drift Check ==========
+  scheduledCheck: router({
+    runNow: protectedProcedure
+      .mutation(async () => {
+        return await runScheduledDriftCheck();
+      }),
+
+    getLastSummary: protectedProcedure
+      .query(async () => {
+        return await scheduledDriftCheckService.getLastCheckSummary();
+      }),
+
+    getModelsWithConfig: protectedProcedure
+      .query(async () => {
+        return await scheduledDriftCheckService.getModelsWithDriftConfig();
       }),
   }),
 });
