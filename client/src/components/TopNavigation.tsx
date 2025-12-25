@@ -43,6 +43,11 @@ const systemLabels: Record<string, { vi: string; en: string; description: { vi: 
     en: "System",
     description: { vi: "Cấu hình & quản trị hệ thống", en: "System Configuration & Admin" }
   },
+  ai: { 
+    vi: "AI", 
+    en: "AI",
+    description: { vi: "Trí tuệ nhân tạo & Học máy", en: "Artificial Intelligence & Machine Learning" }
+  },
 };
 
 // Default paths for each system
@@ -53,6 +58,7 @@ const systemDefaultPaths: Record<string, string> = {
   production: "/production-line-management",
   license: "/license-server-dashboard",
   system: "/users",
+  ai: "/ai-dashboard",
 };
 
 export function TopNavigation() {
@@ -68,6 +74,7 @@ export function TopNavigation() {
     { id: "spc", config: SYSTEMS.SPC },
     { id: "mms", config: SYSTEMS.MMS },
     { id: "production", config: SYSTEMS.PRODUCTION },
+    { id: "ai", config: SYSTEMS.AI },
     { id: "license", config: SYSTEMS.LICENSE },
     { id: "system", config: SYSTEMS.SYSTEM },
   ];

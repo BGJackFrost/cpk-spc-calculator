@@ -158,6 +158,11 @@ import SecurityDashboard from "./pages/SecurityDashboard";
 import IoTDashboard from "./pages/IoTDashboard";
 import IotRealtimeDashboard from "./pages/IotRealtimeDashboard";
 import AiMlDashboard from "./pages/AiMlDashboard";
+import AiDashboard from "./pages/AiDashboard";
+import AiSpcAnalysis from "./pages/AiSpcAnalysis";
+import AiRootCause from "./pages/AiRootCause";
+import AiNaturalLanguage from "./pages/AiNaturalLanguage";
+import AiPredictive from "./pages/AiPredictive";
 import AdvancedAnalyticsDashboard from "./pages/AdvancedAnalyticsDashboard";
 import NotificationPreferences from "./pages/NotificationPreferences";
 import KpiAlertThresholds from "./pages/KpiAlertThresholds";
@@ -358,6 +363,11 @@ function Router() {
       <Route path="/alert-analytics" component={AlertAnalytics} />
       <Route path="/unified-alert-kpi" component={UnifiedAlertKpiDashboard} />
       <Route path="/ai-ml-dashboard" component={AiMlDashboard} />
+      <Route path="/ai-dashboard" component={AiDashboard} />
+      <Route path="/ai-spc-analysis" component={AiSpcAnalysis} />
+      <Route path="/ai-root-cause" component={AiRootCause} />
+      <Route path="/ai-natural-language" component={AiNaturalLanguage} />
+      <Route path="/ai-predictive" component={AiPredictive} />
       <Route path="/advanced-analytics-dashboard" component={AdvancedAnalyticsDashboard} />
       <Route path="/notification-preferences" component={NotificationPreferences} />
       <Route path="/user-guide" component={UserGuide} />

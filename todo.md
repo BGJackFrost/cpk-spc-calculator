@@ -6572,3 +6572,108 @@
 - [x] Fallback về static videos khi database trống
 - [x] Thêm menu Video Management vào sidebar (chỉ admin)
 - [x] Viết unit tests cho videoTutorialRouter
+
+## AI Enhancement Roadmap (Phase 1-4)
+
+### Phase AI-0: Tách AI thành hệ thống riêng
+- [x] Tạo AI System trong Top Menu
+- [x] Di chuyển các menu AI từ Dashboard sang AI System
+- [x] Tạo AI Sidebar với các nhóm: Dashboard, Phân tích, Cấu hình, Training, Cài đặt
+- [x] Cập nhật SystemContext cho AI System
+
+### Phase AI-1: AI Cơ bản (Ưu tiên CAO)
+
+#### AI-1.1 Cải tiến AI SPC Analysis
+- [x] AI-SPC-01: Tích hợp LLM thực với invokeLLM helper
+- [x] AI-SPC-02: Root Cause Analysis với AI
+- [x] AI-SPC-03: Đề xuất hành động khắc phục tự động
+- [ ] AI-SPC-04: Phân tích tương quan đa biến
+- [ ] AI-SPC-05: Báo cáo tự động với AI insights
+
+#### AI-1.2 Anomaly Detection Nâng cao
+- [x] AI-ANO-01: Multivariate Anomaly Detection
+- [x] AI-ANO-02: Real-time anomaly scoring
+- [ ] AI-ANO-03: Adaptive threshold learning
+- [ ] AI-ANO-04: Anomaly clustering
+- [ ] AI-ANO-05: Alert prioritization
+
+#### AI-1.3 Predictive Analytics
+- [x] AI-PRED-01: CPK prediction với ARIMA/Prophet
+- [ ] AI-PRED-02: OEE forecasting model
+- [ ] AI-PRED-03: Defect rate prediction
+- [ ] AI-PRED-04: Production yield optimization
+- [ ] AI-PRED-05: Demand forecasting integration
+
+### Phase AI-2: AI Nâng cao (Ưu tiên TRUNG BÌNH)
+
+#### AI-2.1 Causal AI & Root Cause Analysis
+- [x] AI-RCA-01: Causal inference engine
+- [x] AI-RCA-02: Automated root cause identification
+- [ ] AI-RCA-03: Counterfactual analysis
+- [x] AI-RCA-04: Causal graph visualization
+- [ ] AI-RCA-05: What-if scenario simulation
+
+#### AI-2.2 Natural Language Interface
+- [x] AI-NLP-01: Chat interface cho SPC queries
+- [ ] AI-NLP-02: Natural language to SQL
+- [x] AI-NLP-03: Voice command integration (mock)
+- [x] AI-NLP-04: Multi-language support (Vi/En)
+- [x] AI-NLP-05: Context-aware conversation
+
+#### AI-2.3 Computer Vision Integration
+- [ ] AI-CV-01: Defect detection từ camera
+- [ ] AI-CV-02: Visual inspection automation
+- [ ] AI-CV-03: Part identification và tracking
+- [ ] AI-CV-04: Quality grading với image analysis
+- [ ] AI-CV-05: OCR cho document processing
+
+#### AI-2.4 Prescriptive Analytics
+- [ ] AI-PRESC-01: Process parameter optimization
+- [ ] AI-PRESC-02: Automated recipe adjustment
+- [ ] AI-PRESC-03: Resource allocation optimization
+- [ ] AI-PRESC-04: Maintenance scheduling optimization
+- [ ] AI-PRESC-05: Energy consumption optimization
+
+### Phase AI-3: AI Tiên tiến (Ưu tiên THẤP)
+
+#### AI-3.1 Agentic AI System
+- [ ] AI-AGT-01: Autonomous monitoring agent
+- [ ] AI-AGT-02: Self-healing process control
+- [ ] AI-AGT-03: Multi-agent collaboration
+- [ ] AI-AGT-04: Agent decision logging
+- [ ] AI-AGT-05: Human-in-the-loop workflow
+
+#### AI-3.2 Federated Learning
+- [ ] AI-FL-01: Cross-plant model training
+- [ ] AI-FL-02: Privacy-preserving analytics
+- [ ] AI-FL-03: Distributed model aggregation
+- [ ] AI-FL-04: Model versioning và rollback
+- [ ] AI-FL-05: Edge deployment optimization
+
+#### AI-3.3 Reinforcement Learning
+- [ ] AI-RL-01: Process control optimization
+- [ ] AI-RL-02: Dynamic scheduling agent
+- [ ] AI-RL-03: Quality optimization agent
+- [ ] AI-RL-04: Energy management agent
+- [ ] AI-RL-05: Simulation environment setup
+
+#### AI-3.4 Explainable AI (XAI)
+- [ ] AI-XAI-01: Model interpretability dashboard
+- [ ] AI-XAI-02: Feature importance visualization
+- [ ] AI-XAI-03: SHAP/LIME integration
+- [ ] AI-XAI-04: Decision explanation generation
+- [ ] AI-XAI-05: Bias detection và mitigation
+
+#### AI-3.5 Digital Twin Integration
+- [ ] AI-DT-01: Process digital twin creation
+- [ ] AI-DT-02: Real-time synchronization
+- [ ] AI-DT-03: Simulation-based optimization
+- [ ] AI-DT-04: Predictive maintenance với DT
+- [ ] AI-DT-05: Virtual commissioning support
+
+### Phase AI-4: AI Ecosystem (Tương lai)
+- [ ] AI Model Marketplace
+- [ ] AutoML Platform
+- [ ] MLOps Infrastructure
+- [ ] Industry-Specific AI Models
+

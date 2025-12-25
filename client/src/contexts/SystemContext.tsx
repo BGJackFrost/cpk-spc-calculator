@@ -33,7 +33,9 @@ export function SystemProvider({ children }: { children: React.ReactNode }) {
     const path = window.location.pathname;
     
     // Auto-detect system from URL
-    if (path.startsWith("/license-")) {
+    if (path.startsWith("/ai-") || path.startsWith("/anomaly-detection") || path.startsWith("/cpk-forecast")) {
+      setActiveSystemState("ai");
+    } else if (path.startsWith("/license-")) {
       setActiveSystemState("license");
     } else if (path.startsWith("/oee-") || path.startsWith("/maintenance-") || path.startsWith("/spare-") || path.startsWith("/predictive-") || path.startsWith("/plant-kpi") || path.startsWith("/unified-dashboard")) {
       setActiveSystemState("mms");

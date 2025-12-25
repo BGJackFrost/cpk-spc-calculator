@@ -7,7 +7,7 @@ import {
   Gauge, ClipboardList, Building2, ShieldCheck, Boxes, Moon, Sun, Zap,
   Target, HardHat, Hammer, Truck, Brain, Bell, Download, BellRing, Award,
   Thermometer, DollarSign, CreditCard, Receipt, FileCheck, Lock, Unlock,
-  Star,
+  Star, Lightbulb,
   MessageSquare,
   Video,
   type LucideIcon
@@ -104,6 +104,15 @@ export const SYSTEMS: Record<string, SystemConfig> = {
     color: "slate",
     description: "System Configuration & Administration",
     licenseKey: "system_admin",
+  },
+  AI: {
+    id: "ai",
+    name: "AI System",
+    shortName: "AI",
+    icon: Brain,
+    color: "violet",
+    description: "AI/ML Analytics, Predictions & Automation",
+    licenseKey: "ai_system",
   },
 };
 
@@ -415,6 +424,81 @@ export const DASHBOARD_MENU: SystemMenuConfig = {
   ],
 };
 
+// ===== AI SYSTEM MENU =====
+export const AI_MENU: SystemMenuConfig = {
+  system: SYSTEMS.AI,
+  menuGroups: [
+    {
+      id: "ai-dashboard",
+      labelKey: "menuGroup.aiDashboard",
+      icon: Gauge,
+      defaultOpen: true,
+      items: [
+        { id: "ai-overview", icon: Brain, labelKey: "nav.aiOverview", path: "/ai-dashboard" },
+        { id: "ai-ml-dashboard", icon: Activity, labelKey: "nav.aiMlDashboard", path: "/ai-ml-dashboard" },
+        { id: "ai-predictions", icon: TrendingUp, labelKey: "nav.aiPredictions", path: "/ai-predictions" },
+        { id: "ai-alerts", icon: AlertTriangle, labelKey: "nav.aiAlerts", path: "/ai-alerts" },
+      ],
+    },
+    {
+      id: "ai-analysis",
+      labelKey: "menuGroup.aiAnalysis",
+      icon: TrendingUp,
+      items: [
+        { id: "anomaly-detection", icon: AlertTriangle, labelKey: "nav.anomalyDetection", path: "/anomaly-detection", licenseFeature: "ai_anomaly" },
+        { id: "ai-spc-analysis", icon: BarChart3, labelKey: "nav.aiSpcAnalysis", path: "/ai-spc-analysis" },
+        { id: "ai-root-cause", icon: GitBranch, labelKey: "nav.aiRootCause", path: "/ai-root-cause" },
+        { id: "ai-correlation", icon: GitCompare, labelKey: "nav.aiCorrelation", path: "/ai-correlation" },
+        { id: "ai-trend-analysis", icon: TrendingUp, labelKey: "nav.aiTrendAnalysis", path: "/ai-trend-analysis" },
+      ],
+    },
+    {
+      id: "ai-predictive",
+      labelKey: "menuGroup.aiPredictive",
+      icon: Target,
+      items: [
+        { id: "cpk-forecast", icon: TrendingUp, labelKey: "nav.cpkForecast", path: "/ai-predictive" },
+        { id: "predictive-maintenance", icon: Wrench, labelKey: "nav.predictiveMaintenance", path: "/predictive-maintenance", licenseFeature: "ai_predictive" },
+        { id: "ai-oee-forecast", icon: Target, labelKey: "nav.aiOeeForecast", path: "/ai-oee-forecast" },
+        { id: "ai-defect-prediction", icon: AlertTriangle, labelKey: "nav.aiDefectPrediction", path: "/ai-defect-prediction" },
+        { id: "ai-yield-optimization", icon: BarChart3, labelKey: "nav.aiYieldOptimization", path: "/ai-yield-optimization" },
+      ],
+    },
+    {
+      id: "ai-nlp",
+      labelKey: "menuGroup.aiNlp",
+      icon: MessageSquare,
+      items: [
+        { id: "ai-chat", icon: MessageSquare, labelKey: "nav.aiChat", path: "/ai-natural-language", licenseFeature: "ai_chat" },
+        { id: "ai-reports", icon: FileText, labelKey: "nav.aiReports", path: "/ai-reports" },
+        { id: "ai-insights", icon: Lightbulb, labelKey: "nav.aiInsights", path: "/ai-insights" },
+      ],
+    },
+    {
+      id: "ai-training",
+      labelKey: "menuGroup.aiTraining",
+      icon: Cpu,
+      items: [
+        { id: "ai-model-management", icon: Brain, labelKey: "nav.aiModelManagement", path: "/ai-model-management", adminOnly: true },
+        { id: "ai-training-jobs", icon: Activity, labelKey: "nav.aiTrainingJobs", path: "/ai-training-jobs", adminOnly: true },
+        { id: "ai-model-comparison", icon: GitCompare, labelKey: "nav.aiModelComparison", path: "/ai-model-comparison", adminOnly: true },
+        { id: "ai-ab-testing", icon: Target, labelKey: "nav.aiAbTesting", path: "/ai-ab-testing", adminOnly: true },
+      ],
+    },
+    {
+      id: "ai-settings",
+      labelKey: "menuGroup.aiSettings",
+      icon: Settings,
+      items: [
+        { id: "ai-config", icon: Cog, labelKey: "nav.aiConfig", path: "/ai-config", adminOnly: true },
+        { id: "ai-thresholds", icon: Gauge, labelKey: "nav.aiThresholds", path: "/ai-thresholds", adminOnly: true },
+        { id: "ai-data-sources", icon: Database, labelKey: "nav.aiDataSources", path: "/ai-data-sources", adminOnly: true },
+        { id: "ai-audit-logs", icon: FileText, labelKey: "nav.aiAuditLogs", path: "/ai-audit-logs", adminOnly: true },
+      ],
+    },
+  ],
+};
+
 // All system menus
 export const ALL_SYSTEM_MENUS: Record<string, SystemMenuConfig> = {
   dashboard: DASHBOARD_MENU,
@@ -423,6 +507,7 @@ export const ALL_SYSTEM_MENUS: Record<string, SystemMenuConfig> = {
   production: PRODUCTION_MENU,
   license: LICENSE_MENU,
   system: SYSTEM_MENU,
+  ai: AI_MENU,
 };
 
 // Get menu for a specific system

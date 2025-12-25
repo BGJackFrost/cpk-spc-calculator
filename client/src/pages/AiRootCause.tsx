@@ -1,0 +1,559 @@
+import { useState, useMemo } from "react";
+import DashboardLayout from "@/components/DashboardLayout";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Progress } from "@/components/ui/progress";
+import { Separator } from "@/components/ui/separator";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { trpc } from "@/lib/trpc";
+import { toast } from "sonner";
+import {
+  Brain,
+  GitBranch,
+  AlertTriangle,
+  Target,
+  Activity,
+  TrendingUp,
+  TrendingDown,
+  CheckCircle,
+  XCircle,
+  Lightbulb,
+  RefreshCw,
+  Download,
+  ChevronRight,
+  Loader2,
+  Zap,
+  Settings,
+  Users,
+  Wrench,
+  Thermometer,
+  Gauge,
+  BarChart3,
+  ArrowRight,
+} from "lucide-react";
+
+// 5M1E Categories
+const categories5M1E = [
+  { id: "man", name: "Man (Người)", nameEn: "Man", icon: Users, color: "text-blue-500", bgColor: "bg-blue-50" },
+  { id: "machine", name: "Machine (Máy)", nameEn: "Machine", icon: Settings, color: "text-orange-500", bgColor: "bg-orange-50" },
+  { id: "material", name: "Material (Vật liệu)", nameEn: "Material", icon: BarChart3, color: "text-green-500", bgColor: "bg-green-50" },
+  { id: "method", name: "Method (Phương pháp)", nameEn: "Method", icon: GitBranch, color: "text-purple-500", bgColor: "bg-purple-50" },
+  { id: "measurement", name: "Measurement (Đo lường)", nameEn: "Measurement", icon: Gauge, color: "text-cyan-500", bgColor: "bg-cyan-50" },
+  { id: "environment", name: "Environment (Môi trường)", nameEn: "Environment", icon: Thermometer, color: "text-yellow-500", bgColor: "bg-yellow-50" },
+];
+
+// Mock root cause data
+interface RootCause {
+  id: string;
+  category: string;
+  title: string;
+  description: string;
+  probability: number;
+  impact: "low" | "medium" | "high" | "critical";
+  evidence: string[];
+  recommendations: string[];
+  relatedFactors: string[];
+}
+
+interface CausalChain {
+  id: string;
+  name: string;
+  steps: { factor: string; description: string; category: string }[];
+  confidence: number;
+}
+
+function generateMockRootCauses(): RootCause[] {
+  return [
+    {
+      id: "rc-1",
+      category: "machine",
+      title: "Tool Wear - Dao cắt bị mòn",
+      description: "Dao cắt đã vượt quá tuổi thọ khuyến nghị, gây ra biến động kích thước sản phẩm",
+      probability: 0.85,
+      impact: "high",
+      evidence: [
+        "CPK giảm 15% trong 2 tuần qua",
+        "Tần suất điểm ngoài UCL tăng",
+        "Dao cắt đã sử dụng 120% tuổi thọ khuyến nghị",
+      ],
+      recommendations: [
+        "Thay dao cắt ngay lập tức",
+        "Thiết lập cảnh báo tuổi thọ dao tự động",
+        "Xem xét nâng cấp vật liệu dao cắt",
+      ],
+      relatedFactors: ["Tốc độ cắt", "Vật liệu gia công", "Hệ thống làm mát"],
+    },
+    {
+      id: "rc-2",
+      category: "environment",
+      title: "Temperature Fluctuation - Biến động nhiệt độ",
+      description: "Nhiệt độ xưởng dao động ±5°C trong ca làm việc, ảnh hưởng đến độ chính xác gia công",
+      probability: 0.72,
+      impact: "medium",
+      evidence: [
+        "Tương quan cao giữa nhiệt độ và CPK (r=0.78)",
+        "CPK thấp nhất vào buổi trưa (nhiệt độ cao nhất)",
+        "Hệ thống HVAC hoạt động không ổn định",
+      ],
+      recommendations: [
+        "Kiểm tra và bảo trì hệ thống HVAC",
+        "Cài đặt cảm biến nhiệt độ bổ sung",
+        "Điều chỉnh lịch sản xuất theo nhiệt độ",
+      ],
+      relatedFactors: ["Độ ẩm", "Hệ thống thông gió", "Vị trí máy"],
+    },
+    {
+      id: "rc-3",
+      category: "man",
+      title: "Operator Skill Gap - Chênh lệch kỹ năng",
+      description: "Sự khác biệt về kỹ năng giữa các ca làm việc dẫn đến biến động chất lượng",
+      probability: 0.65,
+      impact: "medium",
+      evidence: [
+        "CPK ca A: 1.45, ca B: 1.28, ca C: 1.15",
+        "Tỷ lệ lỗi setup cao hơn ở ca C",
+        "Thời gian đào tạo trung bình ca C thấp hơn 30%",
+      ],
+      recommendations: [
+        "Tổ chức đào tạo nâng cao cho ca C",
+        "Thiết lập buddy system với nhân viên kinh nghiệm",
+        "Chuẩn hóa quy trình setup với checklist",
+      ],
+      relatedFactors: ["Kinh nghiệm", "Đào tạo", "Quy trình làm việc"],
+    },
+    {
+      id: "rc-4",
+      category: "material",
+      title: "Raw Material Variation - Biến động nguyên liệu",
+      description: "Lô nguyên liệu mới có độ cứng cao hơn 8% so với spec, ảnh hưởng đến gia công",
+      probability: 0.58,
+      impact: "high",
+      evidence: [
+        "Thay đổi nhà cung cấp từ tháng trước",
+        "Hardness test: 245 HB vs spec 227 HB",
+        "Tăng mài mòn dao cắt 25%",
+      ],
+      recommendations: [
+        "Liên hệ nhà cung cấp về spec nguyên liệu",
+        "Điều chỉnh thông số gia công cho vật liệu cứng hơn",
+        "Tăng tần suất kiểm tra incoming quality",
+      ],
+      relatedFactors: ["Nhà cung cấp", "Incoming inspection", "Thông số gia công"],
+    },
+    {
+      id: "rc-5",
+      category: "method",
+      title: "Process Parameter Drift - Trôi thông số quy trình",
+      description: "Thông số tốc độ feed đã trôi 3% so với giá trị chuẩn do không có calibration định kỳ",
+      probability: 0.52,
+      impact: "medium",
+      evidence: [
+        "Feed rate thực tế: 103% so với setting",
+        "Calibration cuối cùng: 6 tháng trước",
+        "Xu hướng CPK giảm dần theo thời gian",
+      ],
+      recommendations: [
+        "Thực hiện calibration ngay",
+        "Thiết lập lịch calibration định kỳ (hàng tháng)",
+        "Cài đặt monitoring feed rate real-time",
+      ],
+      relatedFactors: ["Calibration", "Preventive maintenance", "SPC monitoring"],
+    },
+    {
+      id: "rc-6",
+      category: "measurement",
+      title: "Gauge R&R Issue - Vấn đề hệ thống đo",
+      description: "Gauge R&R = 28% (>10% threshold), hệ thống đo đang đóng góp đáng kể vào biến động",
+      probability: 0.45,
+      impact: "medium",
+      evidence: [
+        "Gauge R&R study: 28% total variation",
+        "Repeatability: 18%, Reproducibility: 10%",
+        "Calibration certificate hết hạn 2 tháng",
+      ],
+      recommendations: [
+        "Calibrate lại thiết bị đo",
+        "Đào tạo lại kỹ thuật đo cho operators",
+        "Xem xét nâng cấp thiết bị đo chính xác hơn",
+      ],
+      relatedFactors: ["Thiết bị đo", "Kỹ thuật đo", "Môi trường đo"],
+    },
+  ];
+}
+
+function generateMockCausalChains(): CausalChain[] {
+  return [
+    {
+      id: "chain-1",
+      name: "Tool Wear → Dimension Variation",
+      steps: [
+        { factor: "Tool age exceeded", description: "Dao cắt vượt tuổi thọ", category: "machine" },
+        { factor: "Cutting edge degradation", description: "Lưỡi cắt bị mòn", category: "machine" },
+        { factor: "Increased cutting force", description: "Lực cắt tăng", category: "method" },
+        { factor: "Dimension variation", description: "Biến động kích thước", category: "measurement" },
+        { factor: "CPK decline", description: "CPK giảm", category: "measurement" },
+      ],
+      confidence: 0.85,
+    },
+    {
+      id: "chain-2",
+      name: "Temperature → Thermal Expansion",
+      steps: [
+        { factor: "HVAC malfunction", description: "HVAC hoạt động không ổn định", category: "environment" },
+        { factor: "Temperature fluctuation", description: "Nhiệt độ dao động", category: "environment" },
+        { factor: "Thermal expansion", description: "Giãn nở nhiệt", category: "machine" },
+        { factor: "Spindle position shift", description: "Trục chính dịch chuyển", category: "machine" },
+        { factor: "Dimension error", description: "Sai số kích thước", category: "measurement" },
+      ],
+      confidence: 0.72,
+    },
+    {
+      id: "chain-3",
+      name: "Material Hardness → Tool Wear",
+      steps: [
+        { factor: "New supplier material", description: "Nguyên liệu nhà cung cấp mới", category: "material" },
+        { factor: "Higher hardness", description: "Độ cứng cao hơn", category: "material" },
+        { factor: "Accelerated tool wear", description: "Mài mòn dao nhanh hơn", category: "machine" },
+        { factor: "Surface finish degradation", description: "Chất lượng bề mặt giảm", category: "measurement" },
+        { factor: "Quality rejection", description: "Từ chối chất lượng", category: "measurement" },
+      ],
+      confidence: 0.68,
+    },
+  ];
+}
+
+export default function AiRootCause() {
+  const { language } = useLanguage();
+  const isVi = language === "vi";
+  const [selectedProblem, setSelectedProblem] = useState<string>("cpk_decline");
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+
+  // Mock data
+  const rootCauses = useMemo(() => generateMockRootCauses(), []);
+  const causalChains = useMemo(() => generateMockCausalChains(), []);
+
+  // Filter root causes by category
+  const filteredCauses = selectedCategory === "all" 
+    ? rootCauses 
+    : rootCauses.filter(rc => rc.category === selectedCategory);
+
+  // Sort by probability
+  const sortedCauses = [...filteredCauses].sort((a, b) => b.probability - a.probability);
+
+  const runAnalysis = async () => {
+    setIsAnalyzing(true);
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    setIsAnalyzing(false);
+    toast.success(isVi ? "Phân tích nguyên nhân hoàn tất" : "Root cause analysis complete");
+  };
+
+  const getCategoryInfo = (categoryId: string) => {
+    return categories5M1E.find(c => c.id === categoryId) || categories5M1E[0];
+  };
+
+  const getImpactColor = (impact: string) => {
+    switch (impact) {
+      case "critical": return "bg-red-100 text-red-700";
+      case "high": return "bg-orange-100 text-orange-700";
+      case "medium": return "bg-yellow-100 text-yellow-700";
+      default: return "bg-gray-100 text-gray-700";
+    }
+  };
+
+  return (
+    <DashboardLayout>
+      <div className="p-6 space-y-6">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold flex items-center gap-3">
+              <GitBranch className="h-8 w-8 text-orange-500" />
+              {isVi ? "Phân tích Nguyên nhân Gốc rễ (Causal AI)" : "Root Cause Analysis (Causal AI)"}
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              {isVi
+                ? "Phân tích nguyên nhân gốc rễ tự động với phương pháp 5M1E và Causal AI"
+                : "Automatic root cause analysis with 5M1E methodology and Causal AI"}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={runAnalysis} disabled={isAnalyzing}>
+              {isAnalyzing ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4 mr-2" />
+              )}
+              {isVi ? "Phân tích lại" : "Re-analyze"}
+            </Button>
+            <Button variant="outline" size="sm">
+              <Download className="h-4 w-4 mr-2" />
+              {isVi ? "Xuất báo cáo" : "Export Report"}
+            </Button>
+          </div>
+        </div>
+
+        {/* Problem Selection */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">
+              {isVi ? "Chọn vấn đề cần phân tích" : "Select Problem to Analyze"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Select value={selectedProblem} onValueChange={setSelectedProblem}>
+                <SelectTrigger>
+                  <SelectValue placeholder={isVi ? "Chọn vấn đề" : "Select problem"} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cpk_decline">CPK Decline (CPK giảm)</SelectItem>
+                  <SelectItem value="high_variation">High Variation (Biến động cao)</SelectItem>
+                  <SelectItem value="out_of_spec">Out of Spec (Ngoài spec)</SelectItem>
+                  <SelectItem value="trend_shift">Trend Shift (Dịch chuyển xu hướng)</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                <SelectTrigger>
+                  <SelectValue placeholder={isVi ? "Lọc theo 5M1E" : "Filter by 5M1E"} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{isVi ? "Tất cả" : "All Categories"}</SelectItem>
+                  {categories5M1E.map(cat => (
+                    <SelectItem key={cat.id} value={cat.id}>
+                      {isVi ? cat.name : cat.nameEn}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Button onClick={runAnalysis} disabled={isAnalyzing}>
+                {isAnalyzing ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    {isVi ? "Đang phân tích..." : "Analyzing..."}
+                  </>
+                ) : (
+                  <>
+                    <Brain className="h-4 w-4 mr-2" />
+                    {isVi ? "Chạy Causal AI" : "Run Causal AI"}
+                  </>
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 5M1E Category Overview */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          {categories5M1E.map(cat => {
+            const count = rootCauses.filter(rc => rc.category === cat.id).length;
+            const Icon = cat.icon;
+            return (
+              <Card 
+                key={cat.id} 
+                className={`cursor-pointer transition-all hover:shadow-md ${selectedCategory === cat.id ? 'ring-2 ring-primary' : ''}`}
+                onClick={() => setSelectedCategory(selectedCategory === cat.id ? "all" : cat.id)}
+              >
+                <CardContent className="p-4 text-center">
+                  <div className={`w-12 h-12 mx-auto rounded-full ${cat.bgColor} flex items-center justify-center mb-2`}>
+                    <Icon className={`h-6 w-6 ${cat.color}`} />
+                  </div>
+                  <div className="font-medium text-sm">{isVi ? cat.name.split(" ")[0] : cat.nameEn}</div>
+                  <div className="text-2xl font-bold mt-1">{count}</div>
+                  <div className="text-xs text-muted-foreground">{isVi ? "nguyên nhân" : "causes"}</div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Root Causes List */}
+          <div className="lg:col-span-2 space-y-4">
+            <h2 className="text-xl font-semibold flex items-center gap-2">
+              <Target className="h-5 w-5" />
+              {isVi ? "Nguyên nhân gốc rễ được xác định" : "Identified Root Causes"}
+              <Badge variant="secondary">{sortedCauses.length}</Badge>
+            </h2>
+
+            {sortedCauses.map((cause, index) => {
+              const catInfo = getCategoryInfo(cause.category);
+              const CatIcon = catInfo.icon;
+
+              return (
+                <Card key={cause.id} className="hover:shadow-md transition-shadow">
+                  <CardHeader className="pb-2">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-full ${catInfo.bgColor} flex items-center justify-center`}>
+                          <CatIcon className={`h-5 w-5 ${catInfo.color}`} />
+                        </div>
+                        <div>
+                          <CardTitle className="text-lg flex items-center gap-2">
+                            <span className="text-muted-foreground">#{index + 1}</span>
+                            {cause.title}
+                          </CardTitle>
+                          <CardDescription>{cause.description}</CardDescription>
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-1">
+                        <Badge className={getImpactColor(cause.impact)}>
+                          {cause.impact.toUpperCase()}
+                        </Badge>
+                        <span className="text-sm font-medium">
+                          {(cause.probability * 100).toFixed(0)}% {isVi ? "xác suất" : "probability"}
+                        </span>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="mb-3">
+                      <Progress value={cause.probability * 100} className="h-2" />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Evidence */}
+                      <div>
+                        <h4 className="font-medium text-sm mb-2 flex items-center gap-1">
+                          <CheckCircle className="h-4 w-4 text-green-500" />
+                          {isVi ? "Bằng chứng" : "Evidence"}
+                        </h4>
+                        <ul className="space-y-1">
+                          {cause.evidence.map((ev, idx) => (
+                            <li key={idx} className="text-sm text-muted-foreground flex items-start gap-1">
+                              <ChevronRight className="h-3 w-3 mt-1 flex-shrink-0" />
+                              {ev}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      {/* Recommendations */}
+                      <div>
+                        <h4 className="font-medium text-sm mb-2 flex items-center gap-1">
+                          <Lightbulb className="h-4 w-4 text-yellow-500" />
+                          {isVi ? "Khuyến nghị" : "Recommendations"}
+                        </h4>
+                        <ul className="space-y-1">
+                          {cause.recommendations.map((rec, idx) => (
+                            <li key={idx} className="text-sm text-muted-foreground flex items-start gap-1">
+                              <ArrowRight className="h-3 w-3 mt-1 flex-shrink-0 text-primary" />
+                              {rec}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+
+                    {/* Related Factors */}
+                    <div className="mt-3 pt-3 border-t">
+                      <span className="text-sm text-muted-foreground mr-2">
+                        {isVi ? "Yếu tố liên quan:" : "Related factors:"}
+                      </span>
+                      {cause.relatedFactors.map((factor, idx) => (
+                        <Badge key={idx} variant="outline" className="mr-1 mb-1">
+                          {factor}
+                        </Badge>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+
+          {/* Causal Chains */}
+          <div className="space-y-4">
+            <h2 className="text-xl font-semibold flex items-center gap-2">
+              <GitBranch className="h-5 w-5" />
+              {isVi ? "Chuỗi nhân quả" : "Causal Chains"}
+            </h2>
+
+            {causalChains.map(chain => (
+              <Card key={chain.id}>
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base">{chain.name}</CardTitle>
+                    <Badge variant="secondary">
+                      {(chain.confidence * 100).toFixed(0)}%
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {chain.steps.map((step, idx) => {
+                      const catInfo = getCategoryInfo(step.category);
+                      const CatIcon = catInfo.icon;
+                      const isLast = idx === chain.steps.length - 1;
+
+                      return (
+                        <div key={idx} className="flex items-center gap-2">
+                          <div className={`w-8 h-8 rounded-full ${catInfo.bgColor} flex items-center justify-center flex-shrink-0`}>
+                            <CatIcon className={`h-4 w-4 ${catInfo.color}`} />
+                          </div>
+                          <div className="flex-1">
+                            <div className="text-sm font-medium">{step.factor}</div>
+                            <div className="text-xs text-muted-foreground">{step.description}</div>
+                          </div>
+                          {!isLast && (
+                            <ArrowRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+
+            {/* Summary Stats */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5" />
+                  {isVi ? "Tổng kết" : "Summary"}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">
+                    {isVi ? "Tổng nguyên nhân" : "Total Causes"}
+                  </span>
+                  <span className="font-bold">{rootCauses.length}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">
+                    {isVi ? "Nguyên nhân chính" : "Primary Cause"}
+                  </span>
+                  <span className="font-bold text-orange-600">
+                    {rootCauses[0]?.title.split(" - ")[0]}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">
+                    {isVi ? "Độ tin cậy" : "Confidence"}
+                  </span>
+                  <span className="font-bold text-green-600">
+                    {(rootCauses[0]?.probability * 100).toFixed(0)}%
+                  </span>
+                </div>
+                <Separator />
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">
+                    {isVi ? "Chuỗi nhân quả" : "Causal Chains"}
+                  </span>
+                  <span className="font-bold">{causalChains.length}</span>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    </DashboardLayout>
+  );
+}
