@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `ai_drift_alerts` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `model_id` int NOT NULL,\n  `drift_type` enum('accuracy_drop','feature_drift','prediction_drift','data_quality') NOT NULL,\n  `severity` enum('low','medium','high','critical') NOT NULL,\n  `drift_score` decimal(10,6) NOT NULL,\n  `details` json,\n  `recommendation` text,\n  `status` enum('active','acknowledged','resolved','ignored') NOT NULL DEFAULT 'active',\n  `acknowledged_at` timestamp,\n  `acknowledged_by` int,\n  `resolved_at` timestamp,\n  `resolved_by` int,\n  `resolution` text,\n  `created_at` timestamp NOT NULL DEFAULT (now()),\n  CONSTRAINT `ai_drift_alerts_id` PRIMARY KEY(`id`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute CREATE TABLE IF NOT EXISTS `ai_drift_alerts` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `model_id` int NOT NULL,\n  `drift_type` enum('accuracy_drop','feature_drift','prediction_drift','data_quality') NOT NULL,\n  `severity` enum('low','medium','high','critical') NOT NULL,\n  `drift_score` decimal(10,6) NOT NULL,\n  `details` json,\n  `recommendation` text,\n  `status` enum('active','acknowledged','resolved','ignored') NOT NULL DEFAULT 'active',\n  `acknowledged_at` timestamp,\n  `acknowledged_by` int,\n  `resolved_at` timestamp,\n  `resolved_by` int,\n  `resolution` text,\n  `created_at` timestamp NOT NULL DEFAULT (now()),\n  CONSTRAINT `ai_drift_alerts_id` PRIMARY KEY(`id`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 4657
+}

@@ -6761,3 +6761,27 @@
 - [x] Scheduled job kiểm tra và retrain
 - [x] Cấu hình ngưỡng retrain
 - [x] Notification khi retrain hoàn thành
+
+
+## Phase AI Enhancement - Advanced ML Features
+
+### A/B Testing cho Model Versions
+- [x] Tạo database schema cho A/B tests (ai_ab_tests, ai_ab_test_results, ai_ab_test_stats)
+- [x] Tạo A/B Testing Service với traffic splitting và statistical analysis
+- [x] Tạo API endpoints cho A/B Testing management
+- [x] Tạo UI trang A/B Testing Management (ABTestingManagement.tsx)
+- [x] Unit tests cho A/B Testing Service
+
+### Model Versioning với Rollback
+- [x] Tạo database schema cho model versions (ai_model_versions, ai_model_rollback_history)
+- [x] Tạo Model Versioning Service với rollback capability
+- [x] Tạo API endpoints cho Model Versioning
+- [x] Tạo UI trang Model Versioning (ModelVersioningPage.tsx)
+
+### Data Drift Detection và Alerting
+- [x] Tạo database schema cho drift detection (ai_drift_alerts, ai_drift_configs, ai_drift_metrics_history, ai_feature_statistics)
+- [x] Tạo Data Drift Service với KS statistic và PSI calculation
+- [x] Tạo API endpoints cho Drift Detection
+- [x] Tạo UI trang Data Drift Monitoring (DataDriftMonitoring.tsx)
+- [x] Auto-alerting khi accuracy giảm đột ngột
+- [x] Unit tests cho Data Drift Service

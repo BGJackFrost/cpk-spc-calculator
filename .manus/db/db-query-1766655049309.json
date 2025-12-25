@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `ai_ab_test_stats` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `test_id` int NOT NULL,\n  `variant` enum('A','B') NOT NULL,\n  `total_predictions` int NOT NULL DEFAULT 0,\n  `correct_predictions` int NOT NULL DEFAULT 0,\n  `accuracy` decimal(10,6),\n  `mean_error` decimal(15,6),\n  `mean_absolute_error` decimal(15,6),\n  `root_mean_squared_error` decimal(15,6),\n  `avg_response_time_ms` decimal(10,2),\n  `updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n  CONSTRAINT `ai_ab_test_stats_id` PRIMARY KEY(`id`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute CREATE TABLE IF NOT EXISTS `ai_ab_test_stats` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `test_id` int NOT NULL,\n  `variant` enum('A','B') NOT NULL,\n  `total_predictions` int NOT NULL DEFAULT 0,\n  `correct_predictions` int NOT NULL DEFAULT 0,\n  `accuracy` decimal(10,6),\n  `mean_error` decimal(15,6),\n  `mean_absolute_error` decimal(15,6),\n  `root_mean_squared_error` decimal(15,6),\n  `avg_response_time_ms` decimal(10,2),\n  `updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n  CONSTRAINT `ai_ab_test_stats_id` PRIMARY KEY(`id`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 4793
+}

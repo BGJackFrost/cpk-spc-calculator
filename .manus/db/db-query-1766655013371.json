@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `ai_ml_models` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `name` varchar(255) NOT NULL,\n  `description` text,\n  `model_type` varchar(100) NOT NULL,\n  `target_metric` varchar(100),\n  `status` enum('draft','training','active','inactive','deprecated') NOT NULL DEFAULT 'draft',\n  `accuracy` decimal(10,6),\n  `precision` decimal(10,6),\n  `recall` decimal(10,6),\n  `f1_score` decimal(10,6),\n  `created_by` int,\n  `created_at` timestamp NOT NULL DEFAULT (now()),\n  `updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n  CONSTRAINT `ai_ml_models_id` PRIMARY KEY(`id`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute CREATE TABLE IF NOT EXISTS `ai_ml_models` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `name` varchar(255) NOT NULL,\n  `description` text,\n  `model_type` varchar(100) NOT NULL,\n  `target_metric` varchar(100),\n  `status` enum('draft','training','active','inactive','deprecated') NOT NULL DEFAULT 'draft',\n  `accuracy` decimal(10,6),\n  `precision` decimal(10,6),\n  `recall` decimal(10,6),\n  `f1_score` decimal(10,6),\n  `created_by` int,\n  `created_at` timestamp NOT NULL DEFAULT (now()),\n  `updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n  CONSTRAINT `ai_ml_models_id` PRIMARY KEY(`id`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 5712
+}

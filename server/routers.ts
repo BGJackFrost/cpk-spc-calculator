@@ -14,6 +14,7 @@ import { mqttRouter } from "./services/mqttRouter";
 import { iotAlertRouter } from "./services/iotAlertRouter";
 import { opcuaRouter } from "./services/opcuaRouter";
 import { aiRouter } from "./routers/aiRouter";
+import { aiAdvancedRouter } from "./routers/aiAdvancedRouter";
 import { erpIntegrationRouter } from "./routers/erpIntegrationRouter";
 import { securityRouter } from "./routers/securityRouter";
 import { chartConfigRouter } from "./routers/chartConfigRouter";
@@ -3743,6 +3744,7 @@ export const appRouter = router({
   alerts: alertAnalyticsRouter,
   webhookHistory: webhookHistoryRouter,
   videoTutorial: videoTutorialRouter,
+  aiAdvanced: aiAdvancedRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {

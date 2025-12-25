@@ -4124,3 +4124,218 @@ export const videoTutorials = mysqlTable("video_tutorials", {
 
 export type VideoTutorial = typeof videoTutorials.$inferSelect;
 export type InsertVideoTutorial = typeof videoTutorials.$inferInsert;
+
+
+/**
+ * AI ML Models - Quản lý các model AI/ML
+ */
+export const aiMlModels = mysqlTable("ai_ml_models", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  modelType: varchar("model_type", { length: 100 }).notNull(), // regression, classification, anomaly_detection, etc.
+  targetMetric: varchar("target_metric", { length: 100 }), // cpk, oee, defect_rate, etc.
+  status: mysqlEnum("status", ["draft", "training", "active", "inactive", "deprecated"]).notNull().default("draft"),
+  accuracy: decimal("accuracy", { precision: 10, scale: 6 }),
+  precision: decimal("precision", { precision: 10, scale: 6 }),
+  recall: decimal("recall", { precision: 10, scale: 6 }),
+  f1Score: decimal("f1_score", { precision: 10, scale: 6 }),
+  createdBy: int("created_by"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type AiMlModel = typeof aiMlModels.$inferSelect;
+export type InsertAiMlModel = typeof aiMlModels.$inferInsert;
+
+/**
+ * AI A/B Tests - A/B Testing cho model AI
+ */
+export const aiAbTests = mysqlTable("ai_ab_tests", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  modelAId: int("model_a_id").notNull(),
+  modelBId: int("model_b_id").notNull(),
+  trafficSplitA: int("traffic_split_a").notNull().default(50),
+  trafficSplitB: int("traffic_split_b").notNull().default(50),
+  minSampleSize: int("min_sample_size").notNull().default(1000),
+  confidenceLevel: decimal("confidence_level", { precision: 4, scale: 2 }).notNull().default("0.95"),
+  status: mysqlEnum("status", ["draft", "running", "paused", "completed", "cancelled"]).notNull().default("draft"),
+  startDate: timestamp("start_date"),
+  endDate: timestamp("end_date"),
+  winnerId: int("winner_id"),
+  pValue: decimal("p_value", { precision: 10, scale: 8 }),
+  isSignificant: int("is_significant").default(0),
+  createdBy: int("created_by"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type AiAbTest = typeof aiAbTests.$inferSelect;
+export type InsertAiAbTest = typeof aiAbTests.$inferInsert;
+
+/**
+ * AI A/B Test Results - Kết quả từng prediction trong A/B test
+ */
+export const aiAbTestResults = mysqlTable("ai_ab_test_results", {
+  id: int("id").autoincrement().primaryKey(),
+  testId: int("test_id").notNull(),
+  variant: mysqlEnum("variant", ["A", "B"]).notNull(),
+  predictionId: int("prediction_id").notNull(),
+  predictedValue: decimal("predicted_value", { precision: 15, scale: 6 }),
+  actualValue: decimal("actual_value", { precision: 15, scale: 6 }),
+  isCorrect: int("is_correct"),
+  responseTimeMs: int("response_time_ms"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+export type AiAbTestResult = typeof aiAbTestResults.$inferSelect;
+export type InsertAiAbTestResult = typeof aiAbTestResults.$inferInsert;
+
+/**
+ * AI A/B Test Stats - Thống kê tổng hợp cho A/B test
+ */
+export const aiAbTestStats = mysqlTable("ai_ab_test_stats", {
+  id: int("id").autoincrement().primaryKey(),
+  testId: int("test_id").notNull(),
+  variant: mysqlEnum("variant", ["A", "B"]).notNull(),
+  totalPredictions: int("total_predictions").notNull().default(0),
+  correctPredictions: int("correct_predictions").notNull().default(0),
+  accuracy: decimal("accuracy", { precision: 10, scale: 6 }),
+  meanError: decimal("mean_error", { precision: 15, scale: 6 }),
+  meanAbsoluteError: decimal("mean_absolute_error", { precision: 15, scale: 6 }),
+  rootMeanSquaredError: decimal("root_mean_squared_error", { precision: 15, scale: 6 }),
+  avgResponseTimeMs: decimal("avg_response_time_ms", { precision: 10, scale: 2 }),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type AiAbTestStats = typeof aiAbTestStats.$inferSelect;
+export type InsertAiAbTestStats = typeof aiAbTestStats.$inferInsert;
+
+/**
+ * AI Model Versions - Quản lý phiên bản model
+ */
+export const aiModelVersions = mysqlTable("ai_model_versions", {
+  id: int("id").autoincrement().primaryKey(),
+  modelId: int("model_id").notNull(),
+  version: varchar("version", { length: 50 }).notNull(),
+  versionNumber: int("version_number").notNull(),
+  accuracy: decimal("accuracy", { precision: 10, scale: 6 }),
+  precision: decimal("precision", { precision: 10, scale: 6 }),
+  recall: decimal("recall", { precision: 10, scale: 6 }),
+  f1Score: decimal("f1_score", { precision: 10, scale: 6 }),
+  meanAbsoluteError: decimal("mean_absolute_error", { precision: 15, scale: 6 }),
+  rootMeanSquaredError: decimal("root_mean_squared_error", { precision: 15, scale: 6 }),
+  trainingDataSize: int("training_data_size"),
+  validationDataSize: int("validation_data_size"),
+  hyperparameters: json("hyperparameters"),
+  featureImportance: json("feature_importance"),
+  changeLog: text("change_log"),
+  isActive: int("is_active").notNull().default(0),
+  isRollbackTarget: int("is_rollback_target").notNull().default(1),
+  deployedAt: timestamp("deployed_at"),
+  deployedBy: int("deployed_by"),
+  createdBy: int("created_by"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+export type AiModelVersion = typeof aiModelVersions.$inferSelect;
+export type InsertAiModelVersion = typeof aiModelVersions.$inferInsert;
+
+/**
+ * AI Model Rollback History - Lịch sử rollback model
+ */
+export const aiModelRollbackHistory = mysqlTable("ai_model_rollback_history", {
+  id: int("id").autoincrement().primaryKey(),
+  modelId: int("model_id").notNull(),
+  fromVersionId: int("from_version_id"),
+  toVersionId: int("to_version_id").notNull(),
+  reason: text("reason").notNull(),
+  rollbackType: mysqlEnum("rollback_type", ["manual", "automatic"]).notNull().default("manual"),
+  rollbackBy: int("rollback_by"),
+  status: mysqlEnum("status", ["pending", "in_progress", "completed", "failed"]).notNull().default("pending"),
+  errorMessage: text("error_message"),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+export type AiModelRollbackHistory = typeof aiModelRollbackHistory.$inferSelect;
+export type InsertAiModelRollbackHistory = typeof aiModelRollbackHistory.$inferInsert;
+
+/**
+ * AI Drift Alerts - Cảnh báo data drift
+ */
+export const aiDriftAlerts = mysqlTable("ai_drift_alerts", {
+  id: int("id").autoincrement().primaryKey(),
+  modelId: int("model_id").notNull(),
+  driftType: mysqlEnum("drift_type", ["accuracy_drop", "feature_drift", "prediction_drift", "data_quality"]).notNull(),
+  severity: mysqlEnum("severity", ["low", "medium", "high", "critical"]).notNull(),
+  driftScore: decimal("drift_score", { precision: 10, scale: 6 }).notNull(),
+  details: json("details"),
+  recommendation: text("recommendation"),
+  status: mysqlEnum("status", ["active", "acknowledged", "resolved", "ignored"]).notNull().default("active"),
+  acknowledgedAt: timestamp("acknowledged_at"),
+  acknowledgedBy: int("acknowledged_by"),
+  resolvedAt: timestamp("resolved_at"),
+  resolvedBy: int("resolved_by"),
+  resolution: text("resolution"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+export type AiDriftAlert = typeof aiDriftAlerts.$inferSelect;
+export type InsertAiDriftAlert = typeof aiDriftAlerts.$inferInsert;
+
+/**
+ * AI Drift Configs - Cấu hình monitoring drift
+ */
+export const aiDriftConfigs = mysqlTable("ai_drift_configs", {
+  id: int("id").autoincrement().primaryKey(),
+  modelId: int("model_id").notNull(),
+  accuracyDropThreshold: decimal("accuracy_drop_threshold", { precision: 5, scale: 4 }).notNull().default("0.05"),
+  featureDriftThreshold: decimal("feature_drift_threshold", { precision: 5, scale: 4 }).notNull().default("0.10"),
+  predictionDriftThreshold: decimal("prediction_drift_threshold", { precision: 5, scale: 4 }).notNull().default("0.10"),
+  monitoringWindowHours: int("monitoring_window_hours").notNull().default(24),
+  alertCooldownMinutes: int("alert_cooldown_minutes").notNull().default(60),
+  autoRollbackEnabled: int("auto_rollback_enabled").notNull().default(0),
+  autoRollbackThreshold: decimal("auto_rollback_threshold", { precision: 5, scale: 4 }).notNull().default("0.15"),
+  notifyOwner: int("notify_owner").notNull().default(1),
+  notifyEmail: varchar("notify_email", { length: 255 }),
+  isActive: int("is_active").notNull().default(1),
+  createdBy: int("created_by"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type AiDriftConfig = typeof aiDriftConfigs.$inferSelect;
+export type InsertAiDriftConfig = typeof aiDriftConfigs.$inferInsert;
+
+/**
+ * AI Drift Metrics History - Lịch sử metrics để theo dõi drift
+ */
+export const aiDriftMetricsHistory = mysqlTable("ai_drift_metrics_history", {
+  id: int("id").autoincrement().primaryKey(),
+  modelId: int("model_id").notNull(),
+  accuracy: decimal("accuracy", { precision: 10, scale: 6 }),
+  precision: decimal("precision", { precision: 10, scale: 6 }),
+  recall: decimal("recall", { precision: 10, scale: 6 }),
+  f1Score: decimal("f1_score", { precision: 10, scale: 6 }),
+  predictionCount: int("prediction_count").notNull().default(0),
+  recordedAt: timestamp("recorded_at").defaultNow().notNull(),
+});
+export type AiDriftMetricsHistory = typeof aiDriftMetricsHistory.$inferSelect;
+export type InsertAiDriftMetricsHistory = typeof aiDriftMetricsHistory.$inferInsert;
+
+/**
+ * AI Feature Statistics - Thống kê features để phát hiện drift
+ */
+export const aiFeatureStatistics = mysqlTable("ai_feature_statistics", {
+  id: int("id").autoincrement().primaryKey(),
+  modelId: int("model_id").notNull(),
+  featureName: varchar("feature_name", { length: 255 }).notNull(),
+  mean: decimal("mean", { precision: 20, scale: 10 }),
+  stdDev: decimal("std_dev", { precision: 20, scale: 10 }),
+  min: decimal("min", { precision: 20, scale: 10 }),
+  max: decimal("max", { precision: 20, scale: 10 }),
+  median: decimal("median", { precision: 20, scale: 10 }),
+  q1: decimal("q1", { precision: 20, scale: 10 }),
+  q3: decimal("q3", { precision: 20, scale: 10 }),
+  uniqueCount: int("unique_count"),
+  histogram: json("histogram"),
+  isBaseline: int("is_baseline").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+export type AiFeatureStatistics = typeof aiFeatureStatistics.$inferSelect;
+export type InsertAiFeatureStatistics = typeof aiFeatureStatistics.$inferInsert;

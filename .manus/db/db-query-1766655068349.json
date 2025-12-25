@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `ai_model_rollback_history` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `model_id` int NOT NULL,\n  `from_version_id` int,\n  `to_version_id` int NOT NULL,\n  `reason` text NOT NULL,\n  `rollback_type` enum('manual','automatic') NOT NULL DEFAULT 'manual',\n  `rollback_by` int,\n  `status` enum('pending','in_progress','completed','failed') NOT NULL DEFAULT 'pending',\n  `error_message` text,\n  `completed_at` timestamp,\n  `created_at` timestamp NOT NULL DEFAULT (now()),\n  CONSTRAINT `ai_model_rollback_history_id` PRIMARY KEY(`id`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute CREATE TABLE IF NOT EXISTS `ai_model_rollback_history` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `model_id` int NOT NULL,\n  `from_version_id` int,\n  `to_version_id` int NOT NULL,\n  `reason` text NOT NULL,\n  `rollback_type` enum('manual','automatic') NOT NULL DEFAULT 'manual',\n  `rollback_by` int,\n  `status` enum('pending','in_progress','completed','failed') NOT NULL DEFAULT 'pending',\n  `error_message` text,\n  `completed_at` timestamp,\n  `created_at` timestamp NOT NULL DEFAULT (now()),\n  CONSTRAINT `ai_model_rollback_history_id` PRIMARY KEY(`id`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 3445
+}

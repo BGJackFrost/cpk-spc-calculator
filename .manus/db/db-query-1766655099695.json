@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `ai_drift_metrics_history` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `model_id` int NOT NULL,\n  `accuracy` decimal(10,6),\n  `precision` decimal(10,6),\n  `recall` decimal(10,6),\n  `f1_score` decimal(10,6),\n  `prediction_count` int NOT NULL DEFAULT 0,\n  `recorded_at` timestamp NOT NULL DEFAULT (now()),\n  CONSTRAINT `ai_drift_metrics_history_id` PRIMARY KEY(`id`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute CREATE TABLE IF NOT EXISTS `ai_drift_metrics_history` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `model_id` int NOT NULL,\n  `accuracy` decimal(10,6),\n  `precision` decimal(10,6),\n  `recall` decimal(10,6),\n  `f1_score` decimal(10,6),\n  `prediction_count` int NOT NULL DEFAULT 0,\n  `recorded_at` timestamp NOT NULL DEFAULT (now()),\n  CONSTRAINT `ai_drift_metrics_history_id` PRIMARY KEY(`id`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 5709
+}
