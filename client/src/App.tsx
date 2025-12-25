@@ -169,6 +169,21 @@ import ABTestingManagement from "./pages/ai/ABTestingManagement";
 import ModelVersioningPage from "./pages/ai/ModelVersioningPage";
 import DataDriftMonitoring from "./pages/ai/DataDriftMonitoring";
 import AiMlHealthDashboard from "./pages/AiMlHealthDashboard";
+import AiCorrelationAnalysis from "./pages/ai/AiCorrelationAnalysis";
+import AiTrendAnalysis from "./pages/ai/AiTrendAnalysis";
+import AiOeeForecast from "./pages/ai/AiOeeForecast";
+import AiDefectPrediction from "./pages/ai/AiDefectPrediction";
+import AiYieldOptimization from "./pages/ai/AiYieldOptimization";
+import AiReports from "./pages/ai/AiReports";
+import AiInsights from "./pages/ai/AiInsights";
+import AiTrainingJobs from "./pages/ai/AiTrainingJobs";
+import AiModelComparison from "./pages/ai/AiModelComparison";
+import AiConfig from "./pages/ai/AiConfig";
+import AiThresholds from "./pages/ai/AiThresholds";
+import AiDataSources from "./pages/ai/AiDataSources";
+import AiAuditLogs from "./pages/ai/AiAuditLogs";
+import AiAlerts from "./pages/ai/AiAlerts";
+import AiPredictions from "./pages/ai/AiPredictions";
 import AdvancedAnalyticsDashboard from "./pages/AdvancedAnalyticsDashboard";
 import NotificationPreferences from "./pages/NotificationPreferences";
 import KpiAlertThresholds from "./pages/KpiAlertThresholds";
@@ -380,6 +395,21 @@ function Router() {
       <Route path="/ai-model-versioning" component={ModelVersioningPage} />
       <Route path="/ai-data-drift" component={DataDriftMonitoring} />
       <Route path="/ai-ml-health" component={AiMlHealthDashboard} />
+      <Route path="/ai-correlation" component={AiCorrelationAnalysis} />
+      <Route path="/ai-trend-analysis" component={AiTrendAnalysis} />
+      <Route path="/ai-oee-forecast" component={AiOeeForecast} />
+      <Route path="/ai-defect-prediction" component={AiDefectPrediction} />
+      <Route path="/ai-yield-optimization" component={AiYieldOptimization} />
+      <Route path="/ai-reports" component={AiReports} />
+      <Route path="/ai-insights" component={AiInsights} />
+      <Route path="/ai-training-jobs" component={AiTrainingJobs} />
+      <Route path="/ai-model-comparison" component={AiModelComparison} />
+      <Route path="/ai-config" component={AiConfig} />
+      <Route path="/ai-thresholds" component={AiThresholds} />
+      <Route path="/ai-data-sources" component={AiDataSources} />
+      <Route path="/ai-audit-logs" component={AiAuditLogs} />
+      <Route path="/ai-alerts" component={AiAlerts} />
+      <Route path="/ai-predictions" component={AiPredictions} />
       <Route path="/advanced-analytics-dashboard" component={AdvancedAnalyticsDashboard} />
       <Route path="/notification-preferences" component={NotificationPreferences} />
       <Route path="/user-guide" component={UserGuide} />
