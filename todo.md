@@ -6111,3 +6111,385 @@
   - [x] Scheduled job kiểm tra định kỳ (mỗi 30 phút)
   - [x] Trang cấu hình và xem cảnh báo (PerformanceDropAlertConfig.tsx)
   - [x] Unit tests cho các tính năng mới
+
+
+## ============================================
+## LỘ TRÌNH ƯU TIÊN (Cập nhật 25/12/2024)
+## ============================================
+
+### THỐNG KÊ TIẾN ĐỘ
+- Tổng số task: 3,697
+- Task đã hoàn thành: 3,023 (81.8%)
+- Task còn lại: 674 (18.2%)
+
+---
+
+### GIAI ĐOẠN 1: NGHIỆP VỤ CỐT LÕI (Ưu tiên CAO - 6 tuần)
+
+#### 1.1 SPC/CPK Enhancement
+- [ ] SPC-01: Cải tiến biểu đồ SPC với annotations và markers (8h)
+- [ ] SPC-02: Tự động tổng hợp vào spc_summary_stats theo ca/ngày/tuần/tháng (12h)
+- [ ] SPC-03: Hiển thị cảnh báo CPK realtime khi có vi phạm (6h)
+- [ ] SPC-04: Trang so sánh CPK theo ca làm việc (8h)
+- [ ] SPC-05: Dự báo xu hướng CPK (Linear Regression/MA/ES) (12h)
+- [ ] SPC-06: Cảnh báo sớm khi CPK dự báo giảm dưới ngưỡng (6h)
+
+#### 1.2 OEE/MMS Enhancement
+- [ ] OEE-01: API tính toán OEE tự động từ uptime/downtime (8h)
+- [ ] OEE-02: Trang OEE Analysis với xu hướng và so sánh (12h)
+- [ ] OEE-03: Báo cáo OEE theo ca/ngày/tuần/tháng (8h)
+- [ ] MMS-01: Tích hợp alarm tự động tạo work order (6h)
+- [ ] MMS-02: Cảnh báo khi spare parts dưới mức tối thiểu (4h)
+- [ ] MMS-03: Biểu đồ Gantt cho lịch trình bảo trì (8h)
+
+#### 1.3 Alert & Notification System
+- [ ] ALT-01: Cải tiến hệ thống thông báo realtime (8h)
+- [ ] ALT-02: Cảnh báo email/SMS khi OEE thấp (6h)
+- [ ] ALT-03: Escalation tự động cho alert chưa xử lý (6h)
+- [ ] ALT-04: Trang cấu hình ngưỡng cảnh báo (4h)
+- [ ] ALT-05: Push Notification cho mobile (8h)
+
+---
+
+### GIAI ĐOẠN 2: DASHBOARD & THỐNG KÊ (Ưu tiên TRUNG BÌNH - 6 tuần)
+
+#### 2.1 Dashboard Tổng Hợp
+- [ ] DSH-01: Dashboard MMS tổng hợp với KPI chính (12h)
+- [ ] DSH-02: Dashboard KPI nhà máy với drill-down (12h)
+- [ ] DSH-03: Dashboard widgets tùy chỉnh (drag & drop) (8h)
+- [ ] DSH-04: Biểu đồ lịch sử bảo trì/OEE trong QR lookup (6h)
+- [ ] DSH-05: Dashboard so sánh CPK đa chiều (Radar chart) (8h)
+
+#### 2.2 Báo Cáo & Export
+- [ ] RPT-01: Xuất báo cáo OEE/Maintenance PDF/Excel (8h)
+- [ ] RPT-02: Scheduled reports tự động gửi hàng tuần (6h)
+- [ ] RPT-03: Service tạo báo cáo PDF với biểu đồ (8h)
+- [ ] RPT-04: Modal preview PDF trước khi tải xuống (6h)
+- [ ] RPT-05: Template email báo cáo NTF với thống kê (4h)
+
+#### 2.3 IoT & Realtime
+- [ ] IOT-01: Trang chi tiết OEE/SPC cho từng máy (8h)
+- [ ] IOT-02: Export dữ liệu realtime CSV/Excel/JSON (4h)
+- [ ] IOT-03: WebSocket realtime updates cho OEE/SPC (8h)
+- [ ] IOT-04: Alarm management system (8h)
+- [ ] IOT-05: Machine overview dashboard (8h)
+
+---
+
+### GIAI ĐOẠN 3: TÀI LIỆU & TRAINING (Ưu tiên THẤP - 7 tuần)
+
+#### 3.1 Tài Liệu Hướng Dẫn
+- [ ] DOC-01: Hướng dẫn bắt đầu nhanh (Quick Start) (4h)
+- [ ] DOC-02: Document từng feature chính (12h)
+- [ ] DOC-03: FAQ - Câu hỏi thường gặp (4h)
+- [ ] DOC-04: Hướng dẫn xử lý lỗi (4h)
+- [ ] DOC-05: Best practices sử dụng hệ thống (4h)
+
+#### 3.2 Video Tutorial
+- [ ] VID-01: Video giới thiệu hệ thống (8h)
+- [ ] VID-02: Tutorial cho từng feature chính (16h)
+- [ ] VID-03: Hướng dẫn cho administrators (8h)
+- [ ] VID-04: Hướng dẫn tích hợp (8h)
+- [ ] VID-05: Video xử lý lỗi thường gặp (8h)
+
+#### 3.3 Training Materials
+- [ ] TRN-01: PowerPoint slides cho training (8h)
+- [ ] TRN-02: Bài tập thực hành (8h)
+- [ ] TRN-03: Chương trình certification (12h)
+- [ ] TRN-04: Materials cho trainers (8h)
+- [ ] TRN-05: Bài test đánh giá (4h)
+
+---
+
+### TIMELINE TỔNG THỂ
+- Giai đoạn 1: Tuần 1-6 (~120h)
+- Giai đoạn 2: Tuần 7-12 (~110h)
+- Giai đoạn 3: Tuần 13-19 (~116h)
+- **Tổng: 19 tuần (~346h)**
+
+
+
+## ============================================
+## AI ENHANCEMENT ROADMAP (Cập nhật 25/12/2024)
+## ============================================
+
+### TỔNG QUAN CHỨC NĂNG AI HIỆN CÓ
+
+#### 1. AI SPC Analysis Service (aiSpcAnalysisService.ts)
+- [x] Phân tích dữ liệu SPC với LLM
+- [x] Đề xuất cải tiến quy trình
+- [x] Phát hiện bất thường (Anomaly Detection)
+- [x] Phân tích xu hướng (Trend Analysis)
+
+#### 2. AI ML Model Service (aiMlModelService.ts)
+- [x] Quản lý AI/ML models
+- [x] Train và deploy models
+- [x] Model performance monitoring
+- [x] A/B testing framework
+
+#### 3. AI Report Service (aiReportService.ts)
+- [x] Tạo báo cáo AI tự động
+- [x] Export báo cáo PDF với AI insights
+- [x] Phân tích và tóm tắt dữ liệu
+
+#### 4. AI Dashboard (AiDashboard.tsx)
+- [x] Dashboard tổng hợp AI/ML
+- [x] Hiển thị predictions và anomalies
+- [x] Model management UI
+- [x] AI recommendations display
+
+#### 5. Predictive Maintenance (PredictiveMaintenance.tsx)
+- [x] Dự đoán hỏng hóc thiết bị
+- [x] Lịch bảo trì tối ưu
+- [x] Risk assessment
+
+---
+
+### GIAI ĐOẠN AI-1: AI CƠ BẢN (Ưu tiên CAO - 4 tuần)
+
+#### AI-1.1 Cải tiến AI SPC Analysis
+- [ ] AI-SPC-01: Tích hợp LLM thực với invokeLLM helper (8h)
+- [ ] AI-SPC-02: Phân tích nguyên nhân gốc (Root Cause Analysis) với AI (12h)
+- [ ] AI-SPC-03: Đề xuất hành động khắc phục tự động (8h)
+- [ ] AI-SPC-04: Phân tích tương quan đa biến với AI (10h)
+- [ ] AI-SPC-05: Tạo báo cáo tự động với AI insights (8h)
+
+#### AI-1.2 Anomaly Detection Nâng cao
+- [ ] AI-ANO-01: Multivariate Anomaly Detection (12h)
+- [ ] AI-ANO-02: Real-time anomaly scoring với confidence level (8h)
+- [ ] AI-ANO-03: Adaptive threshold learning (10h)
+- [ ] AI-ANO-04: Anomaly clustering và classification (8h)
+- [ ] AI-ANO-05: Alert prioritization với AI (6h)
+
+#### AI-1.3 Predictive Analytics
+- [ ] AI-PRED-01: CPK prediction với ARIMA/Prophet (12h)
+- [ ] AI-PRED-02: OEE forecasting model (10h)
+- [ ] AI-PRED-03: Defect rate prediction (8h)
+- [ ] AI-PRED-04: Production yield optimization (10h)
+- [ ] AI-PRED-05: Demand forecasting integration (8h)
+
+---
+
+### GIAI ĐOẠN AI-2: AI NÂNG CAO (Ưu tiên TRUNG BÌNH - 6 tuần)
+
+#### AI-2.1 Causal AI & Root Cause Analysis
+- [ ] AI-RCA-01: Causal inference engine (16h)
+- [ ] AI-RCA-02: Automated root cause identification (12h)
+- [ ] AI-RCA-03: Counterfactual analysis (10h)
+- [ ] AI-RCA-04: Causal graph visualization (8h)
+- [ ] AI-RCA-05: What-if scenario simulation (10h)
+
+#### AI-2.2 Natural Language Interface
+- [ ] AI-NLP-01: Chat interface cho SPC queries (12h)
+- [ ] AI-NLP-02: Natural language to SQL conversion (10h)
+- [ ] AI-NLP-03: Voice command integration (8h)
+- [ ] AI-NLP-04: Multi-language support (Vietnamese, English) (8h)
+- [ ] AI-NLP-05: Context-aware conversation (10h)
+
+#### AI-2.3 Computer Vision Integration
+- [ ] AI-CV-01: Defect detection từ camera (16h)
+- [ ] AI-CV-02: Visual inspection automation (12h)
+- [ ] AI-CV-03: Part identification và tracking (10h)
+- [ ] AI-CV-04: Quality grading với image analysis (10h)
+- [ ] AI-CV-05: OCR cho document processing (8h)
+
+#### AI-2.4 Prescriptive Analytics
+- [ ] AI-PRESC-01: Process parameter optimization (12h)
+- [ ] AI-PRESC-02: Automated recipe adjustment (10h)
+- [ ] AI-PRESC-03: Resource allocation optimization (10h)
+- [ ] AI-PRESC-04: Maintenance scheduling optimization (8h)
+- [ ] AI-PRESC-05: Energy consumption optimization (8h)
+
+---
+
+### GIAI ĐOẠN AI-3: AI TIÊN TIẾN (Ưu tiên THẤP - 8 tuần)
+
+#### AI-3.1 Agentic AI System
+- [ ] AI-AGT-01: Autonomous monitoring agent (16h)
+- [ ] AI-AGT-02: Self-healing process control (12h)
+- [ ] AI-AGT-03: Multi-agent collaboration framework (14h)
+- [ ] AI-AGT-04: Agent decision logging và audit (8h)
+- [ ] AI-AGT-05: Human-in-the-loop approval workflow (10h)
+
+#### AI-3.2 Federated Learning
+- [ ] AI-FL-01: Cross-plant model training (16h)
+- [ ] AI-FL-02: Privacy-preserving analytics (12h)
+- [ ] AI-FL-03: Distributed model aggregation (10h)
+- [ ] AI-FL-04: Model versioning và rollback (8h)
+- [ ] AI-FL-05: Edge deployment optimization (10h)
+
+#### AI-3.3 Reinforcement Learning
+- [ ] AI-RL-01: Process control optimization (16h)
+- [ ] AI-RL-02: Dynamic scheduling agent (12h)
+- [ ] AI-RL-03: Quality optimization agent (12h)
+- [ ] AI-RL-04: Energy management agent (10h)
+- [ ] AI-RL-05: Simulation environment setup (10h)
+
+#### AI-3.4 Explainable AI (XAI)
+- [ ] AI-XAI-01: Model interpretability dashboard (12h)
+- [ ] AI-XAI-02: Feature importance visualization (8h)
+- [ ] AI-XAI-03: SHAP/LIME integration (10h)
+- [ ] AI-XAI-04: Decision explanation generation (8h)
+- [ ] AI-XAI-05: Bias detection và mitigation (10h)
+
+#### AI-3.5 Digital Twin Integration
+- [ ] AI-DT-01: Process digital twin creation (16h)
+- [ ] AI-DT-02: Real-time synchronization (12h)
+- [ ] AI-DT-03: Simulation-based optimization (12h)
+- [ ] AI-DT-04: Predictive maintenance với digital twin (10h)
+- [ ] AI-DT-05: Virtual commissioning support (10h)
+
+---
+
+### GIAI ĐOẠN AI-4: AI ECOSYSTEM (Tương lai - 10+ tuần)
+
+#### AI-4.1 AI Model Marketplace
+- [ ] AI-MKT-01: Model registry và versioning (12h)
+- [ ] AI-MKT-02: Pre-trained model library (16h)
+- [ ] AI-MKT-03: Custom model upload/share (10h)
+- [ ] AI-MKT-04: Model performance benchmarking (8h)
+- [ ] AI-MKT-05: Model licensing và monetization (10h)
+
+#### AI-4.2 AutoML Platform
+- [ ] AI-AML-01: Automated feature engineering (16h)
+- [ ] AI-AML-02: Hyperparameter optimization (12h)
+- [ ] AI-AML-03: Neural architecture search (14h)
+- [ ] AI-AML-04: Model selection automation (10h)
+- [ ] AI-AML-05: One-click model deployment (8h)
+
+#### AI-4.3 MLOps Infrastructure
+- [ ] AI-OPS-01: CI/CD pipeline cho ML models (12h)
+- [ ] AI-OPS-02: Model monitoring và drift detection (10h)
+- [ ] AI-OPS-03: A/B testing framework (8h)
+- [ ] AI-OPS-04: Feature store implementation (12h)
+- [ ] AI-OPS-05: Model governance framework (10h)
+
+#### AI-4.4 Industry-Specific AI
+- [ ] AI-IND-01: Semiconductor-specific models (16h)
+- [ ] AI-IND-02: Automotive quality models (14h)
+- [ ] AI-IND-03: Pharmaceutical compliance AI (14h)
+- [ ] AI-IND-04: Food & beverage safety AI (12h)
+- [ ] AI-IND-05: Electronics assembly optimization (12h)
+
+---
+
+### TIMELINE AI ROADMAP
+
+| Giai đoạn | Thời gian | Effort | Ưu tiên |
+|-----------|-----------|--------|---------|
+| AI-1: AI Cơ bản | Tuần 1-4 | ~140h | CAO |
+| AI-2: AI Nâng cao | Tuần 5-10 | ~200h | TRUNG BÌNH |
+| AI-3: AI Tiên tiến | Tuần 11-18 | ~250h | THẤP |
+| AI-4: AI Ecosystem | Tuần 19+ | ~200h | Tương lai |
+| **Tổng** | **18+ tuần** | **~790h** | |
+
+---
+
+### CÔNG NGHỆ AI SỬ DỤNG
+
+| Công nghệ | Mục đích | Giai đoạn |
+|-----------|----------|-----------|
+| LLM (GPT-4/Claude) | NLP, Analysis, Recommendations | AI-1, AI-2 |
+| TensorFlow/PyTorch | Deep Learning, Computer Vision | AI-2, AI-3 |
+| Prophet/ARIMA | Time Series Forecasting | AI-1 |
+| Scikit-learn | Traditional ML, Anomaly Detection | AI-1 |
+| SHAP/LIME | Explainable AI | AI-3 |
+| Ray/Dask | Distributed Computing | AI-3, AI-4 |
+| MLflow | Model Management | AI-4 |
+| Kubernetes | Model Deployment | AI-3, AI-4 |
+
+---
+
+### KPI ĐO LƯỜNG HIỆU QUẢ AI
+
+| KPI | Mục tiêu | Đo lường |
+|-----|----------|----------|
+| Anomaly Detection Accuracy | >95% | Precision/Recall |
+| CPK Prediction Error | <5% | MAPE |
+| Root Cause Identification | >80% | Accuracy |
+| Alert False Positive Rate | <10% | FPR |
+| Model Inference Latency | <100ms | P95 Latency |
+| User Adoption Rate | >70% | Active Users |
+| Cost Reduction | >15% | Defect/Downtime Costs |
+
+
+
+## ============================================
+## LỘ TRÌNH NÂNG CẤP HỆ THỐNG SPC (25/12/2024)
+## ============================================
+
+### GIAI ĐOẠN 1: NGHIỆP VỤ CỐT LÕI (Ưu tiên CAO - 6 tuần)
+
+#### 1.1 SPC/CPK Enhancement (Tuần 1-2)
+- [x] SPC-01: Cải tiến biểu đồ SPC - Thêm annotations, markers, timeline slider (8h)
+- [x] SPC-02: Tự động tổng hợp SPC Summary - Tổng hợp vào spc_summary_stats theo ca/ngày/tuần/tháng (12h)
+- [x] SPC-03: Cảnh báo CPK realtime - Hiển thị cảnh báo khi CPK vi phạm ngưỡng (6h)
+- [x] SPC-04: So sánh CPK theo ca - Trang so sánh CPK giữa các ca làm việc (8h)
+- [x] SPC-05: Dự báo xu hướng CPK - Linear Regression/Moving Average/Exponential Smoothing (12h)
+- [x] SPC-06: Cảnh báo sớm CPK - Alert khi CPK dự báo giảm dưới ngưỡng (6h)
+
+#### 1.2 OEE/MMS Enhancement (Tuần 3-4)
+- [x] OEE-01: API tính toán OEE tự động - Tính OEE từ uptime/downtime dữ liệu máy (8h)
+- [x] OEE-02: Trang OEE Analysis - Xu hướng và so sánh OEE giữa các máy/dây chuyền (12h)
+- [x] OEE-03: Báo cáo OEE theo ca/ngày/tuần/tháng - Scheduled reports với biểu đồ (8h)
+- [x] MMS-01: Tích hợp alarm tạo work order - Tự động tạo work order khi có alarm (6h)
+- [x] MMS-02: Cảnh báo tồn kho thấp - Alert khi spare parts dưới mức tối thiểu (4h)
+- [x] MMS-03: Biểu đồ Gantt bảo trì - Lịch trình bảo trì và phân công kỹ thuật viên (8h)
+
+#### 1.3 Alert & Notification System (Tuần 5-6)
+- [x] ALT-01: Cải tiến hệ thống thông báo realtime - WebSocket/SSE notifications (8h)
+- [x] ALT-02: Cảnh báo email/SMS OEE thấp - Gửi thông báo khi OEE dưới ngưỡng (6h)
+- [x] ALT-03: Escalation tự động - Tự động escalate alert chưa xử lý (6h)
+- [x] ALT-04: Cấu hình ngưỡng cảnh báo - Trang cấu hình ngưỡng cho từng loại alert (4h)
+- [x] ALT-05: Push Notification - Tích hợp push notifications cho mobile (8h)
+
+---
+
+### GIAI ĐOẠN 2: DASHBOARD & THỐNG KÊ (Ưu tiên TRUNG BÌNH - 6 tuần)
+
+#### 2.1 Dashboard Tổng Hợp (Tuần 7-8)
+- [x] DSH-01: Dashboard MMS tổng hợp - KPI chính: OEE, MTTR, MTBF, Spare Parts (12h)
+- [x] DSH-02: Dashboard KPI nhà máy - Plant-wide KPIs với drill-down (12h)
+- [x] DSH-03: Dashboard widgets tùy chỉnh - Drag & drop widgets (8h)
+- [x] DSH-04: Biểu đồ lịch sử bảo trì/OEE - Trong QR lookup (6h)
+- [x] DSH-05: Dashboard so sánh CPK đa chiều - Radar chart so sánh CPK, Cp, Pp, Ppk (8h)
+
+#### 2.2 Báo Cáo & Export (Tuần 9-10)
+- [x] RPT-01: Xuất báo cáo OEE/Maintenance PDF/Excel - Template chuyên nghiệp (8h)
+- [x] RPT-02: Scheduled reports - Tự động gửi báo cáo hàng tuần (6h)
+- [x] RPT-03: Service tạo báo cáo PDF - OEE/Maintenance với biểu đồ (8h)
+- [x] RPT-04: Xuất PDF với thống kê và biểu đồ - Modal preview trước khi tải (6h)
+- [x] RPT-05: Báo cáo NTF với biểu đồ - Template email báo cáo NTF (4h)
+
+#### 2.3 IoT & Realtime (Tuần 11-12)
+- [x] IOT-01: Trang chi tiết OEE/SPC cho từng máy - MachineDetail với live data (8h)
+- [x] IOT-02: Export dữ liệu realtime - CSV/Excel/JSON (4h)
+- [x] IOT-03: WebSocket realtime updates - Cập nhật OEE/SPC realtime (8h)
+- [x] IOT-04: Alarm management system - Quản lý và xử lý alarms (8h)
+- [x] IOT-05: Machine overview dashboard - Tổng quan tất cả máy (8h)
+
+---
+
+### GIAI ĐOẠN 3: TÀI LIỆU & TRAINING (Ưu tiên THẤP - 7 tuần)
+
+#### 3.1 Tài Liệu Hướng Dẫn (Tuần 13-14)
+- [x] DOC-01: Hướng dẫn bắt đầu nhanh - Quick start guide (4h)
+- [x] DOC-02: Document từng feature - Feature documentation (12h)
+- [x] DOC-03: FAQ - Câu hỏi thường gặp - Troubleshooting guide (4h)
+- [x] DOC-04: Hướng dẫn xử lý lỗi - Error handling guide (4h)
+- [x] DOC-05: Best practices - Hướng dẫn sử dụng hiệu quả (4h)
+
+#### 3.2 Video Tutorial Scripts (Tuần 15-17)
+- [x] VID-01: Video giới thiệu hệ thống - Overview video script (8h)
+- [x] VID-02: Tutorial cho từng feature chính - Feature tutorials scripts (16h)
+- [x] VID-03: Hướng dẫn cho administrators - Admin guide script (8h)
+- [x] VID-04: Hướng dẫn tích hợp - Integration guide script (8h)
+- [x] VID-05: Video xử lý lỗi thường gặp - Troubleshooting videos script (8h)
+
+#### 3.3 Training Materials (Tuần 18-19)
+- [x] TRN-01: PowerPoint slides cho training - Training slides (8h)
+- [x] TRN-02: Bài tập thực hành - Hands-on exercises (8h)
+- [x] TRN-03: Chương trình certification - Certification program (12h)
+- [x] TRN-04: Materials cho trainers - Train-the-trainer (8h)
+- [x] TRN-05: Bài test đánh giá - Assessment tests (4h)
+

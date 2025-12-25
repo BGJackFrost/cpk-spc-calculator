@@ -149,6 +149,7 @@ export const SPC_MENU: SystemMenuConfig = {
         { id: "validation-rules", icon: ShieldCheck, labelKey: "nav.customValidation", path: "/validation-rules", adminOnly: true },
         { id: "cpk-comparison", icon: BarChart3, labelKey: "nav.cpkBenchmark", path: "/cpk-comparison" },
         { id: "shift-cpk-comparison", icon: Clock, labelKey: "nav.shiftAnalysis", path: "/shift-cpk-comparison" },
+        { id: "cpk-forecast", icon: TrendingUp, labelKey: "nav.cpkForecast", path: "/cpk-forecast" },
         { id: "shift-manager", icon: Users, labelKey: "nav.shiftManager", path: "/shift-manager" },
         { id: "kpi-alert-thresholds", icon: AlertTriangle, labelKey: "nav.kpiAlertThresholds", path: "/kpi-alert-thresholds", adminOnly: true },
         { id: "kpi-alert-stats", icon: BarChart3, labelKey: "nav.kpiAlertStats", path: "/kpi-alert-stats" },
@@ -182,6 +183,7 @@ export const MMS_MENU: SystemMenuConfig = {
       defaultOpen: true,
       items: [
         { id: "oee-dashboard", icon: Target, labelKey: "nav.oeeDashboard", path: "/oee-dashboard" },
+        { id: "oee-analysis", icon: TrendingUp, labelKey: "nav.oeeAnalysis", path: "/oee-analysis" },
         { id: "unified-dashboard", icon: Gauge, labelKey: "nav.unifiedDashboard", path: "/unified-dashboard" },
         { id: "plant-kpi", icon: BarChart3, labelKey: "nav.plantKpi", path: "/plant-kpi" },
         { id: "advanced-analytics", icon: TrendingUp, labelKey: "nav.advancedAnalytics", path: "/advanced-analytics", licenseFeature: "mms_analytics" },

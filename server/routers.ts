@@ -1933,6 +1933,83 @@ Trả lời bằng tiếng Việt, ngắn gọn và chuyên nghiệp.`;
         },
       };
     }),
+
+  // SPC-02: Get SPC Summary Stats by time range
+  getSummaryStatsByTimeRange: protectedProcedure
+    .input(z.object({
+      periodType: z.enum(["shift", "day", "week", "month"]),
+      startTime: z.string(),
+      endTime: z.string(),
+      productionLineId: z.number().optional(),
+    }))
+    .query(async ({ input }) => {
+      const { getSummaryByTimeRange } = await import("./services/spcSummaryService");
+      return await getSummaryByTimeRange(
+        input.periodType,
+        new Date(input.startTime),
+        new Date(input.endTime),
+        input.productionLineId
+      );
+    }),
+
+  // SPC-04: Compare CPK by shift
+  compareShiftCpk: protectedProcedure
+    .input(z.object({
+      productionLineId: z.number(),
+      startDate: z.string(),
+      endDate: z.string(),
+    }))
+    .query(async ({ input }) => {
+      const { compareShiftCpk } = await import("./services/spcSummaryService");
+      return await compareShiftCpk(
+        input.productionLineId,
+        new Date(input.startDate),
+        new Date(input.endDate)
+      );
+    }),
+
+  // SPC-05: Get CPK forecast data
+  getCpkForecastData: protectedProcedure
+    .input(z.object({
+      productionLineId: z.number().optional(),
+      mappingId: z.number().optional(),
+      days: z.number().default(30),
+    }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return [];
+      
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - input.days);
+      
+      const conditions = [
+        gte(spcAnalysisHistory.createdAt, startDate),
+        sql`cpk IS NOT NULL`,
+      ];
+      
+      if (input.mappingId) {
+        conditions.push(eq(spcAnalysisHistory.mappingId, input.mappingId));
+      }
+      
+      const data = await db
+        .select({
+          date: sql<string>`DATE(createdAt)`,
+          cpk: sql<number>`AVG(cpk) / 1000`,
+          cp: sql<number>`AVG(cp) / 1000`,
+          ppk: sql<number>`AVG(COALESCE(ppk, cpk)) / 1000`,
+        })
+        .from(spcAnalysisHistory)
+        .where(and(...conditions))
+        .groupBy(sql`DATE(createdAt)`)
+        .orderBy(sql`DATE(createdAt)`);
+      
+      return data.map(d => ({
+        date: new Date(d.date),
+        cpk: Number(d.cpk) || 0,
+        cp: Number(d.cp) || 0,
+        ppk: Number(d.ppk) || 0,
+      }));
+    }),
 });
 
 // Export Router

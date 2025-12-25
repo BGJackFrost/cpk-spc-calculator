@@ -63,6 +63,7 @@ import CpkComparisonDashboard from "./pages/CpkComparisonDashboard";
 import ShiftCpkComparison from "./pages/ShiftCpkComparison";
 import ShiftManagerDashboard from "./pages/ShiftManagerDashboard";
 import SpcSummaryReport from "./pages/SpcSummaryReport";
+import CpkForecastPage from "./pages/CpkForecastPage";
 import LicenseManagement from "./pages/LicenseManagement";
 import LicenseNotificationReport from "./pages/LicenseNotificationReport";
 import LicenseDashboard from "./pages/LicenseDashboard";
@@ -75,9 +76,11 @@ import RealtimeMachineConfig from "./pages/RealtimeMachineConfig";
 import RealtimeHistory from "./pages/RealtimeHistory";
 import AlarmThresholdConfig from "./pages/AlarmThresholdConfig";
 import MachineOverviewDashboard from "./pages/MachineOverviewDashboard";
+import MachineDetailLive from "./pages/MachineDetailLive";
 import MachineAreaManagement from "./pages/MachineAreaManagement";
 import MachineStatusReport from "./pages/MachineStatusReport";
 import OEEDashboard from "./pages/OEEDashboard";
+import OEEAnalysisDashboard from "./pages/OEEAnalysisDashboard";
 import OEEComparisonDashboard from "./pages/OEEComparisonDashboard";
 import MaintenanceDashboard from "./pages/MaintenanceDashboard";
 import MachineDetail from "./pages/MachineDetail";
@@ -99,9 +102,13 @@ import MaintenanceSchedule from "./pages/MaintenanceSchedule";
 import AlertThresholdConfig from "./pages/AlertThresholdConfig";
 import EquipmentQRLookup from "./pages/EquipmentQRLookup";
 import PlantKPIDashboard from "./pages/PlantKPIDashboard";
+import PlantKPIDashboardEnhanced from "./pages/PlantKPIDashboardEnhanced";
+import MMSDashboard from "./pages/MMSDashboard";
 import IoTGatewayConfig from "./pages/IoTGatewayConfig";
 import ReportsExport from "./pages/ReportsExport";
+import ReportsExportEnhanced from "./pages/ReportsExportEnhanced";
 import AlertConfiguration from "./pages/AlertConfiguration";
+import AlertConfigurationEnhanced from "./pages/AlertConfigurationEnhanced";
 import ScheduledReports from "./pages/ScheduledReports";
 import SupervisorDashboard from "./pages/SupervisorDashboard";
 import ShiftReportHistory from "./pages/ShiftReportHistory";
@@ -212,6 +219,7 @@ function Router() {
       <Route path="/validation-rules" component={ValidationRulesManagement} />
       <Route path="/cpk-comparison" component={CpkComparisonDashboard} />
       <Route path="/shift-cpk-comparison" component={ShiftCpkComparison} />
+      <Route path="/cpk-forecast" component={CpkForecastPage} />
       <Route path="/shift-manager" component={ShiftManagerDashboard} />
       <Route path="/kpi-alert-thresholds" component={KpiAlertThresholds} />
       <Route path="/weekly-kpi-trend" component={WeeklyKpiTrend} />
@@ -228,10 +236,12 @@ function Router() {
       <Route path="/realtime-history" component={RealtimeHistory} />
       <Route path="/alarm-threshold-config" component={AlarmThresholdConfig} />
       <Route path="/machine-overview" component={MachineOverviewDashboard} />
+      <Route path="/machine-detail/:id" component={MachineDetailLive} />
       <Route path="/machine-areas" component={MachineAreaManagement} />
       <Route path="/machine-status-report" component={MachineStatusReport} />
       <Route path="/oee-dashboard" component={OEEDashboard} />
       <Route path="/oee-comparison" component={OEEComparisonDashboard} />
+      <Route path="/oee-analysis" component={OEEAnalysisDashboard} />
       <Route path="/unified-dashboard" component={UnifiedDashboard} />
       <Route path="/maintenance-dashboard" component={MaintenanceDashboard} />
       <Route path="/machine/:id" component={MachineDetail} />
@@ -251,9 +261,13 @@ function Router() {
       <Route path="/maintenance-schedule" component={MaintenanceSchedule} />
       <Route path="/equipment-qr" component={EquipmentQRLookup} />
       <Route path="/plant-kpi" component={PlantKPIDashboard} />
+      <Route path="/plant-kpi-enhanced" component={PlantKPIDashboardEnhanced} />
+      <Route path="/mms-dashboard" component={MMSDashboard} />
       <Route path="/iot-gateway" component={IoTGatewayConfig} />
       <Route path="/reports-export" component={ReportsExport} />
+      <Route path="/reports-export-enhanced" component={ReportsExportEnhanced} />
       <Route path="/alert-config" component={AlertConfiguration} />
+      <Route path="/alert-config-enhanced" component={AlertConfigurationEnhanced} />
       <Route path="/oee-alert-thresholds" component={OeeAlertThresholdSettings} />
       <Route path="/scheduled-reports" component={ScheduledReportManagement} />
       <Route path="/machine-integration" component={MachineIntegrationDashboard} />
