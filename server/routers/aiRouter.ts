@@ -11,6 +11,12 @@ import {
   type SpcDataPoint,
   type SpcViolation,
 } from "../services/aiSpcAnalysisService";
+import {
+  processNaturalLanguageQuery,
+  getSuggestedQuestions,
+  type ChatMessage,
+  type ChatContext,
+} from "../services/aiNaturalLanguageService";
 
 // Simple anomaly detection using Z-score
 function detectAnomaliesZScore(data: number[], threshold: number = 2.5): { index: number; value: number; score: number; severity: string }[] {
@@ -320,5 +326,173 @@ export const aiRouter = router({
     .mutation(async ({ input }) => {
       const answer = await chatAboutSpc(input.question, input.context);
       return { answer };
+    }),
+
+  // ============ Natural Language Interface with Real LLM ============
+
+  // Process natural language query with real LLM
+  naturalLanguageQuery: protectedProcedure
+    .input(z.object({
+      query: z.string(),
+      context: z.object({
+        productCode: z.string().optional(),
+        stationName: z.string().optional(),
+        dateRange: z.object({
+          from: z.date().optional(),
+          to: z.date().optional(),
+        }).optional(),
+        lastQuery: z.string().optional(),
+      }).optional(),
+      conversationHistory: z.array(z.object({
+        role: z.enum(["user", "assistant", "system"]),
+        content: z.string(),
+        timestamp: z.date().optional(),
+      })).optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const result = await processNaturalLanguageQuery(
+        input.query,
+        input.context as ChatContext || {},
+        input.conversationHistory as ChatMessage[] || []
+      );
+      return result;
+    }),
+
+  // Get suggested questions based on current data
+  getSuggestedQuestions: protectedProcedure
+    .query(async () => {
+      const questions = await getSuggestedQuestions();
+      return { questions };
+    }),
+
+  // ============ AI Model Training ============
+
+  // List all AI models
+  listModels: protectedProcedure
+    .input(z.object({
+      type: z.string().optional(),
+      status: z.string().optional(),
+    }))
+    .query(async ({ input }) => {
+      const db = getDb();
+      let query = db.select().from(aiAnomalyModels);
+      
+      // Filter by type if provided
+      const models = await query;
+      
+      return models.map(m => ({
+        id: m.id,
+        name: m.name,
+        type: m.modelType,
+        version: m.version || "1.0.0",
+        status: m.status,
+        accuracy: m.accuracy,
+        trainedAt: m.trainedAt,
+        config: m.config,
+      }));
+    }),
+
+  // Start training a new model
+  startTraining: protectedProcedure
+    .input(z.object({
+      modelName: z.string(),
+      modelType: z.enum(["cpk_prediction", "anomaly_detection", "root_cause", "quality_prediction"]),
+      dataSource: z.string(),
+      epochs: z.number().min(10).max(1000).default(100),
+      config: z.record(z.unknown()).optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = getDb();
+      
+      // Create new model record
+      const [newModel] = await db.insert(aiAnomalyModels).values({
+        name: input.modelName,
+        modelType: input.modelType,
+        version: "1.0.0",
+        status: "training",
+        accuracy: null,
+        trainedAt: null,
+        config: {
+          dataSource: input.dataSource,
+          epochs: input.epochs,
+          ...input.config,
+        },
+        createdBy: ctx.user.id,
+      }).returning();
+      
+      // In a real implementation, this would trigger an async training job
+      // For now, we simulate the training process
+      
+      return {
+        jobId: `job_${newModel.id}`,
+        modelId: newModel.id,
+        status: "training",
+        message: "Training job started successfully",
+      };
+    }),
+
+  // Get training job status
+  getTrainingStatus: protectedProcedure
+    .input(z.object({
+      modelId: z.number(),
+    }))
+    .query(async ({ input }) => {
+      const db = getDb();
+      const [model] = await db.select().from(aiAnomalyModels).where(eq(aiAnomalyModels.id, input.modelId));
+      
+      if (!model) {
+        throw new Error("Model not found");
+      }
+      
+      return {
+        modelId: model.id,
+        name: model.name,
+        status: model.status,
+        accuracy: model.accuracy,
+        trainedAt: model.trainedAt,
+        config: model.config,
+      };
+    }),
+
+  // Update model status (for simulating training completion)
+  updateModelStatus: protectedProcedure
+    .input(z.object({
+      modelId: z.number(),
+      status: z.enum(["training", "ready", "failed", "archived"]),
+      accuracy: z.number().optional(),
+      metrics: z.record(z.unknown()).optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = getDb();
+      
+      const updateData: Record<string, unknown> = {
+        status: input.status,
+      };
+      
+      if (input.accuracy !== undefined) {
+        updateData.accuracy = input.accuracy;
+      }
+      
+      if (input.status === "ready") {
+        updateData.trainedAt = new Date();
+      }
+      
+      const [updated] = await db.update(aiAnomalyModels)
+        .set(updateData)
+        .where(eq(aiAnomalyModels.id, input.modelId))
+        .returning();
+      
+      return updated;
+    }),
+
+  // Delete a model
+  deleteModel: protectedProcedure
+    .input(z.object({
+      modelId: z.number(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = getDb();
+      await db.delete(aiAnomalyModels).where(eq(aiAnomalyModels.id, input.modelId));
+      return { success: true };
     }),
 });

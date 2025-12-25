@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
+import { Streamdown } from "streamdown";
 import {
   MessageSquare,
   Send,
@@ -30,6 +31,7 @@ import {
   Settings,
   Mic,
   MicOff,
+  RefreshCw,
 } from "lucide-react";
 
 interface Message {
@@ -38,221 +40,17 @@ interface Message {
   content: string;
   timestamp: Date;
   type?: "text" | "chart" | "table" | "recommendation";
-  data?: any;
+  data?: Record<string, unknown>;
   feedback?: "positive" | "negative";
+  confidence?: number;
+  suggestions?: string[];
 }
 
-// Sample suggested questions
-const suggestedQuestions = {
-  vi: [
-    "CPK hiện tại của sản phẩm ABC là bao nhiêu?",
-    "Phân tích xu hướng CPK trong 7 ngày qua",
-    "Tại sao CPK giảm ở trạm XYZ?",
-    "Đưa ra khuyến nghị cải tiến cho dây chuyền 1",
-    "So sánh hiệu suất giữa ca A và ca B",
-    "Dự báo CPK cho tuần tới",
-    "Liệt kê các vi phạm Western Electric Rules hôm nay",
-    "Máy nào có tỷ lệ lỗi cao nhất?",
-  ],
-  en: [
-    "What is the current CPK for product ABC?",
-    "Analyze CPK trend over the past 7 days",
-    "Why is CPK declining at station XYZ?",
-    "Give improvement recommendations for line 1",
-    "Compare performance between shift A and B",
-    "Forecast CPK for next week",
-    "List Western Electric Rules violations today",
-    "Which machine has the highest defect rate?",
-  ],
-};
-
-// Mock AI responses
-function generateMockResponse(question: string, isVi: boolean): { content: string; type: Message["type"]; data?: any } {
-  const lowerQ = question.toLowerCase();
-  
-  if (lowerQ.includes("cpk") && (lowerQ.includes("hiện tại") || lowerQ.includes("current"))) {
-    return {
-      content: isVi 
-        ? `**CPK hiện tại của sản phẩm:**
-
-| Sản phẩm | Trạm | CPK | Trạng thái |
-|----------|------|-----|------------|
-| ABC-001 | Trạm 1 | 1.45 | ✅ Tốt |
-| ABC-002 | Trạm 2 | 1.28 | ⚠️ Cần cải thiện |
-| ABC-003 | Trạm 3 | 1.52 | ✅ Xuất sắc |
-
-**Tóm tắt:** CPK trung bình là 1.42, đạt mục tiêu >1.33.`
-        : `**Current CPK for products:**
-
-| Product | Station | CPK | Status |
-|---------|---------|-----|--------|
-| ABC-001 | Station 1 | 1.45 | ✅ Good |
-| ABC-002 | Station 2 | 1.28 | ⚠️ Needs improvement |
-| ABC-003 | Station 3 | 1.52 | ✅ Excellent |
-
-**Summary:** Average CPK is 1.42, meeting target >1.33.`,
-      type: "table",
-    };
-  }
-  
-  if (lowerQ.includes("xu hướng") || lowerQ.includes("trend")) {
-    return {
-      content: isVi
-        ? `**Phân tích xu hướng CPK (7 ngày qua):**
-
-📈 **Xu hướng tổng thể:** Tăng nhẹ (+2.3%)
-
-**Chi tiết theo ngày:**
-- Thứ 2: 1.38 → Thứ 3: 1.40 (+1.4%)
-- Thứ 3: 1.40 → Thứ 4: 1.42 (+0.5%)
-- Thứ 4: 1.42 → Thứ 5: 1.39 (-2.1%)
-- Thứ 5: 1.39 → Thứ 6: 1.43 (+2.9%)
-- Thứ 6: 1.43 → Thứ 7: 1.45 (+1.4%)
-- Thứ 7: 1.45 → CN: 1.41 (-2.8%)
-
-**Nhận xét:** CPK có xu hướng tăng nhẹ với biến động trong tuần. Cần theo dõi thêm để xác nhận xu hướng.`
-        : `**CPK Trend Analysis (Past 7 days):**
-
-📈 **Overall Trend:** Slight increase (+2.3%)
-
-**Daily Details:**
-- Mon: 1.38 → Tue: 1.40 (+1.4%)
-- Tue: 1.40 → Wed: 1.42 (+0.5%)
-- Wed: 1.42 → Thu: 1.39 (-2.1%)
-- Thu: 1.39 → Fri: 1.43 (+2.9%)
-- Fri: 1.43 → Sat: 1.45 (+1.4%)
-- Sat: 1.45 → Sun: 1.41 (-2.8%)
-
-**Observation:** CPK shows slight upward trend with weekly fluctuations. Continue monitoring to confirm trend.`,
-      type: "chart",
-    };
-  }
-  
-  if (lowerQ.includes("tại sao") || lowerQ.includes("why") || lowerQ.includes("giảm") || lowerQ.includes("decline")) {
-    return {
-      content: isVi
-        ? `**Phân tích nguyên nhân CPK giảm:**
-
-🔍 **Nguyên nhân chính được xác định:**
-
-1. **Dao cắt mòn (85% xác suất)**
-   - Dao đã vượt 120% tuổi thọ khuyến nghị
-   - Khuyến nghị: Thay dao ngay lập tức
-
-2. **Biến động nhiệt độ (72% xác suất)**
-   - Nhiệt độ dao động ±5°C trong ca
-   - Khuyến nghị: Kiểm tra hệ thống HVAC
-
-3. **Chênh lệch kỹ năng vận hành (65% xác suất)**
-   - CPK ca C thấp hơn 20% so với ca A
-   - Khuyến nghị: Đào tạo bổ sung cho ca C
-
-⚡ **Hành động ưu tiên:** Thay dao cắt và kiểm tra HVAC trong 24h tới.`
-        : `**Root Cause Analysis for CPK Decline:**
-
-🔍 **Primary causes identified:**
-
-1. **Tool Wear (85% probability)**
-   - Tool exceeded 120% of recommended life
-   - Recommendation: Replace tool immediately
-
-2. **Temperature Fluctuation (72% probability)**
-   - Temperature varying ±5°C during shift
-   - Recommendation: Check HVAC system
-
-3. **Operator Skill Gap (65% probability)**
-   - Shift C CPK 20% lower than Shift A
-   - Recommendation: Additional training for Shift C
-
-⚡ **Priority Action:** Replace cutting tool and check HVAC within 24 hours.`,
-      type: "recommendation",
-    };
-  }
-  
-  if (lowerQ.includes("khuyến nghị") || lowerQ.includes("recommendation") || lowerQ.includes("cải tiến") || lowerQ.includes("improve")) {
-    return {
-      content: isVi
-        ? `**Khuyến nghị cải tiến theo 5M1E:**
-
-🔧 **Machine (Máy):**
-- Thay dao cắt theo lịch PM
-- Calibrate spindle hàng tháng
-
-👷 **Man (Người):**
-- Đào tạo SPC cho ca C
-- Thiết lập buddy system
-
-📦 **Material (Vật liệu):**
-- Tăng tần suất incoming inspection
-- Liên hệ nhà cung cấp về spec
-
-📋 **Method (Phương pháp):**
-- Chuẩn hóa quy trình setup
-- Tạo checklist cho từng công đoạn
-
-📏 **Measurement (Đo lường):**
-- Thực hiện Gauge R&R study
-- Calibrate thiết bị đo
-
-🌡️ **Environment (Môi trường):**
-- Kiểm tra HVAC
-- Lắp thêm cảm biến nhiệt độ
-
-**Ưu tiên cao nhất:** Thay dao cắt và đào tạo ca C`
-        : `**Improvement Recommendations by 5M1E:**
-
-🔧 **Machine:**
-- Replace cutting tools per PM schedule
-- Monthly spindle calibration
-
-👷 **Man:**
-- SPC training for Shift C
-- Establish buddy system
-
-📦 **Material:**
-- Increase incoming inspection frequency
-- Contact supplier about specs
-
-📋 **Method:**
-- Standardize setup procedures
-- Create checklists for each step
-
-📏 **Measurement:**
-- Conduct Gauge R&R study
-- Calibrate measuring equipment
-
-🌡️ **Environment:**
-- Check HVAC system
-- Install additional temperature sensors
-
-**Highest Priority:** Replace cutting tools and train Shift C`,
-      type: "recommendation",
-    };
-  }
-  
-  // Default response
-  return {
-    content: isVi
-      ? `Tôi đã nhận được câu hỏi của bạn: "${question}"
-
-Dựa trên dữ liệu SPC/CPK hiện có, tôi có thể giúp bạn:
-- Phân tích CPK và xu hướng
-- Xác định nguyên nhân gốc rễ
-- Đưa ra khuyến nghị cải tiến
-- Dự báo và cảnh báo sớm
-
-Bạn có thể hỏi cụ thể hơn về sản phẩm, trạm đo, hoặc khoảng thời gian cần phân tích.`
-      : `I received your question: "${question}"
-
-Based on available SPC/CPK data, I can help you with:
-- CPK analysis and trends
-- Root cause identification
-- Improvement recommendations
-- Forecasting and early warnings
-
-You can ask more specifically about products, stations, or time periods to analyze.`,
-    type: "text",
-  };
+interface ChatContext {
+  productCode?: string;
+  stationName?: string;
+  dateRange?: { from?: Date; to?: Date };
+  lastQuery?: string;
 }
 
 export default function AiNaturalLanguage() {
@@ -262,8 +60,13 @@ export default function AiNaturalLanguage() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [context, setContext] = useState<ChatContext>({});
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // tRPC mutations
+  const naturalLanguageQuery = trpc.ai.naturalLanguageQuery.useMutation();
+  const { data: suggestedQuestionsData, refetch: refetchSuggestions } = trpc.ai.getSuggestedQuestions.useQuery();
 
   // Auto scroll to bottom
   useEffect(() => {
@@ -272,7 +75,7 @@ export default function AiNaturalLanguage() {
     }
   }, [messages]);
 
-  // Send message
+  // Send message with real LLM
   const sendMessage = async (text?: string) => {
     const messageText = text || input.trim();
     if (!messageText) return;
@@ -289,21 +92,73 @@ export default function AiNaturalLanguage() {
     setInput("");
     setIsLoading(true);
 
-    // Simulate AI response delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    try {
+      // Build conversation history for context
+      const conversationHistory = messages.slice(-6).map(msg => ({
+        role: msg.role as "user" | "assistant",
+        content: msg.content,
+        timestamp: msg.timestamp,
+      }));
 
-    const response = generateMockResponse(messageText, isVi);
-    const assistantMessage: Message = {
-      id: `assistant-${Date.now()}`,
-      role: "assistant",
-      content: response.content,
-      timestamp: new Date(),
-      type: response.type,
-      data: response.data,
-    };
+      // Call real LLM API
+      const result = await naturalLanguageQuery.mutateAsync({
+        query: messageText,
+        context: {
+          productCode: context.productCode,
+          stationName: context.stationName,
+          dateRange: context.dateRange,
+          lastQuery: context.lastQuery,
+        },
+        conversationHistory,
+      });
 
-    setMessages(prev => [...prev, assistantMessage]);
-    setIsLoading(false);
+      // Determine message type based on content
+      let messageType: Message["type"] = "text";
+      if (result.charts && result.charts.length > 0) {
+        messageType = "chart";
+      } else if (result.answer.includes("|") && result.answer.includes("---")) {
+        messageType = "table";
+      } else if (result.answer.includes("Khuyến nghị") || result.answer.includes("Recommendation")) {
+        messageType = "recommendation";
+      }
+
+      const assistantMessage: Message = {
+        id: `assistant-${Date.now()}`,
+        role: "assistant",
+        content: result.answer,
+        timestamp: new Date(),
+        type: messageType,
+        data: result.data,
+        confidence: result.confidence,
+        suggestions: result.suggestions,
+      };
+
+      setMessages(prev => [...prev, assistantMessage]);
+      
+      // Update context
+      setContext(prev => ({
+        ...prev,
+        lastQuery: messageText,
+      }));
+
+    } catch (error) {
+      console.error("LLM error:", error);
+      
+      // Fallback response
+      const errorMessage: Message = {
+        id: `assistant-${Date.now()}`,
+        role: "assistant",
+        content: isVi 
+          ? "Xin lỗi, tôi gặp lỗi khi xử lý câu hỏi. Vui lòng thử lại sau."
+          : "Sorry, I encountered an error processing your question. Please try again later.",
+        timestamp: new Date(),
+        type: "text",
+      };
+      setMessages(prev => [...prev, errorMessage]);
+      toast.error(isVi ? "Lỗi kết nối AI" : "AI connection error");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Handle feedback
@@ -325,6 +180,7 @@ export default function AiNaturalLanguage() {
   // Clear chat
   const clearChat = () => {
     setMessages([]);
+    setContext({});
     toast.success(isVi ? "Đã xóa lịch sử chat" : "Chat history cleared");
   };
 
@@ -341,6 +197,27 @@ export default function AiNaturalLanguage() {
     }
   };
 
+  // Get suggested questions from API or fallback
+  const suggestedQuestions = suggestedQuestionsData?.questions || (isVi ? [
+    "CPK hiện tại của tất cả sản phẩm là bao nhiêu?",
+    "Phân tích xu hướng CPK trong 7 ngày qua",
+    "Tại sao CPK giảm ở trạm XYZ?",
+    "Đưa ra khuyến nghị cải tiến cho dây chuyền 1",
+    "So sánh hiệu suất giữa ca A và ca B",
+    "Dự báo CPK cho tuần tới",
+    "Liệt kê các vi phạm Western Electric Rules hôm nay",
+    "Máy nào có tỷ lệ lỗi cao nhất?",
+  ] : [
+    "What is the current CPK for all products?",
+    "Analyze CPK trend over the past 7 days",
+    "Why is CPK declining at station XYZ?",
+    "Give improvement recommendations for line 1",
+    "Compare performance between shift A and B",
+    "Forecast CPK for next week",
+    "List Western Electric Rules violations today",
+    "Which machine has the highest defect rate?",
+  ]);
+
   return (
     <DashboardLayout>
       <div className="p-6 h-[calc(100vh-80px)] flex flex-col">
@@ -353,11 +230,15 @@ export default function AiNaturalLanguage() {
             </h1>
             <p className="text-muted-foreground mt-1">
               {isVi
-                ? "Hỏi đáp về SPC/CPK bằng ngôn ngữ tự nhiên"
-                : "Ask questions about SPC/CPK in natural language"}
+                ? "Hỏi đáp về SPC/CPK bằng ngôn ngữ tự nhiên với AI thực"
+                : "Ask questions about SPC/CPK in natural language with real AI"}
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => refetchSuggestions()}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              {isVi ? "Làm mới" : "Refresh"}
+            </Button>
             <Button variant="outline" size="sm" onClick={clearChat}>
               <Trash2 className="h-4 w-4 mr-2" />
               {isVi ? "Xóa chat" : "Clear"}
@@ -381,11 +262,15 @@ export default function AiNaturalLanguage() {
                     <h3 className="text-xl font-semibold mb-2">
                       {isVi ? "Xin chào! Tôi là AI Assistant" : "Hello! I'm your AI Assistant"}
                     </h3>
-                    <p className="text-muted-foreground max-w-md">
+                    <p className="text-muted-foreground max-w-md mb-4">
                       {isVi
-                        ? "Tôi có thể giúp bạn phân tích dữ liệu SPC/CPK, tìm nguyên nhân gốc rễ, và đưa ra khuyến nghị cải tiến."
-                        : "I can help you analyze SPC/CPK data, find root causes, and provide improvement recommendations."}
+                        ? "Tôi được hỗ trợ bởi LLM thực và có thể giúp bạn phân tích dữ liệu SPC/CPK, tìm nguyên nhân gốc rễ, và đưa ra khuyến nghị cải tiến."
+                        : "I'm powered by real LLM and can help you analyze SPC/CPK data, find root causes, and provide improvement recommendations."}
                     </p>
+                    <Badge variant="secondary" className="mb-4">
+                      <Sparkles className="h-3 w-3 mr-1" />
+                      {isVi ? "Powered by LLM" : "Powered by LLM"}
+                    </Badge>
                   </div>
                 ) : (
                   <div className="space-y-4 py-4">
@@ -418,37 +303,69 @@ export default function AiNaturalLanguage() {
                                 {msg.type}
                               </Badge>
                             )}
+                            {msg.confidence && (
+                              <Badge variant="outline" className="text-xs">
+                                {Math.round(msg.confidence * 100)}% confidence
+                              </Badge>
+                            )}
                           </div>
-                          <div className="whitespace-pre-wrap text-sm">
-                            {msg.content}
+                          <div className="text-sm prose prose-sm dark:prose-invert max-w-none">
+                            {msg.role === "assistant" ? (
+                              <Streamdown>{msg.content}</Streamdown>
+                            ) : (
+                              <span className="whitespace-pre-wrap">{msg.content}</span>
+                            )}
                           </div>
                           {msg.role === "assistant" && (
-                            <div className="flex items-center gap-2 mt-3 pt-2 border-t border-border/50">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-7 px-2"
-                                onClick={() => copyMessage(msg.content)}
-                              >
-                                <Copy className="h-3 w-3" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className={`h-7 px-2 ${msg.feedback === "positive" ? "text-green-500" : ""}`}
-                                onClick={() => handleFeedback(msg.id, "positive")}
-                              >
-                                <ThumbsUp className="h-3 w-3" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className={`h-7 px-2 ${msg.feedback === "negative" ? "text-red-500" : ""}`}
-                                onClick={() => handleFeedback(msg.id, "negative")}
-                              >
-                                <ThumbsDown className="h-3 w-3" />
-                              </Button>
-                            </div>
+                            <>
+                              {/* Suggestions */}
+                              {msg.suggestions && msg.suggestions.length > 0 && (
+                                <div className="mt-3 pt-2 border-t border-border/50">
+                                  <p className="text-xs text-muted-foreground mb-2">
+                                    {isVi ? "Câu hỏi tiếp theo:" : "Follow-up questions:"}
+                                  </p>
+                                  <div className="flex flex-wrap gap-1">
+                                    {msg.suggestions.map((s, idx) => (
+                                      <Button
+                                        key={idx}
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-auto py-1 px-2 text-xs"
+                                        onClick={() => sendMessage(s)}
+                                      >
+                                        {s}
+                                      </Button>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              <div className="flex items-center gap-2 mt-3 pt-2 border-t border-border/50">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 px-2"
+                                  onClick={() => copyMessage(msg.content)}
+                                >
+                                  <Copy className="h-3 w-3" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className={`h-7 px-2 ${msg.feedback === "positive" ? "text-green-500" : ""}`}
+                                  onClick={() => handleFeedback(msg.id, "positive")}
+                                >
+                                  <ThumbsUp className="h-3 w-3" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className={`h-7 px-2 ${msg.feedback === "negative" ? "text-red-500" : ""}`}
+                                  onClick={() => handleFeedback(msg.id, "negative")}
+                                >
+                                  <ThumbsDown className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            </>
                           )}
                         </div>
                       </div>
@@ -459,7 +376,7 @@ export default function AiNaturalLanguage() {
                           <div className="flex items-center gap-2">
                             <Loader2 className="h-4 w-4 animate-spin" />
                             <span className="text-sm">
-                              {isVi ? "Đang phân tích..." : "Analyzing..."}
+                              {isVi ? "AI đang phân tích..." : "AI is analyzing..."}
                             </span>
                           </div>
                         </div>
@@ -520,7 +437,7 @@ export default function AiNaturalLanguage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  {(isVi ? suggestedQuestions.vi : suggestedQuestions.en).map((q, idx) => (
+                  {suggestedQuestions.slice(0, 8).map((q, idx) => (
                     <Button
                       key={idx}
                       variant="ghost"
@@ -616,6 +533,11 @@ export default function AiNaturalLanguage() {
                     {isVi ? "Cảnh báo sớm" : "Early Warnings"}
                   </li>
                 </ul>
+                <Separator className="my-3" />
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Sparkles className="h-3 w-3 text-yellow-500" />
+                  {isVi ? "Powered by LLM thực" : "Powered by real LLM"}
+                </div>
               </CardContent>
             </Card>
           </div>

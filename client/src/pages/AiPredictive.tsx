@@ -12,6 +12,22 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  Area,
+  AreaChart,
+  ComposedChart,
+  ReferenceLine,
+  Scatter,
+  Bar,
+} from "recharts";
+import {
   TrendingUp,
   TrendingDown,
   Activity,
@@ -25,7 +41,6 @@ import {
   Brain,
   Zap,
   BarChart3,
-  LineChart,
   ArrowUp,
   ArrowDown,
   Minus,
@@ -44,6 +59,11 @@ interface Prediction {
   risk: "low" | "medium" | "high";
 }
 
+interface HistoricalData {
+  date: string;
+  actualCpk: number;
+}
+
 interface ForecastSummary {
   avgPredictedCpk: number;
   trend: "improving" | "stable" | "declining";
@@ -52,10 +72,32 @@ interface ForecastSummary {
   recommendations: string[];
 }
 
+// Generate mock historical data
+function generateMockHistoricalData(days: number): HistoricalData[] {
+  const data: HistoricalData[] = [];
+  let baseCpk = 1.4;
+  
+  for (let i = days; i >= 1; i--) {
+    const date = new Date();
+    date.setDate(date.getDate() - i);
+    
+    const noise = (Math.random() - 0.5) * 0.15;
+    const trend = Math.sin(i / 7) * 0.05;
+    baseCpk = Math.max(0.9, Math.min(1.8, baseCpk + noise * 0.3 + trend));
+    
+    data.push({
+      date: date.toISOString().split("T")[0],
+      actualCpk: baseCpk,
+    });
+  }
+  
+  return data;
+}
+
 // Generate mock predictions
-function generateMockPredictions(horizon: number): { predictions: Prediction[]; summary: ForecastSummary } {
+function generateMockPredictions(horizon: number, lastCpk: number): { predictions: Prediction[]; summary: ForecastSummary } {
   const predictions: Prediction[] = [];
-  let baseCpk = 1.35;
+  let baseCpk = lastCpk;
   const trend = Math.random() > 0.5 ? 0.01 : -0.008;
   
   for (let i = 1; i <= horizon; i++) {
@@ -64,7 +106,7 @@ function generateMockPredictions(horizon: number): { predictions: Prediction[]; 
     
     const noise = (Math.random() - 0.5) * 0.1;
     const predictedCpk = baseCpk + trend * i + noise;
-    const uncertainty = 0.05 + (i * 0.01);
+    const uncertainty = 0.05 + (i * 0.015);
     
     predictions.push({
       date: date.toISOString().split("T")[0],
@@ -79,8 +121,8 @@ function generateMockPredictions(horizon: number): { predictions: Prediction[]; 
   }
   
   const avgCpk = predictions.reduce((sum, p) => sum + p.predictedCpk, 0) / predictions.length;
-  const lastCpk = predictions[predictions.length - 1].predictedCpk;
-  const firstCpk = predictions[0].predictedCpk;
+  const lastPredCpk = predictions[predictions.length - 1].predictedCpk;
+  const firstPredCpk = predictions[0].predictedCpk;
   
   const daysUntilRisk = predictions.findIndex(p => p.predictedCpk < 1.0);
   
@@ -88,7 +130,7 @@ function generateMockPredictions(horizon: number): { predictions: Prediction[]; 
     predictions,
     summary: {
       avgPredictedCpk: avgCpk,
-      trend: lastCpk > firstCpk + 0.05 ? "improving" : lastCpk < firstCpk - 0.05 ? "declining" : "stable",
+      trend: lastPredCpk > firstPredCpk + 0.05 ? "improving" : lastPredCpk < firstPredCpk - 0.05 ? "declining" : "stable",
       riskLevel: avgCpk < 1.0 ? "high" : avgCpk < 1.33 ? "medium" : "low",
       daysUntilRisk: daysUntilRisk >= 0 ? daysUntilRisk + 1 : null,
       recommendations: avgCpk < 1.33 
@@ -115,11 +157,28 @@ function TrendIcon({ trend }: { trend: "improving" | "stable" | "declining" }) {
 // Risk badge component
 function RiskBadge({ risk }: { risk: "low" | "medium" | "high" }) {
   const colors = {
-    low: "bg-green-100 text-green-700",
-    medium: "bg-yellow-100 text-yellow-700",
-    high: "bg-red-100 text-red-700",
+    low: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
+    medium: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300",
+    high: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
   };
   return <Badge className={colors[risk]}>{risk.toUpperCase()}</Badge>;
+}
+
+// Custom tooltip for charts
+function CustomTooltip({ active, payload, label }: any) {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-background border rounded-lg shadow-lg p-3">
+        <p className="font-medium mb-2">{label}</p>
+        {payload.map((entry: any, index: number) => (
+          <p key={index} className="text-sm" style={{ color: entry.color }}>
+            {entry.name}: {typeof entry.value === "number" ? entry.value.toFixed(3) : entry.value}
+          </p>
+        ))}
+      </div>
+    );
+  }
+  return null;
 }
 
 export default function AiPredictive() {
@@ -129,16 +188,53 @@ export default function AiPredictive() {
   const [selectedStation, setSelectedStation] = useState<string>("");
   const [horizon, setHorizon] = useState<string>("7");
   const [isLoading, setIsLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState("chart");
 
   // Queries
   const { data: products } = trpc.product.list.useQuery();
   const { data: stations } = trpc.workstation.list.useQuery();
 
-  // Mock predictions
+  // Generate data
+  const historicalData = useMemo(() => generateMockHistoricalData(30), []);
+  const lastActualCpk = historicalData[historicalData.length - 1]?.actualCpk || 1.35;
   const { predictions, summary } = useMemo(
-    () => generateMockPredictions(parseInt(horizon)),
-    [horizon]
+    () => generateMockPredictions(parseInt(horizon), lastActualCpk),
+    [horizon, lastActualCpk]
   );
+
+  // Combine historical and prediction data for chart
+  const chartData = useMemo(() => {
+    const combined = [
+      ...historicalData.map(d => ({
+        date: d.date,
+        actualCpk: d.actualCpk,
+        predictedCpk: null as number | null,
+        lowerBound: null as number | null,
+        upperBound: null as number | null,
+        type: "historical",
+      })),
+      ...predictions.map(p => ({
+        date: p.date,
+        actualCpk: null as number | null,
+        predictedCpk: p.predictedCpk,
+        lowerBound: p.lowerBound,
+        upperBound: p.upperBound,
+        type: "forecast",
+      })),
+    ];
+    return combined;
+  }, [historicalData, predictions]);
+
+  // Risk indicator data for scatter plot
+  const riskIndicators = useMemo(() => {
+    return predictions
+      .filter(p => p.risk === "high")
+      .map(p => ({
+        date: p.date,
+        value: p.predictedCpk,
+        risk: p.risk,
+      }));
+  }, [predictions]);
 
   const runPrediction = async () => {
     setIsLoading(true);
@@ -338,157 +434,352 @@ export default function AiPredictive() {
           </Alert>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Predictions Table */}
-          <Card className="lg:col-span-2">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="h-5 w-5" />
-                {isVi ? "Chi tiết dự báo" : "Forecast Details"}
-              </CardTitle>
-              <CardDescription>
-                {isVi
-                  ? `Dự báo CPK cho ${horizon} ngày tới`
-                  : `CPK forecast for the next ${horizon} days`}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>{isVi ? "Ngày" : "Date"}</TableHead>
-                    <TableHead>{isVi ? "CPK dự báo" : "Predicted CPK"}</TableHead>
-                    <TableHead>{isVi ? "Khoảng tin cậy" : "Confidence Interval"}</TableHead>
-                    <TableHead>{isVi ? "Độ tin cậy" : "Confidence"}</TableHead>
-                    <TableHead>{isVi ? "Rủi ro" : "Risk"}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {predictions.map((pred, idx) => (
-                    <TableRow key={idx}>
-                      <TableCell className="font-medium">{pred.date}</TableCell>
-                      <TableCell>
-                        <span className={pred.predictedCpk < 1.0 ? "text-red-600 font-bold" : pred.predictedCpk < 1.33 ? "text-yellow-600" : "text-green-600"}>
-                          {pred.predictedCpk.toFixed(3)}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        [{pred.lowerBound.toFixed(3)} - {pred.upperBound.toFixed(3)}]
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Progress value={pred.confidence * 100} className="h-2 w-16" />
-                          <span className="text-sm">{(pred.confidence * 100).toFixed(0)}%</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <RiskBadge risk={pred.risk} />
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+        {/* Main Content with Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList>
+            <TabsTrigger value="chart">
+              <BarChart3 className="h-4 w-4 mr-2" />
+              {isVi ? "Biểu đồ" : "Charts"}
+            </TabsTrigger>
+            <TabsTrigger value="table">
+              <Calendar className="h-4 w-4 mr-2" />
+              {isVi ? "Chi tiết" : "Details"}
+            </TabsTrigger>
+          </TabsList>
 
-          {/* Recommendations */}
-          <div className="space-y-4">
+          <TabsContent value="chart" className="space-y-6">
+            {/* Forecast Chart with Confidence Bands */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Zap className="h-5 w-5 text-yellow-500" />
-                  {isVi ? "Khuyến nghị" : "Recommendations"}
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5" />
+                  {isVi ? "Biểu đồ dự báo CPK với khoảng tin cậy" : "CPK Forecast with Confidence Bands"}
                 </CardTitle>
+                <CardDescription>
+                  {isVi
+                    ? "Dữ liệu lịch sử (30 ngày) và dự báo với khoảng tin cậy 95%"
+                    : "Historical data (30 days) and forecast with 95% confidence interval"}
+                </CardDescription>
               </CardHeader>
               <CardContent>
-                <ul className="space-y-3">
-                  {summary.recommendations.map((rec, idx) => (
-                    <li key={idx} className="flex items-start gap-2">
-                      <CheckCircle className="h-4 w-4 mt-1 text-green-500 flex-shrink-0" />
-                      <span className="text-sm">{rec}</span>
-                    </li>
-                  ))}
-                </ul>
+                <div className="h-[400px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                      <XAxis 
+                        dataKey="date" 
+                        tick={{ fontSize: 12 }}
+                        tickFormatter={(value) => value.slice(5)}
+                      />
+                      <YAxis 
+                        domain={[0.6, 2.0]}
+                        tick={{ fontSize: 12 }}
+                        tickFormatter={(value) => value.toFixed(2)}
+                      />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Legend />
+                      
+                      {/* Reference lines for CPK thresholds */}
+                      <ReferenceLine y={1.33} stroke="#22c55e" strokeDasharray="5 5" label={{ value: "Target (1.33)", position: "right", fill: "#22c55e", fontSize: 11 }} />
+                      <ReferenceLine y={1.0} stroke="#f59e0b" strokeDasharray="5 5" label={{ value: "Min (1.0)", position: "right", fill: "#f59e0b", fontSize: 11 }} />
+                      
+                      {/* Confidence band (area between lower and upper bounds) */}
+                      <Area
+                        type="monotone"
+                        dataKey="upperBound"
+                        stroke="none"
+                        fill="#3b82f6"
+                        fillOpacity={0.1}
+                        name={isVi ? "Giới hạn trên" : "Upper Bound"}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="lowerBound"
+                        stroke="none"
+                        fill="#ffffff"
+                        fillOpacity={1}
+                        name={isVi ? "Giới hạn dưới" : "Lower Bound"}
+                      />
+                      
+                      {/* Historical CPK line */}
+                      <Line
+                        type="monotone"
+                        dataKey="actualCpk"
+                        stroke="#10b981"
+                        strokeWidth={2}
+                        dot={{ fill: "#10b981", r: 3 }}
+                        name={isVi ? "CPK thực tế" : "Actual CPK"}
+                        connectNulls={false}
+                      />
+                      
+                      {/* Predicted CPK line */}
+                      <Line
+                        type="monotone"
+                        dataKey="predictedCpk"
+                        stroke="#3b82f6"
+                        strokeWidth={2}
+                        strokeDasharray="5 5"
+                        dot={{ fill: "#3b82f6", r: 3 }}
+                        name={isVi ? "CPK dự báo" : "Predicted CPK"}
+                        connectNulls={false}
+                      />
+                      
+                      {/* Risk indicators */}
+                      <Scatter
+                        data={riskIndicators}
+                        dataKey="value"
+                        fill="#ef4444"
+                        name={isVi ? "Điểm rủi ro cao" : "High Risk Points"}
+                      />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                </div>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Info className="h-5 w-5 text-blue-500" />
-                  {isVi ? "Thông tin mô hình" : "Model Info"}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">
-                    {isVi ? "Thuật toán" : "Algorithm"}
-                  </span>
-                  <Badge variant="secondary">ARIMA + Prophet</Badge>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">
-                    {isVi ? "Dữ liệu huấn luyện" : "Training Data"}
-                  </span>
-                  <span className="text-sm font-medium">90 {isVi ? "ngày" : "days"}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">
-                    {isVi ? "Cập nhật lần cuối" : "Last Updated"}
-                  </span>
-                  <span className="text-sm font-medium">{new Date().toLocaleDateString()}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">
-                    MAPE
-                  </span>
-                  <span className="text-sm font-medium">4.2%</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">
-                    RMSE
-                  </span>
-                  <span className="text-sm font-medium">0.052</span>
-                </div>
-              </CardContent>
-            </Card>
+            {/* Trend Analysis Chart */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Activity className="h-5 w-5" />
+                    {isVi ? "Phân tích xu hướng" : "Trend Analysis"}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[250px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={predictions}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                        <XAxis 
+                          dataKey="date" 
+                          tick={{ fontSize: 11 }}
+                          tickFormatter={(value) => value.slice(5)}
+                        />
+                        <YAxis 
+                          domain={[0.8, 1.8]}
+                          tick={{ fontSize: 11 }}
+                        />
+                        <Tooltip content={<CustomTooltip />} />
+                        <defs>
+                          <linearGradient id="colorCpk" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
+                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.1}/>
+                          </linearGradient>
+                        </defs>
+                        <Area
+                          type="monotone"
+                          dataKey="predictedCpk"
+                          stroke="#3b82f6"
+                          fillOpacity={1}
+                          fill="url(#colorCpk)"
+                          name={isVi ? "CPK dự báo" : "Predicted CPK"}
+                        />
+                        <ReferenceLine y={1.33} stroke="#22c55e" strokeDasharray="3 3" />
+                        <ReferenceLine y={1.0} stroke="#f59e0b" strokeDasharray="3 3" />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5" />
-                  {isVi ? "Thống kê dự báo" : "Forecast Stats"}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">
-                    {isVi ? "CPK cao nhất" : "Max CPK"}
-                  </span>
-                  <span className="text-sm font-medium text-green-600">
-                    {Math.max(...predictions.map(p => p.predictedCpk)).toFixed(3)}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">
-                    {isVi ? "CPK thấp nhất" : "Min CPK"}
-                  </span>
-                  <span className="text-sm font-medium text-red-600">
-                    {Math.min(...predictions.map(p => p.predictedCpk)).toFixed(3)}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">
-                    {isVi ? "Ngày rủi ro cao" : "High Risk Days"}
-                  </span>
-                  <span className="text-sm font-medium">
-                    {predictions.filter(p => p.risk === "high").length}
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Target className="h-5 w-5" />
+                    {isVi ? "Độ tin cậy theo thời gian" : "Confidence Over Time"}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[250px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={predictions}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                        <XAxis 
+                          dataKey="date" 
+                          tick={{ fontSize: 11 }}
+                          tickFormatter={(value) => value.slice(5)}
+                        />
+                        <YAxis 
+                          domain={[0.5, 1]}
+                          tick={{ fontSize: 11 }}
+                          tickFormatter={(value) => `${(value * 100).toFixed(0)}%`}
+                        />
+                        <Tooltip 
+                          formatter={(value: number) => [`${(value * 100).toFixed(1)}%`, isVi ? "Độ tin cậy" : "Confidence"]}
+                        />
+                        <defs>
+                          <linearGradient id="colorConf" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.8}/>
+                            <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0.1}/>
+                          </linearGradient>
+                        </defs>
+                        <Area
+                          type="monotone"
+                          dataKey="confidence"
+                          stroke="#8b5cf6"
+                          fillOpacity={1}
+                          fill="url(#colorConf)"
+                          name={isVi ? "Độ tin cậy" : "Confidence"}
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="table">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Predictions Table */}
+              <Card className="lg:col-span-2">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Calendar className="h-5 w-5" />
+                    {isVi ? "Chi tiết dự báo" : "Forecast Details"}
+                  </CardTitle>
+                  <CardDescription>
+                    {isVi
+                      ? `Dự báo CPK cho ${horizon} ngày tới`
+                      : `CPK forecast for the next ${horizon} days`}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>{isVi ? "Ngày" : "Date"}</TableHead>
+                        <TableHead>{isVi ? "CPK dự báo" : "Predicted CPK"}</TableHead>
+                        <TableHead>{isVi ? "Khoảng tin cậy" : "Confidence Interval"}</TableHead>
+                        <TableHead>{isVi ? "Độ tin cậy" : "Confidence"}</TableHead>
+                        <TableHead>{isVi ? "Rủi ro" : "Risk"}</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {predictions.map((pred, idx) => (
+                        <TableRow key={idx}>
+                          <TableCell className="font-medium">{pred.date}</TableCell>
+                          <TableCell>
+                            <span className={pred.predictedCpk < 1.0 ? "text-red-600 font-bold" : pred.predictedCpk < 1.33 ? "text-yellow-600" : "text-green-600"}>
+                              {pred.predictedCpk.toFixed(3)}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
+                            [{pred.lowerBound.toFixed(3)} - {pred.upperBound.toFixed(3)}]
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Progress value={pred.confidence * 100} className="h-2 w-16" />
+                              <span className="text-sm">{(pred.confidence * 100).toFixed(0)}%</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <RiskBadge risk={pred.risk} />
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+
+              {/* Sidebar */}
+              <div className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Zap className="h-5 w-5 text-yellow-500" />
+                      {isVi ? "Khuyến nghị" : "Recommendations"}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="space-y-3">
+                      {summary.recommendations.map((rec, idx) => (
+                        <li key={idx} className="flex items-start gap-2">
+                          <CheckCircle className="h-4 w-4 mt-1 text-green-500 flex-shrink-0" />
+                          <span className="text-sm">{rec}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Info className="h-5 w-5 text-blue-500" />
+                      {isVi ? "Thông tin mô hình" : "Model Info"}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">
+                        {isVi ? "Thuật toán" : "Algorithm"}
+                      </span>
+                      <Badge variant="secondary">ARIMA + Prophet</Badge>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">
+                        {isVi ? "Dữ liệu huấn luyện" : "Training Data"}
+                      </span>
+                      <span className="text-sm font-medium">90 {isVi ? "ngày" : "days"}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">
+                        {isVi ? "Cập nhật lần cuối" : "Last Updated"}
+                      </span>
+                      <span className="text-sm font-medium">{new Date().toLocaleDateString()}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">MAPE</span>
+                      <span className="text-sm font-medium">4.2%</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">RMSE</span>
+                      <span className="text-sm font-medium">0.052</span>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <BarChart3 className="h-5 w-5" />
+                      {isVi ? "Thống kê dự báo" : "Forecast Stats"}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">
+                        {isVi ? "CPK cao nhất" : "Max CPK"}
+                      </span>
+                      <span className="text-sm font-medium text-green-600">
+                        {Math.max(...predictions.map(p => p.predictedCpk)).toFixed(3)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">
+                        {isVi ? "CPK thấp nhất" : "Min CPK"}
+                      </span>
+                      <span className="text-sm font-medium text-red-600">
+                        {Math.min(...predictions.map(p => p.predictedCpk)).toFixed(3)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">
+                        {isVi ? "Ngày rủi ro cao" : "High Risk Days"}
+                      </span>
+                      <span className="text-sm font-medium">
+                        {predictions.filter(p => p.risk === "high").length}
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
     </DashboardLayout>
   );

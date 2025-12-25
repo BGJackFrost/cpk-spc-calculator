@@ -6677,3 +6677,28 @@
 - [ ] MLOps Infrastructure
 - [ ] Industry-Specific AI Models
 
+
+
+## AI Enhancement Phase 3 - LLM Integration & Charts
+
+### LLM Integration cho Natural Language Interface
+- [x] AI-NL-LLM-01: Tích hợp invokeLLM helper vào aiNaturalLanguageService
+- [x] AI-NL-LLM-02: Xây dựng system prompt chuyên biệt cho SPC/CPK
+- [x] AI-NL-LLM-03: Trả lời câu hỏi SPC thực tế với context từ database
+- [x] AI-NL-LLM-04: Cập nhật AiNaturalLanguage.tsx để sử dụng LLM thực
+
+### Biểu đồ trực quan cho Predictive Analytics
+- [x] AI-PRED-CHART-01: Thêm biểu đồ CPK Forecast với confidence bands
+- [x] AI-PRED-CHART-02: Thêm biểu đồ Trend Analysis (Area Chart)
+- [x] AI-PRED-CHART-03: Thêm biểu đồ Confidence Over Time
+- [x] AI-PRED-CHART-04: Thêm reference lines cho CPK thresholds (1.0, 1.33)
+- [x] AI-PRED-CHART-05: Thêm risk indicators trên biểu đồ
+
+### AI Model Training với dữ liệu SPC thực
+- [x] AI-TRAIN-01: Tạo trang AiModelTraining.tsx
+- [x] AI-TRAIN-02: Hiển thị danh sách Training Jobs với progress
+- [x] AI-TRAIN-03: Hiển thị danh sách Trained Models với metrics
+- [x] AI-TRAIN-04: Biểu đồ Training Progress (Loss/Accuracy)
+- [x] AI-TRAIN-05: Biểu đồ so sánh Models (Radar Chart, Bar Chart)
+- [x] AI-TRAIN-06: Thêm procedures vào aiRouter cho model management
+- [x] AI-TRAIN-07: Thêm route /ai-model-training vào App.tsx

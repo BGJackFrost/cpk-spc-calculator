@@ -163,6 +163,7 @@ import AiSpcAnalysis from "./pages/AiSpcAnalysis";
 import AiRootCause from "./pages/AiRootCause";
 import AiNaturalLanguage from "./pages/AiNaturalLanguage";
 import AiPredictive from "./pages/AiPredictive";
+import AiModelTraining from "./pages/AiModelTraining";
 import AdvancedAnalyticsDashboard from "./pages/AdvancedAnalyticsDashboard";
 import NotificationPreferences from "./pages/NotificationPreferences";
 import KpiAlertThresholds from "./pages/KpiAlertThresholds";
@@ -368,6 +369,7 @@ function Router() {
       <Route path="/ai-root-cause" component={AiRootCause} />
       <Route path="/ai-natural-language" component={AiNaturalLanguage} />
       <Route path="/ai-predictive" component={AiPredictive} />
+      <Route path="/ai-model-training" component={AiModelTraining} />
       <Route path="/advanced-analytics-dashboard" component={AdvancedAnalyticsDashboard} />
       <Route path="/notification-preferences" component={NotificationPreferences} />
       <Route path="/user-guide" component={UserGuide} />
