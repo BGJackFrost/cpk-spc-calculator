@@ -27,6 +27,8 @@ import { quickAccessRouter } from "./routers/quickAccessRouter";
 import { alertAnalyticsRouter } from "./routers/alertAnalyticsRouter";
 import { webhookHistoryRouter } from "./routers/webhookHistoryRouter";
 import { videoTutorialRouter } from "./routers/videoTutorialRouter";
+import { visionRouter } from "./routers/visionRouter";
+import { predictiveAnalyticsRouter } from "./routers/predictiveAnalyticsRouter";
 import { triggerLicenseExpiryCheck } from "./scheduledJobs";
 import { triggerWebhooks, testWebhook } from "./webhookService";
 import { storagePut } from "./storage";
@@ -11197,6 +11199,12 @@ Hãy trả về JSON với format:
       return await processEscalations();
     }),
   }),
+
+  // Computer Vision - Defect Detection
+  vision: visionRouter,
+
+  // Predictive Analytics - OEE Forecasting & Defect Prediction
+  predictiveAnalytics: predictiveAnalyticsRouter,
 });
 
 export type AppRouter = typeof appRouter;

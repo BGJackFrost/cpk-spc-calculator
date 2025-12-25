@@ -173,6 +173,7 @@ import AiCorrelationAnalysis from "./pages/ai/AiCorrelationAnalysis";
 import AiTrendAnalysis from "./pages/ai/AiTrendAnalysis";
 import AiOeeForecast from "./pages/ai/AiOeeForecast";
 import AiDefectPrediction from "./pages/ai/AiDefectPrediction";
+import AiVisionDefectDetection from "./pages/ai/AiVisionDefectDetection";
 import AiYieldOptimization from "./pages/ai/AiYieldOptimization";
 import AiReports from "./pages/ai/AiReports";
 import AiInsights from "./pages/ai/AiInsights";
@@ -399,6 +400,7 @@ function Router() {
       <Route path="/ai-trend-analysis" component={AiTrendAnalysis} />
       <Route path="/ai-oee-forecast" component={AiOeeForecast} />
       <Route path="/ai-defect-prediction" component={AiDefectPrediction} />
+      <Route path="/ai-vision-detection" component={AiVisionDefectDetection} />
       <Route path="/ai-yield-optimization" component={AiYieldOptimization} />
       <Route path="/ai-reports" component={AiReports} />
       <Route path="/ai-insights" component={AiInsights} />
