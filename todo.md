@@ -6542,3 +6542,11 @@
 - [x] Video Tutorials - Tích hợp video hướng dẫn cho từng chức năng chính
 - [x] Export PDF - Hoàn thiện chức năng tải PDF của trang User Guide
 - [x] FAQ Section - Thêm phần Câu hỏi thường gặp với các vấn đề phổ biến
+
+## Phase User Guide Enhancement v2 (Dec 2024)
+- [x] Nâng cấp Video Tutorials với video player tích hợp (12 videos, YouTube iframe, categories, levels)
+- [x] Thêm danh sách video hướng dẫn chi tiết cho từng chức năng
+- [x] Hoàn thiện Export PDF với định dạng chuyên nghiệp (jspdf + jspdf-autotable)
+- [x] Mở rộng FAQ Section với nhiều câu hỏi troubleshooting (30 FAQs, search, filter)
+- [x] Thêm best practices và tips sử dụng hệ thống
+
