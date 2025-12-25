@@ -6550,3 +6550,25 @@
 - [x] Mở rộng FAQ Section với nhiều câu hỏi troubleshooting (30 FAQs, search, filter)
 - [x] Thêm best practices và tips sử dụng hệ thống
 
+
+## Phase 59: Video Tutorials Management (Admin Only)
+- [ ] Tạo bảng video_tutorials trong database
+- [ ] Tạo API CRUD cho video tutorials (admin only)
+- [ ] Tạo trang VideoManagement.tsx cho admin
+- [ ] Cập nhật UserGuide.tsx để load video từ database
+- [ ] Thêm route và menu cho trang quản lý video
+- [ ] Test chức năng thêm/sửa/xóa video
+
+
+## Phase 59 - Video Tutorials Management
+
+### Video Tutorials cho Admin
+- [x] Tạo bảng video_tutorials trong database
+- [x] Tạo API CRUD cho video tutorials (videoTutorialRouter)
+- [x] Tạo trang quản lý Video cho Admin (VideoManagement.tsx)
+- [x] Cho phép thêm/sửa/xóa video YouTube thực
+- [x] Tự động extract YouTube ID và thumbnail từ URL
+- [x] Cập nhật trang User Guide để load video từ database
+- [x] Fallback về static videos khi database trống
+- [x] Thêm menu Video Management vào sidebar (chỉ admin)
+- [x] Viết unit tests cho videoTutorialRouter

@@ -1,4 +1,5 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useMemo } from "react";
+import { trpc } from "@/lib/trpc";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -92,7 +93,7 @@ interface GuideStep {
   substeps?: string[];
 }
 
-interface VideoTutorial {
+interface VideoTutorialLocal {
   id: string;
   title: string;
   description: string;
@@ -104,6 +105,25 @@ interface VideoTutorial {
   views?: number;
   likes?: number;
   chapters?: { time: string; title: string }[];
+}
+
+// Interface for database videos
+interface VideoTutorialDB {
+  id: number;
+  title: string;
+  description: string | null;
+  youtubeUrl: string;
+  youtubeId: string;
+  thumbnailUrl: string | null;
+  duration: string | null;
+  category: string;
+  level: "beginner" | "intermediate" | "advanced";
+  sortOrder: number;
+  isActive: number;
+  viewCount: number;
+  createdBy: number | null;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 interface FAQItem {
@@ -163,7 +183,7 @@ const SYSTEM_OVERVIEW = {
 };
 
 // Enhanced Video Tutorials Data with real YouTube embeds
-const VIDEO_TUTORIALS: VideoTutorial[] = [
+const VIDEO_TUTORIALS: VideoTutorialLocal[] = [
   {
     id: "intro",
     title: "Giới thiệu Hệ thống SPC/CPK Calculator",
@@ -1287,7 +1307,7 @@ export default function UserGuide() {
   const [expandedSteps, setExpandedSteps] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState("guide");
   const [videoDialogOpen, setVideoDialogOpen] = useState(false);
-  const [selectedVideo, setSelectedVideo] = useState<VideoTutorial | null>(null);
+  const [selectedVideo, setSelectedVideo] = useState<VideoTutorialLocal | null>(null);
   const [faqSearch, setFaqSearch] = useState("");
   const [faqCategory, setFaqCategory] = useState("all");
   const [expandedFaqs, setExpandedFaqs] = useState<string[]>([]);
@@ -1297,6 +1317,31 @@ export default function UserGuide() {
   const [exportProgress, setExportProgress] = useState(0);
   const contentRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+
+  // Fetch videos from database
+  const { data: dbVideos, isLoading: isLoadingVideos } = trpc.videoTutorial.list.useQuery({ activeOnly: true });
+  const incrementViewMutation = trpc.videoTutorial.incrementViewCount.useMutation();
+
+  // Convert database videos to local format
+  const videosFromDB: VideoTutorialLocal[] = useMemo(() => {
+    if (!dbVideos || dbVideos.length === 0) return [];
+    return dbVideos.map(v => ({
+      id: String(v.id),
+      title: v.title,
+      description: v.description || "",
+      duration: v.duration || "0:00",
+      category: v.category,
+      thumbnail: v.thumbnailUrl || "/api/placeholder/320/180",
+      videoUrl: `https://www.youtube.com/embed/${v.youtubeId}`,
+      level: v.level as "beginner" | "intermediate" | "advanced",
+      views: v.viewCount,
+      likes: 0,
+      chapters: []
+    }));
+  }, [dbVideos]);
+
+  // Use database videos if available, otherwise fallback to static VIDEO_TUTORIALS
+  const allVideos = videosFromDB.length > 0 ? videosFromDB : VIDEO_TUTORIALS;
 
   const toggleStep = (stepId: string) => {
     setExpandedSteps(prev => 
@@ -1314,9 +1359,16 @@ export default function UserGuide() {
     );
   };
 
-  const openVideoDialog = (video: VideoTutorial) => {
+  const openVideoDialog = (video: VideoTutorialLocal) => {
     setSelectedVideo(video);
     setVideoDialogOpen(true);
+    // Increment view count if it's a database video
+    if (dbVideos && dbVideos.length > 0) {
+      const videoId = parseInt(video.id);
+      if (!isNaN(videoId)) {
+        incrementViewMutation.mutate({ id: videoId });
+      }
+    }
   };
 
   const filteredFaqs = FAQ_ITEMS.filter(faq => {
@@ -1327,14 +1379,14 @@ export default function UserGuide() {
     return matchesSearch && matchesCategory;
   });
 
-  const filteredVideos = VIDEO_TUTORIALS.filter(video => {
+  const filteredVideos = allVideos.filter(video => {
     const matchesCategory = videoCategory === "all" || video.category === videoCategory;
     const matchesLevel = videoLevel === "all" || video.level === videoLevel;
     return matchesCategory && matchesLevel;
   });
 
   const faqCategories = ["all", ...Array.from(new Set(FAQ_ITEMS.map(f => f.category)))];
-  const videoCategories = Array.from(new Set(VIDEO_TUTORIALS.map(v => v.category)));
+  const videoCategories = Array.from(new Set(allVideos.map(v => v.category)));
 
   // Professional PDF Export function using jsPDF
   const handleExportPDF = useCallback(async () => {
@@ -1912,7 +1964,7 @@ export default function UserGuide() {
                               variant="outline" 
                               size="sm"
                               onClick={() => {
-                                const video = VIDEO_TUTORIALS.find(v => v.id === section.videoId);
+                                const video = allVideos.find(v => v.id === section.videoId);
                                 if (video) openVideoDialog(video);
                               }}
                             >
@@ -2109,7 +2161,7 @@ export default function UserGuide() {
                   Video Hướng dẫn
                 </CardTitle>
                 <CardDescription>
-                  {VIDEO_TUTORIALS.length} video hướng dẫn chi tiết cho từng chức năng
+                  {allVideos.length} video hướng dẫn chi tiết cho từng chức năng
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -2125,7 +2177,7 @@ export default function UserGuide() {
                       className="cursor-pointer hover:bg-primary hover:text-primary-foreground"
                       onClick={() => setVideoCategory("all")}
                     >
-                      Tất cả ({VIDEO_TUTORIALS.length})
+                      Tất cả ({allVideos.length})
                     </Badge>
                     {videoCategories.map(cat => (
                       <Badge 
@@ -2134,7 +2186,7 @@ export default function UserGuide() {
                         className="cursor-pointer hover:bg-primary hover:text-primary-foreground"
                         onClick={() => setVideoCategory(cat)}
                       >
-                        {cat} ({VIDEO_TUTORIALS.filter(v => v.category === cat).length})
+                        {cat} ({allVideos.filter(v => v.category === cat).length})
                       </Badge>
                     ))}
                   </div>
@@ -2250,7 +2302,7 @@ export default function UserGuide() {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {VIDEO_TUTORIALS.filter(v => v.level === "beginner").slice(0, 3).map((video, index) => (
+                  {allVideos.filter(v => v.level === "beginner").slice(0, 3).map((video, index) => (
                     <div 
                       key={video.id}
                       className="flex items-center gap-3 p-4 rounded-lg border bg-card cursor-pointer hover:bg-muted/50 hover:shadow-md transition-all"

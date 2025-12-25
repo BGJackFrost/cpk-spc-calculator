@@ -25,6 +25,7 @@ import { databaseConnectionRouter as dbConnectionRouter } from "./routers/databa
 import { quickAccessRouter } from "./routers/quickAccessRouter";
 import { alertAnalyticsRouter } from "./routers/alertAnalyticsRouter";
 import { webhookHistoryRouter } from "./routers/webhookHistoryRouter";
+import { videoTutorialRouter } from "./routers/videoTutorialRouter";
 import { triggerLicenseExpiryCheck } from "./scheduledJobs";
 import { triggerWebhooks, testWebhook } from "./webhookService";
 import { storagePut } from "./storage";
@@ -3741,6 +3742,7 @@ export const appRouter = router({
   quickAccess: quickAccessRouter,
   alerts: alertAnalyticsRouter,
   webhookHistory: webhookHistoryRouter,
+  videoTutorial: videoTutorialRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {

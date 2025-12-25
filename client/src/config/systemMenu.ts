@@ -9,6 +9,7 @@ import {
   Thermometer, DollarSign, CreditCard, Receipt, FileCheck, Lock, Unlock,
   Star,
   MessageSquare,
+  Video,
   type LucideIcon
 } from "lucide-react";
 
@@ -378,6 +379,7 @@ export const SYSTEM_MENU: SystemMenuConfig = {
         { id: "company-info", icon: Building2, labelKey: "nav.companyInfo", path: "/company-info", adminOnly: true },
         { id: "quick-access-management", icon: Star, labelKey: "nav.quickAccessManagement", path: "/quick-access" },
         { id: "user-guide", icon: BookOpen, labelKey: "nav.userGuide", path: "/user-guide" },
+        { id: "video-management", icon: Video, labelKey: "nav.videoManagement", path: "/video-management", adminOnly: true },
         { id: "about", icon: Info, labelKey: "nav.about", path: "/about" },
       ],
     },

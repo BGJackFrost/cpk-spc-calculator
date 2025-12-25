@@ -178,6 +178,7 @@ const fallbackLabelsVi: Record<string, string> = {
   "nav.aiMlDashboard": "AI/ML Dashboard",
   "nav.about": "Thông tin",
   "nav.userGuide": "Hướng dẫn Sử dụng",
+  "nav.videoManagement": "Quản lý Video",
   "menuGroup.myLicense": "License của tôi",
   "nav.myLicenseStatus": "Trạng thái License",
   "nav.activateLicense": "Kích hoạt License",

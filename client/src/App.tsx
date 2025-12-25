@@ -180,6 +180,7 @@ import AlertAnalytics from "./pages/AlertAnalytics";
 import UnifiedAlertKpiDashboard from "./pages/UnifiedAlertKpiDashboard";
 import WebhookHistoryManagement from "./pages/WebhookHistoryManagement";
 import UserGuide from "./pages/UserGuide";
+import VideoManagement from "./pages/VideoManagement";
 
 function Router() {
   return (
@@ -360,6 +361,7 @@ function Router() {
       <Route path="/advanced-analytics-dashboard" component={AdvancedAnalyticsDashboard} />
       <Route path="/notification-preferences" component={NotificationPreferences} />
       <Route path="/user-guide" component={UserGuide} />
+      <Route path="/video-management" component={VideoManagement} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

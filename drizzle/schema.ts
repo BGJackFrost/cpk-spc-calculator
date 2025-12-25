@@ -4099,3 +4099,28 @@ export const alertAnalytics = mysqlTable("alert_analytics", {
 });
 export type AlertAnalytics = typeof alertAnalytics.$inferSelect;
 export type InsertAlertAnalytics = typeof alertAnalytics.$inferInsert;
+
+
+/**
+ * Video Tutorials - Quản lý video hướng dẫn sử dụng
+ */
+export const videoTutorials = mysqlTable("video_tutorials", {
+  id: int("id").autoincrement().primaryKey(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  youtubeUrl: varchar("youtube_url", { length: 500 }).notNull(), // YouTube video URL
+  youtubeId: varchar("youtube_id", { length: 50 }).notNull(), // YouTube video ID (extracted from URL)
+  thumbnailUrl: varchar("thumbnail_url", { length: 500 }), // Custom thumbnail or auto from YouTube
+  duration: varchar("duration", { length: 20 }), // e.g., "15:30"
+  category: varchar("category", { length: 100 }).notNull(), // e.g., "getting_started", "spc_analysis", "mms"
+  level: mysqlEnum("level", ["beginner", "intermediate", "advanced"]).default("beginner").notNull(),
+  sortOrder: int("sort_order").notNull().default(0),
+  isActive: int("is_active").notNull().default(1),
+  viewCount: int("view_count").notNull().default(0),
+  createdBy: int("created_by"), // User ID who created
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+export type VideoTutorial = typeof videoTutorials.$inferSelect;
+export type InsertVideoTutorial = typeof videoTutorials.$inferInsert;
