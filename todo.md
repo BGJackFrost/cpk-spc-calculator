@@ -6493,3 +6493,17 @@
 - [x] TRN-04: Materials cho trainers - Train-the-trainer (8h)
 - [x] TRN-05: Bài test đánh giá - Assessment tests (4h)
 
+
+---
+## Training Pilot (10 người, 2 giờ)
+- [ ] Tạo nội dung Slides training (2 giờ, 10 người)
+- [ ] Tạo Slides PowerPoint với thiết kế chuyên nghiệp
+- [ ] Tạo Video script chi tiết cho từng phần
+- [ ] Tạo dữ liệu mẫu cho hands-on practice
+- [ ] Bàn giao tài liệu training
+
+## Test Thực Tế & Cấu Hình SMTP
+- [x] Tạo dữ liệu mẫu mô phỏng thực tế (mã sản phẩm, trạm, giá trị đo, thời gian)
+- [x] Cấu hình SMTP Gmail (st4ijsc@gmail.com)
+- [x] Test gửi email cảnh báo CPK
+- [x] Xác nhận hệ thống hoạt động
