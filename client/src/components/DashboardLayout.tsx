@@ -401,6 +401,7 @@ const fallbackLabelsEn: Record<string, string> = {
   "nav.aiTrainingJobs": "Training Jobs",
   "nav.aiModelComparison": "Model Comparison",
   "nav.aiAbTesting": "A/B Testing",
+  "nav.aiAnalyticsDashboard": "AI Analytics Dashboard",
   "nav.aiConfig": "AI Configuration",
   "nav.aiThresholds": "AI Thresholds",
   "nav.aiDataSources": "AI Data Sources",

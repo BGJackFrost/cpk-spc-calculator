@@ -17,6 +17,8 @@ import {
   type ChatMessage,
   type ChatContext,
 } from "../services/aiNaturalLanguageService";
+import * as unifiedMl from "../services/unifiedMlService";
+import * as autoRetrain from "../services/autoRetrainService";
 
 // Simple anomaly detection using Z-score
 function detectAnomaliesZScore(data: number[], threshold: number = 2.5): { index: number; value: number; score: number; severity: string }[] {
@@ -495,4 +497,166 @@ export const aiRouter = router({
       await db.delete(aiAnomalyModels).where(eq(aiAnomalyModels.id, input.modelId));
       return { success: true };
     }),
+
+  // ============ Real ML Integration ============
+
+  // Train a real ML model
+  trainRealModel: protectedProcedure
+    .input(z.object({
+      modelId: z.string(),
+      framework: z.enum(["tensorflow", "sklearn"]),
+      modelType: z.enum(["cpk_prediction", "spc_classification", "anomaly_detection", "linear_regression", "random_forest", "gradient_boosting"]),
+      epochs: z.number().optional(),
+      batchSize: z.number().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      // Generate training data
+      const trainingData = unifiedMl.generateTrainingData(
+        input.modelType as "cpk_prediction" | "spc_classification",
+        1000
+      );
+
+      // Train model
+      const result = await unifiedMl.trainModel(
+        input.modelId,
+        {
+          framework: input.framework,
+          modelType: input.modelType as any,
+          hyperparameters: {
+            epochs: input.epochs || 100,
+            batchSize: input.batchSize || 32,
+          },
+        },
+        trainingData.features,
+        trainingData.labels
+      );
+
+      return result;
+    }),
+
+  // Make predictions with real ML model
+  predictWithRealModel: protectedProcedure
+    .input(z.object({
+      modelId: z.string(),
+      features: z.array(z.array(z.number())),
+    }))
+    .mutation(async ({ input }) => {
+      const result = await unifiedMl.predict(input.modelId, input.features);
+      return result;
+    }),
+
+  // Get all real ML models
+  getRealModels: protectedProcedure.query(() => {
+    return unifiedMl.getAllModels();
+  }),
+
+  // Compare real ML models
+  compareRealModels: protectedProcedure
+    .input(z.object({
+      modelIds: z.array(z.string()),
+    }))
+    .query(({ input }) => {
+      return unifiedMl.compareModels(input.modelIds);
+    }),
+
+  // Get best model for task
+  getBestModel: protectedProcedure
+    .input(z.object({
+      modelType: z.enum(["cpk_prediction", "spc_classification", "anomaly_detection", "linear_regression", "random_forest", "gradient_boosting"]),
+    }))
+    .query(({ input }) => {
+      return unifiedMl.getBestModel(input.modelType as any);
+    }),
+
+  // Get framework recommendation
+  getFrameworkRecommendation: protectedProcedure
+    .input(z.object({
+      dataSize: z.number(),
+      featureCount: z.number(),
+      taskType: z.enum(["regression", "classification"]),
+    }))
+    .query(({ input }) => {
+      return unifiedMl.recommendFramework(input.dataSize, input.featureCount, input.taskType);
+    }),
+
+  // Ensemble predict
+  ensemblePredict: protectedProcedure
+    .input(z.object({
+      modelIds: z.array(z.string()),
+      features: z.array(z.array(z.number())),
+      method: z.enum(["average", "weighted", "voting"]).optional(),
+    }))
+    .mutation(async ({ input }) => {
+      return await unifiedMl.ensemblePredict(
+        input.modelIds,
+        input.features,
+        input.method || "average"
+      );
+    }),
+
+  // ============ Auto-Retrain ============
+
+  // Get retrain config
+  getRetrainConfig: protectedProcedure
+    .input(z.object({ modelId: z.string() }))
+    .query(({ input }) => {
+      return autoRetrain.getRetrainConfig(input.modelId);
+    }),
+
+  // Update retrain config
+  updateRetrainConfig: protectedProcedure
+    .input(z.object({
+      modelId: z.string(),
+      accuracyThreshold: z.number().optional(),
+      errorRateThreshold: z.number().optional(),
+      minDataPoints: z.number().optional(),
+      maxAgeDays: z.number().optional(),
+      enabled: z.boolean().optional(),
+    }))
+    .mutation(({ input }) => {
+      const { modelId, ...updates } = input;
+      return autoRetrain.updateRetrainConfig(modelId, updates);
+    }),
+
+  // Check if retrain needed
+  checkRetrainNeeded: protectedProcedure
+    .input(z.object({ modelId: z.string() }))
+    .query(async ({ input }) => {
+      return await autoRetrain.checkRetrainNeeded(input.modelId);
+    }),
+
+  // Trigger manual retrain
+  triggerRetrain: protectedProcedure
+    .input(z.object({
+      modelId: z.string(),
+      reason: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      return await autoRetrain.executeRetrain(
+        input.modelId,
+        input.reason || "Manual retrain triggered"
+      );
+    }),
+
+  // Run scheduled retrain check
+  runRetrainCheck: protectedProcedure.mutation(async () => {
+    return await autoRetrain.runScheduledRetrainCheck();
+  }),
+
+  // Get retrain history
+  getRetrainHistory: protectedProcedure
+    .input(z.object({ limit: z.number().optional() }))
+    .query(({ input }) => {
+      return autoRetrain.getRetrainHistory(input.limit || 50);
+    }),
+
+  // Get retrain stats
+  getRetrainStats: protectedProcedure.query(() => {
+    return autoRetrain.getRetrainStats();
+  }),
+
+  // Get active retrain jobs
+  getActiveRetrainJobs: protectedProcedure.query(() => {
+    return autoRetrain.getActiveJobs();
+  }),
 });

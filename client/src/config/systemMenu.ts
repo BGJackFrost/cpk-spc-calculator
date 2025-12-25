@@ -479,7 +479,8 @@ export const AI_MENU: SystemMenuConfig = {
       labelKey: "menuGroup.aiTraining",
       icon: Cpu,
       items: [
-        { id: "ai-model-management", icon: Brain, labelKey: "nav.aiModelManagement", path: "/ai-model-management", adminOnly: true },
+        { id: "ai-model-management", icon: Brain, labelKey: "nav.aiModelManagement", path: "/ai-model-training", adminOnly: true },
+        { id: "ai-analytics-dashboard", icon: BarChart3, labelKey: "nav.aiAnalyticsDashboard", path: "/ai-analytics-dashboard", adminOnly: true },
         { id: "ai-training-jobs", icon: Activity, labelKey: "nav.aiTrainingJobs", path: "/ai-training-jobs", adminOnly: true },
         { id: "ai-model-comparison", icon: GitCompare, labelKey: "nav.aiModelComparison", path: "/ai-model-comparison", adminOnly: true },
         { id: "ai-ab-testing", icon: Target, labelKey: "nav.aiAbTesting", path: "/ai-ab-testing", adminOnly: true },
