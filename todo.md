@@ -6536,3 +6536,9 @@
   - [x] Hướng dẫn Quản lý Thiết bị (MMS)
   - [x] Bảng tham khảo các chỉ số SPC/CPK
   - [x] Bảng 8 SPC Rules (Western Electric Rules)
+
+## Phase 58: User Guide Enhancement
+
+- [x] Video Tutorials - Tích hợp video hướng dẫn cho từng chức năng chính
+- [x] Export PDF - Hoàn thiện chức năng tải PDF của trang User Guide
+- [x] FAQ Section - Thêm phần Câu hỏi thường gặp với các vấn đề phổ biến
