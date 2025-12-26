@@ -29,6 +29,7 @@ import { webhookHistoryRouter } from "./routers/webhookHistoryRouter";
 import { videoTutorialRouter } from "./routers/videoTutorialRouter";
 import { visionRouter } from "./routers/visionRouter";
 import { predictiveAnalyticsRouter } from "./routers/predictiveAnalyticsRouter";
+import { predictiveAlertRouter } from "./routers/predictiveAlertRouter";
 import { triggerLicenseExpiryCheck } from "./scheduledJobs";
 import { triggerWebhooks, testWebhook } from "./webhookService";
 import { storagePut } from "./storage";
@@ -11205,6 +11206,9 @@ Hãy trả về JSON với format:
 
   // Predictive Analytics - OEE Forecasting & Defect Prediction
   predictiveAnalytics: predictiveAnalyticsRouter,
+
+  // Predictive Alert Thresholds - Auto Alert Configuration
+  predictiveAlert: predictiveAlertRouter,
 });
 
 export type AppRouter = typeof appRouter;

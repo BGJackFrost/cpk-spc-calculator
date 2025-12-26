@@ -4366,3 +4366,117 @@ export const aiAutoScalingConfigs = mysqlTable("ai_auto_scaling_configs", {
 });
 export type AiAutoScalingConfig = typeof aiAutoScalingConfigs.$inferSelect;
 export type InsertAiAutoScalingConfig = typeof aiAutoScalingConfigs.$inferInsert;
+
+
+// ==================== Predictive Alert Thresholds ====================
+/**
+ * Cấu hình ngưỡng cảnh báo tự động dựa trên kết quả dự báo
+ */
+export const predictiveAlertThresholds = mysqlTable("predictive_alert_thresholds", {
+  id: int("id").autoincrement().primaryKey(),
+  productionLineId: int("production_line_id"),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  
+  // Loại dự báo
+  predictionType: mysqlEnum("prediction_type", ["oee", "defect_rate", "both"]).notNull().default("both"),
+  
+  // Ngưỡng OEE
+  oeeWarningThreshold: decimal("oee_warning_threshold", { precision: 5, scale: 2 }).default("75.00"), // Cảnh báo khi OEE dự báo < ngưỡng
+  oeeCriticalThreshold: decimal("oee_critical_threshold", { precision: 5, scale: 2 }).default("65.00"), // Nghiêm trọng khi OEE dự báo < ngưỡng
+  oeeDeclineThreshold: decimal("oee_decline_threshold", { precision: 5, scale: 2 }).default("5.00"), // Cảnh báo khi OEE giảm > % so với tuần trước
+  
+  // Ngưỡng Defect Rate
+  defectWarningThreshold: decimal("defect_warning_threshold", { precision: 5, scale: 2 }).default("3.00"), // Cảnh báo khi tỷ lệ lỗi dự báo > ngưỡng
+  defectCriticalThreshold: decimal("defect_critical_threshold", { precision: 5, scale: 2 }).default("5.00"), // Nghiêm trọng khi tỷ lệ lỗi dự báo > ngưỡng
+  defectIncreaseThreshold: decimal("defect_increase_threshold", { precision: 5, scale: 2 }).default("20.00"), // Cảnh báo khi tỷ lệ lỗi tăng > % so với tuần trước
+  
+  // Cấu hình tự động điều chỉnh ngưỡng
+  autoAdjustEnabled: int("auto_adjust_enabled").notNull().default(0),
+  autoAdjustSensitivity: mysqlEnum("auto_adjust_sensitivity", ["low", "medium", "high"]).default("medium"),
+  autoAdjustPeriodDays: int("auto_adjust_period_days").default(30), // Số ngày dữ liệu để tính toán ngưỡng tự động
+  
+  // Cấu hình thông báo
+  emailAlertEnabled: int("email_alert_enabled").notNull().default(1),
+  alertEmails: text("alert_emails"), // JSON array of emails
+  alertFrequency: mysqlEnum("alert_frequency", ["immediate", "hourly", "daily"]).default("immediate"),
+  
+  // Trạng thái
+  isActive: int("is_active").notNull().default(1),
+  lastAlertSentAt: timestamp("last_alert_sent_at"),
+  lastAutoAdjustAt: timestamp("last_auto_adjust_at"),
+  
+  // Metadata
+  createdBy: int("created_by"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+export type PredictiveAlertThreshold = typeof predictiveAlertThresholds.$inferSelect;
+export type InsertPredictiveAlertThreshold = typeof predictiveAlertThresholds.$inferInsert;
+
+// ==================== Predictive Alert History ====================
+/**
+ * Lịch sử cảnh báo dự báo
+ */
+export const predictiveAlertHistory = mysqlTable("predictive_alert_history", {
+  id: int("id").autoincrement().primaryKey(),
+  thresholdId: int("threshold_id").notNull(),
+  productionLineId: int("production_line_id"),
+  
+  // Loại cảnh báo
+  alertType: mysqlEnum("alert_type", ["oee_low", "oee_decline", "defect_high", "defect_increase", "auto_adjust"]).notNull(),
+  severity: mysqlEnum("severity", ["warning", "critical", "info"]).notNull(),
+  
+  // Giá trị
+  currentValue: decimal("current_value", { precision: 10, scale: 4 }),
+  thresholdValue: decimal("threshold_value", { precision: 10, scale: 4 }),
+  predictedValue: decimal("predicted_value", { precision: 10, scale: 4 }),
+  changePercent: decimal("change_percent", { precision: 10, scale: 4 }),
+  
+  // Nội dung cảnh báo
+  title: varchar("title", { length: 255 }).notNull(),
+  message: text("message").notNull(),
+  recommendations: text("recommendations"), // JSON array of recommendations
+  
+  // Trạng thái
+  status: mysqlEnum("status", ["pending", "sent", "acknowledged", "resolved"]).notNull().default("pending"),
+  acknowledgedBy: int("acknowledged_by"),
+  acknowledgedAt: timestamp("acknowledged_at"),
+  resolvedBy: int("resolved_by"),
+  resolvedAt: timestamp("resolved_at"),
+  resolutionNotes: text("resolution_notes"),
+  
+  // Metadata
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type PredictiveAlertHistory = typeof predictiveAlertHistory.$inferSelect;
+export type InsertPredictiveAlertHistory = typeof predictiveAlertHistory.$inferInsert;
+
+// ==================== Predictive Threshold Auto-Adjust Logs ====================
+/**
+ * Lịch sử điều chỉnh ngưỡng tự động
+ */
+export const predictiveThresholdAdjustLogs = mysqlTable("predictive_threshold_adjust_logs", {
+  id: int("id").autoincrement().primaryKey(),
+  thresholdId: int("threshold_id").notNull(),
+  
+  // Loại điều chỉnh
+  adjustType: mysqlEnum("adjust_type", ["oee_warning", "oee_critical", "defect_warning", "defect_critical"]).notNull(),
+  
+  // Giá trị cũ và mới
+  oldValue: decimal("old_value", { precision: 10, scale: 4 }).notNull(),
+  newValue: decimal("new_value", { precision: 10, scale: 4 }).notNull(),
+  
+  // Lý do điều chỉnh
+  reason: text("reason").notNull(),
+  dataPointsUsed: int("data_points_used"), // Số điểm dữ liệu sử dụng để tính toán
+  confidenceScore: decimal("confidence_score", { precision: 5, scale: 4 }), // Độ tin cậy của điều chỉnh
+  
+  // Metadata
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type PredictiveThresholdAdjustLog = typeof predictiveThresholdAdjustLogs.$inferSelect;
+export type InsertPredictiveThresholdAdjustLog = typeof predictiveThresholdAdjustLogs.$inferInsert;

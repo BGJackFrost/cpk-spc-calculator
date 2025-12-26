@@ -568,6 +568,13 @@
       "when": 1766673440767,
       "tag": "0080_safe_crystal",
       "breakpoints": true
+    },
+    {
+      "idx": 81,
+      "version": "5",
+      "when": 1766706456547,
+      "tag": "0081_faithful_toro",
+      "breakpoints": true
     }
   ]
 }

@@ -6,8 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
-import { Target, RefreshCw, Download, Brain, AlertTriangle, CheckCircle, TrendingUp, TrendingDown, Gauge, Clock, Zap, Settings } from "lucide-react";
+import { trpc } from "@/lib/trpc";
+import { Target, RefreshCw, Download, Brain, AlertTriangle, CheckCircle, TrendingUp, TrendingDown, Gauge, Clock, Zap, FileText, FileSpreadsheet, Loader2 } from "lucide-react";
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ComposedChart, Bar, ReferenceLine, RadialBarChart, RadialBar, PieChart, Pie, Cell } from "recharts";
 
 // Mock OEE forecast data
@@ -58,11 +60,54 @@ export default function AiOeeForecast() {
   const [selectedLine, setSelectedLine] = useState("all");
   const [forecastDays, setForecastDays] = useState("7");
 
+  // Export mutation
+  const exportMutation = trpc.predictiveAnalytics.exportOeeForecastReport.useMutation({
+    onSuccess: (data) => {
+      if (data.format === 'excel') {
+        // Download Excel file
+        const byteCharacters = atob(data.data);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: data.mimeType });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = data.filename;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      } else {
+        // Open HTML in new tab
+        const blob = new Blob([data.data], { type: 'text/html' });
+        const url = window.URL.createObjectURL(blob);
+        window.open(url, '_blank');
+      }
+      toast({ title: "Thành công", description: `Đã xuất báo cáo ${data.format.toUpperCase()}` });
+    },
+    onError: (error) => {
+      toast({ title: "Lỗi", description: error.message, variant: "destructive" });
+    },
+  });
+
   const handleAnalyze = () => {
     toast({ title: "Đang phân tích", description: "Đang dự báo OEE với AI..." });
     setTimeout(() => {
       toast({ title: "Hoàn thành", description: "Đã dự báo OEE thành công" });
     }, 1500);
+  };
+
+  const handleExport = (format: 'html' | 'excel') => {
+    exportMutation.mutate({
+      format,
+      forecastDays: parseInt(forecastDays),
+      includeRecommendations: true,
+      title: 'Báo cáo Dự báo OEE',
+      companyName: 'Hệ thống SPC/CPK',
+    });
   };
 
   const getPriorityBadge = (priority: string) => {
@@ -107,9 +152,28 @@ export default function AiOeeForecast() {
             <Button variant="outline" onClick={handleAnalyze}>
               <RefreshCw className="w-4 h-4 mr-2" />Dự báo
             </Button>
-            <Button variant="outline">
-              <Download className="w-4 h-4 mr-2" />Xuất báo cáo
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" disabled={exportMutation.isPending}>
+                  {exportMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Download className="w-4 h-4 mr-2" />
+                  )}
+                  Xuất báo cáo
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => handleExport('html')}>
+                  <FileText className="w-4 h-4 mr-2" />
+                  Xuất PDF/HTML
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport('excel')}>
+                  <FileSpreadsheet className="w-4 h-4 mr-2" />
+                  Xuất Excel
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 

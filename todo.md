@@ -6896,3 +6896,26 @@
 ### MQTT Tests Fix
 - [x] MQTT-01: Mock MQTT module trong mqttService.test.ts
 - [x] MQTT-02: Sửa tests để không cần MQTT broker thực
+
+## Phase: WebRTC Camera & Predictive Analytics Enhancement
+
+### 1. WebRTC Camera Integration
+- [x] Tạo WebRTC hook (useWebRTCCamera) để truy cập camera
+- [x] Tạo CameraStream component với controls (start/stop/capture)
+- [x] Tích hợp camera stream với Computer Vision Service
+- [x] Thêm chức năng capture frame và gửi đến API phân tích
+- [x] Hiển thị kết quả phát hiện lỗi realtime trên video stream
+
+### 2. Export báo cáo dự báo PDF
+- [x] Tạo predictiveForecastReportService.ts
+- [x] Tạo template HTML cho báo cáo OEE Forecast
+- [x] Tạo template HTML cho báo cáo Defect Prediction
+- [x] Thêm API endpoints export PDF/Excel
+- [x] Tích hợp nút Export vào các trang dự báo
+
+### 3. Cấu hình ngưỡng cảnh báo tự động
+- [x] Tạo bảng predictive_alert_thresholds trong database
+- [x] Tạo service kiểm tra ngưỡng và gửi cảnh báo
+- [x] Tạo trang UI cấu hình ngưỡng cảnh báo
+- [x] Tích hợp scheduled job kiểm tra dự báo định kỳ
+- [x] Gửi notification khi dự báo vượt ngưỡng

@@ -1,0 +1,62 @@
+CREATE TABLE `predictive_alert_history` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`threshold_id` int NOT NULL,
+	`production_line_id` int,
+	`alert_type` enum('oee_low','oee_decline','defect_high','defect_increase','auto_adjust') NOT NULL,
+	`severity` enum('warning','critical','info') NOT NULL,
+	`current_value` decimal(10,4),
+	`threshold_value` decimal(10,4),
+	`predicted_value` decimal(10,4),
+	`change_percent` decimal(10,4),
+	`title` varchar(255) NOT NULL,
+	`message` text NOT NULL,
+	`recommendations` text,
+	`status` enum('pending','sent','acknowledged','resolved') NOT NULL DEFAULT 'pending',
+	`acknowledged_by` int,
+	`acknowledged_at` timestamp,
+	`resolved_by` int,
+	`resolved_at` timestamp,
+	`resolution_notes` text,
+	`created_at` timestamp NOT NULL DEFAULT (now()),
+	CONSTRAINT `predictive_alert_history_id` PRIMARY KEY(`id`)
+);
+--> statement-breakpoint
+CREATE TABLE `predictive_alert_thresholds` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`production_line_id` int,
+	`name` varchar(255) NOT NULL,
+	`description` text,
+	`prediction_type` enum('oee','defect_rate','both') NOT NULL DEFAULT 'both',
+	`oee_warning_threshold` decimal(5,2) DEFAULT '75.00',
+	`oee_critical_threshold` decimal(5,2) DEFAULT '65.00',
+	`oee_decline_threshold` decimal(5,2) DEFAULT '5.00',
+	`defect_warning_threshold` decimal(5,2) DEFAULT '3.00',
+	`defect_critical_threshold` decimal(5,2) DEFAULT '5.00',
+	`defect_increase_threshold` decimal(5,2) DEFAULT '20.00',
+	`auto_adjust_enabled` int NOT NULL DEFAULT 0,
+	`auto_adjust_sensitivity` enum('low','medium','high') DEFAULT 'medium',
+	`auto_adjust_period_days` int DEFAULT 30,
+	`email_alert_enabled` int NOT NULL DEFAULT 1,
+	`alert_emails` text,
+	`alert_frequency` enum('immediate','hourly','daily') DEFAULT 'immediate',
+	`is_active` int NOT NULL DEFAULT 1,
+	`last_alert_sent_at` timestamp,
+	`last_auto_adjust_at` timestamp,
+	`created_by` int,
+	`created_at` timestamp NOT NULL DEFAULT (now()),
+	`updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `predictive_alert_thresholds_id` PRIMARY KEY(`id`)
+);
+--> statement-breakpoint
+CREATE TABLE `predictive_threshold_adjust_logs` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`threshold_id` int NOT NULL,
+	`adjust_type` enum('oee_warning','oee_critical','defect_warning','defect_critical') NOT NULL,
+	`old_value` decimal(10,4) NOT NULL,
+	`new_value` decimal(10,4) NOT NULL,
+	`reason` text NOT NULL,
+	`data_points_used` int,
+	`confidence_score` decimal(5,4),
+	`created_at` timestamp NOT NULL DEFAULT (now()),
+	CONSTRAINT `predictive_threshold_adjust_logs_id` PRIMARY KEY(`id`)
+);
