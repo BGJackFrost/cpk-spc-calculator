@@ -575,6 +575,13 @@
       "when": 1766706456547,
       "tag": "0081_faithful_toro",
       "breakpoints": true
+    },
+    {
+      "idx": 82,
+      "version": "5",
+      "when": 1766708038789,
+      "tag": "0082_flimsy_sphinx",
+      "breakpoints": true
     }
   ]
 }

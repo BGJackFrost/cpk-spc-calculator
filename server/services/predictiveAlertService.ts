@@ -676,3 +676,134 @@ export async function runAlertCheck(): Promise<AlertCheckResult[]> {
 
   return results;
 }
+
+
+// Get forecast history data for accuracy comparison
+export async function getForecastHistoryData(options: {
+  days?: number;
+  metricType?: 'cpk' | 'oee' | 'defect_rate';
+  productionLineId?: number;
+}): Promise<any[]> {
+  try {
+    const { forecastHistory } = await import("../../drizzle/schema");
+    const db = await getDb();
+    
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - (options.days || 30));
+
+    const conditions: any[] = [
+      gte(forecastHistory.forecastDate, startDate)
+    ];
+
+    if (options.metricType) {
+      conditions.push(eq(forecastHistory.metricType, options.metricType));
+    }
+
+    if (options.productionLineId) {
+      conditions.push(eq(forecastHistory.productionLineId, options.productionLineId));
+    }
+
+    const results = await db
+      .select()
+      .from(forecastHistory)
+      .where(and(...conditions))
+      .orderBy(desc(forecastHistory.forecastDate));
+
+    return results.map(r => ({
+      id: r.id,
+      productionLineId: r.productionLineId,
+      metricType: r.metricType,
+      forecastDate: r.forecastDate,
+      forecastCreatedAt: r.forecastCreatedAt,
+      predictedValue: r.predictedValue ? parseFloat(r.predictedValue) : null,
+      upperBound: r.upperBound ? parseFloat(r.upperBound) : null,
+      lowerBound: r.lowerBound ? parseFloat(r.lowerBound) : null,
+      confidenceLevel: r.confidenceLevel ? parseFloat(r.confidenceLevel) : 95,
+      actualValue: r.actualValue ? parseFloat(r.actualValue) : null,
+      actualRecordedAt: r.actualRecordedAt,
+      absoluteError: r.absoluteError ? parseFloat(r.absoluteError) : null,
+      percentageError: r.percentageError ? parseFloat(r.percentageError) : null,
+      modelVersion: r.modelVersion,
+      modelType: r.modelType,
+    }));
+  } catch (error) {
+    console.error('Error getting forecast history:', error);
+    return [];
+  }
+}
+
+// Save forecast to history
+export async function saveForecastToHistory(data: {
+  productionLineId?: number;
+  metricType: 'cpk' | 'oee' | 'defect_rate';
+  forecastDate: Date;
+  predictedValue: number;
+  upperBound?: number;
+  lowerBound?: number;
+  confidenceLevel?: number;
+  modelVersion?: string;
+  modelType?: string;
+}): Promise<number | null> {
+  try {
+    const { forecastHistory } = await import("../../drizzle/schema");
+    const db = await getDb();
+
+    const result = await db.insert(forecastHistory).values({
+      productionLineId: data.productionLineId || null,
+      metricType: data.metricType,
+      forecastDate: data.forecastDate,
+      forecastCreatedAt: new Date(),
+      predictedValue: data.predictedValue.toString(),
+      upperBound: data.upperBound?.toString() || null,
+      lowerBound: data.lowerBound?.toString() || null,
+      confidenceLevel: (data.confidenceLevel || 95).toString(),
+      modelVersion: data.modelVersion || null,
+      modelType: data.modelType || null,
+    });
+
+    return result[0]?.insertId || null;
+  } catch (error) {
+    console.error('Error saving forecast to history:', error);
+    return null;
+  }
+}
+
+// Update forecast with actual value
+export async function updateForecastWithActual(
+  forecastId: number,
+  actualValue: number
+): Promise<boolean> {
+  try {
+    const { forecastHistory } = await import("../../drizzle/schema");
+    const db = await getDb();
+
+    // Get the forecast record
+    const [forecast] = await db
+      .select()
+      .from(forecastHistory)
+      .where(eq(forecastHistory.id, forecastId));
+
+    if (!forecast) return false;
+
+    const predictedValue = parseFloat(forecast.predictedValue);
+    const absoluteError = Math.abs(actualValue - predictedValue);
+    const percentageError = predictedValue !== 0 
+      ? (absoluteError / Math.abs(predictedValue)) * 100 
+      : 0;
+
+    await db
+      .update(forecastHistory)
+      .set({
+        actualValue: actualValue.toString(),
+        actualRecordedAt: new Date(),
+        absoluteError: absoluteError.toString(),
+        percentageError: percentageError.toString(),
+      })
+      .where(eq(forecastHistory.id, forecastId));
+
+    return true;
+  } catch (error) {
+    console.error('Error updating forecast with actual:', error);
+    return false;
+  }
+}

@@ -4480,3 +4480,45 @@ export const predictiveThresholdAdjustLogs = mysqlTable("predictive_threshold_ad
 
 export type PredictiveThresholdAdjustLog = typeof predictiveThresholdAdjustLogs.$inferSelect;
 export type InsertPredictiveThresholdAdjustLog = typeof predictiveThresholdAdjustLogs.$inferInsert;
+
+
+// ==================== Forecast History ====================
+/**
+ * Lịch sử dự báo để so sánh với giá trị thực tế
+ */
+export const forecastHistory = mysqlTable("forecast_history", {
+  id: int("id").autoincrement().primaryKey(),
+  productionLineId: int("production_line_id"),
+  
+  // Loại dự báo
+  metricType: mysqlEnum("metric_type", ["cpk", "oee", "defect_rate"]).notNull(),
+  
+  // Ngày dự báo và ngày thực tế
+  forecastDate: timestamp("forecast_date").notNull(),
+  forecastCreatedAt: timestamp("forecast_created_at").notNull(),
+  
+  // Giá trị dự báo
+  predictedValue: decimal("predicted_value", { precision: 10, scale: 4 }).notNull(),
+  upperBound: decimal("upper_bound", { precision: 10, scale: 4 }),
+  lowerBound: decimal("lower_bound", { precision: 10, scale: 4 }),
+  confidenceLevel: decimal("confidence_level", { precision: 5, scale: 2 }).default("95.00"),
+  
+  // Giá trị thực tế (cập nhật sau khi có dữ liệu thực)
+  actualValue: decimal("actual_value", { precision: 10, scale: 4 }),
+  actualRecordedAt: timestamp("actual_recorded_at"),
+  
+  // Sai số
+  absoluteError: decimal("absolute_error", { precision: 10, scale: 4 }),
+  percentageError: decimal("percentage_error", { precision: 10, scale: 4 }),
+  
+  // Model info
+  modelVersion: varchar("model_version", { length: 50 }),
+  modelType: varchar("model_type", { length: 100 }),
+  
+  // Metadata
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ForecastHistory = typeof forecastHistory.$inferSelect;
+export type InsertForecastHistory = typeof forecastHistory.$inferInsert;

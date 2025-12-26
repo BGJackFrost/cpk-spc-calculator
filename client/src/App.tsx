@@ -182,6 +182,8 @@ import AiModelComparison from "./pages/ai/AiModelComparison";
 import AiConfig from "./pages/ai/AiConfig";
 import AiThresholds from "./pages/ai/AiThresholds";
 import PredictiveAlertConfig from "./pages/ai/PredictiveAlertConfig";
+import PredictiveAlertDashboard from "./pages/ai/PredictiveAlertDashboard";
+import ForecastAccuracyDashboard from "./pages/ai/ForecastAccuracyDashboard";
 import AiDataSources from "./pages/ai/AiDataSources";
 import AiAuditLogs from "./pages/ai/AiAuditLogs";
 import AiAlerts from "./pages/ai/AiAlerts";
@@ -410,6 +412,8 @@ function Router() {
       <Route path="/ai-config" component={AiConfig} />
       <Route path="/ai-thresholds" component={AiThresholds} />
       <Route path="/ai-predictive-alerts" component={PredictiveAlertConfig} />
+      <Route path="/ai-predictive-alert-dashboard" component={PredictiveAlertDashboard} />
+      <Route path="/ai-forecast-accuracy" component={ForecastAccuracyDashboard} />
       <Route path="/ai-data-sources" component={AiDataSources} />
       <Route path="/ai-audit-logs" component={AiAuditLogs} />
       <Route path="/ai-alerts" component={AiAlerts} />

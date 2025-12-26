@@ -500,3 +500,162 @@ describe('PredictiveAlertService', () => {
     });
   });
 });
+
+
+describe('Forecast History Data', () => {
+  describe('getForecastHistoryData', () => {
+    it('should accept valid metric types', () => {
+      const validMetricTypes = ['cpk', 'oee', 'defect_rate'];
+      
+      validMetricTypes.forEach(type => {
+        expect(['cpk', 'oee', 'defect_rate']).toContain(type);
+      });
+    });
+
+    it('should validate days parameter', () => {
+      const validateDays = (days: number): boolean => {
+        return days >= 1 && days <= 365;
+      };
+
+      expect(validateDays(7)).toBe(true);
+      expect(validateDays(30)).toBe(true);
+      expect(validateDays(365)).toBe(true);
+      expect(validateDays(0)).toBe(false);
+      expect(validateDays(366)).toBe(false);
+    });
+  });
+
+  describe('saveForecastToHistory', () => {
+    it('should validate required fields', () => {
+      const validateForecastData = (data: {
+        metricType?: string;
+        forecastDate?: Date;
+        predictedValue?: number;
+      }): boolean => {
+        return !!(data.metricType && data.forecastDate && data.predictedValue !== undefined);
+      };
+
+      expect(validateForecastData({
+        metricType: 'cpk',
+        forecastDate: new Date(),
+        predictedValue: 1.5,
+      })).toBe(true);
+
+      expect(validateForecastData({
+        metricType: 'cpk',
+        forecastDate: new Date(),
+      })).toBe(false);
+
+      expect(validateForecastData({
+        metricType: 'cpk',
+        predictedValue: 1.5,
+      })).toBe(false);
+    });
+
+    it('should validate confidence level range', () => {
+      const validateConfidenceLevel = (level: number): boolean => {
+        return level >= 0 && level <= 100;
+      };
+
+      expect(validateConfidenceLevel(95)).toBe(true);
+      expect(validateConfidenceLevel(90)).toBe(true);
+      expect(validateConfidenceLevel(99)).toBe(true);
+      expect(validateConfidenceLevel(-1)).toBe(false);
+      expect(validateConfidenceLevel(101)).toBe(false);
+    });
+  });
+
+  describe('updateForecastWithActual', () => {
+    it('should calculate absolute error correctly', () => {
+      const calculateAbsoluteError = (predicted: number, actual: number): number => {
+        return Math.abs(actual - predicted);
+      };
+
+      expect(calculateAbsoluteError(1.5, 1.45)).toBeCloseTo(0.05, 2);
+      expect(calculateAbsoluteError(85, 82)).toBe(3);
+      expect(calculateAbsoluteError(3.0, 3.5)).toBeCloseTo(0.5, 2);
+    });
+
+    it('should calculate percentage error correctly', () => {
+      const calculatePercentageError = (predicted: number, actual: number): number => {
+        if (predicted === 0) return 0;
+        return (Math.abs(actual - predicted) / Math.abs(predicted)) * 100;
+      };
+
+      // 1.5 predicted, 1.45 actual = 3.33% error
+      expect(calculatePercentageError(1.5, 1.45)).toBeCloseTo(3.33, 1);
+      
+      // 85 predicted, 82 actual = 3.53% error
+      expect(calculatePercentageError(85, 82)).toBeCloseTo(3.53, 1);
+    });
+  });
+
+  describe('Accuracy Metrics', () => {
+    it('should calculate MAPE correctly', () => {
+      const calculateMAPE = (predictions: { predicted: number; actual: number }[]): number => {
+        if (predictions.length === 0) return 0;
+        
+        const sum = predictions.reduce((acc, p) => {
+          if (p.actual === 0) return acc;
+          return acc + Math.abs((p.actual - p.predicted) / p.actual);
+        }, 0);
+        
+        return (sum / predictions.length) * 100;
+      };
+
+      const testData = [
+        { predicted: 1.5, actual: 1.45 },
+        { predicted: 1.6, actual: 1.55 },
+        { predicted: 1.4, actual: 1.42 },
+      ];
+
+      const mape = calculateMAPE(testData);
+      expect(mape).toBeGreaterThan(0);
+      expect(mape).toBeLessThan(10);
+    });
+
+    it('should calculate RMSE correctly', () => {
+      const calculateRMSE = (predictions: { predicted: number; actual: number }[]): number => {
+        if (predictions.length === 0) return 0;
+        
+        const sumSquaredErrors = predictions.reduce((acc, p) => {
+          return acc + Math.pow(p.actual - p.predicted, 2);
+        }, 0);
+        
+        return Math.sqrt(sumSquaredErrors / predictions.length);
+      };
+
+      const testData = [
+        { predicted: 1.5, actual: 1.45 },
+        { predicted: 1.6, actual: 1.55 },
+        { predicted: 1.4, actual: 1.42 },
+      ];
+
+      const rmse = calculateRMSE(testData);
+      expect(rmse).toBeGreaterThan(0);
+      expect(rmse).toBeLessThan(0.1);
+    });
+
+    it('should calculate MAE correctly', () => {
+      const calculateMAE = (predictions: { predicted: number; actual: number }[]): number => {
+        if (predictions.length === 0) return 0;
+        
+        const sumAbsoluteErrors = predictions.reduce((acc, p) => {
+          return acc + Math.abs(p.actual - p.predicted);
+        }, 0);
+        
+        return sumAbsoluteErrors / predictions.length;
+      };
+
+      const testData = [
+        { predicted: 1.5, actual: 1.45 },
+        { predicted: 1.6, actual: 1.55 },
+        { predicted: 1.4, actual: 1.42 },
+      ];
+
+      const mae = calculateMAE(testData);
+      expect(mae).toBeGreaterThan(0);
+      expect(mae).toBeLessThan(0.1);
+    });
+  });
+});

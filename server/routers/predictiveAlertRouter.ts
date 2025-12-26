@@ -200,6 +200,25 @@ export const predictiveAlertRouter = router({
       return await getAdjustmentLogs(input.thresholdId, input.limit);
     }),
 
+  // List all thresholds (alias for getThresholds)
+  listThresholds: protectedProcedure
+    .query(async () => {
+      const thresholds = await getActiveThresholds();
+      return thresholds;
+    }),
+
+  // Get forecast history for accuracy comparison
+  getForecastHistory: protectedProcedure
+    .input(z.object({
+      days: z.number().min(1).max(365).optional().default(30),
+      metricType: z.enum(['cpk', 'oee', 'defect_rate']).optional(),
+      productionLineId: z.number().optional(),
+    }))
+    .query(async ({ input }) => {
+      const { getForecastHistoryData } = await import('../services/predictiveAlertService');
+      return await getForecastHistoryData(input);
+    }),
+
   // Get summary statistics
   getSummary: protectedProcedure
     .query(async () => {

@@ -9,6 +9,7 @@ import { getLoginUrl } from "./const";
 import { LanguageProvider } from "./contexts/LanguageContext";
 import { SystemProvider } from "./contexts/SystemContext";
 import { LicenseAccessProvider } from "./contexts/LicenseAccessContext";
+import { PushNotificationProvider } from "./components/PushNotificationProvider";
 import "./index.css";
 
 const queryClient = new QueryClient();
@@ -74,7 +75,9 @@ createRoot(document.getElementById("root")!).render(
       <LanguageProvider>
         <SystemProvider>
           <LicenseAccessProvider>
-            <App />
+            <PushNotificationProvider>
+              <App />
+            </PushNotificationProvider>
           </LicenseAccessProvider>
         </SystemProvider>
       </LanguageProvider>
