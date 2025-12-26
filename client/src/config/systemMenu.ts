@@ -464,6 +464,9 @@ export const AI_MENU: SystemMenuConfig = {
         { id: "ai-oee-forecast", icon: Target, labelKey: "nav.aiOeeForecast", path: "/ai-oee-forecast" },
         { id: "ai-defect-prediction", icon: AlertTriangle, labelKey: "nav.aiDefectPrediction", path: "/ai-defect-prediction" },
         { id: "ai-yield-optimization", icon: BarChart3, labelKey: "nav.aiYieldOptimization", path: "/ai-yield-optimization" },
+        { id: "ai-predictive-alerts", icon: Bell, labelKey: "nav.aiPredictiveAlerts", path: "/ai-predictive-alerts", adminOnly: true },
+        { id: "ai-predictive-alert-dashboard", icon: BellRing, labelKey: "nav.aiPredictiveAlertDashboard", path: "/ai-predictive-alert-dashboard" },
+        { id: "ai-forecast-accuracy", icon: Target, labelKey: "nav.aiForecastAccuracy", path: "/ai-forecast-accuracy" },
       ],
     },
     {
@@ -486,6 +489,15 @@ export const AI_MENU: SystemMenuConfig = {
         { id: "ai-training-jobs", icon: Activity, labelKey: "nav.aiTrainingJobs", path: "/ai-training-jobs", adminOnly: true },
         { id: "ai-model-comparison", icon: GitCompare, labelKey: "nav.aiModelComparison", path: "/ai-model-comparison", adminOnly: true },
         { id: "ai-ab-testing", icon: Target, labelKey: "nav.aiAbTesting", path: "/ai-ab-testing", adminOnly: true },
+        { id: "ai-model-versioning", icon: GitBranch, labelKey: "nav.aiModelVersioning", path: "/ai-model-versioning", adminOnly: true },
+      ],
+    },
+    {
+      id: "ai-vision",
+      labelKey: "menuGroup.aiVision",
+      icon: Video,
+      items: [
+        { id: "ai-vision-detection", icon: Video, labelKey: "nav.aiVisionDetection", path: "/ai-vision-detection", licenseFeature: "ai_vision" },
       ],
     },
     {
