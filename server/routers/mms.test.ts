@@ -178,99 +178,55 @@ describe("MMS Module - Spare Parts Router", () => {
   });
 });
 
-describe("MMS Module - Predictive Router", () => {
+describe("MMS Module - Predictive Analytics Router", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  describe("Sensor Data", () => {
-    it("should have listSensorData endpoint", async () => {
-      const { predictiveRouter } = await import("./predictiveRouter");
-      expect(predictiveRouter).toBeDefined();
-      expect(predictiveRouter._def.procedures.listSensorData).toBeDefined();
+  describe("OEE Forecasting", () => {
+    it("should have forecastOEE endpoint", async () => {
+      const { predictiveAnalyticsRouter } = await import("./predictiveAnalyticsRouter");
+      expect(predictiveAnalyticsRouter).toBeDefined();
+      expect(predictiveAnalyticsRouter._def.procedures.forecastOEE).toBeDefined();
     });
 
-    it("should have createSensorData endpoint", async () => {
-      const { predictiveRouter } = await import("./predictiveRouter");
-      expect(predictiveRouter._def.procedures.createSensorData).toBeDefined();
+    it("should have getOEEHistoricalData endpoint", async () => {
+      const { predictiveAnalyticsRouter } = await import("./predictiveAnalyticsRouter");
+      expect(predictiveAnalyticsRouter._def.procedures.getOEEHistoricalData).toBeDefined();
     });
 
-    it("should have getSensorStats endpoint", async () => {
-      const { predictiveRouter } = await import("./predictiveRouter");
-      expect(predictiveRouter._def.procedures.getSensorStats).toBeDefined();
-    });
-
-    it("should have getSensorTrend endpoint", async () => {
-      const { predictiveRouter } = await import("./predictiveRouter");
-      expect(predictiveRouter._def.procedures.getSensorTrend).toBeDefined();
+    it("should have compareProductionLines endpoint", async () => {
+      const { predictiveAnalyticsRouter } = await import("./predictiveAnalyticsRouter");
+      expect(predictiveAnalyticsRouter._def.procedures.compareProductionLines).toBeDefined();
     });
   });
 
-  describe("Sensors", () => {
-    it("should have listSensors endpoint", async () => {
-      const { predictiveRouter } = await import("./predictiveRouter");
-      expect(predictiveRouter._def.procedures.listSensors).toBeDefined();
+  describe("Defect Prediction", () => {
+    it("should have predictDefectRate endpoint", async () => {
+      const { predictiveAnalyticsRouter } = await import("./predictiveAnalyticsRouter");
+      expect(predictiveAnalyticsRouter._def.procedures.predictDefectRate).toBeDefined();
     });
 
-    it("should have createSensor endpoint", async () => {
-      const { predictiveRouter } = await import("./predictiveRouter");
-      expect(predictiveRouter._def.procedures.createSensor).toBeDefined();
+    it("should have getDefectStatsByCategory endpoint", async () => {
+      const { predictiveAnalyticsRouter } = await import("./predictiveAnalyticsRouter");
+      expect(predictiveAnalyticsRouter._def.procedures.getDefectStatsByCategory).toBeDefined();
     });
 
-    it("should have listSensorTypes endpoint", async () => {
-      const { predictiveRouter } = await import("./predictiveRouter");
-      expect(predictiveRouter._def.procedures.listSensorTypes).toBeDefined();
-    });
-  });
-
-  describe("Models", () => {
-    it("should have listModels endpoint", async () => {
-      const { predictiveRouter } = await import("./predictiveRouter");
-      expect(predictiveRouter._def.procedures.listModels).toBeDefined();
-    });
-
-    it("should have createModel endpoint", async () => {
-      const { predictiveRouter } = await import("./predictiveRouter");
-      expect(predictiveRouter._def.procedures.createModel).toBeDefined();
-    });
-
-    it("should have trainModel endpoint", async () => {
-      const { predictiveRouter } = await import("./predictiveRouter");
-      expect(predictiveRouter._def.procedures.trainModel).toBeDefined();
+    it("should have compareAlgorithms endpoint", async () => {
+      const { predictiveAnalyticsRouter } = await import("./predictiveAnalyticsRouter");
+      expect(predictiveAnalyticsRouter._def.procedures.compareAlgorithms).toBeDefined();
     });
   });
 
-  describe("Predictions", () => {
-    it("should have listPredictions endpoint", async () => {
-      const { predictiveRouter } = await import("./predictiveRouter");
-      expect(predictiveRouter._def.procedures.listPredictions).toBeDefined();
+  describe("Export Reports", () => {
+    it("should have exportOeeForecastHtml endpoint", async () => {
+      const { predictiveAnalyticsRouter } = await import("./predictiveAnalyticsRouter");
+      expect(predictiveAnalyticsRouter._def.procedures.exportOeeForecastHtml).toBeDefined();
     });
 
-    it("should have createPrediction endpoint", async () => {
-      const { predictiveRouter } = await import("./predictiveRouter");
-      expect(predictiveRouter._def.procedures.createPrediction).toBeDefined();
-    });
-
-    it("should have acknowledgePrediction endpoint", async () => {
-      const { predictiveRouter } = await import("./predictiveRouter");
-      expect(predictiveRouter._def.procedures.acknowledgePrediction).toBeDefined();
-    });
-  });
-
-  describe("Health and Failure Prediction", () => {
-    it("should have getStats endpoint", async () => {
-      const { predictiveRouter } = await import("./predictiveRouter");
-      expect(predictiveRouter._def.procedures.getStats).toBeDefined();
-    });
-
-    it("should have getMachineHealth endpoint", async () => {
-      const { predictiveRouter } = await import("./predictiveRouter");
-      expect(predictiveRouter._def.procedures.getMachineHealth).toBeDefined();
-    });
-
-    it("should have predictFailure endpoint", async () => {
-      const { predictiveRouter } = await import("./predictiveRouter");
-      expect(predictiveRouter._def.procedures.predictFailure).toBeDefined();
+    it("should have exportOeeForecastExcel endpoint", async () => {
+      const { predictiveAnalyticsRouter } = await import("./predictiveAnalyticsRouter");
+      expect(predictiveAnalyticsRouter._def.procedures.exportOeeForecastExcel).toBeDefined();
     });
   });
 });
