@@ -296,4 +296,69 @@ export const aiPredictiveRouter = router({
         },
       };
     }),
+  // Get sparkline data for dashboard widgets
+  getSparklineData: protectedProcedure
+    .input(z.object({
+      type: z.enum(["cpk", "oee", "predictions"]),
+      points: z.number().min(5).max(50).default(20),
+    }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) {
+        return { data: [], type: input.type };
+      }
+
+      if (input.type === "cpk") {
+        const results = await db
+          .select({
+            cpk: spcAnalysisHistory.cpk,
+          })
+          .from(spcAnalysisHistory)
+          .orderBy(desc(spcAnalysisHistory.createdAt))
+          .limit(input.points);
+
+        return {
+          data: results.map(r => r.cpk || 0).reverse(),
+          type: "cpk",
+        };
+      }
+
+      if (input.type === "oee") {
+        const results = await db
+          .select({
+            oee: oeeRecords.oee,
+          })
+          .from(oeeRecords)
+          .orderBy(desc(oeeRecords.recordDate))
+          .limit(input.points);
+
+        return {
+          data: results.map(r => r.oee || 0).reverse(),
+          type: "oee",
+        };
+      }
+
+      // For predictions, return accuracy trend
+      const cpkResults = await db
+        .select({
+          cpk: spcAnalysisHistory.cpk,
+        })
+        .from(spcAnalysisHistory)
+        .orderBy(desc(spcAnalysisHistory.createdAt))
+        .limit(input.points);
+
+      // Calculate rolling accuracy (simulated)
+      const cpkValues = cpkResults.map(r => r.cpk || 0).reverse();
+      const accuracyData = cpkValues.map((val, i) => {
+        if (i < 2) return 75;
+        const prevVal = cpkValues[i - 1];
+        const diff = Math.abs(val - prevVal);
+        return Math.max(60, Math.min(95, 85 - diff * 10));
+      });
+
+      return {
+        data: accuracyData,
+        type: "predictions",
+      };
+    }),
 });

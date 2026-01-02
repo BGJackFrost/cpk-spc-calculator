@@ -3665,3 +3665,96 @@ export const workstations = mysqlTable("workstations", {
 (table) => [
 	index("idx_workstations_active").on(table.isActive),
 ]);
+
+
+// AI Prediction Thresholds - Cấu hình ngưỡng cảnh báo tùy chỉnh theo sản phẩm/dây chuyền
+export const aiPredictionThresholds = mysqlTable("ai_prediction_thresholds", {
+	id: int().autoincrement().notNull(),
+	name: varchar({ length: 255 }).notNull(),
+	description: text(),
+	productId: int("product_id"),
+	productionLineId: int("production_line_id"),
+	workstationId: int("workstation_id"),
+	cpkWarning: decimal("cpk_warning", { precision: 5, scale: 3 }).default('1.330').notNull(),
+	cpkCritical: decimal("cpk_critical", { precision: 5, scale: 3 }).default('1.000').notNull(),
+	cpkTarget: decimal("cpk_target", { precision: 5, scale: 3 }).default('1.670'),
+	oeeWarning: decimal("oee_warning", { precision: 5, scale: 2 }).default('75.00').notNull(),
+	oeeCritical: decimal("oee_critical", { precision: 5, scale: 2 }).default('60.00').notNull(),
+	oeeTarget: decimal("oee_target", { precision: 5, scale: 2 }).default('85.00'),
+	trendDeclineWarning: decimal("trend_decline_warning", { precision: 5, scale: 2 }).default('5.00'),
+	trendDeclineCritical: decimal("trend_decline_critical", { precision: 5, scale: 2 }).default('10.00'),
+	emailAlertEnabled: int("email_alert_enabled").default(1).notNull(),
+	alertEmails: text("alert_emails"),
+	webhookEnabled: int("webhook_enabled").default(0).notNull(),
+	webhookUrl: varchar("webhook_url", { length: 500 }),
+	priority: int().default(0).notNull(),
+	isActive: int("is_active").default(1).notNull(),
+	createdBy: int("created_by"),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("idx_ai_pred_thresh_product").on(table.productId),
+	index("idx_ai_pred_thresh_line").on(table.productionLineId),
+	index("idx_ai_pred_thresh_active").on(table.isActive),
+]);
+
+// AI Prediction History - Lưu lịch sử predictions để so sánh độ chính xác
+export const aiPredictionHistory = mysqlTable("ai_prediction_history", {
+	id: int().autoincrement().notNull(),
+	predictionType: mysqlEnum("prediction_type", ['cpk', 'oee', 'defect_rate', 'trend']).notNull(),
+	modelId: int("model_id"),
+	modelName: varchar("model_name", { length: 100 }),
+	modelVersion: varchar("model_version", { length: 50 }),
+	productId: int("product_id"),
+	productCode: varchar("product_code", { length: 100 }),
+	productionLineId: int("production_line_id"),
+	workstationId: int("workstation_id"),
+	predictedValue: decimal("predicted_value", { precision: 15, scale: 6 }).notNull(),
+	predictedAt: timestamp("predicted_at", { mode: 'string' }).notNull(),
+	forecastHorizon: int("forecast_horizon").default(7),
+	confidenceLevel: decimal("confidence_level", { precision: 5, scale: 2 }),
+	confidenceLower: decimal("confidence_lower", { precision: 15, scale: 6 }),
+	confidenceUpper: decimal("confidence_upper", { precision: 15, scale: 6 }),
+	actualValue: decimal("actual_value", { precision: 15, scale: 6 }),
+	actualRecordedAt: timestamp("actual_recorded_at", { mode: 'string' }),
+	absoluteError: decimal("absolute_error", { precision: 15, scale: 6 }),
+	percentError: decimal("percent_error", { precision: 10, scale: 4 }),
+	squaredError: decimal("squared_error", { precision: 20, scale: 8 }),
+	isWithinConfidence: int("is_within_confidence"),
+	status: mysqlEnum(['pending', 'verified', 'expired']).default('pending').notNull(),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("idx_ai_pred_hist_type").on(table.predictionType),
+	index("idx_ai_pred_hist_product").on(table.productId),
+	index("idx_ai_pred_hist_line").on(table.productionLineId),
+	index("idx_ai_pred_hist_predicted_at").on(table.predictedAt),
+	index("idx_ai_pred_hist_status").on(table.status),
+]);
+
+// AI Prediction Accuracy Stats - Thống kê độ chính xác tổng hợp
+export const aiPredictionAccuracyStats = mysqlTable("ai_prediction_accuracy_stats", {
+	id: int().autoincrement().notNull(),
+	periodType: mysqlEnum("period_type", ['daily', 'weekly', 'monthly']).notNull(),
+	periodStart: timestamp("period_start", { mode: 'string' }).notNull(),
+	periodEnd: timestamp("period_end", { mode: 'string' }).notNull(),
+	predictionType: mysqlEnum("prediction_type", ['cpk', 'oee', 'defect_rate', 'trend']).notNull(),
+	productId: int("product_id"),
+	productionLineId: int("production_line_id"),
+	totalPredictions: int("total_predictions").default(0).notNull(),
+	verifiedPredictions: int("verified_predictions").default(0).notNull(),
+	mae: decimal({ precision: 15, scale: 6 }),
+	rmse: decimal({ precision: 15, scale: 6 }),
+	mape: decimal({ precision: 10, scale: 4 }),
+	r2Score: decimal("r2_score", { precision: 5, scale: 4 }),
+	withinConfidenceRate: decimal("within_confidence_rate", { precision: 5, scale: 2 }),
+	trendAccuracy: decimal("trend_accuracy", { precision: 5, scale: 2 }),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("idx_ai_pred_acc_period").on(table.periodType, table.periodStart),
+	index("idx_ai_pred_acc_type").on(table.predictionType),
+]);

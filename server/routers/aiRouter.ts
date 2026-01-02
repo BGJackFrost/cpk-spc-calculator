@@ -9,6 +9,8 @@ import { predictionRouter } from "./ai/predictionRouter";
 import { naturalLanguageRouter } from "./ai/naturalLanguageRouter";
 import { aiExportRouter } from "./ai/aiExportRouter";
 import { aiPredictiveRouter } from "./ai/aiPredictiveRouter";
+import { aiPredictionThresholdsRouter } from "./ai/aiPredictionThresholdsRouter";
+import { aiPredictionHistoryRouter } from "./ai/aiPredictionHistoryRouter";
 
 /**
  * AI Router - Main entry point for all AI-related operations
@@ -42,4 +44,6 @@ export const aiRouter = router({
   naturalLanguage: naturalLanguageRouter, // AI chatbot
   export: aiExportRouter, // Export AI reports
   predictive: aiPredictiveRouter, // Real-time predictions
+  thresholds: aiPredictionThresholdsRouter, // Custom alert thresholds
+  history: aiPredictionHistoryRouter, // Prediction history & accuracy
 });

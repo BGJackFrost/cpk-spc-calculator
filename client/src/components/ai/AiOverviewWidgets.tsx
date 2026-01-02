@@ -1,8 +1,8 @@
-import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Sparkline } from "@/components/ui/sparkline";
 import { trpc } from "@/lib/trpc";
 import {
   Brain,
@@ -22,11 +22,17 @@ import {
 } from "lucide-react";
 import { Link } from "wouter";
 
-// CPK Widget
+// CPK Widget with Sparkline
 export function CpkWidget() {
   const { data, isLoading, refetch } = trpc.ai.predictive.getDashboardWidgets.useQuery(undefined, {
     refetchInterval: 30000, // Refresh every 30 seconds
   });
+  
+  // Get sparkline data
+  const { data: sparklineData } = trpc.ai.predictive.getSparklineData.useQuery(
+    { type: "cpk", points: 20 },
+    { refetchInterval: 30000 }
+  );
 
   if (isLoading) {
     return (
@@ -36,6 +42,7 @@ export function CpkWidget() {
         </CardHeader>
         <CardContent>
           <Skeleton className="h-10 w-20 mb-2" />
+          <Skeleton className="h-10 w-full mb-2" />
           <Skeleton className="h-4 w-32" />
         </CardContent>
       </Card>
@@ -46,6 +53,7 @@ export function CpkWidget() {
   const TrendIcon = cpk?.trend === "up" ? TrendingUp : cpk?.trend === "down" ? TrendingDown : Minus;
   const trendColor = cpk?.trend === "up" ? "text-green-600" : cpk?.trend === "down" ? "text-red-600" : "text-gray-500";
   const cpkStatus = (cpk?.current || 0) >= 1.33 ? "good" : (cpk?.current || 0) >= 1.0 ? "warning" : "critical";
+  const sparklineColor = cpkStatus === "good" ? "#22c55e" : cpkStatus === "warning" ? "#f59e0b" : "#ef4444";
 
   return (
     <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900 border-blue-200 dark:border-blue-800 hover:shadow-lg transition-shadow">
@@ -67,6 +75,21 @@ export function CpkWidget() {
             {cpkStatus === "good" ? "Tốt" : cpkStatus === "warning" ? "Cảnh báo" : "Nguy hiểm"}
           </Badge>
         </div>
+        
+        {/* Sparkline Chart */}
+        {sparklineData?.data && sparklineData.data.length > 0 && (
+          <div className="mt-3 mb-2">
+            <Sparkline
+              data={sparklineData.data}
+              color={sparklineColor}
+              height={35}
+              trend={cpk?.trend}
+              threshold={1.33}
+              thresholdColor="#f59e0b"
+            />
+          </div>
+        )}
+        
         <div className={`flex items-center gap-1 mt-2 text-sm ${trendColor}`}>
           <TrendIcon className="h-4 w-4" />
           <span>{cpk?.change && cpk.change > 0 ? "+" : ""}{cpk?.change?.toFixed(3) || "0.000"}</span>
@@ -82,11 +105,17 @@ export function CpkWidget() {
   );
 }
 
-// OEE Widget
+// OEE Widget with Sparkline
 export function OeeWidget() {
   const { data, isLoading, refetch } = trpc.ai.predictive.getDashboardWidgets.useQuery(undefined, {
     refetchInterval: 30000,
   });
+  
+  // Get sparkline data
+  const { data: sparklineData } = trpc.ai.predictive.getSparklineData.useQuery(
+    { type: "oee", points: 20 },
+    { refetchInterval: 30000 }
+  );
 
   if (isLoading) {
     return (
@@ -96,6 +125,7 @@ export function OeeWidget() {
         </CardHeader>
         <CardContent>
           <Skeleton className="h-10 w-20 mb-2" />
+          <Skeleton className="h-10 w-full mb-2" />
           <Skeleton className="h-4 w-32" />
         </CardContent>
       </Card>
@@ -106,6 +136,7 @@ export function OeeWidget() {
   const TrendIcon = oee?.trend === "up" ? TrendingUp : oee?.trend === "down" ? TrendingDown : Minus;
   const trendColor = oee?.trend === "up" ? "text-green-600" : oee?.trend === "down" ? "text-red-600" : "text-gray-500";
   const oeeStatus = (oee?.current || 0) >= 85 ? "good" : (oee?.current || 0) >= 60 ? "warning" : "critical";
+  const sparklineColor = oeeStatus === "good" ? "#22c55e" : oeeStatus === "warning" ? "#f59e0b" : "#ef4444";
 
   return (
     <Card className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-green-900 border-green-200 dark:border-green-800 hover:shadow-lg transition-shadow">
@@ -127,6 +158,21 @@ export function OeeWidget() {
             {oeeStatus === "good" ? "Tốt" : oeeStatus === "warning" ? "Cảnh báo" : "Thấp"}
           </Badge>
         </div>
+        
+        {/* Sparkline Chart */}
+        {sparklineData?.data && sparklineData.data.length > 0 && (
+          <div className="mt-3 mb-2">
+            <Sparkline
+              data={sparklineData.data}
+              color={sparklineColor}
+              height={35}
+              trend={oee?.trend}
+              threshold={85}
+              thresholdColor="#f59e0b"
+            />
+          </div>
+        )}
+        
         <div className={`flex items-center gap-1 mt-2 text-sm ${trendColor}`}>
           <TrendIcon className="h-4 w-4" />
           <span>{oee?.change && oee.change > 0 ? "+" : ""}{oee?.change?.toFixed(1) || "0.0"}%</span>
@@ -209,7 +255,7 @@ export function AiAlertsWidget() {
   );
 }
 
-// AI Predictions Widget
+// AI Predictions Widget with Sparkline
 export function AiPredictionsWidget() {
   const { data, isLoading } = trpc.ai.predictive.getDashboardWidgets.useQuery(undefined, {
     refetchInterval: 30000,
@@ -217,6 +263,12 @@ export function AiPredictionsWidget() {
   const { data: accuracy } = trpc.ai.predictive.getAccuracyMetrics.useQuery(undefined, {
     refetchInterval: 60000,
   });
+  
+  // Get sparkline data for predictions
+  const { data: sparklineData } = trpc.ai.predictive.getSparklineData.useQuery(
+    { type: "predictions", points: 20 },
+    { refetchInterval: 30000 }
+  );
 
   if (isLoading) {
     return (
@@ -226,6 +278,7 @@ export function AiPredictionsWidget() {
         </CardHeader>
         <CardContent>
           <Skeleton className="h-10 w-20 mb-2" />
+          <Skeleton className="h-10 w-full mb-2" />
           <Skeleton className="h-4 w-32" />
         </CardContent>
       </Card>
@@ -249,6 +302,20 @@ export function AiPredictionsWidget() {
           </span>
           <span className="text-sm text-purple-700 dark:text-purple-300">độ chính xác</span>
         </div>
+        
+        {/* Sparkline Chart */}
+        {sparklineData?.data && sparklineData.data.length > 0 && (
+          <div className="mt-3 mb-2">
+            <Sparkline
+              data={sparklineData.data}
+              color="#a855f7"
+              height={35}
+              threshold={80}
+              thresholdColor="#22c55e"
+            />
+          </div>
+        )}
+        
         <div className="flex items-center gap-2 mt-2 text-sm text-purple-600 dark:text-purple-400">
           <Activity className="h-4 w-4" />
           <span>{predictions?.total || 0} điểm dữ liệu</span>

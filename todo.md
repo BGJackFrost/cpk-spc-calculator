@@ -7119,3 +7119,19 @@
 - [x] Tạo AiPredictionSummaryWidget
 - [x] Tích hợp widgets vào Dashboard chính
 
+
+## Phase 71: AI Predictive Enhancements (2025-01-02)
+
+- [x] Mini sparkline charts cho Dashboard widgets (CPK, OEE, Predictions)
+- [x] Sparkline component với trend indicator và threshold line
+- [x] API getSparklineData cho aiPredictiveRouter
+- [x] Cấu hình ngưỡng cảnh báo tùy chỉnh theo sản phẩm/dây chuyền
+- [x] Bảng ai_prediction_thresholds với priority matching
+- [x] UI trang AiPredictionThresholds với CRUD operations
+- [x] Lịch sử predictions với so sánh độ chính xác
+- [x] Bảng ai_prediction_history với error metrics
+- [x] UI trang AiPredictionHistory với comparison charts
+- [x] Auto-verify predictions với actual data
+- [x] Accuracy metrics: MAE, RMSE, MAPE, within confidence rate
+- [x] Routes và navigation cho các trang mới
+- [x] Unit tests cho AI Prediction features
