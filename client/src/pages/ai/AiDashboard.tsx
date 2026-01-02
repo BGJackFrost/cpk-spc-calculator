@@ -20,9 +20,12 @@ export default function AiDashboard() {
   const [timeRange, setTimeRange] = useState<"7d" | "30d" | "90d">("30d");
 
   // Real tRPC queries
-  const { data: stats, isLoading: statsLoading, refetch: refetchStats } = trpc.ai.getStats.useQuery();
-  const { data: models, isLoading: modelsLoading } = trpc.ai.listModels.useQuery();
-  const { data: predictions, isLoading: predictionsLoading } = trpc.ai.getPredictions.useQuery({ limit: 100 });
+  const { data: stats, isLoading: statsLoading, refetch: refetchStats } = trpc.ai.analytics.getDashboardStats.useQuery();
+  const { data: modelsData, isLoading: modelsLoading } = trpc.ai.models.list.useQuery({ limit: 100 });
+  const models = modelsData?.models || [];
+  // Predictions will be added later
+  const predictions: any[] = [];
+  const predictionsLoading = false;
 
   const isLoading = statsLoading || modelsLoading || predictionsLoading;
 

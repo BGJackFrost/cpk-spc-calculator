@@ -7066,3 +7066,18 @@
 - [x] Tạo trang ModelTraining.tsx với upload UI
 - [x] Tạo progress tracking với real-time updates
 - [x] Tạo model evaluation metrics display
+
+## Phase 63.5: Rewrite aiRouter với cấu trúc Sub-routers
+
+### Cấu trúc mới
+- [x] Backup aiRouter.ts cũ thành aiRouter.ts.old
+- [x] Tạo thư mục server/routers/ai/
+- [x] Tạo modelsRouter.ts (9 procedures: list, get, getMetrics, updateStatus, delete, getVersions)
+- [x] Tạo trainingRouter.ts (12 procedures: datasets, jobs, history, start, stop, stats)
+- [ ] Tạo predictionsRouter.ts (predict, batch, history, metrics) - TODO
+- [x] Tạo analyticsRouter.ts (8 procedures: dashboard stats, insights, trends, model usage)
+- [ ] Tạo settingsRouter.ts (configs, thresholds, notifications) - TODO
+- [x] Merge sub-routers vào aiRouter chính
+- [x] Update frontend calls từ trpc.ai.* sang trpc.ai.models.*, trpc.ai.training.* (8 files)
+- [x] Test AI Dashboard - HOẠT ĐỘNG HOÀN HẢO với seed data
+

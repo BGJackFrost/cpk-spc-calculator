@@ -16,11 +16,11 @@ export default function AiDashboard() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [newModel, setNewModel] = useState({ name: "", type: "anomaly_detection" });
   
-  const { data: stats, refetch: refetchStats } = trpc.ai.getStats.useQuery();
-  const { data: models, refetch: refetchModels } = trpc.ai.listModels.useQuery();
+  const { data: stats, refetch: refetchStats } = trpc.ai.analytics.getDashboardStats.useQuery();
+  const { data: models, refetch: refetchModels } = trpc.ai.models.list.useQuery();
   const { data: predictions } = trpc.ai.getPredictions.useQuery({ limit: 10 });
   
-  const createModel = trpc.ai.createModel.useMutation({
+  const createModel = trpc.ai.models.create.useMutation({
     onSuccess: () => {
       toast.success("Model đã được tạo thành công");
       setIsAddDialogOpen(false);
@@ -33,7 +33,7 @@ export default function AiDashboard() {
     },
   });
   
-  const startTraining = trpc.ai.startTraining.useMutation({
+  const startTraining = trpc.ai.training.startJob.useMutation({
     onSuccess: () => {
       toast.success("Đã bắt đầu training model");
       refetchModels();

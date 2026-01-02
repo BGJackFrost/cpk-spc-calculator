@@ -116,7 +116,7 @@ export function AiRecommendations({
   });
 
   // Quick insights query
-  const { data: quickInsights } = trpc.ai.getQuickInsights.useQuery(metrics);
+  const { data: quickInsights } = trpc.ai.analytics.getQuickInsights.useQuery(metrics);
 
   const handleAnalyze = () => {
     analyzeMutation.mutate({

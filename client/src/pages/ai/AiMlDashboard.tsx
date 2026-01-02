@@ -24,13 +24,13 @@ export default function AiMlDashboard() {
   const [statusFilter, setStatusFilter] = useState("all");
 
   // Real tRPC queries
-  const { data: models, isLoading, refetch } = trpc.ai.listModels.useQuery(
+  const { data: models, isLoading, refetch } = trpc.ai.models.list.useQuery(
     statusFilter !== "all" ? { status: statusFilter as any } : undefined
   );
   const { data: predictions } = trpc.ai.getPredictions.useQuery({ limit: 100 });
 
   // Start training mutation
-  const startTrainingMutation = trpc.ai.startTraining.useMutation({
+  const startTrainingMutation = trpc.ai.training.startJob.useMutation({
     onSuccess: () => {
       toast({ title: "Đã bắt đầu training model" });
       refetch();

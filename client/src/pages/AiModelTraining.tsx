@@ -248,8 +248,8 @@ export default function AiModelTraining() {
 
   // Queries
   const { data: analysisHistory } = trpc.spc.getAnalysisHistory.useQuery({ limit: 10 });
-  const { data: aiModels } = trpc.ai.listModels.useQuery({});
-  const startTrainingMutation = trpc.ai.startTraining.useMutation();
+  const { data: aiModels } = trpc.ai.models.list.useQuery({});
+  const startTrainingMutation = trpc.ai.training.startJob.useMutation();
 
   // Simulate training progress
   useEffect(() => {
