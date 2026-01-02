@@ -16,6 +16,7 @@ import {
   spcRulesConfig,
   permissions,
   rolePermissions,
+  predictiveAlertThresholds,
 } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 
@@ -231,6 +232,67 @@ const SAMPLE_SPC_RULES = {
   rule8Enabled: true, rule8Points: 8, rule8Sigma: 1,
 };
 
+// Sample Predictive Alert Thresholds
+const SAMPLE_PREDICTIVE_THRESHOLDS = [
+  {
+    name: "Ngưỡng cảnh báo OEE Dây chuyền PCB",
+    description: "Cảnh báo khi OEE dự báo giảm dưới ngưỡng cho dây chuyền PCB Assembly",
+    productionLineId: null, // Will be set to first production line
+    predictionType: "oee" as const,
+    oeeWarningThreshold: "75.00",
+    oeeCriticalThreshold: "65.00",
+    oeeDeclineThreshold: "5.00",
+    defectWarningThreshold: "3.00",
+    defectCriticalThreshold: "5.00",
+    defectIncreaseThreshold: "20.00",
+    autoAdjustEnabled: 1,
+    autoAdjustSensitivity: "medium" as const,
+    autoAdjustPeriodDays: 30,
+    emailAlertEnabled: 1,
+    alertEmails: "admin@example.com",
+    alertFrequency: "immediate" as const,
+    isActive: 1,
+  },
+  {
+    name: "Ngưỡng cảnh báo Defect Rate Dây chuyền IC",
+    description: "Cảnh báo khi tỷ lệ lỗi dự báo tăng cao cho dây chuyền IC Testing",
+    productionLineId: null, // Will be set to second production line
+    predictionType: "defect_rate" as const,
+    oeeWarningThreshold: "75.00",
+    oeeCriticalThreshold: "65.00",
+    oeeDeclineThreshold: "5.00",
+    defectWarningThreshold: "2.50",
+    defectCriticalThreshold: "4.00",
+    defectIncreaseThreshold: "15.00",
+    autoAdjustEnabled: 0,
+    autoAdjustSensitivity: "low" as const,
+    autoAdjustPeriodDays: 60,
+    emailAlertEnabled: 1,
+    alertEmails: "quality@example.com,supervisor@example.com",
+    alertFrequency: "hourly" as const,
+    isActive: 1,
+  },
+  {
+    name: "Ngưỡng cảnh báo tổng hợp (OEE + Defect)",
+    description: "Cảnh báo tổng hợp cả OEE và tỷ lệ lỗi cho tất cả dây chuyền",
+    productionLineId: null,
+    predictionType: "both" as const,
+    oeeWarningThreshold: "70.00",
+    oeeCriticalThreshold: "60.00",
+    oeeDeclineThreshold: "8.00",
+    defectWarningThreshold: "3.50",
+    defectCriticalThreshold: "6.00",
+    defectIncreaseThreshold: "25.00",
+    autoAdjustEnabled: 1,
+    autoAdjustSensitivity: "high" as const,
+    autoAdjustPeriodDays: 14,
+    emailAlertEnabled: 1,
+    alertEmails: "manager@example.com",
+    alertFrequency: "daily" as const,
+    isActive: 1,
+  },
+];
+
 /**
  * Initialize default permissions
  */
@@ -297,6 +359,7 @@ export async function seedSampleData(): Promise<{
   specifications: number;
   samplingConfigs: number;
   mappings: number;
+  predictiveThresholds: number;
 }> {
   const db = await getDb();
   if (!db) {
@@ -312,6 +375,7 @@ export async function seedSampleData(): Promise<{
     specifications: 0,
     samplingConfigs: 0,
     mappings: 0,
+    predictiveThresholds: 0,
   };
 
   // Seed database connections
@@ -387,6 +451,24 @@ export async function seedSampleData(): Promise<{
     if (!exactMatch) {
       await db.insert(productStationMappings).values(mapping);
       result.mappings++;
+    }
+  }
+
+  // Seed predictive alert thresholds
+  for (let i = 0; i < SAMPLE_PREDICTIVE_THRESHOLDS.length; i++) {
+    const threshold = SAMPLE_PREDICTIVE_THRESHOLDS[i];
+    const existing = await db.select().from(predictiveAlertThresholds)
+      .where(eq(predictiveAlertThresholds.name, threshold.name))
+      .limit(1);
+    
+    if (existing.length === 0) {
+      // Assign production line ID if available
+      const productionLineId = lineIds[i] || null;
+      await db.insert(predictiveAlertThresholds).values({
+        ...threshold,
+        productionLineId,
+      });
+      result.predictiveThresholds++;
     }
   }
 

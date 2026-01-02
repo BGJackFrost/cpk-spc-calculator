@@ -6943,8 +6943,8 @@
 - [x] Thêm Forecast Accuracy Dashboard vào menu AI
 
 ### Kiểm tra và hoàn thiện các trang AI
-- [ ] Kiểm tra trang AI Dashboard - đảm bảo hiển thị đúng dữ liệu
-- [ ] Kiểm tra trang AI ML Dashboard - đảm bảo realtime hoạt động
+- [x] Kiểm tra trang AI Dashboard - đã có đầy đủ chức năng
+- [x] Kiểm tra trang AI ML Dashboard - đã có đầy đủ chức năng
 - [ ] Kiểm tra trang AI ML Health - đảm bảo health metrics chính xác
 - [ ] Kiểm tra trang AI SPC Analysis - đảm bảo LLM integration hoạt động
 - [ ] Kiểm tra trang AI Root Cause - đảm bảo 5M1E analysis hoạt động
@@ -6962,5 +6962,79 @@
 
 ### Cập nhật translations
 - [x] Thêm translations cho các menu items mới
-- [ ] Kiểm tra và bổ sung translations còn thiếu
+- [x] Kiểm tra và bổ sung translations còn thiếu
 
+
+## Phase 61: Kiểm tra và hoàn thiện AI Features
+
+### LLM Integration Testing
+- [ ] Kiểm tra AI SPC Analysis - test LLM connection và response
+- [ ] Kiểm tra AI Natural Language Interface - test chat functionality
+- [ ] Thêm error handling cho LLM API failures
+- [ ] Thêm loading states và retry logic
+
+### Predictive Alerts Configuration
+- [ ] Tạo seed data cho predictive alert thresholds
+- [ ] Kiểm tra trang Predictive Alert Config
+- [ ] Test cảnh báo tự động khi vượt ngưỡng
+- [ ] Kiểm tra email/SMS notification cho alerts
+
+### Vision Detection Testing
+- [ ] Kiểm tra trang AI Vision Detection
+- [ ] Test upload ảnh và phát hiện lỗi
+- [ ] Test camera realtime detection
+- [ ] Tạo dữ liệu mẫu cho defect images
+- [ ] Kiểm tra export báo cáo vision detection
+
+
+## Phase 61 Progress Update
+
+### LLM Integration Testing
+- [x] Kiểm tra AI SPC Analysis - test LLM connection và response
+- [x] Kiểm tra AI Natural Language Interface - test chat functionality
+- [x] Thêm error handling cho LLM API failures
+- [x] Thêm loading states và retry logic
+
+### Predictive Alerts Configuration
+- [x] Tạo seed data cho predictive alert thresholds (3 mẫu)
+- [x] Tạo bảng predictive_alert_thresholds trong database
+- [ ] Debug: Frontend không load được dữ liệu từ getThresholds query
+- [ ] Test tạo/sửa/xóa threshold qua UI
+- [ ] Test cảnh báo tự động khi vượt ngưỡng
+- [ ] Kiểm tra email/SMS notification cho alerts
+
+
+### Vision Detection Testing
+- [x] Kiểm tra trang AI Vision Detection
+- [x] Kiểm tra UI với 2 input modes (URL + Camera)
+- [x] Kiểm tra cấu hình threshold settings
+- [x] Kiểm tra chế độ Demo simulation
+- [x] Kiểm tra 4 tabs kết quả
+- [ ] Test upload ảnh và phát hiện lỗi (cần login lại)
+- [ ] Test camera realtime detection (cần login lại)
+- [ ] Tạo dữ liệu mẫu cho defect images
+- [ ] Kiểm tra export báo cáo vision detection
+
+
+## Phase 61: Hoàn thiện Menu AI
+
+### Trang AI mới được tạo
+- [x] AiDashboard.tsx - AI System Overview với KPIs, charts, active models
+- [x] AiMlDashboard.tsx - ML Dashboard quản lý models với bảng chi tiết
+- [x] AiMlHealth.tsx - Health monitoring với services status và resource usage
+- [x] AiRootCause.tsx - Root Cause Analysis với 5M1E framework
+- [x] AiPredictive.tsx - CPK Forecast với confidence intervals và alerts
+- [x] AiAnalyticsDashboard.tsx - Comprehensive analytics tổng hợp
+
+### Routes đã cập nhật
+- [x] Cập nhật imports trong App.tsx để trỏ đến thư mục ai/
+- [x] Đăng ký routes cho 6 trang mới
+- [x] Test tất cả trang hoạt động bình thường
+
+### Vấn đề đã giải quyết
+- [x] Xóa file AiAnalyticsDashboard.tsx cũ gây conflict
+- [x] Sửa import paths cho các component AI
+
+### Còn lại (để phase sau)
+- [ ] Sửa lỗi Predictive Alerts Configuration (query không load dữ liệu)
+- [ ] Tạo dữ liệu mẫu cho các trang AI

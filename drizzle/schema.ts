@@ -4088,7 +4088,7 @@ export type InsertWebhookConfig = typeof webhookConfig.$inferInsert;
  */
 export const alertAnalytics = mysqlTable("alert_analytics", {
   id: int("id").autoincrement().primaryKey(),
-  date: timestamp("date").notNull(),
+  date: timestamp("date").defaultNow().notNull(),
   alertType: varchar("alert_type", { length: 100 }).notNull(),
   severity: mysqlEnum("severity", ["info", "warning", "critical"]).notNull().default("info"),
   source: varchar("source", { length: 255 }), // Dây chuyền, công trạm, etc.

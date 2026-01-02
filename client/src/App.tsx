@@ -157,18 +157,18 @@ import SystemHealthDashboard from "./pages/SystemHealthDashboard";
 import SecurityDashboard from "./pages/SecurityDashboard";
 import IoTDashboard from "./pages/IoTDashboard";
 import IotRealtimeDashboard from "./pages/IotRealtimeDashboard";
-import AiMlDashboard from "./pages/AiMlDashboard";
-import AiDashboard from "./pages/AiDashboard";
+import AiMlDashboard from "./pages/ai/AiMlDashboard";
+import AiDashboard from "./pages/ai/AiDashboard";
 import AiSpcAnalysis from "./pages/AiSpcAnalysis";
-import AiRootCause from "./pages/AiRootCause";
+import AiRootCause from "./pages/ai/AiRootCause";
 import AiNaturalLanguage from "./pages/AiNaturalLanguage";
-import AiPredictive from "./pages/AiPredictive";
+import AiPredictive from "./pages/ai/AiPredictive";
 import AiModelTraining from "./pages/AiModelTraining";
-import AiAnalyticsDashboard from "./pages/AiAnalyticsDashboard";
+import AiAnalyticsDashboard from "./pages/ai/AiAnalyticsDashboard";
 import ABTestingManagement from "./pages/ai/ABTestingManagement";
 import ModelVersioningPage from "./pages/ai/ModelVersioningPage";
 import DataDriftMonitoring from "./pages/ai/DataDriftMonitoring";
-import AiMlHealthDashboard from "./pages/AiMlHealthDashboard";
+import AiMlHealth from "./pages/ai/AiMlHealth";
 import AiCorrelationAnalysis from "./pages/ai/AiCorrelationAnalysis";
 import AiTrendAnalysis from "./pages/ai/AiTrendAnalysis";
 import AiOeeForecast from "./pages/ai/AiOeeForecast";
@@ -398,7 +398,7 @@ function Router() {
       <Route path="/ai-ab-testing" component={ABTestingManagement} />
       <Route path="/ai-model-versioning" component={ModelVersioningPage} />
       <Route path="/ai-data-drift" component={DataDriftMonitoring} />
-      <Route path="/ai-ml-health" component={AiMlHealthDashboard} />
+      <Route path="/ai-ml-health" component={AiMlHealth} />
       <Route path="/ai-correlation" component={AiCorrelationAnalysis} />
       <Route path="/ai-trend-analysis" component={AiTrendAnalysis} />
       <Route path="/ai-oee-forecast" component={AiOeeForecast} />

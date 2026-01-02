@@ -1,0 +1,1 @@
+ALTER TABLE `alert_analytics` MODIFY COLUMN `date` timestamp NOT NULL DEFAULT (now());
