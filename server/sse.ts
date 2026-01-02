@@ -422,3 +422,12 @@ export function notifyIotBatchMetrics(data: {
     timestamp: new Date(),
   });
 }
+
+// Generic send SSE event function
+export function sendSseEvent(eventType: string, data: any) {
+  broadcastEvent({
+    type: eventType as SseEventType,
+    data,
+    timestamp: new Date(),
+  });
+}

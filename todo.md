@@ -7219,3 +7219,15 @@
 - [x] Thêm swipe gestures cho mobile để chuyển đổi systems
 - [x] Tạo AI Model Performance Dashboard so sánh độ chính xác theo thời gian
 - [x] Test và lưu checkpoint
+
+## Phase 76: IoT Real Data, Push Notifications, AI Export
+- [x] Tạo IoT sensor router với dữ liệu thực từ database
+- [x] Tạo IoT sensor service để quản lý sensors và readings
+- [x] Tích hợp push notifications cho cảnh báo sensor critical
+- [x] Tạo export service cho AI model performance (PDF/Excel)
+- [x] Cập nhật UI IoT Monitoring Realtime với tRPC
+- [x] Thêm nút export vào AI Model Performance page
+- [x] Viết unit tests cho IoT sensor service (11 tests)
+- [x] Viết unit tests cho push notification service (12 tests)
+- [x] Viết unit tests cho AI export service (5 tests)
+

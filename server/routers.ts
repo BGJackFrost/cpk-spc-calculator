@@ -31,6 +31,9 @@ import { videoTutorialRouter } from "./routers/videoTutorialRouter";
 import { visionRouter } from "./routers/visionRouter";
 import { predictiveAnalyticsRouter } from "./routers/predictiveAnalyticsRouter";
 import { predictiveAlertRouter } from "./routers/predictiveAlertRouter";
+import { iotSensorRouter } from "./routers/iotSensorRouter";
+import { notificationRouter } from "./routers/notificationRouter";
+import { aiExportRouter } from "./routers/aiExportRouter";
 import { triggerLicenseExpiryCheck } from "./scheduledJobs";
 import { triggerWebhooks, testWebhook } from "./webhookService";
 import { storagePut } from "./storage";
@@ -11216,6 +11219,12 @@ Hãy trả về JSON với format:
 
   // Predictive Alert Thresholds - Auto Alert Configuration
   predictiveAlert: predictiveAlertRouter,
+  // IoT Sensor - Real-time sensor data and alerts
+  iotSensor: iotSensorRouter,
+  // Push Notifications
+  notification: notificationRouter,
+  // AI Export - PDF/Excel reports
+  aiExport: aiExportRouter,
 });
 
 export type AppRouter = typeof appRouter;
