@@ -35,6 +35,8 @@ export function SystemProvider({ children }: { children: React.ReactNode }) {
     // Auto-detect system from URL
     if (path.startsWith("/ai-") || path.startsWith("/anomaly-detection") || path.startsWith("/cpk-forecast")) {
       setActiveSystemState("ai");
+    } else if (path.startsWith("/iot-") || path.startsWith("/mqtt-") || path.startsWith("/opcua-") || path.startsWith("/sensor-") || path.startsWith("/alarm-threshold") || path.startsWith("/realtime-machine") || path.startsWith("/realtime-history")) {
+      setActiveSystemState("iot");
     } else if (path.startsWith("/license-")) {
       setActiveSystemState("license");
     } else if (path.startsWith("/oee-") || path.startsWith("/maintenance-") || path.startsWith("/spare-") || path.startsWith("/predictive-") || path.startsWith("/plant-kpi") || path.startsWith("/unified-dashboard")) {

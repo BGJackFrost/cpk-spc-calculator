@@ -231,6 +231,14 @@ const fallbackLabelsVi: Record<string, string> = {
   "nav.aiThresholds": "Ngưỡng AI",
   "nav.aiDataSources": "Nguồn Dữ liệu AI",
   "nav.aiAuditLogs": "Nhật ký AI",
+  // IoT System labels
+  "menuGroup.iotOverview": "Tổng quan IoT",
+  "menuGroup.iotConnections": "Kết nối",
+  "menuGroup.iotConfig": "Cấu hình IoT",
+  "nav.sensorDashboard": "Dashboard Cảm biến",
+  "nav.mqttConnections": "Kết nối MQTT",
+  "nav.opcuaConnections": "Kết nối OPC-UA",
+  "nav.iotAlarmThreshold": "Ngưỡng Cảnh báo IoT",
 };
 
 const fallbackLabelsEn: Record<string, string> = {
@@ -412,6 +420,14 @@ const fallbackLabelsEn: Record<string, string> = {
   "nav.aiThresholds": "AI Thresholds",
   "nav.aiDataSources": "AI Data Sources",
   "nav.aiAuditLogs": "AI Audit Logs",
+  // IoT System labels
+  "menuGroup.iotOverview": "IoT Overview",
+  "menuGroup.iotConnections": "Connections",
+  "menuGroup.iotConfig": "IoT Configuration",
+  "nav.sensorDashboard": "Sensor Dashboard",
+  "nav.mqttConnections": "MQTT Connections",
+  "nav.opcuaConnections": "OPC-UA Connections",
+  "nav.iotAlarmThreshold": "IoT Alarm Thresholds",
 };
 
 const MIN_WIDTH = 200;
@@ -610,6 +626,8 @@ function DashboardLayoutContent({
       case "spc": return "text-blue-600 dark:text-blue-400";
       case "mms": return "text-orange-600 dark:text-orange-400";
       case "production": return "text-green-600 dark:text-green-400";
+      case "iot": return "text-cyan-600 dark:text-cyan-400";
+      case "ai": return "text-violet-600 dark:text-violet-400";
       case "license": return "text-purple-600 dark:text-purple-400";
       case "system": return "text-slate-600 dark:text-slate-400";
       default: return "text-primary";

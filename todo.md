@@ -7156,3 +7156,57 @@
 - [x] Thêm tính năng so sánh accuracy giữa các phiên bản model
 - [x] Tạo UI trang Model Version Comparison
 - [x] Viết tests cho các tính năng mới
+
+## Phase 74: Menu Fixes, IoT System, Mobile UX, AI Review
+
+### 1. Rà soát và sửa menu lỗi
+- [ ] Kiểm tra tất cả menu items trong systemMenu.ts
+- [ ] Kiểm tra routes trong App.tsx
+- [ ] Sửa các menu bị lỗi 404 hoặc không load được
+
+### 2. Tách IoT sang menu top mới
+- [ ] Tạo IoT system trong SystemContext
+- [ ] Thêm IoT vào TopNavigation
+- [ ] Tạo IoT menu items trong systemMenu.ts
+- [ ] Di chuyển các trang IoT liên quan
+
+### 3. Mobile UX
+- [ ] Thêm hamburger menu button cho mobile
+- [ ] Tối ưu sidebar responsive
+- [ ] Tối ưu top navigation cho mobile
+
+### 4. Rà soát AI
+- [ ] Kiểm tra tất cả trang AI
+- [ ] Báo cáo tiến độ hoàn thiện AI
+
+## Phase 74: Menu Fixes, IoT Separation, Mobile Menu, AI Review
+
+### Menu Fixes
+- [x] Rà soát các menu bị lỗi truy cập
+- [x] Thêm IoT system mới vào SYSTEMS config
+- [x] Thêm IoT labels vào fallback labels
+
+### IoT System Separation
+- [x] Tạo IoT system mới trong systemMenu.ts
+- [x] Thêm IoT vào TopNavigation systems list
+- [x] Cập nhật SystemContext để auto-detect IoT từ URL
+- [x] Di chuyển các trang IoT vào menu IoT mới:
+  - [x] IoT Dashboard (/iot-dashboard)
+  - [x] IoT Realtime Dashboard (/iot-realtime-dashboard)
+  - [x] Sensor Dashboard (/sensor-dashboard)
+  - [x] IoT Gateway (/iot-gateway)
+  - [x] MQTT Connections (/mqtt-connections)
+  - [x] OPC-UA Connections (/opcua-connections)
+  - [x] Alarm Threshold Config (/alarm-threshold-config)
+  - [x] Realtime Machine Config (/realtime-machine-config)
+  - [x] Realtime History (/realtime-history)
+
+### Mobile Menu Enhancement
+- [x] Thêm hamburger menu dropdown cho mobile
+- [x] Hiển thị system selector trên mobile
+- [x] Tối ưu hiển thị menu khi ở dạng điện thoại
+
+### AI System Review
+- [x] Rà soát các trang AI hiện có (34 routes)
+- [x] Kiểm tra AI menu groups (Dashboard, Analysis, Predictive, NLP, Training, Vision, Settings)
+- [x] Báo cáo tiến độ hoàn thiện AI system

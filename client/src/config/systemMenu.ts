@@ -10,6 +10,8 @@ import {
   Star, Lightbulb,
   MessageSquare,
   Video,
+  Radio,
+  Wifi,
   type LucideIcon
 } from "lucide-react";
 
@@ -113,6 +115,15 @@ export const SYSTEMS: Record<string, SystemConfig> = {
     color: "violet",
     description: "AI/ML Analytics, Predictions & Automation",
     licenseKey: "ai_system",
+  },
+  IOT: {
+    id: "iot",
+    name: "IoT System",
+    shortName: "IoT",
+    icon: Radio,
+    color: "cyan",
+    description: "IoT Gateway, Sensors & Realtime Data Collection",
+    licenseKey: "iot_system",
   },
 };
 
@@ -518,6 +529,44 @@ export const AI_MENU: SystemMenuConfig = {
   ],
 };
 
+// ===== IOT SYSTEM MENU =====
+export const IOT_MENU: SystemMenuConfig = {
+  system: SYSTEMS.IOT,
+  menuGroups: [
+    {
+      id: "iot-overview",
+      labelKey: "menuGroup.iotOverview",
+      icon: Gauge,
+      defaultOpen: true,
+      items: [
+        { id: "iot-dashboard", icon: LayoutDashboard, labelKey: "nav.iotDashboard", path: "/iot-dashboard" },
+        { id: "iot-realtime-dashboard", icon: Zap, labelKey: "nav.iotRealtimeDashboard", path: "/iot-realtime-dashboard", licenseFeature: "iot_realtime" },
+        { id: "sensor-dashboard", icon: Thermometer, labelKey: "nav.sensorDashboard", path: "/sensor-dashboard" },
+      ],
+    },
+    {
+      id: "iot-connections",
+      labelKey: "menuGroup.iotConnections",
+      icon: Wifi,
+      items: [
+        { id: "iot-gateway", icon: Radio, labelKey: "nav.iotGateway", path: "/iot-gateway", adminOnly: true },
+        { id: "mqtt-connections", icon: Wifi, labelKey: "nav.mqttConnections", path: "/mqtt-connections", adminOnly: true },
+        { id: "opcua-connections", icon: Server, labelKey: "nav.opcuaConnections", path: "/opcua-connections", adminOnly: true },
+      ],
+    },
+    {
+      id: "iot-config",
+      labelKey: "menuGroup.iotConfig",
+      icon: Settings,
+      items: [
+        { id: "iot-alarm-threshold", icon: AlertTriangle, labelKey: "nav.iotAlarmThreshold", path: "/alarm-threshold-config", adminOnly: true },
+        { id: "iot-realtime-machine-config", icon: Cpu, labelKey: "nav.realtimeMachineConfig", path: "/realtime-machine-config", adminOnly: true },
+        { id: "iot-realtime-history", icon: History, labelKey: "nav.realtimeHistory", path: "/realtime-history" },
+      ],
+    },
+  ],
+};
+
 // All system menus
 export const ALL_SYSTEM_MENUS: Record<string, SystemMenuConfig> = {
   dashboard: DASHBOARD_MENU,
@@ -527,6 +576,7 @@ export const ALL_SYSTEM_MENUS: Record<string, SystemMenuConfig> = {
   license: LICENSE_MENU,
   system: SYSTEM_MENU,
   ai: AI_MENU,
+  iot: IOT_MENU,
 };
 
 // Get menu for a specific system
