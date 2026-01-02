@@ -7257,3 +7257,19 @@
 - [x] Tạo CacheMonitoringDashboard UI với biểu đồ
 - [x] Tích hợp vào menu System
 - [x] Viết unit tests
+
+## Phase 80: Cache Monitoring Advanced Features
+
+- [x] Cache Alert Service - tự động gửi cảnh báo khi hit rate giảm dưới ngưỡng
+- [x] Cache Report Service - export báo cáo cache định kỳ (daily/weekly)
+- [x] Cache Warming Service - tự động load lại cache quan trọng sau khi clear
+- [x] Cache Monitoring Service - central service cho health monitoring
+- [x] Scheduled jobs cho cache alert check (mỗi 5 phút)
+- [x] Scheduled jobs cho cache report processing (mỗi phút)
+- [x] Initial cache warming on startup
+- [x] API endpoints cho alert management
+- [x] API endpoints cho report management
+- [x] API endpoints cho warming management
+- [x] Unit tests cho cacheAlertService
+- [x] Unit tests cho cacheWarmingService
+- [x] Unit tests cho cacheReportService

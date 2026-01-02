@@ -16,6 +16,9 @@ import { runScheduledDriftCheck } from './services/scheduledDriftCheckService';
 import { sendEmail } from './emailService';
 import { spareParts, sparePartsInventory, suppliers, licenseNotificationLogs } from '../drizzle/schema';
 import { sendWeeklyAccuracyReport, triggerWeeklyAccuracyReport } from './services/weeklyAccuracyReportService';
+import { cacheAlertService } from './services/cacheAlertService';
+import { cacheReportService } from './services/cacheReportService';
+import { cacheWarmingService } from './services/cacheWarmingService';
 
 // Track if jobs are already initialized
 let jobsInitialized = false;
@@ -617,6 +620,49 @@ export function initScheduledJobs(): void {
   });
   
   console.log('[ScheduledJob] Scheduled: Weekly accuracy report at 8:00 AM every Monday (Asia/Ho_Chi_Minh)');
+  
+  // Cache alert check - runs every 5 minutes
+  cron.schedule('0 */5 * * * *', async () => {
+    try {
+      const result = await cacheAlertService.checkAndAlert();
+      if (result.alertSent) {
+        console.log(`[ScheduledJob] Cache alert sent: ${result.message}`);
+      }
+    } catch (error) {
+      console.error('[ScheduledJob] Error checking cache alerts:', error);
+    }
+  }, {
+    timezone: 'Asia/Ho_Chi_Minh'
+  });
+  
+  console.log('[ScheduledJob] Scheduled: Cache alert check every 5 minutes (Asia/Ho_Chi_Minh)');
+  
+  // Cache report processing - runs every minute to check scheduled reports
+  cron.schedule('0 * * * * *', async () => {
+    try {
+      const result = await cacheReportService.processScheduledReports();
+      if (result.sent > 0) {
+        console.log(`[ScheduledJob] Cache reports sent: ${result.sent}/${result.processed}`);
+      }
+    } catch (error) {
+      console.error('[ScheduledJob] Error processing cache reports:', error);
+    }
+  }, {
+    timezone: 'Asia/Ho_Chi_Minh'
+  });
+  
+  console.log('[ScheduledJob] Scheduled: Cache report processing every minute (Asia/Ho_Chi_Minh)');
+  
+  // Cache warming on startup
+  setTimeout(async () => {
+    try {
+      console.log('[ScheduledJob] Starting initial cache warming...');
+      const result = await cacheWarmingService.warmAllCaches({ onlyHighPriority: true });
+      console.log(`[ScheduledJob] Initial cache warming complete: ${result.success}/${result.total} succeeded in ${result.duration}ms`);
+    } catch (error) {
+      console.error('[ScheduledJob] Error during initial cache warming:', error);
+    }
+  }, 5000); // Wait 5 seconds after startup
   
   jobsInitialized = true;
   console.log('[ScheduledJob] All scheduled jobs initialized successfully');
