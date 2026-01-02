@@ -7,7 +7,7 @@ import { getDb } from "../db";
 import { 
   predictiveAlertThresholds, 
   predictiveAlertHistory,
-  predictiveThresholdAdjustLogs,
+  predictiveAlertAdjustmentLogs,
   productionLines,
   PredictiveAlertThreshold,
   PredictiveAlertHistory,
@@ -622,7 +622,7 @@ export async function autoAdjustThresholds(threshold: ThresholdConfig): Promise<
         .where(eq(predictiveAlertThresholds.id, threshold.id));
 
       // Log adjustment
-      await (await getDb()).insert(predictiveThresholdAdjustLogs).values({
+      await (await getDb()).insert(predictiveAlertAdjustmentLogs).values({
         thresholdId: threshold.id,
         adjustType: adj.type,
         oldValue: adj.oldValue.toString(),
@@ -644,9 +644,9 @@ export async function getAdjustmentLogs(thresholdId: number, limit: number = 20)
   try {
     return await (await getDb())
       .select()
-      .from(predictiveThresholdAdjustLogs)
-      .where(eq(predictiveThresholdAdjustLogs.thresholdId, thresholdId))
-      .orderBy(desc(predictiveThresholdAdjustLogs.createdAt))
+      .from(predictiveAlertAdjustmentLogs)
+      .where(eq(predictiveAlertAdjustmentLogs.thresholdId, thresholdId))
+      .orderBy(desc(predictiveAlertAdjustmentLogs.createdAt))
       .limit(limit);
   } catch (error) {
     console.error('Error getting adjustment logs:', error);

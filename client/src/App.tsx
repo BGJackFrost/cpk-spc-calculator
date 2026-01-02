@@ -178,6 +178,7 @@ import AiYieldOptimization from "./pages/ai/AiYieldOptimization";
 import AiReports from "./pages/ai/AiReports";
 import AiInsights from "./pages/ai/AiInsights";
 import AiTrainingJobs from "./pages/ai/AiTrainingJobs";
+import ModelTraining from "./pages/ai/ModelTraining";
 import AiModelComparison from "./pages/ai/AiModelComparison";
 import AiConfig from "./pages/ai/AiConfig";
 import AiThresholds from "./pages/ai/AiThresholds";
@@ -408,6 +409,7 @@ function Router() {
       <Route path="/ai-reports" component={AiReports} />
       <Route path="/ai-insights" component={AiInsights} />
       <Route path="/ai-training-jobs" component={AiTrainingJobs} />
+      <Route path="/model-training" component={ModelTraining} />
       <Route path="/ai-model-comparison" component={AiModelComparison} />
       <Route path="/ai-config" component={AiConfig} />
       <Route path="/ai-thresholds" component={AiThresholds} />

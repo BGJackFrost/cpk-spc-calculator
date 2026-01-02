@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Brain, TrendingUp, AlertTriangle, CheckCircle, Activity, 
-  Zap, Target, BarChart3, Clock, RefreshCw, ArrowUp, ArrowDown
+  Zap, Target, BarChart3, Clock, RefreshCw, ArrowUp, ArrowDown, Loader2
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useToast } from "@/hooks/use-toast";
@@ -19,52 +19,110 @@ export default function AiDashboard() {
   const { toast } = useToast();
   const [timeRange, setTimeRange] = useState<"7d" | "30d" | "90d">("30d");
 
-  // Mock data - replace with real tRPC queries
+  // Real tRPC queries
+  const { data: stats, isLoading: statsLoading, refetch: refetchStats } = trpc.ai.getStats.useQuery();
+  const { data: models, isLoading: modelsLoading } = trpc.ai.listModels.useQuery();
+  const { data: predictions, isLoading: predictionsLoading } = trpc.ai.getPredictions.useQuery({ limit: 100 });
+
+  const isLoading = statsLoading || modelsLoading || predictionsLoading;
+
+  // Calculate system health from real data
   const systemHealth = {
-    status: "healthy" as const,
-    uptime: 99.8,
-    modelsActive: 12,
-    modelsTotal: 15,
+    status: stats && stats.activeModels > 0 ? "healthy" : "warning" as const,
+    uptime: 99.8, // Could be calculated from server uptime
+    modelsActive: stats?.activeModels || 0,
+    modelsTotal: stats?.totalModels || 0,
     lastUpdate: new Date().toISOString(),
   };
 
+  // Calculate KPI data from real models
   const kpiData = [
-    { name: "Accuracy", value: 94.5, target: 90, status: "good" },
-    { name: "Precision", value: 92.3, target: 90, status: "good" },
-    { name: "Recall", value: 88.7, target: 85, status: "good" },
-    { name: "F1 Score", value: 90.4, target: 87, status: "good" },
+    { 
+      name: "Avg Accuracy", 
+      value: stats?.avgAccuracy ? Math.round(stats.avgAccuracy * 100) : 0, 
+      target: 90, 
+      status: (stats?.avgAccuracy || 0) >= 0.9 ? "good" : "warning" 
+    },
+    { 
+      name: "Active Models", 
+      value: stats?.activeModels || 0, 
+      target: 10, 
+      status: (stats?.activeModels || 0) >= 10 ? "good" : "warning" 
+    },
+    { 
+      name: "Total Predictions", 
+      value: stats?.totalPredictions || 0, 
+      target: 100, 
+      status: (stats?.totalPredictions || 0) >= 100 ? "good" : "warning" 
+    },
+    { 
+      name: "Training Models", 
+      value: stats?.trainingModels || 0, 
+      target: 3, 
+      status: "info" 
+    },
   ];
 
-  const predictionTrend = [
-    { date: "2024-01", predictions: 1200, accuracy: 92 },
-    { date: "2024-02", predictions: 1450, accuracy: 93 },
-    { date: "2024-03", predictions: 1680, accuracy: 94 },
-    { date: "2024-04", predictions: 1890, accuracy: 94.5 },
-    { date: "2024-05", predictions: 2100, accuracy: 95 },
-    { date: "2024-06", predictions: 2340, accuracy: 94.8 },
-  ];
+  // Group predictions by month for trend chart
+  const predictionTrend = predictions ? (() => {
+    const monthlyData: Record<string, { predictions: number; totalAccuracy: number; count: number }> = {};
+    
+    predictions.forEach(pred => {
+      const month = new Date(pred.createdAt).toISOString().slice(0, 7);
+      if (!monthlyData[month]) {
+        monthlyData[month] = { predictions: 0, totalAccuracy: 0, count: 0 };
+      }
+      monthlyData[month].predictions++;
+      if (pred.confidence) {
+        monthlyData[month].totalAccuracy += pred.confidence;
+        monthlyData[month].count++;
+      }
+    });
 
-  const modelUsage = [
-    { name: "Anomaly Detection", value: 35, color: "#8b5cf6" },
-    { name: "CPK Forecast", value: 25, color: "#3b82f6" },
-    { name: "Defect Prediction", value: 20, color: "#10b981" },
-    { name: "OEE Forecast", value: 15, color: "#f59e0b" },
-    { name: "Others", value: 5, color: "#6b7280" },
-  ];
+    return Object.entries(monthlyData)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .slice(-6)
+      .map(([date, data]) => ({
+        date,
+        predictions: data.predictions,
+        accuracy: data.count > 0 ? Math.round((data.totalAccuracy / data.count) * 100) : 0,
+      }));
+  })() : [];
 
-  const recentAlerts = [
-    { id: 1, type: "warning", message: "Model accuracy dropped below 90%", time: "2 hours ago", model: "Defect Prediction" },
-    { id: 2, type: "info", message: "New training data available", time: "5 hours ago", model: "CPK Forecast" },
-    { id: 3, type: "critical", message: "Drift detected in input features", time: "1 day ago", model: "Anomaly Detection" },
-  ];
+  // Calculate model usage distribution
+  const modelUsage = models ? (() => {
+    const typeCount: Record<string, number> = {};
+    models.forEach(model => {
+      typeCount[model.type] = (typeCount[model.type] || 0) + 1;
+    });
 
-  const activeModels = [
-    { name: "Anomaly Detection", status: "active", accuracy: 94.5, predictions: 1234 },
-    { name: "CPK Forecast", status: "active", accuracy: 92.3, predictions: 987 },
-    { name: "Defect Prediction", status: "active", accuracy: 91.8, predictions: 756 },
-    { name: "OEE Forecast", status: "active", accuracy: 93.2, predictions: 654 },
-    { name: "Yield Optimization", status: "training", accuracy: 0, predictions: 0 },
-  ];
+    const colors = ["#8b5cf6", "#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#6b7280"];
+    return Object.entries(typeCount).map(([name, value], idx) => ({
+      name,
+      value,
+      color: colors[idx % colors.length],
+    }));
+  })() : [];
+
+  // Recent alerts from predictions with low confidence
+  const recentAlerts = predictions ? predictions
+    .filter(p => p.confidence && p.confidence < 0.7)
+    .slice(0, 3)
+    .map((p, idx) => ({
+      id: p.id,
+      type: p.confidence! < 0.5 ? "critical" : "warning",
+      message: `Low confidence prediction (${Math.round(p.confidence! * 100)}%)`,
+      time: new Date(p.createdAt).toLocaleString(),
+      model: models?.find(m => m.id === p.modelId)?.name || "Unknown",
+    })) : [];
+
+  // Active models with stats
+  const activeModels = models?.map(model => ({
+    name: model.name,
+    status: model.status,
+    accuracy: model.accuracy ? Math.round(model.accuracy * 100) : 0,
+    predictions: predictions?.filter(p => p.modelId === model.id).length || 0,
+  })) || [];
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -93,6 +151,21 @@ export default function AiDashboard() {
     }
   };
 
+  const handleRefresh = () => {
+    refetchStats();
+    toast({ title: "Đã làm mới dữ liệu" });
+  };
+
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-96">
+          <Loader2 className="h-8 w-8 animate-spin text-violet-500" />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -108,7 +181,7 @@ export default function AiDashboard() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => toast({ title: "Refreshing data..." })}>
+            <Button variant="outline" size="sm" onClick={handleRefresh}>
               <RefreshCw className="h-4 w-4 mr-2" />
               Refresh
             </Button>
@@ -116,12 +189,12 @@ export default function AiDashboard() {
         </div>
 
         {/* System Health */}
-        <Card className="border-l-4 border-l-green-500">
+        <Card className={`border-l-4 ${systemHealth.status === "healthy" ? "border-l-green-500" : "border-l-yellow-500"}`}>
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="flex items-center gap-2">
-                  <Activity className="h-5 w-5 text-green-500" />
+                  <Activity className={`h-5 w-5 ${systemHealth.status === "healthy" ? "text-green-500" : "text-yellow-500"}`} />
                   System Health
                 </CardTitle>
                 <CardDescription>Overall AI system status and metrics</CardDescription>
@@ -141,11 +214,13 @@ export default function AiDashboard() {
               </div>
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">Avg Accuracy</p>
-                <p className="text-2xl font-bold text-blue-600">94.2%</p>
+                <p className="text-2xl font-bold text-blue-600">
+                  {stats?.avgAccuracy ? `${Math.round(stats.avgAccuracy * 100)}%` : "N/A"}
+                </p>
               </div>
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">Total Predictions</p>
-                <p className="text-2xl font-bold">12.5K</p>
+                <p className="text-2xl font-bold">{stats?.totalPredictions || 0}</p>
               </div>
             </div>
           </CardContent>
@@ -155,27 +230,38 @@ export default function AiDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {kpiData.map((kpi) => (
             <Card key={kpi.name}>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">{kpi.name}</CardTitle>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  {kpi.name}
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-3xl font-bold">{kpi.value}%</p>
-                    <p className="text-xs text-muted-foreground mt-1">Target: {kpi.target}%</p>
+                    <p className="text-3xl font-bold">{kpi.value}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Target: {kpi.target}
+                    </p>
                   </div>
-                  {kpi.value >= kpi.target ? (
-                    <ArrowUp className="h-8 w-8 text-green-500" />
-                  ) : (
-                    <ArrowDown className="h-8 w-8 text-red-500" />
-                  )}
+                  <div className={`p-2 rounded-full ${
+                    kpi.status === "good" ? "bg-green-100" : 
+                    kpi.status === "warning" ? "bg-yellow-100" : "bg-blue-100"
+                  }`}>
+                    {kpi.value >= kpi.target ? (
+                      <ArrowUp className={`h-6 w-6 ${
+                        kpi.status === "good" ? "text-green-600" : "text-blue-600"
+                      }`} />
+                    ) : (
+                      <ArrowDown className="h-6 w-6 text-yellow-600" />
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>
           ))}
         </div>
 
-        {/* Charts */}
+        {/* Charts Row */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Prediction Trend */}
           <Card>
@@ -184,115 +270,163 @@ export default function AiDashboard() {
                 <TrendingUp className="h-5 w-5 text-blue-500" />
                 Prediction Trend
               </CardTitle>
-              <CardDescription>Monthly predictions and accuracy</CardDescription>
+              <CardDescription>Monthly predictions and accuracy over time</CardDescription>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <AreaChart data={predictionTrend}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis yAxisId="left" />
-                  <YAxis yAxisId="right" orientation="right" />
-                  <Tooltip />
-                  <Legend />
-                  <Area yAxisId="left" type="monotone" dataKey="predictions" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.3} name="Predictions" />
-                  <Line yAxisId="right" type="monotone" dataKey="accuracy" stroke="#10b981" name="Accuracy %" />
-                </AreaChart>
-              </ResponsiveContainer>
+              {predictionTrend.length > 0 ? (
+                <ResponsiveContainer width="100%" height={300}>
+                  <AreaChart data={predictionTrend}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis yAxisId="left" />
+                    <YAxis yAxisId="right" orientation="right" />
+                    <Tooltip />
+                    <Legend />
+                    <Area 
+                      yAxisId="left"
+                      type="monotone" 
+                      dataKey="predictions" 
+                      stroke="#3b82f6" 
+                      fill="#3b82f6" 
+                      fillOpacity={0.3}
+                      name="Predictions"
+                    />
+                    <Line 
+                      yAxisId="right"
+                      type="monotone" 
+                      dataKey="accuracy" 
+                      stroke="#10b981" 
+                      strokeWidth={2}
+                      name="Accuracy %"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+                  No prediction data available
+                </div>
+              )}
             </CardContent>
           </Card>
 
-          {/* Model Usage */}
+          {/* Model Usage Distribution */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <BarChart3 className="h-5 w-5 text-violet-500" />
                 Model Usage Distribution
               </CardTitle>
-              <CardDescription>Prediction requests by model type</CardDescription>
+              <CardDescription>Distribution of AI models by type</CardDescription>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={modelUsage}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={(entry) => `${entry.name}: ${entry.value}%`}
-                    outerRadius={100}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {modelUsage.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
+              {modelUsage.length > 0 ? (
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={modelUsage}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {modelUsage.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+                  No model data available
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
 
-        {/* Active Models & Recent Alerts */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Active Models */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Target className="h-5 w-5 text-green-500" />
-                Active Models
-              </CardTitle>
-              <CardDescription>Currently deployed AI models</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {activeModels.map((model) => (
-                  <div key={model.name} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium">{model.name}</p>
-                        {getStatusBadge(model.status)}
+        {/* Tabs for detailed views */}
+        <Tabs defaultValue="models" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="models">Active Models</TabsTrigger>
+            <TabsTrigger value="alerts">Recent Alerts</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="models" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Active Models</CardTitle>
+                <CardDescription>Current status of all AI models</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {activeModels.length > 0 ? (
+                  <div className="space-y-3">
+                    {activeModels.map((model, idx) => (
+                      <div key={idx} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <Target className="h-5 w-5 text-violet-500" />
+                          <div>
+                            <p className="font-medium">{model.name}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {model.predictions} predictions
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <div className="text-right">
+                            <p className="text-sm text-muted-foreground">Accuracy</p>
+                            <p className="font-semibold">{model.accuracy}%</p>
+                          </div>
+                          {getStatusBadge(model.status)}
+                        </div>
                       </div>
-                      {model.status === "active" && (
-                        <p className="text-sm text-muted-foreground mt-1">
-                          Accuracy: {model.accuracy}% • Predictions: {model.predictions}
-                        </p>
-                      )}
-                    </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                ) : (
+                  <p className="text-center text-muted-foreground py-8">
+                    No active models found
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-          {/* Recent Alerts */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5 text-yellow-500" />
-                Recent Alerts
-              </CardTitle>
-              <CardDescription>Latest system notifications</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {recentAlerts.map((alert) => (
-                  <div key={alert.id} className="flex items-start gap-3 p-3 border rounded-lg">
-                    {getAlertIcon(alert.type)}
-                    <div className="flex-1">
-                      <p className="font-medium">{alert.message}</p>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {alert.model} • {alert.time}
-                      </p>
-                    </div>
+          <TabsContent value="alerts" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Recent Alerts</CardTitle>
+                <CardDescription>Latest system alerts and notifications</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {recentAlerts.length > 0 ? (
+                  <div className="space-y-3">
+                    {recentAlerts.map((alert) => (
+                      <div key={alert.id} className="flex items-start gap-3 p-3 border rounded-lg">
+                        {getAlertIcon(alert.type)}
+                        <div className="flex-1">
+                          <p className="font-medium">{alert.message}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {alert.model} • {alert.time}
+                          </p>
+                        </div>
+                        <Badge variant={alert.type === "critical" ? "destructive" : "secondary"}>
+                          {alert.type}
+                        </Badge>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+                ) : (
+                  <p className="text-center text-muted-foreground py-8">
+                    No recent alerts
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </DashboardLayout>
   );

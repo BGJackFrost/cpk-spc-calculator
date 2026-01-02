@@ -1,0 +1,19 @@
+{
+  "query": "SHOW TABLES LIKE 'predictive_alert%'",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute SHOW TABLES LIKE 'predictive_alert%'",
+  "rows": [
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq (predictive_alert%)": "predictive_alert_adjustment_logs"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq (predictive_alert%)": "predictive_alert_history"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq (predictive_alert%)": "predictive_alert_thresholds"
+    }
+  ],
+  "messages": [],
+  "stdout": "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq (predictive_alert%)\npredictive_alert_adjustment_logs\npredictive_alert_history\npredictive_alert_thresholds\n",
+  "stderr": "",
+  "execution_time_ms": 1547
+}

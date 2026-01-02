@@ -1,4524 +1,3667 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, decimal, json, boolean, bigint } from "drizzle-orm/mysql-core";
-
-/**
- * Core user table backing auth flow.
- */
-export const users = mysqlTable("users", {
-  id: int("id").autoincrement().primaryKey(),
-  openId: varchar("openId", { length: 64 }).notNull().unique(),
-  name: text("name"),
-  email: varchar("email", { length: 320 }),
-  avatar: varchar("avatar", { length: 500 }), // URL ảnh đại diện
-  loginMethod: varchar("loginMethod", { length: 64 }),
-  role: mysqlEnum("role", ["user", "manager", "admin"]).default("user").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-  lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
-});
-
-export type User = typeof users.$inferSelect;
-export type InsertUser = typeof users.$inferInsert;
-
-/**
- * Local users for offline authentication
- */
-export const localUsers = mysqlTable("local_users", {
-  id: int("id").autoincrement().primaryKey(),
-  username: varchar("username", { length: 100 }).notNull().unique(),
-  passwordHash: varchar("passwordHash", { length: 255 }).notNull(),
-  name: text("name"),
-  email: varchar("email", { length: 320 }),
-  avatar: varchar("avatar", { length: 500 }), // URL ảnh đại diện
-  role: mysqlEnum("role", ["user", "manager", "admin"]).default("user").notNull(),
-  isActive: int("isActive").notNull().default(1),
-  mustChangePassword: int("mustChangePassword").notNull().default(1), // Force password change on first login
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-  lastSignedIn: timestamp("lastSignedIn"),
-});
-
-export type LocalUser = typeof localUsers.$inferSelect;
-export type InsertLocalUser = typeof localUsers.$inferInsert;
-
-/**
- * Login history - tracks user login/logout events for audit
- */
-export const loginHistory = mysqlTable("login_history", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(),
-  username: varchar("username", { length: 100 }).notNull(),
-  authType: mysqlEnum("authType", ["local", "manus"]).notNull().default("local"),
-  eventType: mysqlEnum("eventType", ["login", "logout", "login_failed"]).notNull(),
-  ipAddress: varchar("ipAddress", { length: 45 }),
-  userAgent: text("userAgent"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type LoginHistory = typeof loginHistory.$inferSelect;
-export type InsertLoginHistory = typeof loginHistory.$inferInsert;
-
-/**
- * Companies - Công ty
- */
-export const companies = mysqlTable("companies", {
-  id: int("id").autoincrement().primaryKey(),
-  code: varchar("code", { length: 50 }).notNull().unique(),
-  name: varchar("name", { length: 255 }).notNull(),
-  address: text("address"),
-  phone: varchar("phone", { length: 50 }),
-  email: varchar("email", { length: 320 }),
-  taxCode: varchar("taxCode", { length: 50 }),
-  logo: varchar("logo", { length: 500 }),
-  isActive: int("isActive").notNull().default(1),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type Company = typeof companies.$inferSelect;
-export type InsertCompany = typeof companies.$inferInsert;
-
-/**
- * Departments - Phòng ban
- */
-export const departments = mysqlTable("departments", {
-  id: int("id").autoincrement().primaryKey(),
-  companyId: int("companyId").notNull(),
-  code: varchar("code", { length: 50 }).notNull(),
-  name: varchar("name", { length: 255 }).notNull(),
-  description: text("description"),
-  parentId: int("parentId"), // Phòng ban cha (cho cấu trúc cây)
-  managerId: int("managerId"), // Trưởng phòng
-  isActive: int("isActive").notNull().default(1),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type Department = typeof departments.$inferSelect;
-export type InsertDepartment = typeof departments.$inferInsert;
-
-/**
- * Teams - Nhóm/Tổ
- */
-export const teams = mysqlTable("teams", {
-  id: int("id").autoincrement().primaryKey(),
-  departmentId: int("departmentId").notNull(),
-  code: varchar("code", { length: 50 }).notNull(),
-  name: varchar("name", { length: 255 }).notNull(),
-  description: text("description"),
-  leaderId: int("leaderId"), // Trưởng nhóm
-  isActive: int("isActive").notNull().default(1),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type Team = typeof teams.$inferSelect;
-export type InsertTeam = typeof teams.$inferInsert;
-
-/**
- * Positions - Chức vụ
- */
-export const positions = mysqlTable("positions", {
-  id: int("id").autoincrement().primaryKey(),
-  code: varchar("code", { length: 50 }).notNull().unique(),
-  name: varchar("name", { length: 255 }).notNull(),
-  description: text("description"),
-  level: int("level").notNull().default(1), // Cấp bậc (1-10, 1 là cao nhất)
-  canApprove: int("canApprove").notNull().default(0), // Có quyền phê duyệt
-  approvalLimit: decimal("approvalLimit", { precision: 15, scale: 2 }), // Hạn mức phê duyệt (VND)
-  isActive: int("isActive").notNull().default(1),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type Position = typeof positions.$inferSelect;
-export type InsertPosition = typeof positions.$inferInsert;
-
-/**
- * Employee Profiles - Thông tin nhân viên mở rộng
- */
-export const employeeProfiles = mysqlTable("employee_profiles", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull().unique(), // Liên kết với users hoặc localUsers
-  userType: mysqlEnum("userType", ["manus", "local"]).notNull().default("local"),
-  employeeCode: varchar("employeeCode", { length: 50 }).unique(),
-  companyId: int("companyId"),
-  departmentId: int("departmentId"),
-  teamId: int("teamId"),
-  positionId: int("positionId"),
-  managerId: int("managerId"), // Quản lý trực tiếp
-  phone: varchar("phone", { length: 50 }),
-  address: text("address"),
-  dateOfBirth: timestamp("dateOfBirth"),
-  joinDate: timestamp("joinDate"),
-  isActive: int("isActive").notNull().default(1),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type EmployeeProfile = typeof employeeProfiles.$inferSelect;
-export type InsertEmployeeProfile = typeof employeeProfiles.$inferInsert;
-
-/**
- * Approval Workflows - Quy trình phê duyệt
- */
-export const approvalWorkflows = mysqlTable("approval_workflows", {
-  id: int("id").autoincrement().primaryKey(),
-  code: varchar("code", { length: 50 }).notNull().unique(),
-  name: varchar("name", { length: 255 }).notNull(),
-  description: text("description"),
-  entityType: mysqlEnum("entityType", ["purchase_order", "stock_export", "maintenance_request", "leave_request"]).notNull(),
-  isActive: int("isActive").notNull().default(1),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type ApprovalWorkflow = typeof approvalWorkflows.$inferSelect;
-export type InsertApprovalWorkflow = typeof approvalWorkflows.$inferInsert;
-
-/**
- * Approval Steps - Các bước phê duyệt
- */
-export const approvalSteps = mysqlTable("approval_steps", {
-  id: int("id").autoincrement().primaryKey(),
-  workflowId: int("workflowId").notNull(),
-  stepOrder: int("stepOrder").notNull(), // Thứ tự bước
-  name: varchar("name", { length: 255 }).notNull(),
-  approverType: mysqlEnum("approverType", ["position", "user", "manager", "department_head"]).notNull(),
-  approverId: int("approverId"), // ID của position hoặc user tùy theo approverType
-  minAmount: decimal("minAmount", { precision: 15, scale: 2 }), // Giá trị tối thiểu cần bước này
-  maxAmount: decimal("maxAmount", { precision: 15, scale: 2 }), // Giá trị tối đa cần bước này
-  isRequired: int("isRequired").notNull().default(1),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type ApprovalStep = typeof approvalSteps.$inferSelect;
-export type InsertApprovalStep = typeof approvalSteps.$inferInsert;
-
-/**
- * Approval Requests - Yêu cầu phê duyệt
- */
-export const approvalRequests = mysqlTable("approval_requests", {
-  id: int("id").autoincrement().primaryKey(),
-  workflowId: int("workflowId").notNull(),
-  entityType: mysqlEnum("entityType", ["purchase_order", "stock_export", "maintenance_request", "leave_request"]).notNull(),
-  entityId: int("entityId").notNull(), // ID của đơn hàng, phiếu xuất, etc.
-  requesterId: int("requesterId").notNull(), // Người yêu cầu
-  currentStepId: int("currentStepId"), // Bước hiện tại
-  status: mysqlEnum("status", ["pending", "approved", "rejected", "cancelled"]).notNull().default("pending"),
-  totalAmount: decimal("totalAmount", { precision: 15, scale: 2 }),
-  notes: text("notes"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type ApprovalRequest = typeof approvalRequests.$inferSelect;
-export type InsertApprovalRequest = typeof approvalRequests.$inferInsert;
-
-/**
- * Approval Histories - Lịch sử phê duyệt
- */
-export const approvalHistories = mysqlTable("approval_histories", {
-  id: int("id").autoincrement().primaryKey(),
-  requestId: int("requestId").notNull(),
-  stepId: int("stepId").notNull(),
-  approverId: int("approverId").notNull(),
-  action: mysqlEnum("action", ["approved", "rejected", "returned"]).notNull(),
-  comments: text("comments"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type ApprovalHistory = typeof approvalHistories.$inferSelect;
-export type InsertApprovalHistory = typeof approvalHistories.$inferInsert;
-
-/**
- * System Modules - Lưu trữ các module trong hệ thống
- */
-export const systemModules = mysqlTable("system_modules", {
-  id: int("id").autoincrement().primaryKey(),
-  code: varchar("code", { length: 100 }).notNull().unique(),
-  name: varchar("name", { length: 255 }).notNull(),
-  description: text("description"),
-  systemType: mysqlEnum("systemType", ["mms", "spc", "system", "common"]).notNull().default("common"),
-  parentId: int("parentId"), // Hỗ trợ cấu trúc cây module
-  icon: varchar("icon", { length: 100 }),
-  path: varchar("path", { length: 255 }), // Route path
-  sortOrder: int("sortOrder").notNull().default(0),
-  isActive: int("isActive").notNull().default(1),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type SystemModule = typeof systemModules.$inferSelect;
-export type InsertSystemModule = typeof systemModules.$inferInsert;
-
-/**
- * Module Permissions - Các quyền của từng module
- */
-export const modulePermissions = mysqlTable("module_permissions", {
-  id: int("id").autoincrement().primaryKey(),
-  moduleId: int("moduleId").notNull(),
-  code: varchar("code", { length: 100 }).notNull(),
-  name: varchar("name", { length: 255 }).notNull(),
-  description: text("description"),
-  actionType: mysqlEnum("actionType", ["view", "create", "edit", "delete", "export", "import", "approve", "manage"]).notNull().default("view"),
-  isActive: int("isActive").notNull().default(1),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type ModulePermission = typeof modulePermissions.$inferSelect;
-export type InsertModulePermission = typeof modulePermissions.$inferInsert;
-
-/**
- * Role Module Permissions - Gán quyền cho vai trò theo module
- */
-export const roleModulePermissions = mysqlTable("role_module_permissions", {
-  id: int("id").autoincrement().primaryKey(),
-  roleId: int("roleId").notNull(),
-  permissionId: int("permissionId").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type RoleModulePermission = typeof roleModulePermissions.$inferSelect;
-export type InsertRoleModulePermission = typeof roleModulePermissions.$inferInsert;
-
-/**
- * Role templates - predefined permission sets for quick role assignment
- */
-export const roleTemplates = mysqlTable("role_templates", {
-  id: int("id").autoincrement().primaryKey(),
-  code: varchar("code", { length: 100 }).notNull().unique(),
-  name: varchar("name", { length: 255 }).notNull(),
-  description: text("description"),
-  category: mysqlEnum("category", ["production", "quality", "maintenance", "management", "system"]).notNull().default("production"),
-  permissionIds: text("permissionIds").notNull(), // JSON array of permission IDs
-  isDefault: int("isDefault").notNull().default(0), // Built-in templates
-  isActive: int("isActive").notNull().default(1),
-  createdBy: int("createdBy"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type RoleTemplate = typeof roleTemplates.$inferSelect;
-export type InsertRoleTemplate = typeof roleTemplates.$inferInsert;
-
-/**
- * Database connections - stores external database connection strings
- * Supports multiple database types: mysql, sqlserver, oracle, postgres, access, excel
- */
-export const databaseConnections = mysqlTable("database_connections", {
-  id: int("id").autoincrement().primaryKey(),
-  name: varchar("name", { length: 255 }).notNull(),
-  // Database type: mysql, sqlserver, oracle, postgres, access, excel
-  databaseType: varchar("databaseType", { length: 50 }).notNull().default("mysql"),
-  // Connection details (encrypted)
-  host: varchar("host", { length: 255 }),
-  port: int("port"),
-  database: varchar("database", { length: 255 }),
-  username: varchar("username", { length: 255 }),
-  password: text("password"), // encrypted
-  // For file-based databases (Access, Excel)
-  filePath: text("filePath"),
-  // Additional connection options as JSON
-  connectionOptions: text("connectionOptions"),
-  // Legacy connection string (encrypted, for backward compatibility)
-  connectionString: text("connectionString"),
-  description: text("description"),
-  // Connection status
-  lastTestedAt: timestamp("lastTestedAt"),
-  lastTestStatus: varchar("lastTestStatus", { length: 50 }),
-  lastTestError: text("lastTestError"), // Error message if test failed
-  // Default connection flag - only one connection can be default per type
-  isDefault: int("isDefault").notNull().default(0),
-  // Purpose/category of connection
-  purpose: varchar("purpose", { length: 100 }), // e.g., 'spc_data', 'oee_data', 'failover', 'backup'
-  // SSL/TLS settings
-  sslEnabled: int("sslEnabled").notNull().default(0),
-  sslCertPath: text("sslCertPath"),
-  // Connection pool settings
-  maxConnections: int("maxConnections").default(10),
-  connectionTimeout: int("connectionTimeout").default(30000), // milliseconds
-  // Health check settings
-  healthCheckEnabled: int("healthCheckEnabled").notNull().default(1),
-  healthCheckInterval: int("healthCheckInterval").default(60000), // milliseconds
-  isActive: int("isActive").notNull().default(1),
-  createdBy: int("createdBy").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type DatabaseConnection = typeof databaseConnections.$inferSelect;
-export type InsertDatabaseConnection = typeof databaseConnections.$inferInsert;
-
-/**
- * Product-Station Mapping - maps product codes and stations to specific database tables
- */
-export const productStationMappings = mysqlTable("product_station_mappings", {
-  id: int("id").autoincrement().primaryKey(),
-  productCode: varchar("productCode", { length: 100 }).notNull(),
-  stationName: varchar("stationName", { length: 100 }).notNull(),
-  connectionId: int("connectionId").notNull(),
-  tableName: varchar("tableName", { length: 255 }).notNull(),
-  productCodeColumn: varchar("productCodeColumn", { length: 100 }).notNull().default("product_code"),
-  stationColumn: varchar("stationColumn", { length: 100 }).notNull().default("station"),
-  valueColumn: varchar("valueColumn", { length: 100 }).notNull().default("value"),
-  timestampColumn: varchar("timestampColumn", { length: 100 }).notNull().default("timestamp"),
-  usl: int("usl"),
-  lsl: int("lsl"),
-  target: int("target"),
-  filterConditions: text("filterConditions"), // JSON array of filter conditions
-  isActive: int("isActive").notNull().default(1),
-  createdBy: int("createdBy").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type ProductStationMapping = typeof productStationMappings.$inferSelect;
-export type InsertProductStationMapping = typeof productStationMappings.$inferInsert;
-
-/**
- * SPC Analysis History - stores historical SPC/CPK analysis results
- */
-export const spcAnalysisHistory = mysqlTable("spc_analysis_history", {
-  id: int("id").autoincrement().primaryKey(),
-  mappingId: int("mappingId").notNull(),
-  productCode: varchar("productCode", { length: 100 }).notNull(),
-  stationName: varchar("stationName", { length: 100 }).notNull(),
-  startDate: timestamp("startDate").notNull(),
-  endDate: timestamp("endDate").notNull(),
-  sampleCount: int("sampleCount").notNull(),
-  mean: int("mean").notNull(),
-  stdDev: int("stdDev").notNull(),
-  cp: int("cp"),
-  cpk: int("cpk"),
-  ucl: int("ucl"),
-  lcl: int("lcl"),
-  usl: int("usl"),
-  lsl: int("lsl"),
-  alertTriggered: int("alertTriggered").notNull().default(0),
-  llmAnalysis: text("llmAnalysis"),
-  analyzedBy: int("analyzedBy").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type SpcAnalysisHistory = typeof spcAnalysisHistory.$inferSelect;
-export type InsertSpcAnalysisHistory = typeof spcAnalysisHistory.$inferInsert;
-
-/**
- * Alert Settings - configures CPK thresholds for notifications
- */
-export const alertSettings = mysqlTable("alert_settings", {
-  id: int("id").autoincrement().primaryKey(),
-  mappingId: int("mappingId"),
-  cpkWarningThreshold: int("cpkWarningThreshold").notNull().default(133),
-  cpkCriticalThreshold: int("cpkCriticalThreshold").notNull().default(100),
-  notifyOwner: int("notifyOwner").notNull().default(1),
-  isActive: int("isActive").notNull().default(1),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type AlertSetting = typeof alertSettings.$inferSelect;
-export type InsertAlertSetting = typeof alertSettings.$inferInsert;
-
-
-/**
- * Production Lines - dây chuyền sản xuất
- */
-export const productionLines = mysqlTable("production_lines", {
-  id: int("id").autoincrement().primaryKey(),
-  name: varchar("name", { length: 255 }).notNull(),
-  code: varchar("code", { length: 100 }).notNull().unique(),
-  description: text("description"),
-  location: varchar("location", { length: 255 }),
-  imageUrl: varchar("imageUrl", { length: 500 }), // Ảnh dây chuyền
-  // New fields for improved production line management
-  productId: int("productId"), // Sản phẩm sản xuất trên dây chuyền
-  processTemplateId: int("processTemplateId"), // Quy trình sản xuất
-  supervisorId: int("supervisorId"), // Người phụ trách
-  isActive: int("isActive").notNull().default(1),
-  createdBy: int("createdBy").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type ProductionLine = typeof productionLines.$inferSelect;
-export type InsertProductionLine = typeof productionLines.$inferInsert;
-
-/**
- * Workstations - công trạm thuộc dây chuyền
- */
-export const workstations = mysqlTable("workstations", {
-  id: int("id").autoincrement().primaryKey(),
-  productionLineId: int("productionLineId").notNull(),
-  name: varchar("name", { length: 255 }).notNull(),
-  code: varchar("code", { length: 100 }).notNull(),
-  description: text("description"),
-  imageUrl: varchar("imageUrl", { length: 500 }), // Ảnh công trạm
-  sequenceOrder: int("sequenceOrder").notNull().default(0),
-  cycleTime: int("cycleTime"), // in seconds
-  isActive: int("isActive").notNull().default(1),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type Workstation = typeof workstations.$inferSelect;
-export type InsertWorkstation = typeof workstations.$inferInsert;
-
-/**
- * Machines - máy móc thuộc công trạm
- */
-export const machines = mysqlTable("machines", {
-  id: int("id").autoincrement().primaryKey(),
-  workstationId: int("workstationId").notNull(),
-  machineTypeId: int("machineTypeId"), // FK to machine_types
-  name: varchar("name", { length: 255 }).notNull(),
-  code: varchar("code", { length: 100 }).notNull(),
-  machineType: varchar("machineType", { length: 100 }), // Legacy field, use machineTypeId instead
-  manufacturer: varchar("manufacturer", { length: 255 }),
-  model: varchar("model", { length: 255 }),
-  serialNumber: varchar("serialNumber", { length: 255 }),
-  imageUrl: varchar("imageUrl", { length: 500 }), // Ảnh máy
-  installDate: timestamp("installDate"),
-  status: mysqlEnum("status", ["active", "maintenance", "inactive"]).default("active").notNull(),
-  isActive: int("isActive").notNull().default(1),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type Machine = typeof machines.$inferSelect;
-export type InsertMachine = typeof machines.$inferInsert;
-
-/**
- * Machine BOM (Bill of Materials) - Danh sách phụ tùng cần thiết cho máy
- */
-export const machineBom = mysqlTable("machine_bom", {
-  id: int("id").autoincrement().primaryKey(),
-  machineId: int("machineId").notNull(),
-  sparePartId: int("sparePartId").notNull(),
-  quantity: int("quantity").notNull().default(1), // Số lượng cần thiết
-  isRequired: int("isRequired").notNull().default(1), // Bắt buộc hay tùy chọn
-  replacementInterval: int("replacementInterval"), // Chu kỳ thay thế (ngày)
-  notes: text("notes"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type MachineBom = typeof machineBom.$inferSelect;
-export type InsertMachineBom = typeof machineBom.$inferInsert;
-
-/**
- * SPC Rules Configuration - cấu hình các quy tắc kiểm tra SPC
- */
-export const spcRulesConfig = mysqlTable("spc_rules_config", {
-  id: int("id").autoincrement().primaryKey(),
-  mappingId: int("mappingId"),
-  // 8 Western Electric Rules
-  rule1Enabled: int("rule1Enabled").notNull().default(1), // Point beyond 3σ
-  rule2Enabled: int("rule2Enabled").notNull().default(1), // 9 points same side of center
-  rule3Enabled: int("rule3Enabled").notNull().default(1), // 6 points trending up/down
-  rule4Enabled: int("rule4Enabled").notNull().default(1), // 14 points alternating
-  rule5Enabled: int("rule5Enabled").notNull().default(1), // 2 of 3 points beyond 2σ
-  rule6Enabled: int("rule6Enabled").notNull().default(1), // 4 of 5 points beyond 1σ
-  rule7Enabled: int("rule7Enabled").notNull().default(1), // 15 points within 1σ
-  rule8Enabled: int("rule8Enabled").notNull().default(1), // 8 points beyond 1σ both sides
-  // CA Rules
-  caRulesEnabled: int("caRulesEnabled").notNull().default(1),
-  caThreshold: int("caThreshold").notNull().default(100), // CA threshold * 100
-  // CPK Rules
-  cpkExcellent: int("cpkExcellent").notNull().default(167), // >= 1.67
-  cpkGood: int("cpkGood").notNull().default(133), // >= 1.33
-  cpkAcceptable: int("cpkAcceptable").notNull().default(100), // >= 1.00
-  isActive: int("isActive").notNull().default(1),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type SpcRulesConfig = typeof spcRulesConfig.$inferSelect;
-export type InsertSpcRulesConfig = typeof spcRulesConfig.$inferInsert;
-
-/**
- * Sampling Configuration - cấu hình phương thức lấy mẫu
- */
-export const samplingConfigs = mysqlTable("sampling_configs", {
-  id: int("id").autoincrement().primaryKey(),
-  mappingId: int("mappingId"),
-  name: varchar("name", { length: 255 }).notNull(),
-  // Time unit: year, month, week, day, hour, minute, second
-  timeUnit: mysqlEnum("timeUnit", ["year", "month", "week", "day", "hour", "minute", "second"]).notNull().default("hour"),
-  // Sampling frequency
-  sampleSize: int("sampleSize").notNull().default(5), // Number of samples per subgroup
-  subgroupSize: int("subgroupSize").notNull().default(5), // Number of measurements per subgroup
-  intervalValue: int("intervalValue").notNull().default(30), // Interval value
-  intervalUnit: mysqlEnum("intervalUnit", ["year", "month", "week", "day", "hour", "minute", "second"]).notNull().default("minute"),
-  // Auto sampling
-  autoSampling: int("autoSampling").notNull().default(0),
-  isActive: int("isActive").notNull().default(1),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type SamplingConfig = typeof samplingConfigs.$inferSelect;
-export type InsertSamplingConfig = typeof samplingConfigs.$inferInsert;
-
-/**
- * Dashboard Configuration - cấu hình dashboard realtime
- */
-export const dashboardConfigs = mysqlTable("dashboard_configs", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(),
-  name: varchar("name", { length: 255 }).notNull().default("Default Dashboard"),
-  displayCount: int("displayCount").notNull().default(4), // Number of production lines to display
-  refreshInterval: int("refreshInterval").notNull().default(30), // Refresh interval in seconds
-  layout: mysqlEnum("layout", ["grid", "list"]).notNull().default("grid"),
-  isDefault: int("isDefault").notNull().default(0),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type DashboardConfig = typeof dashboardConfigs.$inferSelect;
-export type InsertDashboardConfig = typeof dashboardConfigs.$inferInsert;
-
-/**
- * Dashboard Production Line Selection - dây chuyền được chọn hiển thị trên dashboard
- */
-export const dashboardLineSelections = mysqlTable("dashboard_line_selections", {
-  id: int("id").autoincrement().primaryKey(),
-  dashboardConfigId: int("dashboardConfigId").notNull(),
-  productionLineId: int("productionLineId").notNull(),
-  displayOrder: int("displayOrder").notNull().default(0),
-  showXbarChart: int("showXbarChart").notNull().default(1),
-  showRChart: int("showRChart").notNull().default(1),
-  showCpk: int("showCpk").notNull().default(1),
-  showMean: int("showMean").notNull().default(1),
-  showUclLcl: int("showUclLcl").notNull().default(1),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type DashboardLineSelection = typeof dashboardLineSelections.$inferSelect;
-export type InsertDashboardLineSelection = typeof dashboardLineSelections.$inferInsert;
-
-/**
- * SPC Rule Violations - lưu các vi phạm quy tắc SPC
- */
-export const spcRuleViolations = mysqlTable("spc_rule_violations", {
-  id: int("id").autoincrement().primaryKey(),
-  analysisId: int("analysisId").notNull(),
-  ruleNumber: int("ruleNumber").notNull(), // 1-8 for Western Electric, 9 for CA, 10 for CPK
-  ruleName: varchar("ruleName", { length: 255 }).notNull(),
-  violationDescription: text("violationDescription"),
-  dataPointIndex: int("dataPointIndex"),
-  dataPointValue: int("dataPointValue"),
-  severity: mysqlEnum("severity", ["warning", "critical"]).notNull().default("warning"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type SpcRuleViolation = typeof spcRuleViolations.$inferSelect;
-export type InsertSpcRuleViolation = typeof spcRuleViolations.$inferInsert;
-
-
-/**
- * Products - bảng sản phẩm
- */
-export const products = mysqlTable("products", {
-  id: int("id").autoincrement().primaryKey(),
-  code: varchar("code", { length: 100 }).notNull().unique(),
-  name: varchar("name", { length: 255 }).notNull(),
-  description: text("description"),
-  category: varchar("category", { length: 100 }),
-  unit: varchar("unit", { length: 50 }).default("pcs"),
-  isActive: int("isActive").notNull().default(1),
-  createdBy: int("createdBy").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type Product = typeof products.$inferSelect;
-export type InsertProduct = typeof products.$inferInsert;
-
-/**
- * Product Specifications - tiêu chuẩn USL/LSL cho từng mã sản phẩm và công trạm
- */
-export const productSpecifications = mysqlTable("product_specifications", {
-  id: int("id").autoincrement().primaryKey(),
-  productId: int("productId").notNull(),
-  workstationId: int("workstationId"),
-  parameterName: varchar("parameterName", { length: 255 }).notNull(),
-  usl: int("usl").notNull(), // Upper Specification Limit * 10000 (for precision)
-  lsl: int("lsl").notNull(), // Lower Specification Limit * 10000
-  target: int("target"), // Target value * 10000
-  unit: varchar("unit", { length: 50 }),
-  description: text("description"),
-  isActive: int("isActive").notNull().default(1),
-  createdBy: int("createdBy").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type ProductSpecification = typeof productSpecifications.$inferSelect;
-export type InsertProductSpecification = typeof productSpecifications.$inferInsert;
-
-/**
- * Production Line Products - cấu hình dây chuyền - sản phẩm
- */
-export const productionLineProducts = mysqlTable("production_line_products", {
-  id: int("id").autoincrement().primaryKey(),
-  productionLineId: int("productionLineId").notNull(),
-  productId: int("productId").notNull(),
-  isDefault: int("isDefault").notNull().default(0),
-  cycleTime: int("cycleTime"), // in seconds
-  targetOutput: int("targetOutput"), // per hour
-  isActive: int("isActive").notNull().default(1),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type ProductionLineProduct = typeof productionLineProducts.$inferSelect;
-export type InsertProductionLineProduct = typeof productionLineProducts.$inferInsert;
-
-/**
- * Process Configurations - cấu hình quy trình sản xuất
- */
-export const processConfigs = mysqlTable("process_configs", {
-  id: int("id").autoincrement().primaryKey(),
-  productionLineId: int("productionLineId").notNull(),
-  productId: int("productId").notNull(),
-  workstationId: int("workstationId").notNull(),
-  processName: varchar("processName", { length: 255 }).notNull(),
-  processOrder: int("processOrder").notNull().default(0),
-  standardTime: int("standardTime"), // in seconds
-  description: text("description"),
-  isActive: int("isActive").notNull().default(1),
-  createdBy: int("createdBy").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type ProcessConfig = typeof processConfigs.$inferSelect;
-export type InsertProcessConfig = typeof processConfigs.$inferInsert;
-
-
-/**
- * SPC Sampling Plans - kế hoạch lấy mẫu SPC
- */
-export const spcSamplingPlans = mysqlTable("spc_sampling_plans", {
-  id: int("id").autoincrement().primaryKey(),
-  name: varchar("name", { length: 255 }).notNull(),
-  description: text("description"),
-  productionLineId: int("productionLineId").notNull(),
-  productId: int("productId"),
-  workstationId: int("workstationId"),
-  samplingConfigId: int("samplingConfigId").notNull(),
-  specificationId: int("specificationId"),
-  // Mapping to external database
-  mappingId: int("mappingId"),
-  // Fixture (optional - for fixture-specific SPC)
-  machineId: int("machineId"),
-  fixtureId: int("fixtureId"),
-  // Schedule
-  startTime: timestamp("startTime"),
-  endTime: timestamp("endTime"),
-  isRecurring: int("isRecurring").notNull().default(1),
-  // Status
-  status: mysqlEnum("status", ["draft", "active", "paused", "completed"]).notNull().default("draft"),
-  lastRunAt: timestamp("lastRunAt"),
-  nextRunAt: timestamp("nextRunAt"),
-  // Notification settings
-  notifyOnViolation: int("notifyOnViolation").notNull().default(1),
-  notifyEmail: varchar("notifyEmail", { length: 320 }),
-  // Rules configuration - JSON array of enabled rule IDs
-  enabledSpcRules: text("enabledSpcRules"), // JSON array: [1,2,3,4,5,6,7,8]
-  enabledCaRules: text("enabledCaRules"), // JSON array: [1,2,3,4]
-  enabledCpkRules: text("enabledCpkRules"), // JSON array: [1,2,3,4,5]
-  // Alert threshold integration
-  alertThresholdId: int("alertThresholdId"), // Link to iot_alert_thresholds
-  cpkAlertEnabled: int("cpkAlertEnabled").notNull().default(0),
-  cpkUpperLimit: varchar("cpkUpperLimit", { length: 20 }), // CPK upper threshold
-  cpkLowerLimit: varchar("cpkLowerLimit", { length: 20 }), // CPK lower threshold (e.g., 1.33)
-  // Metadata
-  isActive: int("isActive").notNull().default(1),
-  createdBy: int("createdBy").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type SpcSamplingPlan = typeof spcSamplingPlans.$inferSelect;
-export type InsertSpcSamplingPlan = typeof spcSamplingPlans.$inferInsert;
-
-/**
- * User Line Assignments - gán dây chuyền cho user để hiển thị trên dashboard
- */
-export const userLineAssignments = mysqlTable("user_line_assignments", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(),
-  productionLineId: int("productionLineId").notNull(),
-  displayOrder: int("displayOrder").notNull().default(0),
-  isVisible: int("isVisible").notNull().default(1),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type UserLineAssignment = typeof userLineAssignments.$inferSelect;
-export type InsertUserLineAssignment = typeof userLineAssignments.$inferInsert;
-
-/**
- * SPC Plan Execution Logs - lịch sử chạy kế hoạch SPC
- */
-export const spcPlanExecutionLogs = mysqlTable("spc_plan_execution_logs", {
-  id: int("id").autoincrement().primaryKey(),
-  planId: int("planId").notNull(),
-  executedAt: timestamp("executedAt").defaultNow().notNull(),
-  status: mysqlEnum("status", ["success", "failed", "partial"]).notNull(),
-  sampleCount: int("sampleCount").notNull().default(0),
-  violationCount: int("violationCount").notNull().default(0),
-  cpkValue: int("cpkValue"), // * 100
-  meanValue: int("meanValue"), // * 10000
-  stdDevValue: int("stdDevValue"), // * 10000
-  errorMessage: text("errorMessage"),
-  notificationSent: int("notificationSent").notNull().default(0),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type SpcPlanExecutionLog = typeof spcPlanExecutionLogs.$inferSelect;
-export type InsertSpcPlanExecutionLog = typeof spcPlanExecutionLogs.$inferInsert;
-
-/**
- * Email Notification Settings - cấu hình thông báo email
- */
-export const emailNotificationSettings = mysqlTable("email_notification_settings", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(),
-  email: varchar("email", { length: 320 }).notNull(),
-  notifyOnSpcViolation: int("notifyOnSpcViolation").notNull().default(1),
-  notifyOnCaViolation: int("notifyOnCaViolation").notNull().default(1),
-  notifyOnCpkViolation: int("notifyOnCpkViolation").notNull().default(1),
-  cpkThreshold: int("cpkThreshold").notNull().default(133), // * 100, default 1.33
-  notifyFrequency: mysqlEnum("notifyFrequency", ["immediate", "hourly", "daily"]).notNull().default("immediate"),
-  isActive: int("isActive").notNull().default(1),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type EmailNotificationSetting = typeof emailNotificationSettings.$inferSelect;
-export type InsertEmailNotificationSetting = typeof emailNotificationSettings.$inferInsert;
-
-
-/**
- * SPC Realtime Data - dữ liệu SPC realtime cho dashboard
- */
-export const spcRealtimeData = mysqlTable("spc_realtime_data", {
-  id: int("id").autoincrement().primaryKey(),
-  planId: int("planId").notNull(),
-  productionLineId: int("productionLineId").notNull(),
-  mappingId: int("mappingId"),
-  // Sample data
-  sampleIndex: int("sampleIndex").notNull(),
-  sampleValue: int("sampleValue").notNull(), // * 10000
-  subgroupIndex: int("subgroupIndex").notNull(),
-  subgroupMean: int("subgroupMean"), // * 10000
-  subgroupRange: int("subgroupRange"), // * 10000
-  // Control limits at time of sampling
-  ucl: int("ucl"), // * 10000
-  lcl: int("lcl"), // * 10000
-  usl: int("usl"), // * 10000
-  lsl: int("lsl"), // * 10000
-  centerLine: int("centerLine"), // * 10000
-  // Violation status
-  isOutOfSpec: int("isOutOfSpec").notNull().default(0), // Outside USL/LSL
-  isOutOfControl: int("isOutOfControl").notNull().default(0), // Outside UCL/LCL
-  violatedRules: varchar("violatedRules", { length: 100 }), // Comma-separated rule numbers
-  // Timestamps
-  sampledAt: timestamp("sampledAt").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type SpcRealtimeData = typeof spcRealtimeData.$inferSelect;
-export type InsertSpcRealtimeData = typeof spcRealtimeData.$inferInsert;
-
-/**
- * SPC Summary Statistics - thống kê tổng hợp SPC theo ca/ngày/tuần
- */
-export const spcSummaryStats = mysqlTable("spc_summary_stats", {
-  id: int("id").autoincrement().primaryKey(),
-  planId: int("planId").notNull(),
-  productionLineId: int("productionLineId").notNull(),
-  mappingId: int("mappingId"),
-  // Time period
-  periodType: mysqlEnum("periodType", ["shift", "day", "week", "month"]).notNull(),
-  periodStart: timestamp("periodStart").notNull(),
-  periodEnd: timestamp("periodEnd").notNull(),
-  // Statistics
-  sampleCount: int("sampleCount").notNull().default(0),
-  subgroupCount: int("subgroupCount").notNull().default(0),
-  mean: int("mean"), // * 10000
-  stdDev: int("stdDev"), // * 10000
-  min: int("min"), // * 10000
-  max: int("max"), // * 10000
-  range: int("range"), // * 10000
-  // Process capability
-  cp: int("cp"), // * 1000
-  cpk: int("cpk"), // * 1000
-  pp: int("pp"), // * 1000 (Process Performance)
-  ppk: int("ppk"), // * 1000 (Process Performance Index)
-  ca: int("ca"), // * 1000 (Capability Accuracy)
-  // Control limits
-  xBarUcl: int("xBarUcl"), // * 10000
-  xBarLcl: int("xBarLcl"), // * 10000
-  rUcl: int("rUcl"), // * 10000
-  rLcl: int("rLcl"), // * 10000
-  // Violations
-  outOfSpecCount: int("outOfSpecCount").notNull().default(0),
-  outOfControlCount: int("outOfControlCount").notNull().default(0),
-  rule1Violations: int("rule1Violations").notNull().default(0),
-  rule2Violations: int("rule2Violations").notNull().default(0),
-  rule3Violations: int("rule3Violations").notNull().default(0),
-  rule4Violations: int("rule4Violations").notNull().default(0),
-  rule5Violations: int("rule5Violations").notNull().default(0),
-  rule6Violations: int("rule6Violations").notNull().default(0),
-  rule7Violations: int("rule7Violations").notNull().default(0),
-  rule8Violations: int("rule8Violations").notNull().default(0),
-  // Status
-  overallStatus: mysqlEnum("overallStatus", ["excellent", "good", "acceptable", "needs_improvement", "critical"]).notNull().default("good"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type SpcSummaryStats = typeof spcSummaryStats.$inferSelect;
-export type InsertSpcSummaryStats = typeof spcSummaryStats.$inferInsert;
-
-/**
- * Permissions - định nghĩa các quyền trong hệ thống
- * system: SPC (SPC/CPK System) hoặc MMS (Maintenance Management System)
- * module: dashboard, analyze, settings, spare-parts, maintenance, etc.
- */
-export const permissions = mysqlTable("permissions", {
-  id: int("id").autoincrement().primaryKey(),
-  code: varchar("code", { length: 100 }).notNull().unique(),
-  name: varchar("name", { length: 255 }).notNull(),
-  description: text("description"),
-  system: mysqlEnum("system", ["SPC", "MMS", "COMMON"]).notNull().default("COMMON"), // Hệ thống: SPC, MMS, COMMON
-  module: varchar("module", { length: 100 }).notNull(), // dashboard, analyze, settings, etc.
-  parentId: int("parentId"), // Cho cây quyền
-  sortOrder: int("sortOrder").default(0), // Thứ tự hiển thị
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type Permission = typeof permissions.$inferSelect;
-export type InsertPermission = typeof permissions.$inferInsert;
-
-/**
- * Role Permissions - gán quyền cho vai trò
- */
-export const rolePermissions = mysqlTable("role_permissions", {
-  id: int("id").autoincrement().primaryKey(),
-  role: mysqlEnum("role", ["user", "admin", "operator", "viewer"]).notNull(),
-  permissionId: int("permissionId").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type RolePermission = typeof rolePermissions.$inferSelect;
-export type InsertRolePermission = typeof rolePermissions.$inferInsert;
-
-/**
- * User Permissions - gán quyền đặc biệt cho user (override role)
- */
-export const userPermissions = mysqlTable("user_permissions", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(),
-  permissionId: int("permissionId").notNull(),
-  granted: int("granted").notNull().default(1), // 1 = granted, 0 = denied
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type UserPermission = typeof userPermissions.$inferSelect;
-export type InsertUserPermission = typeof userPermissions.$inferInsert;
-
-/**
- * SMTP Configuration - cấu hình server email
- */
-export const smtpConfig = mysqlTable("smtp_config", {
-  id: int("id").autoincrement().primaryKey(),
-  host: varchar("host", { length: 255 }).notNull(),
-  port: int("port").notNull().default(587),
-  secure: int("secure").notNull().default(0), // 0 = false, 1 = true (TLS)
-  username: varchar("username", { length: 255 }).notNull(),
-  password: varchar("password", { length: 255 }).notNull(),
-  fromEmail: varchar("fromEmail", { length: 320 }).notNull(),
-  fromName: varchar("fromName", { length: 255 }).notNull().default("SPC/CPK Calculator"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type SmtpConfig = typeof smtpConfig.$inferSelect;
-export type InsertSmtpConfig = typeof smtpConfig.$inferInsert;
-
-/**
- * Audit Logs - ghi lại các thao tác quan trọng trong hệ thống
- */
-export const auditLogs = mysqlTable("audit_logs", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(),
-  userName: varchar("userName", { length: 255 }),
-  action: mysqlEnum("action", ["create", "update", "delete", "login", "logout", "export", "analyze", "import", "backup", "restore", "config_change", "permission_change", "license_activate", "license_revoke", "api_access"]).notNull(),
-  module: varchar("module", { length: 100 }).notNull(), // product, mapping, spc, etc.
-  tableName: varchar("tableName", { length: 100 }),
-  recordId: int("recordId"),
-  oldValue: text("oldValue"), // JSON string
-  newValue: text("newValue"), // JSON string
-  description: text("description"),
-  ipAddress: varchar("ipAddress", { length: 45 }),
-  userAgent: text("userAgent"),
-  authType: mysqlEnum("authType", ["local", "online"]).default("online"), // Loại xác thực: local hoặc online
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type AuditLog = typeof auditLogs.$inferSelect;
-export type InsertAuditLog = typeof auditLogs.$inferInsert;
-
-/**
- * System Settings - cấu hình hệ thống
- */
-export const systemSettings = mysqlTable("system_settings", {
-  id: int("id").autoincrement().primaryKey(),
-  key: varchar("key", { length: 100 }).notNull().unique(),
-  value: text("value"),
-  description: text("description"),
-  updatedBy: int("updatedBy"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type SystemSetting = typeof systemSettings.$inferSelect;
-export type InsertSystemSetting = typeof systemSettings.$inferInsert;
-
-
-/**
- * Process Templates - mẫu quy trình sản xuất
- */
-export const processTemplates = mysqlTable("process_templates", {
-  id: int("id").autoincrement().primaryKey(),
-  name: varchar("name", { length: 255 }).notNull(),
-  code: varchar("code", { length: 100 }).notNull().unique(),
-  description: text("description"),
-  imageUrl: varchar("imageUrl", { length: 500 }), // Ảnh quy trình
-  version: varchar("version", { length: 50 }).default("1.0"),
-  isActive: int("isActive").notNull().default(1),
-  createdBy: int("createdBy").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type ProcessTemplate = typeof processTemplates.$inferSelect;
-export type InsertProcessTemplate = typeof processTemplates.$inferInsert;
-
-/**
- * Process Steps - công đoạn trong quy trình
- */
-export const processSteps = mysqlTable("process_steps", {
-  id: int("id").autoincrement().primaryKey(),
-  processTemplateId: int("processTemplateId").notNull(),
-  name: varchar("name", { length: 255 }).notNull(),
-  code: varchar("code", { length: 100 }).notNull(),
-  description: text("description"),
-  sequenceOrder: int("sequenceOrder").notNull().default(1), // Thứ tự công đoạn
-  standardTime: int("standardTime"), // Thời gian tiêu chuẩn (giây)
-  workstationTypeId: int("workstationTypeId"), // Loại công trạm cần thiết
-  isRequired: int("isRequired").notNull().default(1), // Bắt buộc hay không
-  isActive: int("isActive").notNull().default(1),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type ProcessStep = typeof processSteps.$inferSelect;
-export type InsertProcessStep = typeof processSteps.$inferInsert;
-
-/**
- * Process Step Machines - máy móc cho từng công đoạn
- */
-export const processStepMachines = mysqlTable("process_step_machines", {
-  id: int("id").autoincrement().primaryKey(),
-  processStepId: int("processStepId").notNull(),
-  machineTypeId: int("machineTypeId"), // Loại máy cần thiết
-  machineName: varchar("machineName", { length: 255 }).notNull(),
-  machineCode: varchar("machineCode", { length: 100 }),
-  isRequired: int("isRequired").notNull().default(1),
-  quantity: int("quantity").notNull().default(1), // Số lượng máy cần
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type ProcessStepMachine = typeof processStepMachines.$inferSelect;
-export type InsertProcessStepMachine = typeof processStepMachines.$inferInsert;
-
-/**
- * Production Line Machines - máy cụ thể được gán vào dây chuyền
- */
-export const productionLineMachines = mysqlTable("production_line_machines", {
-  id: int("id").autoincrement().primaryKey(),
-  productionLineId: int("productionLineId").notNull(),
-  machineId: int("machineId").notNull(), // Máy cụ thể từ bảng machines
-  processStepId: int("processStepId"), // Công đoạn mà máy này thực hiện
-  assignedAt: timestamp("assignedAt").defaultNow().notNull(),
-  assignedBy: int("assignedBy").notNull(),
-  isActive: int("isActive").notNull().default(1),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type ProductionLineMachine = typeof productionLineMachines.$inferSelect;
-export type InsertProductionLineMachine = typeof productionLineMachines.$inferInsert;
-
-/**
- * User Dashboard Config - cấu hình widget cho từng user
- */
-export const userDashboardConfigs = mysqlTable("user_dashboard_configs", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(),
-  widgetKey: varchar("widgetKey", { length: 100 }).notNull(), // e.g., "mapping_count", "recent_analysis", "cpk_alerts", "system_status"
-  isVisible: int("isVisible").notNull().default(1),
-  displayOrder: int("displayOrder").notNull().default(0),
-  config: text("config"), // JSON config for widget-specific settings
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type UserDashboardConfig = typeof userDashboardConfigs.$inferSelect;
-export type InsertUserDashboardConfig = typeof userDashboardConfigs.$inferInsert;
-
-/**
- * SPC Defect Categories - Danh mục lỗi SPC
- */
-export const spcDefectCategories = mysqlTable("spc_defect_categories", {
-  id: int("id").autoincrement().primaryKey(),
-  code: varchar("code", { length: 50 }).notNull(), // Mã lỗi: DEF001, DEF002...
-  name: varchar("name", { length: 200 }).notNull(), // Tên lỗi
-  description: text("description"), // Mô tả chi tiết
-  category: varchar("category", { length: 100 }), // Nhóm lỗi: Machine, Material, Method, Man, Environment
-  severity: varchar("severity", { length: 20 }).notNull().default("medium"), // low, medium, high, critical
-  isActive: int("isActive").notNull().default(1),
-  createdBy: int("createdBy").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type SpcDefectCategory = typeof spcDefectCategories.$inferSelect;
-export type InsertSpcDefectCategory = typeof spcDefectCategories.$inferInsert;
-
-/**
- * SPC Defect Records - Ghi nhận lỗi SPC
- */
-export const spcDefectRecords = mysqlTable("spc_defect_records", {
-  id: int("id").autoincrement().primaryKey(),
-  defectCategoryId: int("defectCategoryId").notNull(), // FK to spc_defect_categories
-  productionLineId: int("productionLineId"), // Dây chuyền
-  workstationId: int("workstationId"), // Công trạm
-  productId: int("productId"), // Sản phẩm
-  spcAnalysisId: int("spcAnalysisId"), // FK to spc_analysis_history (nếu phát hiện từ phân tích SPC)
-  ruleViolated: varchar("ruleViolated", { length: 100 }), // Rule vi phạm: Rule1, Rule2... hoặc CPK, CA
-  quantity: int("quantity").notNull().default(1), // Số lượng lỗi
-  notes: text("notes"), // Ghi chú
-  occurredAt: timestamp("occurredAt").notNull(), // Thời điểm xảy ra lỗi
-  reportedBy: int("reportedBy").notNull(), // Người báo cáo
-  status: varchar("status", { length: 20 }).notNull().default("open"), // open, investigating, resolved, closed
-  resolvedAt: timestamp("resolvedAt"), // Thời điểm giải quyết
-  resolvedBy: int("resolvedBy"), // Người giải quyết
-  rootCause: text("rootCause"), // Nguyên nhân gốc
-  correctiveAction: text("correctiveAction"), // Hành động khắc phục
-  
-  // NTF (Not True Fail) verification
-  verificationStatus: mysqlEnum("verificationStatus", ["pending", "real_ng", "ntf"]).default("pending"), // pending: chưa xác nhận, real_ng: lỗi thật, ntf: không phải lỗi thật
-  verifiedAt: timestamp("verifiedAt"), // Thời điểm xác nhận
-  verifiedBy: int("verifiedBy"), // Người xác nhận
-  verificationNotes: text("verificationNotes"), // Ghi chú xác nhận
-  ntfReason: varchar("ntfReason", { length: 200 }), // Lý do NTF: sensor_error, false_detection, calibration_issue, etc.
-  
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type SpcDefectRecord = typeof spcDefectRecords.$inferSelect;
-export type InsertSpcDefectRecord = typeof spcDefectRecords.$inferInsert;
-
-/**
- * Machine Types - Loại máy (SMT, AOI, Reflow, etc.)
- */
-export const machineTypes = mysqlTable("machine_types", {
-  id: int("id").autoincrement().primaryKey(),
-  code: varchar("code", { length: 50 }).notNull(), // Mã loại máy: SMT, AOI, REFLOW...
-  name: varchar("name", { length: 200 }).notNull(), // Tên loại máy
-  description: text("description"), // Mô tả
-  category: varchar("category", { length: 100 }), // Nhóm: Assembly, Inspection, Soldering...
-  isActive: int("isActive").notNull().default(1),
-  createdBy: int("createdBy").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type MachineType = typeof machineTypes.$inferSelect;
-export type InsertMachineType = typeof machineTypes.$inferInsert;
-
-/**
- * Fixtures - Fixture thuộc máy
- */
-export const fixtures = mysqlTable("fixtures", {
-  id: int("id").autoincrement().primaryKey(),
-  machineId: int("machineId").notNull(), // FK to machines
-  code: varchar("code", { length: 50 }).notNull(), // Mã fixture: FIX001, FIX002...
-  name: varchar("name", { length: 200 }).notNull(), // Tên fixture
-  description: text("description"), // Mô tả
-  imageUrl: varchar("imageUrl", { length: 500 }), // Ảnh fixture
-  position: int("position").notNull().default(1), // Vị trí trên máy
-  status: mysqlEnum("status", ["active", "maintenance", "inactive"]).default("active").notNull(),
-  installDate: timestamp("installDate"),
-  lastMaintenanceDate: timestamp("lastMaintenanceDate"),
-  isActive: int("isActive").notNull().default(1),
-  createdBy: int("createdBy").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type Fixture = typeof fixtures.$inferSelect;
-export type InsertFixture = typeof fixtures.$inferInsert;
-
-
-/**
- * SPC Rules - Quản lý các quy tắc SPC (Western Electric Rules)
- */
-export const spcRules = mysqlTable("spc_rules", {
-  id: int("id").autoincrement().primaryKey(),
-  code: varchar("code", { length: 50 }).notNull().unique(), // RULE1, RULE2, ...
-  name: varchar("name", { length: 200 }).notNull(),
-  description: text("description"), // Mô tả chi tiết rule
-  category: varchar("category", { length: 100 }).notNull().default("western_electric"), // western_electric, nelson, etc.
-  formula: text("formula"), // Công thức/điều kiện
-  example: text("example"), // Ví dụ minh họa
-  severity: mysqlEnum("severity", ["warning", "critical"]).default("warning").notNull(),
-  threshold: int("threshold"), // Ngưỡng (nếu có)
-  consecutivePoints: int("consecutivePoints"), // Số điểm liên tiếp
-  sigmaLevel: int("sigmaLevel"), // Mức sigma (1, 2, 3)
-  isEnabled: int("isEnabled").notNull().default(1),
-  sortOrder: int("sortOrder").notNull().default(0),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type SpcRule = typeof spcRules.$inferSelect;
-export type InsertSpcRule = typeof spcRules.$inferInsert;
-
-/**
- * CA Rules - Quản lý các quy tắc Control Analysis
- */
-export const caRules = mysqlTable("ca_rules", {
-  id: int("id").autoincrement().primaryKey(),
-  code: varchar("code", { length: 50 }).notNull().unique(), // CA1, CA2, ...
-  name: varchar("name", { length: 200 }).notNull(),
-  description: text("description"),
-  formula: text("formula"),
-  example: text("example"),
-  severity: mysqlEnum("severity", ["warning", "critical"]).default("warning").notNull(),
-  minValue: int("minValue"), // Giá trị min (nhân 1000)
-  maxValue: int("maxValue"), // Giá trị max (nhân 1000)
-  isEnabled: int("isEnabled").notNull().default(1),
-  sortOrder: int("sortOrder").notNull().default(0),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type CaRule = typeof caRules.$inferSelect;
-export type InsertCaRule = typeof caRules.$inferInsert;
-
-/**
- * CPK Rules - Quản lý các quy tắc CPK/Process Capability
- */
-export const cpkRules = mysqlTable("cpk_rules", {
-  id: int("id").autoincrement().primaryKey(),
-  code: varchar("code", { length: 50 }).notNull().unique(), // CPK_EXCELLENT, CPK_GOOD, ...
-  name: varchar("name", { length: 200 }).notNull(),
-  description: text("description"),
-  minCpk: int("minCpk"), // Giá trị CPK min (nhân 1000, vd: 1330 = 1.33)
-  maxCpk: int("maxCpk"), // Giá trị CPK max (nhân 1000)
-  status: varchar("status", { length: 50 }).notNull(), // excellent, good, acceptable, poor, unacceptable
-  color: varchar("color", { length: 20 }), // Màu hiển thị: green, yellow, orange, red
-  action: text("action"), // Hành động khuyến nghị
-  severity: mysqlEnum("severity", ["info", "warning", "critical"]).default("info").notNull(),
-  isEnabled: int("isEnabled").notNull().default(1),
-  sortOrder: int("sortOrder").notNull().default(0),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type CpkRule = typeof cpkRules.$inferSelect;
-export type InsertCpkRule = typeof cpkRules.$inferInsert;
-
-
-/**
- * Mapping Templates - các mẫu mapping phổ biến
- */
-export const mappingTemplates = mysqlTable("mapping_templates", {
-  id: int("id").autoincrement().primaryKey(),
-  name: varchar("name", { length: 255 }).notNull(),
-  description: text("description"),
-  category: varchar("category", { length: 100 }), // SMT, Assembly, Testing, etc.
-  tableName: varchar("tableName", { length: 255 }),
-  productCodeColumn: varchar("productCodeColumn", { length: 255 }).default("product_code"),
-  stationColumn: varchar("stationColumn", { length: 255 }).default("station"),
-  valueColumn: varchar("valueColumn", { length: 255 }).default("value"),
-  timestampColumn: varchar("timestampColumn", { length: 255 }).default("timestamp"),
-  defaultUsl: int("defaultUsl"),
-  defaultLsl: int("defaultLsl"),
-  defaultTarget: int("defaultTarget"),
-  filterConditions: text("filterConditions"), // JSON array of default filter conditions
-  isActive: int("isActive").notNull().default(1),
-  createdBy: int("createdBy"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type MappingTemplate = typeof mappingTemplates.$inferSelect;
-export type InsertMappingTemplate = typeof mappingTemplates.$inferInsert;
-
-
-/**
- * Licenses - quản lý license và kích hoạt hệ thống
- */
-export const licenses = mysqlTable("licenses", {
-  id: int("id").autoincrement().primaryKey(),
-  licenseKey: varchar("licenseKey", { length: 255 }).notNull().unique(),
-  licenseType: mysqlEnum("licenseType", ["trial", "standard", "professional", "enterprise"]).notNull().default("trial"),
-  licenseStatus: mysqlEnum("licenseStatus", ["pending", "active", "expired", "revoked"]).notNull().default("pending"),
-  companyName: varchar("companyName", { length: 255 }),
-  contactEmail: varchar("contactEmail", { length: 320 }),
-  maxUsers: int("maxUsers").notNull().default(5),
-  maxProductionLines: int("maxProductionLines").notNull().default(3),
-  maxSpcPlans: int("maxSpcPlans").notNull().default(10),
-  features: text("features"), // JSON array of enabled features
-  systems: text("systems"), // JSON array of enabled systems: ["spc", "mms", "production", "license", "system"]
-  systemFeatures: text("systemFeatures"), // JSON object: { "spc": ["realtime", "ai", "analytics"], "mms": ["predictive", "spare_parts"] }
-  issuedAt: timestamp("issuedAt").defaultNow().notNull(),
-  expiresAt: timestamp("expiresAt"),
-  activatedAt: timestamp("activatedAt"),
-  activatedBy: int("activatedBy"),
-  isActive: int("isActive").notNull().default(0),
-  hardwareFingerprint: varchar("hardwareFingerprint", { length: 64 }), // For hardware binding
-  offlineLicenseFile: text("offlineLicenseFile"), // Base64 encoded offline license
-  activationMode: mysqlEnum("activationMode", ["online", "offline", "hybrid"]).default("online"),
-  lastValidatedAt: timestamp("lastValidatedAt"), // Last online validation
-  price: decimal("price", { precision: 15, scale: 2 }), // Giá tiền license (VND)
-  currency: varchar("currency", { length: 3 }).default("VND"), // Mã tiền tệ
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type License = typeof licenses.$inferSelect;
-export type InsertLicense = typeof licenses.$inferInsert;
-
-/**
- * License Heartbeats - logs periodic license validation checks
- */
-export const licenseHeartbeats = mysqlTable("license_heartbeats", {
-  id: int("id").autoincrement().primaryKey(),
-  licenseKey: varchar("licenseKey", { length: 255 }).notNull(),
-  hardwareFingerprint: varchar("hardwareFingerprint", { length: 64 }),
-  hostname: varchar("hostname", { length: 255 }),
-  platform: varchar("platform", { length: 100 }),
-  activeUsers: int("activeUsers"),
-  ipAddress: varchar("ipAddress", { length: 45 }),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type LicenseHeartbeat = typeof licenseHeartbeats.$inferSelect;
-export type InsertLicenseHeartbeat = typeof licenseHeartbeats.$inferInsert;
-
-/**
- * License Customers - stores customer information for vendor management
- */
-export const licenseCustomers = mysqlTable("license_customers", {
-  id: int("id").autoincrement().primaryKey(),
-  companyName: varchar("companyName", { length: 255 }).notNull(),
-  contactName: varchar("contactName", { length: 255 }),
-  contactEmail: varchar("contactEmail", { length: 320 }),
-  contactPhone: varchar("contactPhone", { length: 50 }),
-  address: text("address"),
-  industry: varchar("industry", { length: 100 }),
-  notes: text("notes"),
-  isActive: int("isActive").notNull().default(1),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type LicenseCustomer = typeof licenseCustomers.$inferSelect;
-export type InsertLicenseCustomer = typeof licenseCustomers.$inferInsert;
-
-
-/**
- * Webhooks - stores webhook configurations for notifications
- */
-export const webhooks = mysqlTable("webhooks", {
-  id: int("id").autoincrement().primaryKey(),
-  name: varchar("name", { length: 255 }).notNull(),
-  url: text("url").notNull(),
-  webhookType: mysqlEnum("webhookType", ["slack", "teams", "custom"]).notNull().default("custom"),
-  secret: varchar("secret", { length: 255 }),
-  headers: text("headers"), // JSON object of custom headers
-  events: text("events").notNull(), // JSON array of event types: cpk_alert, rule_violation, analysis_complete
-  isActive: int("isActive").notNull().default(1),
-  triggerCount: int("triggerCount").notNull().default(0),
-  lastTriggeredAt: timestamp("lastTriggeredAt"),
-  lastError: text("lastError"),
-  createdBy: int("createdBy").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type Webhook = typeof webhooks.$inferSelect;
-export type InsertWebhook = typeof webhooks.$inferInsert;
-
-/**
- * Webhook logs - stores webhook delivery logs
- */
-export const webhookLogs = mysqlTable("webhook_logs", {
-  id: int("id").autoincrement().primaryKey(),
-  webhookId: int("webhookId").notNull(),
-  eventType: varchar("eventType", { length: 50 }).notNull(),
-  payload: text("payload").notNull(), // JSON payload sent
-  responseStatus: int("responseStatus"),
-  responseBody: text("responseBody"),
-  success: int("success").notNull().default(0),
-  errorMessage: text("errorMessage"),
-  sentAt: timestamp("sentAt").defaultNow().notNull(),
-  // Retry mechanism fields
-  retryCount: int("retryCount").notNull().default(0),
-  maxRetries: int("maxRetries").notNull().default(5),
-  nextRetryAt: timestamp("nextRetryAt"),
-  lastRetryAt: timestamp("lastRetryAt"),
-  retryStatus: varchar("retryStatus", { length: 20 }).default("none"), // none, pending, exhausted
-});
-
-export type WebhookLog = typeof webhookLogs.$inferSelect;
-export type InsertWebhookLog = typeof webhookLogs.$inferInsert;
-
-
-/**
- * Report Templates - mẫu báo cáo tùy chỉnh
- */
-export const reportTemplates = mysqlTable("report_templates", {
-  id: int("id").autoincrement().primaryKey(),
-  name: varchar("name", { length: 255 }).notNull(),
-  description: text("description"),
-  // Header settings
-  companyName: varchar("companyName", { length: 255 }),
-  companyLogo: text("companyLogo"), // URL hoặc base64
-  headerText: text("headerText"),
-  footerText: text("footerText"),
-  // Style settings
-  primaryColor: varchar("primaryColor", { length: 20 }).default("#3b82f6"),
-  secondaryColor: varchar("secondaryColor", { length: 20 }).default("#64748b"),
-  fontFamily: varchar("fontFamily", { length: 100 }).default("Arial"),
-  // Content settings
-  showLogo: int("showLogo").notNull().default(1),
-  showCompanyName: int("showCompanyName").notNull().default(1),
-  showDate: int("showDate").notNull().default(1),
-  showCharts: int("showCharts").notNull().default(1),
-  showRawData: int("showRawData").notNull().default(0),
-  // Status
-  isDefault: int("isDefault").notNull().default(0),
-  isActive: int("isActive").notNull().default(1),
-  createdBy: int("createdBy"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type ReportTemplate = typeof reportTemplates.$inferSelect;
-export type InsertReportTemplate = typeof reportTemplates.$inferInsert;
-
-
-/**
- * Export History - lịch sử xuất báo cáo
- */
-export const exportHistory = mysqlTable("export_history", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(),
-  exportType: varchar("exportType", { length: 20 }).notNull(), // 'pdf' | 'excel'
-  productCode: varchar("productCode", { length: 100 }),
-  stationName: varchar("stationName", { length: 255 }),
-  analysisType: varchar("analysisType", { length: 50 }), // 'single' | 'batch' | 'spcplan'
-  startDate: timestamp("startDate"),
-  endDate: timestamp("endDate"),
-  // SPC Result summary
-  sampleCount: int("sampleCount"),
-  mean: int("mean"), // * 10000 for precision
-  cpk: int("cpk"), // * 10000 for precision
-  // File info
-  fileName: varchar("fileName", { length: 255 }).notNull(),
-  fileUrl: text("fileUrl"), // S3 URL if stored
-  fileSize: int("fileSize"), // bytes
-  // Metadata
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type ExportHistory = typeof exportHistory.$inferSelect;
-export type InsertExportHistory = typeof exportHistory.$inferInsert;
-
-
-/**
- * System Configuration - stores system setup and configuration
- */
-export const systemConfig = mysqlTable("system_config", {
-  id: int("id").autoincrement().primaryKey(),
-  configKey: varchar("configKey", { length: 100 }).notNull().unique(),
-  configValue: text("configValue"),
-  configType: varchar("configType", { length: 50 }).notNull().default("string"), // string, number, boolean, json
-  description: text("description"),
-  isEncrypted: int("isEncrypted").notNull().default(0), // For sensitive data
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type SystemConfig = typeof systemConfig.$inferSelect;
-export type InsertSystemConfig = typeof systemConfig.$inferInsert;
-
-/**
- * Company Info - stores customer/company information
- */
-export const companyInfo = mysqlTable("company_info", {
-  id: int("id").autoincrement().primaryKey(),
-  companyName: varchar("companyName", { length: 255 }).notNull(),
-  companyCode: varchar("companyCode", { length: 50 }),
-  address: text("address"),
-  phone: varchar("phone", { length: 50 }),
-  email: varchar("email", { length: 320 }),
-  website: varchar("website", { length: 255 }),
-  taxCode: varchar("taxCode", { length: 50 }),
-  logo: text("logo"), // Base64 or URL
-  industry: varchar("industry", { length: 100 }), // Manufacturing, Electronics, etc.
-  contactPerson: varchar("contactPerson", { length: 255 }),
-  contactPhone: varchar("contactPhone", { length: 50 }),
-  contactEmail: varchar("contactEmail", { length: 320 }),
-  notes: text("notes"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type CompanyInfo = typeof companyInfo.$inferSelect;
-export type InsertCompanyInfo = typeof companyInfo.$inferInsert;
-
-
-/**
- * Database Backups - stores backup history and metadata
- */
-export const databaseBackups = mysqlTable("database_backups", {
-  id: int("id").autoincrement().primaryKey(),
-  filename: varchar("filename", { length: 255 }).notNull(),
-  fileSize: int("fileSize"), // Size in bytes
-  fileUrl: text("fileUrl"), // S3 URL or local path
-  backupType: mysqlEnum("backupType", ["daily", "weekly", "manual"]).notNull().default("manual"),
-  status: mysqlEnum("status", ["pending", "completed", "failed"]).notNull().default("pending"),
-  errorMessage: text("errorMessage"),
-  storageLocation: mysqlEnum("storageLocation", ["s3", "local"]).notNull().default("s3"),
-  tablesIncluded: text("tablesIncluded"), // JSON array of table names
-  createdBy: int("createdBy"), // null for automated backups
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  completedAt: timestamp("completedAt"),
-});
-
-export type DatabaseBackup = typeof databaseBackups.$inferSelect;
-export type InsertDatabaseBackup = typeof databaseBackups.$inferInsert;
-
-
-/**
- * Jigs - Đồ gá thuộc máy
- */
-export const jigs = mysqlTable("jigs", {
-  id: int("id").autoincrement().primaryKey(),
-  machineId: int("machineId").notNull(), // FK to machines
-  code: varchar("code", { length: 50 }).notNull(), // Mã jig: JIG001, JIG002...
-  name: varchar("name", { length: 200 }).notNull(), // Tên jig
-  description: text("description"), // Mô tả
-  imageUrl: varchar("imageUrl", { length: 500 }), // Ảnh jig
-  position: int("position").notNull().default(1), // Vị trí trên máy
-  status: mysqlEnum("status", ["active", "maintenance", "inactive"]).default("active").notNull(),
-  installDate: timestamp("installDate"),
-  lastMaintenanceDate: timestamp("lastMaintenanceDate"),
-  isActive: int("isActive").notNull().default(1),
-  createdBy: int("createdBy").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type Jig = typeof jigs.$inferSelect;
-export type InsertJig = typeof jigs.$inferInsert;
-
-/**
- * Product Station Machine Standards - Tiêu chuẩn đo theo Sản phẩm-Công trạm-Máy
- * Mỗi sản phẩm tại các công trạm và máy khác nhau có tiêu chuẩn đo, phương pháp lấy mẫu, SPC Rule khác nhau
- */
-export const productStationMachineStandards = mysqlTable("product_station_machine_standards", {
-  id: int("id").autoincrement().primaryKey(),
-  productId: int("productId").notNull(), // FK to products
-  workstationId: int("workstationId").notNull(), // FK to workstations
-  machineId: int("machineId"), // FK to machines (optional, null = all machines)
-  
-  // Tiêu chuẩn đo
-  measurementName: varchar("measurementName", { length: 255 }).notNull(), // Tên phép đo
-  usl: int("usl"), // Upper Specification Limit * 10000
-  lsl: int("lsl"), // Lower Specification Limit * 10000
-  target: int("target"), // Target value * 10000
-  unit: varchar("unit", { length: 50 }).default("mm"), // Đơn vị đo
-  
-  // Phương pháp lấy mẫu
-  sampleSize: int("sampleSize").notNull().default(5), // Số mẫu mỗi lần lấy
-  sampleFrequency: int("sampleFrequency").notNull().default(60), // Tần suất lấy mẫu (phút)
-  samplingMethod: varchar("samplingMethod", { length: 100 }).default("random"), // random, systematic, stratified
-  
-  // SPC Rules được áp dụng (JSON array of rule IDs)
-  appliedSpcRules: text("appliedSpcRules"), // ["RULE1", "RULE2", ...]
-  appliedCpkRules: text("appliedCpkRules"), // ["CPK1", "CPK2", ...] - CPK Rules
-  appliedCaRules: text("appliedCaRules"), // ["CA1", "CA2", ...] - CA Rules
-  
-  // CPK thresholds
-  cpkWarningThreshold: int("cpkWarningThreshold").default(133), // 1.33 * 100
-  cpkCriticalThreshold: int("cpkCriticalThreshold").default(100), // 1.00 * 100
-  
-  // Metadata
-  notes: text("notes"),
-  isActive: int("isActive").notNull().default(1),
-  createdBy: int("createdBy").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type ProductStationMachineStandard = typeof productStationMachineStandards.$inferSelect;
-export type InsertProductStationMachineStandard = typeof productStationMachineStandards.$inferInsert;
-
-
-/**
- * Custom Validation Rules - Quy tắc kiểm tra tùy chỉnh cho từng sản phẩm
- */
-export const customValidationRules = mysqlTable("custom_validation_rules", {
-  id: int("id").autoincrement().primaryKey(),
-  name: varchar("name", { length: 200 }).notNull(),
-  description: text("description"),
-  productId: int("productId"), // Null = áp dụng cho tất cả sản phẩm
-  workstationId: int("workstationId"), // Null = áp dụng cho tất cả công trạm
-  ruleType: mysqlEnum("ruleType", [
-    "range_check",      // Kiểm tra giá trị trong khoảng
-    "trend_check",      // Kiểm tra xu hướng
-    "pattern_check",    // Kiểm tra mẫu
-    "comparison_check", // So sánh với giá trị khác
-    "formula_check",    // Kiểm tra theo công thức
-    "custom_script"     // Script tùy chỉnh
-  ]).notNull().default("range_check"),
-  // Cấu hình quy tắc (JSON)
-  ruleConfig: text("ruleConfig"), // JSON: { minValue, maxValue, formula, script, etc. }
-  // Hành động khi vi phạm
-  actionOnViolation: mysqlEnum("actionOnViolation", [
-    "warning",    // Cảnh báo
-    "alert",      // Gửi thông báo
-    "reject",     // Từ chối dữ liệu
-    "log_only"    // Chỉ ghi log
-  ]).notNull().default("warning"),
-  // Mức độ nghiêm trọng
-  severity: mysqlEnum("severity", ["low", "medium", "high", "critical"]).notNull().default("medium"),
-  // Thông báo khi vi phạm
-  violationMessage: text("violationMessage"),
-  // Trạng thái
-  isActive: int("isActive").notNull().default(1),
-  // Thứ tự ưu tiên (số nhỏ = ưu tiên cao)
-  priority: int("priority").notNull().default(100),
-  // Metadata
-  createdBy: int("createdBy").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type CustomValidationRule = typeof customValidationRules.$inferSelect;
-export type InsertCustomValidationRule = typeof customValidationRules.$inferInsert;
-
-/**
- * Validation Rule Execution Log - Lịch sử thực thi quy tắc kiểm tra
- */
-export const validationRuleLogs = mysqlTable("validation_rule_logs", {
-  id: int("id").autoincrement().primaryKey(),
-  ruleId: int("ruleId").notNull(),
-  productId: int("productId"),
-  workstationId: int("workstationId"),
-  machineId: int("machineId"),
-  // Dữ liệu được kiểm tra
-  inputValue: varchar("inputValue", { length: 500 }),
-  // Kết quả
-  passed: int("passed").notNull().default(1), // 1 = pass, 0 = fail
-  violationDetails: text("violationDetails"), // Chi tiết vi phạm nếu có
-  actionTaken: varchar("actionTaken", { length: 100 }),
-  // Metadata
-  executedAt: timestamp("executedAt").defaultNow().notNull(),
-  executedBy: int("executedBy"),
-});
-
-export type ValidationRuleLog = typeof validationRuleLogs.$inferSelect;
-export type InsertValidationRuleLog = typeof validationRuleLogs.$inferInsert;
-
-/**
- * Realtime Machine Connections - cấu hình kết nối máy realtime
- */
-export const realtimeMachineConnections = mysqlTable("realtime_machine_connections", {
-  id: int("id").autoincrement().primaryKey(),
-  machineId: int("machineId").notNull(),
-  connectionType: mysqlEnum("connectionType", ["database", "opcua", "api", "file", "mqtt"]).notNull(),
-  connectionConfig: text("connectionConfig"), // JSON config
-  pollingIntervalMs: int("pollingIntervalMs").notNull().default(1000),
-  dataQuery: text("dataQuery"), // SQL query hoặc config để lấy dữ liệu
-  measurementColumn: varchar("measurementColumn", { length: 100 }),
-  timestampColumn: varchar("timestampColumn", { length: 100 }),
-  lastDataAt: timestamp("lastDataAt"),
-  lastError: text("lastError"),
-  isActive: int("isActive").notNull().default(1),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type RealtimeMachineConnection = typeof realtimeMachineConnections.$inferSelect;
-export type InsertRealtimeMachineConnection = typeof realtimeMachineConnections.$inferInsert;
-
-/**
- * Realtime Data Buffer - buffer dữ liệu realtime
- */
-export const realtimeDataBuffer = mysqlTable("realtime_data_buffer", {
-  id: int("id").autoincrement().primaryKey(),
-  connectionId: int("connectionId").notNull(),
-  machineId: int("machineId").notNull(),
-  measurementName: varchar("measurementName", { length: 100 }).notNull(),
-  value: int("value").notNull(), // * 10000
-  sampledAt: timestamp("sampledAt").notNull(),
-  processedAt: timestamp("processedAt").defaultNow().notNull(),
-  // SPC calculations
-  subgroupIndex: int("subgroupIndex"),
-  subgroupMean: int("subgroupMean"), // * 10000
-  subgroupRange: int("subgroupRange"), // * 10000
-  ucl: int("ucl"), // * 10000
-  lcl: int("lcl"), // * 10000
-  isOutOfSpec: int("isOutOfSpec").notNull().default(0),
-  isOutOfControl: int("isOutOfControl").notNull().default(0),
-  violatedRules: varchar("violatedRules", { length: 50 }),
-});
-
-export type RealtimeDataBuffer = typeof realtimeDataBuffer.$inferSelect;
-export type InsertRealtimeDataBuffer = typeof realtimeDataBuffer.$inferInsert;
-
-/**
- * Realtime Alerts - cảnh báo realtime
- */
-export const realtimeAlerts = mysqlTable("realtime_alerts", {
-  id: int("id").autoincrement().primaryKey(),
-  connectionId: int("connectionId").notNull(),
-  machineId: int("machineId").notNull(),
-  alertType: mysqlEnum("alertType", ["out_of_spec", "out_of_control", "rule_violation", "connection_lost"]).notNull(),
-  severity: mysqlEnum("severity", ["warning", "critical"]).notNull(),
-  message: text("message"),
-  ruleNumber: int("ruleNumber"),
-  value: int("value"), // * 10000
-  threshold: int("threshold"), // * 10000
-  acknowledgedAt: timestamp("acknowledgedAt"),
-  acknowledgedBy: int("acknowledgedBy"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type RealtimeAlert = typeof realtimeAlerts.$inferSelect;
-export type InsertRealtimeAlert = typeof realtimeAlerts.$inferInsert;
-
-
-/**
- * Alarm Thresholds - cấu hình ngưỡng alarm cho từng máy/fixture
- */
-export const alarmThresholds = mysqlTable("alarm_thresholds", {
-  id: int("id").autoincrement().primaryKey(),
-  machineId: int("machineId"),
-  fixtureId: int("fixtureId"),
-  measurementName: varchar("measurementName", { length: 100 }),
-  // Ngưỡng cảnh báo (warning)
-  warningUsl: int("warningUsl"), // * 10000
-  warningLsl: int("warningLsl"), // * 10000
-  warningCpkMin: int("warningCpkMin"), // * 10000 (e.g., 1.33 = 13300)
-  // Ngưỡng nghiêm trọng (critical)
-  criticalUsl: int("criticalUsl"), // * 10000
-  criticalLsl: int("criticalLsl"), // * 10000
-  criticalCpkMin: int("criticalCpkMin"), // * 10000 (e.g., 1.0 = 10000)
-  // SPC Rules
-  enableSpcRules: int("enableSpcRules").notNull().default(1),
-  spcRuleSeverity: mysqlEnum("spcRuleSeverity", ["warning", "critical"]).default("warning"),
-  // Thông báo
-  enableSound: int("enableSound").notNull().default(1),
-  enableEmail: int("enableEmail").notNull().default(0),
-  emailRecipients: text("emailRecipients"), // JSON array of emails
-  // Escalation
-  escalationDelayMinutes: int("escalationDelayMinutes").default(5),
-  escalationEmails: text("escalationEmails"), // JSON array of emails for escalation
-  // Metadata
-  isActive: int("isActive").notNull().default(1),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type AlarmThreshold = typeof alarmThresholds.$inferSelect;
-export type InsertAlarmThreshold = typeof alarmThresholds.$inferInsert;
-
-/**
- * Machine Online Status - trạng thái online của máy
- */
-export const machineOnlineStatus = mysqlTable("machine_online_status", {
-  id: int("id").autoincrement().primaryKey(),
-  machineId: int("machineId").notNull().unique(),
-  connectionId: int("connectionId"),
-  isOnline: int("isOnline").notNull().default(0),
-  lastHeartbeat: timestamp("lastHeartbeat"),
-  lastDataReceived: timestamp("lastDataReceived"),
-  currentCpk: int("currentCpk"), // * 10000
-  currentMean: int("currentMean"), // * 10000
-  activeAlarmCount: int("activeAlarmCount").notNull().default(0),
-  warningCount: int("warningCount").notNull().default(0),
-  criticalCount: int("criticalCount").notNull().default(0),
-  status: mysqlEnum("status", ["idle", "running", "warning", "critical", "offline"]).default("offline"),
-  statusMessage: text("statusMessage"),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type MachineOnlineStatus = typeof machineOnlineStatus.$inferSelect;
-export type InsertMachineOnlineStatus = typeof machineOnlineStatus.$inferInsert;
-
-
-/**
- * Machine Areas - khu vực/dây chuyền máy
- */
-export const machineAreas = mysqlTable("machine_areas", {
-  id: int("id").autoincrement().primaryKey(),
-  name: varchar("name", { length: 255 }).notNull(),
-  code: varchar("code", { length: 100 }).notNull(),
-  description: text("description"),
-  parentId: int("parentId"), // For hierarchical structure (e.g., Factory > Line > Zone)
-  type: mysqlEnum("type", ["factory", "line", "zone", "area"]).default("area"),
-  sortOrder: int("sortOrder").default(0),
-  isActive: int("isActive").notNull().default(1),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type MachineArea = typeof machineAreas.$inferSelect;
-export type InsertMachineArea = typeof machineAreas.$inferInsert;
-
-/**
- * Machine Area Assignments - gán máy vào khu vực
- */
-export const machineAreaAssignments = mysqlTable("machine_area_assignments", {
-  id: int("id").autoincrement().primaryKey(),
-  machineId: int("machineId").notNull(),
-  areaId: int("areaId").notNull(),
-  sortOrder: int("sortOrder").default(0),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type MachineAreaAssignment = typeof machineAreaAssignments.$inferSelect;
-export type InsertMachineAreaAssignment = typeof machineAreaAssignments.$inferInsert;
-
-/**
- * Machine Status History - lịch sử trạng thái máy (cho báo cáo uptime/downtime)
- */
-export const machineStatusHistory = mysqlTable("machine_status_history", {
-  id: int("id").autoincrement().primaryKey(),
-  machineId: int("machineId").notNull(),
-  status: mysqlEnum("status", ["online", "offline", "idle", "running", "warning", "critical", "maintenance"]).notNull(),
-  startTime: timestamp("startTime").notNull(),
-  endTime: timestamp("endTime"),
-  durationMinutes: int("durationMinutes"),
-  reason: text("reason"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type MachineStatusHistory = typeof machineStatusHistory.$inferSelect;
-export type InsertMachineStatusHistory = typeof machineStatusHistory.$inferInsert;
-
-
-// ============================================
-// MMS - MACHINE MANAGEMENT SYSTEM
-// ============================================
-
-/**
- * OEE Loss Categories - danh mục tổn thất OEE
- */
-export const oeeLossCategories = mysqlTable("oee_loss_categories", {
-  id: int("id").autoincrement().primaryKey(),
-  name: varchar("name", { length: 255 }).notNull(),
-  code: varchar("code", { length: 50 }).notNull(),
-  type: mysqlEnum("type", ["availability", "performance", "quality"]).notNull(),
-  description: text("description"),
-  color: varchar("color", { length: 20 }).default("#6b7280"),
-  sortOrder: int("sortOrder").default(0),
-  isActive: int("isActive").notNull().default(1),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type OeeLossCategory = typeof oeeLossCategories.$inferSelect;
-export type InsertOeeLossCategory = typeof oeeLossCategories.$inferInsert;
-
-/**
- * OEE Targets - mục tiêu OEE theo máy/dây chuyền
- */
-export const oeeTargets = mysqlTable("oee_targets", {
-  id: int("id").autoincrement().primaryKey(),
-  machineId: int("machineId"),
-  productionLineId: int("productionLineId"),
-  targetOee: decimal("targetOee", { precision: 5, scale: 2 }).default("85.00"),
-  targetAvailability: decimal("targetAvailability", { precision: 5, scale: 2 }).default("90.00"),
-  targetPerformance: decimal("targetPerformance", { precision: 5, scale: 2 }).default("95.00"),
-  targetQuality: decimal("targetQuality", { precision: 5, scale: 2 }).default("99.00"),
-  effectiveFrom: timestamp("effectiveFrom").notNull(),
-  effectiveTo: timestamp("effectiveTo"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type OeeTarget = typeof oeeTargets.$inferSelect;
-export type InsertOeeTarget = typeof oeeTargets.$inferInsert;
-
-/**
- * OEE Records - bản ghi OEE theo ca/ngày
- */
-export const oeeRecords = mysqlTable("oee_records", {
-  id: int("id").autoincrement().primaryKey(),
-  machineId: int("machineId").notNull(),
-  productionLineId: int("productionLineId"),
-  shiftId: int("shiftId"),
-  recordDate: timestamp("recordDate").notNull(),
-  
-  // Thời gian
-  plannedProductionTime: int("plannedProductionTime").notNull(), // phút
-  actualRunTime: int("actualRunTime").notNull(), // phút
-  downtime: int("downtime").default(0), // phút
-  
-  // Sản lượng
-  idealCycleTime: decimal("idealCycleTime", { precision: 10, scale: 4 }), // giây/sản phẩm
-  totalCount: int("totalCount").default(0),
-  goodCount: int("goodCount").default(0),
-  defectCount: int("defectCount").default(0),
-  
-  // Chỉ số OEE
-  availability: decimal("availability", { precision: 5, scale: 2 }),
-  performance: decimal("performance", { precision: 5, scale: 2 }),
-  quality: decimal("quality", { precision: 5, scale: 2 }),
-  oee: decimal("oee", { precision: 5, scale: 2 }),
-  
-  notes: text("notes"),
-  createdBy: int("createdBy"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type OeeRecord = typeof oeeRecords.$inferSelect;
-export type InsertOeeRecord = typeof oeeRecords.$inferInsert;
-
-/**
- * OEE Loss Records - chi tiết tổn thất OEE
- */
-export const oeeLossRecords = mysqlTable("oee_loss_records", {
-  id: int("id").autoincrement().primaryKey(),
-  oeeRecordId: int("oeeRecordId").notNull(),
-  lossCategoryId: int("lossCategoryId").notNull(),
-  durationMinutes: int("durationMinutes").notNull(),
-  quantity: int("quantity").default(0),
-  description: text("description"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type OeeLossRecord = typeof oeeLossRecords.$inferSelect;
-export type InsertOeeLossRecord = typeof oeeLossRecords.$inferInsert;
-
-/**
- * Maintenance Types - loại bảo trì
- */
-export const maintenanceTypes = mysqlTable("maintenance_types", {
-  id: int("id").autoincrement().primaryKey(),
-  name: varchar("name", { length: 255 }).notNull(),
-  code: varchar("code", { length: 50 }).notNull(),
-  category: mysqlEnum("category", ["corrective", "preventive", "predictive", "condition_based"]).notNull(),
-  description: text("description"),
-  defaultPriority: mysqlEnum("defaultPriority", ["low", "medium", "high", "critical"]).default("medium"),
-  estimatedDuration: int("estimatedDuration"), // phút
-  color: varchar("color", { length: 20 }).default("#3b82f6"),
-  isActive: int("isActive").notNull().default(1),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type MaintenanceType = typeof maintenanceTypes.$inferSelect;
-export type InsertMaintenanceType = typeof maintenanceTypes.$inferInsert;
-
-/**
- * Technicians - kỹ thuật viên bảo trì
- */
-export const technicians = mysqlTable("technicians", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId"),
-  employeeCode: varchar("employeeCode", { length: 50 }).notNull(),
-  name: varchar("name", { length: 255 }).notNull(),
-  email: varchar("email", { length: 255 }),
-  phone: varchar("phone", { length: 50 }),
-  specialization: varchar("specialization", { length: 255 }),
-  skillLevel: mysqlEnum("skillLevel", ["junior", "intermediate", "senior", "expert"]).default("intermediate"),
-  isAvailable: int("isAvailable").notNull().default(1),
-  isActive: int("isActive").notNull().default(1),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type Technician = typeof technicians.$inferSelect;
-export type InsertTechnician = typeof technicians.$inferInsert;
-
-/**
- * Maintenance Schedules - lịch bảo trì định kỳ
- */
-export const maintenanceSchedules = mysqlTable("maintenance_schedules", {
-  id: int("id").autoincrement().primaryKey(),
-  machineId: int("machineId").notNull(),
-  maintenanceTypeId: int("maintenanceTypeId").notNull(),
-  name: varchar("name", { length: 255 }).notNull(),
-  description: text("description"),
-  
-  // Lịch trình
-  frequency: mysqlEnum("frequency", ["daily", "weekly", "biweekly", "monthly", "quarterly", "biannually", "annually", "custom"]).notNull(),
-  customIntervalDays: int("customIntervalDays"),
-  lastPerformedAt: timestamp("lastPerformedAt"),
-  nextDueAt: timestamp("nextDueAt"),
-  
-  // Thông tin bổ sung
-  estimatedDuration: int("estimatedDuration"), // phút
-  assignedTechnicianId: int("assignedTechnicianId"),
-  checklist: json("checklist"), // JSON array of checklist items
-  
-  priority: mysqlEnum("priority", ["low", "medium", "high", "critical"]).default("medium"),
-  isActive: int("isActive").notNull().default(1),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type MaintenanceSchedule = typeof maintenanceSchedules.$inferSelect;
-export type InsertMaintenanceSchedule = typeof maintenanceSchedules.$inferInsert;
-
-/**
- * Work Orders - phiếu công việc bảo trì
- */
-export const workOrders = mysqlTable("work_orders", {
-  id: int("id").autoincrement().primaryKey(),
-  workOrderNumber: varchar("workOrderNumber", { length: 50 }).notNull(),
-  machineId: int("machineId").notNull(),
-  maintenanceTypeId: int("maintenanceTypeId").notNull(),
-  scheduleId: int("scheduleId"), // null nếu là corrective
-  
-  title: varchar("title", { length: 255 }).notNull(),
-  description: text("description"),
-  priority: mysqlEnum("priority", ["low", "medium", "high", "critical"]).default("medium"),
-  status: mysqlEnum("status", ["pending", "assigned", "in_progress", "on_hold", "completed", "cancelled"]).default("pending"),
-  
-  // Thời gian
-  reportedAt: timestamp("reportedAt").defaultNow().notNull(),
-  scheduledStartAt: timestamp("scheduledStartAt"),
-  actualStartAt: timestamp("actualStartAt"),
-  completedAt: timestamp("completedAt"),
-  
-  // Người thực hiện
-  reportedBy: int("reportedBy"),
-  assignedTo: int("assignedTo"),
-  completedBy: int("completedBy"),
-  
-  // Chi phí
-  laborHours: decimal("laborHours", { precision: 6, scale: 2 }),
-  laborCost: decimal("laborCost", { precision: 12, scale: 2 }),
-  partsCost: decimal("partsCost", { precision: 12, scale: 2 }),
-  totalCost: decimal("totalCost", { precision: 12, scale: 2 }),
-  
-  // Kết quả
-  rootCause: text("rootCause"),
-  actionTaken: text("actionTaken"),
-  notes: text("notes"),
-  
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type WorkOrder = typeof workOrders.$inferSelect;
-export type InsertWorkOrder = typeof workOrders.$inferInsert;
-
-/**
- * Work Order Parts - phụ tùng sử dụng trong work order
- */
-export const workOrderParts = mysqlTable("work_order_parts", {
-  id: int("id").autoincrement().primaryKey(),
-  workOrderId: int("workOrderId").notNull(),
-  sparePartId: int("sparePartId").notNull(),
-  quantity: int("quantity").notNull(),
-  unitCost: decimal("unitCost", { precision: 12, scale: 2 }),
-  totalCost: decimal("totalCost", { precision: 12, scale: 2 }),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type WorkOrderPart = typeof workOrderParts.$inferSelect;
-export type InsertWorkOrderPart = typeof workOrderParts.$inferInsert;
-
-/**
- * Maintenance History - lịch sử bảo trì
- */
-export const maintenanceHistory = mysqlTable("maintenance_history", {
-  id: int("id").autoincrement().primaryKey(),
-  workOrderId: int("workOrderId").notNull(),
-  machineId: int("machineId").notNull(),
-  action: varchar("action", { length: 255 }).notNull(),
-  performedBy: int("performedBy"),
-  performedAt: timestamp("performedAt").defaultNow().notNull(),
-  notes: text("notes"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type MaintenanceHistoryRecord = typeof maintenanceHistory.$inferSelect;
-export type InsertMaintenanceHistory = typeof maintenanceHistory.$inferInsert;
-
-/**
- * Suppliers - nhà cung cấp phụ tùng
- */
-export const suppliers = mysqlTable("suppliers", {
-  id: int("id").autoincrement().primaryKey(),
-  name: varchar("name", { length: 255 }).notNull(),
-  code: varchar("code", { length: 50 }).notNull(),
-  contactPerson: varchar("contactPerson", { length: 255 }),
-  email: varchar("email", { length: 255 }),
-  phone: varchar("phone", { length: 50 }),
-  address: text("address"),
-  website: varchar("website", { length: 255 }),
-  paymentTerms: varchar("paymentTerms", { length: 100 }),
-  leadTimeDays: int("leadTimeDays"),
-  rating: int("rating").default(3), // 1-5
-  notes: text("notes"),
-  isActive: int("isActive").notNull().default(1),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type Supplier = typeof suppliers.$inferSelect;
-export type InsertSupplier = typeof suppliers.$inferInsert;
-
-/**
- * Spare Parts - danh mục phụ tùng
- */
-export const spareParts = mysqlTable("spare_parts", {
-  id: int("id").autoincrement().primaryKey(),
-  partNumber: varchar("partNumber", { length: 100 }).notNull(),
-  name: varchar("name", { length: 255 }).notNull(),
-  description: text("description"),
-  category: varchar("category", { length: 100 }),
-  
-  // Liên kết
-  machineTypeId: int("machineTypeId"),
-  supplierId: int("supplierId"),
-  
-  // Thông tin kỹ thuật
-  specifications: text("specifications"),
-  unit: varchar("unit", { length: 50 }).default("pcs"),
-  
-  // Giá và chi phí
-  unitPrice: decimal("unitPrice", { precision: 12, scale: 2 }),
-  currency: varchar("currency", { length: 10 }).default("VND"),
-  
-  // Tồn kho
-  minStock: int("minStock").default(0),
-  maxStock: int("maxStock"),
-  reorderPoint: int("reorderPoint"),
-  reorderQuantity: int("reorderQuantity"),
-  emailAlertThreshold: int("emailAlertThreshold").default(0), // Ngưỡng cảnh báo email (0 = dùng minStock)
-  
-  // Vị trí
-  warehouseLocation: varchar("warehouseLocation", { length: 100 }),
-  
-  isActive: int("isActive").notNull().default(1),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type SparePart = typeof spareParts.$inferSelect;
-export type InsertSparePart = typeof spareParts.$inferInsert;
-
-/**
- * Spare Parts Inventory - tồn kho phụ tùng
- */
-export const sparePartsInventory = mysqlTable("spare_parts_inventory", {
-  id: int("id").autoincrement().primaryKey(),
-  sparePartId: int("sparePartId").notNull(),
-  quantity: int("quantity").notNull().default(0),
-  reservedQuantity: int("reservedQuantity").default(0),
-  availableQuantity: int("availableQuantity").default(0),
-  lastStockCheck: timestamp("lastStockCheck"),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type SparePartInventory = typeof sparePartsInventory.$inferSelect;
-export type InsertSparePartInventory = typeof sparePartsInventory.$inferInsert;
-
-/**
- * Spare Parts Transactions - giao dịch phụ tùng
- */
-export const sparePartsTransactions = mysqlTable("spare_parts_transactions", {
-  id: int("id").autoincrement().primaryKey(),
-  sparePartId: int("sparePartId").notNull(),
-  transactionType: mysqlEnum("transactionType", ["in", "out", "adjustment", "return"]).notNull(),
-  quantity: int("quantity").notNull(),
-  workOrderId: int("workOrderId"),
-  purchaseOrderId: int("purchaseOrderId"),
-  unitCost: decimal("unitCost", { precision: 12, scale: 2 }),
-  totalCost: decimal("totalCost", { precision: 12, scale: 2 }),
-  reason: text("reason"),
-  performedBy: int("performedBy"),
-  
-  // Mục đích xuất kho
-  exportPurpose: mysqlEnum("exportPurpose", ["repair", "borrow", "destroy", "normal"]).default("normal"),
-  borrowerName: varchar("borrowerName", { length: 255 }), // Người mượn
-  borrowerDepartment: varchar("borrowerDepartment", { length: 255 }), // Phòng ban
-  expectedReturnDate: timestamp("expectedReturnDate"), // Ngày dự kiến trả
-  actualReturnDate: timestamp("actualReturnDate"), // Ngày trả thực tế
-  returnedQuantity: int("returnedQuantity").default(0), // Số lượng đã trả
-  returnStatus: mysqlEnum("returnStatus", ["pending", "partial", "completed"]).default("pending"), // Trạng thái trả
-  relatedTransactionId: int("relatedTransactionId"), // Liên kết với giao dịch xuất kho gốc
-  
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type SparePartTransaction = typeof sparePartsTransactions.$inferSelect;
-export type InsertSparePartTransaction = typeof sparePartsTransactions.$inferInsert;
-
-/**
- * Purchase Orders - đơn đặt hàng phụ tùng
- */
-export const purchaseOrders = mysqlTable("purchase_orders", {
-  id: int("id").autoincrement().primaryKey(),
-  poNumber: varchar("poNumber", { length: 50 }).notNull(),
-  supplierId: int("supplierId").notNull(),
-  status: mysqlEnum("status", ["draft", "pending", "approved", "ordered", "partial_received", "received", "cancelled"]).default("draft"),
-  
-  orderDate: timestamp("orderDate"),
-  expectedDeliveryDate: timestamp("expectedDeliveryDate"),
-  actualDeliveryDate: timestamp("actualDeliveryDate"),
-  
-  subtotal: decimal("subtotal", { precision: 14, scale: 2 }),
-  tax: decimal("tax", { precision: 14, scale: 2 }),
-  shipping: decimal("shipping", { precision: 14, scale: 2 }),
-  total: decimal("total", { precision: 14, scale: 2 }),
-  
-  notes: text("notes"),
-  createdBy: int("createdBy"),
-  approvedBy: int("approvedBy"),
-  approvedAt: timestamp("approvedAt"),
-  rejectedBy: int("rejectedBy"),
-  rejectedAt: timestamp("rejectedAt"),
-  rejectionReason: text("rejectionReason"),
-  
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type PurchaseOrder = typeof purchaseOrders.$inferSelect;
-export type InsertPurchaseOrder = typeof purchaseOrders.$inferInsert;
-
-/**
- * Purchase Order Items - chi tiết đơn đặt hàng
- */
-export const purchaseOrderItems = mysqlTable("purchase_order_items", {
-  id: int("id").autoincrement().primaryKey(),
-  purchaseOrderId: int("purchaseOrderId").notNull(),
-  sparePartId: int("sparePartId").notNull(),
-  quantity: int("quantity").notNull(),
-  unitPrice: decimal("unitPrice", { precision: 12, scale: 2 }),
-  totalPrice: decimal("totalPrice", { precision: 12, scale: 2 }),
-  receivedQuantity: int("receivedQuantity").default(0),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type PurchaseOrderItem = typeof purchaseOrderItems.$inferSelect;
-export type InsertPurchaseOrderItem = typeof purchaseOrderItems.$inferInsert;
-
-/**
- * PO Receiving History - lịch sử nhập kho từng lần theo đơn đặt hàng
- */
-export const poReceivingHistory = mysqlTable("po_receiving_history", {
-  id: int("id").autoincrement().primaryKey(),
-  purchaseOrderId: int("purchaseOrderId").notNull(),
-  purchaseOrderItemId: int("purchaseOrderItemId").notNull(),
-  sparePartId: int("sparePartId").notNull(),
-  quantityReceived: int("quantityReceived").notNull(),
-  receivedBy: int("receivedBy"),
-  receivedAt: timestamp("receivedAt").defaultNow().notNull(),
-  notes: text("notes"),
-  batchNumber: varchar("batchNumber", { length: 100 }), // Số lô hàng
-  qualityStatus: mysqlEnum("qualityStatus", ["good", "damaged", "rejected"]).default("good"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type PoReceivingHistory = typeof poReceivingHistory.$inferSelect;
-export type InsertPoReceivingHistory = typeof poReceivingHistory.$inferInsert;
-
-/**
- * Sensor Types - loại sensor
- */
-export const sensorTypes = mysqlTable("sensor_types", {
-  id: int("id").autoincrement().primaryKey(),
-  name: varchar("name", { length: 255 }).notNull(),
-  code: varchar("code", { length: 50 }).notNull(),
-  unit: varchar("unit", { length: 50 }),
-  description: text("description"),
-  minValue: decimal("minValue", { precision: 12, scale: 4 }),
-  maxValue: decimal("maxValue", { precision: 12, scale: 4 }),
-  warningThreshold: decimal("warningThreshold", { precision: 12, scale: 4 }),
-  criticalThreshold: decimal("criticalThreshold", { precision: 12, scale: 4 }),
-  isActive: int("isActive").notNull().default(1),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type SensorType = typeof sensorTypes.$inferSelect;
-export type InsertSensorType = typeof sensorTypes.$inferInsert;
-
-/**
- * Machine Sensors - sensor gắn trên máy
- */
-export const machineSensors = mysqlTable("machine_sensors", {
-  id: int("id").autoincrement().primaryKey(),
-  machineId: int("machineId").notNull(),
-  sensorTypeId: int("sensorTypeId").notNull(),
-  sensorCode: varchar("sensorCode", { length: 100 }).notNull(),
-  location: varchar("location", { length: 255 }),
-  installDate: timestamp("installDate"),
-  calibrationDate: timestamp("calibrationDate"),
-  nextCalibrationDate: timestamp("nextCalibrationDate"),
-  isActive: int("isActive").notNull().default(1),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type MachineSensor = typeof machineSensors.$inferSelect;
-export type InsertMachineSensor = typeof machineSensors.$inferInsert;
-
-/**
- * Sensor Data - dữ liệu sensor realtime
- */
-export const sensorData = mysqlTable("sensor_data", {
-  id: int("id").autoincrement().primaryKey(),
-  sensorId: int("sensorId").notNull(),
-  machineId: int("machineId").notNull(),
-  value: decimal("value", { precision: 12, scale: 4 }).notNull(),
-  status: mysqlEnum("status", ["normal", "warning", "critical"]).default("normal"),
-  recordedAt: timestamp("recordedAt").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type SensorDataRecord = typeof sensorData.$inferSelect;
-export type InsertSensorData = typeof sensorData.$inferInsert;
-
-/**
- * Prediction Models - mô hình dự đoán
- */
-export const predictionModels = mysqlTable("prediction_models", {
-  id: int("id").autoincrement().primaryKey(),
-  name: varchar("name", { length: 255 }).notNull(),
-  machineTypeId: int("machineTypeId"),
-  modelType: mysqlEnum("modelType", ["rul", "anomaly", "failure", "degradation"]).notNull(),
-  description: text("description"),
-  
-  // Cấu hình model
-  inputFeatures: json("inputFeatures"), // JSON array of sensor types
-  modelParameters: json("modelParameters"),
-  
-  // Hiệu suất
-  accuracy: decimal("accuracy", { precision: 5, scale: 2 }),
-  lastTrainedAt: timestamp("lastTrainedAt"),
-  trainingDataCount: int("trainingDataCount"),
-  
-  isActive: int("isActive").notNull().default(1),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type PredictionModel = typeof predictionModels.$inferSelect;
-export type InsertPredictionModel = typeof predictionModels.$inferInsert;
-
-/**
- * Predictions - kết quả dự đoán
- */
-export const predictions = mysqlTable("predictions", {
-  id: int("id").autoincrement().primaryKey(),
-  machineId: int("machineId").notNull(),
-  modelId: int("modelId").notNull(),
-  
-  predictionType: mysqlEnum("predictionType", ["rul", "failure_probability", "anomaly_score", "health_index"]).notNull(),
-  predictedValue: decimal("predictedValue", { precision: 12, scale: 4 }),
-  confidence: decimal("confidence", { precision: 5, scale: 2 }),
-  
-  // RUL specific
-  estimatedFailureDate: timestamp("estimatedFailureDate"),
-  remainingUsefulLife: int("remainingUsefulLife"), // hours
-  
-  // Status
-  severity: mysqlEnum("severity", ["low", "medium", "high", "critical"]).default("low"),
-  isAcknowledged: int("isAcknowledged").default(0),
-  acknowledgedBy: int("acknowledgedBy"),
-  acknowledgedAt: timestamp("acknowledgedAt"),
-  
-  notes: text("notes"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type Prediction = typeof predictions.$inferSelect;
-export type InsertPrediction = typeof predictions.$inferInsert;
-
-/**
- * MMS Dashboard Widgets - cấu hình widget dashboard MMS
- */
-export const mmsDashboardWidgets = mysqlTable("mms_dashboard_widgets", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(),
-  widgetType: varchar("widgetType", { length: 100 }).notNull(),
-  title: varchar("title", { length: 255 }),
-  config: json("config"),
-  position: int("position").default(0),
-  width: int("width").default(1), // 1-4 columns
-  height: int("height").default(1), // 1-3 rows
-  isVisible: int("isVisible").notNull().default(1),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type MmsDashboardWidget = typeof mmsDashboardWidgets.$inferSelect;
-export type InsertMmsDashboardWidget = typeof mmsDashboardWidgets.$inferInsert;
-
-/**
- * Scheduled Reports Configuration
- * Cấu hình báo cáo tự động gửi định kỳ
- */
-export const scheduledReports = mysqlTable("scheduled_reports", {
-  id: int("id").autoincrement().primaryKey(),
-  name: varchar("name", { length: 200 }).notNull(),
-  reportType: mysqlEnum("reportType", ["oee", "cpk", "oee_cpk_combined", "production_summary"]).notNull(),
-  frequency: mysqlEnum("frequency", ["daily", "weekly", "monthly"]).notNull(),
-  dayOfWeek: int("dayOfWeek"), // 0-6 for weekly (0=Sunday)
-  dayOfMonth: int("dayOfMonth"), // 1-31 for monthly
-  timeOfDay: varchar("timeOfDay", { length: 5 }).notNull().default("08:00"),
-  recipients: text("recipients").notNull(), // JSON array of emails
-  machineIds: text("machineIds"), // JSON array of machine IDs, null = all
-  productionLineIds: text("productionLineIds"), // JSON array of line IDs, null = all
-  includeCharts: int("includeCharts").notNull().default(1),
-  includeTrends: int("includeTrends").notNull().default(1),
-  includeAlerts: int("includeAlerts").notNull().default(1),
-  format: mysqlEnum("format", ["html", "excel", "pdf"]).notNull().default("html"),
-  lastSentAt: timestamp("lastSentAt"),
-  lastSentStatus: mysqlEnum("lastSentStatus", ["success", "failed", "pending"]),
-  lastSentError: text("lastSentError"),
-  isActive: int("isActive").notNull().default(1),
-  createdBy: int("createdBy"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type ScheduledReport = typeof scheduledReports.$inferSelect;
-export type InsertScheduledReport = typeof scheduledReports.$inferInsert;
-
-/**
- * Scheduled Report Logs
- * Lịch sử gửi báo cáo tự động
- */
-export const scheduledReportLogs = mysqlTable("scheduled_report_logs", {
-  id: int("id").autoincrement().primaryKey(),
-  reportId: int("reportId").notNull(),
-  sentAt: timestamp("sentAt").defaultNow().notNull(),
-  status: mysqlEnum("status", ["success", "failed", "partial"]).notNull(),
-  recipientCount: int("recipientCount").notNull().default(0),
-  successCount: int("successCount").notNull().default(0),
-  failedCount: int("failedCount").notNull().default(0),
-  errorMessage: text("errorMessage"),
-  reportFileUrl: varchar("reportFileUrl", { length: 500 }),
-  reportFileSizeKb: int("reportFileSizeKb"),
-  generationTimeMs: int("generationTimeMs"),
-});
-
-export type ScheduledReportLog = typeof scheduledReportLogs.$inferSelect;
-export type InsertScheduledReportLog = typeof scheduledReportLogs.$inferInsert;
-
-/**
- * Shift Reports - báo cáo ca làm việc tự động
- */
-export const shiftReports = mysqlTable("shift_reports", {
-  id: int("id").autoincrement().primaryKey(),
-  
-  // Shift info
-  shiftDate: timestamp("shiftDate").notNull(),
-  shiftType: mysqlEnum("shiftType", ["morning", "afternoon", "night"]).notNull(),
-  shiftStart: timestamp("shiftStart").notNull(),
-  shiftEnd: timestamp("shiftEnd").notNull(),
-  
-  // Production line/machine info
-  productionLineId: int("productionLineId"),
-  machineId: int("machineId"),
-  
-  // OEE metrics
-  oee: decimal("oee", { precision: 5, scale: 2 }),
-  availability: decimal("availability", { precision: 5, scale: 2 }),
-  performance: decimal("performance", { precision: 5, scale: 2 }),
-  quality: decimal("quality", { precision: 5, scale: 2 }),
-  
-  // SPC metrics
-  cpk: decimal("cpk", { precision: 6, scale: 4 }),
-  cp: decimal("cp", { precision: 6, scale: 4 }),
-  ppk: decimal("ppk", { precision: 6, scale: 4 }),
-  
-  // Production stats
-  totalProduced: int("totalProduced").default(0),
-  goodCount: int("goodCount").default(0),
-  defectCount: int("defectCount").default(0),
-  
-  // Time stats
-  plannedTime: int("plannedTime").default(0), // minutes
-  actualRunTime: int("actualRunTime").default(0),
-  downtime: int("downtime").default(0),
-  
-  // Alerts and issues
-  alertCount: int("alertCount").default(0),
-  spcViolationCount: int("spcViolationCount").default(0),
-  
-  // Report status
-  status: mysqlEnum("status", ["generated", "sent", "failed"]).default("generated"),
-  sentAt: timestamp("sentAt"),
-  sentTo: text("sentTo"), // JSON array of emails
-  
-  // Report content
-  reportContent: text("reportContent"), // HTML content
-  reportFileUrl: varchar("reportFileUrl", { length: 500 }),
-  
-  notes: text("notes"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-export type ShiftReport = typeof shiftReports.$inferSelect;
-export type InsertShiftReport = typeof shiftReports.$inferInsert;
-
-
-/**
- * Rate limit configuration - persistent storage for rate limit settings
- */
-export const rateLimitConfig = mysqlTable("rate_limit_config", {
-  id: int("id").autoincrement().primaryKey(),
-  configKey: varchar("configKey", { length: 100 }).notNull().unique(),
-  configValue: text("configValue").notNull(), // JSON value
-  description: text("description"),
-  updatedBy: int("updatedBy"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-export type RateLimitConfig = typeof rateLimitConfig.$inferSelect;
-export type InsertRateLimitConfig = typeof rateLimitConfig.$inferInsert;
-
-/**
- * Rate limit config history - audit log for config changes
- */
-export const rateLimitConfigHistory = mysqlTable("rate_limit_config_history", {
-  id: int("id").autoincrement().primaryKey(),
-  configKey: varchar("configKey", { length: 100 }).notNull(),
-  oldValue: text("oldValue"),
-  newValue: text("newValue").notNull(),
-  changedBy: int("changedBy").notNull(),
-  changedByName: varchar("changedByName", { length: 255 }),
-  changeReason: text("changeReason"),
-  ipAddress: varchar("ipAddress", { length: 45 }),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-export type RateLimitConfigHistory = typeof rateLimitConfigHistory.$inferSelect;
-export type InsertRateLimitConfigHistory = typeof rateLimitConfigHistory.$inferInsert;
-
-/**
- * Rate limit role config - different limits per role
- */
-export const rateLimitRoleConfig = mysqlTable("rate_limit_role_config", {
-  id: int("id").autoincrement().primaryKey(),
-  role: mysqlEnum("role", ["user", "admin", "guest"]).notNull().unique(),
-  maxRequests: int("maxRequests").notNull().default(5000),
-  maxAuthRequests: int("maxAuthRequests").notNull().default(200),
-  maxExportRequests: int("maxExportRequests").notNull().default(100),
-  windowMs: int("windowMs").notNull().default(900000), // 15 minutes
-  description: text("description"),
-  isActive: int("isActive").notNull().default(1),
-  updatedBy: int("updatedBy"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-export type RateLimitRoleConfig = typeof rateLimitRoleConfig.$inferSelect;
-export type InsertRateLimitRoleConfig = typeof rateLimitRoleConfig.$inferInsert;
-
-
-
-/**
- * Spare Parts Inventory Checks - kiểm kê kho phụ tùng
- */
-export const sparePartsInventoryChecks = mysqlTable("spare_parts_inventory_checks", {
-  id: int("id").autoincrement().primaryKey(),
-  checkNumber: varchar("checkNumber", { length: 50 }).notNull(),
-  checkDate: timestamp("checkDate").notNull(),
-  checkType: mysqlEnum("checkType", ["full", "partial", "cycle", "spot"]).notNull().default("full"),
-  status: mysqlEnum("status", ["draft", "in_progress", "completed", "cancelled"]).default("draft"),
-  
-  // Phạm vi kiểm kê
-  warehouseLocation: varchar("warehouseLocation", { length: 100 }),
-  category: varchar("category", { length: 100 }),
-  
-  // Kết quả
-  totalItems: int("totalItems").default(0),
-  checkedItems: int("checkedItems").default(0),
-  matchedItems: int("matchedItems").default(0),
-  discrepancyItems: int("discrepancyItems").default(0),
-  
-  // Giá trị
-  totalSystemValue: decimal("totalSystemValue", { precision: 14, scale: 2 }),
-  totalActualValue: decimal("totalActualValue", { precision: 14, scale: 2 }),
-  discrepancyValue: decimal("discrepancyValue", { precision: 14, scale: 2 }),
-  
-  notes: text("notes"),
-  completedAt: timestamp("completedAt"),
-  completedBy: int("completedBy"),
-  createdBy: int("createdBy").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type SparePartInventoryCheck = typeof sparePartsInventoryChecks.$inferSelect;
-export type InsertSparePartInventoryCheck = typeof sparePartsInventoryChecks.$inferInsert;
-
-/**
- * Spare Parts Inventory Check Items - chi tiết kiểm kê từng phụ tùng
- */
-export const sparePartsInventoryCheckItems = mysqlTable("spare_parts_inventory_check_items", {
-  id: int("id").autoincrement().primaryKey(),
-  checkId: int("checkId").notNull(),
-  sparePartId: int("sparePartId").notNull(),
-  
-  // Số lượng
-  systemQuantity: int("systemQuantity").notNull(),
-  actualQuantity: int("actualQuantity"),
-  discrepancy: int("discrepancy"),
-  
-  // Giá trị
-  unitPrice: decimal("unitPrice", { precision: 12, scale: 2 }),
-  systemValue: decimal("systemValue", { precision: 14, scale: 2 }),
-  actualValue: decimal("actualValue", { precision: 14, scale: 2 }),
-  
-  // Trạng thái
-  status: mysqlEnum("status", ["pending", "counted", "verified", "adjusted"]).default("pending"),
-  
-  // Ghi chú
-  notes: text("notes"),
-  countedBy: int("countedBy"),
-  countedAt: timestamp("countedAt"),
-  verifiedBy: int("verifiedBy"),
-  verifiedAt: timestamp("verifiedAt"),
-  
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type SparePartInventoryCheckItem = typeof sparePartsInventoryCheckItems.$inferSelect;
-export type InsertSparePartInventoryCheckItem = typeof sparePartsInventoryCheckItems.$inferInsert;
-
-/**
- * Spare Parts Stock Movements - lịch sử di chuyển tồn kho
- */
-export const sparePartsStockMovements = mysqlTable("spare_parts_stock_movements", {
-  id: int("id").autoincrement().primaryKey(),
-  sparePartId: int("sparePartId").notNull(),
-  movementType: mysqlEnum("movementType", [
-    "purchase_in",      // Nhập mua
-    "return_in",        // Nhập trả
-    "transfer_in",      // Nhập chuyển kho
-    "adjustment_in",    // Điều chỉnh tăng
-    "initial_in",       // Nhập đầu kỳ
-    "work_order_out",   // Xuất cho work order
-    "transfer_out",     // Xuất chuyển kho
-    "adjustment_out",   // Điều chỉnh giảm
-    "scrap_out",        // Xuất hủy
-    "return_supplier"   // Trả nhà cung cấp
-  ]).notNull(),
-  
-  // Số lượng
-  quantity: int("quantity").notNull(),
-  beforeQuantity: int("beforeQuantity").notNull(),
-  afterQuantity: int("afterQuantity").notNull(),
-  
-  // Giá trị
-  unitCost: decimal("unitCost", { precision: 12, scale: 2 }),
-  totalCost: decimal("totalCost", { precision: 14, scale: 2 }),
-  
-  // Liên kết
-  referenceType: varchar("referenceType", { length: 50 }), // purchase_order, work_order, inventory_check, etc.
-  referenceId: int("referenceId"),
-  referenceNumber: varchar("referenceNumber", { length: 100 }),
-  
-  // Vị trí
-  fromLocation: varchar("fromLocation", { length: 100 }),
-  toLocation: varchar("toLocation", { length: 100 }),
-  
-  reason: text("reason"),
-  performedBy: int("performedBy").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type SparePartStockMovement = typeof sparePartsStockMovements.$inferSelect;
-export type InsertSparePartStockMovement = typeof sparePartsStockMovements.$inferInsert;
-
-/**
- * NTF Alert Configuration - cấu hình cảnh báo NTF rate
- */
-export const ntfAlertConfig = mysqlTable("ntf_alert_config", {
-  id: int("id").autoincrement().primaryKey(),
-  
-  // Ngưỡng cảnh báo
-  warningThreshold: decimal("warningThreshold", { precision: 5, scale: 2 }).default("20.00"), // 20%
-  criticalThreshold: decimal("criticalThreshold", { precision: 5, scale: 2 }).default("30.00"), // 30%
-  
-  // Email nhận cảnh báo (JSON array)
-  alertEmails: text("alertEmails"), // ["email1@example.com", "email2@example.com"]
-  
-  // Bật/tắt cảnh báo
-  enabled: boolean("enabled").default(true),
-  
-  // Tần suất kiểm tra (phút)
-  checkIntervalMinutes: int("checkIntervalMinutes").default(60), // Mặc định 1 giờ
-  
-  // Cooldown giữa các cảnh báo (phút)
-  cooldownMinutes: int("cooldownMinutes").default(120), // 2 giờ
-  
-  // Lần cảnh báo cuối
-  lastAlertAt: timestamp("lastAlertAt"),
-  lastAlertNtfRate: decimal("lastAlertNtfRate", { precision: 5, scale: 2 }),
-  
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type NtfAlertConfig = typeof ntfAlertConfig.$inferSelect;
-export type InsertNtfAlertConfig = typeof ntfAlertConfig.$inferInsert;
-
-/**
- * NTF Alert History - lịch sử cảnh báo NTF
- */
-export const ntfAlertHistory = mysqlTable("ntf_alert_history", {
-  id: int("id").autoincrement().primaryKey(),
-  
-  // Thông tin cảnh báo
-  ntfRate: decimal("ntfRate", { precision: 5, scale: 2 }).notNull(),
-  totalDefects: int("totalDefects").notNull(),
-  ntfCount: int("ntfCount").notNull(),
-  realNgCount: int("realNgCount").notNull(),
-  pendingCount: int("pendingCount").notNull(),
-  
-  // Loại cảnh báo
-  alertType: mysqlEnum("alertType", ["warning", "critical"]).notNull(),
-  
-  // Trạng thái gửi
-  emailSent: boolean("emailSent").default(false),
-  emailSentAt: timestamp("emailSentAt"),
-  emailRecipients: text("emailRecipients"), // JSON array
-  
-  // Thời gian
-  periodStart: timestamp("periodStart").notNull(),
-  periodEnd: timestamp("periodEnd").notNull(),
-  
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type NtfAlertHistory = typeof ntfAlertHistory.$inferSelect;
-export type InsertNtfAlertHistory = typeof ntfAlertHistory.$inferInsert;
-
-/**
- * NTF Report Schedule - lịch gửi báo cáo NTF định kỳ
- */
-export const ntfReportSchedule = mysqlTable("ntf_report_schedule", {
-  id: int("id").autoincrement().primaryKey(),
-  
-  // Tên lịch
-  name: varchar("name", { length: 200 }).notNull(),
-  
-  // Loại báo cáo
-  reportType: mysqlEnum("reportType", ["daily", "weekly", "monthly"]).notNull(),
-  
-  // Thời gian gửi (giờ trong ngày, 0-23)
-  sendHour: int("sendHour").default(8), // 8:00 AM
-  
-  // Ngày gửi (cho weekly: 0-6 = CN-T7, cho monthly: 1-28)
-  sendDay: int("sendDay"),
-  
-  // Email nhận báo cáo (JSON array)
-  recipients: text("recipients").notNull(), // ["email1@example.com"]
-  
-  // Bật/tắt
-  enabled: boolean("enabled").default(true),
-  
-  // Lần gửi cuối
-  lastSentAt: timestamp("lastSentAt"),
-  lastSentStatus: mysqlEnum("lastSentStatus", ["success", "failed"]),
-  lastSentError: text("lastSentError"),
-  
-  // Metadata
-  createdBy: int("createdBy").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type NtfReportSchedule = typeof ntfReportSchedule.$inferSelect;
-export type InsertNtfReportSchedule = typeof ntfReportSchedule.$inferInsert;
-
-
-/**
- * SPC Plan Templates - mẫu kế hoạch SPC để tái sử dụng
- */
-export const spcPlanTemplates = mysqlTable("spc_plan_templates", {
-  id: int("id").autoincrement().primaryKey(),
-  name: varchar("name", { length: 255 }).notNull(),
-  description: text("description"),
-  measurementName: varchar("measurementName", { length: 255 }),
-  usl: decimal("usl", { precision: 15, scale: 6 }),
-  lsl: decimal("lsl", { precision: 15, scale: 6 }),
-  target: decimal("target", { precision: 15, scale: 6 }),
-  unit: varchar("unit", { length: 50 }),
-  sampleSize: int("sampleSize").default(5),
-  sampleFrequency: int("sampleFrequency").default(60),
-  enabledSpcRules: text("enabledSpcRules"),
-  enabledCpkRules: text("enabledCpkRules"),
-  enabledCaRules: text("enabledCaRules"),
-  isRecurring: int("isRecurring").default(1),
-  notifyOnViolation: int("notifyOnViolation").default(1),
-  createdBy: int("createdBy"),
-  isPublic: int("isPublic").default(0),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type SpcPlanTemplate = typeof spcPlanTemplates.$inferSelect;
-export type InsertSpcPlanTemplate = typeof spcPlanTemplates.$inferInsert;
-
-
-/**
- * User Prediction Configs - Lưu cấu hình dự báo theo user
- */
-export const userPredictionConfigs = mysqlTable("user_prediction_configs", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(),
-  configType: mysqlEnum("configType", ["oee", "cpk", "spc"]).notNull(), // Loại dự báo
-  configName: varchar("configName", { length: 100 }).notNull(), // Tên cấu hình
-  algorithm: mysqlEnum("algorithm", ["linear", "moving_avg", "exp_smoothing"]).notNull().default("linear"),
-  predictionDays: int("predictionDays").notNull().default(14),
-  confidenceLevel: decimal("confidenceLevel", { precision: 5, scale: 2 }).notNull().default("95.00"),
-  alertThreshold: decimal("alertThreshold", { precision: 5, scale: 2 }).notNull().default("5.00"),
-  movingAvgWindow: int("movingAvgWindow").default(7),
-  smoothingFactor: decimal("smoothingFactor", { precision: 3, scale: 2 }).default("0.30"),
-  historicalDays: int("historicalDays").notNull().default(30), // Số ngày dữ liệu lịch sử
-  isDefault: int("isDefault").notNull().default(0), // Cấu hình mặc định
-  isActive: int("isActive").notNull().default(1),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type UserPredictionConfig = typeof userPredictionConfigs.$inferSelect;
-export type InsertUserPredictionConfig = typeof userPredictionConfigs.$inferInsert;
-
-
-/**
- * OEE Alert Thresholds - Cấu hình ngưỡng cảnh báo OEE theo máy/dây chuyền
- */
-export const oeeAlertThresholds = mysqlTable("oee_alert_thresholds", {
-  id: int("id").autoincrement().primaryKey(),
-  machineId: int("machineId"), // Null = áp dụng cho tất cả máy trong dây chuyền
-  productionLineId: int("productionLineId"), // Null = áp dụng cho tất cả dây chuyền
-  targetOee: decimal("targetOee", { precision: 5, scale: 2 }).notNull().default("85.00"),
-  warningThreshold: decimal("warningThreshold", { precision: 5, scale: 2 }).notNull().default("80.00"), // Ngưỡng cảnh báo vàng
-  criticalThreshold: decimal("criticalThreshold", { precision: 5, scale: 2 }).notNull().default("70.00"), // Ngưỡng cảnh báo đỏ
-  dropAlertThreshold: decimal("dropAlertThreshold", { precision: 5, scale: 2 }).notNull().default("5.00"), // % giảm để cảnh báo
-  relativeDropThreshold: decimal("relativeDropThreshold", { precision: 5, scale: 2 }).notNull().default("10.00"), // % giảm tương đối
-  availabilityTarget: decimal("availabilityTarget", { precision: 5, scale: 2 }).default("90.00"),
-  performanceTarget: decimal("performanceTarget", { precision: 5, scale: 2 }).default("95.00"),
-  qualityTarget: decimal("qualityTarget", { precision: 5, scale: 2 }).default("99.00"),
-  isActive: int("isActive").notNull().default(1),
-  createdBy: int("createdBy"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type OeeAlertThreshold = typeof oeeAlertThresholds.$inferSelect;
-export type InsertOeeAlertThreshold = typeof oeeAlertThresholds.$inferInsert;
-
-
-// ==================== Machine Integration API ====================
-
-/**
- * API Keys for machine vendors to push data
- */
-export const machineApiKeys = mysqlTable("machine_api_keys", {
-  id: int("id").autoincrement().primaryKey(),
-  name: varchar("name", { length: 255 }).notNull(),
-  apiKey: varchar("apiKey", { length: 64 }).notNull().unique(),
-  apiKeyHash: varchar("apiKeyHash", { length: 255 }).notNull(), // Hashed version for security
-  vendorName: varchar("vendorName", { length: 255 }).notNull(), // AOI, AVI, etc.
-  machineType: varchar("machineType", { length: 100 }).notNull(), // aoi, avi, spi, etc.
-  machineId: int("machineId"), // Link to specific machine if applicable
-  productionLineId: int("productionLineId"), // Link to production line
-  permissions: text("permissions"), // JSON array of allowed endpoints
-  rateLimit: int("rateLimit").notNull().default(100), // Requests per minute
-  isActive: int("isActive").notNull().default(1),
-  expiresAt: timestamp("expiresAt"), // Optional expiration
-  lastUsedAt: timestamp("lastUsedAt"),
-  createdBy: int("createdBy").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type MachineApiKey = typeof machineApiKeys.$inferSelect;
-export type InsertMachineApiKey = typeof machineApiKeys.$inferInsert;
-
-/**
- * Log all API requests from machines
- */
-export const machineDataLogs = mysqlTable("machine_data_logs", {
-  id: int("id").autoincrement().primaryKey(),
-  apiKeyId: int("apiKeyId").notNull(),
-  endpoint: varchar("endpoint", { length: 255 }).notNull(),
-  method: varchar("method", { length: 10 }).notNull(),
-  requestBody: text("requestBody"), // JSON request payload
-  responseStatus: int("responseStatus").notNull(),
-  responseBody: text("responseBody"), // JSON response
-  processingTimeMs: int("processingTimeMs"),
-  ipAddress: varchar("ipAddress", { length: 45 }),
-  userAgent: varchar("userAgent", { length: 500 }),
-  errorMessage: text("errorMessage"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type MachineDataLog = typeof machineDataLogs.$inferSelect;
-export type InsertMachineDataLog = typeof machineDataLogs.$inferInsert;
-
-/**
- * Machine integration configurations
- */
-export const machineIntegrationConfigs = mysqlTable("machine_integration_configs", {
-  id: int("id").autoincrement().primaryKey(),
-  apiKeyId: int("apiKeyId").notNull(),
-  configType: varchar("configType", { length: 50 }).notNull(), // field_mapping, webhook, etc.
-  configName: varchar("configName", { length: 255 }).notNull(),
-  configValue: text("configValue").notNull(), // JSON configuration
-  isActive: int("isActive").notNull().default(1),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type MachineIntegrationConfig = typeof machineIntegrationConfigs.$inferSelect;
-export type InsertMachineIntegrationConfig = typeof machineIntegrationConfigs.$inferInsert;
-
-/**
- * Inspection data from AOI/AVI machines
- */
-export const machineInspectionData = mysqlTable("machine_inspection_data", {
-  id: int("id").autoincrement().primaryKey(),
-  apiKeyId: int("apiKeyId").notNull(),
-  machineId: int("machineId"),
-  productionLineId: int("productionLineId"),
-  batchId: varchar("batchId", { length: 100 }),
-  productCode: varchar("productCode", { length: 100 }),
-  serialNumber: varchar("serialNumber", { length: 100 }),
-  inspectionType: varchar("inspectionType", { length: 50 }).notNull(), // aoi, avi, spi, etc.
-  inspectionResult: varchar("inspectionResult", { length: 20 }).notNull(), // pass, fail, rework
-  defectCount: int("defectCount").default(0),
-  defectTypes: text("defectTypes"), // JSON array of defect types
-  defectDetails: text("defectDetails"), // JSON detailed defect info
-  imageUrls: text("imageUrls"), // JSON array of image URLs
-  inspectedAt: timestamp("inspectedAt").notNull(),
-  cycleTimeMs: int("cycleTimeMs"),
-  operatorId: varchar("operatorId", { length: 50 }),
-  shiftId: varchar("shiftId", { length: 50 }),
-  rawData: text("rawData"), // Original JSON from machine
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type MachineInspectionData = typeof machineInspectionData.$inferSelect;
-export type InsertMachineInspectionData = typeof machineInspectionData.$inferInsert;
-
-/**
- * Measurement data from machines (for SPC)
- */
-export const machineMeasurementData = mysqlTable("machine_measurement_data", {
-  id: int("id").autoincrement().primaryKey(),
-  apiKeyId: int("apiKeyId").notNull(),
-  machineId: int("machineId"),
-  productionLineId: int("productionLineId"),
-  batchId: varchar("batchId", { length: 100 }),
-  productCode: varchar("productCode", { length: 100 }),
-  serialNumber: varchar("serialNumber", { length: 100 }),
-  parameterName: varchar("parameterName", { length: 255 }).notNull(),
-  parameterCode: varchar("parameterCode", { length: 100 }),
-  measuredValue: decimal("measuredValue", { precision: 15, scale: 6 }).notNull(),
-  unit: varchar("unit", { length: 50 }),
-  lsl: decimal("lsl", { precision: 15, scale: 6 }), // Lower Spec Limit
-  usl: decimal("usl", { precision: 15, scale: 6 }), // Upper Spec Limit
-  target: decimal("target", { precision: 15, scale: 6 }),
-  isWithinSpec: int("isWithinSpec"),
-  measuredAt: timestamp("measuredAt").notNull(),
-  operatorId: varchar("operatorId", { length: 50 }),
-  shiftId: varchar("shiftId", { length: 50 }),
-  rawData: text("rawData"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type MachineMeasurementData = typeof machineMeasurementData.$inferSelect;
-export type InsertMachineMeasurementData = typeof machineMeasurementData.$inferInsert;
-
-/**
- * OEE data from machines
- */
-export const machineOeeData = mysqlTable("machine_oee_data", {
-  id: int("id").autoincrement().primaryKey(),
-  apiKeyId: int("apiKeyId").notNull(),
-  machineId: int("machineId"),
-  productionLineId: int("productionLineId"),
-  shiftId: varchar("shiftId", { length: 50 }),
-  recordDate: varchar("recordDate", { length: 10 }).notNull(), // YYYY-MM-DD
-  plannedProductionTime: int("plannedProductionTime"), // minutes
-  actualProductionTime: int("actualProductionTime"), // minutes
-  downtime: int("downtime"), // minutes
-  downtimeReasons: text("downtimeReasons"), // JSON array
-  idealCycleTime: decimal("idealCycleTime", { precision: 10, scale: 4 }), // seconds
-  actualCycleTime: decimal("actualCycleTime", { precision: 10, scale: 4 }),
-  totalCount: int("totalCount"),
-  goodCount: int("goodCount"),
-  rejectCount: int("rejectCount"),
-  reworkCount: int("reworkCount"),
-  availability: decimal("availability", { precision: 5, scale: 2 }),
-  performance: decimal("performance", { precision: 5, scale: 2 }),
-  quality: decimal("quality", { precision: 5, scale: 2 }),
-  oee: decimal("oee", { precision: 5, scale: 2 }),
-  recordedAt: timestamp("recordedAt").notNull(),
-  rawData: text("rawData"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type MachineOeeData = typeof machineOeeData.$inferSelect;
-export type InsertMachineOeeData = typeof machineOeeData.$inferInsert;
-
-
-// ==================== Machine Webhook Configs ====================
-export const machineWebhookConfigs = mysqlTable("machine_webhook_configs", {
-  id: int("id").autoincrement().primaryKey(),
-  name: varchar("name", { length: 200 }).notNull(),
-  webhookUrl: varchar("webhookUrl", { length: 500 }).notNull(),
-  webhookSecret: varchar("webhookSecret", { length: 255 }),
-  triggerType: mysqlEnum("triggerType", ["inspection_fail", "oee_low", "measurement_out_of_spec", "all"]).notNull(),
-  machineIds: text("machineIds"), // JSON array of machine IDs, null = all machines
-  oeeThreshold: decimal("oeeThreshold", { precision: 5, scale: 2 }), // Trigger when OEE below this
-  isActive: int("isActive").notNull().default(1),
-  retryCount: int("retryCount").notNull().default(3),
-  retryDelaySeconds: int("retryDelaySeconds").notNull().default(60),
-  headers: text("headers"), // JSON object for custom headers
-  createdBy: int("createdBy").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type MachineWebhookConfig = typeof machineWebhookConfigs.$inferSelect;
-export type InsertMachineWebhookConfig = typeof machineWebhookConfigs.$inferInsert;
-
-// ==================== Machine Webhook Logs ====================
-export const machineWebhookLogs = mysqlTable("machine_webhook_logs", {
-  id: int("id").autoincrement().primaryKey(),
-  webhookConfigId: int("webhookConfigId").notNull(),
-  triggerType: varchar("triggerType", { length: 50 }).notNull(),
-  triggerDataId: int("triggerDataId"), // ID of the data that triggered webhook
-  requestPayload: text("requestPayload"),
-  responseStatus: int("responseStatus"),
-  responseBody: text("responseBody"),
-  responseTime: int("responseTime"), // milliseconds
-  attempt: int("attempt").notNull().default(1),
-  status: mysqlEnum("status", ["pending", "success", "failed", "retrying"]).notNull().default("pending"),
-  errorMessage: text("errorMessage"),
-  triggeredAt: timestamp("triggeredAt").defaultNow().notNull(),
-  completedAt: timestamp("completedAt"),
-});
-
-export type MachineWebhookLog = typeof machineWebhookLogs.$inferSelect;
-export type InsertMachineWebhookLog = typeof machineWebhookLogs.$inferInsert;
-
-// ==================== Machine Field Mappings ====================
-export const machineFieldMappings = mysqlTable("machine_field_mappings", {
-  id: int("id").autoincrement().primaryKey(),
-  name: varchar("name", { length: 200 }).notNull(),
-  apiKeyId: int("apiKeyId"), // Specific to API key, null = global
-  machineType: varchar("machineType", { length: 100 }), // AOI, AVI, CMM, etc.
-  sourceField: varchar("sourceField", { length: 200 }).notNull(), // Field name from machine data
-  targetField: varchar("targetField", { length: 200 }).notNull(), // Field name in SPC system
-  targetTable: mysqlEnum("targetTable", ["measurements", "inspection_data", "oee_records"]).notNull(),
-  transformType: mysqlEnum("transformType", ["direct", "multiply", "divide", "add", "subtract", "custom"]).notNull().default("direct"),
-  transformValue: decimal("transformValue", { precision: 15, scale: 6 }), // Value for transform
-  customTransform: text("customTransform"), // Custom JS expression
-  defaultValue: varchar("defaultValue", { length: 255 }), // Default if source is null
-  isRequired: int("isRequired").notNull().default(0),
-  isActive: int("isActive").notNull().default(1),
-  createdBy: int("createdBy").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type MachineFieldMapping = typeof machineFieldMappings.$inferSelect;
-export type InsertMachineFieldMapping = typeof machineFieldMappings.$inferInsert;
-
-// ==================== Machine Realtime Events (for SSE) ====================
-export const machineRealtimeEvents = mysqlTable("machine_realtime_events", {
-  id: int("id").autoincrement().primaryKey(),
-  eventType: mysqlEnum("eventType", ["inspection", "measurement", "oee", "alert", "status"]).notNull(),
-  machineId: int("machineId"),
-  machineName: varchar("machineName", { length: 200 }),
-  apiKeyId: int("apiKeyId"),
-  eventData: text("eventData").notNull(), // JSON data
-  severity: mysqlEnum("severity", ["info", "warning", "error", "critical"]).notNull().default("info"),
-  isProcessed: int("isProcessed").notNull().default(0),
-  processedAt: timestamp("processedAt"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type MachineRealtimeEvent = typeof machineRealtimeEvents.$inferSelect;
-export type InsertMachineRealtimeEvent = typeof machineRealtimeEvents.$inferInsert;
-
-
-// OEE Alert Configurations
-export const oeeAlertConfigs = mysqlTable("oee_alert_configs", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("user_id").notNull(),
-  name: varchar("name", { length: 255 }).notNull(),
-  machineId: int("machine_id"), // null = all machines
-  oeeThreshold: decimal("oee_threshold", { precision: 5, scale: 2 }).notNull(), // e.g., 85.00
-  consecutiveDays: int("consecutive_days").notNull().default(3), // trigger after N days
-  recipients: text("recipients").notNull(), // JSON array of emails
-  isActive: int("is_active").notNull().default(1),
-  lastTriggeredAt: timestamp("last_triggered_at"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
-
-export type OeeAlertConfig = typeof oeeAlertConfigs.$inferSelect;
-export type InsertOeeAlertConfig = typeof oeeAlertConfigs.$inferInsert;
-
-// OEE Alert History
-export const oeeAlertHistory = mysqlTable("oee_alert_history", {
-  id: int("id").autoincrement().primaryKey(),
-  alertConfigId: int("alert_config_id").notNull(),
-  machineId: int("machine_id"),
-  machineName: varchar("machine_name", { length: 255 }),
-  oeeValue: decimal("oee_value", { precision: 5, scale: 2 }).notNull(),
-  consecutiveDaysBelow: int("consecutive_days_below").notNull(),
-  recipients: text("recipients").notNull(),
-  emailSent: int("email_sent").notNull().default(0),
-  emailSentAt: timestamp("email_sent_at"),
-  acknowledged: int("acknowledged").notNull().default(0),
-  acknowledgedAt: timestamp("acknowledged_at"),
-  acknowledgedBy: varchar("acknowledged_by", { length: 255 }),
-  resolved: int("resolved").notNull().default(0),
-  resolvedAt: timestamp("resolved_at"),
-  resolvedBy: varchar("resolved_by", { length: 255 }),
-  resolution: text("resolution"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-
-export type OeeAlertHistory = typeof oeeAlertHistory.$inferSelect;
-export type InsertOeeAlertHistory = typeof oeeAlertHistory.$inferInsert;
-
-// OEE Report Schedules
-export const oeeReportSchedules = mysqlTable("oee_report_schedules", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("user_id").notNull(),
-  name: varchar("name", { length: 255 }).notNull(),
-  frequency: mysqlEnum("frequency", ["weekly", "monthly"]).notNull(),
-  dayOfWeek: int("day_of_week"), // 0-6 for weekly (0=Sunday)
-  dayOfMonth: int("day_of_month"), // 1-31 for monthly
-  hour: int("hour").notNull().default(8), // Hour to send (0-23)
-  machineIds: text("machine_ids"), // JSON array, null = all machines
-  recipients: text("recipients").notNull(), // JSON array of emails
-  includeCharts: int("include_charts").notNull().default(1),
-  includeTrend: int("include_trend").notNull().default(1),
-  includeComparison: int("include_comparison").notNull().default(1),
-  isActive: int("is_active").notNull().default(1),
-  lastSentAt: timestamp("last_sent_at"),
-  nextScheduledAt: timestamp("next_scheduled_at"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
-
-export type OeeReportSchedule = typeof oeeReportSchedules.$inferSelect;
-export type InsertOeeReportSchedule = typeof oeeReportSchedules.$inferInsert;
-
-// OEE Report History
-export const oeeReportHistory = mysqlTable("oee_report_history", {
-  id: int("id").autoincrement().primaryKey(),
-  scheduleId: int("schedule_id").notNull(),
-  reportPeriodStart: timestamp("report_period_start").notNull(),
-  reportPeriodEnd: timestamp("report_period_end").notNull(),
-  recipients: text("recipients").notNull(),
-  reportData: text("report_data"), // JSON summary
-  emailSent: int("email_sent").notNull().default(0),
-  emailSentAt: timestamp("email_sent_at"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-
-export type OeeReportHistory = typeof oeeReportHistory.$inferSelect;
-export type InsertOeeReportHistory = typeof oeeReportHistory.$inferInsert;
-
-// Downtime Reasons (for Pareto analysis)
-export const downtimeReasons = mysqlTable("downtime_reasons", {
-  id: int("id").autoincrement().primaryKey(),
-  machineId: int("machine_id"),
-  oeeDataId: int("oee_data_id"),
-  reasonCode: varchar("reason_code", { length: 50 }).notNull(),
-  reasonCategory: varchar("reason_category", { length: 100 }), // e.g., "Equipment", "Material", "Labor"
-  reasonDescription: varchar("reason_description", { length: 500 }),
-  durationMinutes: int("duration_minutes").notNull(),
-  occurredAt: timestamp("occurred_at").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-
-export type DowntimeReason = typeof downtimeReasons.$inferSelect;
-export type InsertDowntimeReason = typeof downtimeReasons.$inferInsert;
-
-
-// ==================== User Theme Preferences ====================
-/**
- * User theme preferences - Lưu theme preference của user để đồng bộ giữa các thiết bị
- */
-export const userThemePreferences = mysqlTable("user_theme_preferences", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("user_id").notNull(),
-  themeId: varchar("theme_id", { length: 50 }).notNull().default("default-blue"), // ID của preset theme hoặc custom theme
-  isDarkMode: int("is_dark_mode").notNull().default(0), // 0 = light, 1 = dark
-  customThemeId: int("custom_theme_id"), // Reference to custom_themes nếu dùng custom theme
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
-});
-
-export type UserThemePreference = typeof userThemePreferences.$inferSelect;
-export type InsertUserThemePreference = typeof userThemePreferences.$inferInsert;
-
-// ==================== Custom Themes ====================
-/**
- * Custom themes - Cho phép user tự tạo theme với color picker
- */
-export const customThemes = mysqlTable("custom_themes", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("user_id").notNull(),
-  name: varchar("name", { length: 100 }).notNull(),
-  description: varchar("description", { length: 255 }),
-  // Colors in HSL format (e.g., "217.2 91.2% 59.8%")
-  primaryColor: varchar("primary_color", { length: 50 }).notNull(),
-  secondaryColor: varchar("secondary_color", { length: 50 }).notNull(),
-  accentColor: varchar("accent_color", { length: 50 }).notNull(),
-  backgroundColor: varchar("background_color", { length: 50 }).notNull(),
-  foregroundColor: varchar("foreground_color", { length: 50 }).notNull(),
-  mutedColor: varchar("muted_color", { length: 50 }),
-  mutedForegroundColor: varchar("muted_foreground_color", { length: 50 }),
-  // Store full CSS variables as JSON for flexibility
-  lightVariables: text("light_variables"), // JSON string of light mode CSS variables
-  darkVariables: text("dark_variables"), // JSON string of dark mode CSS variables
-  isPublic: int("is_public").notNull().default(0), // 0 = private, 1 = public (share with others)
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
-});
-
-export type CustomTheme = typeof customThemes.$inferSelect;
-export type InsertCustomTheme = typeof customThemes.$inferInsert;
-
-
-// ==================== User Quick Access ====================
-/**
- * User quick access - Lưu menu yêu thích của user để truy cập nhanh
- */
-export const userQuickAccess = mysqlTable("user_quick_access", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("user_id").notNull(),
-  menuId: varchar("menu_id", { length: 100 }).notNull(), // ID của menu item (e.g., "analyze", "dashboard")
-  menuPath: varchar("menu_path", { length: 255 }).notNull(), // Path của menu (e.g., "/analyze", "/dashboard")
-  menuLabel: varchar("menu_label", { length: 100 }).notNull(), // Label hiển thị
-  menuIcon: varchar("menu_icon", { length: 50 }), // Icon name (e.g., "TrendingUp")
-  systemId: varchar("system_id", { length: 50 }), // System mà menu thuộc về (e.g., "spc", "mms")
-  categoryId: int("category_id"), // Category tùy chỉnh (null = Uncategorized)
-  isPinned: int("is_pinned").notNull().default(0), // Ghim item lên đầu (0 = không ghim, 1 = đã ghim)
-  sortOrder: int("sort_order").notNull().default(0), // Thứ tự hiển thị
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
-});
-export type UserQuickAccess = typeof userQuickAccess.$inferSelect;
-export type InsertUserQuickAccess = typeof userQuickAccess.$inferInsert;
-
-/**
- * User quick access categories - Danh mục tùy chỉnh cho Quick Access
- */
-export const userQuickAccessCategories = mysqlTable("user_quick_access_categories", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("user_id").notNull(),
-  name: varchar("name", { length: 100 }).notNull(), // Tên category
-  icon: varchar("icon", { length: 50 }).default("Folder"), // Icon name
-  color: varchar("color", { length: 20 }).default("blue"), // Màu sắc
-  sortOrder: int("sort_order").notNull().default(0), // Thứ tự hiển thị
-  isExpanded: int("is_expanded").notNull().default(1), // Mặc định mở rộng
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
-});
-export type UserQuickAccessCategory = typeof userQuickAccessCategories.$inferSelect;
-export type InsertUserQuickAccessCategory = typeof userQuickAccessCategories.$inferInsert;
-
-
-// ==================== Phase 3 - Database Integration ====================
-
-/**
- * Slow Query Logs - Lưu trữ các truy vấn chậm
- */
-export const slowQueryLogs = mysqlTable("slow_query_logs", {
-  id: int("id").autoincrement().primaryKey(),
-  queryHash: varchar("query_hash", { length: 64 }).notNull(),
-  queryText: text("query_text").notNull(),
-  executionTime: int("execution_time").notNull(), // milliseconds
-  rowsExamined: int("rows_examined"),
-  rowsReturned: int("rows_returned"),
-  connectionId: varchar("connection_id", { length: 100 }),
-  userId: int("user_id"),
-  databaseName: varchar("database_name", { length: 100 }),
-  tableName: varchar("table_name", { length: 100 }),
-  queryType: mysqlEnum("query_type", ["SELECT", "INSERT", "UPDATE", "DELETE", "OTHER"]).default("SELECT"),
-  isOptimized: int("is_optimized").notNull().default(0),
-  optimizationSuggestion: text("optimization_suggestion"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-export type SlowQueryLog = typeof slowQueryLogs.$inferSelect;
-export type InsertSlowQueryLog = typeof slowQueryLogs.$inferInsert;
-
-/**
- * Batch Operation Logs - Lưu trữ các thao tác batch
- */
-export const batchOperationLogs = mysqlTable("batch_operation_logs", {
-  id: int("id").autoincrement().primaryKey(),
-  operationId: varchar("operation_id", { length: 64 }).notNull().unique(),
-  operationType: varchar("operation_type", { length: 50 }).notNull(),
-  status: mysqlEnum("status", ["pending", "running", "completed", "failed", "cancelled"]).default("pending").notNull(),
-  totalItems: int("total_items").notNull().default(0),
-  processedItems: int("processed_items").notNull().default(0),
-  successItems: int("success_items").notNull().default(0),
-  failedItems: int("failed_items").notNull().default(0),
-  startedAt: timestamp("started_at"),
-  completedAt: timestamp("completed_at"),
-  userId: int("user_id"),
-  metadata: text("metadata"), // JSON string
-  errorMessage: text("error_message"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
-});
-export type BatchOperationLog = typeof batchOperationLogs.$inferSelect;
-export type InsertBatchOperationLog = typeof batchOperationLogs.$inferInsert;
-
-/**
- * Memory Leak Reports - Báo cáo memory leak
- */
-export const memoryLeakReports = mysqlTable("memory_leak_reports", {
-  id: int("id").autoincrement().primaryKey(),
-  reportId: varchar("report_id", { length: 64 }).notNull().unique(),
-  heapUsed: bigint("heap_used", { mode: "number" }).notNull(),
-  heapTotal: bigint("heap_total", { mode: "number" }).notNull(),
-  external: bigint("external", { mode: "number" }),
-  arrayBuffers: bigint("array_buffers", { mode: "number" }),
-  rss: bigint("rss", { mode: "number" }),
-  threshold: bigint("threshold", { mode: "number" }),
-  leakSuspected: int("leak_suspected").notNull().default(0),
-  growthRate: decimal("growth_rate", { precision: 10, scale: 4 }),
-  stackTrace: text("stack_trace"),
-  processId: varchar("process_id", { length: 50 }),
-  hostname: varchar("hostname", { length: 100 }),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-export type MemoryLeakReport = typeof memoryLeakReports.$inferSelect;
-export type InsertMemoryLeakReport = typeof memoryLeakReports.$inferInsert;
-
-/**
- * Error Logs - Lưu trữ lỗi hệ thống
- */
-export const errorLogs = mysqlTable("error_logs", {
-  id: int("id").autoincrement().primaryKey(),
-  errorId: varchar("error_id", { length: 64 }).notNull().unique(),
-  errorType: varchar("error_type", { length: 100 }).notNull(),
-  errorCode: varchar("error_code", { length: 50 }),
-  message: text("message").notNull(),
-  stackTrace: text("stack_trace"),
-  severity: mysqlEnum("severity", ["low", "medium", "high", "critical"]).default("medium").notNull(),
-  source: varchar("source", { length: 100 }),
-  userId: int("user_id"),
-  requestId: varchar("request_id", { length: 64 }),
-  requestPath: varchar("request_path", { length: 500 }),
-  requestMethod: varchar("request_method", { length: 10 }),
-  userAgent: text("user_agent"),
-  ipAddress: varchar("ip_address", { length: 45 }),
-  metadata: text("metadata"), // JSON string
-  isResolved: int("is_resolved").notNull().default(0),
-  resolvedAt: timestamp("resolved_at"),
-  resolvedBy: int("resolved_by"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-export type ErrorLog = typeof errorLogs.$inferSelect;
-export type InsertErrorLog = typeof errorLogs.$inferInsert;
-
-/**
- * Structured Logs - Logs có cấu trúc
- */
-export const structuredLogs = mysqlTable("structured_logs", {
-  id: int("id").autoincrement().primaryKey(),
-  logId: varchar("log_id", { length: 64 }).notNull(),
-  level: mysqlEnum("level", ["trace", "debug", "info", "warn", "error", "fatal"]).default("info").notNull(),
-  message: text("message").notNull(),
-  category: varchar("category", { length: 50 }),
-  service: varchar("service", { length: 50 }),
-  traceId: varchar("trace_id", { length: 64 }),
-  spanId: varchar("span_id", { length: 64 }),
-  parentSpanId: varchar("parent_span_id", { length: 64 }),
-  userId: int("user_id"),
-  sessionId: varchar("session_id", { length: 64 }),
-  requestId: varchar("request_id", { length: 64 }),
-  duration: int("duration"), // milliseconds
-  metadata: text("metadata"), // JSON string
-  tags: text("tags"), // JSON array
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-export type StructuredLog = typeof structuredLogs.$inferSelect;
-export type InsertStructuredLog = typeof structuredLogs.$inferInsert;
-
-/**
- * Security Audit Logs - Logs bảo mật
- */
-export const securityAuditLogs = mysqlTable("security_audit_logs", {
-  id: int("id").autoincrement().primaryKey(),
-  eventId: varchar("event_id", { length: 64 }).notNull().unique(),
-  eventType: varchar("event_type", { length: 50 }).notNull(),
-  eventCategory: mysqlEnum("event_category", ["authentication", "authorization", "data_access", "configuration", "system"]).default("system").notNull(),
-  severity: mysqlEnum("severity", ["info", "warning", "error", "critical"]).default("info").notNull(),
-  userId: int("user_id"),
-  username: varchar("username", { length: 100 }),
-  ipAddress: varchar("ip_address", { length: 45 }),
-  userAgent: text("user_agent"),
-  resource: varchar("resource", { length: 255 }),
-  action: varchar("action", { length: 50 }),
-  outcome: mysqlEnum("outcome", ["success", "failure", "blocked"]).default("success").notNull(),
-  details: text("details"), // JSON string
-  riskScore: int("risk_score"), // 0-100
-  geoLocation: varchar("geo_location", { length: 100 }),
-  deviceFingerprint: varchar("device_fingerprint", { length: 64 }),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-export type SecurityAuditLog = typeof securityAuditLogs.$inferSelect;
-export type InsertSecurityAuditLog = typeof securityAuditLogs.$inferInsert;
-
-/**
- * IoT Device Data - Dữ liệu thiết bị IoT
- */
-export const iotDeviceData = mysqlTable("iot_device_data", {
-  id: int("id").autoincrement().primaryKey(),
-  deviceId: varchar("device_id", { length: 64 }).notNull(),
-  deviceName: varchar("device_name", { length: 100 }),
-  deviceType: varchar("device_type", { length: 50 }),
-  status: mysqlEnum("status", ["online", "offline", "error", "maintenance"]).default("offline").notNull(),
-  lastSeen: timestamp("last_seen"),
-  firmwareVersion: varchar("firmware_version", { length: 50 }),
-  ipAddress: varchar("ip_address", { length: 45 }),
-  macAddress: varchar("mac_address", { length: 17 }),
-  location: varchar("location", { length: 255 }),
-  metrics: text("metrics"), // JSON string with sensor data
-  temperature: decimal("temperature", { precision: 5, scale: 2 }),
-  humidity: decimal("humidity", { precision: 5, scale: 2 }),
-  pressure: decimal("pressure", { precision: 8, scale: 2 }),
-  batteryLevel: int("battery_level"),
-  signalStrength: int("signal_strength"),
-  errorCount: int("error_count").notNull().default(0),
-  lastError: text("last_error"),
-  metadata: text("metadata"), // JSON string
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
-});
-export type IotDeviceData = typeof iotDeviceData.$inferSelect;
-export type InsertIotDeviceData = typeof iotDeviceData.$inferInsert;
-
-/**
- * AI/ML Predictions - Dự đoán từ AI/ML
- */
-export const aiMlPredictions = mysqlTable("ai_ml_predictions", {
-  id: int("id").autoincrement().primaryKey(),
-  predictionId: varchar("prediction_id", { length: 64 }).notNull().unique(),
-  modelId: varchar("model_id", { length: 64 }).notNull(),
-  modelName: varchar("model_name", { length: 100 }),
-  modelVersion: varchar("model_version", { length: 20 }),
-  predictionType: varchar("prediction_type", { length: 50 }).notNull(),
-  inputData: text("input_data"), // JSON string
-  outputData: text("output_data"), // JSON string
-  confidence: decimal("confidence", { precision: 5, scale: 4 }),
-  probability: decimal("probability", { precision: 5, scale: 4 }),
-  predictedValue: decimal("predicted_value", { precision: 15, scale: 4 }),
-  actualValue: decimal("actual_value", { precision: 15, scale: 4 }),
-  error: decimal("error", { precision: 15, scale: 4 }),
-  isCorrect: int("is_correct"),
-  latency: int("latency"), // milliseconds
-  featureImportance: text("feature_importance"), // JSON string
-  explanation: text("explanation"),
-  metadata: text("metadata"), // JSON string
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-export type AiMlPrediction = typeof aiMlPredictions.$inferSelect;
-export type InsertAiMlPrediction = typeof aiMlPredictions.$inferInsert;
-
-/**
- * Realtime Data Streams - Cấu hình data streams
- */
-export const realtimeDataStreams = mysqlTable("realtime_data_streams", {
-  id: int("id").autoincrement().primaryKey(),
-  streamId: varchar("stream_id", { length: 64 }).notNull().unique(),
-  name: varchar("name", { length: 100 }).notNull(),
-  streamType: mysqlEnum("stream_type", ["spc", "oee", "iot", "system", "security", "ai"]).notNull(),
-  source: varchar("source", { length: 100 }).notNull(),
-  interval: int("interval").notNull().default(5000), // milliseconds
-  isActive: int("is_active").notNull().default(0),
-  lastDataAt: timestamp("last_data_at"),
-  subscriberCount: int("subscriber_count").notNull().default(0),
-  errorCount: int("error_count").notNull().default(0),
-  config: text("config"), // JSON string
-  metadata: text("metadata"), // JSON string
-  createdBy: int("created_by"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
-});
-export type RealtimeDataStream = typeof realtimeDataStreams.$inferSelect;
-export type InsertRealtimeDataStream = typeof realtimeDataStreams.$inferInsert;
-
-/**
- * Analytics Cache - Cache cho analytics
- */
-export const analyticsCache = mysqlTable("analytics_cache", {
-  id: int("id").autoincrement().primaryKey(),
-  cacheKey: varchar("cache_key", { length: 255 }).notNull().unique(),
-  cacheType: varchar("cache_type", { length: 50 }).notNull(),
-  data: text("data").notNull(), // JSON string
-  computedAt: timestamp("computed_at").notNull(),
-  expiresAt: timestamp("expires_at").notNull(),
-  hitCount: int("hit_count").notNull().default(0),
-  lastAccessedAt: timestamp("last_accessed_at"),
-  metadata: text("metadata"), // JSON string
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-export type AnalyticsCache = typeof analyticsCache.$inferSelect;
-export type InsertAnalyticsCache = typeof analyticsCache.$inferInsert;
-
-
-/**
- * License Notification Logs - Lưu log các email thông báo license đã gửi
- */
-export const licenseNotificationLogs = mysqlTable("license_notification_logs", {
-  id: int("id").autoincrement().primaryKey(),
-  licenseId: int("license_id").notNull(),
-  licenseKey: varchar("license_key", { length: 255 }).notNull(),
-  notificationType: mysqlEnum("notification_type", ["7_days_warning", "30_days_warning", "expired", "activated", "deactivated"]).notNull(),
-  recipientEmail: varchar("recipient_email", { length: 320 }).notNull(),
-  subject: varchar("subject", { length: 500 }),
-  status: mysqlEnum("status", ["sent", "failed", "pending"]).notNull().default("pending"),
-  errorMessage: text("error_message"),
-  sentAt: timestamp("sent_at"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-export type LicenseNotificationLog = typeof licenseNotificationLogs.$inferSelect;
-export type InsertLicenseNotificationLog = typeof licenseNotificationLogs.$inferInsert;
-
-
-/**
- * KPI Alert Thresholds - Ngưỡng cảnh báo KPI cho từng dây chuyền
- */
-export const kpiAlertThresholds = mysqlTable("kpi_alert_thresholds", {
-  id: int("id").autoincrement().primaryKey(),
-  productionLineId: int("production_line_id").notNull(),
-  cpkWarning: decimal("cpk_warning", { precision: 5, scale: 3 }).notNull().default("1.33"),
-  cpkCritical: decimal("cpk_critical", { precision: 5, scale: 3 }).notNull().default("1.00"),
-  oeeWarning: decimal("oee_warning", { precision: 5, scale: 2 }).notNull().default("75.00"),
-  oeeCritical: decimal("oee_critical", { precision: 5, scale: 2 }).notNull().default("60.00"),
-  defectRateWarning: decimal("defect_rate_warning", { precision: 5, scale: 2 }).notNull().default("2.00"),
-  defectRateCritical: decimal("defect_rate_critical", { precision: 5, scale: 2 }).notNull().default("5.00"),
-  weeklyDeclineThreshold: decimal("weekly_decline_threshold", { precision: 5, scale: 2 }).notNull().default("-5.00"),
-  emailAlertEnabled: int("email_alert_enabled").notNull().default(1),
-  alertEmails: text("alert_emails"), // Comma-separated emails
-  createdBy: int("created_by"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
-});
-export type KpiAlertThreshold = typeof kpiAlertThresholds.$inferSelect;
-export type InsertKpiAlertThreshold = typeof kpiAlertThresholds.$inferInsert;
-
-/**
- * Scheduled KPI Reports - Lịch gửi báo cáo KPI tự động
- */
-export const scheduledKpiReports = mysqlTable("scheduled_kpi_reports", {
-  id: int("id").autoincrement().primaryKey(),
-  name: varchar("name", { length: 255 }).notNull(),
-  description: text("description"),
-  frequency: mysqlEnum("frequency", ["daily", "weekly", "monthly"]).notNull().default("weekly"),
-  dayOfWeek: int("day_of_week"), // 0-6 for weekly (0=Sunday)
-  dayOfMonth: int("day_of_month"), // 1-31 for monthly
-  timeOfDay: varchar("time_of_day", { length: 5 }).notNull().default("08:00"), // HH:MM format
-  productionLineIds: text("production_line_ids"), // JSON array of line IDs, null = all
-  reportType: mysqlEnum("report_type", ["shift_summary", "kpi_comparison", "trend_analysis", "full_report"]).notNull().default("shift_summary"),
-  includeCharts: int("include_charts").notNull().default(1),
-  includeDetails: int("include_details").notNull().default(1),
-  recipients: text("recipients").notNull(), // Comma-separated emails
-  ccRecipients: text("cc_recipients"), // Comma-separated emails
-  isEnabled: int("is_enabled").notNull().default(1),
-  lastSentAt: timestamp("last_sent_at"),
-  lastStatus: mysqlEnum("last_status", ["success", "failed", "pending"]),
-  lastError: text("last_error"),
-  createdBy: int("created_by"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
-});
-export type ScheduledKpiReport = typeof scheduledKpiReports.$inferSelect;
-export type InsertScheduledKpiReport = typeof scheduledKpiReports.$inferInsert;
-
-/**
- * KPI Report History - Lịch sử gửi báo cáo KPI
- */
-export const kpiReportHistory = mysqlTable("kpi_report_history", {
-  id: int("id").autoincrement().primaryKey(),
-  scheduledReportId: int("scheduled_report_id").notNull(),
-  reportName: varchar("report_name", { length: 255 }).notNull(),
-  reportType: varchar("report_type", { length: 50 }).notNull(),
-  frequency: varchar("frequency", { length: 20 }).notNull(),
-  recipients: text("recipients").notNull(),
-  status: mysqlEnum("status", ["sent", "failed", "pending"]).notNull().default("pending"),
-  errorMessage: text("error_message"),
-  reportData: text("report_data"), // JSON summary of report content
-  fileUrl: varchar("file_url", { length: 500 }), // S3 URL if saved
-  sentAt: timestamp("sent_at"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-export type KpiReportHistory = typeof kpiReportHistory.$inferSelect;
-export type InsertKpiReportHistory = typeof kpiReportHistory.$inferInsert;
-
-/**
- * Weekly KPI Snapshots - Lưu trữ KPI theo tuần để so sánh
- */
-export const weeklyKpiSnapshots = mysqlTable("weekly_kpi_snapshots", {
-  id: int("id").autoincrement().primaryKey(),
-  productionLineId: int("production_line_id").notNull(),
-  weekNumber: int("week_number").notNull(), // ISO week number
-  year: int("year").notNull(),
-  weekStartDate: timestamp("week_start_date").notNull(),
-  weekEndDate: timestamp("week_end_date").notNull(),
-  avgCpk: decimal("avg_cpk", { precision: 6, scale: 4 }),
-  minCpk: decimal("min_cpk", { precision: 6, scale: 4 }),
-  maxCpk: decimal("max_cpk", { precision: 6, scale: 4 }),
-  avgOee: decimal("avg_oee", { precision: 5, scale: 2 }),
-  minOee: decimal("min_oee", { precision: 5, scale: 2 }),
-  maxOee: decimal("max_oee", { precision: 5, scale: 2 }),
-  avgDefectRate: decimal("avg_defect_rate", { precision: 5, scale: 2 }),
-  totalSamples: int("total_samples").notNull().default(0),
-  totalDefects: int("total_defects").notNull().default(0),
-  shiftData: text("shift_data"), // JSON with shift-level breakdown
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
-});
-export type WeeklyKpiSnapshot = typeof weeklyKpiSnapshots.$inferSelect;
-export type InsertWeeklyKpiSnapshot = typeof weeklyKpiSnapshots.$inferInsert;
-
-
-/**
- * KPI Alert Stats - Thống kê cảnh báo KPI
- * Lưu trữ lịch sử cảnh báo KPI để phân tích và báo cáo
- */
-export const kpiAlertStats = mysqlTable("kpi_alert_stats", {
-  id: int("id").autoincrement().primaryKey(),
-  productionLineId: int("production_line_id"),
-  machineId: int("machine_id"),
-  alertType: mysqlEnum("alert_type", ["cpk_decline", "oee_decline", "cpk_below_warning", "cpk_below_critical", "oee_below_warning", "oee_below_critical"]).notNull(),
-  severity: mysqlEnum("severity", ["warning", "critical"]).notNull().default("warning"),
-  currentValue: decimal("current_value", { precision: 10, scale: 4 }),
-  previousValue: decimal("previous_value", { precision: 10, scale: 4 }),
-  thresholdValue: decimal("threshold_value", { precision: 10, scale: 4 }),
-  changePercent: decimal("change_percent", { precision: 6, scale: 2 }),
-  alertMessage: text("alert_message"),
-  emailSent: int("email_sent").notNull().default(0),
-  notificationSent: int("notification_sent").notNull().default(0),
-  acknowledgedBy: int("acknowledged_by"),
-  acknowledgedAt: timestamp("acknowledged_at"),
-  resolvedBy: int("resolved_by"),
-  resolvedAt: timestamp("resolved_at"),
-  resolutionNotes: text("resolution_notes"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-export type KpiAlertStat = typeof kpiAlertStats.$inferSelect;
-export type InsertKpiAlertStat = typeof kpiAlertStats.$inferInsert;
-
-
-/**
- * User Chart Configs - Lưu cấu hình biểu đồ theo user
- */
-export const userChartConfigs = mysqlTable("user_chart_configs", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("user_id").notNull(),
-  chartType: varchar("chart_type", { length: 50 }).notNull(), // xbar, rbar, histogram, cusum, ewma, etc.
-  configName: varchar("config_name", { length: 255 }).notNull(),
-  config: text("config").notNull(), // JSON configuration
-  isDefault: int("is_default").notNull().default(0),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
-});
-export type UserChartConfig = typeof userChartConfigs.$inferSelect;
-export type InsertUserChartConfig = typeof userChartConfigs.$inferInsert;
-
-/**
- * Chart Annotations - Annotations trên biểu đồ
- */
-export const chartAnnotations = mysqlTable("chart_annotations", {
-  id: int("id").autoincrement().primaryKey(),
-  mappingId: int("mapping_id").notNull(),
-  chartType: varchar("chart_type", { length: 50 }).notNull(),
-  annotationType: mysqlEnum("annotation_type", ["point", "line", "area", "text"]).notNull(),
-  xValue: decimal("x_value", { precision: 20, scale: 6 }),
-  yValue: decimal("y_value", { precision: 20, scale: 6 }),
-  xStart: decimal("x_start", { precision: 20, scale: 6 }),
-  xEnd: decimal("x_end", { precision: 20, scale: 6 }),
-  yStart: decimal("y_start", { precision: 20, scale: 6 }),
-  yEnd: decimal("y_end", { precision: 20, scale: 6 }),
-  label: varchar("label", { length: 255 }),
-  description: text("description"),
-  color: varchar("color", { length: 20 }).default("#ff0000"),
-  createdBy: int("created_by").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
-});
-export type ChartAnnotation = typeof chartAnnotations.$inferSelect;
-export type InsertChartAnnotation = typeof chartAnnotations.$inferInsert;
-
-/**
- * IoT Devices - Thiết bị IoT
- */
-export const iotDevices = mysqlTable("iot_devices", {
-  id: int("id").autoincrement().primaryKey(),
-  deviceCode: varchar("device_code", { length: 100 }).notNull().unique(),
-  deviceName: varchar("device_name", { length: 255 }).notNull(),
-  deviceType: mysqlEnum("device_type", ["sensor", "plc", "gateway", "controller", "other"]).notNull().default("sensor"),
-  protocol: mysqlEnum("protocol", ["mqtt", "modbus", "opcua", "http", "tcp"]).notNull().default("mqtt"),
-  connectionString: text("connection_string"),
-  machineId: int("machine_id"),
-  productionLineId: int("production_line_id"),
-  status: mysqlEnum("status", ["online", "offline", "error", "maintenance"]).notNull().default("offline"),
-  lastHeartbeat: timestamp("last_heartbeat"),
-  metadata: text("metadata"), // JSON
-  isActive: int("is_active").notNull().default(1),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
-});
-export type IotDevice = typeof iotDevices.$inferSelect;
-export type InsertIotDevice = typeof iotDevices.$inferInsert;
-
-
-/**
- * IoT Alarms - Cảnh báo IoT
- */
-export const iotAlarms = mysqlTable("iot_alarms", {
-  id: int("id").autoincrement().primaryKey(),
-  deviceId: int("device_id").notNull(),
-  alarmType: mysqlEnum("alarm_type", ["threshold", "connection", "quality", "custom"]).notNull(),
-  severity: mysqlEnum("severity", ["info", "warning", "critical"]).notNull().default("warning"),
-  message: text("message").notNull(),
-  value: decimal("value", { precision: 20, scale: 6 }),
-  threshold: decimal("threshold", { precision: 20, scale: 6 }),
-  acknowledgedBy: int("acknowledged_by"),
-  acknowledgedAt: timestamp("acknowledged_at"),
-  resolvedAt: timestamp("resolved_at"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-export type IotAlarm = typeof iotAlarms.$inferSelect;
-export type InsertIotAlarm = typeof iotAlarms.$inferInsert;
-
-/**
- * Data Archive Configs - Cấu hình lưu trữ dữ liệu
- */
-export const dataArchiveConfigs = mysqlTable("data_archive_configs", {
-  id: int("id").autoincrement().primaryKey(),
-  tableName: varchar("table_name", { length: 100 }).notNull(),
-  retentionDays: int("retention_days").notNull().default(365),
-  archiveEnabled: int("archive_enabled").notNull().default(1),
-  deleteAfterArchive: int("delete_after_archive").notNull().default(0),
-  archiveLocation: varchar("archive_location", { length: 500 }),
-  lastArchiveAt: timestamp("last_archive_at"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
-});
-export type DataArchiveConfig = typeof dataArchiveConfigs.$inferSelect;
-export type InsertDataArchiveConfig = typeof dataArchiveConfigs.$inferInsert;
-
-/**
- * API Rate Limits - Giới hạn API
- */
-export const apiRateLimits = mysqlTable("api_rate_limits", {
-  id: int("id").autoincrement().primaryKey(),
-  endpoint: varchar("endpoint", { length: 255 }).notNull(),
-  method: varchar("method", { length: 10 }).notNull().default("*"),
-  maxRequests: int("max_requests").notNull().default(100),
-  windowSeconds: int("window_seconds").notNull().default(60),
-  isActive: int("is_active").notNull().default(1),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
-});
-export type ApiRateLimit = typeof apiRateLimits.$inferSelect;
-export type InsertApiRateLimit = typeof apiRateLimits.$inferInsert;
-
-/**
- * Webhook Subscriptions V2 - Đăng ký webhook nâng cao
- */
-export const webhookSubscriptionsV2 = mysqlTable("webhook_subscriptions_v2", {
-  id: int("id").autoincrement().primaryKey(),
-  name: varchar("name", { length: 255 }).notNull(),
-  url: varchar("url", { length: 500 }).notNull(),
-  secret: varchar("secret", { length: 255 }),
-  events: text("events").notNull(), // JSON array of event types
-  headers: text("headers"), // JSON object of custom headers
-  retryCount: int("retry_count").notNull().default(3),
-  retryDelay: int("retry_delay").notNull().default(60), // seconds
-  isActive: int("is_active").notNull().default(1),
-  lastTriggeredAt: timestamp("last_triggered_at"),
-  lastStatus: mysqlEnum("last_status", ["success", "failed", "pending"]),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
-});
-export type WebhookSubscriptionV2 = typeof webhookSubscriptionsV2.$inferSelect;
-export type InsertWebhookSubscriptionV2 = typeof webhookSubscriptionsV2.$inferInsert;
-
-/**
- * AI Anomaly Models - Mô hình AI phát hiện bất thường
- */
-export const aiAnomalyModels = mysqlTable("ai_anomaly_models", {
-  id: int("id").autoincrement().primaryKey(),
-  name: varchar("name", { length: 255 }).notNull(),
-  modelType: mysqlEnum("model_type", ["zscore", "iqr", "isolation_forest", "lstm", "custom"]).notNull(),
-  targetMetric: varchar("target_metric", { length: 100 }).notNull(), // cpk, oee, defect_rate, etc.
-  parameters: text("parameters"), // JSON
-  trainingData: text("training_data"), // JSON summary
-  accuracy: decimal("accuracy", { precision: 5, scale: 2 }),
-  status: mysqlEnum("status", ["training", "active", "inactive", "deprecated"]).notNull().default("training"),
-  trainedAt: timestamp("trained_at"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
-});
-export type AiAnomalyModel = typeof aiAnomalyModels.$inferSelect;
-export type InsertAiAnomalyModel = typeof aiAnomalyModels.$inferInsert;
-
-/**
- * AI Predictions - Dự đoán AI
- */
-export const aiPredictions = mysqlTable("ai_predictions", {
-  id: int("id").autoincrement().primaryKey(),
-  modelId: int("model_id").notNull(),
-  inputData: text("input_data").notNull(), // JSON
-  prediction: text("prediction").notNull(), // JSON
-  confidence: decimal("confidence", { precision: 5, scale: 2 }),
-  isAnomaly: int("is_anomaly").notNull().default(0),
-  feedback: mysqlEnum("feedback", ["correct", "incorrect", "unknown"]),
-  feedbackBy: int("feedback_by"),
-  feedbackAt: timestamp("feedback_at"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-export type AiPrediction = typeof aiPredictions.$inferSelect;
-export type InsertAiPrediction = typeof aiPredictions.$inferInsert;
-
-/**
- * ERP Integration Configs - Cấu hình tích hợp ERP
- */
-export const erpIntegrationConfigs = mysqlTable("erp_integration_configs", {
-  id: int("id").autoincrement().primaryKey(),
-  name: varchar("name", { length: 255 }).notNull(),
-  erpType: mysqlEnum("erp_type", ["sap", "oracle", "dynamics", "mes", "custom"]).notNull(),
-  connectionUrl: varchar("connection_url", { length: 500 }).notNull(),
-  authType: mysqlEnum("auth_type", ["basic", "oauth", "api_key", "certificate"]).notNull().default("api_key"),
-  credentials: text("credentials"), // Encrypted JSON
-  syncDirection: mysqlEnum("sync_direction", ["inbound", "outbound", "bidirectional"]).notNull().default("bidirectional"),
-  syncInterval: int("sync_interval").notNull().default(300), // seconds
-  mappingConfig: text("mapping_config"), // JSON field mapping
-  isActive: int("is_active").notNull().default(1),
-  lastSyncAt: timestamp("last_sync_at"),
-  lastSyncStatus: mysqlEnum("last_sync_status", ["success", "failed", "partial"]),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
-});
-export type ErpIntegrationConfig = typeof erpIntegrationConfigs.$inferSelect;
-export type InsertErpIntegrationConfig = typeof erpIntegrationConfigs.$inferInsert;
-
-/**
- * Security Audit Logs - Nhật ký bảo mật
- */
-
-/**
- * IoT Alert Thresholds - Ngưỡng cảnh báo IoT
- */
-export const iotAlertThresholds = mysqlTable("iot_alert_thresholds", {
-  id: int("id").autoincrement().primaryKey(),
-  deviceId: int("device_id").notNull(),
-  metric: varchar("metric", { length: 100 }).notNull(),
-  upperLimit: decimal("upper_limit", { precision: 20, scale: 6 }),
-  lowerLimit: decimal("lower_limit", { precision: 20, scale: 6 }),
-  upperWarning: decimal("upper_warning", { precision: 20, scale: 6 }),
-  lowerWarning: decimal("lower_warning", { precision: 20, scale: 6 }),
-  unit: varchar("unit", { length: 50 }),
-  notifyEmail: int("notify_email").notNull().default(0),
-  notifyPush: int("notify_push").notNull().default(1),
-  notifySms: int("notify_sms").notNull().default(0),
-  cooldownMinutes: int("cooldown_minutes").notNull().default(5), // Thời gian chờ giữa các cảnh báo
-  isActive: int("is_active").notNull().default(1),
-  createdBy: int("created_by"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
-});
-export type IotAlertThreshold = typeof iotAlertThresholds.$inferSelect;
-export type InsertIotAlertThreshold = typeof iotAlertThresholds.$inferInsert;
-
-/**
- * IoT Alert History - Lịch sử cảnh báo IoT
- */
-export const iotAlertHistory = mysqlTable("iot_alert_history", {
-  id: int("id").autoincrement().primaryKey(),
-  thresholdId: int("threshold_id").notNull(),
-  deviceId: int("device_id").notNull(),
-  metric: varchar("metric", { length: 100 }).notNull(),
-  alertType: mysqlEnum("alert_type", ["upper_limit", "lower_limit", "upper_warning", "lower_warning"]).notNull(),
-  value: decimal("value", { precision: 20, scale: 6 }).notNull(),
-  threshold: decimal("threshold", { precision: 20, scale: 6 }).notNull(),
-  message: text("message"),
-  notificationSent: int("notification_sent").notNull().default(0),
-  notificationChannels: text("notification_channels"), // JSON: ["email", "push", "sms"]
-  acknowledgedBy: int("acknowledged_by"),
-  acknowledgedAt: timestamp("acknowledged_at"),
-  resolvedAt: timestamp("resolved_at"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-export type IotAlertHistoryRecord = typeof iotAlertHistory.$inferSelect;
-export type InsertIotAlertHistory = typeof iotAlertHistory.$inferInsert;
-
-/**
- * OPC-UA Connections - Kết nối OPC-UA
- */
-export const opcuaConnections = mysqlTable("opcua_connections", {
-  id: int("id").autoincrement().primaryKey(),
-  name: varchar("name", { length: 255 }).notNull(),
-  endpointUrl: varchar("endpoint_url", { length: 500 }).notNull(),
-  securityMode: mysqlEnum("security_mode", ["None", "Sign", "SignAndEncrypt"]).notNull().default("None"),
-  securityPolicy: varchar("security_policy", { length: 100 }),
-  username: varchar("username", { length: 100 }),
-  password: varchar("password", { length: 255 }), // Encrypted
-  certificatePath: varchar("certificate_path", { length: 500 }),
-  privateKeyPath: varchar("private_key_path", { length: 500 }),
-  applicationName: varchar("application_name", { length: 255 }).default("SPC Calculator"),
-  applicationUri: varchar("application_uri", { length: 500 }),
-  sessionTimeout: int("session_timeout").notNull().default(60000), // ms
-  keepAliveInterval: int("keep_alive_interval").notNull().default(10000), // ms
-  isActive: int("is_active").notNull().default(1),
-  lastConnectedAt: timestamp("last_connected_at"),
-  lastError: text("last_error"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
-});
-export type OpcuaConnection = typeof opcuaConnections.$inferSelect;
-export type InsertOpcuaConnection = typeof opcuaConnections.$inferInsert;
-
-/**
- * OPC-UA Nodes - Node OPC-UA để đọc dữ liệu
- */
-export const opcuaNodes = mysqlTable("opcua_nodes", {
-  id: int("id").autoincrement().primaryKey(),
-  connectionId: int("connection_id").notNull(),
-  nodeId: varchar("node_id", { length: 255 }).notNull(), // ns=2;s=Temperature
-  displayName: varchar("display_name", { length: 255 }).notNull(),
-  browseName: varchar("browse_name", { length: 255 }),
-  dataType: varchar("data_type", { length: 50 }), // Double, Int32, String, etc.
-  unit: varchar("unit", { length: 50 }),
-  samplingInterval: int("sampling_interval").notNull().default(1000), // ms
-  queueSize: int("queue_size").notNull().default(10),
-  discardOldest: int("discard_oldest").notNull().default(1),
-  mappedDeviceId: int("mapped_device_id"), // Link to iot_devices
-  mappedMetric: varchar("mapped_metric", { length: 100 }),
-  isActive: int("is_active").notNull().default(1),
-  lastValue: text("last_value"),
-  lastQuality: varchar("last_quality", { length: 50 }),
-  lastTimestamp: timestamp("last_timestamp"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
-});
-export type OpcuaNode = typeof opcuaNodes.$inferSelect;
-export type InsertOpcuaNode = typeof opcuaNodes.$inferInsert;
-
-/**
- * MQTT Connections - Kết nối MQTT
- */
-export const mqttConnections = mysqlTable("mqtt_connections", {
-  id: int("id").autoincrement().primaryKey(),
-  name: varchar("name", { length: 255 }).notNull(),
-  brokerUrl: varchar("broker_url", { length: 500 }).notNull(),
-  port: int("port").notNull().default(1883),
-  clientId: varchar("client_id", { length: 100 }),
-  username: varchar("username", { length: 100 }),
-  password: varchar("password", { length: 255 }), // Encrypted
-  useTls: int("use_tls").notNull().default(0),
-  caCertPath: varchar("ca_cert_path", { length: 500 }),
-  clientCertPath: varchar("client_cert_path", { length: 500 }),
-  clientKeyPath: varchar("client_key_path", { length: 500 }),
-  keepAlive: int("keep_alive").notNull().default(60), // seconds
-  reconnectPeriod: int("reconnect_period").notNull().default(5000), // ms
-  connectTimeout: int("connect_timeout").notNull().default(30000), // ms
-  cleanSession: int("clean_session").notNull().default(1),
-  isActive: int("is_active").notNull().default(1),
-  lastConnectedAt: timestamp("last_connected_at"),
-  lastError: text("last_error"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
-});
-export type MqttConnection = typeof mqttConnections.$inferSelect;
-export type InsertMqttConnection = typeof mqttConnections.$inferInsert;
-
-/**
- * MQTT Topics - Topic MQTT để subscribe
- */
-export const mqttTopics = mysqlTable("mqtt_topics", {
-  id: int("id").autoincrement().primaryKey(),
-  connectionId: int("connection_id").notNull(),
-  topic: varchar("topic", { length: 500 }).notNull(),
-  qos: int("qos").notNull().default(1), // 0, 1, 2
-  payloadFormat: mysqlEnum("payload_format", ["json", "text", "binary"]).notNull().default("json"),
-  jsonPath: varchar("json_path", { length: 255 }), // Path to extract value from JSON
-  mappedDeviceId: int("mapped_device_id"), // Link to iot_devices
-  mappedMetric: varchar("mapped_metric", { length: 100 }),
-  isActive: int("is_active").notNull().default(1),
-  lastMessage: text("last_message"),
-  lastReceivedAt: timestamp("last_received_at"),
-  messageCount: int("message_count").notNull().default(0),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
-});
-export type MqttTopic = typeof mqttTopics.$inferSelect;
-export type InsertMqttTopic = typeof mqttTopics.$inferInsert;
-
-
-/**
- * Alert Notification Logs - Lịch sử gửi thông báo cảnh báo
- */
-export const alertNotificationLogs = mysqlTable("alert_notification_logs", {
-  id: int("id").autoincrement().primaryKey(),
-  alertId: int("alert_id").notNull(),
-  emailSent: int("email_sent").notNull().default(0),
-  emailError: text("email_error"),
-  smsSent: int("sms_sent").notNull().default(0),
-  smsError: text("sms_error"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-export type AlertNotificationLog = typeof alertNotificationLogs.$inferSelect;
-export type InsertAlertNotificationLog = typeof alertNotificationLogs.$inferInsert;
-
-/**
- * Alert Escalation Logs - Lịch sử escalation cảnh báo
- */
-export const alertEscalationLogs = mysqlTable("alert_escalation_logs", {
-  id: int("id").autoincrement().primaryKey(),
-  alertId: int("alert_id").notNull(),
-  escalationLevel: int("escalation_level").notNull(),
-  levelName: varchar("level_name", { length: 100 }).notNull(),
-  notifiedEmails: text("notified_emails"),
-  notifiedPhones: text("notified_phones"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-export type AlertEscalationLog = typeof alertEscalationLogs.$inferSelect;
-export type InsertAlertEscalationLog = typeof alertEscalationLogs.$inferInsert;
-
-/**
- * Escalation Config - Cấu hình escalation
- */
-export const escalationConfigs = mysqlTable("escalation_configs", {
-  id: int("id").autoincrement().primaryKey(),
-  level: int("level").notNull().unique(),
-  name: varchar("name", { length: 100 }).notNull(),
-  timeoutMinutes: int("timeout_minutes").notNull().default(15),
-  notifyEmails: text("notify_emails"), // Comma-separated
-  notifyPhones: text("notify_phones"), // Comma-separated
-  notifyOwner: int("notify_owner").notNull().default(0),
-  isActive: int("is_active").notNull().default(1),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
-});
-export type EscalationConfig = typeof escalationConfigs.$inferSelect;
-export type InsertEscalationConfig = typeof escalationConfigs.$inferInsert;
-
-
-/**
- * Twilio SMS Configuration
- */
-export const twilioConfig = mysqlTable("twilio_config", {
-  id: int("id").autoincrement().primaryKey(),
-  accountSid: varchar("account_sid", { length: 100 }),
-  authToken: varchar("auth_token", { length: 100 }),
-  fromNumber: varchar("from_number", { length: 50 }),
-  enabled: int("enabled").notNull().default(0),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
-});
-export type TwilioConfig = typeof twilioConfig.$inferSelect;
-export type InsertTwilioConfig = typeof twilioConfig.$inferInsert;
-
-/**
- * Webhook Configuration for Slack/Teams
- */
-export const webhookConfig = mysqlTable("webhook_config", {
-  id: int("id").autoincrement().primaryKey(),
-  slackWebhookUrl: varchar("slack_webhook_url", { length: 500 }),
-  slackChannel: varchar("slack_channel", { length: 100 }),
-  slackEnabled: int("slack_enabled").notNull().default(0),
-  teamsWebhookUrl: varchar("teams_webhook_url", { length: 500 }),
-  teamsEnabled: int("teams_enabled").notNull().default(0),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
-});
-export type WebhookConfig = typeof webhookConfig.$inferSelect;
-export type InsertWebhookConfig = typeof webhookConfig.$inferInsert;
-
-/**
- * Alert Analytics - Lưu trữ thống kê alerts
- */
-export const alertAnalytics = mysqlTable("alert_analytics", {
-  id: int("id").autoincrement().primaryKey(),
-  date: timestamp("date").defaultNow().notNull(),
-  alertType: varchar("alert_type", { length: 100 }).notNull(),
-  severity: mysqlEnum("severity", ["info", "warning", "critical"]).notNull().default("info"),
-  source: varchar("source", { length: 255 }), // Dây chuyền, công trạm, etc.
-  count: int("count").notNull().default(0),
-  resolvedCount: int("resolved_count").notNull().default(0),
-  totalResolutionTimeMs: bigint("total_resolution_time_ms", { mode: "number" }).default(0),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-export type AlertAnalytics = typeof alertAnalytics.$inferSelect;
-export type InsertAlertAnalytics = typeof alertAnalytics.$inferInsert;
-
-
-/**
- * Video Tutorials - Quản lý video hướng dẫn sử dụng
- */
-export const videoTutorials = mysqlTable("video_tutorials", {
-  id: int("id").autoincrement().primaryKey(),
-  title: varchar("title", { length: 255 }).notNull(),
-  description: text("description"),
-  youtubeUrl: varchar("youtube_url", { length: 500 }).notNull(), // YouTube video URL
-  youtubeId: varchar("youtube_id", { length: 50 }).notNull(), // YouTube video ID (extracted from URL)
-  thumbnailUrl: varchar("thumbnail_url", { length: 500 }), // Custom thumbnail or auto from YouTube
-  duration: varchar("duration", { length: 20 }), // e.g., "15:30"
-  category: varchar("category", { length: 100 }).notNull(), // e.g., "getting_started", "spc_analysis", "mms"
-  level: mysqlEnum("level", ["beginner", "intermediate", "advanced"]).default("beginner").notNull(),
-  sortOrder: int("sort_order").notNull().default(0),
-  isActive: int("is_active").notNull().default(1),
-  viewCount: int("view_count").notNull().default(0),
-  createdBy: int("created_by"), // User ID who created
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
-});
-
-export type VideoTutorial = typeof videoTutorials.$inferSelect;
-export type InsertVideoTutorial = typeof videoTutorials.$inferInsert;
-
-
-/**
- * AI ML Models - Quản lý các model AI/ML
- */
-export const aiMlModels = mysqlTable("ai_ml_models", {
-  id: int("id").autoincrement().primaryKey(),
-  name: varchar("name", { length: 255 }).notNull(),
-  description: text("description"),
-  modelType: varchar("model_type", { length: 100 }).notNull(), // regression, classification, anomaly_detection, etc.
-  targetMetric: varchar("target_metric", { length: 100 }), // cpk, oee, defect_rate, etc.
-  status: mysqlEnum("status", ["draft", "training", "active", "inactive", "deprecated"]).notNull().default("draft"),
-  accuracy: decimal("accuracy", { precision: 10, scale: 6 }),
-  precision: decimal("precision", { precision: 10, scale: 6 }),
-  recall: decimal("recall", { precision: 10, scale: 6 }),
-  f1Score: decimal("f1_score", { precision: 10, scale: 6 }),
-  createdBy: int("created_by"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
-});
-export type AiMlModel = typeof aiMlModels.$inferSelect;
-export type InsertAiMlModel = typeof aiMlModels.$inferInsert;
-
-/**
- * AI A/B Tests - A/B Testing cho model AI
- */
-export const aiAbTests = mysqlTable("ai_ab_tests", {
-  id: int("id").autoincrement().primaryKey(),
-  name: varchar("name", { length: 255 }).notNull(),
-  description: text("description"),
-  modelAId: int("model_a_id").notNull(),
-  modelBId: int("model_b_id").notNull(),
-  trafficSplitA: int("traffic_split_a").notNull().default(50),
-  trafficSplitB: int("traffic_split_b").notNull().default(50),
-  minSampleSize: int("min_sample_size").notNull().default(1000),
-  confidenceLevel: decimal("confidence_level", { precision: 4, scale: 2 }).notNull().default("0.95"),
-  status: mysqlEnum("status", ["draft", "running", "paused", "completed", "cancelled"]).notNull().default("draft"),
-  startDate: timestamp("start_date"),
-  endDate: timestamp("end_date"),
-  winnerId: int("winner_id"),
-  pValue: decimal("p_value", { precision: 10, scale: 8 }),
-  isSignificant: int("is_significant").default(0),
-  createdBy: int("created_by"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+import { mysqlTable, mysqlSchema, AnyMySqlColumn, int, varchar, timestamp, index, json, decimal, text, mysqlEnum, datetime } from "drizzle-orm/mysql-core"
+import { sql } from "drizzle-orm"
+
+export const accountLockouts = mysqlTable("account_lockouts", {
+	id: int().autoincrement().notNull(),
+	userId: int("user_id").notNull(),
+	username: varchar({ length: 100 }).notNull(),
+	lockedAt: timestamp("locked_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	lockedUntil: timestamp("locked_until", { mode: 'string' }).notNull(),
+	reason: varchar({ length: 255 }),
+	failedAttempts: int("failed_attempts").default(0).notNull(),
+	unlockedAt: timestamp("unlocked_at", { mode: 'string' }),
+	unlockedBy: int("unlocked_by"),
 });
-export type AiAbTest = typeof aiAbTests.$inferSelect;
-export type InsertAiAbTest = typeof aiAbTests.$inferInsert;
 
-/**
- * AI A/B Test Results - Kết quả từng prediction trong A/B test
- */
 export const aiAbTestResults = mysqlTable("ai_ab_test_results", {
-  id: int("id").autoincrement().primaryKey(),
-  testId: int("test_id").notNull(),
-  variant: mysqlEnum("variant", ["A", "B"]).notNull(),
-  predictionId: int("prediction_id").notNull(),
-  predictedValue: decimal("predicted_value", { precision: 15, scale: 6 }),
-  actualValue: decimal("actual_value", { precision: 15, scale: 6 }),
-  isCorrect: int("is_correct"),
-  responseTimeMs: int("response_time_ms"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-export type AiAbTestResult = typeof aiAbTestResults.$inferSelect;
-export type InsertAiAbTestResult = typeof aiAbTestResults.$inferInsert;
+	id: int().autoincrement().notNull(),
+	testId: int("test_id").notNull(),
+	modelId: int("model_id").notNull(),
+	predictionId: int("prediction_id"),
+	inputData: json("input_data"),
+	predictedValue: decimal("predicted_value", { precision: 15, scale: 6 }),
+	actualValue: decimal("actual_value", { precision: 15, scale: 6 }),
+	error: decimal({ precision: 15, scale: 6 }),
+	errorPercent: decimal("error_percent", { precision: 10, scale: 4 }),
+	responseTime: int("response_time"),
+	isCorrect: int("is_correct"),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+	index("idx_test_model").on(table.testId, table.modelId),
+	index("idx_created_at").on(table.createdAt),
+]);
 
-/**
- * AI A/B Test Stats - Thống kê tổng hợp cho A/B test
- */
 export const aiAbTestStats = mysqlTable("ai_ab_test_stats", {
-  id: int("id").autoincrement().primaryKey(),
-  testId: int("test_id").notNull(),
-  variant: mysqlEnum("variant", ["A", "B"]).notNull(),
-  totalPredictions: int("total_predictions").notNull().default(0),
-  correctPredictions: int("correct_predictions").notNull().default(0),
-  accuracy: decimal("accuracy", { precision: 10, scale: 6 }),
-  meanError: decimal("mean_error", { precision: 15, scale: 6 }),
-  meanAbsoluteError: decimal("mean_absolute_error", { precision: 15, scale: 6 }),
-  rootMeanSquaredError: decimal("root_mean_squared_error", { precision: 15, scale: 6 }),
-  avgResponseTimeMs: decimal("avg_response_time_ms", { precision: 10, scale: 2 }),
-  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+	id: int().autoincrement().notNull(),
+	testId: int("test_id").notNull(),
+	modelId: int("model_id").notNull(),
+	totalPredictions: int("total_predictions").default(0).notNull(),
+	correctPredictions: int("correct_predictions").default(0).notNull(),
+	accuracy: decimal({ precision: 10, scale: 6 }),
+	meanError: decimal("mean_error", { precision: 15, scale: 6 }),
+	meanAbsoluteError: decimal("mean_absolute_error", { precision: 15, scale: 6 }),
+	rootMeanSquaredError: decimal("root_mean_squared_error", { precision: 15, scale: 6 }),
+	avgResponseTime: int("avg_response_time"),
+	lastUpdated: timestamp("last_updated", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("idx_test_model_unique").on(table.testId, table.modelId),
+]);
+
+export const aiAbTests = mysqlTable("ai_ab_tests", {
+	id: int().autoincrement().notNull(),
+	name: varchar({ length: 255 }).notNull(),
+	description: text(),
+	modelAId: int("model_a_id").notNull(),
+	modelBId: int("model_b_id").notNull(),
+	trafficSplitA: int("traffic_split_a").default(50).notNull(),
+	trafficSplitB: int("traffic_split_b").default(50).notNull(),
+	status: mysqlEnum(['draft','running','paused','completed','cancelled']).default('draft').notNull(),
+	startDate: timestamp("start_date", { mode: 'string' }),
+	endDate: timestamp("end_date", { mode: 'string' }),
+	winnerModelId: int("winner_model_id"),
+	winnerReason: text("winner_reason"),
+	minSampleSize: int("min_sample_size").default(100).notNull(),
+	confidenceLevel: decimal("confidence_level", { precision: 5, scale: 2 }).default('0.95'),
+	createdBy: int("created_by"),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
 });
-export type AiAbTestStats = typeof aiAbTestStats.$inferSelect;
-export type InsertAiAbTestStats = typeof aiAbTestStats.$inferInsert;
 
-/**
- * AI Model Versions - Quản lý phiên bản model
- */
-export const aiModelVersions = mysqlTable("ai_model_versions", {
-  id: int("id").autoincrement().primaryKey(),
-  modelId: int("model_id").notNull(),
-  version: varchar("version", { length: 50 }).notNull(),
-  versionNumber: int("version_number").notNull(),
-  accuracy: decimal("accuracy", { precision: 10, scale: 6 }),
-  precision: decimal("precision", { precision: 10, scale: 6 }),
-  recall: decimal("recall", { precision: 10, scale: 6 }),
-  f1Score: decimal("f1_score", { precision: 10, scale: 6 }),
-  meanAbsoluteError: decimal("mean_absolute_error", { precision: 15, scale: 6 }),
-  rootMeanSquaredError: decimal("root_mean_squared_error", { precision: 15, scale: 6 }),
-  trainingDataSize: int("training_data_size"),
-  validationDataSize: int("validation_data_size"),
-  hyperparameters: json("hyperparameters"),
-  featureImportance: json("feature_importance"),
-  changeLog: text("change_log"),
-  isActive: int("is_active").notNull().default(0),
-  isRollbackTarget: int("is_rollback_target").notNull().default(1),
-  deployedAt: timestamp("deployed_at"),
-  deployedBy: int("deployed_by"),
-  createdBy: int("created_by"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+export const aiAnomalyModels = mysqlTable("ai_anomaly_models", {
+	id: int().autoincrement().notNull(),
+	name: varchar({ length: 100 }).notNull(),
+	modelType: mysqlEnum("model_type", ['isolation_forest','autoencoder','lstm','statistical','ensemble']).notNull(),
+	targetMetric: varchar("target_metric", { length: 100 }).default('cpk'),
+	productionLineId: int("production_line_id"),
+	machineId: int("machine_id"),
+	parameters: text(),
+	trainingData: text("training_data"),
+	accuracy: decimal({ precision: 5, scale: 2 }),
+	precisionScore: decimal("precision_score", { precision: 5, scale: 2 }),
+	recallVal: decimal("recall_val", { precision: 5, scale: 2 }),
+	f1Score: decimal("f1_score", { precision: 5, scale: 2 }),
+	version: varchar({ length: 20 }).default('1.0').notNull(),
+	status: mysqlEnum(['training','active','inactive','deprecated']).default('inactive').notNull(),
+	lastTrainedAt: timestamp("last_trained_at", { mode: 'string' }),
+	createdBy: int("created_by"),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+	trainedAt: datetime("trained_at", { mode: 'string'}),
 });
-export type AiModelVersion = typeof aiModelVersions.$inferSelect;
-export type InsertAiModelVersion = typeof aiModelVersions.$inferInsert;
 
-/**
- * AI Model Rollback History - Lịch sử rollback model
- */
-export const aiModelRollbackHistory = mysqlTable("ai_model_rollback_history", {
-  id: int("id").autoincrement().primaryKey(),
-  modelId: int("model_id").notNull(),
-  fromVersionId: int("from_version_id"),
-  toVersionId: int("to_version_id").notNull(),
-  reason: text("reason").notNull(),
-  rollbackType: mysqlEnum("rollback_type", ["manual", "automatic"]).notNull().default("manual"),
-  rollbackBy: int("rollback_by"),
-  status: mysqlEnum("status", ["pending", "in_progress", "completed", "failed"]).notNull().default("pending"),
-  errorMessage: text("error_message"),
-  completedAt: timestamp("completed_at"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-export type AiModelRollbackHistory = typeof aiModelRollbackHistory.$inferSelect;
-export type InsertAiModelRollbackHistory = typeof aiModelRollbackHistory.$inferInsert;
-
-/**
- * AI Drift Alerts - Cảnh báo data drift
- */
-export const aiDriftAlerts = mysqlTable("ai_drift_alerts", {
-  id: int("id").autoincrement().primaryKey(),
-  modelId: int("model_id").notNull(),
-  driftType: mysqlEnum("drift_type", ["accuracy_drop", "feature_drift", "prediction_drift", "data_quality"]).notNull(),
-  severity: mysqlEnum("severity", ["low", "medium", "high", "critical"]).notNull(),
-  driftScore: decimal("drift_score", { precision: 10, scale: 6 }).notNull(),
-  details: json("details"),
-  recommendation: text("recommendation"),
-  status: mysqlEnum("status", ["active", "acknowledged", "resolved", "ignored"]).notNull().default("active"),
-  acknowledgedAt: timestamp("acknowledged_at"),
-  acknowledgedBy: int("acknowledged_by"),
-  resolvedAt: timestamp("resolved_at"),
-  resolvedBy: int("resolved_by"),
-  resolution: text("resolution"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-export type AiDriftAlert = typeof aiDriftAlerts.$inferSelect;
-export type InsertAiDriftAlert = typeof aiDriftAlerts.$inferInsert;
-
-/**
- * AI Drift Configs - Cấu hình monitoring drift
- */
-export const aiDriftConfigs = mysqlTable("ai_drift_configs", {
-  id: int("id").autoincrement().primaryKey(),
-  modelId: int("model_id").notNull(),
-  accuracyDropThreshold: decimal("accuracy_drop_threshold", { precision: 5, scale: 4 }).notNull().default("0.05"),
-  featureDriftThreshold: decimal("feature_drift_threshold", { precision: 5, scale: 4 }).notNull().default("0.10"),
-  predictionDriftThreshold: decimal("prediction_drift_threshold", { precision: 5, scale: 4 }).notNull().default("0.10"),
-  monitoringWindowHours: int("monitoring_window_hours").notNull().default(24),
-  alertCooldownMinutes: int("alert_cooldown_minutes").notNull().default(60),
-  autoRollbackEnabled: int("auto_rollback_enabled").notNull().default(0),
-  autoRollbackThreshold: decimal("auto_rollback_threshold", { precision: 5, scale: 4 }).notNull().default("0.15"),
-  notifyOwner: int("notify_owner").notNull().default(1),
-  notifyEmail: varchar("notify_email", { length: 255 }),
-  isActive: int("is_active").notNull().default(1),
-  createdBy: int("created_by"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
-});
-export type AiDriftConfig = typeof aiDriftConfigs.$inferSelect;
-export type InsertAiDriftConfig = typeof aiDriftConfigs.$inferInsert;
-
-/**
- * AI Drift Metrics History - Lịch sử metrics để theo dõi drift
- */
-export const aiDriftMetricsHistory = mysqlTable("ai_drift_metrics_history", {
-  id: int("id").autoincrement().primaryKey(),
-  modelId: int("model_id").notNull(),
-  accuracy: decimal("accuracy", { precision: 10, scale: 6 }),
-  accuracyDrop: decimal("accuracy_drop", { precision: 10, scale: 6 }),
-  featureDrift: decimal("feature_drift", { precision: 10, scale: 6 }),
-  predictionDrift: decimal("prediction_drift", { precision: 10, scale: 6 }),
-  precision: decimal("precision", { precision: 10, scale: 6 }),
-  recall: decimal("recall", { precision: 10, scale: 6 }),
-  f1Score: decimal("f1_score", { precision: 10, scale: 6 }),
-  severity: varchar("severity", { length: 20 }),
-  predictionCount: int("prediction_count").notNull().default(0),
-  timestamp: timestamp("timestamp").defaultNow().notNull(),
-  recordedAt: timestamp("recorded_at").defaultNow().notNull(),
-});
-export type AiDriftMetricsHistory = typeof aiDriftMetricsHistory.$inferSelect;
-export type InsertAiDriftMetricsHistory = typeof aiDriftMetricsHistory.$inferInsert;
-
-/**
- * AI Feature Statistics - Thống kê features để phát hiện drift
- */
-export const aiFeatureStatistics = mysqlTable("ai_feature_statistics", {
-  id: int("id").autoincrement().primaryKey(),
-  modelId: int("model_id").notNull(),
-  featureName: varchar("feature_name", { length: 255 }).notNull(),
-  mean: decimal("mean", { precision: 20, scale: 10 }),
-  stdDev: decimal("std_dev", { precision: 20, scale: 10 }),
-  min: decimal("min", { precision: 20, scale: 10 }),
-  max: decimal("max", { precision: 20, scale: 10 }),
-  median: decimal("median", { precision: 20, scale: 10 }),
-  q1: decimal("q1", { precision: 20, scale: 10 }),
-  q3: decimal("q3", { precision: 20, scale: 10 }),
-  uniqueCount: int("unique_count"),
-  histogram: json("histogram"),
-  isBaseline: int("is_baseline").notNull().default(0),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-export type AiFeatureStatistics = typeof aiFeatureStatistics.$inferSelect;
-export type InsertAiFeatureStatistics = typeof aiFeatureStatistics.$inferInsert;
-
-
-/**
- * AI Auto-scaling Configs - Cấu hình auto-scaling threshold
- */
 export const aiAutoScalingConfigs = mysqlTable("ai_auto_scaling_configs", {
-  id: int("id").autoincrement().primaryKey(),
-  modelId: int("model_id").notNull(),
-  enabled: int("enabled").notNull().default(0),
-  algorithm: mysqlEnum("algorithm", ["moving_average", "percentile", "std_deviation", "adaptive"]).notNull().default("adaptive"),
-  windowSize: int("window_size").notNull().default(100),
-  sensitivityFactor: decimal("sensitivity_factor", { precision: 5, scale: 2 }).notNull().default("1.00"),
-  minThreshold: decimal("min_threshold", { precision: 5, scale: 4 }).notNull().default("0.01"),
-  maxThreshold: decimal("max_threshold", { precision: 5, scale: 4 }).notNull().default("0.50"),
-  updateFrequency: mysqlEnum("update_frequency", ["hourly", "daily", "weekly"]).notNull().default("daily"),
-  lastCalculatedThresholds: json("last_calculated_thresholds"),
-  lastUpdated: timestamp("last_updated"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
-});
-export type AiAutoScalingConfig = typeof aiAutoScalingConfigs.$inferSelect;
-export type InsertAiAutoScalingConfig = typeof aiAutoScalingConfigs.$inferInsert;
-
-
-// ==================== Predictive Alert Thresholds ====================
-/**
- * Cấu hình ngưỡng cảnh báo tự động dựa trên kết quả dự báo
- */
-export const predictiveAlertThresholds = mysqlTable("predictive_alert_thresholds", {
-  id: int("id").autoincrement().primaryKey(),
-  productionLineId: int("production_line_id"),
-  name: varchar("name", { length: 255 }).notNull(),
-  description: text("description"),
-  
-  // Loại dự báo
-  predictionType: mysqlEnum("prediction_type", ["oee", "defect_rate", "both"]).notNull().default("both"),
-  
-  // Ngưỡng OEE
-  oeeWarningThreshold: decimal("oee_warning_threshold", { precision: 5, scale: 2 }).default("75.00"), // Cảnh báo khi OEE dự báo < ngưỡng
-  oeeCriticalThreshold: decimal("oee_critical_threshold", { precision: 5, scale: 2 }).default("65.00"), // Nghiêm trọng khi OEE dự báo < ngưỡng
-  oeeDeclineThreshold: decimal("oee_decline_threshold", { precision: 5, scale: 2 }).default("5.00"), // Cảnh báo khi OEE giảm > % so với tuần trước
-  
-  // Ngưỡng Defect Rate
-  defectWarningThreshold: decimal("defect_warning_threshold", { precision: 5, scale: 2 }).default("3.00"), // Cảnh báo khi tỷ lệ lỗi dự báo > ngưỡng
-  defectCriticalThreshold: decimal("defect_critical_threshold", { precision: 5, scale: 2 }).default("5.00"), // Nghiêm trọng khi tỷ lệ lỗi dự báo > ngưỡng
-  defectIncreaseThreshold: decimal("defect_increase_threshold", { precision: 5, scale: 2 }).default("20.00"), // Cảnh báo khi tỷ lệ lỗi tăng > % so với tuần trước
-  
-  // Cấu hình tự động điều chỉnh ngưỡng
-  autoAdjustEnabled: int("auto_adjust_enabled").notNull().default(0),
-  autoAdjustSensitivity: mysqlEnum("auto_adjust_sensitivity", ["low", "medium", "high"]).default("medium"),
-  autoAdjustPeriodDays: int("auto_adjust_period_days").default(30), // Số ngày dữ liệu để tính toán ngưỡng tự động
-  
-  // Cấu hình thông báo
-  emailAlertEnabled: int("email_alert_enabled").notNull().default(1),
-  alertEmails: text("alert_emails"), // JSON array of emails
-  alertFrequency: mysqlEnum("alert_frequency", ["immediate", "hourly", "daily"]).default("immediate"),
-  
-  // Trạng thái
-  isActive: int("is_active").notNull().default(1),
-  lastAlertSentAt: timestamp("last_alert_sent_at"),
-  lastAutoAdjustAt: timestamp("last_auto_adjust_at"),
-  
-  // Metadata
-  createdBy: int("created_by"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+	id: int().autoincrement().notNull(),
+	modelId: int("model_id").notNull(),
+	enabled: int().default(0).notNull(),
+	algorithm: mysqlEnum(['moving_average','percentile','std_deviation','adaptive']).default('adaptive').notNull(),
+	windowSize: int("window_size").default(100).notNull(),
+	sensitivityFactor: decimal("sensitivity_factor", { precision: 5, scale: 2 }).default('1.00').notNull(),
+	minThreshold: decimal("min_threshold", { precision: 5, scale: 4 }).default('0.0100').notNull(),
+	maxThreshold: decimal("max_threshold", { precision: 5, scale: 4 }).default('0.5000').notNull(),
+	updateFrequency: mysqlEnum("update_frequency", ['hourly','daily','weekly']).default('daily').notNull(),
+	lastCalculatedThresholds: json("last_calculated_thresholds"),
+	lastUpdated: timestamp("last_updated", { mode: 'string' }),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
 });
 
-export type PredictiveAlertThreshold = typeof predictiveAlertThresholds.$inferSelect;
-export type InsertPredictiveAlertThreshold = typeof predictiveAlertThresholds.$inferInsert;
+export const aiDriftAlerts = mysqlTable("ai_drift_alerts", {
+	id: int().autoincrement().notNull(),
+	modelId: int("model_id").notNull(),
+	modelVersionId: int("model_version_id"),
+	alertType: mysqlEnum("alert_type", ['accuracy_drop','data_drift','concept_drift','prediction_drift','feature_drift','performance_degradation']).notNull(),
+	severity: mysqlEnum(['low','medium','high','critical']).default('medium').notNull(),
+	title: varchar({ length: 255 }).notNull(),
+	description: text(),
+	currentValue: decimal("current_value", { precision: 15, scale: 6 }),
+	baselineValue: decimal("baseline_value", { precision: 15, scale: 6 }),
+	threshold: decimal({ precision: 15, scale: 6 }),
+	changePercent: decimal("change_percent", { precision: 10, scale: 4 }),
+	affectedFeatures: json("affected_features"),
+	driftScore: decimal("drift_score", { precision: 10, scale: 6 }),
+	pValue: decimal("p_value", { precision: 10, scale: 8 }),
+	sampleSize: int("sample_size"),
+	windowStart: timestamp("window_start", { mode: 'string' }),
+	windowEnd: timestamp("window_end", { mode: 'string' }),
+	status: mysqlEnum(['new','acknowledged','investigating','resolved','ignored']).default('new').notNull(),
+	resolvedBy: int("resolved_by"),
+	resolvedAt: timestamp("resolved_at", { mode: 'string' }),
+	resolution: text(),
+	autoRetrainTriggered: int("auto_retrain_triggered").default(0).notNull(),
+	retrainJobId: int("retrain_job_id"),
+	notificationSent: int("notification_sent").default(0).notNull(),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("idx_model_status").on(table.modelId, table.status),
+	index("idx_severity").on(table.severity),
+	index("idx_created_at").on(table.createdAt),
+]);
 
-// ==================== Predictive Alert History ====================
-/**
- * Lịch sử cảnh báo dự báo
- */
+export const aiDriftConfigs = mysqlTable("ai_drift_configs", {
+	id: int().autoincrement().notNull(),
+	modelId: int("model_id").notNull(),
+	isEnabled: int("is_enabled").default(1).notNull(),
+	accuracyDropThreshold: decimal("accuracy_drop_threshold", { precision: 10, scale: 4 }).default('0.05'),
+	accuracyDropWindow: int("accuracy_drop_window").default(24).notNull(),
+	dataDriftThreshold: decimal("data_drift_threshold", { precision: 10, scale: 4 }).default('0.1'),
+	dataDriftCheckInterval: int("data_drift_check_interval").default(6).notNull(),
+	predictionDriftThreshold: decimal("prediction_drift_threshold", { precision: 10, scale: 4 }).default('0.1'),
+	featureDriftThreshold: decimal("feature_drift_threshold", { precision: 10, scale: 4 }).default('0.15'),
+	monitoredFeatures: json("monitored_features"),
+	autoRetrainEnabled: int("auto_retrain_enabled").default(0).notNull(),
+	autoRetrainOnAccuracyDrop: int("auto_retrain_on_accuracy_drop").default(1).notNull(),
+	autoRetrainOnDataDrift: int("auto_retrain_on_data_drift").default(0).notNull(),
+	minSamplesForRetrain: int("min_samples_for_retrain").default(1000).notNull(),
+	notifyOnLow: int("notify_on_low").default(0).notNull(),
+	notifyOnMedium: int("notify_on_medium").default(1).notNull(),
+	notifyOnHigh: int("notify_on_high").default(1).notNull(),
+	notifyOnCritical: int("notify_on_critical").default(1).notNull(),
+	notificationEmails: json("notification_emails"),
+	notificationWebhook: varchar("notification_webhook", { length: 500 }),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("idx_model_unique").on(table.modelId),
+]);
+
+export const aiDriftMetricsHistory = mysqlTable("ai_drift_metrics_history", {
+	id: int().autoincrement().notNull(),
+	modelId: int("model_id").notNull(),
+	modelVersionId: int("model_version_id"),
+	metricType: varchar("metric_type", { length: 50 }).notNull(),
+	metricValue: decimal("metric_value", { precision: 15, scale: 6 }).notNull(),
+	baselineValue: decimal("baseline_value", { precision: 15, scale: 6 }),
+	threshold: decimal({ precision: 15, scale: 6 }),
+	isAnomaly: int("is_anomaly").default(0).notNull(),
+	sampleSize: int("sample_size"),
+	windowStart: timestamp("window_start", { mode: 'string' }),
+	windowEnd: timestamp("window_end", { mode: 'string' }),
+	metadata: json(),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	accuracy: decimal({ precision: 10, scale: 6 }),
+	accuracyDrop: decimal("accuracy_drop", { precision: 10, scale: 6 }),
+	featureDrift: decimal("feature_drift", { precision: 10, scale: 6 }),
+	predictionDrift: decimal("prediction_drift", { precision: 10, scale: 6 }),
+	severity: varchar({ length: 20 }),
+	timestamp: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP'),
+},
+(table) => [
+	index("idx_model_metric").on(table.modelId, table.metricType),
+	index("idx_created_at").on(table.createdAt),
+]);
+
+export const aiFeatureStatistics = mysqlTable("ai_feature_statistics", {
+	id: int().autoincrement().notNull(),
+	modelId: int("model_id").notNull(),
+	featureName: varchar("feature_name", { length: 255 }).notNull(),
+	statisticType: mysqlEnum("statistic_type", ['baseline','current']).notNull(),
+	mean: decimal({ precision: 15, scale: 6 }),
+	stdDev: decimal("std_dev", { precision: 15, scale: 6 }),
+	minValue: decimal("min_value", { precision: 15, scale: 6 }),
+	maxValue: decimal("max_value", { precision: 15, scale: 6 }),
+	median: decimal({ precision: 15, scale: 6 }),
+	q1: decimal({ precision: 15, scale: 6 }),
+	q3: decimal({ precision: 15, scale: 6 }),
+	skewness: decimal({ precision: 10, scale: 6 }),
+	kurtosis: decimal({ precision: 10, scale: 6 }),
+	nullCount: int("null_count"),
+	uniqueCount: int("unique_count"),
+	histogram: json(),
+	sampleSize: int("sample_size"),
+	calculatedAt: timestamp("calculated_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+	index("idx_model_feature").on(table.modelId, table.featureName),
+	index("idx_statistic_type").on(table.modelId, table.statisticType),
+]);
+
+export const aiMlModels = mysqlTable("ai_ml_models", {
+	id: int().autoincrement().notNull(),
+	name: varchar({ length: 255 }).notNull(),
+	description: text(),
+	modelType: varchar("model_type", { length: 100 }).notNull(),
+	targetMetric: varchar("target_metric", { length: 100 }),
+	status: mysqlEnum(['draft','training','active','inactive','deprecated']).default('draft').notNull(),
+	accuracy: decimal({ precision: 10, scale: 6 }),
+	precision: decimal({ precision: 10, scale: 6 }),
+	recall: decimal({ precision: 10, scale: 6 }),
+	f1Score: decimal("f1_score", { precision: 10, scale: 6 }),
+	createdBy: int("created_by"),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const aiMlPredictions = mysqlTable("ai_ml_predictions", {
+	id: int().autoincrement().notNull(),
+	predictionId: varchar("prediction_id", { length: 64 }).notNull(),
+	modelId: varchar("model_id", { length: 64 }).notNull(),
+	modelName: varchar("model_name", { length: 100 }),
+	modelVersion: varchar("model_version", { length: 20 }),
+	predictionType: varchar("prediction_type", { length: 50 }).notNull(),
+	inputData: text("input_data"),
+	outputData: text("output_data"),
+	confidence: decimal({ precision: 5, scale: 4 }),
+	probability: decimal({ precision: 5, scale: 4 }),
+	predictedValue: decimal("predicted_value", { precision: 15, scale: 4 }),
+	actualValue: decimal("actual_value", { precision: 15, scale: 4 }),
+	error: decimal({ precision: 15, scale: 4 }),
+	isCorrect: int("is_correct"),
+	latency: int(),
+	featureImportance: text("feature_importance"),
+	explanation: text(),
+	metadata: text(),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+	index("ai_ml_predictions_prediction_id_unique").on(table.predictionId),
+]);
+
+export const aiModelPredictions = mysqlTable("ai_model_predictions", {
+	id: int().autoincrement().notNull(),
+	predictionId: varchar("prediction_id", { length: 64 }).notNull(),
+	modelId: int("model_id").notNull(),
+	productCode: varchar("product_code", { length: 100 }),
+	workstationId: int("workstation_id"),
+	machineId: int("machine_id"),
+	fixtureId: int("fixture_id"),
+	inputData: text("input_data").notNull(),
+	inputFeatures: text("input_features"),
+	predictionType: mysqlEnum("prediction_type", ['cpk_forecast','anomaly_score','root_cause','quality_score','failure_probability']).notNull(),
+	predictedValue: decimal("predicted_value", { precision: 10, scale: 4 }),
+	predictedLabel: varchar("predicted_label", { length: 255 }),
+	predictionDetails: text("prediction_details"),
+	confidence: decimal({ precision: 5, scale: 2 }),
+	confidenceInterval: text("confidence_interval"),
+	uncertainty: decimal({ precision: 5, scale: 4 }),
+	forecastHorizon: int("forecast_horizon"),
+	forecastValues: text("forecast_values"),
+	isAnomaly: int("is_anomaly").default(0),
+	anomalyScore: decimal("anomaly_score", { precision: 5, scale: 4 }),
+	anomalyReason: text("anomaly_reason"),
+	rootCauses: text("root_causes"),
+	recommendations: text(),
+	actualValue: decimal("actual_value", { precision: 10, scale: 4 }),
+	feedbackStatus: mysqlEnum("feedback_status", ['pending','correct','incorrect','partial']),
+	feedbackNotes: text("feedback_notes"),
+	feedbackBy: int("feedback_by"),
+	feedbackAt: timestamp("feedback_at", { mode: 'string' }),
+	predictionError: decimal("prediction_error", { precision: 10, scale: 4 }),
+	processingTimeMs: int("processing_time_ms"),
+	requestedBy: int("requested_by"),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+	index("prediction_id").on(table.predictionId),
+	index("idx_ai_model_predictions_model_id").on(table.modelId),
+	index("idx_ai_model_predictions_created_at").on(table.createdAt),
+]);
+
+export const aiModelRollbackHistory = mysqlTable("ai_model_rollback_history", {
+	id: int().autoincrement().notNull(),
+	modelId: int("model_id").notNull(),
+	fromVersionId: int("from_version_id").notNull(),
+	toVersionId: int("to_version_id").notNull(),
+	reason: text().notNull(),
+	rollbackType: mysqlEnum("rollback_type", ['manual','automatic']).default('manual').notNull(),
+	triggeredBy: varchar("triggered_by", { length: 100 }),
+	performedBy: int("performed_by"),
+	status: mysqlEnum(['pending','in_progress','completed','failed']).default('pending').notNull(),
+	errorMessage: text("error_message"),
+	completedAt: timestamp("completed_at", { mode: 'string' }),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+	index("idx_model_id").on(table.modelId),
+	index("idx_created_at").on(table.createdAt),
+]);
+
+export const aiModelVersions = mysqlTable("ai_model_versions", {
+	id: int().autoincrement().notNull(),
+	modelId: int("model_id").notNull(),
+	version: varchar({ length: 50 }).notNull(),
+	versionNumber: int("version_number").notNull(),
+	modelData: json("model_data"),
+	modelPath: varchar("model_path", { length: 500 }),
+	modelSize: int("model_size"),
+	trainingJobId: int("training_job_id"),
+	accuracy: decimal({ precision: 10, scale: 6 }),
+	precisionScore: decimal("precision_score", { precision: 10, scale: 6 }),
+	recall: decimal({ precision: 10, scale: 6 }),
+	f1Score: decimal("f1_score", { precision: 10, scale: 6 }),
+	meanAbsoluteError: decimal("mean_absolute_error", { precision: 15, scale: 6 }),
+	rootMeanSquaredError: decimal("root_mean_squared_error", { precision: 15, scale: 6 }),
+	trainingDataSize: int("training_data_size"),
+	validationDataSize: int("validation_data_size"),
+	hyperparameters: json(),
+	featureImportance: json("feature_importance"),
+	isActive: int("is_active").default(0).notNull(),
+	isRollbackTarget: int("is_rollback_target").default(0).notNull(),
+	deployedAt: timestamp("deployed_at", { mode: 'string' }),
+	retiredAt: timestamp("retired_at", { mode: 'string' }),
+	changeLog: text("change_log"),
+	createdBy: int("created_by"),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+	index("idx_model_version").on(table.modelId, table.versionNumber),
+	index("idx_active").on(table.modelId, table.isActive),
+]);
+
+export const aiPredictionReports = mysqlTable("ai_prediction_reports", {
+	id: int().autoincrement().notNull(),
+	reportId: varchar("report_id", { length: 64 }).notNull(),
+	name: varchar({ length: 255 }).notNull(),
+	description: text(),
+	modelId: int("model_id"),
+	productCode: varchar("product_code", { length: 100 }),
+	workstationId: int("workstation_id"),
+	dateFrom: timestamp("date_from", { mode: 'string' }),
+	dateTo: timestamp("date_to", { mode: 'string' }),
+	reportType: mysqlEnum("report_type", ['forecast','anomaly','root_cause','performance','summary']).notNull(),
+	format: mysqlEnum(['pdf','excel','html','json']).default('pdf').notNull(),
+	filePath: varchar("file_path", { length: 500 }),
+	fileSize: bigint("file_size", { mode: "number" }),
+	summaryData: text("summary_data"),
+	chartData: text("chart_data"),
+	tableData: text("table_data"),
+	status: mysqlEnum(['generating','completed','failed']).default('generating').notNull(),
+	errorMessage: text("error_message"),
+	generatedBy: int("generated_by"),
+	generatedAt: timestamp("generated_at", { mode: 'string' }),
+	downloadCount: int("download_count").default(0).notNull(),
+	lastDownloadedAt: timestamp("last_downloaded_at", { mode: 'string' }),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+	index("report_id").on(table.reportId),
+	index("idx_ai_prediction_reports_status").on(table.status),
+]);
+
+export const aiPredictions = mysqlTable("ai_predictions", {
+	id: int().autoincrement().notNull(),
+	modelId: int("model_id").notNull(),
+	predictionType: mysqlEnum("prediction_type", ['anomaly','quality','maintenance','trend']).notNull(),
+	targetId: int("target_id"),
+	targetType: varchar("target_type", { length: 50 }),
+	predictedValue: decimal("predicted_value", { precision: 20, scale: 6 }),
+	actualValue: decimal("actual_value", { precision: 20, scale: 6 }),
+	confidence: decimal({ precision: 5, scale: 2 }),
+	isAnomaly: int("is_anomaly").default(0).notNull(),
+	anomalyScore: decimal("anomaly_score", { precision: 5, scale: 2 }),
+	explanation: text(),
+	acknowledgedBy: int("acknowledged_by"),
+	acknowledgedAt: timestamp("acknowledged_at", { mode: 'string' }),
+	feedback: mysqlEnum(['correct','false_positive','false_negative']),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	feedbackBy: int("feedback_by"),
+	feedbackAt: datetime("feedback_at", { mode: 'string'}),
+	inputData: text("input_data"),
+	prediction: text(),
+});
+
+export const aiTrainedModels = mysqlTable("ai_trained_models", {
+	id: int().autoincrement().notNull(),
+	modelId: varchar("model_id", { length: 64 }).notNull(),
+	trainingJobId: int("training_job_id").notNull(),
+	name: varchar({ length: 255 }).notNull(),
+	description: text(),
+	version: varchar({ length: 50 }).default('1.0.0').notNull(),
+	modelType: mysqlEnum("model_type", ['cpk_forecast','anomaly_detection','root_cause','quality_prediction','custom']).notNull(),
+	algorithm: varchar({ length: 100 }).notNull(),
+	framework: varchar({ length: 100 }),
+	modelPath: varchar("model_path", { length: 500 }),
+	modelSize: bigint("model_size", { mode: "number" }),
+	modelChecksum: varchar("model_checksum", { length: 64 }),
+	accuracy: decimal({ precision: 5, scale: 2 }),
+	precisionScore: decimal("precision_score", { precision: 5, scale: 4 }),
+	recallScore: decimal("recall_score", { precision: 5, scale: 4 }),
+	f1Score: decimal("f1_score", { precision: 5, scale: 4 }),
+	mse: decimal({ precision: 10, scale: 6 }),
+	mae: decimal({ precision: 10, scale: 6 }),
+	r2Score: decimal("r2_score", { precision: 5, scale: 4 }),
+	productCode: varchar("product_code", { length: 100 }),
+	workstationId: int("workstation_id"),
+	machineId: int("machine_id"),
+	fixtureId: int("fixture_id"),
+	status: mysqlEnum(['active','inactive','deprecated','archived']).default('active').notNull(),
+	isDefault: int("is_default").default(0).notNull(),
+	predictionCount: int("prediction_count").default(0).notNull(),
+	lastUsedAt: timestamp("last_used_at", { mode: 'string' }),
+	metadata: text(),
+	tags: text(),
+	createdBy: int("created_by"),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("model_id").on(table.modelId),
+	index("idx_ai_trained_models_status").on(table.status),
+	index("idx_ai_trained_models_model_type").on(table.modelType),
+]);
+
+export const aiTrainingHistory = mysqlTable("ai_training_history", {
+	id: int().autoincrement().notNull(),
+	trainingJobId: int("training_job_id").notNull(),
+	epoch: int().notNull(),
+	trainingLoss: decimal("training_loss", { precision: 10, scale: 6 }),
+	validationLoss: decimal("validation_loss", { precision: 10, scale: 6 }),
+	accuracy: decimal({ precision: 5, scale: 2 }),
+	learningRate: decimal("learning_rate", { precision: 10, scale: 8 }),
+	metrics: text(),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+	index("idx_ai_training_history_job_id").on(table.trainingJobId),
+]);
+
+export const aiTrainingJobs = mysqlTable("ai_training_jobs", {
+	id: int().autoincrement().notNull(),
+	jobId: varchar("job_id", { length: 64 }).notNull(),
+	name: varchar({ length: 255 }).notNull(),
+	description: text(),
+	modelType: mysqlEnum("model_type", ['cpk_forecast','anomaly_detection','root_cause','quality_prediction','custom']).notNull(),
+	algorithm: varchar({ length: 100 }).notNull(),
+	dataSource: varchar("data_source", { length: 255 }),
+	productCode: varchar("product_code", { length: 100 }),
+	workstationId: int("workstation_id"),
+	machineId: int("machine_id"),
+	fixtureId: int("fixture_id"),
+	dateFrom: timestamp("date_from", { mode: 'string' }),
+	dateTo: timestamp("date_to", { mode: 'string' }),
+	parameters: text(),
+	hyperparameters: text(),
+	status: mysqlEnum(['pending','running','completed','failed','cancelled']).default('pending').notNull(),
+	progress: int().default(0).notNull(),
+	currentEpoch: int("current_epoch").default(0),
+	totalEpochs: int("total_epochs").default(100),
+	trainingLoss: decimal("training_loss", { precision: 10, scale: 6 }),
+	validationLoss: decimal("validation_loss", { precision: 10, scale: 6 }),
+	accuracy: decimal({ precision: 5, scale: 2 }),
+	mse: decimal({ precision: 10, scale: 6 }),
+	mae: decimal({ precision: 10, scale: 6 }),
+	r2Score: decimal("r2_score", { precision: 5, scale: 4 }),
+	totalSamples: int("total_samples").default(0),
+	trainingSamples: int("training_samples").default(0),
+	validationSamples: int("validation_samples").default(0),
+	testSamples: int("test_samples").default(0),
+	startedAt: timestamp("started_at", { mode: 'string' }),
+	completedAt: timestamp("completed_at", { mode: 'string' }),
+	estimatedTimeRemaining: int("estimated_time_remaining"),
+	errorMessage: text("error_message"),
+	errorStack: text("error_stack"),
+	createdBy: int("created_by"),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("job_id").on(table.jobId),
+	index("idx_ai_training_jobs_status").on(table.status),
+	index("idx_ai_training_jobs_model_type").on(table.modelType),
+	index("idx_ai_training_jobs_created_at").on(table.createdAt),
+]);
+
+export const aiTrainingDatasets = mysqlTable("ai_training_datasets", {
+	id: int().autoincrement().notNull(),
+	name: varchar({ length: 255 }).notNull(),
+	description: text(),
+	filePath: varchar("file_path", { length: 500 }).notNull(),
+	fileUrl: varchar("file_url", { length: 500 }),
+	fileSize: bigint("file_size", { mode: "number" }),
+	fileType: varchar("file_type", { length: 50 }),
+	rowCount: int("row_count"),
+	columnCount: int("column_count"),
+	columnNames: text("column_names"),
+	datasetType: mysqlEnum("dataset_type", ['cpk_forecast', 'anomaly_detection', 'quality_prediction', 'custom']).notNull(),
+	productCode: varchar("product_code", { length: 100 }),
+	workstationId: int("workstation_id"),
+	machineId: int("machine_id"),
+	fixtureId: int("fixture_id"),
+	dateFrom: timestamp("date_from", { mode: 'string' }),
+	dateTo: timestamp("date_to", { mode: 'string' }),
+	status: mysqlEnum(['uploaded', 'processing', 'ready', 'failed']).default('uploaded').notNull(),
+	validationStatus: mysqlEnum("validation_status", ['pending', 'valid', 'invalid']),
+	validationErrors: text("validation_errors"),
+	metadata: text(),
+	createdBy: int("created_by"),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("idx_ai_training_datasets_status").on(table.status),
+	index("idx_ai_training_datasets_type").on(table.datasetType),
+	index("idx_ai_training_datasets_created_at").on(table.createdAt),
+]);
+
+export const alertAnalytics = mysqlTable("alert_analytics", {
+	id: int().autoincrement().notNull(),
+	date: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	alertType: varchar("alert_type", { length: 100 }).notNull(),
+	severity: mysqlEnum(['info','warning','critical']).default('info').notNull(),
+	source: varchar({ length: 255 }),
+	count: int().default(0).notNull(),
+	resolvedCount: int("resolved_count").default(0).notNull(),
+	totalResolutionTimeMs: bigint("total_resolution_time_ms", { mode: "number" }),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+});
+
+export const alertEscalationLogs = mysqlTable("alert_escalation_logs", {
+	id: int().autoincrement().notNull(),
+	alertId: int("alert_id").notNull(),
+	escalationLevel: int("escalation_level").notNull(),
+	levelName: varchar("level_name", { length: 100 }).notNull(),
+	notifiedEmails: text("notified_emails"),
+	notifiedPhones: text("notified_phones"),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+});
+
+export const alertNotificationLogs = mysqlTable("alert_notification_logs", {
+	id: int().autoincrement().notNull(),
+	alertId: int("alert_id").notNull(),
+	emailSent: int("email_sent").default(0).notNull(),
+	emailError: text("email_error"),
+	smsSent: int("sms_sent").default(0).notNull(),
+	smsError: text("sms_error"),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+});
+
+export const alertSettings = mysqlTable("alert_settings", {
+	id: int().autoincrement().notNull(),
+	mappingId: int(),
+	cpkWarningThreshold: int().default(133).notNull(),
+	cpkCriticalThreshold: int().default(100).notNull(),
+	notifyOwner: int().default(1).notNull(),
+	isActive: int().default(1).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const analyticsCache = mysqlTable("analytics_cache", {
+	id: int().autoincrement().notNull(),
+	cacheKey: varchar("cache_key", { length: 255 }).notNull(),
+	cacheType: varchar("cache_type", { length: 50 }).notNull(),
+	data: text().notNull(),
+	computedAt: timestamp("computed_at", { mode: 'string' }).notNull(),
+	expiresAt: timestamp("expires_at", { mode: 'string' }).notNull(),
+	hitCount: int("hit_count").default(0).notNull(),
+	lastAccessedAt: timestamp("last_accessed_at", { mode: 'string' }),
+	metadata: text(),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+	index("analytics_cache_cache_key_unique").on(table.cacheKey),
+]);
+
+export const apiRateLimits = mysqlTable("api_rate_limits", {
+	id: int().autoincrement().notNull(),
+	endpoint: varchar({ length: 255 }).notNull(),
+	method: varchar({ length: 10 }).default('*').notNull(),
+	windowMs: int("window_ms").default(60000).notNull(),
+	maxRequests: int("max_requests").default(100).notNull(),
+	userBased: int("user_based").default(1).notNull(),
+	skipAuth: int("skip_auth").default(0).notNull(),
+	isActive: int("is_active").default(1).notNull(),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const approvalHistories = mysqlTable("approval_histories", {
+	id: int().autoincrement().notNull(),
+	requestId: int().notNull(),
+	stepId: int().notNull(),
+	approverId: int().notNull(),
+	action: mysqlEnum(['approved','rejected','returned']).notNull(),
+	comments: text(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+});
+
+export const approvalRequests = mysqlTable("approval_requests", {
+	id: int().autoincrement().notNull(),
+	workflowId: int().notNull(),
+	entityType: mysqlEnum(['purchase_order','stock_export','maintenance_request','leave_request']).notNull(),
+	entityId: int().notNull(),
+	requesterId: int().notNull(),
+	currentStepId: int(),
+	status: mysqlEnum(['pending','approved','rejected','cancelled']).default('pending').notNull(),
+	totalAmount: decimal({ precision: 15, scale: 2 }),
+	notes: text(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const approvalSteps = mysqlTable("approval_steps", {
+	id: int().autoincrement().notNull(),
+	workflowId: int().notNull(),
+	stepOrder: int().notNull(),
+	name: varchar({ length: 255 }).notNull(),
+	approverType: mysqlEnum(['position','user','manager','department_head']).notNull(),
+	approverId: int(),
+	minAmount: decimal({ precision: 15, scale: 2 }),
+	maxAmount: decimal({ precision: 15, scale: 2 }),
+	isRequired: int().default(1).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+});
+
+export const approvalWorkflows = mysqlTable("approval_workflows", {
+	id: int().autoincrement().notNull(),
+	code: varchar({ length: 50 }).notNull(),
+	name: varchar({ length: 255 }).notNull(),
+	description: text(),
+	entityType: mysqlEnum(['purchase_order','stock_export','maintenance_request','leave_request']).notNull(),
+	isActive: int().default(1).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("code").on(table.code),
+]);
+
+export const auditLogs = mysqlTable("audit_logs", {
+	id: int().autoincrement().notNull(),
+	userId: int().notNull(),
+	userName: varchar({ length: 255 }),
+	action: mysqlEnum(['create','update','delete','login','logout','export','analyze']).notNull(),
+	module: varchar({ length: 100 }).notNull(),
+	tableName: varchar({ length: 100 }),
+	recordId: int(),
+	oldValue: text(),
+	newValue: text(),
+	description: text(),
+	ipAddress: varchar({ length: 45 }),
+	userAgent: text(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	authType: mysqlEnum(['local','online']).default('online'),
+},
+(table) => [
+	index("idx_audit_logs_user_id").on(table.userId),
+	index("idx_audit_logs_action").on(table.action),
+	index("idx_audit_logs_created_at").on(table.createdAt),
+	index("idx_audit_user").on(table.userId),
+	index("idx_audit_action").on(table.action),
+	index("idx_audit_date").on(table.createdAt),
+	index("").on(table.action),
+	index("idx_audit_logs_user").on(table.userId, table.createdAt),
+	index("idx_audit_logs_module").on(table.module, table.createdAt),
+	index("idx_audit_logs_created").on(table.createdAt),
+	index("idx_audit_created").on(table.createdAt),
+	index("idx_audit_user_created").on(table.userId, table.createdAt),
+]);
+
+export const batchOperationLogs = mysqlTable("batch_operation_logs", {
+	id: int().autoincrement().notNull(),
+	operationId: varchar("operation_id", { length: 64 }).notNull(),
+	operationType: varchar("operation_type", { length: 50 }).notNull(),
+	status: mysqlEnum(['pending','running','completed','failed','cancelled']).default('pending').notNull(),
+	totalItems: int("total_items").default(0).notNull(),
+	processedItems: int("processed_items").default(0).notNull(),
+	successItems: int("success_items").default(0).notNull(),
+	failedItems: int("failed_items").default(0).notNull(),
+	startedAt: timestamp("started_at", { mode: 'string' }),
+	completedAt: timestamp("completed_at", { mode: 'string' }),
+	userId: int("user_id"),
+	metadata: text(),
+	errorMessage: text("error_message"),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("batch_operation_logs_operation_id_unique").on(table.operationId),
+]);
+
+export const caRules = mysqlTable("ca_rules", {
+	id: int().autoincrement().notNull(),
+	code: varchar({ length: 50 }).notNull(),
+	name: varchar({ length: 200 }).notNull(),
+	description: text(),
+	formula: text(),
+	example: text(),
+	severity: mysqlEnum(['warning','critical']).default('warning').notNull(),
+	minValue: int(),
+	maxValue: int(),
+	isEnabled: int().default(1).notNull(),
+	sortOrder: int().default(0).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("ca_rules_code_unique").on(table.code),
+]);
+
+export const chartAnnotations = mysqlTable("chart_annotations", {
+	id: int().autoincrement().notNull(),
+	planId: int("plan_id"),
+	mappingId: int("mapping_id"),
+	chartType: varchar("chart_type", { length: 50 }).notNull(),
+	annotationType: mysqlEnum("annotation_type", ['point','line','area','text','marker']).notNull(),
+	xValue: decimal("x_value", { precision: 20, scale: 6 }),
+	yValue: decimal("y_value", { precision: 20, scale: 6 }),
+	xStart: decimal("x_start", { precision: 20, scale: 6 }),
+	xEnd: decimal("x_end", { precision: 20, scale: 6 }),
+	yStart: decimal("y_start", { precision: 20, scale: 6 }),
+	yEnd: decimal("y_end", { precision: 20, scale: 6 }),
+	label: varchar({ length: 255 }),
+	description: text(),
+	color: varchar({ length: 20 }).default('#ff0000'),
+	style: text(),
+	createdBy: int("created_by").notNull(),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const companies = mysqlTable("companies", {
+	id: int().autoincrement().notNull(),
+	code: varchar({ length: 50 }).notNull(),
+	name: varchar({ length: 255 }).notNull(),
+	address: text(),
+	phone: varchar({ length: 50 }),
+	email: varchar({ length: 320 }),
+	taxCode: varchar({ length: 50 }),
+	logo: varchar({ length: 500 }),
+	isActive: int().default(1).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("code").on(table.code),
+]);
+
+export const companyInfo = mysqlTable("company_info", {
+	id: int().autoincrement().notNull(),
+	companyName: varchar({ length: 255 }).notNull(),
+	companyCode: varchar({ length: 50 }),
+	address: text(),
+	phone: varchar({ length: 50 }),
+	email: varchar({ length: 320 }),
+	website: varchar({ length: 255 }),
+	taxCode: varchar({ length: 50 }),
+	logo: text(),
+	industry: varchar({ length: 100 }),
+	contactPerson: varchar({ length: 255 }),
+	contactPhone: varchar({ length: 50 }),
+	contactEmail: varchar({ length: 320 }),
+	notes: text(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const cpkRules = mysqlTable("cpk_rules", {
+	id: int().autoincrement().notNull(),
+	code: varchar({ length: 50 }).notNull(),
+	name: varchar({ length: 200 }).notNull(),
+	description: text(),
+	minCpk: int(),
+	maxCpk: int(),
+	status: varchar({ length: 50 }).notNull(),
+	color: varchar({ length: 20 }),
+	action: text(),
+	severity: mysqlEnum(['info','warning','critical']).default('info').notNull(),
+	isEnabled: int().default(1).notNull(),
+	sortOrder: int().default(0).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("cpk_rules_code_unique").on(table.code),
+]);
+
+export const customThemes = mysqlTable("custom_themes", {
+	id: int().autoincrement().notNull(),
+	userId: int("user_id").notNull(),
+	name: varchar({ length: 100 }).notNull(),
+	description: varchar({ length: 255 }),
+	primaryColor: varchar("primary_color", { length: 50 }).notNull(),
+	secondaryColor: varchar("secondary_color", { length: 50 }).notNull(),
+	accentColor: varchar("accent_color", { length: 50 }).notNull(),
+	backgroundColor: varchar("background_color", { length: 50 }).notNull(),
+	foregroundColor: varchar("foreground_color", { length: 50 }).notNull(),
+	mutedColor: varchar("muted_color", { length: 50 }),
+	mutedForegroundColor: varchar("muted_foreground_color", { length: 50 }),
+	lightVariables: text("light_variables"),
+	darkVariables: text("dark_variables"),
+	isPublic: int("is_public").default(0).notNull(),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const customValidationRules = mysqlTable("custom_validation_rules", {
+	id: int().autoincrement().notNull(),
+	name: varchar({ length: 200 }).notNull(),
+	description: text(),
+	productId: int(),
+	workstationId: int(),
+	ruleType: mysqlEnum(['range_check','trend_check','pattern_check','comparison_check','formula_check','custom_script']).default('range_check').notNull(),
+	ruleConfig: text(),
+	actionOnViolation: mysqlEnum(['warning','alert','reject','log_only']).default('warning').notNull(),
+	severity: mysqlEnum(['low','medium','high','critical']).default('medium').notNull(),
+	violationMessage: text(),
+	isActive: int().default(1).notNull(),
+	priority: int().default(100).notNull(),
+	createdBy: int().notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const dashboardConfigs = mysqlTable("dashboard_configs", {
+	id: int().autoincrement().notNull(),
+	userId: int().notNull(),
+	name: varchar({ length: 255 }).default('Default Dashboard').notNull(),
+	displayCount: int().default(4).notNull(),
+	refreshInterval: int().default(30).notNull(),
+	layout: mysqlEnum(['grid','list']).default('grid').notNull(),
+	isDefault: int().default(0).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const dashboardLineSelections = mysqlTable("dashboard_line_selections", {
+	id: int().autoincrement().notNull(),
+	dashboardConfigId: int().notNull(),
+	productionLineId: int().notNull(),
+	displayOrder: int().default(0).notNull(),
+	showXbarChart: int().default(1).notNull(),
+	showRchart: int().default(1).notNull(),
+	showCpk: int().default(1).notNull(),
+	showMean: int().default(1).notNull(),
+	showUclLcl: int().default(1).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const dataArchiveConfigs = mysqlTable("data_archive_configs", {
+	id: int().autoincrement().notNull(),
+	tableName: varchar("table_name", { length: 100 }).notNull(),
+	retentionDays: int("retention_days").default(365).notNull(),
+	archiveEnabled: int("archive_enabled").default(1).notNull(),
+	deleteAfterArchive: int("delete_after_archive").default(0).notNull(),
+	lastArchiveAt: timestamp("last_archive_at", { mode: 'string' }),
+	lastArchiveCount: int("last_archive_count").default(0),
+	archiveLocation: varchar("archive_location", { length: 500 }),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("table_name").on(table.tableName),
+]);
+
+export const databaseBackups = mysqlTable("database_backups", {
+	id: int().autoincrement().notNull(),
+	filename: varchar({ length: 255 }).notNull(),
+	fileSize: int(),
+	fileUrl: text(),
+	backupType: mysqlEnum(['daily','weekly','manual']).default('manual').notNull(),
+	status: mysqlEnum(['pending','completed','failed']).default('pending').notNull(),
+	errorMessage: text(),
+	storageLocation: mysqlEnum(['s3','local']).default('s3').notNull(),
+	tablesIncluded: text(),
+	createdBy: int(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	completedAt: timestamp({ mode: 'string' }),
+});
+
+export const databaseConnections = mysqlTable("database_connections", {
+	id: int().autoincrement().notNull(),
+	name: varchar({ length: 255 }).notNull(),
+	connectionString: text().notNull(),
+	databaseType: varchar({ length: 50 }).default('mysql').notNull(),
+	description: text(),
+	isActive: int().default(1).notNull(),
+	createdBy: int().notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+	host: varchar({ length: 255 }),
+	port: int(),
+	database: varchar({ length: 255 }),
+	username: varchar({ length: 255 }),
+	password: text(),
+	filePath: text(),
+	connectionOptions: text(),
+	lastTestedAt: timestamp({ mode: 'string' }),
+	lastTestStatus: varchar({ length: 50 }),
+});
+
+export const departments = mysqlTable("departments", {
+	id: int().autoincrement().notNull(),
+	companyId: int().notNull(),
+	code: varchar({ length: 50 }).notNull(),
+	name: varchar({ length: 255 }).notNull(),
+	description: text(),
+	parentId: int(),
+	managerId: int(),
+	isActive: int().default(1).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const downtimeReasons = mysqlTable("downtime_reasons", {
+	id: int().autoincrement().notNull(),
+	machineId: int("machine_id"),
+	oeeDataId: int("oee_data_id"),
+	reasonCode: varchar("reason_code", { length: 50 }).notNull(),
+	reasonCategory: varchar("reason_category", { length: 100 }),
+	reasonDescription: varchar("reason_description", { length: 500 }),
+	durationMinutes: int("duration_minutes").notNull(),
+	occurredAt: timestamp("occurred_at", { mode: 'string' }).notNull(),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+});
+
+export const emailNotificationSettings = mysqlTable("email_notification_settings", {
+	id: int().autoincrement().notNull(),
+	userId: int().notNull(),
+	email: varchar({ length: 320 }).notNull(),
+	notifyOnSpcViolation: int().default(1).notNull(),
+	notifyOnCaViolation: int().default(1).notNull(),
+	notifyOnCpkViolation: int().default(1).notNull(),
+	cpkThreshold: int().default(133).notNull(),
+	notifyFrequency: mysqlEnum(['immediate','hourly','daily']).default('immediate').notNull(),
+	isActive: int().default(1).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const employeeProfiles = mysqlTable("employee_profiles", {
+	id: int().autoincrement().notNull(),
+	userId: int().notNull(),
+	userType: mysqlEnum(['manus','local']).default('local').notNull(),
+	employeeCode: varchar({ length: 50 }),
+	companyId: int(),
+	departmentId: int(),
+	teamId: int(),
+	positionId: int(),
+	managerId: int(),
+	phone: varchar({ length: 50 }),
+	address: text(),
+	dateOfBirth: timestamp({ mode: 'string' }),
+	joinDate: timestamp({ mode: 'string' }),
+	isActive: int().default(1).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("userId").on(table.userId),
+	index("employeeCode").on(table.employeeCode),
+]);
+
+export const erpIntegrationConfigs = mysqlTable("erp_integration_configs", {
+	id: int().autoincrement().notNull(),
+	name: varchar({ length: 100 }).notNull(),
+	erpType: mysqlEnum("erp_type", ['sap','oracle','dynamics','custom']).notNull(),
+	connectionUrl: varchar("connection_url", { length: 500 }).notNull(),
+	authType: mysqlEnum("auth_type", ['basic','oauth2','api_key','certificate']).notNull(),
+	credentials: text(),
+	syncDirection: mysqlEnum("sync_direction", ['inbound','outbound','bidirectional']).notNull(),
+	syncEntities: text("sync_entities"),
+	syncSchedule: varchar("sync_schedule", { length: 50 }),
+	lastSyncAt: timestamp("last_sync_at", { mode: 'string' }),
+	lastSyncStatus: varchar("last_sync_status", { length: 50 }),
+	isActive: int("is_active").default(1).notNull(),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+	syncInterval: int("sync_interval").default(3600),
+	mappingConfig: text("mapping_config"),
+});
+
+export const errorLogs = mysqlTable("error_logs", {
+	id: int().autoincrement().notNull(),
+	errorId: varchar("error_id", { length: 64 }).notNull(),
+	errorType: varchar("error_type", { length: 100 }).notNull(),
+	errorCode: varchar("error_code", { length: 50 }),
+	message: text().notNull(),
+	stackTrace: text("stack_trace"),
+	severity: mysqlEnum(['low','medium','high','critical']).default('medium').notNull(),
+	source: varchar({ length: 100 }),
+	userId: int("user_id"),
+	requestId: varchar("request_id", { length: 64 }),
+	requestPath: varchar("request_path", { length: 500 }),
+	requestMethod: varchar("request_method", { length: 10 }),
+	userAgent: text("user_agent"),
+	ipAddress: varchar("ip_address", { length: 45 }),
+	metadata: text(),
+	isResolved: int("is_resolved").default(0).notNull(),
+	resolvedAt: timestamp("resolved_at", { mode: 'string' }),
+	resolvedBy: int("resolved_by"),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+	index("error_logs_error_id_unique").on(table.errorId),
+]);
+
+export const escalationConfigs = mysqlTable("escalation_configs", {
+	id: int().autoincrement().notNull(),
+	level: int().notNull(),
+	name: varchar({ length: 100 }).notNull(),
+	timeoutMinutes: int("timeout_minutes").default(15).notNull(),
+	notifyEmails: text("notify_emails"),
+	notifyPhones: text("notify_phones"),
+	notifyOwner: int("notify_owner").default(0).notNull(),
+	isActive: int("is_active").default(1).notNull(),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("level").on(table.level),
+]);
+
+export const exportHistory = mysqlTable("export_history", {
+	id: int().autoincrement().notNull(),
+	userId: int().notNull(),
+	exportType: varchar({ length: 20 }).notNull(),
+	productCode: varchar({ length: 100 }),
+	stationName: varchar({ length: 255 }),
+	analysisType: varchar({ length: 50 }),
+	startDate: timestamp({ mode: 'string' }),
+	endDate: timestamp({ mode: 'string' }),
+	sampleCount: int(),
+	mean: int(),
+	cpk: int(),
+	fileName: varchar({ length: 255 }).notNull(),
+	fileUrl: text(),
+	fileSize: int(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+});
+
+export const failedLoginAttempts = mysqlTable("failed_login_attempts", {
+	id: int().autoincrement().notNull(),
+	username: varchar({ length: 100 }).notNull(),
+	ipAddress: varchar("ip_address", { length: 45 }),
+	userAgent: text("user_agent"),
+	reason: varchar({ length: 255 }),
+	attemptedAt: timestamp("attempted_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+});
+
+export const fixtures = mysqlTable("fixtures", {
+	id: int().autoincrement().notNull(),
+	machineId: int().notNull(),
+	code: varchar({ length: 50 }).notNull(),
+	name: varchar({ length: 200 }).notNull(),
+	description: text(),
+	imageUrl: varchar({ length: 500 }),
+	position: int().default(1).notNull(),
+	status: mysqlEnum(['active','maintenance','inactive']).default('active').notNull(),
+	installDate: timestamp({ mode: 'string' }),
+	lastMaintenanceDate: timestamp({ mode: 'string' }),
+	isActive: int().default(1).notNull(),
+	createdBy: int().notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("idx_fixtures_machine_id").on(table.machineId),
+	index("idx_fixtures_active").on(table.isActive),
+]);
+
+export const iotAlarms = mysqlTable("iot_alarms", {
+	id: int().autoincrement().notNull(),
+	deviceId: int("device_id").notNull(),
+	alarmCode: varchar("alarm_code", { length: 50 }).notNull(),
+	alarmType: mysqlEnum("alarm_type", ['warning','error','critical']).notNull(),
+	message: text().notNull(),
+	value: varchar({ length: 255 }),
+	threshold: varchar({ length: 255 }),
+	acknowledgedBy: int("acknowledged_by"),
+	acknowledgedAt: timestamp("acknowledged_at", { mode: 'string' }),
+	resolvedAt: timestamp("resolved_at", { mode: 'string' }),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+});
+
+export const iotAlertHistory = mysqlTable("iot_alert_history", {
+	id: int().autoincrement().notNull(),
+	thresholdId: int("threshold_id").notNull(),
+	deviceId: int("device_id").notNull(),
+	metric: varchar({ length: 100 }).notNull(),
+	alertType: varchar("alert_type", { length: 50 }).notNull(),
+	value: varchar({ length: 50 }).notNull(),
+	threshold: varchar({ length: 50 }).notNull(),
+	message: text(),
+	notificationSent: int("notification_sent").default(0).notNull(),
+	notificationChannels: text("notification_channels"),
+	acknowledgedBy: int("acknowledged_by"),
+	acknowledgedAt: timestamp("acknowledged_at", { mode: 'string' }),
+	resolvedAt: timestamp("resolved_at", { mode: 'string' }),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+});
+
+export const iotAlertThresholds = mysqlTable("iot_alert_thresholds", {
+	id: int().autoincrement().notNull(),
+	deviceId: int("device_id").notNull(),
+	metric: varchar({ length: 100 }).notNull(),
+	upperLimit: varchar("upper_limit", { length: 50 }),
+	lowerLimit: varchar("lower_limit", { length: 50 }),
+	upperWarning: varchar("upper_warning", { length: 50 }),
+	lowerWarning: varchar("lower_warning", { length: 50 }),
+	alertEnabled: int("alert_enabled").default(1).notNull(),
+	notificationChannels: text("notification_channels"),
+	cooldownMinutes: int("cooldown_minutes").default(5).notNull(),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const iotDataPoints = mysqlTable("iot_data_points", {
+	id: int().autoincrement().notNull(),
+	deviceId: int("device_id").notNull(),
+	tagName: varchar("tag_name", { length: 100 }).notNull(),
+	tagType: mysqlEnum("tag_type", ['analog','digital','string','counter']).notNull(),
+	value: varchar({ length: 255 }).notNull(),
+	quality: mysqlEnum(['good','bad','uncertain']).default('good').notNull(),
+	timestamp: timestamp({ mode: 'string' }).notNull(),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+});
+
+export const iotDeviceData = mysqlTable("iot_device_data", {
+	id: int().autoincrement().notNull(),
+	deviceId: varchar("device_id", { length: 64 }).notNull(),
+	deviceName: varchar("device_name", { length: 100 }),
+	deviceType: varchar("device_type", { length: 50 }),
+	status: mysqlEnum(['online','offline','error','maintenance']).default('offline').notNull(),
+	lastSeen: timestamp("last_seen", { mode: 'string' }),
+	firmwareVersion: varchar("firmware_version", { length: 50 }),
+	ipAddress: varchar("ip_address", { length: 45 }),
+	macAddress: varchar("mac_address", { length: 17 }),
+	location: varchar({ length: 255 }),
+	metrics: text(),
+	temperature: decimal({ precision: 5, scale: 2 }),
+	humidity: decimal({ precision: 5, scale: 2 }),
+	pressure: decimal({ precision: 8, scale: 2 }),
+	batteryLevel: int("battery_level"),
+	signalStrength: int("signal_strength"),
+	errorCount: int("error_count").default(0).notNull(),
+	lastError: text("last_error"),
+	metadata: text(),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const iotDevices = mysqlTable("iot_devices", {
+	id: int().autoincrement().notNull(),
+	deviceCode: varchar("device_code", { length: 50 }).notNull(),
+	deviceName: varchar("device_name", { length: 100 }).notNull(),
+	deviceType: mysqlEnum("device_type", ['plc','sensor','gateway','hmi','scada','other']).notNull(),
+	manufacturer: varchar({ length: 100 }),
+	model: varchar({ length: 100 }),
+	protocol: mysqlEnum(['modbus_tcp','modbus_rtu','opc_ua','mqtt','http','tcp','serial']).notNull(),
+	connectionString: text("connection_string"),
+	machineId: int("machine_id"),
+	productionLineId: int("production_line_id"),
+	status: mysqlEnum(['online','offline','error','maintenance']).default('offline').notNull(),
+	lastHeartbeat: timestamp("last_heartbeat", { mode: 'string' }),
+	configData: text("config_data"),
+	metadata: text(),
+	isActive: int("is_active").default(1).notNull(),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("device_code").on(table.deviceCode),
+]);
+
+export const jigs = mysqlTable("jigs", {
+	id: int().autoincrement().notNull(),
+	machineId: int().notNull(),
+	code: varchar({ length: 50 }).notNull(),
+	name: varchar({ length: 200 }).notNull(),
+	description: text(),
+	imageUrl: varchar({ length: 500 }),
+	position: int().default(1).notNull(),
+	status: mysqlEnum(['active','maintenance','inactive']).default('active').notNull(),
+	installDate: timestamp({ mode: 'string' }),
+	lastMaintenanceDate: timestamp({ mode: 'string' }),
+	isActive: int().default(1).notNull(),
+	createdBy: int().notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const kpiAlertStats = mysqlTable("kpi_alert_stats", {
+	id: int().autoincrement().notNull(),
+	date: timestamp({ mode: 'string' }).notNull(),
+	productionLineId: int("production_line_id"),
+	productionLineName: varchar("production_line_name", { length: 255 }),
+	alertType: varchar("alert_type", { length: 50 }).notNull(),
+	alertCount: int("alert_count").default(0).notNull(),
+	avgValue: decimal("avg_value", { precision: 10, scale: 4 }),
+	minValue: decimal("min_value", { precision: 10, scale: 4 }),
+	maxValue: decimal("max_value", { precision: 10, scale: 4 }),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	machineId: int("machine_id"),
+	severity: varchar({ length: 20 }).default('warning'),
+	currentValue: varchar("current_value", { length: 50 }),
+	previousValue: varchar("previous_value", { length: 50 }),
+	thresholdValue: varchar("threshold_value", { length: 50 }),
+	changePercent: varchar("change_percent", { length: 50 }),
+	emailSent: tinyint("email_sent").default(0),
+	notificationSent: tinyint("notification_sent").default(0),
+	acknowledgedBy: int("acknowledged_by"),
+	acknowledgedAt: datetime("acknowledged_at", { mode: 'string'}),
+	resolvedBy: int("resolved_by"),
+	resolvedAt: datetime("resolved_at", { mode: 'string'}),
+	resolutionNotes: text("resolution_notes"),
+	alertMessage: text("alert_message"),
+},
+(table) => [
+	index("idx_date").on(table.date),
+	index("idx_alert_type").on(table.alertType),
+	index("idx_production_line").on(table.productionLineId),
+]);
+
+export const kpiAlertThresholds = mysqlTable("kpi_alert_thresholds", {
+	id: int().autoincrement().notNull(),
+	productionLineId: int("production_line_id").notNull(),
+	cpkWarning: decimal("cpk_warning", { precision: 5, scale: 3 }).default('1.330').notNull(),
+	cpkCritical: decimal("cpk_critical", { precision: 5, scale: 3 }).default('1.000').notNull(),
+	oeeWarning: decimal("oee_warning", { precision: 5, scale: 2 }).default('75.00').notNull(),
+	oeeCritical: decimal("oee_critical", { precision: 5, scale: 2 }).default('60.00').notNull(),
+	defectRateWarning: decimal("defect_rate_warning", { precision: 5, scale: 2 }).default('2.00').notNull(),
+	defectRateCritical: decimal("defect_rate_critical", { precision: 5, scale: 2 }).default('5.00').notNull(),
+	weeklyDeclineThreshold: decimal("weekly_decline_threshold", { precision: 5, scale: 2 }).default('-5.00').notNull(),
+	emailAlertEnabled: int("email_alert_enabled").default(1).notNull(),
+	alertEmails: text("alert_emails"),
+	createdBy: int("created_by"),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const kpiReportHistory = mysqlTable("kpi_report_history", {
+	id: int().autoincrement().notNull(),
+	scheduledReportId: int("scheduled_report_id").notNull(),
+	reportName: varchar("report_name", { length: 255 }).notNull(),
+	reportType: varchar("report_type", { length: 50 }).notNull(),
+	frequency: varchar({ length: 20 }).notNull(),
+	recipients: text().notNull(),
+	status: mysqlEnum(['sent','failed','pending']).default('pending').notNull(),
+	errorMessage: text("error_message"),
+	reportData: text("report_data"),
+	fileUrl: varchar("file_url", { length: 500 }),
+	sentAt: timestamp("sent_at", { mode: 'string' }),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+});
+
+export const licenseCustomers = mysqlTable("license_customers", {
+	id: int().autoincrement().notNull(),
+	companyName: varchar({ length: 255 }).notNull(),
+	contactName: varchar({ length: 255 }),
+	contactEmail: varchar({ length: 320 }),
+	contactPhone: varchar({ length: 50 }),
+	address: text(),
+	industry: varchar({ length: 100 }),
+	notes: text(),
+	isActive: int().default(1).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const licenseHeartbeats = mysqlTable("license_heartbeats", {
+	id: int().autoincrement().notNull(),
+	licenseKey: varchar({ length: 255 }).notNull(),
+	hardwareFingerprint: varchar({ length: 64 }),
+	hostname: varchar({ length: 255 }),
+	platform: varchar({ length: 100 }),
+	activeUsers: int(),
+	ipAddress: varchar({ length: 45 }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+});
+
+export const licenseNotificationLogs = mysqlTable("license_notification_logs", {
+	id: int().autoincrement().notNull(),
+	licenseId: int("license_id").notNull(),
+	licenseKey: varchar("license_key", { length: 255 }).notNull(),
+	notificationType: mysqlEnum("notification_type", ['7_days_warning','30_days_warning','expired','activated','deactivated']).notNull(),
+	recipientEmail: varchar("recipient_email", { length: 320 }).notNull(),
+	subject: varchar({ length: 500 }),
+	status: mysqlEnum(['sent','failed','pending']).default('pending').notNull(),
+	errorMessage: text("error_message"),
+	sentAt: timestamp("sent_at", { mode: 'string' }),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	content: text(),
+	retryCount: int("retry_count").default(0).notNull(),
+});
+
+export const licenses = mysqlTable("licenses", {
+	id: int().autoincrement().notNull(),
+	licenseKey: varchar({ length: 255 }).notNull(),
+	licenseType: mysqlEnum(['trial','standard','professional','enterprise']).default('trial').notNull(),
+	companyName: varchar({ length: 255 }),
+	contactEmail: varchar({ length: 320 }),
+	maxUsers: int().default(5).notNull(),
+	maxProductionLines: int().default(3).notNull(),
+	maxSpcPlans: int().default(10).notNull(),
+	features: text(),
+	issuedAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	expiresAt: timestamp({ mode: 'string' }),
+	activatedAt: timestamp({ mode: 'string' }),
+	activatedBy: int(),
+	isActive: int().default(0).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+	licenseStatus: mysqlEnum(['pending','active','expired','revoked']).default('pending').notNull(),
+	hardwareFingerprint: varchar({ length: 64 }),
+	offlineLicenseFile: text(),
+	activationMode: mysqlEnum(['online','offline','hybrid']).default('online'),
+	lastValidatedAt: timestamp({ mode: 'string' }),
+	price: decimal({ precision: 15, scale: 2 }),
+	currency: varchar({ length: 3 }).default('VND'),
+	systems: text(),
+	systemFeatures: text(),
+},
+(table) => [
+	index("licenses_licenseKey_unique").on(table.licenseKey),
+	index("idx_license_status").on(table.licenseStatus),
+	index("").on(table.licenseStatus),
+]);
+
+export const localUsers = mysqlTable("local_users", {
+	id: int().autoincrement().notNull(),
+	username: varchar({ length: 100 }).notNull(),
+	passwordHash: varchar({ length: 255 }).notNull(),
+	name: text(),
+	email: varchar({ length: 320 }),
+	role: mysqlEnum(['user','manager','admin']).default('user').notNull(),
+	isActive: int().default(1).notNull(),
+	mustChangePassword: int().default(1).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+	lastSignedIn: timestamp({ mode: 'string' }),
+	avatar: varchar({ length: 500 }),
+},
+(table) => [
+	index("local_users_username_unique").on(table.username),
+]);
+
+export const loginHistory = mysqlTable("login_history", {
+	id: int().autoincrement().notNull(),
+	userId: int().notNull(),
+	username: varchar({ length: 100 }).notNull(),
+	authType: mysqlEnum(['local','manus']).default('local').notNull(),
+	eventType: mysqlEnum(['login','logout','login_failed']).notNull(),
+	ipAddress: varchar({ length: 45 }),
+	userAgent: text(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+	index("idx_login_user").on(table.userId),
+	index("idx_login_event").on(table.eventType),
+	index("idx_login_date").on(table.createdAt),
+	index("idx_login_history_created_at").on(table.createdAt),
+	index("idx_login_history_event").on(table.eventType),
+	index("idx_login_history_user").on(table.userId, table.createdAt),
+	index("").on(table.userId),
+	index("idx_login_created").on(table.createdAt),
+	index("idx_login_user_created").on(table.userId, table.createdAt),
+]);
+
+export const loginLocationHistory = mysqlTable("login_location_history", {
+	id: int().autoincrement().notNull(),
+	loginHistoryId: int("login_history_id").notNull(),
+	userId: int("user_id").notNull(),
+	ipAddress: varchar("ip_address", { length: 45 }).notNull(),
+	country: varchar({ length: 100 }),
+	countryCode: varchar("country_code", { length: 10 }),
+	region: varchar({ length: 100 }),
+	city: varchar({ length: 100 }),
+	latitude: decimal({ precision: 10, scale: 7 }),
+	longitude: decimal({ precision: 10, scale: 7 }),
+	isp: varchar({ length: 255 }),
+	timezone: varchar({ length: 100 }),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+});
+
+export const machineApiKeys = mysqlTable("machine_api_keys", {
+	id: int().autoincrement().notNull(),
+	name: varchar({ length: 255 }).notNull(),
+	apiKey: varchar({ length: 64 }).notNull(),
+	apiKeyHash: varchar({ length: 255 }).notNull(),
+	vendorName: varchar({ length: 255 }).notNull(),
+	machineType: varchar({ length: 100 }).notNull(),
+	machineId: int(),
+	productionLineId: int(),
+	permissions: text(),
+	rateLimit: int().default(100).notNull(),
+	isActive: int().default(1).notNull(),
+	expiresAt: timestamp({ mode: 'string' }),
+	lastUsedAt: timestamp({ mode: 'string' }),
+	createdBy: int().notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("apiKey").on(table.apiKey),
+]);
+
+export const machineAreaAssignments = mysqlTable("machine_area_assignments", {
+	id: int().autoincrement().notNull(),
+	machineId: int().notNull(),
+	areaId: int().notNull(),
+	sortOrder: int().default(0),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+});
+
+export const machineAreas = mysqlTable("machine_areas", {
+	id: int().autoincrement().notNull(),
+	name: varchar({ length: 255 }).notNull(),
+	code: varchar({ length: 100 }).notNull(),
+	description: text(),
+	parentId: int(),
+	type: mysqlEnum(['factory','line','zone','area']).default('area'),
+	sortOrder: int().default(0),
+	isActive: int().default(1).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const machineBom = mysqlTable("machine_bom", {
+	id: int().autoincrement().notNull(),
+	machineId: int().notNull(),
+	sparePartId: int().notNull(),
+	quantity: int().default(1).notNull(),
+	isRequired: int().default(1).notNull(),
+	replacementInterval: int(),
+	notes: text(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("idx_machine_bom_machine").on(table.machineId),
+	index("idx_machine_bom_spare_part").on(table.sparePartId),
+]);
+
+export const machineDataLogs = mysqlTable("machine_data_logs", {
+	id: int().autoincrement().notNull(),
+	apiKeyId: int().notNull(),
+	endpoint: varchar({ length: 255 }).notNull(),
+	method: varchar({ length: 10 }).notNull(),
+	requestBody: text(),
+	responseStatus: int().notNull(),
+	responseBody: text(),
+	processingTimeMs: int(),
+	ipAddress: varchar({ length: 45 }),
+	userAgent: varchar({ length: 500 }),
+	errorMessage: text(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+});
+
+export const machineFieldMappings = mysqlTable("machine_field_mappings", {
+	id: int().autoincrement().notNull(),
+	name: varchar({ length: 200 }).notNull(),
+	apiKeyId: int(),
+	machineType: varchar({ length: 100 }),
+	sourceField: varchar({ length: 200 }).notNull(),
+	targetField: varchar({ length: 200 }).notNull(),
+	targetTable: mysqlEnum(['measurements','inspection_data','oee_records']).notNull(),
+	transformType: mysqlEnum(['direct','multiply','divide','add','subtract','custom']).default('direct').notNull(),
+	transformValue: decimal({ precision: 15, scale: 6 }),
+	customTransform: text(),
+	defaultValue: varchar({ length: 255 }),
+	isRequired: int().default(0).notNull(),
+	isActive: int().default(1).notNull(),
+	createdBy: int().notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const machineInspectionData = mysqlTable("machine_inspection_data", {
+	id: int().autoincrement().notNull(),
+	apiKeyId: int().notNull(),
+	machineId: int(),
+	productionLineId: int(),
+	batchId: varchar({ length: 100 }),
+	productCode: varchar({ length: 100 }),
+	serialNumber: varchar({ length: 100 }),
+	inspectionType: varchar({ length: 50 }).notNull(),
+	inspectionResult: varchar({ length: 20 }).notNull(),
+	defectCount: int().default(0),
+	defectTypes: text(),
+	defectDetails: text(),
+	imageUrls: text(),
+	inspectedAt: timestamp({ mode: 'string' }).notNull(),
+	cycleTimeMs: int(),
+	operatorId: varchar({ length: 50 }),
+	shiftId: varchar({ length: 50 }),
+	rawData: text(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+});
+
+export const machineIntegrationConfigs = mysqlTable("machine_integration_configs", {
+	id: int().autoincrement().notNull(),
+	apiKeyId: int().notNull(),
+	configType: varchar({ length: 50 }).notNull(),
+	configName: varchar({ length: 255 }).notNull(),
+	configValue: text().notNull(),
+	isActive: int().default(1).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const machineMeasurementData = mysqlTable("machine_measurement_data", {
+	id: int().autoincrement().notNull(),
+	apiKeyId: int().notNull(),
+	machineId: int(),
+	productionLineId: int(),
+	batchId: varchar({ length: 100 }),
+	productCode: varchar({ length: 100 }),
+	serialNumber: varchar({ length: 100 }),
+	parameterName: varchar({ length: 255 }).notNull(),
+	parameterCode: varchar({ length: 100 }),
+	measuredValue: decimal({ precision: 15, scale: 6 }).notNull(),
+	unit: varchar({ length: 50 }),
+	lsl: decimal({ precision: 15, scale: 6 }),
+	usl: decimal({ precision: 15, scale: 6 }),
+	target: decimal({ precision: 15, scale: 6 }),
+	isWithinSpec: int(),
+	measuredAt: timestamp({ mode: 'string' }).notNull(),
+	operatorId: varchar({ length: 50 }),
+	shiftId: varchar({ length: 50 }),
+	rawData: text(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+});
+
+export const machineOeeData = mysqlTable("machine_oee_data", {
+	id: int().autoincrement().notNull(),
+	apiKeyId: int().notNull(),
+	machineId: int(),
+	productionLineId: int(),
+	shiftId: varchar({ length: 50 }),
+	recordDate: varchar({ length: 10 }).notNull(),
+	plannedProductionTime: int(),
+	actualProductionTime: int(),
+	downtime: int(),
+	downtimeReasons: text(),
+	idealCycleTime: decimal({ precision: 10, scale: 4 }),
+	actualCycleTime: decimal({ precision: 10, scale: 4 }),
+	totalCount: int(),
+	goodCount: int(),
+	rejectCount: int(),
+	reworkCount: int(),
+	availability: decimal({ precision: 5, scale: 2 }),
+	performance: decimal({ precision: 5, scale: 2 }),
+	quality: decimal({ precision: 5, scale: 2 }),
+	oee: decimal({ precision: 5, scale: 2 }),
+	recordedAt: timestamp({ mode: 'string' }).notNull(),
+	rawData: text(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+});
+
+export const machineOnlineStatus = mysqlTable("machine_online_status", {
+	id: int().autoincrement().notNull(),
+	machineId: int().notNull(),
+	connectionId: int(),
+	isOnline: int().default(0).notNull(),
+	lastHeartbeat: timestamp({ mode: 'string' }),
+	lastDataReceived: timestamp({ mode: 'string' }),
+	currentCpk: int(),
+	currentMean: int(),
+	activeAlarmCount: int().default(0).notNull(),
+	warningCount: int().default(0).notNull(),
+	criticalCount: int().default(0).notNull(),
+	status: mysqlEnum(['idle','running','warning','critical','offline']).default('offline'),
+	statusMessage: text(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("machineId").on(table.machineId),
+	index("idx_machine_status_machine").on(table.machineId),
+]);
+
+export const machineRealtimeEvents = mysqlTable("machine_realtime_events", {
+	id: int().autoincrement().notNull(),
+	eventType: mysqlEnum(['inspection','measurement','oee','alert','status']).notNull(),
+	machineId: int(),
+	machineName: varchar({ length: 200 }),
+	apiKeyId: int(),
+	eventData: text().notNull(),
+	severity: mysqlEnum(['info','warning','error','critical']).default('info').notNull(),
+	isProcessed: int().default(0).notNull(),
+	processedAt: timestamp({ mode: 'string' }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+});
+
+export const machineStatusHistory = mysqlTable("machine_status_history", {
+	id: int().autoincrement().notNull(),
+	machineId: int().notNull(),
+	status: mysqlEnum(['online','offline','idle','running','warning','critical','maintenance']).notNull(),
+	startTime: timestamp({ mode: 'string' }).notNull(),
+	endTime: timestamp({ mode: 'string' }),
+	durationMinutes: int(),
+	reason: text(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+});
+
+export const machineTypes = mysqlTable("machine_types", {
+	id: int().autoincrement().notNull(),
+	code: varchar({ length: 50 }).notNull(),
+	name: varchar({ length: 200 }).notNull(),
+	description: text(),
+	category: varchar({ length: 100 }),
+	isActive: int().default(1).notNull(),
+	createdBy: int().notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const machineWebhookConfigs = mysqlTable("machine_webhook_configs", {
+	id: int().autoincrement().notNull(),
+	name: varchar({ length: 200 }).notNull(),
+	webhookUrl: varchar({ length: 500 }).notNull(),
+	webhookSecret: varchar({ length: 255 }),
+	triggerType: mysqlEnum(['inspection_fail','oee_low','measurement_out_of_spec','all']).notNull(),
+	machineIds: text(),
+	oeeThreshold: decimal({ precision: 5, scale: 2 }),
+	isActive: int().default(1).notNull(),
+	retryCount: int().default(3).notNull(),
+	retryDelaySeconds: int().default(60).notNull(),
+	headers: text(),
+	createdBy: int().notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const machineWebhookLogs = mysqlTable("machine_webhook_logs", {
+	id: int().autoincrement().notNull(),
+	webhookConfigId: int().notNull(),
+	triggerType: varchar({ length: 50 }).notNull(),
+	triggerDataId: int(),
+	requestPayload: text(),
+	responseStatus: int(),
+	responseBody: text(),
+	responseTime: int(),
+	attempt: int().default(1).notNull(),
+	status: mysqlEnum(['pending','success','failed','retrying']).default('pending').notNull(),
+	errorMessage: text(),
+	triggeredAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	completedAt: timestamp({ mode: 'string' }),
+});
+
+export const machines = mysqlTable("machines", {
+	id: int().autoincrement().notNull(),
+	workstationId: int().notNull(),
+	name: varchar({ length: 255 }).notNull(),
+	code: varchar({ length: 100 }).notNull(),
+	machineType: varchar({ length: 100 }),
+	manufacturer: varchar({ length: 255 }),
+	model: varchar({ length: 255 }),
+	serialNumber: varchar({ length: 255 }),
+	installDate: timestamp({ mode: 'string' }),
+	status: mysqlEnum(['active','maintenance','inactive']).default('active').notNull(),
+	isActive: int().default(1).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+	machineTypeId: int(),
+	imageUrl: varchar({ length: 500 }),
+},
+(table) => [
+	index("idx_machines_workstation_id").on(table.workstationId),
+	index("idx_machines_machine_type_id").on(table.machineTypeId),
+	index("idx_machines_machine_type").on(table.machineTypeId),
+	index("idx_machines_active").on(table.isActive),
+]);
+
+export const maintenanceHistory = mysqlTable("maintenance_history", {
+	id: int().autoincrement().notNull(),
+	workOrderId: int().notNull(),
+	machineId: int().notNull(),
+	action: varchar({ length: 255 }).notNull(),
+	performedBy: int(),
+	performedAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	notes: text(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+});
+
+export const maintenanceSchedules = mysqlTable("maintenance_schedules", {
+	id: int().autoincrement().notNull(),
+	machineId: int().notNull(),
+	maintenanceTypeId: int().notNull(),
+	name: varchar({ length: 255 }).notNull(),
+	description: text(),
+	frequency: mysqlEnum(['daily','weekly','biweekly','monthly','quarterly','biannually','annually','custom']).notNull(),
+	customIntervalDays: int(),
+	lastPerformedAt: timestamp({ mode: 'string' }),
+	nextDueAt: timestamp({ mode: 'string' }),
+	estimatedDuration: int(),
+	assignedTechnicianId: int(),
+	checklist: json(),
+	priority: mysqlEnum(['low','medium','high','critical']).default('medium'),
+	isActive: int().default(1).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const maintenanceTypes = mysqlTable("maintenance_types", {
+	id: int().autoincrement().notNull(),
+	name: varchar({ length: 255 }).notNull(),
+	code: varchar({ length: 50 }).notNull(),
+	category: mysqlEnum(['corrective','preventive','predictive','condition_based']).notNull(),
+	description: text(),
+	defaultPriority: mysqlEnum(['low','medium','high','critical']).default('medium'),
+	estimatedDuration: int(),
+	color: varchar({ length: 20 }).default('#3b82f6'),
+	isActive: int().default(1).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+});
+
+export const mappingTemplates = mysqlTable("mapping_templates", {
+	id: int().autoincrement().notNull(),
+	name: varchar({ length: 255 }).notNull(),
+	description: text(),
+	category: varchar({ length: 100 }),
+	tableName: varchar({ length: 255 }),
+	productCodeColumn: varchar({ length: 255 }).default('product_code'),
+	stationColumn: varchar({ length: 255 }).default('station'),
+	valueColumn: varchar({ length: 255 }).default('value'),
+	timestampColumn: varchar({ length: 255 }).default('timestamp'),
+	defaultUsl: int(),
+	defaultLsl: int(),
+	defaultTarget: int(),
+	filterConditions: text(),
+	isActive: int().default(1).notNull(),
+	createdBy: int(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const memoryLeakReports = mysqlTable("memory_leak_reports", {
+	id: int().autoincrement().notNull(),
+	reportId: varchar("report_id", { length: 64 }).notNull(),
+	heapUsed: bigint("heap_used", { mode: "number" }).notNull(),
+	heapTotal: bigint("heap_total", { mode: "number" }).notNull(),
+	external: bigint({ mode: "number" }),
+	arrayBuffers: bigint("array_buffers", { mode: "number" }),
+	rss: bigint({ mode: "number" }),
+	threshold: bigint({ mode: "number" }),
+	leakSuspected: int("leak_suspected").default(0).notNull(),
+	growthRate: decimal("growth_rate", { precision: 10, scale: 4 }),
+	stackTrace: text("stack_trace"),
+	processId: varchar("process_id", { length: 50 }),
+	hostname: varchar({ length: 100 }),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+	index("memory_leak_reports_report_id_unique").on(table.reportId),
+]);
+
+export const modulePermissions = mysqlTable("module_permissions", {
+	id: int().autoincrement().notNull(),
+	moduleId: int().notNull(),
+	code: varchar({ length: 100 }).notNull(),
+	name: varchar({ length: 255 }).notNull(),
+	description: text(),
+	actionType: mysqlEnum(['view','create','edit','delete','export','import','approve','manage']).default('view').notNull(),
+	isActive: int().default(1).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+});
+
+export const notificationChannels = mysqlTable("notification_channels", {
+	id: int().autoincrement().notNull(),
+	userId: int().notNull(),
+	channelType: varchar({ length: 50 }).notNull(),
+	channelConfig: text(),
+	enabled: tinyint().default(1),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP'),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow(),
+});
+
+export const notificationLogs = mysqlTable("notification_logs", {
+	id: int().autoincrement().notNull(),
+	userId: int(),
+	channelType: varchar({ length: 50 }).notNull(),
+	recipient: varchar({ length: 255 }).notNull(),
+	subject: varchar({ length: 500 }),
+	message: text(),
+	status: mysqlEnum(['pending','sent','failed']).default('pending'),
+	errorMessage: text(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP'),
+});
+
+export const ntfAlertConfig = mysqlTable("ntf_alert_config", {
+	id: int().autoincrement().notNull(),
+	warningThreshold: decimal({ precision: 5, scale: 2 }).default('20.00'),
+	criticalThreshold: decimal({ precision: 5, scale: 2 }).default('30.00'),
+	alertEmails: text(),
+	enabled: tinyint().default(1),
+	checkIntervalMinutes: int().default(60),
+	cooldownMinutes: int().default(120),
+	lastAlertAt: timestamp({ mode: 'string' }),
+	lastAlertNtfRate: decimal({ precision: 5, scale: 2 }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP'),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow(),
+});
+
+export const ntfAlertHistory = mysqlTable("ntf_alert_history", {
+	id: int().autoincrement().notNull(),
+	ntfRate: decimal({ precision: 5, scale: 2 }).notNull(),
+	totalDefects: int().notNull(),
+	ntfCount: int().notNull(),
+	realNgCount: int().notNull(),
+	pendingCount: int().notNull(),
+	alertType: mysqlEnum(['warning','critical']).notNull(),
+	emailSent: tinyint().default(0),
+	emailSentAt: timestamp({ mode: 'string' }),
+	emailRecipients: text(),
+	periodStart: timestamp({ mode: 'string' }).notNull(),
+	periodEnd: timestamp({ mode: 'string' }).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP'),
+});
+
+export const ntfReportSchedule = mysqlTable("ntf_report_schedule", {
+	id: int().autoincrement().notNull(),
+	name: varchar({ length: 200 }).notNull(),
+	reportType: mysqlEnum(['daily','weekly','monthly']).notNull(),
+	sendHour: int().default(8),
+	sendDay: int(),
+	recipients: text().notNull(),
+	enabled: tinyint().default(1),
+	lastSentAt: timestamp({ mode: 'string' }),
+	lastSentStatus: mysqlEnum(['success','failed']),
+	lastSentError: text(),
+	createdBy: int().notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP'),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow(),
+});
+
+export const oeeAlertConfigs = mysqlTable("oee_alert_configs", {
+	id: int().autoincrement().notNull(),
+	userId: int("user_id").notNull(),
+	name: varchar({ length: 255 }).notNull(),
+	machineId: int("machine_id"),
+	oeeThreshold: decimal("oee_threshold", { precision: 5, scale: 2 }).notNull(),
+	consecutiveDays: int("consecutive_days").default(3).notNull(),
+	recipients: text().notNull(),
+	isActive: int("is_active").default(1).notNull(),
+	lastTriggeredAt: timestamp("last_triggered_at", { mode: 'string' }),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const oeeAlertHistory = mysqlTable("oee_alert_history", {
+	id: int().autoincrement().notNull(),
+	alertConfigId: int("alert_config_id").notNull(),
+	machineId: int("machine_id"),
+	machineName: varchar("machine_name", { length: 255 }),
+	oeeValue: decimal("oee_value", { precision: 5, scale: 2 }).notNull(),
+	consecutiveDaysBelow: int("consecutive_days_below").notNull(),
+	recipients: text().notNull(),
+	emailSent: int("email_sent").default(0).notNull(),
+	emailSentAt: timestamp("email_sent_at", { mode: 'string' }),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	acknowledged: tinyint().default(0),
+	acknowledgedAt: datetime("acknowledged_at", { mode: 'string'}),
+	acknowledgedBy: varchar("acknowledged_by", { length: 255 }),
+	resolved: tinyint().default(0),
+	resolvedAt: datetime("resolved_at", { mode: 'string'}),
+	resolvedBy: varchar("resolved_by", { length: 255 }),
+	resolution: text(),
+});
+
+export const oeeAlertThresholds = mysqlTable("oee_alert_thresholds", {
+	id: int().autoincrement().notNull(),
+	machineId: int(),
+	productionLineId: int(),
+	targetOee: decimal({ precision: 5, scale: 2 }).default('85.00').notNull(),
+	warningThreshold: decimal({ precision: 5, scale: 2 }).default('80.00').notNull(),
+	criticalThreshold: decimal({ precision: 5, scale: 2 }).default('70.00').notNull(),
+	dropAlertThreshold: decimal({ precision: 5, scale: 2 }).default('5.00').notNull(),
+	relativeDropThreshold: decimal({ precision: 5, scale: 2 }).default('10.00').notNull(),
+	availabilityTarget: decimal({ precision: 5, scale: 2 }).default('90.00'),
+	performanceTarget: decimal({ precision: 5, scale: 2 }).default('95.00'),
+	qualityTarget: decimal({ precision: 5, scale: 2 }).default('99.00'),
+	isActive: int().default(1).notNull(),
+	createdBy: int(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const oeeLossCategories = mysqlTable("oee_loss_categories", {
+	id: int().autoincrement().notNull(),
+	name: varchar({ length: 255 }).notNull(),
+	code: varchar({ length: 50 }).notNull(),
+	type: mysqlEnum(['availability','performance','quality']).notNull(),
+	description: text(),
+	isActive: int().default(1).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const oeeLossRecords = mysqlTable("oee_loss_records", {
+	id: int().autoincrement().notNull(),
+	oeeRecordId: int().notNull(),
+	lossCategoryId: int().notNull(),
+	durationMinutes: int().notNull(),
+	quantity: int().default(0),
+	description: text(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+	index("idx_oee_loss_record").on(table.oeeRecordId),
+	index("idx_oee_loss_category").on(table.lossCategoryId),
+]);
+
+export const oeeRecords = mysqlTable("oee_records", {
+	id: int().autoincrement().notNull(),
+	machineId: int().notNull(),
+	productionLineId: int(),
+	shiftId: int(),
+	recordDate: timestamp({ mode: 'string' }).notNull(),
+	plannedProductionTime: int().default(0),
+	actualRunTime: int().default(0),
+	downtime: int().default(0),
+	idealCycleTime: decimal({ precision: 10, scale: 4 }),
+	totalCount: int().default(0),
+	goodCount: int().default(0),
+	defectCount: int().default(0),
+	availability: decimal({ precision: 5, scale: 2 }),
+	performance: decimal({ precision: 5, scale: 2 }),
+	quality: decimal({ precision: 5, scale: 2 }),
+	oee: decimal({ precision: 5, scale: 2 }),
+	notes: text(),
+	createdBy: int(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+	plannedTime: int(),
+	runTime: int(),
+	cycleTime: decimal({ precision: 10, scale: 4 }),
+	totalParts: int(),
+	goodParts: int(),
+	rejectParts: int(),
+},
+(table) => [
+	index("idx_oee_records_machineId").on(table.machineId),
+	index("idx_oee_records_recordDate").on(table.recordDate),
+	index("idx_oee_records_machine").on(table.machineId, table.recordDate),
+	index("idx_oee_records_line").on(table.productionLineId, table.recordDate),
+	index("idx_oee_records_date").on(table.recordDate),
+	index("idx_oee_machine").on(table.machineId),
+	index("idx_oee_date").on(table.recordDate),
+	index("idx_oee_machine_date").on(table.machineId, table.recordDate),
+]);
+
+export const oeeReportHistory = mysqlTable("oee_report_history", {
+	id: int().autoincrement().notNull(),
+	scheduleId: int("schedule_id").notNull(),
+	reportPeriodStart: timestamp("report_period_start", { mode: 'string' }).notNull(),
+	reportPeriodEnd: timestamp("report_period_end", { mode: 'string' }).notNull(),
+	recipients: text().notNull(),
+	reportData: text("report_data"),
+	emailSent: int("email_sent").default(0).notNull(),
+	emailSentAt: timestamp("email_sent_at", { mode: 'string' }),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+});
+
+export const oeeReportSchedules = mysqlTable("oee_report_schedules", {
+	id: int().autoincrement().notNull(),
+	userId: int("user_id").notNull(),
+	name: varchar({ length: 255 }).notNull(),
+	frequency: mysqlEnum(['weekly','monthly']).notNull(),
+	dayOfWeek: int("day_of_week"),
+	dayOfMonth: int("day_of_month"),
+	hour: int().default(8).notNull(),
+	machineIds: text("machine_ids"),
+	recipients: text().notNull(),
+	includeCharts: int("include_charts").default(1).notNull(),
+	includeTrend: int("include_trend").default(1).notNull(),
+	includeComparison: int("include_comparison").default(1).notNull(),
+	isActive: int("is_active").default(1).notNull(),
+	lastSentAt: timestamp("last_sent_at", { mode: 'string' }),
+	nextScheduledAt: timestamp("next_scheduled_at", { mode: 'string' }),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const oeeTargets = mysqlTable("oee_targets", {
+	id: int().autoincrement().notNull(),
+	machineId: int(),
+	productionLineId: int(),
+	targetOee: decimal({ precision: 5, scale: 2 }).default('85.00'),
+	targetAvailability: decimal({ precision: 5, scale: 2 }).default('90.00'),
+	targetPerformance: decimal({ precision: 5, scale: 2 }).default('95.00'),
+	targetQuality: decimal({ precision: 5, scale: 2 }).default('99.00'),
+	effectiveFrom: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	effectiveTo: timestamp({ mode: 'string' }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const passwordResetTokens = mysqlTable("password_reset_tokens", {
+	id: int().autoincrement().notNull(),
+	userId: int("user_id").notNull(),
+	token: varchar({ length: 255 }).notNull(),
+	email: varchar({ length: 320 }).notNull(),
+	expiresAt: timestamp("expires_at", { mode: 'string' }).notNull(),
+	usedAt: timestamp("used_at", { mode: 'string' }),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+	index("token").on(table.token),
+]);
+
+export const permissions = mysqlTable("permissions", {
+	id: int().autoincrement().notNull(),
+	code: varchar({ length: 100 }).notNull(),
+	name: varchar({ length: 255 }).notNull(),
+	description: text(),
+	module: varchar({ length: 100 }).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	system: mysqlEnum(['SPC','MMS','COMMON']).default('COMMON').notNull(),
+	parentId: int(),
+	sortOrder: int().default(0),
+},
+(table) => [
+	index("permissions_code_unique").on(table.code),
+]);
+
+export const poReceivingHistory = mysqlTable("po_receiving_history", {
+	id: int().autoincrement().notNull(),
+	purchaseOrderId: int().notNull(),
+	purchaseOrderItemId: int().notNull(),
+	sparePartId: int().notNull(),
+	quantityReceived: int().notNull(),
+	receivedBy: int(),
+	receivedAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	notes: text(),
+	batchNumber: varchar({ length: 100 }),
+	qualityStatus: mysqlEnum(['good','damaged','rejected']).default('good'),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+});
+
+export const positions = mysqlTable("positions", {
+	id: int().autoincrement().notNull(),
+	code: varchar({ length: 50 }).notNull(),
+	name: varchar({ length: 255 }).notNull(),
+	description: text(),
+	level: int().default(1).notNull(),
+	canApprove: int().default(0).notNull(),
+	approvalLimit: decimal({ precision: 15, scale: 2 }),
+	isActive: int().default(1).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("code").on(table.code),
+]);
+
+export const predictiveAlertAdjustmentLogs = mysqlTable("predictive_alert_adjustment_logs", {
+	id: int().autoincrement().notNull(),
+	thresholdId: int("threshold_id").notNull(),
+	adjustmentType: mysqlEnum("adjustment_type", ['auto','manual']).notNull(),
+	oldValues: text("old_values").notNull(),
+	newValues: text("new_values").notNull(),
+	reason: text(),
+	adjustedBy: int("adjusted_by"),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+});
+
 export const predictiveAlertHistory = mysqlTable("predictive_alert_history", {
-  id: int("id").autoincrement().primaryKey(),
-  thresholdId: int("threshold_id").notNull(),
-  productionLineId: int("production_line_id"),
-  
-  // Loại cảnh báo
-  alertType: mysqlEnum("alert_type", ["oee_low", "oee_decline", "defect_high", "defect_increase", "auto_adjust"]).notNull(),
-  severity: mysqlEnum("severity", ["warning", "critical", "info"]).notNull(),
-  
-  // Giá trị
-  currentValue: decimal("current_value", { precision: 10, scale: 4 }),
-  thresholdValue: decimal("threshold_value", { precision: 10, scale: 4 }),
-  predictedValue: decimal("predicted_value", { precision: 10, scale: 4 }),
-  changePercent: decimal("change_percent", { precision: 10, scale: 4 }),
-  
-  // Nội dung cảnh báo
-  title: varchar("title", { length: 255 }).notNull(),
-  message: text("message").notNull(),
-  recommendations: text("recommendations"), // JSON array of recommendations
-  
-  // Trạng thái
-  status: mysqlEnum("status", ["pending", "sent", "acknowledged", "resolved"]).notNull().default("pending"),
-  acknowledgedBy: int("acknowledged_by"),
-  acknowledgedAt: timestamp("acknowledged_at"),
-  resolvedBy: int("resolved_by"),
-  resolvedAt: timestamp("resolved_at"),
-  resolutionNotes: text("resolution_notes"),
-  
-  // Metadata
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+	id: int().autoincrement().notNull(),
+	thresholdId: int("threshold_id").notNull(),
+	productionLineId: int("production_line_id"),
+	alertType: mysqlEnum("alert_type", ['oee_low','oee_decline','defect_high','defect_increase','auto_adjust']).notNull(),
+	severity: mysqlEnum(['warning','critical','info']).notNull(),
+	currentValue: decimal("current_value", { precision: 10, scale: 4 }),
+	thresholdValue: decimal("threshold_value", { precision: 10, scale: 4 }),
+	predictedValue: decimal("predicted_value", { precision: 10, scale: 4 }),
+	changePercent: decimal("change_percent", { precision: 10, scale: 4 }),
+	title: varchar({ length: 255 }).notNull(),
+	message: text().notNull(),
+	recommendations: text(),
+	status: mysqlEnum(['pending','sent','acknowledged','resolved']).default('pending').notNull(),
+	acknowledgedBy: int("acknowledged_by"),
+	acknowledgedAt: timestamp("acknowledged_at", { mode: 'string' }),
+	resolvedBy: int("resolved_by"),
+	resolvedAt: timestamp("resolved_at", { mode: 'string' }),
+	resolutionNotes: text("resolution_notes"),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
 });
 
-export type PredictiveAlertHistory = typeof predictiveAlertHistory.$inferSelect;
-export type InsertPredictiveAlertHistory = typeof predictiveAlertHistory.$inferInsert;
-
-// ==================== Predictive Threshold Auto-Adjust Logs ====================
-/**
- * Lịch sử điều chỉnh ngưỡng tự động
- */
-export const predictiveThresholdAdjustLogs = mysqlTable("predictive_threshold_adjust_logs", {
-  id: int("id").autoincrement().primaryKey(),
-  thresholdId: int("threshold_id").notNull(),
-  
-  // Loại điều chỉnh
-  adjustType: mysqlEnum("adjust_type", ["oee_warning", "oee_critical", "defect_warning", "defect_critical"]).notNull(),
-  
-  // Giá trị cũ và mới
-  oldValue: decimal("old_value", { precision: 10, scale: 4 }).notNull(),
-  newValue: decimal("new_value", { precision: 10, scale: 4 }).notNull(),
-  
-  // Lý do điều chỉnh
-  reason: text("reason").notNull(),
-  dataPointsUsed: int("data_points_used"), // Số điểm dữ liệu sử dụng để tính toán
-  confidenceScore: decimal("confidence_score", { precision: 5, scale: 4 }), // Độ tin cậy của điều chỉnh
-  
-  // Metadata
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+export const predictiveAlertThresholds = mysqlTable("predictive_alert_thresholds", {
+	id: int().autoincrement().notNull(),
+	productionLineId: int("production_line_id"),
+	name: varchar({ length: 255 }).notNull(),
+	description: text(),
+	predictionType: mysqlEnum("prediction_type", ['oee','defect_rate','both']).default('both').notNull(),
+	oeeWarningThreshold: decimal("oee_warning_threshold", { precision: 5, scale: 2 }).default('75.00'),
+	oeeCriticalThreshold: decimal("oee_critical_threshold", { precision: 5, scale: 2 }).default('65.00'),
+	oeeDeclineThreshold: decimal("oee_decline_threshold", { precision: 5, scale: 2 }).default('5.00'),
+	defectWarningThreshold: decimal("defect_warning_threshold", { precision: 5, scale: 2 }).default('3.00'),
+	defectCriticalThreshold: decimal("defect_critical_threshold", { precision: 5, scale: 2 }).default('5.00'),
+	defectIncreaseThreshold: decimal("defect_increase_threshold", { precision: 5, scale: 2 }).default('20.00'),
+	autoAdjustEnabled: int("auto_adjust_enabled").default(0).notNull(),
+	autoAdjustSensitivity: mysqlEnum("auto_adjust_sensitivity", ['low','medium','high']).default('medium').notNull(),
+	autoAdjustPeriodDays: int("auto_adjust_period_days").default(30).notNull(),
+	emailAlertEnabled: int("email_alert_enabled").default(1).notNull(),
+	alertEmails: text("alert_emails"),
+	alertFrequency: mysqlEnum("alert_frequency", ['immediate','hourly','daily']).default('immediate').notNull(),
+	isActive: int("is_active").default(1).notNull(),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+	lastAlertSentAt: timestamp("last_alert_sent_at", { mode: 'string' }),
+	lastAutoAdjustAt: timestamp("last_auto_adjust_at", { mode: 'string' }),
+	createdBy: int("created_by"),
 });
 
-export type PredictiveThresholdAdjustLog = typeof predictiveThresholdAdjustLogs.$inferSelect;
-export type InsertPredictiveThresholdAdjustLog = typeof predictiveThresholdAdjustLogs.$inferInsert;
-
-
-// ==================== Forecast History ====================
-/**
- * Lịch sử dự báo để so sánh với giá trị thực tế
- */
-export const forecastHistory = mysqlTable("forecast_history", {
-  id: int("id").autoincrement().primaryKey(),
-  productionLineId: int("production_line_id"),
-  
-  // Loại dự báo
-  metricType: mysqlEnum("metric_type", ["cpk", "oee", "defect_rate"]).notNull(),
-  
-  // Ngày dự báo và ngày thực tế
-  forecastDate: timestamp("forecast_date").notNull(),
-  forecastCreatedAt: timestamp("forecast_created_at").notNull(),
-  
-  // Giá trị dự báo
-  predictedValue: decimal("predicted_value", { precision: 10, scale: 4 }).notNull(),
-  upperBound: decimal("upper_bound", { precision: 10, scale: 4 }),
-  lowerBound: decimal("lower_bound", { precision: 10, scale: 4 }),
-  confidenceLevel: decimal("confidence_level", { precision: 5, scale: 2 }).default("95.00"),
-  
-  // Giá trị thực tế (cập nhật sau khi có dữ liệu thực)
-  actualValue: decimal("actual_value", { precision: 10, scale: 4 }),
-  actualRecordedAt: timestamp("actual_recorded_at"),
-  
-  // Sai số
-  absoluteError: decimal("absolute_error", { precision: 10, scale: 4 }),
-  percentageError: decimal("percentage_error", { precision: 10, scale: 4 }),
-  
-  // Model info
-  modelVersion: varchar("model_version", { length: 50 }),
-  modelType: varchar("model_type", { length: 100 }),
-  
-  // Metadata
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+export const processConfigs = mysqlTable("process_configs", {
+	id: int().autoincrement().notNull(),
+	productionLineId: int().notNull(),
+	productId: int().notNull(),
+	workstationId: int().notNull(),
+	processName: varchar({ length: 255 }).notNull(),
+	processOrder: int().default(0).notNull(),
+	standardTime: int(),
+	description: text(),
+	isActive: int().default(1).notNull(),
+	createdBy: int().notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
 });
 
-export type ForecastHistory = typeof forecastHistory.$inferSelect;
-export type InsertForecastHistory = typeof forecastHistory.$inferInsert;
+export const processStepMachines = mysqlTable("process_step_machines", {
+	id: int().autoincrement().notNull(),
+	processStepId: int().notNull(),
+	machineTypeId: int(),
+	machineName: varchar({ length: 255 }).notNull(),
+	machineCode: varchar({ length: 100 }),
+	isRequired: int().default(1).notNull(),
+	quantity: int().default(1).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+});
+
+export const processSteps = mysqlTable("process_steps", {
+	id: int().autoincrement().notNull(),
+	processTemplateId: int().notNull(),
+	name: varchar({ length: 255 }).notNull(),
+	code: varchar({ length: 100 }).notNull(),
+	description: text(),
+	sequenceOrder: int().default(1).notNull(),
+	standardTime: int(),
+	workstationTypeId: int(),
+	isRequired: int().default(1).notNull(),
+	isActive: int().default(1).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const processTemplates = mysqlTable("process_templates", {
+	id: int().autoincrement().notNull(),
+	name: varchar({ length: 255 }).notNull(),
+	code: varchar({ length: 100 }).notNull(),
+	description: text(),
+	version: varchar({ length: 50 }).default('1.0'),
+	isActive: int().default(1).notNull(),
+	createdBy: int().notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+	imageUrl: varchar({ length: 500 }),
+},
+(table) => [
+	index("process_templates_code_unique").on(table.code),
+]);
+
+export const productSpecifications = mysqlTable("product_specifications", {
+	id: int().autoincrement().notNull(),
+	productId: int().notNull(),
+	workstationId: int(),
+	parameterName: varchar({ length: 255 }).notNull(),
+	usl: int().notNull(),
+	lsl: int().notNull(),
+	target: int(),
+	unit: varchar({ length: 50 }),
+	description: text(),
+	isActive: int().default(1).notNull(),
+	createdBy: int().notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("idx_product_specifications_workstation").on(table.workstationId),
+]);
+
+export const productStationMachineStandards = mysqlTable("product_station_machine_standards", {
+	id: int().autoincrement().notNull(),
+	productId: int().notNull(),
+	workstationId: int().notNull(),
+	machineId: int(),
+	measurementName: varchar({ length: 255 }).notNull(),
+	usl: int(),
+	lsl: int(),
+	target: int(),
+	unit: varchar({ length: 50 }).default('mm'),
+	sampleSize: int().default(5).notNull(),
+	sampleFrequency: int().default(60).notNull(),
+	samplingMethod: varchar({ length: 100 }).default('random'),
+	appliedSpcRules: text(),
+	cpkWarningThreshold: int().default(133),
+	cpkCriticalThreshold: int().default(100),
+	notes: text(),
+	isActive: int().default(1).notNull(),
+	createdBy: int().notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+	appliedCpkRules: text(),
+	appliedCaRules: text(),
+});
+
+export const productStationMappings = mysqlTable("product_station_mappings", {
+	id: int().autoincrement().notNull(),
+	productCode: varchar({ length: 100 }).notNull(),
+	stationName: varchar({ length: 100 }).notNull(),
+	connectionId: int().notNull(),
+	tableName: varchar({ length: 255 }).notNull(),
+	productCodeColumn: varchar({ length: 100 }).default('product_code').notNull(),
+	stationColumn: varchar({ length: 100 }).default('station').notNull(),
+	valueColumn: varchar({ length: 100 }).default('value').notNull(),
+	timestampColumn: varchar({ length: 100 }).default('timestamp').notNull(),
+	usl: int(),
+	lsl: int(),
+	target: int(),
+	isActive: int().default(1).notNull(),
+	createdBy: int().notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+	filterConditions: text(),
+},
+(table) => [
+	index("idx_product_station_mappings_station").on(table.stationName),
+	index("idx_product_station_mappings_active").on(table.isActive),
+]);
+
+export const productionLineMachines = mysqlTable("production_line_machines", {
+	id: int().autoincrement().notNull(),
+	productionLineId: int().notNull(),
+	machineId: int().notNull(),
+	processStepId: int(),
+	assignedAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	assignedBy: int().notNull(),
+	isActive: int().default(1).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+});
+
+export const productionLineProducts = mysqlTable("production_line_products", {
+	id: int().autoincrement().notNull(),
+	productionLineId: int().notNull(),
+	productId: int().notNull(),
+	isDefault: int().default(0).notNull(),
+	cycleTime: int(),
+	targetOutput: int(),
+	isActive: int().default(1).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const productionLines = mysqlTable("production_lines", {
+	id: int().autoincrement().notNull(),
+	name: varchar({ length: 255 }).notNull(),
+	code: varchar({ length: 100 }).notNull(),
+	description: text(),
+	location: varchar({ length: 255 }),
+	isActive: int().default(1).notNull(),
+	createdBy: int().notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+	productId: int(),
+	processTemplateId: int(),
+	supervisorId: int(),
+	imageUrl: varchar({ length: 500 }),
+},
+(table) => [
+	index("production_lines_code_unique").on(table.code),
+]);
+
+export const products = mysqlTable("products", {
+	id: int().autoincrement().notNull(),
+	code: varchar({ length: 100 }).notNull(),
+	name: varchar({ length: 255 }).notNull(),
+	description: text(),
+	category: varchar({ length: 100 }),
+	unit: varchar({ length: 50 }).default('pcs'),
+	isActive: int().default(1).notNull(),
+	createdBy: int().notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("products_code_unique").on(table.code),
+	index("idx_products_code").on(table.code),
+	index("idx_products_is_active").on(table.isActive),
+	index("idx_products_active").on(table.isActive),
+]);
+
+export const purchaseOrderItems = mysqlTable("purchase_order_items", {
+	id: int().autoincrement().notNull(),
+	purchaseOrderId: int().notNull(),
+	sparePartId: int().notNull(),
+	quantity: int().notNull(),
+	unitPrice: decimal({ precision: 12, scale: 2 }),
+	totalPrice: decimal({ precision: 12, scale: 2 }),
+	receivedQuantity: int().default(0),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+	index("idx_po_items_purchaseOrderId").on(table.purchaseOrderId),
+	index("idx_po_items_sparePartId").on(table.sparePartId),
+]);
+
+export const purchaseOrders = mysqlTable("purchase_orders", {
+	id: int().autoincrement().notNull(),
+	poNumber: varchar({ length: 50 }).notNull(),
+	supplierId: int().notNull(),
+	status: mysqlEnum(['draft','pending','approved','ordered','partial','received','cancelled']).default('draft').notNull(),
+	total: decimal({ precision: 15, scale: 2 }),
+	orderDate: timestamp({ mode: 'string' }),
+	expectedDeliveryDate: timestamp({ mode: 'string' }),
+	actualDeliveryDate: timestamp({ mode: 'string' }),
+	notes: text(),
+	createdBy: int(),
+	approvedBy: int(),
+	approvedAt: timestamp({ mode: 'string' }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+	subtotal: decimal({ precision: 14, scale: 2 }),
+	tax: decimal({ precision: 14, scale: 2 }),
+	shipping: decimal({ precision: 14, scale: 2 }),
+	rejectedBy: int(),
+	rejectedAt: timestamp({ mode: 'string' }),
+	rejectionReason: text(),
+},
+(table) => [
+	index("idx_purchase_orders_supplierId").on(table.supplierId),
+]);
+
+export const rateLimitConfig = mysqlTable("rate_limit_config", {
+	id: int().autoincrement().notNull(),
+	configKey: varchar({ length: 100 }).notNull(),
+	configValue: text().notNull(),
+	description: text(),
+	updatedBy: int(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("configKey").on(table.configKey),
+]);
+
+export const rateLimitConfigHistory = mysqlTable("rate_limit_config_history", {
+	id: int().autoincrement().notNull(),
+	configKey: varchar({ length: 100 }).notNull(),
+	oldValue: text(),
+	newValue: text().notNull(),
+	changedBy: int().notNull(),
+	changedByName: varchar({ length: 255 }),
+	changeReason: text(),
+	ipAddress: varchar({ length: 45 }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+});
+
+export const rateLimitRoleConfig = mysqlTable("rate_limit_role_config", {
+	id: int().autoincrement().notNull(),
+	role: mysqlEnum(['user','admin','guest']).notNull(),
+	maxRequests: int().default(5000).notNull(),
+	maxAuthRequests: int().default(200).notNull(),
+	maxExportRequests: int().default(100).notNull(),
+	windowMs: int().default(900000).notNull(),
+	description: text(),
+	isActive: int().default(1).notNull(),
+	updatedBy: int(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("role").on(table.role),
+]);
+
+export const realtimeAlerts = mysqlTable("realtime_alerts", {
+	id: int().autoincrement().notNull(),
+	connectionId: int().notNull(),
+	machineId: int().notNull(),
+	alertType: mysqlEnum(['out_of_spec','out_of_control','rule_violation','connection_lost']).notNull(),
+	severity: mysqlEnum(['warning','critical']).notNull(),
+	message: text(),
+	ruleNumber: int(),
+	value: int(),
+	threshold: int(),
+	acknowledgedAt: timestamp({ mode: 'string' }),
+	acknowledgedBy: int(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+	index("idx_alerts_ack").on(table.acknowledgedAt),
+	index("idx_alerts_created").on(table.createdAt),
+]);
+
+export const realtimeDataBuffer = mysqlTable("realtime_data_buffer", {
+	id: int().autoincrement().notNull(),
+	connectionId: int().notNull(),
+	machineId: int().notNull(),
+	measurementName: varchar({ length: 100 }).notNull(),
+	value: int().notNull(),
+	sampledAt: timestamp({ mode: 'string' }).notNull(),
+	processedAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	subgroupIndex: int(),
+	subgroupMean: int(),
+	subgroupRange: int(),
+	ucl: int(),
+	lcl: int(),
+	isOutOfSpec: int().default(0).notNull(),
+	isOutOfControl: int().default(0).notNull(),
+	violatedRules: varchar({ length: 50 }),
+},
+(table) => [
+	index("idx_connection_time").on(table.connectionId, table.sampledAt),
+	index("idx_machine_time").on(table.machineId, table.sampledAt),
+]);
+
+export const realtimeDataStreams = mysqlTable("realtime_data_streams", {
+	id: int().autoincrement().notNull(),
+	streamId: varchar("stream_id", { length: 64 }).notNull(),
+	name: varchar({ length: 100 }).notNull(),
+	streamType: mysqlEnum("stream_type", ['spc','oee','iot','system','security','ai']).notNull(),
+	source: varchar({ length: 100 }).notNull(),
+	interval: int().default(5000).notNull(),
+	isActive: int("is_active").default(0).notNull(),
+	lastDataAt: timestamp("last_data_at", { mode: 'string' }),
+	subscriberCount: int("subscriber_count").default(0).notNull(),
+	errorCount: int("error_count").default(0).notNull(),
+	config: text(),
+	metadata: text(),
+	createdBy: int("created_by"),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("realtime_data_streams_stream_id_unique").on(table.streamId),
+]);
+
+export const realtimeMachineConnections = mysqlTable("realtime_machine_connections", {
+	id: int().autoincrement().notNull(),
+	machineId: int().notNull(),
+	connectionType: mysqlEnum(['database','opcua','api','file','mqtt']).notNull(),
+	connectionConfig: text(),
+	pollingIntervalMs: int().default(1000).notNull(),
+	dataQuery: text(),
+	measurementColumn: varchar({ length: 100 }),
+	timestampColumn: varchar({ length: 100 }),
+	lastDataAt: timestamp({ mode: 'string' }),
+	lastError: text(),
+	isActive: int().default(1).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const reportTemplates = mysqlTable("report_templates", {
+	id: int().autoincrement().notNull(),
+	name: varchar({ length: 255 }).notNull(),
+	description: text(),
+	companyName: varchar({ length: 255 }),
+	companyLogo: text(),
+	headerText: text(),
+	footerText: text(),
+	primaryColor: varchar({ length: 20 }).default('#3b82f6'),
+	secondaryColor: varchar({ length: 20 }).default('#64748b'),
+	fontFamily: varchar({ length: 100 }).default('Arial'),
+	showLogo: int().default(1).notNull(),
+	showCompanyName: int().default(1).notNull(),
+	showDate: int().default(1).notNull(),
+	showCharts: int().default(1).notNull(),
+	showRawData: int().default(0).notNull(),
+	isDefault: int().default(0).notNull(),
+	isActive: int().default(1).notNull(),
+	createdBy: int(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const roleModulePermissions = mysqlTable("role_module_permissions", {
+	id: int().autoincrement().notNull(),
+	roleId: int().notNull(),
+	permissionId: int().notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+});
+
+export const rolePermissions = mysqlTable("role_permissions", {
+	id: int().autoincrement().notNull(),
+	role: mysqlEnum(['user','admin','operator','viewer']).notNull(),
+	permissionId: int().notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+});
+
+export const roleTemplates = mysqlTable("role_templates", {
+	id: int().autoincrement().notNull(),
+	code: varchar({ length: 100 }).notNull(),
+	name: varchar({ length: 255 }).notNull(),
+	description: text(),
+	category: mysqlEnum(['production','quality','maintenance','management','system']).default('production').notNull(),
+	permissionIds: text().notNull(),
+	isDefault: int().default(0).notNull(),
+	isActive: int().default(1).notNull(),
+	createdBy: int(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("code").on(table.code),
+]);
+
+export const sampleMeasurements = mysqlTable("sample_measurements", {
+	id: int().autoincrement().notNull(),
+	productCode: varchar("product_code", { length: 50 }).notNull(),
+	stationName: varchar("station_name", { length: 100 }).notNull(),
+	measurementValue: decimal("measurement_value", { precision: 10, scale: 4 }).notNull(),
+	measurementTime: datetime("measurement_time", { mode: 'string'}).notNull(),
+	operator: varchar({ length: 100 }),
+	batchNumber: varchar("batch_number", { length: 50 }),
+	status: varchar({ length: 20 }).default('OK'),
+});
+
+export const sampleProducts = mysqlTable("sample_products", {
+	id: int().autoincrement().notNull(),
+	productCode: varchar("product_code", { length: 50 }).notNull(),
+	productName: varchar("product_name", { length: 255 }).notNull(),
+	category: varchar({ length: 100 }),
+	unit: varchar({ length: 50 }),
+	usl: decimal({ precision: 10, scale: 3 }),
+	lsl: decimal({ precision: 10, scale: 3 }),
+	targetValue: decimal("target_value", { precision: 10, scale: 3 }),
+	createdAt: datetime("created_at", { mode: 'string'}).default('CURRENT_TIMESTAMP'),
+});
+
+export const samplingConfigs = mysqlTable("sampling_configs", {
+	id: int().autoincrement().notNull(),
+	mappingId: int(),
+	name: varchar({ length: 255 }).notNull(),
+	timeUnit: mysqlEnum(['year','month','week','day','hour','minute','second']).default('hour').notNull(),
+	sampleSize: int().default(5).notNull(),
+	subgroupSize: int().default(5).notNull(),
+	intervalValue: int().default(30).notNull(),
+	intervalUnit: mysqlEnum(['year','month','week','day','hour','minute','second']).default('minute').notNull(),
+	autoSampling: int().default(0).notNull(),
+	isActive: int().default(1).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const scheduledKpiReports = mysqlTable("scheduled_kpi_reports", {
+	id: int().autoincrement().notNull(),
+	name: varchar({ length: 255 }).notNull(),
+	description: text(),
+	frequency: mysqlEnum(['daily','weekly','monthly']).default('weekly').notNull(),
+	dayOfWeek: int("day_of_week"),
+	dayOfMonth: int("day_of_month"),
+	timeOfDay: varchar("time_of_day", { length: 5 }).default('08:00').notNull(),
+	productionLineIds: text("production_line_ids"),
+	reportType: mysqlEnum("report_type", ['shift_summary','kpi_comparison','trend_analysis','full_report']).default('shift_summary').notNull(),
+	includeCharts: int("include_charts").default(1).notNull(),
+	includeDetails: int("include_details").default(1).notNull(),
+	recipients: text().notNull(),
+	ccRecipients: text("cc_recipients"),
+	isEnabled: int("is_enabled").default(1).notNull(),
+	lastSentAt: timestamp("last_sent_at", { mode: 'string' }),
+	lastStatus: mysqlEnum("last_status", ['success','failed','pending']),
+	lastError: text("last_error"),
+	createdBy: int("created_by"),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const scheduledReportLogs = mysqlTable("scheduled_report_logs", {
+	id: int().autoincrement().notNull(),
+	reportId: int().notNull(),
+	sentAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	status: mysqlEnum(['success','failed']).notNull(),
+	recipientCount: int().default(0).notNull(),
+	fileUrl: varchar({ length: 500 }),
+	errorMessage: text(),
+	executionTimeMs: int(),
+	successCount: int().default(0).notNull(),
+	failedCount: int().default(0).notNull(),
+	reportFileUrl: varchar({ length: 1024 }),
+	reportFileSizeKb: int().default(0),
+	generationTimeMs: int().default(0),
+});
+
+export const scheduledReports = mysqlTable("scheduled_reports", {
+	id: int().autoincrement().notNull(),
+	name: varchar({ length: 200 }).notNull(),
+	reportType: mysqlEnum(['oee','cpk','oee_cpk_combined','production_summary']).notNull(),
+	frequency: mysqlEnum(['daily','weekly','monthly']).notNull(),
+	dayOfWeek: int(),
+	dayOfMonth: int(),
+	timeOfDay: varchar({ length: 5 }).default('08:00').notNull(),
+	recipients: text().notNull(),
+	machineIds: text(),
+	productionLineIds: text(),
+	includeCharts: int().default(1).notNull(),
+	includeTrends: int().default(1).notNull(),
+	includeAlerts: int().default(1).notNull(),
+	format: mysqlEnum(['html','excel','pdf']).default('html').notNull(),
+	lastSentAt: timestamp({ mode: 'string' }),
+	lastSentStatus: mysqlEnum(['success','failed','pending']),
+	lastSentError: text(),
+	isActive: int().default(1).notNull(),
+	createdBy: int(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const securityAuditLogs = mysqlTable("security_audit_logs", {
+	id: int().autoincrement().notNull(),
+	eventId: varchar("event_id", { length: 64 }).notNull(),
+	eventType: varchar("event_type", { length: 50 }).notNull(),
+	eventCategory: mysqlEnum("event_category", ['authentication','authorization','data_access','configuration','system']).default('system').notNull(),
+	severity: mysqlEnum(['info','warning','error','critical']).default('info').notNull(),
+	userId: int("user_id"),
+	username: varchar({ length: 100 }),
+	ipAddress: varchar("ip_address", { length: 45 }),
+	userAgent: text("user_agent"),
+	resource: varchar({ length: 255 }),
+	action: varchar({ length: 50 }),
+	outcome: mysqlEnum(['success','failure','blocked']).default('success').notNull(),
+	details: text(),
+	riskScore: int("risk_score"),
+	geoLocation: varchar("geo_location", { length: 100 }),
+	deviceFingerprint: varchar("device_fingerprint", { length: 64 }),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+	index("security_audit_logs_event_id_unique").on(table.eventId),
+]);
+
+export const securitySettings = mysqlTable("security_settings", {
+	id: int().autoincrement().notNull(),
+	settingKey: varchar("setting_key", { length: 100 }).notNull(),
+	settingValue: varchar("setting_value", { length: 255 }).notNull(),
+	description: varchar({ length: 500 }),
+	updatedBy: int("updated_by"),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+	index("setting_key").on(table.settingKey),
+]);
+
+export const shiftReports = mysqlTable("shift_reports", {
+	id: int().autoincrement().notNull(),
+	shiftDate: timestamp({ mode: 'string' }).notNull(),
+	shiftType: mysqlEnum(['morning','afternoon','night']).notNull(),
+	shiftStart: timestamp({ mode: 'string' }).notNull(),
+	shiftEnd: timestamp({ mode: 'string' }).notNull(),
+	productionLineId: int(),
+	machineId: int(),
+	oee: decimal({ precision: 5, scale: 2 }),
+	availability: decimal({ precision: 5, scale: 2 }),
+	performance: decimal({ precision: 5, scale: 2 }),
+	quality: decimal({ precision: 5, scale: 2 }),
+	cpk: decimal({ precision: 6, scale: 4 }),
+	cp: decimal({ precision: 6, scale: 4 }),
+	ppk: decimal({ precision: 6, scale: 4 }),
+	totalProduced: int().default(0),
+	goodCount: int().default(0),
+	defectCount: int().default(0),
+	plannedTime: int().default(0),
+	actualRunTime: int().default(0),
+	downtime: int().default(0),
+	alertCount: int().default(0),
+	spcViolationCount: int().default(0),
+	status: mysqlEnum(['generated','sent','failed']).default('generated'),
+	sentAt: timestamp({ mode: 'string' }),
+	sentTo: text(),
+	reportContent: text(),
+	reportFileUrl: varchar({ length: 500 }),
+	notes: text(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP'),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow(),
+});
+
+export const slowQueryLogs = mysqlTable("slow_query_logs", {
+	id: int().autoincrement().notNull(),
+	queryHash: varchar("query_hash", { length: 64 }).notNull(),
+	queryText: text("query_text").notNull(),
+	executionTime: int("execution_time").notNull(),
+	rowsExamined: int("rows_examined"),
+	rowsReturned: int("rows_returned"),
+	connectionId: varchar("connection_id", { length: 100 }),
+	userId: int("user_id"),
+	databaseName: varchar("database_name", { length: 100 }),
+	tableName: varchar("table_name", { length: 100 }),
+	queryType: mysqlEnum("query_type", ['SELECT','INSERT','UPDATE','DELETE','OTHER']).default('SELECT'),
+	isOptimized: int("is_optimized").default(0).notNull(),
+	optimizationSuggestion: text("optimization_suggestion"),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+});
+
+export const smtpConfig = mysqlTable("smtp_config", {
+	id: int().autoincrement().notNull(),
+	host: varchar({ length: 255 }).notNull(),
+	port: int().default(587).notNull(),
+	secure: int().default(0).notNull(),
+	username: varchar({ length: 255 }).notNull(),
+	password: varchar({ length: 255 }).notNull(),
+	fromEmail: varchar({ length: 320 }).notNull(),
+	fromName: varchar({ length: 255 }).default('SPC/CPK Calculator').notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const spareParts = mysqlTable("spare_parts", {
+	id: int().autoincrement().notNull(),
+	partNumber: varchar({ length: 100 }).notNull(),
+	name: varchar({ length: 255 }).notNull(),
+	description: text(),
+	category: varchar({ length: 100 }),
+	machineTypeId: int(),
+	supplierId: int(),
+	specifications: text(),
+	unit: varchar({ length: 50 }).default('pcs'),
+	unitPrice: decimal({ precision: 12, scale: 2 }),
+	currency: varchar({ length: 10 }).default('VND'),
+	minStock: int().default(0),
+	maxStock: int(),
+	reorderPoint: int(),
+	reorderQuantity: int(),
+	location: varchar({ length: 100 }),
+	isActive: int().default(1).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+	emailAlertThreshold: int().default(0),
+});
+
+export const sparePartsInventory = mysqlTable("spare_parts_inventory", {
+	id: int().autoincrement().notNull(),
+	sparePartId: int().notNull(),
+	warehouseId: int(),
+	quantity: int().default(0).notNull(),
+	reservedQuantity: int().default(0).notNull(),
+	lastUpdated: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+	availableQuantity: int().default(0),
+	lastStockCheck: timestamp({ mode: 'string' }),
+	updatedAt: timestamp({ mode: 'string' }),
+},
+(table) => [
+	index("idx_spare_parts_inventory_sparePartId").on(table.sparePartId),
+	index("idx_inventory_part").on(table.sparePartId),
+]);
+
+export const sparePartsInventoryCheckItems = mysqlTable("spare_parts_inventory_check_items", {
+	id: int().autoincrement().notNull(),
+	checkId: int().notNull(),
+	sparePartId: int().notNull(),
+	systemQuantity: int().notNull(),
+	actualQuantity: int(),
+	discrepancy: int(),
+	unitPrice: decimal({ precision: 12, scale: 2 }),
+	systemValue: decimal({ precision: 14, scale: 2 }),
+	actualValue: decimal({ precision: 14, scale: 2 }),
+	status: mysqlEnum(['pending','counted','verified','adjusted']).default('pending'),
+	notes: text(),
+	countedBy: int(),
+	countedAt: timestamp({ mode: 'string' }),
+	verifiedBy: int(),
+	verifiedAt: timestamp({ mode: 'string' }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+});
+
+export const sparePartsInventoryChecks = mysqlTable("spare_parts_inventory_checks", {
+	id: int().autoincrement().notNull(),
+	checkNumber: varchar({ length: 50 }).notNull(),
+	checkDate: timestamp({ mode: 'string' }).notNull(),
+	checkType: mysqlEnum(['full','partial','cycle','spot']).default('full').notNull(),
+	status: mysqlEnum(['draft','in_progress','completed','cancelled']).default('draft'),
+	warehouseLocation: varchar({ length: 100 }),
+	category: varchar({ length: 100 }),
+	totalItems: int().default(0),
+	checkedItems: int().default(0),
+	matchedItems: int().default(0),
+	discrepancyItems: int().default(0),
+	totalSystemValue: decimal({ precision: 14, scale: 2 }),
+	totalActualValue: decimal({ precision: 14, scale: 2 }),
+	discrepancyValue: decimal({ precision: 14, scale: 2 }),
+	notes: text(),
+	completedAt: timestamp({ mode: 'string' }),
+	completedBy: int(),
+	createdBy: int().notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const sparePartsStockMovements = mysqlTable("spare_parts_stock_movements", {
+	id: int().autoincrement().notNull(),
+	sparePartId: int().notNull(),
+	movementType: mysqlEnum(['purchase_in','return_in','transfer_in','adjustment_in','initial_in','work_order_out','transfer_out','adjustment_out','scrap_out','return_supplier']).notNull(),
+	quantity: int().notNull(),
+	beforeQuantity: int().notNull(),
+	afterQuantity: int().notNull(),
+	unitCost: decimal({ precision: 12, scale: 2 }),
+	totalCost: decimal({ precision: 14, scale: 2 }),
+	referenceType: varchar({ length: 50 }),
+	referenceId: int(),
+	referenceNumber: varchar({ length: 100 }),
+	fromLocation: varchar({ length: 100 }),
+	toLocation: varchar({ length: 100 }),
+	reason: text(),
+	performedBy: int().notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+});
+
+export const sparePartsTransactions = mysqlTable("spare_parts_transactions", {
+	id: int().autoincrement().notNull(),
+	sparePartId: int().notNull(),
+	transactionType: mysqlEnum(['in','out','adjustment','return']).notNull(),
+	quantity: int().notNull(),
+	unitCost: decimal({ precision: 12, scale: 2 }),
+	totalCost: decimal({ precision: 12, scale: 2 }),
+	workOrderId: int(),
+	purchaseOrderId: int(),
+	reason: text(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	performedBy: int(),
+	exportPurpose: mysqlEnum(['repair','borrow','destroy','normal']).default('normal'),
+	borrowerName: varchar({ length: 255 }),
+	borrowerDepartment: varchar({ length: 255 }),
+	expectedReturnDate: timestamp({ mode: 'string' }),
+	actualReturnDate: timestamp({ mode: 'string' }),
+	returnedQuantity: int().default(0),
+	returnStatus: mysqlEnum(['pending','partial','completed']).default('pending'),
+	relatedTransactionId: int(),
+},
+(table) => [
+	index("idx_spare_parts_transactions_sparePartId").on(table.sparePartId),
+]);
+
+export const spcAnalysisHistory = mysqlTable("spc_analysis_history", {
+	id: int().autoincrement().notNull(),
+	mappingId: int().notNull(),
+	productCode: varchar({ length: 100 }).notNull(),
+	stationName: varchar({ length: 100 }).notNull(),
+	startDate: timestamp({ mode: 'string' }).notNull(),
+	endDate: timestamp({ mode: 'string' }).notNull(),
+	sampleCount: int().notNull(),
+	mean: int().notNull(),
+	stdDev: int().notNull(),
+	cp: int(),
+	cpk: int(),
+	ucl: int(),
+	lcl: int(),
+	usl: int(),
+	lsl: int(),
+	alertTriggered: int().default(0).notNull(),
+	llmAnalysis: text(),
+	analyzedBy: int().notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+	index("idx_spc_analysis_history_product_code").on(table.productCode),
+	index("idx_spc_analysis_history_station_name").on(table.stationName),
+	index("idx_spc_analysis_history_created_at").on(table.createdAt),
+	index("idx_spc_analysis_history_cpk").on(table.cpk),
+	index("idx_spc_analysis_product").on(table.productCode),
+	index("idx_spc_analysis_station").on(table.stationName),
+	index("idx_spc_analysis_date").on(table.createdAt),
+	index("idx_spc_analysis_mapping").on(table.mappingId),
+	index("").on(table.stationName),
+	index("idx_spc_analysis_history_mapping").on(table.mappingId),
+	index("idx_spc_analysis_history_composite").on(table.productCode, table.stationName, table.createdAt),
+	index("idx_spc_analysis_history_product").on(table.productCode, table.startDate),
+	index("idx_spc_analysis_history_dates").on(table.startDate, table.endDate),
+	index("idx_spc_history_mapping").on(table.mappingId),
+	index("idx_spc_history_created").on(table.createdAt),
+	index("idx_spc_history_mapping_created").on(table.mappingId, table.createdAt),
+]);
+
+export const spcDefectCategories = mysqlTable("spc_defect_categories", {
+	id: int().autoincrement().notNull(),
+	code: varchar({ length: 50 }).notNull(),
+	name: varchar({ length: 200 }).notNull(),
+	description: text(),
+	category: varchar({ length: 100 }),
+	severity: varchar({ length: 20 }).default('medium').notNull(),
+	isActive: int().default(1).notNull(),
+	createdBy: int().notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const spcDefectRecords = mysqlTable("spc_defect_records", {
+	id: int().autoincrement().notNull(),
+	defectCategoryId: int().notNull(),
+	productionLineId: int(),
+	workstationId: int(),
+	productId: int(),
+	spcAnalysisId: int(),
+	ruleViolated: varchar({ length: 100 }),
+	quantity: int().default(1).notNull(),
+	notes: text(),
+	occurredAt: timestamp({ mode: 'string' }).notNull(),
+	reportedBy: int().notNull(),
+	status: varchar({ length: 20 }).default('open').notNull(),
+	resolvedAt: timestamp({ mode: 'string' }),
+	resolvedBy: int(),
+	rootCause: text(),
+	correctiveAction: text(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+	verificationStatus: mysqlEnum(['pending','real_ng','ntf']).default('pending'),
+	verifiedAt: timestamp({ mode: 'string' }),
+	verifiedBy: int(),
+	verificationNotes: text(),
+	ntfReason: varchar({ length: 200 }),
+},
+(table) => [
+	index("idx_spc_defect_records_production_line").on(table.productionLineId),
+	index("idx_spc_defect_records_created_at").on(table.createdAt),
+	index("idx_spc_defect_records_status").on(table.verificationStatus),
+	index("idx_spc_defects_category").on(table.defectCategoryId, table.occurredAt),
+	index("idx_spc_defects_status").on(table.status, table.occurredAt),
+	index("idx_spc_defects_line").on(table.productionLineId, table.occurredAt),
+]);
+
+export const spcPlanExecutionLogs = mysqlTable("spc_plan_execution_logs", {
+	id: int().autoincrement().notNull(),
+	planId: int().notNull(),
+	executedAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	status: mysqlEnum(['success','failed','partial']).notNull(),
+	sampleCount: int().default(0).notNull(),
+	violationCount: int().default(0).notNull(),
+	cpkValue: int(),
+	meanValue: int(),
+	stdDevValue: int(),
+	errorMessage: text(),
+	notificationSent: int().default(0).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+	index("idx_spc_exec_plan").on(table.planId, table.executedAt),
+	index("idx_spc_exec_status").on(table.status, table.executedAt),
+]);
+
+export const spcPlanTemplates = mysqlTable("spc_plan_templates", {
+	id: int().autoincrement().notNull(),
+	name: varchar({ length: 255 }).notNull(),
+	description: text(),
+	measurementName: varchar({ length: 255 }),
+	usl: decimal({ precision: 15, scale: 6 }),
+	lsl: decimal({ precision: 15, scale: 6 }),
+	target: decimal({ precision: 15, scale: 6 }),
+	unit: varchar({ length: 50 }),
+	sampleSize: int().default(5),
+	sampleFrequency: int().default(60),
+	enabledSpcRules: text(),
+	enabledCpkRules: text(),
+	enabledCaRules: text(),
+	isRecurring: int().default(1),
+	notifyOnViolation: int().default(1),
+	createdBy: int(),
+	isPublic: int().default(0),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const spcRealtimeData = mysqlTable("spc_realtime_data", {
+	id: int().autoincrement().notNull(),
+	planId: int().notNull(),
+	productionLineId: int().notNull(),
+	mappingId: int(),
+	sampleIndex: int().notNull(),
+	sampleValue: int().notNull(),
+	subgroupIndex: int().notNull(),
+	subgroupMean: int(),
+	subgroupRange: int(),
+	ucl: int(),
+	lcl: int(),
+	usl: int(),
+	lsl: int(),
+	centerLine: int(),
+	isOutOfSpec: int().default(0).notNull(),
+	isOutOfControl: int().default(0).notNull(),
+	violatedRules: varchar({ length: 100 }),
+	sampledAt: timestamp({ mode: 'string' }).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+	index("idx_spc_realtime_plan").on(table.planId),
+	index("idx_spc_realtime_line").on(table.productionLineId),
+	index("idx_spc_realtime_sampled").on(table.sampledAt),
+	index("idx_realtime_plan").on(table.planId),
+	index("idx_realtime_sampled").on(table.sampledAt),
+	index("idx_realtime_plan_sampled").on(table.planId, table.sampledAt),
+]);
+
+export const spcRuleViolations = mysqlTable("spc_rule_violations", {
+	id: int().autoincrement().notNull(),
+	analysisId: int().notNull(),
+	ruleNumber: int().notNull(),
+	ruleName: varchar({ length: 255 }).notNull(),
+	violationDescription: text(),
+	dataPointIndex: int(),
+	dataPointValue: int(),
+	severity: mysqlEnum(['warning','critical']).default('warning').notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+	index("idx_spc_violations_analysis").on(table.analysisId, table.severity),
+]);
+
+export const spcRules = mysqlTable("spc_rules", {
+	id: int().autoincrement().notNull(),
+	code: varchar({ length: 50 }).notNull(),
+	name: varchar({ length: 200 }).notNull(),
+	description: text(),
+	category: varchar({ length: 100 }).default('western_electric').notNull(),
+	formula: text(),
+	example: text(),
+	severity: mysqlEnum(['warning','critical']).default('warning').notNull(),
+	threshold: int(),
+	consecutivePoints: int(),
+	sigmaLevel: int(),
+	isEnabled: int().default(1).notNull(),
+	sortOrder: int().default(0).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("spc_rules_code_unique").on(table.code),
+]);
+
+export const spcRulesConfig = mysqlTable("spc_rules_config", {
+	id: int().autoincrement().notNull(),
+	mappingId: int(),
+	rule1Enabled: int().default(1).notNull(),
+	rule2Enabled: int().default(1).notNull(),
+	rule3Enabled: int().default(1).notNull(),
+	rule4Enabled: int().default(1).notNull(),
+	rule5Enabled: int().default(1).notNull(),
+	rule6Enabled: int().default(1).notNull(),
+	rule7Enabled: int().default(1).notNull(),
+	rule8Enabled: int().default(1).notNull(),
+	caRulesEnabled: int().default(1).notNull(),
+	caThreshold: int().default(100).notNull(),
+	cpkExcellent: int().default(167).notNull(),
+	cpkGood: int().default(133).notNull(),
+	cpkAcceptable: int().default(100).notNull(),
+	isActive: int().default(1).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const spcSamplingPlans = mysqlTable("spc_sampling_plans", {
+	id: int().autoincrement().notNull(),
+	name: varchar({ length: 255 }).notNull(),
+	description: text(),
+	productionLineId: int().notNull(),
+	productId: int(),
+	workstationId: int(),
+	samplingConfigId: int().notNull(),
+	specificationId: int(),
+	startTime: timestamp({ mode: 'string' }),
+	endTime: timestamp({ mode: 'string' }),
+	isRecurring: int().default(1).notNull(),
+	status: mysqlEnum(['draft','active','paused','completed']).default('draft').notNull(),
+	lastRunAt: timestamp({ mode: 'string' }),
+	nextRunAt: timestamp({ mode: 'string' }),
+	notifyOnViolation: int().default(1).notNull(),
+	notifyEmail: varchar({ length: 320 }),
+	isActive: int().default(1).notNull(),
+	createdBy: int().notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+	mappingId: int(),
+	machineId: int(),
+	fixtureId: int(),
+	enabledSpcRules: text(),
+	enabledCaRules: text(),
+	enabledCpkRules: text(),
+	alertThresholdId: int(),
+	cpkAlertEnabled: int().default(0).notNull(),
+	cpkUpperLimit: varchar({ length: 20 }),
+	cpkLowerLimit: varchar({ length: 20 }),
+},
+(table) => [
+	index("idx_spc_sampling_plans_status").on(table.status),
+	index("idx_spc_sampling_plans_production_line").on(table.productionLineId),
+	index("").on(table.productionLineId),
+	index("idx_spc_sampling_plans_product").on(table.productId),
+	index("idx_spc_sampling_plans_active").on(table.isActive),
+]);
+
+export const spcSummaryStats = mysqlTable("spc_summary_stats", {
+	id: int().autoincrement().notNull(),
+	planId: int().notNull(),
+	productionLineId: int().notNull(),
+	mappingId: int(),
+	periodType: mysqlEnum(['shift','day','week','month']).notNull(),
+	periodStart: timestamp({ mode: 'string' }).notNull(),
+	periodEnd: timestamp({ mode: 'string' }).notNull(),
+	sampleCount: int().default(0).notNull(),
+	subgroupCount: int().default(0).notNull(),
+	mean: int(),
+	stdDev: int(),
+	min: int(),
+	max: int(),
+	range: int(),
+	cp: int(),
+	cpk: int(),
+	pp: int(),
+	ppk: int(),
+	ca: int(),
+	xBarUcl: int(),
+	xBarLcl: int(),
+	rUcl: int(),
+	rLcl: int(),
+	outOfSpecCount: int().default(0).notNull(),
+	outOfControlCount: int().default(0).notNull(),
+	rule1Violations: int().default(0).notNull(),
+	rule2Violations: int().default(0).notNull(),
+	rule3Violations: int().default(0).notNull(),
+	rule4Violations: int().default(0).notNull(),
+	rule5Violations: int().default(0).notNull(),
+	rule6Violations: int().default(0).notNull(),
+	rule7Violations: int().default(0).notNull(),
+	rule8Violations: int().default(0).notNull(),
+	overallStatus: mysqlEnum(['excellent','good','acceptable','needs_improvement','critical']).default('good').notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("idx_spc_summary_plan").on(table.planId),
+	index("idx_spc_summary_line").on(table.productionLineId),
+	index("idx_spc_summary_period").on(table.periodType, table.periodStart),
+	index("idx_summary_plan").on(table.planId),
+	index("idx_summary_period").on(table.periodStart),
+	index("idx_summary_plan_period").on(table.planId, table.periodStart),
+]);
+
+export const structuredLogs = mysqlTable("structured_logs", {
+	id: int().autoincrement().notNull(),
+	logId: varchar("log_id", { length: 64 }).notNull(),
+	level: mysqlEnum(['trace','debug','info','warn','error','fatal']).default('info').notNull(),
+	message: text().notNull(),
+	category: varchar({ length: 50 }),
+	service: varchar({ length: 50 }),
+	traceId: varchar("trace_id", { length: 64 }),
+	spanId: varchar("span_id", { length: 64 }),
+	parentSpanId: varchar("parent_span_id", { length: 64 }),
+	userId: int("user_id"),
+	sessionId: varchar("session_id", { length: 64 }),
+	requestId: varchar("request_id", { length: 64 }),
+	duration: int(),
+	metadata: text(),
+	tags: text(),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+});
+
+export const suppliers = mysqlTable("suppliers", {
+	id: int().autoincrement().notNull(),
+	name: varchar({ length: 255 }).notNull(),
+	code: varchar({ length: 50 }).notNull(),
+	contactPerson: varchar({ length: 255 }),
+	email: varchar({ length: 255 }),
+	phone: varchar({ length: 50 }),
+	address: text(),
+	website: varchar({ length: 255 }),
+	paymentTerms: varchar({ length: 100 }),
+	leadTimeDays: int(),
+	rating: int().default(3),
+	notes: text(),
+	isActive: int().default(1).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const systemConfig = mysqlTable("system_config", {
+	id: int().autoincrement().notNull(),
+	configKey: varchar({ length: 100 }).notNull(),
+	configValue: text(),
+	configType: varchar({ length: 50 }).default('string').notNull(),
+	description: text(),
+	isEncrypted: int().default(0).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("system_config_configKey_unique").on(table.configKey),
+]);
+
+export const systemModules = mysqlTable("system_modules", {
+	id: int().autoincrement().notNull(),
+	code: varchar({ length: 100 }).notNull(),
+	name: varchar({ length: 255 }).notNull(),
+	description: text(),
+	systemType: mysqlEnum(['mms','spc','system','common']).default('common').notNull(),
+	parentId: int(),
+	icon: varchar({ length: 100 }),
+	path: varchar({ length: 255 }),
+	sortOrder: int().default(0).notNull(),
+	isActive: int().default(1).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("code").on(table.code),
+]);
+
+export const systemSettings = mysqlTable("system_settings", {
+	id: int().autoincrement().notNull(),
+	key: varchar({ length: 100 }).notNull(),
+	value: text(),
+	description: text(),
+	updatedBy: int(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("system_settings_key_unique").on(table.key),
+]);
+
+export const teams = mysqlTable("teams", {
+	id: int().autoincrement().notNull(),
+	departmentId: int().notNull(),
+	code: varchar({ length: 50 }).notNull(),
+	name: varchar({ length: 255 }).notNull(),
+	description: text(),
+	leaderId: int(),
+	isActive: int().default(1).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const technicians = mysqlTable("technicians", {
+	id: int().autoincrement().notNull(),
+	userId: int(),
+	employeeCode: varchar({ length: 50 }).notNull(),
+	name: varchar({ length: 255 }).notNull(),
+	email: varchar({ length: 255 }),
+	phone: varchar({ length: 50 }),
+	specialization: varchar({ length: 255 }),
+	skillLevel: mysqlEnum(['junior','intermediate','senior','expert']).default('intermediate'),
+	isAvailable: int().default(1).notNull(),
+	isActive: int().default(1).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const trustedDevices = mysqlTable("trusted_devices", {
+	id: int().autoincrement().notNull(),
+	userId: int("user_id").notNull(),
+	deviceFingerprint: varchar("device_fingerprint", { length: 255 }).notNull(),
+	deviceName: varchar("device_name", { length: 255 }),
+	ipAddress: varchar("ip_address", { length: 45 }),
+	userAgent: text("user_agent"),
+	lastUsedAt: timestamp("last_used_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	expiresAt: timestamp("expires_at", { mode: 'string' }),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+});
+
+export const twilioConfig = mysqlTable("twilio_config", {
+	id: int().autoincrement().notNull(),
+	accountSid: varchar("account_sid", { length: 100 }),
+	authToken: varchar("auth_token", { length: 100 }),
+	fromNumber: varchar("from_number", { length: 50 }),
+	enabled: int().default(0).notNull(),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const twoFactorAuth = mysqlTable("two_factor_auth", {
+	id: int().autoincrement().notNull(),
+	userId: int("user_id").notNull(),
+	secret: varchar({ length: 255 }).notNull(),
+	isEnabled: int("is_enabled").default(0).notNull(),
+	verifiedAt: timestamp("verified_at", { mode: 'string' }),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("user_id").on(table.userId),
+]);
+
+export const twoFactorBackupCodes = mysqlTable("two_factor_backup_codes", {
+	id: int().autoincrement().notNull(),
+	userId: int("user_id").notNull(),
+	code: varchar({ length: 20 }).notNull(),
+	usedAt: timestamp("used_at", { mode: 'string' }),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+});
+
+export const userChartConfigs = mysqlTable("user_chart_configs", {
+	id: int().autoincrement().notNull(),
+	userId: int("user_id").notNull(),
+	chartType: varchar("chart_type", { length: 50 }).notNull(),
+	configName: varchar("config_name", { length: 100 }).notNull(),
+	isDefault: int("is_default").default(0).notNull(),
+	settings: text().notNull(),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const userDashboardConfigs = mysqlTable("user_dashboard_configs", {
+	id: int().autoincrement().notNull(),
+	userId: int().notNull(),
+	widgetKey: varchar({ length: 100 }).notNull(),
+	isVisible: int().default(1).notNull(),
+	displayOrder: int().default(0).notNull(),
+	config: text(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const userLineAssignments = mysqlTable("user_line_assignments", {
+	id: int().autoincrement().notNull(),
+	userId: int().notNull(),
+	productionLineId: int().notNull(),
+	displayOrder: int().default(0).notNull(),
+	isVisible: int().default(1).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const userPermissions = mysqlTable("user_permissions", {
+	id: int().autoincrement().notNull(),
+	userId: int().notNull(),
+	permissionId: int().notNull(),
+	granted: int().default(1).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+});
+
+export const userPredictionConfigs = mysqlTable("user_prediction_configs", {
+	id: int().autoincrement().notNull(),
+	userId: int().notNull(),
+	configType: mysqlEnum(['oee','cpk','spc']).notNull(),
+	configName: varchar({ length: 100 }).notNull(),
+	algorithm: mysqlEnum(['linear','moving_avg','exp_smoothing']).default('linear').notNull(),
+	predictionDays: int().default(14).notNull(),
+	confidenceLevel: decimal({ precision: 5, scale: 2 }).default('95.00').notNull(),
+	alertThreshold: decimal({ precision: 5, scale: 2 }).default('5.00').notNull(),
+	movingAvgWindow: int().default(7),
+	smoothingFactor: decimal({ precision: 3, scale: 2 }).default('0.30'),
+	historicalDays: int().default(30).notNull(),
+	isDefault: int().default(0).notNull(),
+	isActive: int().default(1).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const userQuickAccess = mysqlTable("user_quick_access", {
+	id: int().autoincrement().notNull(),
+	userId: int("user_id").notNull(),
+	menuId: varchar("menu_id", { length: 100 }).notNull(),
+	menuPath: varchar("menu_path", { length: 255 }).notNull(),
+	menuLabel: varchar("menu_label", { length: 100 }).notNull(),
+	menuIcon: varchar("menu_icon", { length: 50 }),
+	systemId: varchar("system_id", { length: 50 }),
+	sortOrder: int("sort_order").default(0).notNull(),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+	categoryId: int("category_id"),
+	isPinned: int("is_pinned").default(0).notNull(),
+},
+(table) => [
+	index("idx_user_id").on(table.userId),
+	index("unique_user_menu").on(table.userId, table.menuId),
+	index("idx_user_quick_access_user_order").on(table.userId, table.sortOrder),
+]);
+
+export const userQuickAccessCategories = mysqlTable("user_quick_access_categories", {
+	id: int().autoincrement().notNull(),
+	userId: int("user_id").notNull(),
+	name: varchar({ length: 100 }).notNull(),
+	icon: varchar({ length: 50 }).default('Folder'),
+	color: varchar({ length: 20 }).default('blue'),
+	sortOrder: int("sort_order").default(0).notNull(),
+	isExpanded: int("is_expanded").default(1).notNull(),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const userSessions = mysqlTable("user_sessions", {
+	id: int().autoincrement().notNull(),
+	userId: int("user_id").notNull(),
+	authType: mysqlEnum("auth_type", ['local','manus']).default('local').notNull(),
+	token: varchar({ length: 500 }).notNull(),
+	deviceName: varchar("device_name", { length: 255 }),
+	deviceType: varchar("device_type", { length: 50 }),
+	deviceFingerprint: varchar("device_fingerprint", { length: 255 }),
+	browser: varchar({ length: 100 }),
+	os: varchar({ length: 100 }),
+	userAgent: text("user_agent"),
+	ipAddress: varchar("ip_address", { length: 45 }),
+	location: varchar({ length: 255 }),
+	lastActiveAt: timestamp("last_active_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	expiresAt: timestamp("expires_at", { mode: 'string' }).notNull(),
+	isActive: int("is_active").default(1).notNull(),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+	index("token").on(table.token),
+]);
+
+export const userSpcChartPreferences = mysqlTable("user_spc_chart_preferences", {
+	id: int().autoincrement().notNull(),
+	userId: int("user_id").notNull(),
+	showXbarChart: int("show_xbar_chart").default(1).notNull(),
+	showRChart: int("show_r_chart").default(1).notNull(),
+	showHistogram: int("show_histogram").default(1).notNull(),
+	showSampleTable: int("show_sample_table").default(1).notNull(),
+	showCusumChart: int("show_cusum_chart").default(0).notNull(),
+	showEwmaChart: int("show_ewma_chart").default(0).notNull(),
+	showNormalProbabilityPlot: int("show_normal_probability_plot").default(0).notNull(),
+	showBoxPlot: int("show_box_plot").default(0).notNull(),
+	showCapabilityGauge: int("show_capability_gauge").default(0).notNull(),
+	showCapabilityPieChart: int("show_capability_pie_chart").default(0).notNull(),
+	showRunChart: int("show_run_chart").default(0).notNull(),
+	showMovingAverageChart: int("show_moving_average_chart").default(0).notNull(),
+	showSpecComparison: int("show_spec_comparison").default(0).notNull(),
+	showSigmaZonesChart: int("show_sigma_zones_chart").default(0).notNull(),
+	chartLayout: varchar("chart_layout", { length: 20 }).default('grid'),
+	defaultTimeRange: int("default_time_range").default(7),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("idx_user_id").on(table.userId),
+]);
+
+export const userThemePreferences = mysqlTable("user_theme_preferences", {
+	id: int().autoincrement().notNull(),
+	userId: int("user_id").notNull(),
+	themeId: varchar("theme_id", { length: 50 }).default('default-blue').notNull(),
+	isDarkMode: int("is_dark_mode").default(0).notNull(),
+	customThemeId: int("custom_theme_id"),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("user_theme_unique").on(table.userId),
+]);
+
+export const users = mysqlTable("users", {
+	id: int().autoincrement().notNull(),
+	openId: varchar({ length: 64 }).notNull(),
+	name: text(),
+	email: varchar({ length: 320 }),
+	loginMethod: varchar({ length: 64 }),
+	role: mysqlEnum(['user','manager','admin']).default('user').notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+	lastSignedIn: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	avatar: varchar({ length: 500 }),
+},
+(table) => [
+	index("users_openId_unique").on(table.openId),
+]);
+
+export const validationRuleLogs = mysqlTable("validation_rule_logs", {
+	id: int().autoincrement().notNull(),
+	ruleId: int().notNull(),
+	productId: int(),
+	workstationId: int(),
+	machineId: int(),
+	inputValue: varchar({ length: 500 }),
+	passed: int().default(1).notNull(),
+	violationDetails: text(),
+	actionTaken: varchar({ length: 100 }),
+	executedAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	executedBy: int(),
+},
+(table) => [
+	index("idx_validation_rule").on(table.ruleId),
+	index("idx_validation_executed").on(table.executedAt),
+]);
+
+export const videoTutorials = mysqlTable("video_tutorials", {
+	id: int().autoincrement().notNull(),
+	title: varchar({ length: 255 }).notNull(),
+	description: text(),
+	youtubeUrl: varchar("youtube_url", { length: 500 }).notNull(),
+	youtubeId: varchar("youtube_id", { length: 50 }).notNull(),
+	thumbnailUrl: varchar("thumbnail_url", { length: 500 }),
+	duration: varchar({ length: 20 }),
+	category: varchar({ length: 100 }).notNull(),
+	level: mysqlEnum(['beginner','intermediate','advanced']).default('beginner').notNull(),
+	sortOrder: int("sort_order").default(0).notNull(),
+	isActive: int("is_active").default(1).notNull(),
+	viewCount: int("view_count").default(0).notNull(),
+	createdBy: int("created_by"),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const webhookConfig = mysqlTable("webhook_config", {
+	id: int().autoincrement().notNull(),
+	slackWebhookUrl: varchar("slack_webhook_url", { length: 500 }),
+	slackChannel: varchar("slack_channel", { length: 100 }),
+	slackEnabled: int("slack_enabled").default(0).notNull(),
+	teamsWebhookUrl: varchar("teams_webhook_url", { length: 500 }),
+	teamsEnabled: int("teams_enabled").default(0).notNull(),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const webhookLogs = mysqlTable("webhook_logs", {
+	id: int().autoincrement().notNull(),
+	webhookId: int().notNull(),
+	eventType: varchar({ length: 50 }).notNull(),
+	payload: text().notNull(),
+	responseStatus: int(),
+	responseBody: text(),
+	success: int().default(0).notNull(),
+	errorMessage: text(),
+	sentAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	retryCount: int().default(0).notNull(),
+	maxRetries: int().default(5).notNull(),
+	nextRetryAt: timestamp({ mode: 'string' }),
+	lastRetryAt: timestamp({ mode: 'string' }),
+	retryStatus: varchar({ length: 20 }).default('none'),
+});
+
+export const webhookSubscriptionsV2 = mysqlTable("webhook_subscriptions_v2", {
+	id: int().autoincrement().notNull(),
+	name: varchar({ length: 100 }).notNull(),
+	url: varchar({ length: 500 }).notNull(),
+	secret: varchar({ length: 255 }),
+	events: text().notNull(),
+	filters: text(),
+	headers: text(),
+	retryCount: int("retry_count").default(3).notNull(),
+	retryDelayMs: int("retry_delay_ms").default(5000).notNull(),
+	timeoutMs: int("timeout_ms").default(30000).notNull(),
+	isActive: int("is_active").default(1).notNull(),
+	lastTriggeredAt: timestamp("last_triggered_at", { mode: 'string' }),
+	lastStatus: varchar("last_status", { length: 50 }),
+	failureCount: int("failure_count").default(0).notNull(),
+	createdBy: int("created_by").notNull(),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const webhooks = mysqlTable("webhooks", {
+	id: int().autoincrement().notNull(),
+	name: varchar({ length: 255 }).notNull(),
+	url: text().notNull(),
+	webhookType: mysqlEnum(['slack','teams','custom']).default('custom').notNull(),
+	secret: varchar({ length: 255 }),
+	headers: text(),
+	events: text().notNull(),
+	isActive: int().default(1).notNull(),
+	triggerCount: int().default(0).notNull(),
+	lastTriggeredAt: timestamp({ mode: 'string' }),
+	lastError: text(),
+	createdBy: int().notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const weeklyKpiSnapshots = mysqlTable("weekly_kpi_snapshots", {
+	id: int().autoincrement().notNull(),
+	productionLineId: int("production_line_id").notNull(),
+	weekNumber: int("week_number").notNull(),
+	year: int().notNull(),
+	weekStartDate: timestamp("week_start_date", { mode: 'string' }).notNull(),
+	weekEndDate: timestamp("week_end_date", { mode: 'string' }).notNull(),
+	avgCpk: decimal("avg_cpk", { precision: 6, scale: 4 }),
+	minCpk: decimal("min_cpk", { precision: 6, scale: 4 }),
+	maxCpk: decimal("max_cpk", { precision: 6, scale: 4 }),
+	avgOee: decimal("avg_oee", { precision: 5, scale: 2 }),
+	minOee: decimal("min_oee", { precision: 5, scale: 2 }),
+	maxOee: decimal("max_oee", { precision: 5, scale: 2 }),
+	avgDefectRate: decimal("avg_defect_rate", { precision: 5, scale: 2 }),
+	totalSamples: int("total_samples").default(0).notNull(),
+	totalDefects: int("total_defects").default(0).notNull(),
+	shiftData: text("shift_data"),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const workOrderParts = mysqlTable("work_order_parts", {
+	id: int().autoincrement().notNull(),
+	workOrderId: int().notNull(),
+	sparePartId: int().notNull(),
+	quantity: int().notNull(),
+	unitCost: decimal({ precision: 12, scale: 2 }),
+	totalCost: decimal({ precision: 12, scale: 2 }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+});
+
+export const workOrders = mysqlTable("work_orders", {
+	id: int().autoincrement().notNull(),
+	workOrderNumber: varchar({ length: 50 }).notNull(),
+	machineId: int().notNull(),
+	maintenanceTypeId: int().notNull(),
+	scheduleId: int(),
+	title: varchar({ length: 255 }).notNull(),
+	description: text(),
+	priority: mysqlEnum(['low','medium','high','critical']).default('medium'),
+	status: mysqlEnum(['pending','assigned','in_progress','on_hold','completed','cancelled']).default('pending'),
+	reportedAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	scheduledStartAt: timestamp({ mode: 'string' }),
+	actualStartAt: timestamp({ mode: 'string' }),
+	completedAt: timestamp({ mode: 'string' }),
+	reportedBy: int(),
+	assignedTo: int(),
+	completedBy: int(),
+	laborHours: decimal({ precision: 6, scale: 2 }),
+	laborCost: decimal({ precision: 12, scale: 2 }),
+	partsCost: decimal({ precision: 12, scale: 2 }),
+	totalCost: decimal({ precision: 12, scale: 2 }),
+	rootCause: text(),
+	actionTaken: text(),
+	notes: text(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("idx_work_orders_machineId").on(table.machineId),
+	index("idx_work_orders_assignedTo").on(table.assignedTo),
+	index("idx_work_orders_status").on(table.status),
+]);
+
+export const workstations = mysqlTable("workstations", {
+	id: int().autoincrement().notNull(),
+	productionLineId: int().notNull(),
+	name: varchar({ length: 255 }).notNull(),
+	code: varchar({ length: 100 }).notNull(),
+	description: text(),
+	sequenceOrder: int().default(0).notNull(),
+	cycleTime: int(),
+	isActive: int().default(1).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+	imageUrl: varchar({ length: 500 }),
+},
+(table) => [
+	index("idx_workstations_active").on(table.isActive),
+]);

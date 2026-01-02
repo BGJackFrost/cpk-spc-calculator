@@ -6,19 +6,20 @@ import { sparePartsRouter } from "./routers/sparePartsRouter";
 import { organizationRouter } from "./routers/organizationRouter";
 import { approvalRouter } from "./routers/approvalRouter";
 import { permissionRouter as permissionModuleRouter } from "./routers/permissionRouter";
-import { predictiveRouter } from "./routers/predictiveRouter";
+// import { predictiveRouter } from "./routers/predictiveRouter";
 import { reportRouter as mmsReportRouter } from "./routers/reportRouter";
 import { alertRouter as mmsAlertRouter } from "./routers/alertRouter";
 import { iotDashboardRouter } from "./routers/iotDashboardRouter";
 import { mqttRouter } from "./services/mqttRouter";
 import { iotAlertRouter } from "./services/iotAlertRouter";
-import { opcuaRouter } from "./services/opcuaRouter";
+// import { opcuaRouter } from "./services/opcuaRouter";
 import { aiRouter } from "./routers/aiRouter";
 import { aiAdvancedRouter } from "./routers/aiAdvancedRouter";
+import { aiTrainingRouter } from "./routers/aiTrainingRouter";
 import { erpIntegrationRouter } from "./routers/erpIntegrationRouter";
 import { securityRouter } from "./routers/securityRouter";
 import { chartConfigRouter } from "./routers/chartConfigRouter";
-import { mmsDashboardConfigRouter } from "./routers/dashboardConfigRouter";
+// import { mmsDashboardConfigRouter } from "./routers/dashboardConfigRouter";
 import { machineIntegrationRouter, machinePublicRouter } from "./routers/machineIntegrationRouter";
 import { systemRouter } from "./_core/systemRouter";
 import { themeRouter } from "./routers/themeRouter";
@@ -4133,8 +4134,9 @@ export const appRouter = router({
   iotDashboard: iotDashboardRouter,
   mqtt: mqttRouter,
   iotAlert: iotAlertRouter,
-  opcua: opcuaRouter,
+  // opcua: opcuaRouter,
   ai: aiRouter,
+  aiTraining: aiTrainingRouter,
   erpIntegration: erpIntegrationRouter,
   security: securityRouter,
   chartConfig: chartConfigRouter,
@@ -4146,8 +4148,8 @@ export const appRouter = router({
   sampling: samplingRouter,
   dashboard: dashboardRouter,
   report: reportRouter,
-  dashboardConfig: dashboardConfigRouter,
-  mmsDashboardConfig: mmsDashboardConfigRouter,
+  // dashboardConfig: dashboardConfigRouter,
+  // mmsDashboardConfig: mmsDashboardConfigRouter,
   spcPlan: spcPlanRouter,
   userLine: userLineRouter,
   emailNotification: emailNotificationRouter,
@@ -7235,7 +7237,7 @@ export const appRouter = router({
 organization: organizationRouter,
    approval: approvalRouter,
     permissionModule: permissionModuleRouter,
-    predictive: predictiveRouter,
+    // predictive: predictiveRouter,
   mmsReport: mmsReportRouter,
   mmsAlert: mmsAlertRouter,
   machineArea: router({

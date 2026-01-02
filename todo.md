@@ -7038,3 +7038,31 @@
 ### Còn lại (để phase sau)
 - [ ] Sửa lỗi Predictive Alerts Configuration (query không load dữ liệu)
 - [ ] Tạo dữ liệu mẫu cho các trang AI
+
+
+## Phase 62: Backend Integration & AI Training Pipeline
+
+### 1. Kết nối backend thật
+- [x] Rà soát các router AI hiện có (aiRouter, aiTrainingRouter, predictiveAnalyticsRouter)
+- [x] Tạo tRPC queries cho AI Dashboard (getAiSystemOverview, getModelStats)
+- [ ] Tạo tRPC queries cho ML Dashboard (listModels, getModelDetails)
+- [ ] Tạo tRPC queries cho Health Monitoring (getServicesHealth, getResourceUsage)
+- [ ] Tạo tRPC queries cho Root Cause Analysis (analyzeRootCause, get5M1EData)
+- [ ] Tạo tRPC queries cho Predictive (getCpkForecast, getPredictionHistory)
+- [ ] Tạo tRPC queries cho Analytics (getInsights, getTrends, getFeatureImportance)
+- [x] Cập nhật 2 trang AI để sử dụng tRPC (AiDashboard, AiMlDashboard)
+
+### 2. Sửa lỗi Predictive Alerts
+- [x] Kiểm tra schema bảng predictive_alert_thresholds
+- [x] Kiểm tra schema bảng predictive_alert_history
+- [ ] Sửa lỗi query không load dữ liệu trong PredictiveAlertConfig.tsx
+- [ ] Test trang hoạt động bình thường
+
+### 3. AI Training Pipeline
+- [x] Tạo bảng ai_training_datasets (upload data)
+- [x] Tạo API upload dataset (CSV/Excel)
+- [x] Tạo API start training job
+- [x] Tạo API track training progress
+- [x] Tạo trang ModelTraining.tsx với upload UI
+- [x] Tạo progress tracking với real-time updates
+- [x] Tạo model evaluation metrics display

@@ -9,9 +9,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Activity, Brain, Play, Pause, RefreshCw, Settings, 
-  TrendingUp, AlertTriangle, CheckCircle, Clock, Search
+  TrendingUp, AlertTriangle, CheckCircle, Clock, Search, Loader2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { trpc } from "@/lib/trpc";
 import {
   LineChart, Line, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
@@ -22,98 +23,60 @@ export default function AiMlDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
-  // Mock data
-  const models = [
-    {
-      id: 1,
-      name: "Anomaly Detection v2.1",
-      type: "Classification",
-      status: "active",
-      accuracy: 94.5,
-      precision: 92.3,
-      recall: 93.1,
-      f1Score: 92.7,
-      predictions: 12450,
-      avgLatency: 45,
-      lastTrained: "2024-06-15",
-      version: "2.1.0",
-    },
-    {
-      id: 2,
-      name: "CPK Forecast LSTM",
-      type: "Regression",
-      status: "active",
-      accuracy: 91.2,
-      precision: 89.5,
-      recall: 90.8,
-      f1Score: 90.1,
-      predictions: 8930,
-      avgLatency: 78,
-      lastTrained: "2024-06-10",
-      version: "1.5.2",
-    },
-    {
-      id: 3,
-      name: "Defect Prediction RF",
-      type: "Classification",
-      status: "training",
-      accuracy: 88.7,
-      precision: 87.2,
-      recall: 89.3,
-      f1Score: 88.2,
-      predictions: 0,
-      avgLatency: 0,
-      lastTrained: "2024-06-01",
-      version: "3.0.0-beta",
-    },
-    {
-      id: 4,
-      name: "OEE Forecast Prophet",
-      type: "Time Series",
-      status: "active",
-      accuracy: 93.8,
-      precision: 91.9,
-      recall: 92.5,
-      f1Score: 92.2,
-      predictions: 6720,
-      avgLatency: 120,
-      lastTrained: "2024-06-12",
-      version: "2.0.1",
-    },
-    {
-      id: 5,
-      name: "Yield Optimization XGBoost",
-      type: "Regression",
-      status: "paused",
-      accuracy: 90.3,
-      precision: 88.7,
-      recall: 89.9,
-      f1Score: 89.3,
-      predictions: 4560,
-      avgLatency: 62,
-      lastTrained: "2024-05-28",
-      version: "1.8.0",
-    },
-  ];
+  // Real tRPC queries
+  const { data: models, isLoading, refetch } = trpc.ai.listModels.useQuery(
+    statusFilter !== "all" ? { status: statusFilter as any } : undefined
+  );
+  const { data: predictions } = trpc.ai.getPredictions.useQuery({ limit: 100 });
 
-  const performanceData = [
-    { date: "Mon", accuracy: 92, latency: 45 },
-    { date: "Tue", accuracy: 93, latency: 48 },
-    { date: "Wed", accuracy: 94, latency: 46 },
-    { date: "Thu", accuracy: 93.5, latency: 47 },
-    { date: "Fri", accuracy: 94.5, latency: 45 },
-    { date: "Sat", accuracy: 94.2, latency: 44 },
-    { date: "Sun", accuracy: 94.8, latency: 43 },
-  ];
+  // Start training mutation
+  const startTrainingMutation = trpc.ai.startTraining.useMutation({
+    onSuccess: () => {
+      toast({ title: "Đã bắt đầu training model" });
+      refetch();
+    },
+    onError: (error) => {
+      toast({ title: "Lỗi", description: error.message, variant: "destructive" });
+    },
+  });
 
-  const predictionVolume = [
-    { hour: "00:00", volume: 120 },
-    { hour: "04:00", volume: 80 },
-    { hour: "08:00", volume: 450 },
-    { hour: "12:00", volume: 680 },
-    { hour: "16:00", volume: 520 },
-    { hour: "20:00", volume: 340 },
-  ];
+  // Filter models by search query
+  const filteredModels = models?.filter(model => 
+    model.name.toLowerCase().includes(searchQuery.toLowerCase())
+  ) || [];
+
+  // Calculate performance data from predictions
+  const performanceData = predictions ? (() => {
+    const dailyData: Record<string, { accuracy: number; count: number; latency: number }> = {};
+    const now = new Date();
+    
+    // Initialize last 7 days
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(now);
+      date.setDate(date.getDate() - i);
+      const key = date.toLocaleDateString('en-US', { weekday: 'short' });
+      dailyData[key] = { accuracy: 0, count: 0, latency: 0 };
+    }
+
+    predictions.forEach(pred => {
+      const date = new Date(pred.createdAt);
+      const key = date.toLocaleDateString('en-US', { weekday: 'short' });
+      if (dailyData[key]) {
+        if (pred.confidence) {
+          dailyData[key].accuracy += pred.confidence * 100;
+          dailyData[key].count++;
+        }
+        // Mock latency for now
+        dailyData[key].latency = 50 + Math.random() * 30;
+      }
+    });
+
+    return Object.entries(dailyData).map(([date, data]) => ({
+      date,
+      accuracy: data.count > 0 ? Math.round(data.accuracy / data.count) : 0,
+      latency: Math.round(data.latency),
+    }));
+  })() : [];
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -122,9 +85,8 @@ export default function AiMlDashboard() {
       case "training":
         return <Badge className="bg-blue-500">Training</Badge>;
       case "paused":
+      case "inactive":
         return <Badge className="bg-gray-500">Paused</Badge>;
-      case "error":
-        return <Badge className="bg-red-500">Error</Badge>;
       default:
         return <Badge>{status}</Badge>;
     }
@@ -135,21 +97,28 @@ export default function AiMlDashboard() {
       case "active":
         return <CheckCircle className="h-4 w-4 text-green-500" />;
       case "training":
-        return <Clock className="h-4 w-4 text-blue-500 animate-spin" />;
+        return <Activity className="h-4 w-4 text-blue-500 animate-pulse" />;
       case "paused":
+      case "inactive":
         return <Pause className="h-4 w-4 text-gray-500" />;
-      case "error":
-        return <AlertTriangle className="h-4 w-4 text-red-500" />;
       default:
-        return null;
+        return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
     }
   };
 
-  const filteredModels = models.filter((model) => {
-    const matchesSearch = model.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === "all" || model.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  const handleStartTraining = (modelId: number) => {
+    startTrainingMutation.mutate({ modelId });
+  };
+
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-96">
+          <Loader2 className="h-8 w-8 animate-spin text-violet-500" />
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -158,109 +127,147 @@ export default function AiMlDashboard() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold flex items-center gap-2">
-              <Brain className="h-8 w-8 text-blue-500" />
-              AI/ML Dashboard
+              <Brain className="h-8 w-8 text-violet-500" />
+              ML Model Dashboard
             </h1>
             <p className="text-muted-foreground mt-1">
-              Monitor and manage machine learning models
+              Manage and monitor machine learning models
             </p>
           </div>
-          <Button onClick={() => toast({ title: "Refreshing models..." })}>
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => refetch()}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh
+            </Button>
+            <Button size="sm">
+              <Play className="h-4 w-4 mr-2" />
+              Train New Model
+            </Button>
+          </div>
         </div>
 
-        {/* Summary Cards */}
+        {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Models</CardTitle>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Total Models
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold">{models.length}</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                {models.filter((m) => m.status === "active").length} active
+              <p className="text-3xl font-bold">{models?.length || 0}</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Active Models
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-bold text-green-600">
+                {models?.filter(m => m.status === "active").length || 0}
               </p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Avg Accuracy</CardTitle>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Training
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold text-green-600">92.1%</p>
-              <p className="text-xs text-muted-foreground mt-1">+2.3% from last week</p>
+              <p className="text-3xl font-bold text-blue-600">
+                {models?.filter(m => m.status === "training").length || 0}
+              </p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Predictions</CardTitle>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Avg Accuracy
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold">32.7K</p>
-              <p className="text-xs text-muted-foreground mt-1">Last 24 hours</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Avg Latency</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold text-blue-600">58ms</p>
-              <p className="text-xs text-muted-foreground mt-1">-5ms from yesterday</p>
+              <p className="text-3xl font-bold">
+                {models && models.length > 0
+                  ? `${Math.round(
+                      models
+                        .filter(m => m.accuracy)
+                        .reduce((sum, m) => sum + (m.accuracy || 0), 0) /
+                        models.filter(m => m.accuracy).length *
+                        100
+                    )}%`
+                  : "N/A"}
+              </p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Charts */}
+        {/* Performance Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5 text-green-500" />
-                Model Performance
+                <TrendingUp className="h-5 w-5 text-blue-500" />
+                Model Accuracy Trend
               </CardTitle>
-              <CardDescription>Weekly accuracy and latency trends</CardDescription>
+              <CardDescription>Average accuracy over the last 7 days</CardDescription>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={250}>
-                <LineChart data={performanceData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis yAxisId="left" />
-                  <YAxis yAxisId="right" orientation="right" />
-                  <Tooltip />
-                  <Legend />
-                  <Line yAxisId="left" type="monotone" dataKey="accuracy" stroke="#10b981" name="Accuracy %" />
-                  <Line yAxisId="right" type="monotone" dataKey="latency" stroke="#3b82f6" name="Latency (ms)" />
-                </LineChart>
-              </ResponsiveContainer>
+              {performanceData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={250}>
+                  <LineChart data={performanceData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Line 
+                      type="monotone" 
+                      dataKey="accuracy" 
+                      stroke="#3b82f6" 
+                      strokeWidth={2}
+                      name="Accuracy %"
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-[250px] text-muted-foreground">
+                  No performance data available
+                </div>
+              )}
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Activity className="h-5 w-5 text-blue-500" />
-                Prediction Volume
+                <Clock className="h-5 w-5 text-violet-500" />
+                Average Latency
               </CardTitle>
-              <CardDescription>Hourly prediction requests</CardDescription>
+              <CardDescription>Inference latency over the last 7 days</CardDescription>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={predictionVolume}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="hour" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="volume" fill="#8b5cf6" name="Predictions" />
-                </BarChart>
-              </ResponsiveContainer>
+              {performanceData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={250}>
+                  <BarChart data={performanceData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey="latency" fill="#8b5cf6" name="Latency (ms)" />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-[250px] text-muted-foreground">
+                  No latency data available
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -270,8 +277,8 @@ export default function AiMlDashboard() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle>Deployed Models</CardTitle>
-                <CardDescription>Manage and monitor all ML models</CardDescription>
+                <CardTitle>All Models</CardTitle>
+                <CardDescription>Detailed view of all ML models</CardDescription>
               </div>
               <div className="flex items-center gap-2">
                 <div className="relative">
@@ -280,77 +287,90 @@ export default function AiMlDashboard() {
                     placeholder="Search models..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-8 w-[200px]"
+                    className="pl-8 w-64"
                   />
                 </div>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-[130px]">
+                  <SelectTrigger className="w-32">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Status</SelectItem>
                     <SelectItem value="active">Active</SelectItem>
                     <SelectItem value="training">Training</SelectItem>
-                    <SelectItem value="paused">Paused</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Model Name</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Accuracy</TableHead>
-                  <TableHead className="text-right">F1 Score</TableHead>
-                  <TableHead className="text-right">Predictions</TableHead>
-                  <TableHead className="text-right">Latency</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredModels.map((model) => (
-                  <TableRow key={model.id}>
-                    <TableCell>
-                      <div>
-                        <p className="font-medium">{model.name}</p>
-                        <p className="text-xs text-muted-foreground">v{model.version}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell>{model.type}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {getStatusIcon(model.status)}
-                        {getStatusBadge(model.status)}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right font-medium">{model.accuracy}%</TableCell>
-                    <TableCell className="text-right">{model.f1Score}%</TableCell>
-                    <TableCell className="text-right">{model.predictions.toLocaleString()}</TableCell>
-                    <TableCell className="text-right">{model.avgLatency}ms</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button variant="ghost" size="sm">
-                          <Settings className="h-4 w-4" />
-                        </Button>
-                        {model.status === "active" ? (
-                          <Button variant="ghost" size="sm">
-                            <Pause className="h-4 w-4" />
-                          </Button>
-                        ) : (
-                          <Button variant="ghost" size="sm">
-                            <Play className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
+            {filteredModels.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Model Name</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Accuracy</TableHead>
+                    <TableHead>Predictions</TableHead>
+                    <TableHead>Last Trained</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {filteredModels.map((model) => (
+                    <TableRow key={model.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {getStatusIcon(model.status)}
+                          <span className="font-medium">{model.name}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{model.type}</Badge>
+                      </TableCell>
+                      <TableCell>{getStatusBadge(model.status)}</TableCell>
+                      <TableCell>
+                        {model.accuracy ? `${Math.round(model.accuracy * 100)}%` : "N/A"}
+                      </TableCell>
+                      <TableCell>
+                        {predictions?.filter(p => p.modelId === model.id).length || 0}
+                      </TableCell>
+                      <TableCell>
+                        {model.lastTrainedAt 
+                          ? new Date(model.lastTrainedAt).toLocaleDateString()
+                          : "Never"}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {model.status === "inactive" && (
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => handleStartTraining(model.id)}
+                              disabled={startTrainingMutation.isPending}
+                            >
+                              <Play className="h-3 w-3 mr-1" />
+                              Train
+                            </Button>
+                          )}
+                          <Button size="sm" variant="ghost">
+                            <Settings className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <div className="text-center py-12 text-muted-foreground">
+                {searchQuery || statusFilter !== "all" 
+                  ? "No models match your filters"
+                  : "No models found. Create your first model to get started."}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

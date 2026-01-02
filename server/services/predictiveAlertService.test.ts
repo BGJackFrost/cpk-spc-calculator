@@ -51,7 +51,7 @@ vi.mock('../db', () => ({
 vi.mock('../../drizzle/schema', () => ({
   predictiveAlertThresholds: { id: 'id', name: 'name', isActive: 'isActive' },
   predictiveAlertHistory: { id: 'id', thresholdId: 'thresholdId', status: 'status', severity: 'severity' },
-  predictiveThresholdAdjustLogs: { id: 'id', thresholdId: 'thresholdId' },
+  predictiveAlertAdjustmentLogs: { id: 'id', thresholdId: 'thresholdId' },
   productionLines: { id: 'id', name: 'name' },
 }));
 
