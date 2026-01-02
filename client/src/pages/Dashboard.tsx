@@ -46,6 +46,7 @@ import { ConnectionPoolWidget } from "@/components/ConnectionPoolWidget";
 import CpkRealtimeAlertWidget from "@/components/CpkRealtimeAlertWidget";
 import AiPredictedCpkDashboardWidget from "@/components/AiPredictedCpkDashboardWidget";
 import AiDefectAlertsDashboardWidget from "@/components/AiDefectAlertsDashboardWidget";
+import { AiOverviewDashboard } from "@/components/ai/AiOverviewWidgets";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -344,6 +345,15 @@ export default function Dashboard() {
             {/* Connection Pool Monitoring Widget */}
             {user?.role === 'admin' && isWidgetVisible("connection_pool") && <ConnectionPoolWidget />}
           </div>
+        </div>
+        
+        {/* AI Overview Dashboard Widgets */}
+        <div className="mt-2">
+          <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+            <Activity className="h-5 w-5 text-purple-500" />
+            AI Overview - Dự đoán và Phân tích
+          </h2>
+          <AiOverviewDashboard />
         </div>
 
         {/* Recent Analyses */}

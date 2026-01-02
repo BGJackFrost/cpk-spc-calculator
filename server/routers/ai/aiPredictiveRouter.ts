@@ -1,0 +1,299 @@
+import { router, protectedProcedure } from "../../_core/trpc";
+import { z } from "zod";
+import {
+  predictCpkTrend,
+  predictOeeTrend,
+  getAiPredictionSummary,
+  getHistoricalCpkData,
+  getHistoricalOeeData,
+} from "../../services/aiPredictiveService";
+import { getDb } from "../../db";
+import { spcAnalysisHistory, productionLines, oeeRecords } from "../../../drizzle/schema";
+import { desc, eq, sql } from "drizzle-orm";
+
+/**
+ * AI Predictive Router - Real-time predictions for CPK/OEE trends
+ */
+export const aiPredictiveRouter = router({
+  // Predict CPK trend for a product/station
+  predictCpk: protectedProcedure
+    .input(z.object({
+      productCode: z.string(),
+      stationName: z.string(),
+      forecastDays: z.number().min(1).max(30).default(7),
+    }))
+    .query(async ({ input }) => {
+      const prediction = await predictCpkTrend(
+        input.productCode,
+        input.stationName,
+        input.forecastDays
+      );
+      return prediction;
+    }),
+
+  // Predict OEE trend for a production line
+  predictOee: protectedProcedure
+    .input(z.object({
+      productionLineId: z.string(),
+      forecastDays: z.number().min(1).max(30).default(7),
+    }))
+    .query(async ({ input }) => {
+      const prediction = await predictOeeTrend(
+        input.productionLineId,
+        input.forecastDays
+      );
+      return prediction;
+    }),
+
+  // Get AI prediction summary for dashboard
+  getSummary: protectedProcedure
+    .query(async () => {
+      return await getAiPredictionSummary();
+    }),
+
+  // Get historical CPK data for charts
+  getHistoricalCpk: protectedProcedure
+    .input(z.object({
+      productCode: z.string(),
+      stationName: z.string(),
+      days: z.number().min(1).max(365).default(30),
+    }))
+    .query(async ({ input }) => {
+      const data = await getHistoricalCpkData(
+        input.productCode,
+        input.stationName,
+        input.days
+      );
+      return data;
+    }),
+
+  // Get historical OEE data for charts
+  getHistoricalOee: protectedProcedure
+    .input(z.object({
+      productionLineId: z.string(),
+      days: z.number().min(1).max(365).default(30),
+    }))
+    .query(async ({ input }) => {
+      const data = await getHistoricalOeeData(
+        input.productionLineId,
+        input.days
+      );
+      return data;
+    }),
+
+  // Get available products for prediction
+  getAvailableProducts: protectedProcedure
+    .query(async () => {
+      const db = await getDb();
+      if (!db) return [];
+
+      const results = await db
+        .selectDistinct({
+          productCode: spcAnalysisHistory.productCode,
+          stationName: spcAnalysisHistory.stationName,
+        })
+        .from(spcAnalysisHistory)
+        .orderBy(spcAnalysisHistory.productCode);
+
+      return results;
+    }),
+
+  // Get available production lines for OEE prediction
+  getAvailableProductionLines: protectedProcedure
+    .query(async () => {
+      const db = await getDb();
+      if (!db) return [];
+
+      const results = await db
+        .select({
+          id: productionLines.id,
+          name: productionLines.name,
+        })
+        .from(productionLines)
+        .where(eq(productionLines.status, "active"))
+        .orderBy(productionLines.name);
+
+      return results;
+    }),
+
+  // Get prediction accuracy metrics
+  getAccuracyMetrics: protectedProcedure
+    .query(async () => {
+      const db = await getDb();
+      if (!db) {
+        return {
+          cpkAccuracy: 0,
+          oeeAccuracy: 0,
+          totalPredictions: 0,
+          correctPredictions: 0,
+        };
+      }
+
+      // Get recent CPK data for accuracy calculation
+      const recentCpk = await db
+        .select({
+          cpk: spcAnalysisHistory.cpk,
+        })
+        .from(spcAnalysisHistory)
+        .orderBy(desc(spcAnalysisHistory.createdAt))
+        .limit(100);
+
+      // Calculate prediction accuracy based on trend consistency
+      const cpkValues = recentCpk.map(r => r.cpk || 0);
+      let correctTrends = 0;
+      for (let i = 1; i < cpkValues.length - 1; i++) {
+        const prevTrend = cpkValues[i] - cpkValues[i - 1];
+        const nextTrend = cpkValues[i + 1] - cpkValues[i];
+        if ((prevTrend > 0 && nextTrend > 0) || (prevTrend < 0 && nextTrend < 0) || (Math.abs(prevTrend) < 0.05 && Math.abs(nextTrend) < 0.05)) {
+          correctTrends++;
+        }
+      }
+
+      const cpkAccuracy = cpkValues.length > 2 ? (correctTrends / (cpkValues.length - 2)) * 100 : 0;
+
+      // Get recent OEE data
+      const recentOee = await db
+        .select({
+          oee: oeeRecords.oee,
+        })
+        .from(oeeRecords)
+        .orderBy(desc(oeeRecords.recordDate))
+        .limit(100);
+
+      const oeeValues = recentOee.map(r => r.oee || 0);
+      let oeeCorrectTrends = 0;
+      for (let i = 1; i < oeeValues.length - 1; i++) {
+        const prevTrend = oeeValues[i] - oeeValues[i - 1];
+        const nextTrend = oeeValues[i + 1] - oeeValues[i];
+        if ((prevTrend > 0 && nextTrend > 0) || (prevTrend < 0 && nextTrend < 0) || (Math.abs(prevTrend) < 1 && Math.abs(nextTrend) < 1)) {
+          oeeCorrectTrends++;
+        }
+      }
+
+      const oeeAccuracy = oeeValues.length > 2 ? (oeeCorrectTrends / (oeeValues.length - 2)) * 100 : 0;
+
+      return {
+        cpkAccuracy: Math.round(cpkAccuracy * 10) / 10,
+        oeeAccuracy: Math.round(oeeAccuracy * 10) / 10,
+        totalPredictions: cpkValues.length + oeeValues.length,
+        correctPredictions: correctTrends + oeeCorrectTrends,
+      };
+    }),
+
+  // Get trend alerts
+  getTrendAlerts: protectedProcedure
+    .query(async () => {
+      const summary = await getAiPredictionSummary();
+      return summary.alerts;
+    }),
+
+  // Batch predict CPK for multiple products
+  batchPredictCpk: protectedProcedure
+    .input(z.object({
+      items: z.array(z.object({
+        productCode: z.string(),
+        stationName: z.string(),
+      })),
+      forecastDays: z.number().min(1).max(30).default(7),
+    }))
+    .mutation(async ({ input }) => {
+      const results = await Promise.all(
+        input.items.map(async (item) => {
+          try {
+            const prediction = await predictCpkTrend(
+              item.productCode,
+              item.stationName,
+              input.forecastDays
+            );
+            return {
+              productCode: item.productCode,
+              stationName: item.stationName,
+              success: true,
+              prediction,
+            };
+          } catch (error) {
+            return {
+              productCode: item.productCode,
+              stationName: item.stationName,
+              success: false,
+              error: error instanceof Error ? error.message : "Unknown error",
+            };
+          }
+        })
+      );
+      return results;
+    }),
+
+  // Get dashboard widgets data
+  getDashboardWidgets: protectedProcedure
+    .query(async () => {
+      const db = await getDb();
+      if (!db) {
+        return {
+          cpkWidget: { current: 0, trend: "stable" as const, change: 0 },
+          oeeWidget: { current: 0, trend: "stable" as const, change: 0 },
+          alertsWidget: { total: 0, high: 0, medium: 0, low: 0 },
+          predictionsWidget: { total: 0, accuracy: 0 },
+        };
+      }
+
+      // Get latest CPK
+      const latestCpk = await db
+        .select({
+          cpk: spcAnalysisHistory.cpk,
+        })
+        .from(spcAnalysisHistory)
+        .orderBy(desc(spcAnalysisHistory.createdAt))
+        .limit(10);
+
+      const cpkValues = latestCpk.map(r => r.cpk || 0);
+      const currentCpk = cpkValues[0] || 0;
+      const prevCpk = cpkValues[cpkValues.length - 1] || currentCpk;
+      const cpkChange = currentCpk - prevCpk;
+      const cpkTrend = cpkChange > 0.05 ? "up" : cpkChange < -0.05 ? "down" : "stable";
+
+      // Get latest OEE
+      const latestOee = await db
+        .select({
+          oee: oeeRecords.oee,
+        })
+        .from(oeeRecords)
+        .orderBy(desc(oeeRecords.recordDate))
+        .limit(10);
+
+      const oeeValues = latestOee.map(r => r.oee || 0);
+      const currentOee = oeeValues[0] || 0;
+      const prevOee = oeeValues[oeeValues.length - 1] || currentOee;
+      const oeeChange = currentOee - prevOee;
+      const oeeTrend = oeeChange > 1 ? "up" : oeeChange < -1 ? "down" : "stable";
+
+      // Get alerts summary
+      const summary = await getAiPredictionSummary();
+      const highAlerts = summary.alerts.filter(a => a.severity === "high").length;
+      const mediumAlerts = summary.alerts.filter(a => a.severity === "medium").length;
+      const lowAlerts = summary.alerts.filter(a => a.severity === "low").length;
+
+      return {
+        cpkWidget: {
+          current: Math.round(currentCpk * 1000) / 1000,
+          trend: cpkTrend as "up" | "down" | "stable",
+          change: Math.round(cpkChange * 1000) / 1000,
+        },
+        oeeWidget: {
+          current: Math.round(currentOee * 10) / 10,
+          trend: oeeTrend as "up" | "down" | "stable",
+          change: Math.round(oeeChange * 10) / 10,
+        },
+        alertsWidget: {
+          total: summary.alerts.length,
+          high: highAlerts,
+          medium: mediumAlerts,
+          low: lowAlerts,
+        },
+        predictionsWidget: {
+          total: summary.totalPredictions,
+          accuracy: Math.round(summary.avgConfidence * 100),
+        },
+      };
+    }),
+});

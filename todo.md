@@ -7098,3 +7098,24 @@
 - [x] Tích hợp routes /cpk-forecasting và /defect-detection
 - [x] Thêm menu items vào AI system
 - [x] Viết unit tests cho widgets (6/6 tests passed)
+
+## Phase 70: AI Enhancement - Export, Predictive, Dashboard Widgets
+
+### 1. Export PDF/Excel cho báo cáo AI
+- [x] Tạo aiExportService.ts với hàm export PDF
+- [x] Tạo hàm export Excel cho báo cáo AI
+- [x] Thêm API endpoints cho export
+- [x] Tích hợp nút export vào các trang AI
+
+### 2. AI Predictive với dữ liệu thực
+- [x] Tạo aiPredictiveService.ts kết nối dữ liệu SPC
+- [x] Thuật toán dự đoán CPK trend
+- [x] Thuật toán dự đoán OEE trend
+- [x] Tích hợp vào trang AI Predictive
+
+### 3. Dashboard Widgets cho AI Overview
+- [x] Tạo AiOverviewWidget với KPIs
+- [x] Tạo AiModelStatusWidget
+- [x] Tạo AiPredictionSummaryWidget
+- [x] Tích hợp widgets vào Dashboard chính
+

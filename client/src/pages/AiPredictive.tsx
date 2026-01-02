@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -48,6 +48,72 @@ import {
   XCircle,
   Info,
 } from "lucide-react";
+
+// Export Buttons Component
+function ExportButtons({ productCode, stationName, forecastDays, isVi }: { 
+  productCode: string; 
+  stationName: string; 
+  forecastDays: number;
+  isVi: boolean;
+}) {
+  const exportHtml = trpc.ai.export.exportCpkForecastHtml.useMutation();
+  const exportExcel = trpc.ai.export.exportCpkForecastExcel.useMutation();
+
+  const handleExportHtml = async () => {
+    if (!productCode || !stationName) {
+      toast.error(isVi ? "Vui lòng chọn sản phẩm và trạm" : "Please select product and station");
+      return;
+    }
+    try {
+      const result = await exportHtml.mutateAsync({ productCode, stationName, forecastDays });
+      if (result.url) {
+        window.open(result.url, "_blank");
+        toast.success(isVi ? "Xuất HTML thành công" : "HTML export successful");
+      }
+    } catch (error) {
+      toast.error(isVi ? "Lỗi xuất HTML" : "HTML export failed");
+    }
+  };
+
+  const handleExportExcel = async () => {
+    if (!productCode || !stationName) {
+      toast.error(isVi ? "Vui lòng chọn sản phẩm và trạm" : "Please select product and station");
+      return;
+    }
+    try {
+      const result = await exportExcel.mutateAsync({ productCode, stationName, forecastDays });
+      if (result.url) {
+        window.open(result.url, "_blank");
+        toast.success(isVi ? "Xuất Excel thành công" : "Excel export successful");
+      }
+    } catch (error) {
+      toast.error(isVi ? "Lỗi xuất Excel" : "Excel export failed");
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-2">
+      <Button 
+        variant="outline" 
+        size="sm" 
+        onClick={handleExportHtml}
+        disabled={exportHtml.isPending}
+      >
+        <Download className="h-4 w-4 mr-2" />
+        {exportHtml.isPending ? (isVi ? "Đang xuất..." : "Exporting...") : "HTML"}
+      </Button>
+      <Button 
+        variant="outline" 
+        size="sm" 
+        onClick={handleExportExcel}
+        disabled={exportExcel.isPending}
+      >
+        <Download className="h-4 w-4 mr-2" />
+        {exportExcel.isPending ? (isVi ? "Đang xuất..." : "Exporting...") : "Excel"}
+      </Button>
+    </div>
+  );
+}
 
 // Types
 interface Prediction {
@@ -259,12 +325,12 @@ export default function AiPredictive() {
                 : "CPK forecasting and trend prediction using ARIMA/Prophet algorithms"}
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm">
-              <Download className="h-4 w-4 mr-2" />
-              {isVi ? "Xuất báo cáo" : "Export"}
-            </Button>
-          </div>
+          <ExportButtons 
+            productCode={selectedProduct ? products?.find(p => p.id.toString() === selectedProduct)?.code || "" : ""}
+            stationName={selectedStation ? stations?.find(s => s.id.toString() === selectedStation)?.name || "" : ""}
+            forecastDays={parseInt(horizon)}
+            isVi={isVi}
+          />
         </div>
 
         {/* Selection Panel */}

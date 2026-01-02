@@ -7,6 +7,8 @@ import { settingsRouter } from "./ai/settingsRouter";
 import { healthMonitoringRouter } from "./ai/healthMonitoringRouter";
 import { predictionRouter } from "./ai/predictionRouter";
 import { naturalLanguageRouter } from "./ai/naturalLanguageRouter";
+import { aiExportRouter } from "./ai/aiExportRouter";
+import { aiPredictiveRouter } from "./ai/aiPredictiveRouter";
 
 /**
  * AI Router - Main entry point for all AI-related operations
@@ -17,6 +19,8 @@ import { naturalLanguageRouter } from "./ai/naturalLanguageRouter";
  * - ai.analytics.*   - Dashboard stats, insights, trends
  * - ai.predictions.* - Predictions, batch predict, history
  * - ai.settings.*    - Configuration, thresholds, alert rules
+ * - ai.export.*      - Export AI reports to PDF/Excel
+ * - ai.predictive.*  - Real-time CPK/OEE predictions with historical data
  * 
  * Usage examples:
  * - trpc.ai.models.list.useQuery()
@@ -24,6 +28,8 @@ import { naturalLanguageRouter } from "./ai/naturalLanguageRouter";
  * - trpc.ai.analytics.getDashboardStats.useQuery()
  * - trpc.ai.predictions.predict.useMutation()
  * - trpc.ai.settings.getConfig.useQuery()
+ * - trpc.ai.export.exportModelsReportExcel.useMutation()
+ * - trpc.ai.predictive.predictCpk.useQuery()
  */
 export const aiRouter = router({
   models: modelsRouter,
@@ -34,4 +40,6 @@ export const aiRouter = router({
   health: healthMonitoringRouter,
   predict: predictionRouter, // New prediction API
   naturalLanguage: naturalLanguageRouter, // AI chatbot
+  export: aiExportRouter, // Export AI reports
+  predictive: aiPredictiveRouter, // Real-time predictions
 });
