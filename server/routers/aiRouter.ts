@@ -5,6 +5,7 @@ import { analyticsRouter } from "./ai/analyticsRouter";
 import { predictionsRouter } from "./ai/predictionsRouter";
 import { settingsRouter } from "./ai/settingsRouter";
 import { healthMonitoringRouter } from "./ai/healthMonitoringRouter";
+import { predictionRouter } from "./ai/predictionRouter";
 
 /**
  * AI Router - Main entry point for all AI-related operations
@@ -30,4 +31,5 @@ export const aiRouter = router({
   predictions: predictionsRouter,
   settings: settingsRouter,
   health: healthMonitoringRouter,
+  predict: predictionRouter, // New prediction API
 });
