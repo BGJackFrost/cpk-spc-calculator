@@ -10,6 +10,7 @@ import {
   Cpu, Database, Zap, Server, RefreshCw, TrendingUp, TrendingDown
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { trpc } from "@/lib/trpc";
 import {
   LineChart, Line, AreaChart, Area,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
@@ -18,12 +19,35 @@ import {
 export default function AiMlHealth() {
   const { toast } = useToast();
   const [timeRange, setTimeRange] = useState<"1h" | "24h" | "7d">("24h");
+  
+  // Load health data from API
+  const { data: systemHealth, isLoading: healthLoading, refetch: refetchHealth } = trpc.ai.health.getSystemHealth.useQuery(undefined, {
+    refetchInterval: 10000, // Auto-refresh every 10s
+  });
+  const { data: modelHealth, isLoading: modelHealthLoading } = trpc.ai.health.getModelHealth.useQuery({});
+  const { data: resourceMetrics, isLoading: resourceLoading } = trpc.ai.health.getResourceMetrics.useQuery(undefined, {
+    refetchInterval: 5000, // Auto-refresh every 5s
+  });
+  const { data: latencyMetrics } = trpc.ai.health.getLatencyMetrics.useQuery({
+    hours: timeRange === "1h" ? 1 : timeRange === "24h" ? 24 : 168,
+  });
 
-  // Mock data
+  if (healthLoading || modelHealthLoading || resourceLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-96">
+          <RefreshCw className="w-8 h-8 animate-spin text-muted-foreground" />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // Use real data from API
   const systemStatus = {
-    overall: "healthy" as const,
-    uptime: 99.8,
-    lastCheck: new Date().toISOString(),
+    overall: systemHealth?.status || "unknown",
+    uptime: 99.8, // TODO: Calculate from uptime service
+    lastCheck: systemHealth?.timestamp?.toISOString() || new Date().toISOString(),
+    healthScore: systemHealth?.healthScore || 0,
   };
 
   const services = [
@@ -35,10 +59,10 @@ export default function AiMlHealth() {
   ];
 
   const resources = [
-    { name: "CPU Usage", value: 65, threshold: 80, unit: "%" },
-    { name: "Memory Usage", value: 72, threshold: 85, unit: "%" },
-    { name: "GPU Usage", value: 45, threshold: 90, unit: "%" },
-    { name: "Disk Usage", value: 58, threshold: 80, unit: "%" },
+    { name: "CPU Usage", value: Math.round(resourceMetrics?.cpu?.usage || 0), threshold: 80, unit: "%" },
+    { name: "Memory Usage", value: Math.round(resourceMetrics?.memory?.usage || 0), threshold: 85, unit: "%" },
+    { name: "GPU Usage", value: Math.round(resourceMetrics?.gpu?.usage || 0), threshold: 90, unit: "%" },
+    { name: "Disk Usage", value: Math.round(resourceMetrics?.disk?.usage || 0), threshold: 80, unit: "%" },
   ];
 
   const performanceMetrics = [

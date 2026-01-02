@@ -4457,6 +4457,11 @@ export const appRouter = router({
       await seedAllDefaultRules();
       return { success: true, message: "Đã khởi tạo SPC/CA/CPK Rules mặc định" };
     }),
+    seedAiData: protectedProcedure.mutation(async () => {
+      const { seedAiData } = await import("./seedAiData");
+      await seedAiData();
+      return { success: true, message: "Đã khởi tạo dữ liệu AI Training thành công" };
+    }),
   }),
 
   // SMTP configuration router

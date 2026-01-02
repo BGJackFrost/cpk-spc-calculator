@@ -12,6 +12,7 @@ import { Slider } from "@/components/ui/slider";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Gauge, Save, RefreshCw, Plus, Edit, Trash2, AlertTriangle, CheckCircle, Brain, TrendingUp, TrendingDown } from "lucide-react";
+import { trpc } from "@/lib/trpc";
 
 // Mock thresholds data
 const mockThresholdsData = {
@@ -34,6 +35,19 @@ const mockThresholdsData = {
 
 export default function AiThresholds() {
   const { toast } = useToast();
+  
+  // Load thresholds from API
+  const { data: thresholds, isLoading, refetch } = trpc.ai.settings.getThresholds.useQuery();
+  const updateThresholdsMutation = trpc.ai.settings.updateThresholds.useMutation({
+    onSuccess: () => {
+      toast({ title: "Đã lưu", description: "Cấu hình ngưỡng đã được lưu thành công" });
+      refetch();
+    },
+    onError: (error) => {
+      toast({ title: "Lỗi", description: error.message, variant: "destructive" });
+    },
+  });
+  
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [newThreshold, setNewThreshold] = useState({
@@ -45,9 +59,60 @@ export default function AiThresholds() {
     autoAdjust: true,
   });
 
+  // Local state for editing thresholds
+  const [cpkWarning, setCpkWarning] = useState(thresholds?.cpk?.warning?.toString() ?? "1.33");
+  const [cpkCritical, setCpkCritical] = useState(thresholds?.cpk?.critical?.toString() ?? "1.0");
+  const [accuracyWarning, setAccuracyWarning] = useState(thresholds?.accuracy?.warning?.toString() ?? "0.9");
+  const [accuracyCritical, setAccuracyCritical] = useState(thresholds?.accuracy?.critical?.toString() ?? "0.85");
+  const [driftWarning, setDriftWarning] = useState(thresholds?.drift?.warning?.toString() ?? "0.1");
+  const [driftCritical, setDriftCritical] = useState(thresholds?.drift?.critical?.toString() ?? "0.2");
+  const [latencyWarning, setLatencyWarning] = useState(thresholds?.latency?.warning?.toString() ?? "100");
+  const [latencyCritical, setLatencyCritical] = useState(thresholds?.latency?.critical?.toString() ?? "500");
+
+  // Sync with loaded data
+  React.useEffect(() => {
+    if (thresholds) {
+      setCpkWarning(thresholds.cpk.warning.toString());
+      setCpkCritical(thresholds.cpk.critical.toString());
+      setAccuracyWarning(thresholds.accuracy.warning.toString());
+      setAccuracyCritical(thresholds.accuracy.critical.toString());
+      setDriftWarning(thresholds.drift.warning.toString());
+      setDriftCritical(thresholds.drift.critical.toString());
+      setLatencyWarning(thresholds.latency.warning.toString());
+      setLatencyCritical(thresholds.latency.critical.toString());
+    }
+  }, [thresholds]);
+
   const handleSave = () => {
-    toast({ title: "Đã lưu", description: "Cấu hình ngưỡng đã được lưu thành công" });
+    updateThresholdsMutation.mutate({
+      cpk: {
+        warning: parseFloat(cpkWarning),
+        critical: parseFloat(cpkCritical),
+      },
+      accuracy: {
+        warning: parseFloat(accuracyWarning),
+        critical: parseFloat(accuracyCritical),
+      },
+      drift: {
+        warning: parseFloat(driftWarning),
+        critical: parseFloat(driftCritical),
+      },
+      latency: {
+        warning: parseFloat(latencyWarning),
+        critical: parseFloat(latencyCritical),
+      },
+    });
   };
+
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-96">
+          <RefreshCw className="w-8 h-8 animate-spin text-muted-foreground" />
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   const handleCreate = () => {
     toast({ title: "Đã tạo", description: "Ngưỡng mới đã được tạo" });

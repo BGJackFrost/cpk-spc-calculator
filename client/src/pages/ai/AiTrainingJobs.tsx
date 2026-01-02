@@ -12,8 +12,45 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Cpu, RefreshCw, Plus, Play, Pause, Square, Eye, Trash2, Clock, CheckCircle, AlertTriangle, XCircle, RotateCcw, Download } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { trpc } from "@/lib/trpc";
 
-// Mock training jobs data
+export default function AiTrainingJobs() {
+  const { toast } = useToast();
+  
+  // Load training jobs from API
+  const { data: jobs, isLoading, refetch } = trpc.aiTraining.listJobs.useQuery(undefined, {
+    refetchInterval: 5000, // Auto-refresh every 5s for running jobs
+  });
+  const { data: stats } = trpc.aiTraining.getStats.useQuery();
+  const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
+  const { data: selectedJobDetails } = trpc.aiTraining.getJob.useQuery(
+    { id: selectedJobId || 0 },
+    { enabled: !!selectedJobId, refetchInterval: 2000 }
+  );
+  const { data: jobHistory } = trpc.aiTraining.getJobHistory.useQuery(
+    { jobId: selectedJobId || 0 },
+    { enabled: !!selectedJobId, refetchInterval: 2000 }
+  );
+
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-96">
+          <RefreshCw className="w-8 h-8 animate-spin text-muted-foreground" />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  const handleViewDetails = (jobId: number) => {
+    setSelectedJobId(jobId);
+    setIsDetailsOpen(true);
+  };
+
+// Mock training jobs data (for display fallback)
 const mockJobsData = {
   summary: {
     total: 24,
@@ -90,11 +127,7 @@ const mockJobsData = {
   ],
 };
 
-export default function AiTrainingJobs() {
-  const { toast } = useToast();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [selectedJob, setSelectedJob] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState("all");
   const [newJob, setNewJob] = useState({
     name: "",
     model: "xgboost",

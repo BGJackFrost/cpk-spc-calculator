@@ -12,9 +12,22 @@ import { Slider } from "@/components/ui/slider";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { Settings, Save, RefreshCw, Brain, Bell, Clock, Database, Shield, Zap, AlertTriangle } from "lucide-react";
+import { trpc } from "@/lib/trpc";
 
 export default function AiConfig() {
   const { toast } = useToast();
+  
+  // Load config from API
+  const { data: config, isLoading, refetch } = trpc.ai.settings.getConfig.useQuery();
+  const updateConfigMutation = trpc.ai.settings.updateConfig.useMutation({
+    onSuccess: () => {
+      toast({ title: "Đã lưu", description: "Cấu hình AI đã được lưu thành công" });
+      refetch();
+    },
+    onError: (error) => {
+      toast({ title: "Lỗi", description: error.message, variant: "destructive" });
+    },
+  });
   
   // General settings
   const [aiEnabled, setAiEnabled] = useState(true);
@@ -22,11 +35,15 @@ export default function AiConfig() {
   const [analysisInterval, setAnalysisInterval] = useState("15");
   const [confidenceThreshold, setConfidenceThreshold] = useState([0.8]);
   
-  // Model settings
-  const [defaultModel, setDefaultModel] = useState("xgboost");
-  const [autoRetrain, setAutoRetrain] = useState(true);
-  const [retrainThreshold, setRetrainThreshold] = useState([0.85]);
-  const [maxModelsKept, setMaxModelsKept] = useState("5");
+  // Model settings (sync with API data)
+  const [autoRetrain, setAutoRetrain] = useState(config?.autoRetrain ?? true);
+  const [retrainInterval, setRetrainInterval] = useState(config?.retrainInterval?.toString() ?? "7");
+  const [minAccuracyThreshold, setMinAccuracyThreshold] = useState([config?.minAccuracyThreshold ?? 0.85]);
+  const [maxModelAge, setMaxModelAge] = useState(config?.maxModelAge?.toString() ?? "30");
+  const [enableAutoDeployment, setEnableAutoDeployment] = useState(config?.enableAutoDeployment ?? false);
+  const [enableMonitoring, setEnableMonitoring] = useState(config?.enableMonitoring ?? true);
+  const [dataRetentionDays, setDataRetentionDays] = useState(config?.dataRetentionDays?.toString() ?? "90");
+  const [maxConcurrentTraining, setMaxConcurrentTraining] = useState(config?.maxConcurrentTraining?.toString() ?? "3");
   
   // Notification settings
   const [notifyOnAnomaly, setNotifyOnAnomaly] = useState(true);
@@ -36,17 +53,50 @@ export default function AiConfig() {
   
   // Performance settings
   const [batchSize, setBatchSize] = useState("32");
-  const [maxConcurrentJobs, setMaxConcurrentJobs] = useState("2");
   const [gpuEnabled, setGpuEnabled] = useState(false);
   const [cacheEnabled, setCacheEnabled] = useState(true);
 
+  // Sync state with loaded config
+  React.useEffect(() => {
+    if (config) {
+      setAutoRetrain(config.autoRetrain);
+      setRetrainInterval(config.retrainInterval.toString());
+      setMinAccuracyThreshold([config.minAccuracyThreshold]);
+      setMaxModelAge(config.maxModelAge.toString());
+      setEnableAutoDeployment(config.enableAutoDeployment);
+      setEnableMonitoring(config.enableMonitoring);
+      setDataRetentionDays(config.dataRetentionDays.toString());
+      setMaxConcurrentTraining(config.maxConcurrentTraining.toString());
+    }
+  }, [config]);
+
   const handleSave = () => {
-    toast({ title: "Đã lưu", description: "Cấu hình AI đã được lưu thành công" });
+    updateConfigMutation.mutate({
+      autoRetrain,
+      retrainInterval: parseInt(retrainInterval),
+      minAccuracyThreshold: minAccuracyThreshold[0],
+      maxModelAge: parseInt(maxModelAge),
+      enableAutoDeployment,
+      enableMonitoring,
+      dataRetentionDays: parseInt(dataRetentionDays),
+      maxConcurrentTraining: parseInt(maxConcurrentTraining),
+    });
   };
 
   const handleReset = () => {
+    refetch();
     toast({ title: "Đã reset", description: "Cấu hình đã được khôi phục về mặc định" });
   };
+
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-96">
+          <RefreshCw className="w-8 h-8 animate-spin text-muted-foreground" />
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>

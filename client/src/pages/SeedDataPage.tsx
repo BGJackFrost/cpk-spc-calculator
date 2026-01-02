@@ -59,6 +59,15 @@ export default function SeedDataPage() {
     },
   });
 
+  const seedAiDataMutation = trpc.seed.seedAiData.useMutation({
+    onSuccess: () => {
+      toast.success("Đã khởi tạo dữ liệu AI Training thành công");
+    },
+    onError: (error) => {
+      toast.error(`Lỗi: ${error.message}`);
+    },
+  });
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -197,6 +206,45 @@ export default function SeedDataPage() {
                 <p>• 8 SPC Rules (Western Electric)</p>
                 <p>• 4 CA Rules (độ chính xác)</p>
                 <p>• 5 CPK Rules (năng lực quy trình)</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Seed AI Data */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Database className="h-5 w-5 text-blue-500" />
+                Dữ liệu AI Training
+              </CardTitle>
+              <CardDescription>
+                Tạo 5 datasets, 5 training jobs, 290 history records, 5 trained models
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Button
+                onClick={() => seedAiDataMutation.mutate()}
+                disabled={seedAiDataMutation.isPending}
+                className="w-full"
+                variant="outline"
+              >
+                {seedAiDataMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Đang khởi tạo...
+                  </>
+                ) : (
+                  <>
+                    <Play className="mr-2 h-4 w-4" />
+                    Seed AI Data
+                  </>
+                )}
+              </Button>
+              <div className="text-sm text-muted-foreground">
+                <p>• 5 AI Training Datasets</p>
+                <p>• 5 Training Jobs (completed/running/failed/pending)</p>
+                <p>• 290 Training History records</p>
+                <p>• 5 Trained Models (các modelType khác nhau)</p>
               </div>
             </CardContent>
           </Card>

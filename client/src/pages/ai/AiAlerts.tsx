@@ -7,8 +7,50 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Bell, RefreshCw, CheckCircle, AlertTriangle, XCircle, Clock, Eye, Check, X, Filter, BellOff, Volume2 } from "lucide-react";
+import { trpc } from "@/lib/trpc";
 
-// Mock alerts data
+export default function AiAlerts() {
+  const { toast } = useToast();
+  
+  // Load alert rules from API
+  const { data: alertRules, isLoading, refetch } = trpc.ai.settings.getAlertRules.useQuery();
+  const addRuleMutation = trpc.ai.settings.addAlertRule.useMutation({
+    onSuccess: () => {
+      toast({ title: "Đã thêm", description: "Quy tắc cảnh báo mới đã được thêm" });
+      refetch();
+    },
+    onError: (error) => {
+      toast({ title: "Lỗi", description: error.message, variant: "destructive" });
+    },
+  });
+  const deleteRuleMutation = trpc.ai.settings.deleteAlertRule.useMutation({
+    onSuccess: () => {
+      toast({ title: "Đã xóa", description: "Quy tắc cảnh báo đã được xóa" });
+      refetch();
+    },
+    onError: (error) => {
+      toast({ title: "Lỗi", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const [selectedSeverity, setSelectedSeverity] = useState<string>("all");
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-96">
+          <RefreshCw className="w-8 h-8 animate-spin text-muted-foreground" />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  const handleDeleteRule = (id: string) => {
+    deleteRuleMutation.mutate({ id });
+  };
+
+// Mock alerts data (for display only, rules come from API)
 const mockAlertsData = {
   summary: {
     total: 47,
@@ -109,12 +151,6 @@ const mockAlertsData = {
     },
   ],
 };
-
-export default function AiAlerts() {
-  const { toast } = useToast();
-  const [severityFilter, setSeverityFilter] = useState("all");
-  const [categoryFilter, setCategoryFilter] = useState("all");
-  const [readFilter, setReadFilter] = useState("all");
 
   const handleMarkRead = (id: number) => {
     toast({ title: "Đã đánh dấu đã đọc", description: "Alert đã được đánh dấu đã đọc" });
