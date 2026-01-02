@@ -502,6 +502,7 @@ export const AI_MENU: SystemMenuConfig = {
         { id: "ai-analytics-dashboard", icon: BarChart3, labelKey: "nav.aiAnalyticsDashboard", path: "/ai-analytics-dashboard", adminOnly: true },
         { id: "ai-training-jobs", icon: Activity, labelKey: "nav.aiTrainingJobs", path: "/ai-training-jobs", adminOnly: true },
         { id: "ai-model-comparison", icon: GitCompare, labelKey: "nav.aiModelComparison", path: "/ai-model-comparison", adminOnly: true },
+        { id: "ai-model-performance", icon: BarChart3, labelKey: "nav.aiModelPerformance", path: "/ai-model-performance" },
         { id: "ai-ab-testing", icon: Target, labelKey: "nav.aiAbTesting", path: "/ai-ab-testing", adminOnly: true },
         { id: "ai-model-versioning", icon: GitBranch, labelKey: "nav.aiModelVersioning", path: "/ai-model-versioning", adminOnly: true },
         { id: "model-version-comparison", icon: GitCompare, labelKey: "nav.modelVersionComparison", path: "/model-version-comparison", adminOnly: true },
@@ -541,6 +542,7 @@ export const IOT_MENU: SystemMenuConfig = {
       items: [
         { id: "iot-dashboard", icon: LayoutDashboard, labelKey: "nav.iotDashboard", path: "/iot-dashboard" },
         { id: "iot-realtime-dashboard", icon: Zap, labelKey: "nav.iotRealtimeDashboard", path: "/iot-realtime-dashboard", licenseFeature: "iot_realtime" },
+        { id: "iot-monitoring-realtime", icon: Activity, labelKey: "nav.iotMonitoringRealtime", path: "/iot-monitoring-realtime", licenseFeature: "iot_realtime" },
         { id: "sensor-dashboard", icon: Thermometer, labelKey: "nav.sensorDashboard", path: "/sensor-dashboard" },
       ],
     },

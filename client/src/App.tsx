@@ -219,6 +219,8 @@ import UnifiedAlertKpiDashboard from "./pages/UnifiedAlertKpiDashboard";
 import WebhookHistoryManagement from "./pages/WebhookHistoryManagement";
 import UserGuide from "./pages/UserGuide";
 import VideoManagement from "./pages/VideoManagement";
+import IotMonitoringRealtime from "./pages/iot/IotMonitoringRealtime";
+import AiModelPerformance from "./pages/ai/AiModelPerformance";
 
 function Router() {
   return (
@@ -438,6 +440,8 @@ function Router() {
       <Route path="/notification-preferences" component={NotificationPreferences} />
       <Route path="/user-guide" component={UserGuide} />
       <Route path="/video-management" component={VideoManagement} />
+      <Route path="/iot-monitoring-realtime" component={IotMonitoringRealtime} />
+      <Route path="/ai-model-performance" component={AiModelPerformance} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
