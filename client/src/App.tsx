@@ -189,6 +189,8 @@ import AiDataSources from "./pages/ai/AiDataSources";
 import AiAuditLogs from "./pages/ai/AiAuditLogs";
 import AiAlerts from "./pages/ai/AiAlerts";
 import AiPredictions from "./pages/ai/AiPredictions";
+import CpkForecastingPage from "./pages/ai/CpkForecastingPage";
+import DefectDetectionPage from "./pages/ai/DefectDetectionPage";
 import AdvancedAnalyticsDashboard from "./pages/AdvancedAnalyticsDashboard";
 import NotificationPreferences from "./pages/NotificationPreferences";
 import KpiAlertThresholds from "./pages/KpiAlertThresholds";
@@ -420,6 +422,8 @@ function Router() {
       <Route path="/ai-audit-logs" component={AiAuditLogs} />
       <Route path="/ai-alerts" component={AiAlerts} />
       <Route path="/ai-predictions" component={AiPredictions} />
+      <Route path="/cpk-forecasting" component={CpkForecastingPage} />
+      <Route path="/defect-detection" component={DefectDetectionPage} />
       <Route path="/advanced-analytics-dashboard" component={AdvancedAnalyticsDashboard} />
       <Route path="/notification-preferences" component={NotificationPreferences} />
       <Route path="/user-guide" component={UserGuide} />

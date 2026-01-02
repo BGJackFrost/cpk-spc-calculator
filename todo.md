@@ -7088,3 +7088,13 @@
 - [x] Tạo AI Prediction API cho CPK forecasting (predictCpk, batchPredict, getPredictionHistory)
 - [x] Tạo AI Prediction API cho defect detection (detectDefects, classifyDefect)
 - [x] Test tất cả APIs và viết unit tests (10/10 tests passed)
+
+
+## Phase 67: CPK Forecasting, Defect Detection và Dashboard Widgets
+- [x] Tạo trang CpkForecastingPage.tsx với biểu đồ dự đoán 7-30 ngày
+- [x] Tạo trang DefectDetectionPage.tsx với realtime monitoring
+- [x] Tạo PredictedCpkWidget cho Dashboard
+- [x] Tạo DefectAlertsWidget cho Dashboard
+- [x] Tích hợp routes /cpk-forecasting và /defect-detection
+- [x] Thêm menu items vào AI system
+- [x] Viết unit tests cho widgets (6/6 tests passed)

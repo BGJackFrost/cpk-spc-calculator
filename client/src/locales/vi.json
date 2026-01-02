@@ -155,6 +155,8 @@
     "aiCorrelation": "Phân tích Tương quan",
     "aiTrendAnalysis": "Phân tích Xu hướng",
     "cpkForecast": "Dự báo CPK",
+    "cpkForecasting": "Dự đoán CPK",
+    "defectDetection": "Phát hiện Lỗi Realtime",
     "aiOeeForecast": "Dự báo OEE",
     "aiDefectPrediction": "Dự đoán Lỗi",
     "aiYieldOptimization": "Tối ưu Năng suất",

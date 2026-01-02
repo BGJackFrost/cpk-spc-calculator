@@ -155,6 +155,8 @@
     "aiCorrelation": "Correlation Analysis",
     "aiTrendAnalysis": "Trend Analysis",
     "cpkForecast": "CPK Forecast",
+    "cpkForecasting": "CPK Forecasting",
+    "defectDetection": "Defect Detection Realtime",
     "aiOeeForecast": "OEE Forecast",
     "aiDefectPrediction": "Defect Prediction",
     "aiYieldOptimization": "Yield Optimization",
