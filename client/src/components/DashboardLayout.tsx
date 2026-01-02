@@ -241,6 +241,7 @@ const fallbackLabelsVi: Record<string, string> = {
   "nav.mqttConnections": "Kết nối MQTT",
   "nav.opcuaConnections": "Kết nối OPC-UA",
   "nav.iotAlarmThreshold": "Ngưỡng Cảnh báo IoT",
+  "nav.cacheMonitoring": "Giám sát Cache",
 };
 
 const fallbackLabelsEn: Record<string, string> = {
@@ -432,6 +433,7 @@ const fallbackLabelsEn: Record<string, string> = {
   "nav.mqttConnections": "MQTT Connections",
   "nav.opcuaConnections": "OPC-UA Connections",
   "nav.iotAlarmThreshold": "IoT Alarm Thresholds",
+  "nav.cacheMonitoring": "Cache Monitoring",
 };
 
 const MIN_WIDTH = 200;

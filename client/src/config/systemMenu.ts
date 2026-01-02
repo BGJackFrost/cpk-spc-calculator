@@ -389,6 +389,7 @@ export const SYSTEM_MENU: SystemMenuConfig = {
         { id: "security-dashboard", icon: Shield, labelKey: "nav.securityDashboard", path: "/security-dashboard", adminOnly: true },
         { id: "iot-dashboard", icon: Cpu, labelKey: "nav.iotDashboard", path: "/iot-dashboard", adminOnly: true },
         { id: "ai-ml-dashboard", icon: Brain, labelKey: "nav.aiMlDashboard", path: "/ai-ml-dashboard", adminOnly: true },
+        { id: "cache-monitoring", icon: Database, labelKey: "nav.cacheMonitoring", path: "/cache-monitoring", adminOnly: true },
       ],
     },
     {

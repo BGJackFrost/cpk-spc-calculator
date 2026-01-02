@@ -221,6 +221,7 @@ import UserGuide from "./pages/UserGuide";
 import VideoManagement from "./pages/VideoManagement";
 import IotMonitoringRealtime from "./pages/iot/IotMonitoringRealtime";
 import AiModelPerformance from "./pages/ai/AiModelPerformance";
+import CacheMonitoringDashboard from "./pages/CacheMonitoringDashboard";
 
 function Router() {
   return (
@@ -386,6 +387,7 @@ function Router() {
       <Route path="/performance-trends" component={PerformanceTrendsDashboard} />
       <Route path="/system-health" component={SystemHealthDashboard} />
       <Route path="/security-dashboard" component={SecurityDashboard} />
+      <Route path="/cache-monitoring" component={CacheMonitoringDashboard} />
       <Route path="/iot-dashboard" component={IoTDashboard} />
       <Route path="/iot-realtime-dashboard" component={IotRealtimeDashboard} />
       <Route path="/mqtt-connections" component={MqttConnectionManagement} />

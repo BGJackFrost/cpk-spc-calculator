@@ -7249,3 +7249,11 @@
 - [x] Thêm caching cho AI Predictive API calls (CPK/OEE history, predictions)
 - [x] Thêm caching cho IoT Monitoring API calls (devices, stats, alarms)
 - [x] Thêm cache invalidation patterns cho AI và IoT
+
+
+## Phase 79: Cache Monitoring Dashboard
+- [x] Tạo cacheMonitoringService với các hàm theo dõi cache
+- [x] Tạo cacheMonitoringRouter với API endpoints
+- [x] Tạo CacheMonitoringDashboard UI với biểu đồ
+- [x] Tích hợp vào menu System
+- [x] Viết unit tests

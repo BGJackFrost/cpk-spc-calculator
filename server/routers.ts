@@ -34,6 +34,7 @@ import { predictiveAlertRouter } from "./routers/predictiveAlertRouter";
 import { iotSensorRouter } from "./routers/iotSensorRouter";
 import { notificationRouter } from "./routers/notificationRouter";
 import { aiExportRouter } from "./routers/aiExportRouter";
+import { cacheMonitoringRouter } from "./routers/cacheMonitoringRouter";
 import { triggerLicenseExpiryCheck } from "./scheduledJobs";
 import { triggerWebhooks, testWebhook } from "./webhookService";
 import { storagePut } from "./storage";
@@ -11226,6 +11227,8 @@ Hãy trả về JSON với format:
   notification: notificationRouter,
   // AI Export - PDF/Excel reports
   aiExport: aiExportRouter,
+  // Cache Monitoring - Monitor and manage cache
+  cacheMonitoring: cacheMonitoringRouter,
 });
 
 export type AppRouter = typeof appRouter;
