@@ -180,6 +180,7 @@ import AiInsights from "./pages/ai/AiInsights";
 import AiTrainingJobs from "./pages/ai/AiTrainingJobs";
 import ModelTraining from "./pages/ai/ModelTraining";
 import AiModelComparison from "./pages/ai/AiModelComparison";
+import AiModelAccuracyDashboard from "./pages/AiModelAccuracyDashboard";
 import AiConfig from "./pages/ai/AiConfig";
 import AiThresholds from "./pages/ai/AiThresholds";
 import PredictiveAlertConfig from "./pages/ai/PredictiveAlertConfig";
@@ -416,6 +417,7 @@ function Router() {
       <Route path="/ai-training-jobs" component={AiTrainingJobs} />
       <Route path="/model-training" component={ModelTraining} />
       <Route path="/ai-model-comparison" component={AiModelComparison} />
+      <Route path="/ai-model-accuracy" component={AiModelAccuracyDashboard} />
       <Route path="/ai-config" component={AiConfig} />
       <Route path="/ai-thresholds" component={AiThresholds} />
       <Route path="/ai-predictive-alerts" component={PredictiveAlertConfig} />

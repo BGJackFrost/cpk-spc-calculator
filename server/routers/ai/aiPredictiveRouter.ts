@@ -7,6 +7,12 @@ import {
   getHistoricalCpkData,
   getHistoricalOeeData,
 } from "../../services/aiPredictiveService";
+import {
+  checkCpkPredictionAlert,
+  checkOeePredictionAlert,
+  getRecentPredictionAlerts,
+  getPredictionAlertStats,
+} from "../../services/predictionAlertNotificationService";
 import { getDb } from "../../db";
 import { spcAnalysisHistory, productionLines, oeeRecords } from "../../../drizzle/schema";
 import { desc, eq, sql } from "drizzle-orm";
@@ -360,5 +366,95 @@ export const aiPredictiveRouter = router({
         data: accuracyData,
         type: "predictions",
       };
+    }),
+
+  // Predict CPK with alert notification
+  predictCpkWithAlert: protectedProcedure
+    .input(z.object({
+      productCode: z.string(),
+      stationName: z.string(),
+      forecastDays: z.number().min(1).max(30).default(7),
+      productId: z.number().optional(),
+      productionLineId: z.number().optional(),
+      workstationId: z.number().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const prediction = await predictCpkTrend(
+        input.productCode,
+        input.stationName,
+        input.forecastDays
+      );
+
+      // Check for alerts if we have predictions
+      let alert = null;
+      if (prediction.predictions.length > 0) {
+        const avgPredictedCpk = prediction.predictions.reduce((sum, p) => sum + p.predictedValue, 0) / prediction.predictions.length;
+        alert = await checkCpkPredictionAlert(
+          avgPredictedCpk,
+          prediction.currentCpk,
+          input.productCode,
+          input.stationName,
+          input.productId,
+          input.productionLineId,
+          input.workstationId
+        );
+      }
+
+      return {
+        prediction,
+        alert,
+      };
+    }),
+
+  // Predict OEE with alert notification
+  predictOeeWithAlert: protectedProcedure
+    .input(z.object({
+      productionLineId: z.string(),
+      forecastDays: z.number().min(1).max(30).default(7),
+    }))
+    .mutation(async ({ input }) => {
+      const prediction = await predictOeeTrend(
+        input.productionLineId,
+        input.forecastDays
+      );
+
+      // Check for alerts if we have predictions
+      let alert = null;
+      if (prediction.predictions.length > 0) {
+        const avgPredictedOee = prediction.predictions.reduce((sum, p) => sum + p.predictedValue, 0) / prediction.predictions.length;
+        alert = await checkOeePredictionAlert(
+          avgPredictedOee,
+          prediction.currentOee,
+          parseInt(input.productionLineId),
+          prediction.productionLineName
+        );
+      }
+
+      return {
+        prediction,
+        alert,
+      };
+    }),
+
+  // Get recent prediction alerts
+  getRecentAlerts: protectedProcedure
+    .input(z.object({
+      limit: z.number().min(1).max(100).default(50),
+      hours: z.number().min(1).max(168).default(24),
+    }).optional())
+    .query(async ({ input }) => {
+      return await getRecentPredictionAlerts(
+        input?.limit || 50,
+        input?.hours || 24
+      );
+    }),
+
+  // Get prediction alert statistics
+  getAlertStats: protectedProcedure
+    .input(z.object({
+      days: z.number().min(1).max(90).default(7),
+    }).optional())
+    .query(async ({ input }) => {
+      return await getPredictionAlertStats(input?.days || 7);
     }),
 });

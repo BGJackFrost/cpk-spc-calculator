@@ -322,7 +322,7 @@ export function AiPredictionsWidget() {
         </div>
         {accuracy && (
           <div className="mt-2 text-xs text-purple-600 dark:text-purple-400">
-            CPK: {accuracy.cpkAccuracy.toFixed(1)}% | OEE: {accuracy.oeeAccuracy.toFixed(1)}%
+            CPK: {Number(accuracy.cpkAccuracy || 0).toFixed(1)}% | OEE: {Number(accuracy.oeeAccuracy || 0).toFixed(1)}%
           </div>
         )}
         <Link href="/ai-models">
@@ -377,7 +377,7 @@ export function AiModelStatusWidget() {
                 <span className="text-sm font-medium truncate max-w-[150px]">{model.name}</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-500">{model.accuracy?.toFixed(1) || 0}%</span>
+                <span className="text-xs text-gray-500">{Number(model.accuracy || 0).toFixed(1)}%</span>
                 <Badge variant="outline" className="text-xs">{model.modelType}</Badge>
               </div>
             </div>

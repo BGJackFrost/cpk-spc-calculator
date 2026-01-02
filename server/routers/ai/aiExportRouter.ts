@@ -6,6 +6,9 @@ import {
   generateAiReportExcel,
   generateCpkForecastReport,
   generateCpkForecastExcel,
+  getAccuracyMetricsData,
+  generateAccuracyMetricsHtml,
+  generateAccuracyMetricsExcel,
 } from "../../services/aiExportService";
 import {
   predictCpkTrend,
@@ -221,5 +224,58 @@ export const aiExportRouter = router({
         exports: [],
         total: 0,
       };
+    }),
+
+  // Export accuracy metrics report as HTML (for PDF conversion)
+  exportAccuracyMetricsHtml: protectedProcedure
+    .input(z.object({
+      days: z.number().min(1).max(90).default(30),
+    }).optional())
+    .mutation(async ({ input }) => {
+      const data = await getAccuracyMetricsData(input?.days || 30);
+      const html = await generateAccuracyMetricsHtml(data);
+      
+      // Upload to S3
+      const fileKey = `ai-reports/accuracy-metrics-${nanoid(8)}.html`;
+      const result = await storagePut(fileKey, Buffer.from(html, "utf-8"), "text/html");
+      
+      return {
+        success: true,
+        url: result.url,
+        filename: `accuracy-metrics-${new Date().toISOString().split("T")[0]}.html`,
+      };
+    }),
+
+  // Export accuracy metrics report as Excel
+  exportAccuracyMetricsExcel: protectedProcedure
+    .input(z.object({
+      days: z.number().min(1).max(90).default(30),
+    }).optional())
+    .mutation(async ({ input }) => {
+      const data = await getAccuracyMetricsData(input?.days || 30);
+      const buffer = await generateAccuracyMetricsExcel(data);
+      
+      // Upload to S3
+      const fileKey = `ai-reports/accuracy-metrics-${nanoid(8)}.xlsx`;
+      const result = await storagePut(
+        fileKey,
+        buffer,
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+      
+      return {
+        success: true,
+        url: result.url,
+        filename: `accuracy-metrics-${new Date().toISOString().split("T")[0]}.xlsx`,
+      };
+    }),
+
+  // Get accuracy metrics data (for dashboard)
+  getAccuracyMetrics: protectedProcedure
+    .input(z.object({
+      days: z.number().min(1).max(90).default(30),
+    }).optional())
+    .query(async ({ input }) => {
+      return await getAccuracyMetricsData(input?.days || 30);
     }),
 });
