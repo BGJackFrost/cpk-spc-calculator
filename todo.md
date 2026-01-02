@@ -7143,3 +7143,16 @@
 - [x] Notification push khi prediction vượt ngưỡng cảnh báo (SSE + owner notification)
 - [x] Export báo cáo accuracy metrics theo định kỳ (PDF/Excel)
 - [x] Dashboard tổng hợp so sánh accuracy giữa các model AI với charts và statistics
+
+## Phase 73: AI Prediction Advanced Features - Part 2
+- [ ] Scheduled job gửi báo cáo accuracy metrics hàng tuần qua email
+- [ ] Tích hợp alert notification vào các prediction endpoints hiện có
+- [ ] So sánh accuracy giữa các phiên bản model khác nhau
+
+
+## Phase 73: AI Prediction Advanced Features
+- [x] Scheduled job gửi báo cáo accuracy metrics hàng tuần qua email
+- [x] Tích hợp alert notification vào các prediction endpoints
+- [x] Thêm tính năng so sánh accuracy giữa các phiên bản model
+- [x] Tạo UI trang Model Version Comparison
+- [x] Viết tests cho các tính năng mới

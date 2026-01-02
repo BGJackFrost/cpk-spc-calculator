@@ -493,6 +493,7 @@ export const AI_MENU: SystemMenuConfig = {
         { id: "ai-model-comparison", icon: GitCompare, labelKey: "nav.aiModelComparison", path: "/ai-model-comparison", adminOnly: true },
         { id: "ai-ab-testing", icon: Target, labelKey: "nav.aiAbTesting", path: "/ai-ab-testing", adminOnly: true },
         { id: "ai-model-versioning", icon: GitBranch, labelKey: "nav.aiModelVersioning", path: "/ai-model-versioning", adminOnly: true },
+        { id: "model-version-comparison", icon: GitCompare, labelKey: "nav.modelVersionComparison", path: "/model-version-comparison", adminOnly: true },
       ],
     },
     {

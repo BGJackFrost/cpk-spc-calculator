@@ -192,6 +192,7 @@ import AiAlerts from "./pages/ai/AiAlerts";
 import AiPredictions from "./pages/ai/AiPredictions";
 import AiPredictionThresholds from "./pages/ai/AiPredictionThresholds";
 import AiPredictionHistory from "./pages/ai/AiPredictionHistory";
+import ModelVersionComparison from "./pages/ModelVersionComparison";
 import CpkForecastingPage from "./pages/ai/CpkForecastingPage";
 import DefectDetectionPage from "./pages/ai/DefectDetectionPage";
 import CpkComparisonPage from "./pages/ai/CpkComparisonPage";
@@ -429,6 +430,7 @@ function Router() {
       <Route path="/ai-predictions" component={AiPredictions} />
       <Route path="/ai-prediction-thresholds" component={AiPredictionThresholds} />
       <Route path="/ai-prediction-history" component={AiPredictionHistory} />
+      <Route path="/model-version-comparison" component={ModelVersionComparison} />
       <Route path="/cpk-forecasting" component={CpkForecastingPage} />
       <Route path="/defect-detection" component={DefectDetectionPage} />
       <Route path="/cpk-comparison" component={CpkComparisonPage} />

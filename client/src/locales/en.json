@@ -173,6 +173,7 @@
     "aiModelComparison": "Model Comparison",
     "aiAbTesting": "A/B Testing",
     "aiModelVersioning": "Model Versioning",
+    "modelVersionComparison": "Model Accuracy Comparison",
     "aiVisionDetection": "Camera Defect Detection",
     "aiConfig": "AI Config",
     "aiThresholds": "AI Thresholds",

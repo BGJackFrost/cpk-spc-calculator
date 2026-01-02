@@ -15,6 +15,7 @@ import { runScheduledRetrainCheck, getRetrainStats } from './services/autoRetrai
 import { runScheduledDriftCheck } from './services/scheduledDriftCheckService';
 import { sendEmail } from './emailService';
 import { spareParts, sparePartsInventory, suppliers, licenseNotificationLogs } from '../drizzle/schema';
+import { sendWeeklyAccuracyReport, triggerWeeklyAccuracyReport } from './services/weeklyAccuracyReportService';
 
 // Track if jobs are already initialized
 let jobsInitialized = false;
@@ -601,6 +602,21 @@ export function initScheduledJobs(): void {
   });
   
   console.log('[ScheduledJob] Scheduled: Drift check every hour (Asia/Ho_Chi_Minh)');
+  
+  // Weekly accuracy report - runs every Monday at 8:00 AM
+  cron.schedule('0 0 8 * * 1', async () => {
+    console.log('[ScheduledJob] Triggered: Weekly accuracy report');
+    try {
+      const result = await sendWeeklyAccuracyReport();
+      console.log(`[ScheduledJob] Weekly accuracy report: sent=${result.sent}, failed=${result.failed}`);
+    } catch (error) {
+      console.error('[ScheduledJob] Error sending weekly accuracy report:', error);
+    }
+  }, {
+    timezone: 'Asia/Ho_Chi_Minh'
+  });
+  
+  console.log('[ScheduledJob] Scheduled: Weekly accuracy report at 8:00 AM every Monday (Asia/Ho_Chi_Minh)');
   
   jobsInitialized = true;
   console.log('[ScheduledJob] All scheduled jobs initialized successfully');
@@ -3515,4 +3531,17 @@ export async function triggerPerformanceDropCheck(): Promise<{ alertsFound: numb
     console.error('[ScheduledJob] Error triggering performance drop check:', error);
     return { alertsFound: 0 };
   }
+}
+
+
+/**
+ * Manually trigger weekly accuracy report (for testing)
+ */
+export async function triggerWeeklyAccuracyReportJob(): Promise<{
+  success: boolean;
+  sent: number;
+  failed: number;
+  message: string;
+}> {
+  return await triggerWeeklyAccuracyReport();
 }

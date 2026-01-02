@@ -12,7 +12,16 @@ import {
   checkOeePredictionAlert,
   getRecentPredictionAlerts,
   getPredictionAlertStats,
+  checkCpkPredictionAlertWithEmail,
+  checkOeePredictionAlertWithEmail,
+  logPredictionAlert,
 } from "../../services/predictionAlertNotificationService";
+import {
+  compareModelVersions,
+  compareMultipleModels,
+  getAllModelsAccuracySummary,
+  getVersionAccuracyTrend,
+} from "../../services/modelVersionComparisonService";
 import { getDb } from "../../db";
 import { spcAnalysisHistory, productionLines, oeeRecords } from "../../../drizzle/schema";
 import { desc, eq, sql } from "drizzle-orm";
@@ -368,7 +377,7 @@ export const aiPredictiveRouter = router({
       };
     }),
 
-  // Predict CPK with alert notification
+  // Predict CPK with alert notification (includes email)
   predictCpkWithAlert: protectedProcedure
     .input(z.object({
       productCode: z.string(),
@@ -377,6 +386,7 @@ export const aiPredictiveRouter = router({
       productId: z.number().optional(),
       productionLineId: z.number().optional(),
       workstationId: z.number().optional(),
+      sendEmail: z.boolean().default(true),
     }))
     .mutation(async ({ input }) => {
       const prediction = await predictCpkTrend(
@@ -389,15 +399,45 @@ export const aiPredictiveRouter = router({
       let alert = null;
       if (prediction.predictions.length > 0) {
         const avgPredictedCpk = prediction.predictions.reduce((sum, p) => sum + p.predictedValue, 0) / prediction.predictions.length;
-        alert = await checkCpkPredictionAlert(
-          avgPredictedCpk,
-          prediction.currentCpk,
-          input.productCode,
-          input.stationName,
-          input.productId,
-          input.productionLineId,
-          input.workstationId
-        );
+        
+        // Use email-enabled version if sendEmail is true
+        if (input.sendEmail) {
+          alert = await checkCpkPredictionAlertWithEmail(
+            avgPredictedCpk,
+            prediction.currentCpk,
+            input.productCode,
+            input.stationName,
+            input.productId,
+            input.productionLineId,
+            input.workstationId
+          );
+        } else {
+          alert = await checkCpkPredictionAlert(
+            avgPredictedCpk,
+            prediction.currentCpk,
+            input.productCode,
+            input.stationName,
+            input.productId,
+            input.productionLineId,
+            input.workstationId
+          );
+        }
+        
+        // Log prediction to history if alert was triggered
+        if (alert) {
+          await logPredictionAlert(
+            "cpk",
+            avgPredictedCpk,
+            alert.alertType as "warning" | "critical",
+            {
+              productCode: input.productCode,
+              productId: input.productId,
+              productionLineId: input.productionLineId,
+              workstationId: input.workstationId,
+              confidenceLevel: prediction.confidence,
+            }
+          );
+        }
       }
 
       return {
@@ -406,11 +446,12 @@ export const aiPredictiveRouter = router({
       };
     }),
 
-  // Predict OEE with alert notification
+  // Predict OEE with alert notification (includes email)
   predictOeeWithAlert: protectedProcedure
     .input(z.object({
       productionLineId: z.string(),
       forecastDays: z.number().min(1).max(30).default(7),
+      sendEmail: z.boolean().default(true),
     }))
     .mutation(async ({ input }) => {
       const prediction = await predictOeeTrend(
@@ -422,12 +463,36 @@ export const aiPredictiveRouter = router({
       let alert = null;
       if (prediction.predictions.length > 0) {
         const avgPredictedOee = prediction.predictions.reduce((sum, p) => sum + p.predictedValue, 0) / prediction.predictions.length;
-        alert = await checkOeePredictionAlert(
-          avgPredictedOee,
-          prediction.currentOee,
-          parseInt(input.productionLineId),
-          prediction.productionLineName
-        );
+        
+        // Use email-enabled version if sendEmail is true
+        if (input.sendEmail) {
+          alert = await checkOeePredictionAlertWithEmail(
+            avgPredictedOee,
+            prediction.currentOee,
+            parseInt(input.productionLineId),
+            prediction.productionLineName
+          );
+        } else {
+          alert = await checkOeePredictionAlert(
+            avgPredictedOee,
+            prediction.currentOee,
+            parseInt(input.productionLineId),
+            prediction.productionLineName
+          );
+        }
+        
+        // Log prediction to history if alert was triggered
+        if (alert) {
+          await logPredictionAlert(
+            "oee",
+            avgPredictedOee,
+            alert.alertType as "warning" | "critical",
+            {
+              productionLineId: parseInt(input.productionLineId),
+              confidenceLevel: prediction.confidence,
+            }
+          );
+        }
       }
 
       return {
@@ -456,5 +521,47 @@ export const aiPredictiveRouter = router({
     }).optional())
     .query(async ({ input }) => {
       return await getPredictionAlertStats(input?.days || 7);
+    }),
+
+  // Compare model versions accuracy
+  compareModelVersions: protectedProcedure
+    .input(z.object({
+      modelId: z.number(),
+      startDate: z.string().optional(),
+      endDate: z.string().optional(),
+    }))
+    .query(async ({ input }) => {
+      const startDate = input.startDate ? new Date(input.startDate) : undefined;
+      const endDate = input.endDate ? new Date(input.endDate) : undefined;
+      return await compareModelVersions(input.modelId, startDate, endDate);
+    }),
+
+  // Compare multiple models
+  compareMultipleModels: protectedProcedure
+    .input(z.object({
+      modelIds: z.array(z.number()).min(1).max(10),
+      startDate: z.string().optional(),
+      endDate: z.string().optional(),
+    }))
+    .query(async ({ input }) => {
+      const startDate = input.startDate ? new Date(input.startDate) : undefined;
+      const endDate = input.endDate ? new Date(input.endDate) : undefined;
+      return await compareMultipleModels(input.modelIds, startDate, endDate);
+    }),
+
+  // Get all models accuracy summary
+  getAllModelsAccuracy: protectedProcedure
+    .query(async () => {
+      return await getAllModelsAccuracySummary();
+    }),
+
+  // Get version accuracy trend for a model
+  getVersionAccuracyTrend: protectedProcedure
+    .input(z.object({
+      modelId: z.number(),
+      limit: z.number().min(1).max(50).default(10),
+    }))
+    .query(async ({ input }) => {
+      return await getVersionAccuracyTrend(input.modelId, input.limit);
     }),
 });

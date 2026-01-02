@@ -173,6 +173,7 @@
     "aiModelComparison": "So sánh Model",
     "aiAbTesting": "A/B Testing",
     "aiModelVersioning": "Quản lý Phiên bản Model",
+    "modelVersionComparison": "So sánh Accuracy Model",
     "aiVisionDetection": "Phát hiện Lỗi Camera",
     "aiConfig": "Cấu hình AI",
     "aiThresholds": "Ngưỡng AI",

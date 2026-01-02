@@ -2,8 +2,10 @@ import { getDb } from "../db";
 import { 
   aiPredictionThresholds, 
   aiPredictionHistory,
-  users 
+  users,
+  emailNotificationSettings
 } from "../../drizzle/schema";
+import { sendEmail } from "../emailService";
 import { eq, and, desc, gte, sql } from "drizzle-orm";
 import { notifyOwner } from "../_core/notification";
 import { broadcastEvent } from "../sse";
@@ -444,5 +446,266 @@ export async function getPredictionAlertStats(
       oeeAlerts: 0,
       alertsByDay: [],
     };
+  }
+}
+
+
+/**
+ * Send email alert for prediction
+ */
+export async function sendPredictionEmailAlert(
+  alertType: "warning" | "critical",
+  metric: "cpk" | "oee",
+  predictedValue: number,
+  currentValue: number,
+  threshold: number,
+  context: {
+    productCode?: string;
+    stationName?: string;
+    productionLineId?: number;
+    productionLineName?: string;
+  }
+): Promise<{ success: boolean; sentCount: number }> {
+  const db = await getDb();
+  if (!db) {
+    return { success: false, sentCount: 0 };
+  }
+
+  try {
+    // Get users with email notification enabled for prediction alerts
+    const notificationSettings = await db
+      .select({
+        userId: emailNotificationSettings.userId,
+        email: users.email,
+        cpkAlerts: emailNotificationSettings.cpkAlerts,
+        oeeAlerts: emailNotificationSettings.oeeAlerts,
+      })
+      .from(emailNotificationSettings)
+      .innerJoin(users, eq(emailNotificationSettings.userId, users.id))
+      .where(
+        and(
+          eq(emailNotificationSettings.enabled, 1),
+          metric === "cpk" 
+            ? eq(emailNotificationSettings.cpkAlerts, 1)
+            : eq(emailNotificationSettings.oeeAlerts, 1)
+        )
+      );
+
+    if (notificationSettings.length === 0) {
+      console.log("[PredictionAlert] No users configured for email alerts");
+      return { success: true, sentCount: 0 };
+    }
+
+    const emails = notificationSettings.map(s => s.email).filter(Boolean) as string[];
+    
+    if (emails.length === 0) {
+      return { success: true, sentCount: 0 };
+    }
+
+    // Generate email content
+    const subject = alertType === "critical"
+      ? `🚨 [CRITICAL] AI Prediction Alert - ${metric.toUpperCase()}`
+      : `⚠️ [WARNING] AI Prediction Alert - ${metric.toUpperCase()}`;
+
+    const contextInfo = metric === "cpk"
+      ? `Sản phẩm: ${context.productCode || "N/A"}\nTrạm: ${context.stationName || "N/A"}`
+      : `Dây chuyền: ${context.productionLineName || "N/A"}`;
+
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: ${alertType === "critical" ? "#dc3545" : "#ffc107"}; color: ${alertType === "critical" ? "white" : "#333"}; padding: 20px; border-radius: 8px 8px 0 0; }
+    .header h1 { margin: 0; font-size: 20px; }
+    .content { background: #fff; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 8px 8px; padding: 20px; }
+    .metric-box { background: #f8f9fa; padding: 15px; border-radius: 6px; margin: 15px 0; }
+    .metric-row { display: flex; justify-content: space-between; margin: 8px 0; }
+    .metric-label { color: #6c757d; }
+    .metric-value { font-weight: bold; }
+    .critical { color: #dc3545; }
+    .warning { color: #ffc107; }
+    .footer { text-align: center; color: #6c757d; font-size: 12px; margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>${alertType === "critical" ? "🚨" : "⚠️"} AI Prediction Alert - ${metric.toUpperCase()}</h1>
+  </div>
+  <div class="content">
+    <p>Hệ thống AI đã phát hiện ${alertType === "critical" ? "cảnh báo nghiêm trọng" : "cảnh báo"} về ${metric.toUpperCase()} dự đoán:</p>
+    
+    <div class="metric-box">
+      <div class="metric-row">
+        <span class="metric-label">${metric.toUpperCase()} hiện tại:</span>
+        <span class="metric-value">${currentValue.toFixed(metric === "cpk" ? 3 : 1)}${metric === "oee" ? "%" : ""}</span>
+      </div>
+      <div class="metric-row">
+        <span class="metric-label">${metric.toUpperCase()} dự đoán:</span>
+        <span class="metric-value ${alertType}">${predictedValue.toFixed(metric === "cpk" ? 3 : 1)}${metric === "oee" ? "%" : ""}</span>
+      </div>
+      <div class="metric-row">
+        <span class="metric-label">Ngưỡng ${alertType}:</span>
+        <span class="metric-value">${threshold}${metric === "oee" ? "%" : ""}</span>
+      </div>
+    </div>
+    
+    <p><strong>Thông tin chi tiết:</strong></p>
+    <pre style="background: #f8f9fa; padding: 10px; border-radius: 4px;">${contextInfo}</pre>
+    
+    <p>Vui lòng kiểm tra và thực hiện các biện pháp cần thiết.</p>
+  </div>
+  <div class="footer">
+    <p>Email được gửi tự động từ SPC/CPK Calculator</p>
+    <p>© ${new Date().getFullYear()} MSoftware AI</p>
+  </div>
+</body>
+</html>
+    `;
+
+    const result = await sendEmail(emails, subject, html);
+    
+    console.log(`[PredictionAlert] Email sent to ${result.sentCount || 0} recipients`);
+    
+    return {
+      success: result.success,
+      sentCount: result.sentCount || 0,
+    };
+  } catch (error) {
+    console.error("[PredictionAlert] Error sending email alert:", error);
+    return { success: false, sentCount: 0 };
+  }
+}
+
+/**
+ * Enhanced CPK prediction check with email notification
+ */
+export async function checkCpkPredictionAlertWithEmail(
+  predictedCpk: number,
+  currentCpk: number,
+  productCode: string,
+  stationName: string,
+  productId?: number,
+  productionLineId?: number,
+  workstationId?: number
+): Promise<PredictionAlertResult & { emailSent: boolean; emailCount: number } | null> {
+  // First check for alert
+  const alertResult = await checkCpkPredictionAlert(
+    predictedCpk,
+    currentCpk,
+    productCode,
+    stationName,
+    productId,
+    productionLineId,
+    workstationId
+  );
+
+  if (!alertResult) {
+    return null;
+  }
+
+  // Send email for warning and critical alerts
+  const emailResult = await sendPredictionEmailAlert(
+    alertResult.alertType as "warning" | "critical",
+    "cpk",
+    predictedCpk,
+    currentCpk,
+    alertResult.threshold,
+    { productCode, stationName }
+  );
+
+  return {
+    ...alertResult,
+    emailSent: emailResult.success,
+    emailCount: emailResult.sentCount,
+  };
+}
+
+/**
+ * Enhanced OEE prediction check with email notification
+ */
+export async function checkOeePredictionAlertWithEmail(
+  predictedOee: number,
+  currentOee: number,
+  productionLineId: number,
+  productionLineName: string
+): Promise<PredictionAlertResult & { emailSent: boolean; emailCount: number } | null> {
+  // First check for alert
+  const alertResult = await checkOeePredictionAlert(
+    predictedOee,
+    currentOee,
+    productionLineId,
+    productionLineName
+  );
+
+  if (!alertResult) {
+    return null;
+  }
+
+  // Send email for warning and critical alerts
+  const emailResult = await sendPredictionEmailAlert(
+    alertResult.alertType as "warning" | "critical",
+    "oee",
+    predictedOee,
+    currentOee,
+    alertResult.threshold,
+    { productionLineId, productionLineName }
+  );
+
+  return {
+    ...alertResult,
+    emailSent: emailResult.success,
+    emailCount: emailResult.sentCount,
+  };
+}
+
+/**
+ * Log prediction alert to history
+ */
+export async function logPredictionAlert(
+  predictionType: "cpk" | "oee" | "defect_rate" | "trend",
+  predictedValue: number,
+  alertType: "warning" | "critical",
+  context: {
+    modelId?: number;
+    modelName?: string;
+    modelVersion?: string;
+    productId?: number;
+    productCode?: string;
+    productionLineId?: number;
+    workstationId?: number;
+    confidenceLevel?: number;
+    confidenceLower?: number;
+    confidenceUpper?: number;
+  }
+): Promise<number | null> {
+  const db = await getDb();
+  if (!db) return null;
+
+  try {
+    const result = await db.insert(aiPredictionHistory).values({
+      predictionType,
+      modelId: context.modelId || null,
+      modelName: context.modelName || null,
+      modelVersion: context.modelVersion || null,
+      productId: context.productId || null,
+      productCode: context.productCode || null,
+      productionLineId: context.productionLineId || null,
+      workstationId: context.workstationId || null,
+      predictedValue: predictedValue.toString(),
+      predictedAt: new Date().toISOString(),
+      forecastHorizon: 7,
+      confidenceLevel: context.confidenceLevel?.toString() || null,
+      confidenceLower: context.confidenceLower?.toString() || null,
+      confidenceUpper: context.confidenceUpper?.toString() || null,
+      status: alertType === "critical" ? "verified" : "pending",
+    });
+
+    return result[0]?.insertId || null;
+  } catch (error) {
+    console.error("[PredictionAlert] Error logging alert:", error);
+    return null;
   }
 }
