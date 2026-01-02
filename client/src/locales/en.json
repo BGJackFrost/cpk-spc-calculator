@@ -157,6 +157,7 @@
     "cpkForecast": "CPK Forecast",
     "cpkForecasting": "CPK Forecasting",
     "defectDetection": "Defect Detection Realtime",
+    "cpkComparison": "CPK Comparison",
     "aiOeeForecast": "OEE Forecast",
     "aiDefectPrediction": "Defect Prediction",
     "aiYieldOptimization": "Yield Optimization",

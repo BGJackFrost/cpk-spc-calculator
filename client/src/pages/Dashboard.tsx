@@ -44,6 +44,8 @@ import NtfAiMonitor from "@/components/NtfAiMonitor";
 import UnifiedSummaryWidget from "@/components/UnifiedSummaryWidget";
 import { ConnectionPoolWidget } from "@/components/ConnectionPoolWidget";
 import CpkRealtimeAlertWidget from "@/components/CpkRealtimeAlertWidget";
+import AiPredictedCpkDashboardWidget from "@/components/AiPredictedCpkDashboardWidget";
+import AiDefectAlertsDashboardWidget from "@/components/AiDefectAlertsDashboardWidget";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -332,6 +334,12 @@ export default function Dashboard() {
             
             {/* CPK Realtime Alert Widget */}
             <CpkRealtimeAlertWidget />
+            
+            {/* AI Predicted CPK Widget */}
+            <AiPredictedCpkDashboardWidget />
+            
+            {/* AI Defect Alerts Widget */}
+            <AiDefectAlertsDashboardWidget />
             
             {/* Connection Pool Monitoring Widget */}
             {user?.role === 'admin' && isWidgetVisible("connection_pool") && <ConnectionPoolWidget />}

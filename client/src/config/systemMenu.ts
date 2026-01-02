@@ -462,6 +462,7 @@ export const AI_MENU: SystemMenuConfig = {
         { id: "cpk-forecast", icon: TrendingUp, labelKey: "nav.cpkForecast", path: "/ai-predictive" },
         { id: "cpk-forecasting", icon: TrendingUp, labelKey: "nav.cpkForecasting", path: "/cpk-forecasting" },
         { id: "defect-detection", icon: AlertTriangle, labelKey: "nav.defectDetection", path: "/defect-detection" },
+        { id: "cpk-comparison-ai", icon: GitCompare, labelKey: "nav.cpkComparison", path: "/cpk-comparison" },
         { id: "predictive-maintenance", icon: Wrench, labelKey: "nav.predictiveMaintenance", path: "/predictive-maintenance", licenseFeature: "ai_predictive" },
         { id: "ai-oee-forecast", icon: Target, labelKey: "nav.aiOeeForecast", path: "/ai-oee-forecast" },
         { id: "ai-defect-prediction", icon: AlertTriangle, labelKey: "nav.aiDefectPrediction", path: "/ai-defect-prediction" },
