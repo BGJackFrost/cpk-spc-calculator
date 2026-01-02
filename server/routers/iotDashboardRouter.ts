@@ -3,6 +3,7 @@ import { router, protectedProcedure, publicProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { iotDevices, iotDeviceData, iotAlarms } from "../../drizzle/schema";
 import { eq, desc, and, gte, lte, sql } from "drizzle-orm";
+import { cache, cacheKeys, TTL, withCache, invalidateRelatedCaches } from "../cache";
 
 export const iotDashboardRouter = router({
   // List all IoT devices
@@ -42,6 +43,8 @@ export const iotDashboardRouter = router({
         metadata: JSON.stringify(input.metadata || {}),
         status: "offline",
       }).execute();
+      // Invalidate IoT caches
+      invalidateRelatedCaches('iotDevices');
       return device;
     }),
 
@@ -66,6 +69,8 @@ export const iotDashboardRouter = router({
         .set(updateData)
         .where(eq(iotDevices.id, input.id))
         .execute();
+      // Invalidate IoT caches
+      invalidateRelatedCaches('iotDevices');
       return device;
     }),
 
@@ -75,6 +80,8 @@ export const iotDashboardRouter = router({
     .mutation(async ({ input }) => {
       const db = await getDb();
       await db.delete(iotDevices).where(eq(iotDevices.id, input.id));
+      // Invalidate IoT caches
+      invalidateRelatedCaches('iotDevices');
       return { success: true };
     }),
 
@@ -106,20 +113,22 @@ export const iotDashboardRouter = router({
       return data;
     }),
 
-  // Get dashboard stats
+  // Get dashboard stats (with caching - 30 seconds TTL)
   getStats: protectedProcedure.query(async () => {
-    const db = await getDb();
-    const devices = await db.select().from(iotDevices);
-    
-    const stats = {
-      totalDevices: devices.length,
-      onlineDevices: devices.filter(d => d.status === "online").length,
-      offlineDevices: devices.filter(d => d.status === "offline").length,
-      errorDevices: devices.filter(d => d.status === "error").length,
-      maintenanceDevices: devices.filter(d => d.status === "maintenance").length,
-    };
-    
-    return stats;
+    return withCache(cacheKeys.iotStats(), TTL.SHORT, async () => {
+      const db = await getDb();
+      const devices = await db.select().from(iotDevices);
+      
+      const stats = {
+        totalDevices: devices.length,
+        onlineDevices: devices.filter(d => d.status === "online").length,
+        offlineDevices: devices.filter(d => d.status === "offline").length,
+        errorDevices: devices.filter(d => d.status === "error").length,
+        maintenanceDevices: devices.filter(d => d.status === "maintenance").length,
+      };
+      
+      return stats;
+    });
   }),
 
   // Get alarms
@@ -299,5 +308,82 @@ export const iotDashboardRouter = router({
     .mutation(async ({ input }) => {
       const { writeIoTValue } = await import("../services/iotConnectionService");
       return { success: await writeIoTValue(input.connectionId, input.nodeIdOrRegister, input.value) };
+    }),
+});
+
+
+// ============ Export Reports ============
+
+// Export IoT dashboard report as PDF (HTML)
+export const iotExportRouter = router({
+  exportDashboardHtml: protectedProcedure
+    .input(z.object({
+      startDate: z.string().optional(),
+      endDate: z.string().optional(),
+    }).optional())
+    .mutation(async ({ input }) => {
+      const { generateIotDashboardHtml } = await import("../services/iotExportService");
+      const { storagePut } = await import("../storage");
+      const { nanoid } = await import("nanoid");
+      
+      const html = await generateIotDashboardHtml(input?.startDate, input?.endDate);
+      
+      const fileKey = `iot-reports/dashboard-${nanoid(8)}.html`;
+      const result = await storagePut(fileKey, Buffer.from(html, "utf-8"), "text/html");
+      
+      return {
+        success: true,
+        url: result.url,
+        filename: `iot-dashboard-${new Date().toISOString().split("T")[0]}.html`,
+      };
+    }),
+
+  exportDashboardExcel: protectedProcedure
+    .input(z.object({
+      startDate: z.string().optional(),
+      endDate: z.string().optional(),
+    }).optional())
+    .mutation(async ({ input }) => {
+      const { generateIotDashboardExcel } = await import("../services/iotExportService");
+      const { storagePut } = await import("../storage");
+      const { nanoid } = await import("nanoid");
+      
+      const buffer = await generateIotDashboardExcel(input?.startDate, input?.endDate);
+      
+      const fileKey = `iot-reports/dashboard-${nanoid(8)}.xlsx`;
+      const result = await storagePut(
+        fileKey,
+        buffer,
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+      
+      return {
+        success: true,
+        url: result.url,
+        filename: `iot-dashboard-${new Date().toISOString().split("T")[0]}.xlsx`,
+      };
+    }),
+
+  exportDeviceReportHtml: protectedProcedure
+    .input(z.object({
+      deviceId: z.number(),
+      startDate: z.string().optional(),
+      endDate: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const { generateDeviceReportHtml } = await import("../services/iotExportService");
+      const { storagePut } = await import("../storage");
+      const { nanoid } = await import("nanoid");
+      
+      const html = await generateDeviceReportHtml(input.deviceId, input.startDate, input.endDate);
+      
+      const fileKey = `iot-reports/device-${input.deviceId}-${nanoid(8)}.html`;
+      const result = await storagePut(fileKey, Buffer.from(html, "utf-8"), "text/html");
+      
+      return {
+        success: true,
+        url: result.url,
+        filename: `iot-device-${input.deviceId}-${new Date().toISOString().split("T")[0]}.html`,
+      };
     }),
 });

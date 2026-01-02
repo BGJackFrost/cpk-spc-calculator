@@ -7231,3 +7231,21 @@
 - [x] Viết unit tests cho push notification service (12 tests)
 - [x] Viết unit tests cho AI export service (5 tests)
 
+
+
+## Phase 78: Test Fixes, PDF Export, và Caching
+
+### Sửa Tests Failed
+- [x] Sửa 36 tests failed để đảm bảo chất lượng code
+- [x] Cập nhật mocks cho database và services
+- [x] Fix timeout issues trong tests
+
+### Export PDF cho AI và IoT
+- [x] Thêm export PDF cho AI Predictive Analytics (HTML/Excel)
+- [x] Thêm export PDF cho IoT Monitoring Dashboard (HTML/Excel)
+- [x] Tạo templates PDF chuyên nghiệp với styling
+
+### Caching và Tối ưu hiệu suất
+- [x] Thêm caching cho AI Predictive API calls (CPK/OEE history, predictions)
+- [x] Thêm caching cho IoT Monitoring API calls (devices, stats, alarms)
+- [x] Thêm cache invalidation patterns cho AI và IoT

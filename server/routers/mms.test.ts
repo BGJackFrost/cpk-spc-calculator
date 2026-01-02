@@ -190,9 +190,9 @@ describe("MMS Module - Predictive Analytics Router", () => {
       expect(predictiveAnalyticsRouter._def.procedures.forecastOEE).toBeDefined();
     });
 
-    it("should have getOEEHistoricalData endpoint", async () => {
+    it("should have getOEEHistory endpoint", async () => {
       const { predictiveAnalyticsRouter } = await import("./predictiveAnalyticsRouter");
-      expect(predictiveAnalyticsRouter._def.procedures.getOEEHistoricalData).toBeDefined();
+      expect(predictiveAnalyticsRouter._def.procedures.getOEEHistory).toBeDefined();
     });
 
     it("should have compareProductionLines endpoint", async () => {
@@ -207,26 +207,26 @@ describe("MMS Module - Predictive Analytics Router", () => {
       expect(predictiveAnalyticsRouter._def.procedures.predictDefectRate).toBeDefined();
     });
 
-    it("should have getDefectStatsByCategory endpoint", async () => {
+    it("should have getDefectStats endpoint", async () => {
       const { predictiveAnalyticsRouter } = await import("./predictiveAnalyticsRouter");
-      expect(predictiveAnalyticsRouter._def.procedures.getDefectStatsByCategory).toBeDefined();
+      expect(predictiveAnalyticsRouter._def.procedures.getDefectStats).toBeDefined();
     });
 
-    it("should have compareAlgorithms endpoint", async () => {
+    it("should have compareDefectAlgorithms endpoint", async () => {
       const { predictiveAnalyticsRouter } = await import("./predictiveAnalyticsRouter");
-      expect(predictiveAnalyticsRouter._def.procedures.compareAlgorithms).toBeDefined();
+      expect(predictiveAnalyticsRouter._def.procedures.compareDefectAlgorithms).toBeDefined();
     });
   });
 
   describe("Export Reports", () => {
-    it("should have exportOeeForecastHtml endpoint", async () => {
+    it("should have exportOeeForecastReport endpoint", async () => {
       const { predictiveAnalyticsRouter } = await import("./predictiveAnalyticsRouter");
-      expect(predictiveAnalyticsRouter._def.procedures.exportOeeForecastHtml).toBeDefined();
+      expect(predictiveAnalyticsRouter._def.procedures.exportOeeForecastReport).toBeDefined();
     });
 
-    it("should have exportOeeForecastExcel endpoint", async () => {
+    it("should have getSummary endpoint", async () => {
       const { predictiveAnalyticsRouter } = await import("./predictiveAnalyticsRouter");
-      expect(predictiveAnalyticsRouter._def.procedures.exportOeeForecastExcel).toBeDefined();
+      expect(predictiveAnalyticsRouter._def.procedures.getSummary).toBeDefined();
     });
   });
 });

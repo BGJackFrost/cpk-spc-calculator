@@ -9,7 +9,7 @@ import { permissionRouter as permissionModuleRouter } from "./routers/permission
 // import { predictiveRouter } from "./routers/predictiveRouter";
 import { reportRouter as mmsReportRouter } from "./routers/reportRouter";
 import { alertRouter as mmsAlertRouter } from "./routers/alertRouter";
-import { iotDashboardRouter } from "./routers/iotDashboardRouter";
+import { iotDashboardRouter, iotExportRouter } from "./routers/iotDashboardRouter";
 import { mqttRouter } from "./services/mqttRouter";
 import { iotAlertRouter } from "./services/iotAlertRouter";
 // import { opcuaRouter } from "./services/opcuaRouter";
@@ -4135,6 +4135,7 @@ export const appRouter = router({
   spc: spcRouter,
   alert: alertRouter,
   iotDashboard: iotDashboardRouter,
+  iotExport: iotExportRouter,
   mqtt: mqttRouter,
   iotAlert: iotAlertRouter,
   // opcua: opcuaRouter,

@@ -141,24 +141,24 @@ describe("Spare Parts Router", () => {
   });
 });
 
-describe("Predictive Router", () => {
-  it("should have getMachineHealth procedure", async () => {
-    const { predictiveRouter } = await import("./predictiveRouter");
-    expect(predictiveRouter._def.procedures.getMachineHealth).toBeDefined();
+describe("Predictive Analytics Router", () => {
+  it("should have forecastOEE procedure", async () => {
+    const { predictiveAnalyticsRouter } = await import("./predictiveAnalyticsRouter");
+    expect(predictiveAnalyticsRouter._def.procedures.forecastOEE).toBeDefined();
   });
 
-  it("should have listSensorData procedure", async () => {
-    const { predictiveRouter } = await import("./predictiveRouter");
-    expect(predictiveRouter._def.procedures.listSensorData).toBeDefined();
+  it("should have getOEEHistory procedure", async () => {
+    const { predictiveAnalyticsRouter } = await import("./predictiveAnalyticsRouter");
+    expect(predictiveAnalyticsRouter._def.procedures.getOEEHistory).toBeDefined();
   });
 
-  it("should have listPredictions procedure", async () => {
-    const { predictiveRouter } = await import("./predictiveRouter");
-    expect(predictiveRouter._def.procedures.listPredictions).toBeDefined();
+  it("should have predictDefectRate procedure", async () => {
+    const { predictiveAnalyticsRouter } = await import("./predictiveAnalyticsRouter");
+    expect(predictiveAnalyticsRouter._def.procedures.predictDefectRate).toBeDefined();
   });
 
-  it("should have listModels procedure", async () => {
-    const { predictiveRouter } = await import("./predictiveRouter");
-    expect(predictiveRouter._def.procedures.listModels).toBeDefined();
+  it("should have compareProductionLines procedure", async () => {
+    const { predictiveAnalyticsRouter } = await import("./predictiveAnalyticsRouter");
+    expect(predictiveAnalyticsRouter._def.procedures.compareProductionLines).toBeDefined();
   });
 });

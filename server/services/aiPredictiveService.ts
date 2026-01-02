@@ -2,6 +2,23 @@ import { getDb } from "../db";
 import { spcAnalysisHistory, spcSamplingPlans, productionLines, oeeRecords } from "../../drizzle/schema";
 import { desc, eq, and, gte, lte, sql } from "drizzle-orm";
 import { invokeLLM } from "../_core/llm";
+import { cache, TTL, withCache } from "../cache";
+
+// Cache keys for AI Predictive
+const aiPredictiveCacheKeys = {
+  cpkHistory: (productCode: string, stationName: string, days: number) => 
+    `ai:cpk:history:${productCode}:${stationName}:${days}`,
+  oeeHistory: (lineId: string, days: number) => 
+    `ai:oee:history:${lineId}:${days}`,
+  cpkPrediction: (productCode: string, stationName: string, forecastDays: number) => 
+    `ai:cpk:prediction:${productCode}:${stationName}:${forecastDays}`,
+  oeePrediction: (lineId: string, forecastDays: number) => 
+    `ai:oee:prediction:${lineId}:${forecastDays}`,
+};
+
+// Cache TTL for AI predictions (2 minutes - balance between freshness and performance)
+const AI_PREDICTION_TTL = 2 * 60 * 1000;
+const AI_HISTORY_TTL = 5 * 60 * 1000; // 5 minutes for historical data
 
 // Types
 interface HistoricalDataPoint {
@@ -127,68 +144,76 @@ function exponentialSmoothing(data: HistoricalDataPoint[], alpha: number = 0.3, 
   return predictions;
 }
 
-// Get historical CPK data
+// Get historical CPK data (with caching)
 export async function getHistoricalCpkData(
   productCode: string,
   stationName: string,
   days: number = 30
 ): Promise<HistoricalDataPoint[]> {
-  const db = await getDb();
-  if (!db) return [];
+  const cacheKey = aiPredictiveCacheKeys.cpkHistory(productCode, stationName, days);
+  
+  return withCache(cacheKey, AI_HISTORY_TTL, async () => {
+    const db = await getDb();
+    if (!db) return [];
 
-  const startDate = new Date();
-  startDate.setDate(startDate.getDate() - days);
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
 
-  const results = await db
-    .select({
-      cpk: spcAnalysisHistory.cpk,
-      createdAt: spcAnalysisHistory.createdAt,
-    })
-    .from(spcAnalysisHistory)
-    .where(
-      and(
-        eq(spcAnalysisHistory.productCode, productCode),
-        eq(spcAnalysisHistory.stationName, stationName),
-        gte(spcAnalysisHistory.createdAt, startDate)
+    const results = await db
+      .select({
+        cpk: spcAnalysisHistory.cpk,
+        createdAt: spcAnalysisHistory.createdAt,
+      })
+      .from(spcAnalysisHistory)
+      .where(
+        and(
+          eq(spcAnalysisHistory.productCode, productCode),
+          eq(spcAnalysisHistory.stationName, stationName),
+          gte(spcAnalysisHistory.createdAt, startDate)
+        )
       )
-    )
-    .orderBy(spcAnalysisHistory.createdAt);
+      .orderBy(spcAnalysisHistory.createdAt);
 
-  return results.map(r => ({
-    date: r.createdAt || new Date(),
-    value: r.cpk || 0,
-  }));
+    return results.map(r => ({
+      date: r.createdAt || new Date(),
+      value: r.cpk || 0,
+    }));
+  });
 }
 
-// Get historical OEE data
+// Get historical OEE data (with caching)
 export async function getHistoricalOeeData(
   productionLineId: string,
   days: number = 30
 ): Promise<HistoricalDataPoint[]> {
-  const db = await getDb();
-  if (!db) return [];
+  const cacheKey = aiPredictiveCacheKeys.oeeHistory(productionLineId, days);
+  
+  return withCache(cacheKey, AI_HISTORY_TTL, async () => {
+    const db = await getDb();
+    if (!db) return [];
 
-  const startDate = new Date();
-  startDate.setDate(startDate.getDate() - days);
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
 
-  const results = await db
-    .select({
-      oee: oeeRecords.oee,
-      recordDate: oeeRecords.recordDate,
-    })
-    .from(oeeRecords)
-    .where(
-      and(
-        eq(oeeRecords.productionLineId, productionLineId),
-        gte(oeeRecords.recordDate, startDate)
+    const results = await db
+      .select({
+        oee: oeeRecords.oee,
+        recordDate: oeeRecords.recordDate,
+      })
+      .from(oeeRecords)
+      .where(
+        and(
+          eq(oeeRecords.productionLineId, productionLineId),
+          gte(oeeRecords.recordDate, startDate)
+        )
       )
-    )
-    .orderBy(oeeRecords.recordDate);
+      .orderBy(oeeRecords.recordDate);
 
-  return results.map(r => ({
-    date: r.recordDate || new Date(),
-    value: r.oee || 0,
-  }));
+    return results.map(r => ({
+      date: r.recordDate || new Date(),
+      value: r.oee || 0,
+    }));
+  });
 }
 
 // Predict CPK trend

@@ -166,6 +166,27 @@ export const cache = new MemoryCache();
 
 // Cache key generators
 export const cacheKeys = {
+  // AI Predictive data (medium TTL - 2 minutes)
+  aiCpkHistory: (productCode: string, stationName: string, days: number) => 
+    `ai:cpk:history:${productCode}:${stationName}:${days}`,
+  aiOeeHistory: (lineId: string, days: number) => 
+    `ai:oee:history:${lineId}:${days}`,
+  aiCpkPrediction: (productCode: string, stationName: string, forecastDays: number) => 
+    `ai:cpk:prediction:${productCode}:${stationName}:${forecastDays}`,
+  aiOeePrediction: (lineId: string, forecastDays: number) => 
+    `ai:oee:prediction:${lineId}:${forecastDays}`,
+  aiDashboardStats: () => 'ai:dashboard:stats',
+  aiModelsList: () => 'ai:models:list',
+  
+  // IoT data (short TTL - 30 seconds for real-time data)
+  iotDevices: () => 'iot:devices:all',
+  iotDeviceById: (id: number) => `iot:device:${id}`,
+  iotDeviceData: (deviceId: number, limit: number) => `iot:device:data:${deviceId}:${limit}`,
+  iotStats: () => 'iot:stats',
+  iotAlarms: (limit: number, acknowledged?: boolean) => 
+    `iot:alarms:${limit}:${acknowledged ?? 'all'}`,
+  iotConnectionStats: () => 'iot:connection:stats',
+  
   // Master data (longer TTL - 5 minutes)
   products: () => 'products:all',
   productById: (id: number) => "products:" + id,
@@ -256,6 +277,13 @@ export function invalidateCache(patterns: string[]): void {
 
 // Cache invalidation patterns for common operations
 export const invalidationPatterns = {
+  // AI data
+  aiPredictions: ['ai:cpk:', 'ai:oee:'],
+  aiModels: ['ai:models:', 'ai:dashboard:'],
+  // IoT data
+  iotDevices: ['iot:devices:', 'iot:device:', 'iot:stats'],
+  iotAlarms: ['iot:alarms:'],
+  iotConnections: ['iot:connection:'],
   // When products change
   products: ['products:'],
   // When workstations change
