@@ -27,7 +27,8 @@ export default function AiMlDashboard() {
   const { data: models, isLoading, refetch } = trpc.ai.models.list.useQuery(
     statusFilter !== "all" ? { status: statusFilter as any } : undefined
   );
-  const { data: predictions } = trpc.ai.getPredictions.useQuery({ limit: 100 });
+  const { data: predictionsData } = trpc.ai.predictions.list.useQuery({ limit: 100 });
+  const predictions = predictionsData?.predictions || [];
 
   // Start training mutation
   const startTrainingMutation = trpc.ai.training.startJob.useMutation({
