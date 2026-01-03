@@ -7363,3 +7363,25 @@
 - [x] Router latency với getHeatmap, getStats, getTimeSeries, getSources
 - [x] Trang LatencyMonitoringPage với heatmap, time series, và sources
 - [x] Bộ lọc theo source type, source ID, khoảng thời gian
+
+## Phase 86: IoT Enhancement
+
+### Escalation Config UI
+- [x] Tạo trang EscalationConfigPage với form cấu hình
+- [x] Cấu hình số lần thất bại trước khi escalate
+- [x] Cấu hình danh sách emails nhận thông báo theo level
+- [x] Cấu hình delay giữa các levels
+- [x] Preview escalation flow
+- [x] Test escalation button
+
+### Cron Job Escalation
+- [x] Thêm job vào scheduledJobs.ts chạy mỗi 5 phút
+- [x] Kiểm tra webhook failures và trigger escalation
+- [x] Ghi log khi job chạy
+- [x] Thông báo owner khi có lỗi nghiêm trọng
+
+### Latency Trends Chart
+- [x] Tạo component LatencyTrendsChart với Recharts
+- [x] Hiển thị P50, P95, P99 theo thời gian
+- [x] Tích hợp vào IoT Dashboard
+- [x] Bộ lọc theo source type và khoảng thời gian

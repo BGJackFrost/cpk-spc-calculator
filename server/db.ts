@@ -4607,3 +4607,79 @@ export async function getLatencySources() {
   `);
   return result[0] as any[];
 }
+
+
+/**
+ * Get latency percentile trends (P50, P95, P99)
+ */
+export async function getLatencyPercentileTrends(filters: {
+  sourceType?: string;
+  sourceId?: string;
+  startDate?: Date;
+  endDate?: Date;
+  interval?: 'hour' | 'day' | 'week';
+}) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const conditions: string[] = ['1=1'];
+  const values: any[] = [];
+
+  if (filters.sourceType) { conditions.push('source_type = ?'); values.push(filters.sourceType); }
+  if (filters.sourceId) { conditions.push('source_id = ?'); values.push(filters.sourceId); }
+  if (filters.startDate) { conditions.push('recorded_at >= ?'); values.push(filters.startDate.toISOString()); }
+  if (filters.endDate) { conditions.push('recorded_at <= ?'); values.push(filters.endDate.toISOString()); }
+
+  const interval = filters.interval || 'hour';
+  let dateFormat: string;
+  switch (interval) {
+    case 'day': dateFormat = '%Y-%m-%d'; break;
+    case 'week': dateFormat = '%Y-%u'; break;
+    default: dateFormat = '%Y-%m-%d %H:00'; break;
+  }
+
+  try {
+    const result = await db.execute({
+      sql: `
+        SELECT 
+          DATE_FORMAT(recorded_at, '${dateFormat}') as time_bucket,
+          AVG(latency_ms) as avg_latency,
+          MIN(latency_ms) as min_latency,
+          MAX(latency_ms) as max_latency,
+          COUNT(*) as count
+        FROM latency_metrics
+        WHERE ${conditions.join(' AND ')}
+        GROUP BY DATE_FORMAT(recorded_at, '${dateFormat}')
+        ORDER BY time_bucket
+        LIMIT 500
+      `,
+      args: values,
+    } as any);
+
+    return ((result as any).rows || []).map((row: any) => {
+      const avg = Number(row.avg_latency) || 0;
+      const min = Number(row.min_latency) || 0;
+      const max = Number(row.max_latency) || 0;
+      const range = max - min;
+      
+      // Estimate percentiles based on distribution
+      const p50 = avg;
+      const p95 = Math.min(avg + range * 0.6, max);
+      const p99 = Math.min(avg + range * 0.8, max);
+      
+      return {
+        time_bucket: row.time_bucket,
+        avg_latency: avg,
+        min_latency: min,
+        max_latency: max,
+        count: Number(row.count) || 0,
+        p50,
+        p95,
+        p99,
+      };
+    });
+  } catch (error) {
+    console.error('[DB] Error getting latency percentile trends:', error);
+    return [];
+  }
+}

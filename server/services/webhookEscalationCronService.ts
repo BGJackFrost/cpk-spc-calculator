@@ -54,8 +54,8 @@ export async function getWebhookEscalationConfig(): Promise<EscalationConfig> {
   try {
     const db = await getDb();
     if (!db) return DEFAULT_CONFIG;
-    const [config] = await db.select().from(systemConfig).where(eq(systemConfig.key, 'webhook_escalation_config')).limit(1);
-    if (config?.value) return JSON.parse(config.value as string) as EscalationConfig;
+    const [config] = await db.select().from(systemConfig).where(eq(systemConfig.configKey, 'webhook_escalation_config')).limit(1);
+    if (config?.configValue) return JSON.parse(config.configValue as string) as EscalationConfig;
   } catch (error) {
     console.error('[WebhookEscalation] Error loading config:', error);
   }
@@ -66,11 +66,11 @@ export async function saveWebhookEscalationConfig(config: EscalationConfig): Pro
   try {
     const db = await getDb();
     if (!db) return;
-    const existing = await db.select().from(systemConfig).where(eq(systemConfig.key, 'webhook_escalation_config')).limit(1);
+    const existing = await db.select().from(systemConfig).where(eq(systemConfig.configKey, 'webhook_escalation_config')).limit(1);
     if (existing.length > 0) {
-      await db.update(systemConfig).set({ value: JSON.stringify(config), updatedAt: new Date().toISOString() }).where(eq(systemConfig.key, 'webhook_escalation_config'));
+      await db.update(systemConfig).set({ configValue: JSON.stringify(config), updatedAt: new Date().toISOString() }).where(eq(systemConfig.configKey, 'webhook_escalation_config'));
     } else {
-      await db.insert(systemConfig).values({ key: 'webhook_escalation_config', value: JSON.stringify(config), description: 'Webhook escalation configuration' });
+      await db.insert(systemConfig).values({ configKey: 'webhook_escalation_config', configValue: JSON.stringify(config), description: 'Webhook escalation configuration' });
     }
   } catch (error) {
     console.error('[WebhookEscalation] Error saving config:', error);

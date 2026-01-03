@@ -26,7 +26,9 @@ import {
   Settings,
   Maximize2,
   Filter,
+  Gauge,
 } from 'lucide-react';
+import LatencyTrendsChart from '@/components/LatencyTrendsChart';
 import {
   ResponsiveContainer,
   ComposedChart,
@@ -277,6 +279,12 @@ export default function IoTUnifiedDashboard() {
     hours: timeRange === '1h' ? 1 : timeRange === '6h' ? 6 : 24 
   });
 
+  // Latency percentile trends
+  const { data: latencyTrends } = trpc.latency.getPercentileTrends.useQuery({
+    interval: timeRange === '7d' || timeRange === '30d' ? 'day' : 'hour',
+    startDate: new Date(Date.now() - (timeRange === '1h' ? 3600000 : timeRange === '6h' ? 21600000 : timeRange === '24h' ? 86400000 : timeRange === '7d' ? 604800000 : 2592000000)),
+  });
+
   // Auto refresh
   useEffect(() => {
     if (!autoRefresh) return;
@@ -506,6 +514,18 @@ export default function IoTUnifiedDashboard() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Latency Trends Chart with P50, P95, P99 */}
+        <LatencyTrendsChart
+          data={latencyTrends || []}
+          isLoading={!latencyTrends}
+          title="Latency Trends (P50/P95/P99)"
+          description="Phân tích độ trễ theo percentile qua thời gian"
+          showPercentiles={true}
+          warningThreshold={200}
+          criticalThreshold={500}
+          height={350}
+        />
 
         {/* Quick Actions */}
         <Card>

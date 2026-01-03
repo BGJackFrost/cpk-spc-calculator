@@ -11173,6 +11173,7 @@ Hãy trả về JSON với format:
     saveConfig: protectedProcedure
       .input(z.object({
         enabled: z.boolean(),
+        failureThreshold: z.number().optional().default(3),
         levels: z.array(z.object({
           level: z.number(),
           name: z.string(),
@@ -11189,6 +11190,22 @@ Hãy trả về JSON với format:
         const { saveEscalationConfig } = await import("./services/alertEscalationService");
         await saveEscalationConfig(input);
         return { success: true };
+      }),
+
+    // Test escalation for a specific level
+    test: protectedProcedure
+      .input(z.object({ level: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin" && ctx.user.role !== "manager") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin or Manager access required" });
+        }
+        try {
+          const { testEscalation } = await import("./services/alertEscalationService");
+          await testEscalation(input.level, ctx.user.email || ctx.user.name);
+          return { success: true };
+        } catch (error: any) {
+          return { success: false, error: error.message };
+        }
       }),
 
     // Get escalation stats
@@ -11449,6 +11466,20 @@ Hãy trả về JSON với format:
       const { getLatencySources } = await import('./db');
       return await getLatencySources();
     }),
+
+    // Get percentile trends (P50, P95, P99)
+    getPercentileTrends: protectedProcedure
+      .input(z.object({
+        sourceType: z.string().optional(),
+        sourceId: z.string().optional(),
+        startDate: z.date().optional(),
+        endDate: z.date().optional(),
+        interval: z.enum(['hour', 'day', 'week']).default('hour'),
+      }))
+      .query(async ({ input }) => {
+        const { getLatencyPercentileTrends } = await import('./db');
+        return await getLatencyPercentileTrends(input);
+      }),
   }),
 });
 

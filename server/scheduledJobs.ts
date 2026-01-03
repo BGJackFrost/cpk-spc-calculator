@@ -653,6 +653,60 @@ export function initScheduledJobs(): void {
   
   console.log('[ScheduledJob] Scheduled: Cache report processing every minute (Asia/Ho_Chi_Minh)');
   
+  // Escalation check - runs every 5 minutes
+  cron.schedule('0 */5 * * * *', async () => {
+    console.log('[ScheduledJob] Triggered: Escalation check');
+    try {
+      const { processEscalations, getEscalationConfig } = await import('./services/alertEscalationService');
+      const config = await getEscalationConfig();
+      
+      if (!config.enabled) {
+        console.log('[ScheduledJob] Escalation is disabled, skipping check');
+        return;
+      }
+      
+      const result = await processEscalations();
+      console.log(`[ScheduledJob] Escalation check completed: processed=${result.processed}, escalated=${result.escalated}, errors=${result.errors}`);
+      
+      // Notify owner if there are critical escalations
+      if (result.escalated > 0) {
+        try {
+          await notifyOwner({
+            title: `⚠️ Escalation Alert: ${result.escalated} alerts escalated`,
+            content: `Có ${result.escalated} cảnh báo đã được leo thang. Vui lòng kiểm tra hệ thống.`,
+          });
+        } catch (notifyError) {
+          console.error('[ScheduledJob] Error notifying owner about escalations:', notifyError);
+        }
+      }
+    } catch (error) {
+      console.error('[ScheduledJob] Error during escalation check:', error);
+    }
+  }, {
+    timezone: 'Asia/Ho_Chi_Minh'
+  });
+  
+  console.log('[ScheduledJob] Scheduled: Escalation check every 5 minutes (Asia/Ho_Chi_Minh)');
+  
+  // Webhook failure escalation check - runs every 5 minutes
+  cron.schedule('0 */5 * * * *', async () => {
+    console.log('[ScheduledJob] Triggered: Webhook failure escalation check');
+    try {
+      const { runWebhookEscalationCheck } = await import('./services/webhookEscalationCronService');
+      const result = await runWebhookEscalationCheck();
+      
+      if (result.escalated > 0) {
+        console.log(`[ScheduledJob] Webhook escalation: ${result.escalated} webhooks escalated`);
+      }
+    } catch (error) {
+      console.error('[ScheduledJob] Error during webhook failure escalation check:', error);
+    }
+  }, {
+    timezone: 'Asia/Ho_Chi_Minh'
+  });
+  
+  console.log('[ScheduledJob] Scheduled: Webhook failure escalation check every 5 minutes (Asia/Ho_Chi_Minh)');
+  
   // Cache warming on startup
   setTimeout(async () => {
     try {

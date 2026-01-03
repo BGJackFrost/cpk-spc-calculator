@@ -61,15 +61,18 @@ async function getSystemSetting(key: string): Promise<string | null> {
 /**
  * Get escalation configuration from system settings
  */
-export async function getEscalationConfig(): Promise<EscalationConfig> {
+export async function getEscalationConfig(): Promise<EscalationConfig & { failureThreshold: number }> {
   try {
     const enabled = await getSystemSetting('escalation_enabled');
     const configStr = await getSystemSetting('escalation_config');
+    const failureThresholdStr = await getSystemSetting('escalation_failure_threshold');
+    const failureThreshold = failureThresholdStr ? parseInt(failureThresholdStr, 10) : 3;
 
     if (!configStr) {
       // Default escalation config
       return {
         enabled: enabled === 'true',
+        failureThreshold,
         levels: [
           {
             level: 1,
@@ -101,18 +104,19 @@ export async function getEscalationConfig(): Promise<EscalationConfig> {
 
     return {
       enabled: enabled === 'true',
+      failureThreshold,
       levels: JSON.parse(configStr),
     };
   } catch (error) {
     console.error('[AlertEscalation] Error getting config:', error);
-    return { enabled: false, levels: [] };
+    return { enabled: false, failureThreshold: 3, levels: [] };
   }
 }
 
 /**
  * Save escalation configuration
  */
-export async function saveEscalationConfig(config: EscalationConfig): Promise<void> {
+export async function saveEscalationConfig(config: EscalationConfig & { failureThreshold?: number }): Promise<void> {
   try {
     const db = await getDb();
     if (db) {
@@ -121,6 +125,13 @@ export async function saveEscalationConfig(config: EscalationConfig): Promise<vo
       await db.insert(systemSettings).values({
         key: 'escalation_enabled',
         value: config.enabled ? 'true' : 'false',
+      });
+
+      // Save failure threshold
+      await db.delete(systemSettings).where(eq(systemSettings.key, 'escalation_failure_threshold'));
+      await db.insert(systemSettings).values({
+        key: 'escalation_failure_threshold',
+        value: String(config.failureThreshold || 3),
       });
 
       // Save levels config
@@ -496,4 +507,111 @@ export async function getEscalationStats(days: number = 30): Promise<{
     console.error('[AlertEscalation] Error getting stats:', error);
     return { totalEscalations: 0, byLevel: [], avgTimeToResolve: 0, escalationRate: 0 };
   }
+}
+
+
+/**
+ * Test escalation for a specific level
+ */
+export async function testEscalation(level: number, triggeredBy: string): Promise<void> {
+  const config = await getEscalationConfig();
+  const levelConfig = config.levels.find(l => l.level === level);
+  
+  if (!levelConfig) {
+    throw new Error(`Level ${level} not found in escalation config`);
+  }
+
+  console.log(`[AlertEscalation] Testing level ${level} (${levelConfig.name}) triggered by ${triggeredBy}`);
+
+  // Send email notifications
+  if (levelConfig.notifyEmails.length > 0) {
+    const html = generateTestEscalationEmailHtml(levelConfig, triggeredBy);
+    const subject = `[TEST] Escalation Level ${level} - ${levelConfig.name}`;
+
+    for (const email of levelConfig.notifyEmails) {
+      try {
+        await sendEmail(email, subject, html);
+        console.log(`[AlertEscalation] Test email sent to ${email}`);
+      } catch (error) {
+        console.error(`[AlertEscalation] Failed to send test email to ${email}:`, error);
+      }
+    }
+  }
+
+  // Notify owner if configured
+  if (levelConfig.notifyOwner) {
+    try {
+      const { notifyOwner } = await import('../_core/notification');
+      await notifyOwner({
+        title: `[TEST] Escalation Level ${level} - ${levelConfig.name}`,
+        content: `Test escalation triggered by ${triggeredBy}. This is a test notification.`,
+      });
+      console.log('[AlertEscalation] Test owner notification sent');
+    } catch (error) {
+      console.error('[AlertEscalation] Failed to send test owner notification:', error);
+    }
+  }
+}
+
+/**
+ * Generate test escalation email HTML
+ */
+function generateTestEscalationEmailHtml(level: EscalationLevel, triggeredBy: string): string {
+  const levelColors: Record<number, string> = {
+    1: '#f59e0b',
+    2: '#f97316',
+    3: '#dc2626',
+  };
+  const color = levelColors[level.level] || '#3b82f6';
+
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: ${color}; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+    .content { background: #f9fafb; padding: 20px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px; }
+    .test-badge { display: inline-block; background: #3b82f6; color: white; padding: 4px 12px; border-radius: 20px; font-size: 14px; margin-bottom: 15px; }
+    .info-box { background: white; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid ${color}; }
+    .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1 style="margin: 0;">🧪 TEST - Escalation Level ${level.level}</h1>
+      <p style="margin: 10px 0 0 0; opacity: 0.9;">${level.name}</p>
+    </div>
+    <div class="content">
+      <div style="text-align: center;">
+        <span class="test-badge">Đây là email test</span>
+      </div>
+      
+      <div class="info-box">
+        <p><strong>Cấp độ:</strong> Level ${level.level} - ${level.name}</p>
+        <p><strong>Thời gian chờ:</strong> ${level.timeoutMinutes} phút</p>
+        <p><strong>Triggered by:</strong> ${triggeredBy}</p>
+        <p><strong>Thời gian:</strong> ${new Date().toLocaleString('vi-VN')}</p>
+      </div>
+      
+      <div class="info-box">
+        <p><strong>Cấu hình thông báo:</strong></p>
+        <ul>
+          <li>Emails: ${level.notifyEmails.length > 0 ? level.notifyEmails.join(', ') : 'Không có'}</li>
+          <li>SMS: ${level.notifyPhones.length > 0 ? level.notifyPhones.join(', ') : 'Không có'}</li>
+          <li>Notify Owner: ${level.notifyOwner ? 'Có' : 'Không'}</li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer">
+      <p>Đây là email test để kiểm tra cấu hình escalation.</p>
+      <p>Nếu bạn nhận được email này, cấu hình đã hoạt động đúng.</p>
+    </div>
+  </div>
+</body>
+</html>
+  `;
 }
