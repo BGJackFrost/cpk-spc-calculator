@@ -7273,3 +7273,24 @@
 - [x] Unit tests cho cacheAlertService
 - [x] Unit tests cho cacheWarmingService
 - [x] Unit tests cho cacheReportService
+
+## Phase 81: IoT System Upgrade (Theo yêu cầu kỹ thuật mới)
+
+### Ưu tiên Cao
+- [ ] Tích hợp Time-series Database (InfluxDB/TimescaleDB) cho dữ liệu sensor
+- [ ] Kết nối thực với MQTT broker (mqtt.js)
+- [ ] Kết nối thực với OPC-UA server (node-opcua)
+- [ ] Kết nối thực với Modbus devices (modbus-serial)
+- [ ] Layout 2D nhà máy với vị trí máy móc và trạng thái real-time
+
+### Ưu tiên Trung bình
+- [ ] Biểu đồ Pareto cho Top 5 nguyên nhân dừng máy
+- [ ] Latency monitoring từ Sensor đến Server
+- [ ] Server resource monitoring (CPU, RAM, Storage)
+- [ ] Tích hợp Telegram notification
+
+### Ưu tiên Thấp
+- [ ] QR code scanning cho mobile
+- [ ] Particle counter integration cho phòng sạch
+- [ ] Kubernetes deployment configuration
+- [ ] Helm chart cho easy deployment
