@@ -7294,3 +7294,31 @@
 - [ ] Particle counter integration cho phòng sạch
 - [ ] Kubernetes deployment configuration
 - [ ] Helm chart cho easy deployment
+
+## Phase 82: FloorPlanViewer, ParetoChart, LatencyMonitor, Telegram Bot
+
+### FloorPlanViewer với Realtime IoT Status
+- [x] Tạo component FloorPlanViewer với SVG interactive
+- [x] Hiển thị vị trí máy móc trên layout nhà máy
+- [x] Realtime status từ IoT sensors (màu sắc theo trạng thái)
+- [x] Click vào máy để xem chi tiết sensor readings
+- [x] Tạo trang FloorPlan Management (IoTFloorPlan.tsx)
+
+### ParetoChart Component
+- [x] Tạo component ParetoChart với Recharts
+- [x] Hiển thị Top 10 nguyên nhân dừng máy với ABC classification
+- [x] Đường tích lũy phần trăm (80/20 rule)
+- [x] Bộ lọc theo thời gian và dây chuyền
+
+### LatencyMonitor Component
+- [x] Tạo component LatencyMonitor
+- [x] Theo dõi độ trễ từ Sensor đến Server (sensor/plc/gateway/server)
+- [x] Biểu đồ latency realtime với AreaChart
+- [x] Cảnh báo khi latency vượt ngưỡng (good/warning/critical)
+
+### Telegram Bot Integration
+- [x] Tạo bảng telegram_config trong database
+- [x] Tạo service gửi tin nhắn Telegram (telegramService.ts)
+- [x] Tạo trang cấu hình Telegram Bot (TelegramSettings.tsx)
+- [x] Tích hợp gửi cảnh báo realtime qua Telegram (7 loại alert)
+- [x] Test gửi tin nhắn Telegram (testConfig mutation)

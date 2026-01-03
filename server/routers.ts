@@ -32,6 +32,8 @@ import { visionRouter } from "./routers/visionRouter";
 import { predictiveAnalyticsRouter } from "./routers/predictiveAnalyticsRouter";
 import { predictiveAlertRouter } from "./routers/predictiveAlertRouter";
 import { iotSensorRouter } from "./routers/iotSensorRouter";
+import { telegramRouter } from "./routers/telegramRouter";
+import { floorPlanRouter } from "./routers/floorPlanRouter";
 import { notificationRouter } from "./routers/notificationRouter";
 import { aiExportRouter } from "./routers/aiExportRouter";
 import { cacheMonitoringRouter } from "./routers/cacheMonitoringRouter";
@@ -11229,6 +11231,10 @@ Hãy trả về JSON với format:
   aiExport: aiExportRouter,
   // Cache Monitoring - Monitor and manage cache
   cacheMonitoring: cacheMonitoringRouter,
+  // Telegram Bot Integration
+  telegram: telegramRouter,
+  // Floor Plan Management
+  floorPlan: floorPlanRouter,
 });
 
 export type AppRouter = typeof appRouter;

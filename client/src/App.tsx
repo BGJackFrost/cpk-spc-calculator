@@ -222,6 +222,8 @@ import VideoManagement from "./pages/VideoManagement";
 import IotMonitoringRealtime from "./pages/iot/IotMonitoringRealtime";
 import AiModelPerformance from "./pages/ai/AiModelPerformance";
 import CacheMonitoringDashboard from "./pages/CacheMonitoringDashboard";
+import TelegramSettings from "./pages/TelegramSettings";
+import IoTFloorPlan from "./pages/IoTFloorPlan";
 
 function Router() {
   return (
@@ -443,6 +445,8 @@ function Router() {
       <Route path="/user-guide" component={UserGuide} />
       <Route path="/video-management" component={VideoManagement} />
       <Route path="/iot-monitoring-realtime" component={IotMonitoringRealtime} />
+      <Route path="/telegram-settings" component={TelegramSettings} />
+      <Route path="/iot-floor-plan" component={IoTFloorPlan} />
       <Route path="/ai-model-performance" component={AiModelPerformance} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />

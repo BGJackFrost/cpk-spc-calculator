@@ -3758,3 +3758,78 @@ export const aiPredictionAccuracyStats = mysqlTable("ai_prediction_accuracy_stat
 	index("idx_ai_pred_acc_period").on(table.periodType, table.periodStart),
 	index("idx_ai_pred_acc_type").on(table.predictionType),
 ]);
+
+
+// Telegram Bot Configuration
+export const telegramConfig = mysqlTable("telegram_config", {
+	id: int().autoincrement().notNull(),
+	botToken: varchar("bot_token", { length: 255 }).notNull(),
+	chatId: varchar("chat_id", { length: 100 }).notNull(),
+	name: varchar({ length: 100 }).notNull(),
+	description: text(),
+	isActive: int("is_active").default(1).notNull(),
+	alertTypes: json("alert_types"), // ['spc_violation', 'cpk_alert', 'iot_critical', 'maintenance']
+	createdBy: int("created_by"),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+// Telegram Message History
+export const telegramMessageHistory = mysqlTable("telegram_message_history", {
+	id: int().autoincrement().notNull(),
+	configId: int("config_id").notNull(),
+	messageType: varchar("message_type", { length: 50 }).notNull(),
+	content: text().notNull(),
+	status: mysqlEnum(['sent', 'failed', 'pending']).default('pending').notNull(),
+	errorMessage: text("error_message"),
+	sentAt: timestamp("sent_at", { mode: 'string' }),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+});
+
+// Floor Plan Configurations
+export const floorPlanConfigs = mysqlTable("floor_plan_configs", {
+	id: int().autoincrement().notNull(),
+	name: varchar({ length: 100 }).notNull(),
+	description: text(),
+	productionLineId: int("production_line_id"),
+	width: int().default(800).notNull(),
+	height: int().default(600).notNull(),
+	gridSize: int("grid_size").default(20).notNull(),
+	backgroundColor: varchar("background_color", { length: 20 }).default('#f8fafc'),
+	backgroundImage: varchar("background_image", { length: 500 }),
+	machinePositions: json("machine_positions"), // Array of MachinePosition
+	isActive: int("is_active").default(1).notNull(),
+	createdBy: int("created_by"),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+// Latency Monitoring Records
+export const latencyRecords = mysqlTable("latency_records", {
+	id: int().autoincrement().notNull(),
+	deviceId: int("device_id"),
+	deviceName: varchar("device_name", { length: 100 }),
+	sourceType: mysqlEnum("source_type", ['sensor', 'plc', 'gateway', 'server']).notNull(),
+	latencyMs: decimal("latency_ms", { precision: 10, scale: 2 }).notNull(),
+	timestamp: timestamp({ mode: 'string' }).notNull(),
+	metadata: json(),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+});
+
+// Machine Downtime Records for Pareto Analysis
+export const machineDowntimeRecords = mysqlTable("machine_downtime_records", {
+	id: int().autoincrement().notNull(),
+	machineId: int("machine_id").notNull(),
+	machineName: varchar("machine_name", { length: 100 }),
+	productionLineId: int("production_line_id"),
+	downtimeCategory: varchar("downtime_category", { length: 100 }).notNull(),
+	downtimeReason: varchar("downtime_reason", { length: 255 }).notNull(),
+	startTime: timestamp("start_time", { mode: 'string' }).notNull(),
+	endTime: timestamp("end_time", { mode: 'string' }),
+	durationMinutes: int("duration_minutes"),
+	severity: mysqlEnum(['minor', 'moderate', 'major', 'critical']).default('moderate').notNull(),
+	resolvedBy: int("resolved_by"),
+	resolution: text(),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
