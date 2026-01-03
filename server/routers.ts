@@ -11237,6 +11237,219 @@ Hãy trả về JSON với format:
   telegram: telegramRouter,
   // Floor Plan Management
   floorPlan: floorPlanRouter,
+
+  // Webhook Escalation Rules
+  webhookEscalation: router({
+    // List all escalation rules
+    list: protectedProcedure.query(async () => {
+      const { getEscalationRules } = await import('./db');
+      return await getEscalationRules();
+    }),
+
+    // Get single rule by ID
+    getById: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        const { getEscalationRuleById } = await import('./db');
+        return await getEscalationRuleById(input.id);
+      }),
+
+    // Create new escalation rule
+    create: protectedProcedure
+      .input(z.object({
+        name: z.string().min(1),
+        description: z.string().optional(),
+        sourceWebhookId: z.number(),
+        triggerAfterFailures: z.number().default(3),
+        triggerAfterMinutes: z.number().default(15),
+        level1Targets: z.array(z.object({
+          type: z.enum(['webhook', 'email']),
+          value: z.string(),
+        })).default([]),
+        level1DelayMinutes: z.number().default(0),
+        level2Targets: z.array(z.object({
+          type: z.enum(['webhook', 'email']),
+          value: z.string(),
+        })).optional(),
+        level2DelayMinutes: z.number().default(15),
+        level3Targets: z.array(z.object({
+          type: z.enum(['webhook', 'email']),
+          value: z.string(),
+        })).optional(),
+        level3DelayMinutes: z.number().default(30),
+        autoResolveOnSuccess: z.boolean().default(true),
+        notifyOnEscalate: z.boolean().default(true),
+        notifyOnResolve: z.boolean().default(true),
+        isActive: z.boolean().default(true),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const { createEscalationRule } = await import('./db');
+        const id = await createEscalationRule({
+          ...input,
+          createdBy: ctx.user.id,
+        });
+        return { id };
+      }),
+
+    // Update escalation rule
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        name: z.string().optional(),
+        description: z.string().optional(),
+        triggerAfterFailures: z.number().optional(),
+        triggerAfterMinutes: z.number().optional(),
+        level1Targets: z.array(z.object({
+          type: z.enum(['webhook', 'email']),
+          value: z.string(),
+        })).optional(),
+        level1DelayMinutes: z.number().optional(),
+        level2Targets: z.array(z.object({
+          type: z.enum(['webhook', 'email']),
+          value: z.string(),
+        })).optional(),
+        level2DelayMinutes: z.number().optional(),
+        level3Targets: z.array(z.object({
+          type: z.enum(['webhook', 'email']),
+          value: z.string(),
+        })).optional(),
+        level3DelayMinutes: z.number().optional(),
+        autoResolveOnSuccess: z.boolean().optional(),
+        notifyOnEscalate: z.boolean().optional(),
+        notifyOnResolve: z.boolean().optional(),
+        isActive: z.boolean().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { updateEscalationRule } = await import('./db');
+        const { id, ...data } = input;
+        await updateEscalationRule(id, data);
+        return { success: true };
+      }),
+
+    // Delete escalation rule
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const { deleteEscalationRule } = await import('./db');
+        await deleteEscalationRule(input.id);
+        return { success: true };
+      }),
+
+    // Get escalation logs
+    getLogs: protectedProcedure
+      .input(z.object({
+        ruleId: z.number().optional(),
+        status: z.string().optional(),
+        limit: z.number().default(50),
+        offset: z.number().default(0),
+      }))
+      .query(async ({ input }) => {
+        const { getEscalationLogs } = await import('./db');
+        return await getEscalationLogs(input);
+      }),
+
+    // Get pending escalations
+    getPending: protectedProcedure.query(async () => {
+      const { getPendingEscalations } = await import('./db');
+      return await getPendingEscalations();
+    }),
+
+    // Resolve escalation
+    resolve: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        resolutionNote: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const { updateEscalationLog } = await import('./db');
+        await updateEscalationLog(input.id, {
+          status: 'resolved',
+          resolvedAt: new Date(),
+          resolvedBy: ctx.user.id,
+          resolutionNote: input.resolutionNote,
+        });
+        return { success: true };
+      }),
+
+    // Acknowledge escalation
+    acknowledge: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const { updateEscalationLog } = await import('./db');
+        await updateEscalationLog(input.id, {
+          status: 'acknowledged',
+          acknowledgedAt: new Date(),
+          acknowledgedBy: ctx.user.id,
+        });
+        return { success: true };
+      }),
+  }),
+
+  // Latency Monitoring
+  latency: router({
+    // Record latency metric
+    record: protectedProcedure
+      .input(z.object({
+        sourceType: z.enum(['iot_device', 'webhook', 'api', 'database', 'mqtt']),
+        sourceId: z.string(),
+        sourceName: z.string().optional(),
+        latencyMs: z.number(),
+        endpoint: z.string().optional(),
+        statusCode: z.number().optional(),
+        isSuccess: z.boolean().default(true),
+      }))
+      .mutation(async ({ input }) => {
+        const { recordLatencyMetric } = await import('./db');
+        const id = await recordLatencyMetric(input);
+        return { id };
+      }),
+
+    // Get heatmap data
+    getHeatmap: protectedProcedure
+      .input(z.object({
+        sourceType: z.string().optional(),
+        sourceId: z.string().optional(),
+        startDate: z.date().optional(),
+        endDate: z.date().optional(),
+      }))
+      .query(async ({ input }) => {
+        const { getLatencyHeatmapData } = await import('./db');
+        return await getLatencyHeatmapData(input);
+      }),
+
+    // Get latency statistics
+    getStats: protectedProcedure
+      .input(z.object({
+        sourceType: z.string().optional(),
+        sourceId: z.string().optional(),
+        startDate: z.date().optional(),
+        endDate: z.date().optional(),
+      }))
+      .query(async ({ input }) => {
+        const { getLatencyStats } = await import('./db');
+        return await getLatencyStats(input);
+      }),
+
+    // Get time series data
+    getTimeSeries: protectedProcedure
+      .input(z.object({
+        sourceType: z.string().optional(),
+        sourceId: z.string().optional(),
+        startDate: z.date().optional(),
+        endDate: z.date().optional(),
+        interval: z.enum(['hour', 'day', 'week']).default('hour'),
+      }))
+      .query(async ({ input }) => {
+        const { getLatencyTimeSeries } = await import('./db');
+        return await getLatencyTimeSeries(input);
+      }),
+
+    // Get all sources
+    getSources: protectedProcedure.query(async () => {
+      const { getLatencySources } = await import('./db');
+      return await getLatencySources();
+    }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

@@ -7345,3 +7345,21 @@
 - [x] Thêm bộ lọc theo dây chuyền, khoảng thời gian
 - [x] Auto-refresh realtime
 - [x] Export dashboard (placeholder)
+
+## Phase 84: IoT Enhancement - Import/Export, Escalation, Heatmap
+### Import/Export Layout từ file JSON
+- [x] Nút Export layout ra file JSON
+- [x] Nút Import layout từ file JSON
+- [x] Validation và error handling
+### Tích hợp Webhook với hệ thống Escalation
+- [x] Bảng webhook_escalation_rules và webhook_escalation_logs trong database
+- [x] Router webhookEscalation với CRUD operations
+- [x] Trang WebhookEscalationPage để cấu hình escalation rules
+- [x] 3 cấp độ escalation (Level 1, 2, 3) với delay khác nhau
+- [x] Hỗ trợ target types: email, webhook
+### Biểu đồ Heatmap cho độ trễ theo thời gian
+- [x] Component LatencyHeatmap với tooltip và legend
+- [x] Bảng latency_metrics trong database
+- [x] Router latency với getHeatmap, getStats, getTimeSeries, getSources
+- [x] Trang LatencyMonitoringPage với heatmap, time series, và sources
+- [x] Bộ lọc theo source type, source ID, khoảng thời gian

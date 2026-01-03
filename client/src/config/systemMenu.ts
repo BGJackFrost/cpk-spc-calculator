@@ -570,6 +570,8 @@ export const IOT_MENU: SystemMenuConfig = {
         { id: "iot-realtime-history", icon: History, labelKey: "nav.realtimeHistory", path: "/realtime-history" },
         { id: "telegram-settings", icon: MessageSquare, labelKey: "nav.telegramSettings", path: "/telegram-settings", adminOnly: true },
         { id: "alert-webhook-settings", icon: Webhook, labelKey: "nav.alertWebhookSettings", path: "/alert-webhook-settings", adminOnly: true },
+        { id: "webhook-escalation", icon: Bell, labelKey: "nav.webhookEscalation", path: "/webhook-escalation", adminOnly: true },
+        { id: "latency-monitoring", icon: Activity, labelKey: "nav.latencyMonitoring", path: "/latency-monitoring", adminOnly: true },
       ],
     },
   ],

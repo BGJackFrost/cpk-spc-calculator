@@ -4252,3 +4252,358 @@ export async function getLicenseDashboardStats() {
     activationsByMonth,
   };
 }
+
+
+// ==================== WEBHOOK ESCALATION RULES ====================
+
+export interface EscalationTarget {
+  type: 'webhook' | 'email';
+  value: string;
+}
+
+export interface CreateEscalationRuleInput {
+  name: string;
+  description?: string;
+  sourceWebhookId: number;
+  triggerAfterFailures?: number;
+  triggerAfterMinutes?: number;
+  level1Targets?: EscalationTarget[];
+  level1DelayMinutes?: number;
+  level2Targets?: EscalationTarget[];
+  level2DelayMinutes?: number;
+  level3Targets?: EscalationTarget[];
+  level3DelayMinutes?: number;
+  autoResolveOnSuccess?: boolean;
+  notifyOnEscalate?: boolean;
+  notifyOnResolve?: boolean;
+  isActive?: boolean;
+  createdBy?: number;
+}
+
+export async function getEscalationRules() {
+  const db = await getDb();
+  const result = await db.execute(sql`
+    SELECT * FROM webhook_escalation_rules ORDER BY created_at DESC
+  `);
+  return (result[0] as any[]).map(row => ({
+    ...row,
+    level1_targets: row.level1_targets ? JSON.parse(row.level1_targets) : [],
+    level2_targets: row.level2_targets ? JSON.parse(row.level2_targets) : [],
+    level3_targets: row.level3_targets ? JSON.parse(row.level3_targets) : [],
+  }));
+}
+
+export async function getEscalationRuleById(id: number) {
+  const db = await getDb();
+  const result = await db.execute(sql`
+    SELECT * FROM webhook_escalation_rules WHERE id = ${id}
+  `);
+  const rows = result[0] as any[];
+  if (rows.length === 0) return null;
+  const row = rows[0];
+  return {
+    ...row,
+    level1_targets: row.level1_targets ? JSON.parse(row.level1_targets) : [],
+    level2_targets: row.level2_targets ? JSON.parse(row.level2_targets) : [],
+    level3_targets: row.level3_targets ? JSON.parse(row.level3_targets) : [],
+  };
+}
+
+export async function getEscalationRulesByWebhookId(webhookId: number) {
+  const db = await getDb();
+  const result = await db.execute(sql`
+    SELECT * FROM webhook_escalation_rules 
+    WHERE source_webhook_id = ${webhookId} AND is_active = 1
+    ORDER BY created_at DESC
+  `);
+  return (result[0] as any[]).map(row => ({
+    ...row,
+    level1_targets: row.level1_targets ? JSON.parse(row.level1_targets) : [],
+    level2_targets: row.level2_targets ? JSON.parse(row.level2_targets) : [],
+    level3_targets: row.level3_targets ? JSON.parse(row.level3_targets) : [],
+  }));
+}
+
+export async function createEscalationRule(input: CreateEscalationRuleInput) {
+  const db = await getDb();
+  const result = await db.execute(sql`
+    INSERT INTO webhook_escalation_rules (
+      name, description, source_webhook_id,
+      trigger_after_failures, trigger_after_minutes,
+      level1_targets, level1_delay_minutes,
+      level2_targets, level2_delay_minutes,
+      level3_targets, level3_delay_minutes,
+      auto_resolve_on_success, notify_on_escalate, notify_on_resolve,
+      is_active, created_by
+    ) VALUES (
+      ${input.name},
+      ${input.description || null},
+      ${input.sourceWebhookId},
+      ${input.triggerAfterFailures || 3},
+      ${input.triggerAfterMinutes || 15},
+      ${JSON.stringify(input.level1Targets || [])},
+      ${input.level1DelayMinutes || 0},
+      ${JSON.stringify(input.level2Targets || [])},
+      ${input.level2DelayMinutes || 15},
+      ${JSON.stringify(input.level3Targets || [])},
+      ${input.level3DelayMinutes || 30},
+      ${input.autoResolveOnSuccess !== false ? 1 : 0},
+      ${input.notifyOnEscalate !== false ? 1 : 0},
+      ${input.notifyOnResolve !== false ? 1 : 0},
+      ${input.isActive !== false ? 1 : 0},
+      ${input.createdBy || null}
+    )
+  `);
+  return (result[0] as any).insertId;
+}
+
+export async function updateEscalationRule(id: number, data: Partial<CreateEscalationRuleInput>) {
+  const db = await getDb();
+  const updates: string[] = [];
+  const values: any[] = [];
+
+  if (data.name !== undefined) { updates.push('name = ?'); values.push(data.name); }
+  if (data.description !== undefined) { updates.push('description = ?'); values.push(data.description); }
+  if (data.triggerAfterFailures !== undefined) { updates.push('trigger_after_failures = ?'); values.push(data.triggerAfterFailures); }
+  if (data.triggerAfterMinutes !== undefined) { updates.push('trigger_after_minutes = ?'); values.push(data.triggerAfterMinutes); }
+  if (data.level1Targets !== undefined) { updates.push('level1_targets = ?'); values.push(JSON.stringify(data.level1Targets)); }
+  if (data.level1DelayMinutes !== undefined) { updates.push('level1_delay_minutes = ?'); values.push(data.level1DelayMinutes); }
+  if (data.level2Targets !== undefined) { updates.push('level2_targets = ?'); values.push(JSON.stringify(data.level2Targets)); }
+  if (data.level2DelayMinutes !== undefined) { updates.push('level2_delay_minutes = ?'); values.push(data.level2DelayMinutes); }
+  if (data.level3Targets !== undefined) { updates.push('level3_targets = ?'); values.push(JSON.stringify(data.level3Targets)); }
+  if (data.level3DelayMinutes !== undefined) { updates.push('level3_delay_minutes = ?'); values.push(data.level3DelayMinutes); }
+  if (data.autoResolveOnSuccess !== undefined) { updates.push('auto_resolve_on_success = ?'); values.push(data.autoResolveOnSuccess ? 1 : 0); }
+  if (data.notifyOnEscalate !== undefined) { updates.push('notify_on_escalate = ?'); values.push(data.notifyOnEscalate ? 1 : 0); }
+  if (data.notifyOnResolve !== undefined) { updates.push('notify_on_resolve = ?'); values.push(data.notifyOnResolve ? 1 : 0); }
+  if (data.isActive !== undefined) { updates.push('is_active = ?'); values.push(data.isActive ? 1 : 0); }
+
+  if (updates.length === 0) return;
+
+  values.push(id);
+  await db.execute(sql.raw(`UPDATE webhook_escalation_rules SET ${updates.join(', ')} WHERE id = ?`, values));
+}
+
+export async function deleteEscalationRule(id: number) {
+  const db = await getDb();
+  await db.execute(sql`DELETE FROM webhook_escalation_rules WHERE id = ${id}`);
+}
+
+// Escalation Logs
+export async function getEscalationLogs(filters: {
+  ruleId?: number;
+  sourceWebhookId?: number;
+  status?: string;
+  startDate?: Date;
+  endDate?: Date;
+  limit?: number;
+  offset?: number;
+}) {
+  const db = await getDb();
+  const conditions: string[] = ['1=1'];
+  const values: any[] = [];
+
+  if (filters.ruleId) { conditions.push('rule_id = ?'); values.push(filters.ruleId); }
+  if (filters.sourceWebhookId) { conditions.push('source_webhook_id = ?'); values.push(filters.sourceWebhookId); }
+  if (filters.status) { conditions.push('status = ?'); values.push(filters.status); }
+  if (filters.startDate) { conditions.push('escalated_at >= ?'); values.push(filters.startDate); }
+  if (filters.endDate) { conditions.push('escalated_at <= ?'); values.push(filters.endDate); }
+
+  const limit = filters.limit || 50;
+  const offset = filters.offset || 0;
+
+  const countResult = await db.execute(sql.raw(
+    `SELECT COUNT(*) as total FROM webhook_escalation_logs WHERE ${conditions.join(' AND ')}`,
+    values
+  ));
+  const total = (countResult[0] as any[])[0]?.total || 0;
+
+  const result = await db.execute(sql.raw(
+    `SELECT * FROM webhook_escalation_logs WHERE ${conditions.join(' AND ')} ORDER BY escalated_at DESC LIMIT ? OFFSET ?`,
+    [...values, limit, offset]
+  ));
+
+  return { logs: result[0] as any[], total };
+}
+
+export async function getPendingEscalations() {
+  const db = await getDb();
+  const result = await db.execute(sql`
+    SELECT * FROM webhook_escalation_logs 
+    WHERE status IN ('pending', 'sent') AND resolved_at IS NULL
+    ORDER BY escalated_at DESC
+  `);
+  return result[0] as any[];
+}
+
+export async function updateEscalationLog(id: number, data: {
+  status?: string;
+  resolvedAt?: Date;
+  resolvedBy?: number;
+  resolutionNote?: string;
+  acknowledgedAt?: Date;
+  acknowledgedBy?: number;
+}) {
+  const db = await getDb();
+  const updates: string[] = [];
+  const values: any[] = [];
+
+  if (data.status) { updates.push('status = ?'); values.push(data.status); }
+  if (data.resolvedAt) { updates.push('resolved_at = ?'); values.push(data.resolvedAt); }
+  if (data.resolvedBy) { updates.push('resolved_by = ?'); values.push(data.resolvedBy); }
+  if (data.resolutionNote) { updates.push('resolution_note = ?'); values.push(data.resolutionNote); }
+  if (data.acknowledgedAt) { updates.push('acknowledged_at = ?'); values.push(data.acknowledgedAt); }
+  if (data.acknowledgedBy) { updates.push('acknowledged_by = ?'); values.push(data.acknowledgedBy); }
+
+  if (updates.length === 0) return;
+
+  values.push(id);
+  await db.execute(sql.raw(`UPDATE webhook_escalation_logs SET ${updates.join(', ')} WHERE id = ?`, values));
+}
+
+// ==================== LATENCY METRICS ====================
+
+export interface RecordLatencyInput {
+  sourceType: 'iot_device' | 'webhook' | 'api' | 'database' | 'mqtt';
+  sourceId: string;
+  sourceName?: string;
+  latencyMs: number;
+  endpoint?: string;
+  statusCode?: number;
+  isSuccess?: boolean;
+}
+
+export async function recordLatencyMetric(input: RecordLatencyInput) {
+  const db = await getDb();
+  const result = await db.execute(sql`
+    INSERT INTO latency_metrics (
+      source_type, source_id, source_name, latency_ms, endpoint, status_code, is_success
+    ) VALUES (
+      ${input.sourceType},
+      ${input.sourceId},
+      ${input.sourceName || null},
+      ${input.latencyMs},
+      ${input.endpoint || null},
+      ${input.statusCode || null},
+      ${input.isSuccess !== false ? 1 : 0}
+    )
+  `);
+  return (result[0] as any).insertId;
+}
+
+export async function getLatencyHeatmapData(filters: {
+  sourceType?: string;
+  sourceId?: string;
+  startDate?: Date;
+  endDate?: Date;
+}) {
+  const db = await getDb();
+  const conditions: string[] = ['1=1'];
+  const values: any[] = [];
+
+  if (filters.sourceType) { conditions.push('source_type = ?'); values.push(filters.sourceType); }
+  if (filters.sourceId) { conditions.push('source_id = ?'); values.push(filters.sourceId); }
+  if (filters.startDate) { conditions.push('recorded_at >= ?'); values.push(filters.startDate); }
+  if (filters.endDate) { conditions.push('recorded_at <= ?'); values.push(filters.endDate); }
+
+  const result = await db.execute(sql.raw(`
+    SELECT 
+      HOUR(recorded_at) as hour_of_day,
+      DAYOFWEEK(recorded_at) - 1 as day_of_week,
+      AVG(latency_ms) as avg_latency,
+      MIN(latency_ms) as min_latency,
+      MAX(latency_ms) as max_latency,
+      COUNT(*) as count,
+      SUM(CASE WHEN is_success = 1 THEN 1 ELSE 0 END) as success_count
+    FROM latency_metrics
+    WHERE ${conditions.join(' AND ')}
+    GROUP BY HOUR(recorded_at), DAYOFWEEK(recorded_at)
+    ORDER BY day_of_week, hour_of_day
+  `, values));
+
+  return result[0] as any[];
+}
+
+export async function getLatencyStats(filters: {
+  sourceType?: string;
+  sourceId?: string;
+  startDate?: Date;
+  endDate?: Date;
+}) {
+  const db = await getDb();
+  const conditions: string[] = ['1=1'];
+  const values: any[] = [];
+
+  if (filters.sourceType) { conditions.push('source_type = ?'); values.push(filters.sourceType); }
+  if (filters.sourceId) { conditions.push('source_id = ?'); values.push(filters.sourceId); }
+  if (filters.startDate) { conditions.push('recorded_at >= ?'); values.push(filters.startDate); }
+  if (filters.endDate) { conditions.push('recorded_at <= ?'); values.push(filters.endDate); }
+
+  const result = await db.execute(sql.raw(`
+    SELECT 
+      AVG(latency_ms) as avg_latency,
+      MIN(latency_ms) as min_latency,
+      MAX(latency_ms) as max_latency,
+      COUNT(*) as total_count,
+      SUM(CASE WHEN is_success = 1 THEN 1 ELSE 0 END) as success_count
+    FROM latency_metrics
+    WHERE ${conditions.join(' AND ')}
+  `, values));
+
+  return (result[0] as any[])[0] || {
+    avg_latency: 0,
+    min_latency: 0,
+    max_latency: 0,
+    total_count: 0,
+    success_count: 0,
+  };
+}
+
+export async function getLatencyTimeSeries(filters: {
+  sourceType?: string;
+  sourceId?: string;
+  startDate?: Date;
+  endDate?: Date;
+  interval?: 'hour' | 'day' | 'week';
+}) {
+  const db = await getDb();
+  const conditions: string[] = ['1=1'];
+  const values: any[] = [];
+
+  if (filters.sourceType) { conditions.push('source_type = ?'); values.push(filters.sourceType); }
+  if (filters.sourceId) { conditions.push('source_id = ?'); values.push(filters.sourceId); }
+  if (filters.startDate) { conditions.push('recorded_at >= ?'); values.push(filters.startDate); }
+  if (filters.endDate) { conditions.push('recorded_at <= ?'); values.push(filters.endDate); }
+
+  const interval = filters.interval || 'hour';
+  let dateFormat: string;
+  switch (interval) {
+    case 'day': dateFormat = '%Y-%m-%d'; break;
+    case 'week': dateFormat = '%Y-%u'; break;
+    default: dateFormat = '%Y-%m-%d %H:00'; break;
+  }
+
+  const result = await db.execute(sql.raw(`
+    SELECT 
+      DATE_FORMAT(recorded_at, '${dateFormat}') as time_bucket,
+      AVG(latency_ms) as avg_latency,
+      MIN(latency_ms) as min_latency,
+      MAX(latency_ms) as max_latency,
+      COUNT(*) as count
+    FROM latency_metrics
+    WHERE ${conditions.join(' AND ')}
+    GROUP BY DATE_FORMAT(recorded_at, '${dateFormat}')
+    ORDER BY time_bucket
+  `, values));
+
+  return result[0] as any[];
+}
+
+export async function getLatencySources() {
+  const db = await getDb();
+  const result = await db.execute(sql`
+    SELECT DISTINCT source_type, source_id, source_name
+    FROM latency_metrics
+    ORDER BY source_type, source_id
+  `);
+  return result[0] as any[];
+}

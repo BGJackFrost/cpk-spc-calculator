@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
 import { FloorPlanDesigner, FloorPlanConfig, FloorPlanItem } from '@/components/FloorPlanDesigner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -19,15 +19,33 @@ import {
   Eye,
   Map,
   Save,
+  Download,
+  Upload,
+  FileJson,
 } from 'lucide-react';
+
+// Interface for exported JSON format
+interface ExportedFloorPlan {
+  version: string;
+  exportedAt: string;
+  name: string;
+  width: number;
+  height: number;
+  gridSize: number;
+  items: FloorPlanItem[];
+}
 
 export default function FloorPlanDesignerPage() {
   const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);
   const [isDesigning, setIsDesigning] = useState(false);
   const [currentConfig, setCurrentConfig] = useState<FloorPlanConfig | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [newPlanName, setNewPlanName] = useState('');
   const [newPlanLineId, setNewPlanLineId] = useState<string>('');
+  const [importData, setImportData] = useState<ExportedFloorPlan | null>(null);
+  const [importFileName, setImportFileName] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Queries
   const { data: floorPlans, refetch: refetchPlans } = trpc.floorPlan.list.useQuery();
@@ -79,7 +97,7 @@ export default function FloorPlanDesignerPage() {
     }
     createMutation.mutate({
       name: newPlanName,
-      productionLineId: newPlanLineId ? parseInt(newPlanLineId) : undefined,
+      productionLineId: newPlanLineId && newPlanLineId !== 'none' ? parseInt(newPlanLineId) : undefined,
       width: 1200,
       height: 800,
       gridSize: 20,
@@ -149,6 +167,127 @@ export default function FloorPlanDesignerPage() {
     }
   };
 
+  // Export layout to JSON file
+  const handleExportLayout = (plan: any) => {
+    const items: FloorPlanItem[] = (plan.machinePositions as any[] || []).map((pos: any, index: number) => ({
+      id: pos.id || `item-${index}`,
+      type: pos.type || 'machine',
+      name: pos.name || `Item ${index + 1}`,
+      x: pos.x || 0,
+      y: pos.y || 0,
+      width: pos.width || 80,
+      height: pos.height || 60,
+      rotation: pos.rotation || 0,
+      color: pos.color || '#3b82f6',
+      machineId: pos.machineId,
+      status: pos.status,
+      metadata: pos.metadata,
+    }));
+
+    const exportData: ExportedFloorPlan = {
+      version: '1.0',
+      exportedAt: new Date().toISOString(),
+      name: plan.name,
+      width: plan.width || 1200,
+      height: plan.height || 800,
+      gridSize: plan.gridSize || 20,
+      items,
+    };
+
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `floor-plan-${plan.name.replace(/\s+/g, '-').toLowerCase()}-${Date.now()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    toast.success('Đã xuất sơ đồ ra file JSON');
+  };
+
+  // Handle file input for import
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.name.endsWith('.json')) {
+      toast.error('Vui lòng chọn file JSON');
+      return;
+    }
+
+    setImportFileName(file.name);
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const content = e.target?.result as string;
+        const data = JSON.parse(content) as ExportedFloorPlan;
+
+        // Validate required fields
+        if (!data.name || !data.items || !Array.isArray(data.items)) {
+          toast.error('File JSON không hợp lệ: thiếu trường bắt buộc (name, items)');
+          return;
+        }
+
+        // Validate items structure
+        for (const item of data.items) {
+          if (typeof item.x !== 'number' || typeof item.y !== 'number') {
+            toast.error('File JSON không hợp lệ: items phải có tọa độ x, y');
+            return;
+          }
+        }
+
+        setImportData(data);
+        setNewPlanName(data.name + ' (Imported)');
+        setIsImportDialogOpen(true);
+      } catch (err) {
+        toast.error('Không thể đọc file JSON: định dạng không hợp lệ');
+      }
+    };
+    reader.readAsText(file);
+
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  // Import layout from JSON
+  const handleImportLayout = () => {
+    if (!importData) return;
+
+    createMutation.mutate({
+      name: newPlanName,
+      productionLineId: newPlanLineId && newPlanLineId !== 'none' ? parseInt(newPlanLineId) : undefined,
+      width: importData.width || 1200,
+      height: importData.height || 800,
+      gridSize: importData.gridSize || 20,
+      machinePositions: importData.items.map((item) => ({
+        id: item.id,
+        type: item.type,
+        name: item.name,
+        x: item.x,
+        y: item.y,
+        width: item.width || 80,
+        height: item.height || 60,
+        rotation: item.rotation || 0,
+        color: item.color || '#3b82f6',
+        machineId: item.machineId,
+        status: item.status,
+        metadata: item.metadata,
+      })),
+    }, {
+      onSuccess: () => {
+        setIsImportDialogOpen(false);
+        setImportData(null);
+        setImportFileName('');
+        toast.success('Đã import sơ đồ thành công');
+      },
+    });
+  };
+
   // Convert machines to format for designer
   const machineList = machines?.map((m: any) => ({
     id: m.id,
@@ -162,9 +301,40 @@ export default function FloorPlanDesignerPage() {
         <div className="h-[calc(100vh-120px)]">
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-2xl font-bold">Thiết kế: {currentConfig.name}</h1>
-            <Button variant="outline" onClick={() => setIsDesigning(false)}>
-              Quay lại danh sách
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  if (currentConfig) {
+                    const exportData: ExportedFloorPlan = {
+                      version: '1.0',
+                      exportedAt: new Date().toISOString(),
+                      name: currentConfig.name,
+                      width: currentConfig.width,
+                      height: currentConfig.height,
+                      gridSize: currentConfig.gridSize,
+                      items: currentConfig.items,
+                    };
+                    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `floor-plan-${currentConfig.name.replace(/\s+/g, '-').toLowerCase()}-${Date.now()}.json`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    toast.success('Đã xuất sơ đồ ra file JSON');
+                  }
+                }}
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Export JSON
+              </Button>
+              <Button variant="outline" onClick={() => setIsDesigning(false)}>
+                Quay lại danh sách
+              </Button>
+            </div>
           </div>
           <FloorPlanDesigner
             initialConfig={currentConfig}
@@ -186,14 +356,30 @@ export default function FloorPlanDesignerPage() {
               Tạo và quản lý layout nhà máy với drag-and-drop
             </p>
           </div>
-          <Button onClick={() => {
-            setNewPlanName('');
-            setNewPlanLineId('');
-            setIsCreateDialogOpen(true);
-          }}>
-            <Plus className="w-4 h-4 mr-2" />
-            Tạo sơ đồ mới
-          </Button>
+          <div className="flex gap-2">
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept=".json"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+            <Button
+              variant="outline"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Upload className="w-4 h-4 mr-2" />
+              Import JSON
+            </Button>
+            <Button onClick={() => {
+              setNewPlanName('');
+              setNewPlanLineId('');
+              setIsCreateDialogOpen(true);
+            }}>
+              <Plus className="w-4 h-4 mr-2" />
+              Tạo sơ đồ mới
+            </Button>
+          </div>
         </div>
 
         {/* Floor plans list */}
@@ -247,6 +433,14 @@ export default function FloorPlanDesignerPage() {
                           <Button
                             variant="outline"
                             size="sm"
+                            onClick={() => handleExportLayout(plan)}
+                            title="Export JSON"
+                          >
+                            <Download className="w-3 h-3" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
                             onClick={() => handleOpenPlan(plan)}
                           >
                             <Edit className="w-3 h-3 mr-1" />
@@ -269,10 +463,16 @@ export default function FloorPlanDesignerPage() {
                     <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
                       <Map className="w-12 h-12 mx-auto mb-4 opacity-50" />
                       <p>Chưa có sơ đồ nào</p>
-                      <Button className="mt-4" onClick={() => setIsCreateDialogOpen(true)}>
-                        <Plus className="w-4 h-4 mr-2" />
-                        Tạo sơ đồ đầu tiên
-                      </Button>
+                      <div className="flex justify-center gap-2 mt-4">
+                        <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
+                          <Upload className="w-4 h-4 mr-2" />
+                          Import từ JSON
+                        </Button>
+                        <Button onClick={() => setIsCreateDialogOpen(true)}>
+                          <Plus className="w-4 h-4 mr-2" />
+                          Tạo sơ đồ đầu tiên
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 )}
@@ -319,6 +519,70 @@ export default function FloorPlanDesignerPage() {
               </Button>
               <Button onClick={handleCreatePlan} disabled={createMutation.isPending}>
                 Tạo mới
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Import dialog */}
+        <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <FileJson className="w-5 h-5" />
+                Import sơ đồ từ JSON
+              </DialogTitle>
+              <DialogDescription>
+                File: {importFileName}
+              </DialogDescription>
+            </DialogHeader>
+            {importData && (
+              <div className="space-y-4">
+                <div className="p-4 bg-muted rounded-lg space-y-2">
+                  <p><strong>Tên gốc:</strong> {importData.name}</p>
+                  <p><strong>Kích thước:</strong> {importData.width} x {importData.height}</p>
+                  <p><strong>Số đối tượng:</strong> {importData.items.length}</p>
+                  {importData.exportedAt && (
+                    <p><strong>Xuất lúc:</strong> {new Date(importData.exportedAt).toLocaleString('vi-VN')}</p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label>Tên sơ đồ mới</Label>
+                  <Input
+                    value={newPlanName}
+                    onChange={(e) => setNewPlanName(e.target.value)}
+                    placeholder="VD: Sơ đồ nhà máy A"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Dây chuyền (tùy chọn)</Label>
+                  <Select value={newPlanLineId} onValueChange={setNewPlanLineId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Chọn dây chuyền" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Không chọn</SelectItem>
+                      {productionLines?.map((line: any) => (
+                        <SelectItem key={line.id} value={String(line.id)}>
+                          {line.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => {
+                setIsImportDialogOpen(false);
+                setImportData(null);
+                setImportFileName('');
+              }}>
+                Hủy
+              </Button>
+              <Button onClick={handleImportLayout} disabled={createMutation.isPending}>
+                <Upload className="w-4 h-4 mr-2" />
+                Import
               </Button>
             </DialogFooter>
           </DialogContent>

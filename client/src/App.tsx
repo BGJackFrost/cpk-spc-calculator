@@ -227,6 +227,8 @@ import IoTFloorPlan from "./pages/IoTFloorPlan";
 import FloorPlanDesignerPage from "./pages/FloorPlanDesignerPage";
 import AlertWebhookSettings from "./pages/AlertWebhookSettings";
 import IoTUnifiedDashboard from "./pages/IoTUnifiedDashboard";
+import WebhookEscalationPage from "./pages/WebhookEscalationPage";
+import LatencyMonitoringPage from "./pages/LatencyMonitoringPage";
 
 function Router() {
   return (
@@ -453,6 +455,8 @@ function Router() {
       <Route path="/floor-plan-designer" component={FloorPlanDesignerPage} />
       <Route path="/alert-webhook-settings" component={AlertWebhookSettings} />
       <Route path="/iot-unified-dashboard" component={IoTUnifiedDashboard} />
+      <Route path="/webhook-escalation" component={WebhookEscalationPage} />
+      <Route path="/latency-monitoring" component={LatencyMonitoringPage} />
       <Route path="/ai-model-performance" component={AiModelPerformance} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />

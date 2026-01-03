@@ -190,7 +190,9 @@
     "opcuaConnections": "Kết nối OPC-UA",
     "iotAlarmThreshold": "Ngưỡng Cảnh báo IoT",
     "telegramSettings": "Cài đặt Telegram",
-    "alertWebhookSettings": "Cấu hình Webhook Cảnh báo"
+    "alertWebhookSettings": "Cấu hình Webhook Cảnh báo",
+    "webhookEscalation": "Webhook Escalation",
+    "latencyMonitoring": "Giám sát Độ trễ"
   },
   "dashboard": {
     "welcome": "Xin chào",
