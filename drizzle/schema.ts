@@ -3833,3 +3833,84 @@ export const machineDowntimeRecords = mysqlTable("machine_downtime_records", {
 	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
 	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
 });
+
+
+// Alert Webhook Configurations - Multi-channel notifications
+export const alertWebhookConfigs = mysqlTable("alert_webhook_configs", {
+	id: int().autoincrement().notNull(),
+	name: varchar({ length: 100 }).notNull(),
+	description: text(),
+	channelType: mysqlEnum("channel_type", ['slack', 'teams', 'email', 'discord', 'custom']).notNull(),
+	webhookUrl: varchar("webhook_url", { length: 500 }),
+	// For email channel
+	emailRecipients: json("email_recipients"), // Array of email addresses
+	emailSubjectTemplate: varchar("email_subject_template", { length: 255 }),
+	// For Slack
+	slackChannel: varchar("slack_channel", { length: 100 }),
+	slackBotToken: varchar("slack_bot_token", { length: 255 }),
+	// For Teams
+	teamsWebhookUrl: varchar("teams_webhook_url", { length: 500 }),
+	// Alert types to trigger
+	alertTypes: json("alert_types"), // Array of alert types: ['cpk_warning', 'cpk_critical', 'spc_violation', 'machine_down', 'iot_alarm']
+	// Filters
+	productionLineIds: json("production_line_ids"), // Filter by production lines
+	machineIds: json("machine_ids"), // Filter by machines
+	minSeverity: mysqlEnum("min_severity", ['info', 'warning', 'critical']).default('warning').notNull(),
+	// Rate limiting
+	rateLimitMinutes: int("rate_limit_minutes").default(5), // Min minutes between alerts
+	lastAlertSentAt: timestamp("last_alert_sent_at", { mode: 'string' }),
+	// Status
+	isActive: int("is_active").default(1).notNull(),
+	testMode: int("test_mode").default(0).notNull(),
+	// Metadata
+	createdBy: int("created_by"),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+// Alert Webhook Logs - Track sent notifications
+export const alertWebhookLogs = mysqlTable("alert_webhook_logs", {
+	id: int().autoincrement().notNull(),
+	webhookConfigId: int("webhook_config_id").notNull(),
+	alertType: varchar("alert_type", { length: 50 }).notNull(),
+	alertTitle: varchar("alert_title", { length: 255 }).notNull(),
+	alertMessage: text("alert_message"),
+	alertData: json("alert_data"),
+	channelType: varchar("channel_type", { length: 20 }).notNull(),
+	recipientInfo: varchar("recipient_info", { length: 255 }), // Channel/email/etc
+	status: mysqlEnum(['pending', 'sent', 'failed', 'rate_limited']).default('pending').notNull(),
+	responseCode: int("response_code"),
+	responseBody: text("response_body"),
+	errorMessage: text("error_message"),
+	sentAt: timestamp("sent_at", { mode: 'string' }),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+	index("idx_webhook_config").on(table.webhookConfigId),
+	index("idx_alert_type").on(table.alertType),
+	index("idx_created_at").on(table.createdAt),
+]);
+
+// Floor Plan Items - Detailed items for designer
+export const floorPlanItems = mysqlTable("floor_plan_items", {
+	id: int().autoincrement().notNull(),
+	floorPlanId: int("floor_plan_id").notNull(),
+	itemType: mysqlEnum("item_type", ['machine', 'workstation', 'conveyor', 'storage', 'wall', 'door', 'custom']).notNull(),
+	name: varchar({ length: 100 }).notNull(),
+	x: int().default(0).notNull(),
+	y: int().default(0).notNull(),
+	width: int().default(80).notNull(),
+	height: int().default(60).notNull(),
+	rotation: int().default(0).notNull(),
+	color: varchar({ length: 20 }).default('#3b82f6'),
+	machineId: int("machine_id"), // Link to actual machine
+	metadata: json(),
+	zIndex: int("z_index").default(1).notNull(),
+	isLocked: int("is_locked").default(0).notNull(),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("idx_floor_plan").on(table.floorPlanId),
+	index("idx_machine").on(table.machineId),
+]);

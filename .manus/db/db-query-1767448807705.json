@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS alert_webhook_logs (\n  id INT AUTO_INCREMENT NOT NULL,\n  webhook_config_id INT NOT NULL,\n  alert_type VARCHAR(50) NOT NULL,\n  alert_title VARCHAR(255) NOT NULL,\n  alert_message TEXT,\n  alert_data JSON,\n  channel_type VARCHAR(20) NOT NULL,\n  recipient_info VARCHAR(255),\n  status ENUM('pending', 'sent', 'failed', 'rate_limited') DEFAULT 'pending' NOT NULL,\n  response_code INT,\n  response_body TEXT,\n  error_message TEXT,\n  sent_at TIMESTAMP NULL,\n  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,\n  PRIMARY KEY (id),\n  INDEX idx_webhook_config (webhook_config_id),\n  INDEX idx_alert_type (alert_type),\n  INDEX idx_created_at (created_at)\n)",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute CREATE TABLE IF NOT EXISTS alert_webhook_logs (\n  id INT AUTO_INCREMENT NOT NULL,\n  webhook_config_id INT NOT NULL,\n  alert_type VARCHAR(50) NOT NULL,\n  alert_title VARCHAR(255) NOT NULL,\n  alert_message TEXT,\n  alert_data JSON,\n  channel_type VARCHAR(20) NOT NULL,\n  recipient_info VARCHAR(255),\n  status ENUM('pending', 'sent', 'failed', 'rate_limited') DEFAULT 'pending' NOT NULL,\n  response_code INT,\n  response_body TEXT,\n  error_message TEXT,\n  sent_at TIMESTAMP NULL,\n  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,\n  PRIMARY KEY (id),\n  INDEX idx_webhook_config (webhook_config_id),\n  INDEX idx_alert_type (alert_type),\n  INDEX idx_created_at (created_at)\n)",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1637
+}

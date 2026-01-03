@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS floor_plan_items (\n  id INT AUTO_INCREMENT NOT NULL,\n  floor_plan_id INT NOT NULL,\n  item_type ENUM('machine', 'workstation', 'conveyor', 'storage', 'wall', 'door', 'custom') NOT NULL,\n  name VARCHAR(100) NOT NULL,\n  x INT DEFAULT 0 NOT NULL,\n  y INT DEFAULT 0 NOT NULL,\n  width INT DEFAULT 80 NOT NULL,\n  height INT DEFAULT 60 NOT NULL,\n  rotation INT DEFAULT 0 NOT NULL,\n  color VARCHAR(20) DEFAULT '#3b82f6',\n  machine_id INT,\n  metadata JSON,\n  z_index INT DEFAULT 1 NOT NULL,\n  is_locked INT DEFAULT 0 NOT NULL,\n  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,\n  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL,\n  PRIMARY KEY (id),\n  INDEX idx_floor_plan (floor_plan_id),\n  INDEX idx_machine (machine_id)\n)",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute CREATE TABLE IF NOT EXISTS floor_plan_items (\n  id INT AUTO_INCREMENT NOT NULL,\n  floor_plan_id INT NOT NULL,\n  item_type ENUM('machine', 'workstation', 'conveyor', 'storage', 'wall', 'door', 'custom') NOT NULL,\n  name VARCHAR(100) NOT NULL,\n  x INT DEFAULT 0 NOT NULL,\n  y INT DEFAULT 0 NOT NULL,\n  width INT DEFAULT 80 NOT NULL,\n  height INT DEFAULT 60 NOT NULL,\n  rotation INT DEFAULT 0 NOT NULL,\n  color VARCHAR(20) DEFAULT '#3b82f6',\n  machine_id INT,\n  metadata JSON,\n  z_index INT DEFAULT 1 NOT NULL,\n  is_locked INT DEFAULT 0 NOT NULL,\n  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,\n  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL,\n  PRIMARY KEY (id),\n  INDEX idx_floor_plan (floor_plan_id),\n  INDEX idx_machine (machine_id)\n)",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1643
+}

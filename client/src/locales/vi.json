@@ -178,7 +178,19 @@
     "aiConfig": "Cấu hình AI",
     "aiThresholds": "Ngưỡng AI",
     "aiDataSources": "Nguồn Dữ liệu AI",
-    "aiAuditLogs": "Nhật ký AI"
+    "aiAuditLogs": "Nhật ký AI",
+    "iotDashboard": "Dashboard IoT",
+    "iotRealtimeDashboard": "IoT Realtime",
+    "iotMonitoringRealtime": "Giám sát IoT Realtime",
+    "sensorDashboard": "Dashboard Cảm biến",
+    "iotFloorPlan": "Sơ đồ Nhà máy",
+    "iotUnifiedDashboard": "Dashboard IoT Tổng hợp",
+    "floorPlanDesigner": "Thiết kế Layout",
+    "mqttConnections": "Kết nối MQTT",
+    "opcuaConnections": "Kết nối OPC-UA",
+    "iotAlarmThreshold": "Ngưỡng Cảnh báo IoT",
+    "telegramSettings": "Cài đặt Telegram",
+    "alertWebhookSettings": "Cấu hình Webhook Cảnh báo"
   },
   "dashboard": {
     "welcome": "Xin chào",
@@ -463,6 +475,9 @@
     "aiNlp": "Ngôn ngữ Tự nhiên",
     "aiTraining": "Huấn luyện Model",
     "aiVision": "Thị giác Máy",
-    "aiSettings": "Cài đặt AI"
+    "aiSettings": "Cài đặt AI",
+    "iotOverview": "Tổng quan IoT",
+    "iotConnections": "Kết nối IoT",
+    "iotConfig": "Cấu hình IoT"
   }
 }

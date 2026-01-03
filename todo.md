@@ -7322,3 +7322,26 @@
 - [x] Tạo trang cấu hình Telegram Bot (TelegramSettings.tsx)
 - [x] Tích hợp gửi cảnh báo realtime qua Telegram (7 loại alert)
 - [x] Test gửi tin nhắn Telegram (testConfig mutation)
+
+## Phase 83: IoT Enhancement - Advanced Features
+
+### 1. FloorPlanDesigner với Drag-and-Drop
+- [x] Tạo FloorPlanDesigner component với dnd-kit
+- [x] Thêm palette máy móc/thiết bị để kéo thả
+- [x] Hỗ trợ resize, rotate, snap to grid
+- [x] Lưu/load layout từ database
+- [x] Export layout ra PNG/PDF
+
+### 2. Webhook Integration (Slack, Teams, Email)
+- [x] Tạo alertWebhookService với support Slack, Teams, Email, Discord, Custom
+- [x] Tạo bảng alert_webhook_configs và alert_webhook_logs trong database
+- [x] Tạo trang AlertWebhookSettings để cấu hình
+- [x] Tích hợp webhook vào các alert types (9 loại)
+- [x] Test gửi webhook đến các kênh
+
+### 3. Dashboard Tổng hợp IoT
+- [x] Tạo trang IoTUnifiedDashboard
+- [x] Hiển thị FloorPlan, Pareto, Latency trên cùng màn hình
+- [x] Thêm bộ lọc theo dây chuyền, khoảng thời gian
+- [x] Auto-refresh realtime
+- [x] Export dashboard (placeholder)

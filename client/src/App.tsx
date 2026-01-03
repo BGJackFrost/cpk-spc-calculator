@@ -224,6 +224,9 @@ import AiModelPerformance from "./pages/ai/AiModelPerformance";
 import CacheMonitoringDashboard from "./pages/CacheMonitoringDashboard";
 import TelegramSettings from "./pages/TelegramSettings";
 import IoTFloorPlan from "./pages/IoTFloorPlan";
+import FloorPlanDesignerPage from "./pages/FloorPlanDesignerPage";
+import AlertWebhookSettings from "./pages/AlertWebhookSettings";
+import IoTUnifiedDashboard from "./pages/IoTUnifiedDashboard";
 
 function Router() {
   return (
@@ -447,6 +450,9 @@ function Router() {
       <Route path="/iot-monitoring-realtime" component={IotMonitoringRealtime} />
       <Route path="/telegram-settings" component={TelegramSettings} />
       <Route path="/iot-floor-plan" component={IoTFloorPlan} />
+      <Route path="/floor-plan-designer" component={FloorPlanDesignerPage} />
+      <Route path="/alert-webhook-settings" component={AlertWebhookSettings} />
+      <Route path="/iot-unified-dashboard" component={IoTUnifiedDashboard} />
       <Route path="/ai-model-performance" component={AiModelPerformance} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />

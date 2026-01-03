@@ -37,6 +37,7 @@ import { floorPlanRouter } from "./routers/floorPlanRouter";
 import { notificationRouter } from "./routers/notificationRouter";
 import { aiExportRouter } from "./routers/aiExportRouter";
 import { cacheMonitoringRouter } from "./routers/cacheMonitoringRouter";
+import { alertWebhookRouter } from "./routers/alertWebhookRouter";
 import { triggerLicenseExpiryCheck } from "./scheduledJobs";
 import { triggerWebhooks, testWebhook } from "./webhookService";
 import { storagePut } from "./storage";
@@ -3744,6 +3745,7 @@ const emailNotificationRouter = router({
 });
 
 export const appRouter = router({
+  alertWebhook: alertWebhookRouter,
   system: systemRouter,
   theme: themeRouter,
   databaseConnection: dbConnectionRouter,

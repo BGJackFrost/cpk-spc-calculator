@@ -546,6 +546,8 @@ export const IOT_MENU: SystemMenuConfig = {
         { id: "iot-monitoring-realtime", icon: Activity, labelKey: "nav.iotMonitoringRealtime", path: "/iot-monitoring-realtime", licenseFeature: "iot_realtime" },
         { id: "sensor-dashboard", icon: Thermometer, labelKey: "nav.sensorDashboard", path: "/sensor-dashboard" },
         { id: "iot-floor-plan", icon: Map, labelKey: "nav.iotFloorPlan", path: "/iot-floor-plan" },
+        { id: "iot-unified-dashboard", icon: Gauge, labelKey: "nav.iotUnifiedDashboard", path: "/iot-unified-dashboard" },
+        { id: "floor-plan-designer", icon: Map, labelKey: "nav.floorPlanDesigner", path: "/floor-plan-designer", adminOnly: true },
       ],
     },
     {
@@ -567,6 +569,7 @@ export const IOT_MENU: SystemMenuConfig = {
         { id: "iot-realtime-machine-config", icon: Cpu, labelKey: "nav.realtimeMachineConfig", path: "/realtime-machine-config", adminOnly: true },
         { id: "iot-realtime-history", icon: History, labelKey: "nav.realtimeHistory", path: "/realtime-history" },
         { id: "telegram-settings", icon: MessageSquare, labelKey: "nav.telegramSettings", path: "/telegram-settings", adminOnly: true },
+        { id: "alert-webhook-settings", icon: Webhook, labelKey: "nav.alertWebhookSettings", path: "/alert-webhook-settings", adminOnly: true },
       ],
     },
   ],
