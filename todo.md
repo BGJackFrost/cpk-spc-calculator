@@ -7613,3 +7613,26 @@
 - [x] Alerts screen với filter và mark as read
 - [x] Settings screen với notification settings
 - [x] ChartDetail screen
+
+## Phase 93 - Mobile App Advanced Features
+
+### Test trên thiết bị thực với Expo Go
+- [x] Tạo hướng dẫn cài đặt Expo Go (iOS/Android)
+- [x] Tạo hướng dẫn kết nối mobile app với server
+- [x] Tạo hướng dẫn test push notification trên thiết bị thực
+- [x] Tạo file MOBILE_TESTING_GUIDE.md
+
+### Biometric Authentication
+- [x] Cài đặt expo-local-authentication package
+- [x] Tạo BiometricAuth service
+- [x] Tạo BiometricLock screen
+- [x] Tích hợp vào login flow
+- [x] Lưu biometric settings vào AsyncStorage
+
+### Offline Mode
+- [x] Tạo OfflineStorage service với AsyncStorage
+- [x] Cache dữ liệu charts (CPK, OEE, SPC)
+- [x] Cache danh sách alerts
+- [x] Tạo NetworkStatus context
+- [x] Hiển thị offline indicator
+- [x] Auto-sync khi có mạng trở lại

@@ -11,6 +11,7 @@
   "dependencies": {
     "@expo/vector-icons": "^14.0.0",
     "@react-native-async-storage/async-storage": "1.23.1",
+    "@react-native-community/netinfo": "^11.4.1",
     "@react-navigation/bottom-tabs": "^6.5.20",
     "@react-navigation/native": "^6.1.17",
     "@react-navigation/native-stack": "^6.9.26",
@@ -19,8 +20,10 @@
     "expo-constants": "~16.0.0",
     "expo-device": "~6.0.0",
     "expo-file-system": "~17.0.0",
+    "expo-local-authentication": "^17.0.8",
     "expo-media-library": "~16.0.0",
     "expo-notifications": "~0.28.0",
+    "expo-secure-store": "^15.0.8",
     "expo-sharing": "~12.0.0",
     "expo-status-bar": "~1.12.1",
     "react": "18.2.0",

@@ -10,12 +10,17 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useLatestCpk, useLatestOee } from '../hooks/useChartData';
 import { CpkChartCard, OeeChartCard } from '../components/ChartCard';
+import { useNetwork } from '../contexts/NetworkContext';
+import { OfflineBanner } from '../components/OfflineIndicator';
 
 const Dashboard: React.FC = () => {
   const [refreshing, setRefreshing] = React.useState(false);
+  const { isConnected, isInternetReachable, pendingSyncCount } = useNetwork();
   
   const { data: cpkData, loading: cpkLoading, refetch: refetchCpk } = useLatestCpk();
   const { data: oeeData, loading: oeeLoading, refetch: refetchOee } = useLatestOee();
+
+  const isOffline = !isConnected || isInternetReachable === false;
 
   const onRefresh = React.useCallback(async () => {
     setRefreshing(true);
@@ -39,6 +44,17 @@ const Dashboard: React.FC = () => {
     return '#ef4444';
   };
 
+  const formatLastUpdate = (timestamp?: number): string => {
+    if (!timestamp) return '';
+    const now = Date.now();
+    const diff = now - timestamp;
+    
+    if (diff < 60000) return 'Vừa cập nhật';
+    if (diff < 3600000) return `${Math.floor(diff / 60000)} phút trước`;
+    if (diff < 86400000) return `${Math.floor(diff / 3600000)} giờ trước`;
+    return `${Math.floor(diff / 86400000)} ngày trước`;
+  };
+
   return (
     <ScrollView
       style={styles.container}
@@ -46,12 +62,20 @@ const Dashboard: React.FC = () => {
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
       }
     >
+      {/* Offline Banner */}
+      <OfflineBanner />
+
       {/* Header Stats */}
       <View style={styles.statsContainer}>
         <View style={styles.statCard}>
           <View style={styles.statHeader}>
             <Ionicons name="analytics" size={20} color="#3b82f6" />
             <Text style={styles.statLabel}>CPK</Text>
+            {isOffline && (
+              <View style={styles.offlineBadge}>
+                <Ionicons name="cloud-offline" size={12} color="#f59e0b" />
+              </View>
+            )}
           </View>
           <Text style={[
             styles.statValue,
@@ -68,6 +92,11 @@ const Dashboard: React.FC = () => {
           <View style={styles.statHeader}>
             <Ionicons name="speedometer" size={20} color="#8b5cf6" />
             <Text style={styles.statLabel}>OEE</Text>
+            {isOffline && (
+              <View style={styles.offlineBadge}>
+                <Ionicons name="cloud-offline" size={12} color="#f59e0b" />
+              </View>
+            )}
           </View>
           <Text style={[
             styles.statValue,
@@ -80,6 +109,16 @@ const Dashboard: React.FC = () => {
           </Text>
         </View>
       </View>
+
+      {/* Sync Status */}
+      {pendingSyncCount > 0 && (
+        <View style={styles.syncStatus}>
+          <Ionicons name="sync" size={16} color="#3b82f6" />
+          <Text style={styles.syncStatusText}>
+            {pendingSyncCount} thay đổi chờ đồng bộ
+          </Text>
+        </View>
+      )}
 
       {/* Quick Actions */}
       <View style={styles.actionsContainer}>
@@ -117,7 +156,15 @@ const Dashboard: React.FC = () => {
 
       {/* Charts */}
       <View style={styles.chartsContainer}>
-        <Text style={styles.sectionTitle}>Biểu đồ Realtime</Text>
+        <View style={styles.chartsSectionHeader}>
+          <Text style={styles.sectionTitle}>Biểu đồ Realtime</Text>
+          {isOffline && (
+            <View style={styles.offlineChip}>
+              <Ionicons name="cloud-offline" size={12} color="#f59e0b" />
+              <Text style={styles.offlineChipText}>Dữ liệu offline</Text>
+            </View>
+          )}
+        </View>
         
         <CpkChartCard days={7} showExport={true} />
         
@@ -195,6 +242,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#64748b',
     fontWeight: '500',
+    flex: 1,
+  },
+  offlineBadge: {
+    padding: 4,
   },
   statValue: {
     fontSize: 28,
@@ -204,6 +255,23 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#94a3b8',
     marginTop: 4,
+  },
+  syncStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#eff6ff',
+    marginHorizontal: 16,
+    marginBottom: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    gap: 6,
+  },
+  syncStatusText: {
+    fontSize: 13,
+    color: '#3b82f6',
+    fontWeight: '500',
   },
   actionsContainer: {
     paddingHorizontal: 16,
@@ -239,6 +307,26 @@ const styles = StyleSheet.create({
   chartsContainer: {
     paddingHorizontal: 16,
     marginBottom: 16,
+  },
+  chartsSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  offlineChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fef3c7',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  offlineChipText: {
+    fontSize: 11,
+    color: '#92400e',
+    fontWeight: '500',
   },
   alertsContainer: {
     paddingHorizontal: 16,

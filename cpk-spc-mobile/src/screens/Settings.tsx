@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,20 +7,91 @@ import {
   TouchableOpacity,
   Switch,
   Linking,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
 import { useNotifications } from '../contexts/NotificationContext';
+import { useBiometric } from '../contexts/BiometricContext';
+import { useNetwork } from '../contexts/NetworkContext';
+import {
+  getCacheSize,
+  formatCacheSize,
+  clearAllCache,
+  clearExpiredCache,
+} from '../services/offlineStorage';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const Settings: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
-  const { isRegistered, settings } = useNotifications();
+  const { isRegistered, settings: notificationSettings } = useNotifications();
+  const { isSupported: biometricSupported, settings: biometricSettings, getBiometricName } = useBiometric();
+  const { isConnected, pendingSyncCount, syncPendingChanges, isSyncing } = useNetwork();
+  
+  const [cacheSize, setCacheSize] = useState('0 B');
+  const [autoSync, setAutoSync] = useState(true);
+  const [darkMode, setDarkMode] = useState(false);
+
+  // Load cache size
+  useEffect(() => {
+    const loadCacheSize = async () => {
+      const size = await getCacheSize();
+      setCacheSize(formatCacheSize(size));
+    };
+    loadCacheSize();
+  }, []);
+
+  const handleClearCache = async () => {
+    Alert.alert(
+      'Xóa cache',
+      'Bạn có chắc muốn xóa tất cả dữ liệu đã lưu? Dữ liệu offline sẽ bị mất.',
+      [
+        { text: 'Hủy', style: 'cancel' },
+        {
+          text: 'Xóa',
+          style: 'destructive',
+          onPress: async () => {
+            await clearAllCache();
+            setCacheSize('0 B');
+            Alert.alert('Thành công', 'Đã xóa cache');
+          },
+        },
+      ]
+    );
+  };
+
+  const handleClearExpiredCache = async () => {
+    const cleared = await clearExpiredCache();
+    const size = await getCacheSize();
+    setCacheSize(formatCacheSize(size));
+    Alert.alert('Thành công', `Đã xóa ${cleared} mục cache hết hạn`);
+  };
+
+  const handleSyncNow = async () => {
+    if (!isConnected) {
+      Alert.alert('Không có kết nối', 'Vui lòng kiểm tra kết nối mạng và thử lại.');
+      return;
+    }
+    await syncPendingChanges();
+  };
 
   const settingsSections = [
+    {
+      title: 'Bảo mật',
+      items: [
+        {
+          icon: biometricSettings.enabled ? 'finger-print' : 'lock-closed',
+          label: getBiometricName(),
+          value: biometricSettings.enabled ? 'Đã bật' : 'Đã tắt',
+          onPress: () => navigation.navigate('BiometricSettings'),
+          showArrow: true,
+          disabled: !biometricSupported,
+        },
+      ],
+    },
     {
       title: 'Thông báo',
       items: [
@@ -34,28 +105,55 @@ const Settings: React.FC = () => {
       ],
     },
     {
-      title: 'Kết nối',
+      title: 'Kết nối & Đồng bộ',
       items: [
         {
-          icon: 'server',
-          label: 'Server URL',
-          value: 'https://api.cpkspc.com',
+          icon: isConnected ? 'cloud-done' : 'cloud-offline',
+          label: 'Trạng thái kết nối',
+          value: isConnected ? 'Đã kết nối' : 'Offline',
           onPress: () => {},
-          showArrow: true,
+          status: isConnected ? 'success' : 'warning',
         },
         {
           icon: 'sync',
+          label: 'Đồng bộ ngay',
+          value: pendingSyncCount > 0 ? `${pendingSyncCount} thay đổi chờ` : 'Đã đồng bộ',
+          onPress: handleSyncNow,
+          showArrow: true,
+          loading: isSyncing,
+          disabled: pendingSyncCount === 0 || !isConnected,
+        },
+        {
+          icon: 'refresh-circle',
           label: 'Tự động đồng bộ',
           toggle: true,
-          value: true,
+          value: autoSync,
+          onPress: () => setAutoSync(!autoSync),
+        },
+      ],
+    },
+    {
+      title: 'Dữ liệu Offline',
+      items: [
+        {
+          icon: 'save',
+          label: 'Dữ liệu đã lưu',
+          value: cacheSize,
           onPress: () => {},
         },
         {
-          icon: 'time',
-          label: 'Tần suất cập nhật',
-          value: '30 giây',
-          onPress: () => {},
+          icon: 'trash-bin',
+          label: 'Xóa cache hết hạn',
+          onPress: handleClearExpiredCache,
           showArrow: true,
+        },
+        {
+          icon: 'trash',
+          label: 'Xóa tất cả cache',
+          value: cacheSize,
+          onPress: handleClearCache,
+          showArrow: true,
+          danger: true,
         },
       ],
     },
@@ -66,41 +164,15 @@ const Settings: React.FC = () => {
           icon: 'moon',
           label: 'Chế độ tối',
           toggle: true,
-          value: false,
-          onPress: () => {},
+          value: darkMode,
+          onPress: () => setDarkMode(!darkMode),
         },
         {
           icon: 'language',
           label: 'Ngôn ngữ',
           value: 'Tiếng Việt',
-          onPress: () => {},
+          onPress: () => Alert.alert('Thông báo', 'Tính năng đang phát triển'),
           showArrow: true,
-        },
-        {
-          icon: 'resize',
-          label: 'Cỡ chữ',
-          value: 'Bình thường',
-          onPress: () => {},
-          showArrow: true,
-        },
-      ],
-    },
-    {
-      title: 'Dữ liệu',
-      items: [
-        {
-          icon: 'download',
-          label: 'Xuất dữ liệu',
-          onPress: () => {},
-          showArrow: true,
-        },
-        {
-          icon: 'trash',
-          label: 'Xóa cache',
-          value: '12.5 MB',
-          onPress: () => {},
-          showArrow: true,
-          danger: true,
         },
       ],
     },
@@ -111,19 +183,16 @@ const Settings: React.FC = () => {
           icon: 'information-circle',
           label: 'Về ứng dụng',
           value: 'v1.0.0',
-          onPress: () => {},
+          onPress: () => Alert.alert(
+            'CPK SPC Calculator',
+            'Phiên bản 1.0.0\n\nỨng dụng giám sát và phân tích SPC/CPK cho sản xuất.\n\n© 2024 CPK SPC Team'
+          ),
           showArrow: true,
         },
         {
           icon: 'document-text',
-          label: 'Điều khoản sử dụng',
-          onPress: () => Linking.openURL('https://cpkspc.com/terms'),
-          showArrow: true,
-        },
-        {
-          icon: 'shield-checkmark',
-          label: 'Chính sách bảo mật',
-          onPress: () => Linking.openURL('https://cpkspc.com/privacy'),
+          label: 'Hướng dẫn sử dụng',
+          onPress: () => Linking.openURL('https://cpkspc.com/docs'),
           showArrow: true,
         },
         {
@@ -152,6 +221,16 @@ const Settings: React.FC = () => {
         </TouchableOpacity>
       </View>
 
+      {/* Connection Status Banner */}
+      {!isConnected && (
+        <View style={styles.offlineBanner}>
+          <Ionicons name="cloud-offline" size={20} color="#f59e0b" />
+          <Text style={styles.offlineBannerText}>
+            Đang ở chế độ offline. Dữ liệu sẽ được đồng bộ khi có kết nối.
+          </Text>
+        </View>
+      )}
+
       {/* Settings Sections */}
       {settingsSections.map((section, sectionIndex) => (
         <View key={sectionIndex} style={styles.section}>
@@ -165,27 +244,41 @@ const Settings: React.FC = () => {
                   itemIndex < section.items.length - 1 && styles.settingItemBorder,
                 ]}
                 onPress={item.onPress}
-                disabled={item.toggle}
+                disabled={item.toggle || item.disabled}
               >
                 <View style={[
                   styles.iconContainer,
                   item.danger && styles.iconContainerDanger,
+                  item.status === 'success' && styles.iconContainerSuccess,
+                  item.status === 'warning' && styles.iconContainerWarning,
                 ]}>
                   <Ionicons
                     name={item.icon as keyof typeof Ionicons.glyphMap}
                     size={20}
-                    color={item.danger ? '#ef4444' : '#3b82f6'}
+                    color={
+                      item.danger ? '#ef4444' :
+                      item.status === 'success' ? '#10b981' :
+                      item.status === 'warning' ? '#f59e0b' :
+                      '#3b82f6'
+                    }
                   />
                 </View>
                 <View style={styles.settingContent}>
                   <Text style={[
                     styles.settingLabel,
                     item.danger && styles.settingLabelDanger,
+                    item.disabled && styles.settingLabelDisabled,
                   ]}>
                     {item.label}
                   </Text>
                   {item.value && !item.toggle && (
-                    <Text style={styles.settingValue}>{item.value}</Text>
+                    <Text style={[
+                      styles.settingValue,
+                      item.status === 'success' && styles.settingValueSuccess,
+                      item.status === 'warning' && styles.settingValueWarning,
+                    ]}>
+                      {item.value}
+                    </Text>
                   )}
                 </View>
                 {item.toggle ? (
@@ -267,6 +360,21 @@ const styles = StyleSheet.create({
   editButton: {
     padding: 8,
   },
+  offlineBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fef3c7',
+    marginHorizontal: 16,
+    marginBottom: 16,
+    padding: 12,
+    borderRadius: 8,
+    gap: 8,
+  },
+  offlineBannerText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#92400e',
+  },
   section: {
     marginHorizontal: 16,
     marginBottom: 16,
@@ -309,6 +417,12 @@ const styles = StyleSheet.create({
   iconContainerDanger: {
     backgroundColor: '#fef2f2',
   },
+  iconContainerSuccess: {
+    backgroundColor: '#ecfdf5',
+  },
+  iconContainerWarning: {
+    backgroundColor: '#fffbeb',
+  },
   settingContent: {
     flex: 1,
   },
@@ -320,10 +434,19 @@ const styles = StyleSheet.create({
   settingLabelDanger: {
     color: '#ef4444',
   },
+  settingLabelDisabled: {
+    color: '#94a3b8',
+  },
   settingValue: {
     fontSize: 13,
     color: '#64748b',
     marginTop: 2,
+  },
+  settingValueSuccess: {
+    color: '#10b981',
+  },
+  settingValueWarning: {
+    color: '#f59e0b',
   },
   logoutButton: {
     flexDirection: 'row',

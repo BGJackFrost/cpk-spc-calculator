@@ -6,6 +6,9 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import * as Notifications from 'expo-notifications';
 import { NotificationProvider, useNotifications } from './src/contexts/NotificationContext';
+import { BiometricProvider, useBiometric } from './src/contexts/BiometricContext';
+import { NetworkProvider, useNetwork } from './src/contexts/NetworkContext';
+import { OfflineIndicatorCompact } from './src/components/OfflineIndicator';
 
 // Screens
 import DashboardScreen from './src/screens/Dashboard';
@@ -14,11 +17,14 @@ import AlertsScreen from './src/screens/Alerts';
 import SettingsScreen from './src/screens/Settings';
 import NotificationSettingsScreen from './src/screens/NotificationSettings';
 import ChartDetailScreen from './src/screens/ChartDetail';
+import BiometricLockScreen from './src/screens/BiometricLock';
+import BiometricSettingsScreen from './src/screens/BiometricSettings';
 
 export type RootStackParamList = {
   Main: undefined;
   ChartDetail: { chartType: string; title: string };
   NotificationSettings: undefined;
+  BiometricSettings: undefined;
 };
 
 export type MainTabParamList = {
@@ -31,7 +37,7 @@ export type MainTabParamList = {
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
-// Tab Navigator
+// Tab Navigator with offline indicator
 function MainTabs() {
   return (
     <Tab.Navigator
@@ -77,6 +83,7 @@ function MainTabs() {
         headerTitleStyle: {
           fontWeight: '600',
         },
+        headerRight: () => <OfflineIndicatorCompact />,
       })}
     >
       <Tab.Screen
@@ -103,28 +110,28 @@ function MainTabs() {
   );
 }
 
-// App Navigator with Notification handling
+// App Navigator with Biometric Lock
 function AppNavigator() {
   const { showLocalNotification } = useNotifications();
+  const { isLocked, unlock } = useBiometric();
 
   useEffect(() => {
     // Handle notification received while app is in foreground
     const handleNotification = (notification: Notifications.Notification) => {
       console.log('Notification received:', notification);
-      // You can show an in-app alert or update UI here
     };
 
     // Handle notification response (user tapped notification)
     const handleNotificationResponse = (response: Notifications.NotificationResponse) => {
       const data = response.notification.request.content.data;
       console.log('Notification response:', data);
-      
-      // Navigate based on notification type
-      // You can use navigation ref here to navigate to specific screens
     };
-
-    // These are handled in NotificationProvider, but you can add additional logic here
   }, []);
+
+  // Show biometric lock screen if locked
+  if (isLocked) {
+    return <BiometricLockScreen onUnlock={unlock} />;
+  }
 
   return (
     <Stack.Navigator>
@@ -155,18 +162,47 @@ function AppNavigator() {
           headerTintColor: '#ffffff',
         }}
       />
+      <Stack.Screen
+        name="BiometricSettings"
+        component={BiometricSettingsScreen}
+        options={{
+          title: 'Bảo mật sinh trắc học',
+          headerStyle: {
+            backgroundColor: '#3b82f6',
+          },
+          headerTintColor: '#ffffff',
+        }}
+      />
     </Stack.Navigator>
   );
 }
 
-// Main App
+// Main App with all providers
 export default function App() {
   return (
-    <NotificationProvider>
-      <NavigationContainer>
-        <StatusBar style="light" />
-        <AppNavigator />
-      </NavigationContainer>
-    </NotificationProvider>
+    <NetworkProvider
+      onConnectionRestored={() => {
+        console.log('Connection restored - syncing data...');
+      }}
+      onConnectionLost={() => {
+        console.log('Connection lost - switching to offline mode');
+      }}
+    >
+      <BiometricProvider
+        onLock={() => {
+          console.log('App locked');
+        }}
+        onUnlock={() => {
+          console.log('App unlocked');
+        }}
+      >
+        <NotificationProvider>
+          <NavigationContainer>
+            <StatusBar style="light" />
+            <AppNavigator />
+          </NavigationContainer>
+        </NotificationProvider>
+      </BiometricProvider>
+    </NetworkProvider>
   );
 }
