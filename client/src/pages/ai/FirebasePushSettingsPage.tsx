@@ -153,6 +153,37 @@ export default function FirebasePushSettingsPage() {
                     Nhập thông tin từ Firebase Console để kích hoạt push notification
                   </CardDescription>
                 </CardHeader>
+                
+                {/* Hướng dẫn lấy credentials */}
+                <div className="mx-6 mb-4 p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <h4 className="font-semibold text-blue-800 dark:text-blue-200 mb-2 flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4" />
+                    Hướng dẫn lấy Firebase Credentials
+                  </h4>
+                  <ol className="text-sm text-blue-700 dark:text-blue-300 space-y-2 list-decimal list-inside">
+                    <li>
+                      Truy cập <a href="https://console.firebase.google.com/" target="_blank" rel="noopener noreferrer" className="underline font-medium hover:text-blue-900">Firebase Console</a>
+                    </li>
+                    <li>Chọn hoặc tạo project mới</li>
+                    <li>Vào <strong>Project Settings</strong> (biểu tượng bánh răng)</li>
+                    <li>Chọn tab <strong>Service accounts</strong></li>
+                    <li>Click <strong>"Generate new private key"</strong></li>
+                    <li>Mở file JSON đã tải về và copy các giá trị:</li>
+                  </ol>
+                  <div className="mt-3 p-3 bg-white dark:bg-gray-900 rounded border text-xs font-mono">
+                    <div className="text-gray-600 dark:text-gray-400">{'{'}</div>
+                    <div className="ml-4">
+                      <span className="text-green-600">"project_id"</span>: <span className="text-orange-500">"your-project-id"</span>,
+                    </div>
+                    <div className="ml-4">
+                      <span className="text-green-600">"client_email"</span>: <span className="text-orange-500">"firebase-adminsdk@..."</span>,
+                    </div>
+                    <div className="ml-4">
+                      <span className="text-green-600">"private_key"</span>: <span className="text-orange-500">"-----BEGIN PRIVATE KEY-----\n..."</span>
+                    </div>
+                    <div className="text-gray-600 dark:text-gray-400">{'}'}</div>
+                  </div>
+                </div>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="projectId">Project ID</Label>
@@ -183,7 +214,7 @@ export default function FirebasePushSettingsPage() {
                       onChange={(e) => setPrivateKey(e.target.value)}
                     />
                     <p className="text-xs text-muted-foreground">
-                      Lấy từ file JSON service account trong Firebase Console
+                      Copy nguyên văn từ trường "private_key" trong file JSON (bao gồm cả \n)
                     </p>
                   </div>
                   <div className="flex gap-2">

@@ -7545,3 +7545,13 @@
 - [x] Tạo màn hình Alerts
 - [x] Tạo màn hình Settings
 - [ ] Build APK cho Android
+
+## Phase 91: Firebase, Mobile App & Charts
+
+- [x] Cải thiện trang Firebase Push Settings với hướng dẫn lấy credentials
+- [x] Cài đặt dependencies cho Mobile App
+- [x] Tích hợp react-native-chart-kit cho biểu đồ CPK/SPC
+- [x] Tạo CPK Chart component cho mobile
+- [x] Tạo OEE Chart component cho mobile
+- [ ] Test Mobile App với Expo
+
