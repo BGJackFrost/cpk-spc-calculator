@@ -7636,3 +7636,36 @@
 - [x] Tạo NetworkStatus context
 - [x] Hiển thị offline indicator
 - [x] Auto-sync khi có mạng trở lại
+
+
+## Phase 95: Mobile App Native Features Enhancement
+
+### Android Widget Native (AppWidgetProvider)
+- [x] CpkWidgetProvider.java - Widget provider class với update logic
+- [x] widget_cpk_layout.xml - Layout cho widget với CPK/OEE display
+- [x] cpk_widget_info.xml - Widget configuration metadata
+- [x] CpkWidgetConfigureActivity.java - Activity cấu hình widget
+- [x] CpkWidgetUpdateService.java - Background service cập nhật widget
+
+### iOS Widget Native (WidgetKit)
+- [x] CpkSpcWidget.swift - Widget Entry, Provider, và Views
+- [x] Support cho small, medium widget sizes
+- [x] Timeline provider với auto-refresh
+
+### Firebase Cloud Messaging Server
+- [x] fcmPushService.ts - Enhanced FCM service với alert integration
+- [x] Support cho CPK, SPC, OEE, IoT, Escalation alerts
+- [x] Daily report notification
+- [x] Push notification statistics
+
+### Offline-first Sync
+- [x] localDatabase.ts - SQLite local database với sync queue
+- [x] syncService.ts - Background sync với conflict resolution
+- [x] SyncContext.tsx - React context cho sync state
+- [x] SyncStatusIndicator.tsx - UI components cho sync status
+- [x] Support cho last-write-wins, server-wins, client-wins resolution
+
+### Widget Service Enhancement
+- [x] WidgetService.ts - Enhanced với native bridge integration
+- [x] Background task registration
+- [x] Platform-specific setup instructions
