@@ -7555,3 +7555,61 @@
 - [x] Tạo OEE Chart component cho mobile
 - [ ] Test Mobile App với Expo
 
+
+## Phase 92: Mobile App Enhancement
+
+### Kết nối API Realtime
+- [ ] Tạo API service cho charts data (CPK, OEE, SPC)
+- [ ] Tạo hooks useChartData với auto-refresh
+- [ ] Cập nhật CpkChart để lấy dữ liệu từ API
+- [ ] Cập nhật OeeChart để lấy dữ liệu từ API
+- [ ] Cập nhật SpcControlChart để lấy dữ liệu từ API
+- [ ] Cập nhật HistogramChart để lấy dữ liệu từ API
+
+### Export/Share Biểu đồ
+- [ ] Cài đặt react-native-view-shot để capture biểu đồ
+- [ ] Cài đặt expo-sharing để share file
+- [ ] Tạo ChartExport component với capture và share
+- [ ] Thêm nút Export/Share vào từng biểu đồ
+- [ ] Hỗ trợ export PNG và PDF
+
+### Firebase Cloud Messaging
+- [ ] Cấu hình Firebase project cho mobile app
+- [ ] Tích hợp expo-notifications
+- [ ] Tạo FCM token registration service
+- [ ] Gửi token lên server để lưu trữ
+- [ ] Test push notification từ server
+
+
+
+## Phase 92 - Mobile App Enhancements
+
+### Kết nối biểu đồ với API realtime
+- [x] Tạo API service (api.ts) cho mobile app
+- [x] Tạo hooks useChartData với auto-refresh
+- [x] Tạo CpkChart component với API realtime
+- [x] Tạo OeeChart component với API realtime
+- [x] Tạo SpcControlChart component với API realtime
+- [x] Tạo HistogramChart component với API realtime
+
+### Export/Share biểu đồ
+- [x] Tạo ChartExport component với capture và share
+- [x] Tạo ChartCard wrapper với export buttons
+- [x] Tích hợp expo-sharing và expo-media-library
+- [x] Hỗ trợ save to gallery và share
+
+### Firebase Cloud Messaging
+- [x] Tạo pushNotification service cho mobile
+- [x] Tạo NotificationContext với provider
+- [x] Tạo NotificationSettings screen
+- [x] Tạo database tables (mobile_devices, mobile_notification_settings)
+- [x] Tạo mobileRouter với API endpoints
+- [x] Tạo pushNotificationService cho server
+- [x] Viết unit tests cho mobileRouter (8 tests passed)
+
+### Mobile App Screens
+- [x] Dashboard screen với realtime data
+- [x] Charts screen với tabs CPK/OEE/SPC/Histogram
+- [x] Alerts screen với filter và mark as read
+- [x] Settings screen với notification settings
+- [x] ChartDetail screen

@@ -4267,3 +4267,39 @@ export const firebaseTopicSubscriptions = mysqlTable("firebase_topic_subscriptio
   index("idx_topic_sub_topic").on(table.topicId),
   index("idx_topic_sub_device").on(table.deviceTokenId),
 ]);
+
+
+// Mobile App Tables
+export const mobileDevices = mysqlTable("mobile_devices", {
+  id: int().autoincrement().primaryKey(),
+  userId: int("user_id").notNull(),
+  token: varchar("token", { length: 500 }).notNull(),
+  platform: mysqlEnum("platform", ["ios", "android"]).notNull(),
+  deviceName: varchar("device_name", { length: 255 }),
+  deviceModel: varchar("device_model", { length: 255 }),
+  isActive: int("is_active").default(1).notNull(),
+  lastActiveAt: timestamp("last_active_at", { mode: 'string' }),
+  createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+  index("idx_mobile_devices_user").on(table.userId),
+  index("idx_mobile_devices_token").on(table.token),
+]);
+
+export const mobileNotificationSettings = mysqlTable("mobile_notification_settings", {
+  id: int().autoincrement().primaryKey(),
+  userId: int("user_id").notNull(),
+  enabled: int("enabled").default(1).notNull(),
+  cpkAlerts: int("cpk_alerts").default(1).notNull(),
+  spcAlerts: int("spc_alerts").default(1).notNull(),
+  oeeAlerts: int("oee_alerts").default(1).notNull(),
+  dailyReport: int("daily_report").default(0).notNull(),
+  soundEnabled: int("sound_enabled").default(1).notNull(),
+  vibrationEnabled: int("vibration_enabled").default(1).notNull(),
+  createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+  index("idx_mobile_notification_user").on(table.userId),
+]);
