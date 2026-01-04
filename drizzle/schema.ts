@@ -1,4 +1,4 @@
-import { mysqlTable, mysqlSchema, AnyMySqlColumn, int, varchar, timestamp, index, json, decimal, text, mysqlEnum, datetime, bigint, tinyint } from "drizzle-orm/mysql-core"
+import { mysqlTable, mysqlSchema, AnyMySqlColumn, primaryKey, unique, int, varchar, timestamp, text, json, mysqlEnum, index, double, bigint, float, tinyint, datetime, boolean, decimal } from "drizzle-orm/mysql-core"
 import { sql } from "drizzle-orm"
 
 export const accountLockouts = mysqlTable("account_lockouts", {
@@ -3913,4 +3913,113 @@ export const floorPlanItems = mysqlTable("floor_plan_items", {
 (table) => [
 	index("idx_floor_plan").on(table.floorPlanId),
 	index("idx_machine").on(table.machineId),
+]);
+
+
+// SMS Notification Configuration
+export const smsConfigs = mysqlTable("sms_configs", {
+  id: int().autoincrement().primaryKey(),
+  provider: mysqlEnum("provider", ["twilio", "vonage", "custom"]).default("twilio").notNull(),
+  enabled: boolean("enabled").default(false).notNull(),
+  // Twilio config
+  twilioAccountSid: varchar("twilio_account_sid", { length: 100 }),
+  twilioAuthToken: varchar("twilio_auth_token", { length: 100 }),
+  twilioFromNumber: varchar("twilio_from_number", { length: 20 }),
+  // Vonage config
+  vonageApiKey: varchar("vonage_api_key", { length: 100 }),
+  vonageApiSecret: varchar("vonage_api_secret", { length: 100 }),
+  vonageFromNumber: varchar("vonage_from_number", { length: 20 }),
+  // Custom webhook config
+  customWebhookUrl: varchar("custom_webhook_url", { length: 500 }),
+  customWebhookMethod: varchar("custom_webhook_method", { length: 10 }).default("POST"),
+  customWebhookHeaders: text("custom_webhook_headers"),
+  customWebhookBodyTemplate: text("custom_webhook_body_template"),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+  updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
+});
+
+// SMS Logs
+export const smsLogs = mysqlTable("sms_logs", {
+  id: int().autoincrement().primaryKey(),
+  provider: varchar("provider", { length: 20 }).notNull(),
+  toNumber: varchar("to_number", { length: 20 }).notNull(),
+  message: text("message").notNull(),
+  status: mysqlEnum("status", ["pending", "sent", "failed"]).default("pending").notNull(),
+  messageId: varchar("message_id", { length: 100 }),
+  errorMessage: text("error_message"),
+  alertId: int("alert_id"),
+  escalationLevel: int("escalation_level"),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+},
+(table) => [
+  index("idx_sms_status").on(table.status),
+  index("idx_sms_created_at").on(table.createdAt),
+]);
+
+// Escalation History
+export const escalationHistory = mysqlTable("escalation_history", {
+  id: int().autoincrement().primaryKey(),
+  alertId: int("alert_id"),
+  alertType: varchar("alert_type", { length: 50 }).notNull(),
+  alertTitle: varchar("alert_title", { length: 255 }).notNull(),
+  alertMessage: text("alert_message"),
+  severity: mysqlEnum("severity", ["low", "medium", "high", "critical"]).default("medium").notNull(),
+  status: mysqlEnum("status", ["active", "acknowledged", "resolved", "auto_resolved"]).default("active").notNull(),
+  currentLevel: int("current_level").default(1).notNull(),
+  maxLevel: int("max_level").default(3).notNull(),
+  notificationsSent: int("notifications_sent").default(0).notNull(),
+  acknowledgedAt: bigint("acknowledged_at", { mode: "number" }),
+  acknowledgedBy: int("acknowledged_by"),
+  resolvedAt: bigint("resolved_at", { mode: "number" }),
+  resolvedBy: int("resolved_by"),
+  autoResolvedReason: text("auto_resolved_reason"),
+  notes: text("notes"),
+  metadata: json("metadata"),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+  updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
+},
+(table) => [
+  index("idx_escalation_status").on(table.status),
+  index("idx_escalation_severity").on(table.severity),
+  index("idx_escalation_alert_type").on(table.alertType),
+  index("idx_escalation_created_at").on(table.createdAt),
+]);
+
+// Auto-resolve Configuration
+export const autoResolveConfigs = mysqlTable("auto_resolve_configs", {
+  id: int().autoincrement().primaryKey(),
+  name: varchar("name", { length: 100 }).notNull(),
+  description: text("description"),
+  alertType: varchar("alert_type", { length: 50 }).notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  metricThreshold: double("metric_threshold"),
+  metricOperator: mysqlEnum("metric_operator", ["gt", "gte", "lt", "lte", "eq"]),
+  consecutiveOkCount: int("consecutive_ok_count").default(3).notNull(),
+  autoResolveAfterMinutes: int("auto_resolve_after_minutes").default(30).notNull(),
+  notifyOnAutoResolve: boolean("notify_on_auto_resolve").default(true).notNull(),
+  notificationChannels: varchar("notification_channels", { length: 255 }),
+  createdBy: int("created_by"),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+  updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
+},
+(table) => [
+  index("idx_auto_resolve_alert_type").on(table.alertType),
+  index("idx_auto_resolve_active").on(table.isActive),
+]);
+
+// Auto-resolve Logs
+export const autoResolveLogs = mysqlTable("auto_resolve_logs", {
+  id: int().autoincrement().primaryKey(),
+  configId: int("config_id").notNull(),
+  escalationId: int("escalation_id"),
+  alertType: varchar("alert_type", { length: 50 }).notNull(),
+  reason: text("reason").notNull(),
+  metricValue: double("metric_value"),
+  consecutiveOkCount: int("consecutive_ok_count"),
+  notificationSent: boolean("notification_sent").default(false).notNull(),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+},
+(table) => [
+  index("idx_auto_resolve_log_config").on(table.configId),
+  index("idx_auto_resolve_log_created").on(table.createdAt),
 ]);

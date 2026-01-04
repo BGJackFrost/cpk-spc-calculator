@@ -7385,3 +7385,9 @@
 - [x] Hiển thị P50, P95, P99 theo thời gian
 - [x] Tích hợp vào IoT Dashboard
 - [x] Bộ lọc theo source type và khoảng thời gian
+
+## Phase 87 - COMPLETED: Escalation Enhancement (Jan 4, 2026)
+- [x] SMS notification integration cho escalation levels (Twilio/Vonage)
+- [x] Dashboard tổng hợp escalation history với biểu đồ thống kê
+- [x] Auto-resolve alerts khi metrics trở lại bình thường
+- [x] Unit tests cho SMS, Escalation History và Auto-resolve routers

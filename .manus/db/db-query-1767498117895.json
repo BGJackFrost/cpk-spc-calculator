@@ -1,0 +1,33 @@
+{
+  "query": "SHOW CREATE TABLE sms_configs;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute SHOW CREATE TABLE sms_configs;",
+  "rows": [
+    {
+      "Table": "sms_configs",
+      "Create Table": "CREATE TABLE `sms_configs` ("
+    }
+  ],
+  "messages": [
+    "  `id` int(11) NOT NULL AUTO_INCREMENT,",
+    "  `provider` enum('twilio','vonage','custom') NOT NULL DEFAULT 'twilio',",
+    "  `enabled` int(11) NOT NULL DEFAULT '0',",
+    "  `twilio_account_sid` varchar(100) DEFAULT NULL,",
+    "  `twilio_auth_token` varchar(255) DEFAULT NULL,",
+    "  `twilio_from_number` varchar(20) DEFAULT NULL,",
+    "  `vonage_api_key` varchar(100) DEFAULT NULL,",
+    "  `vonage_api_secret` varchar(255) DEFAULT NULL,",
+    "  `vonage_from_number` varchar(20) DEFAULT NULL,",
+    "  `custom_webhook_url` varchar(500) DEFAULT NULL,",
+    "  `custom_webhook_method` enum('GET','POST') DEFAULT 'POST',",
+    "  `custom_webhook_headers` text DEFAULT NULL,",
+    "  `custom_webhook_body_template` text DEFAULT NULL,",
+    "  `created_by` int(11) DEFAULT NULL,",
+    "  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,",
+    "  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,",
+    "  PRIMARY KEY (`id`) /*T![clustered_index] CLUSTERED */",
+    ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin"
+  ],
+  "stdout": "Table\tCreate Table\nsms_configs\tCREATE TABLE `sms_configs` (\n  `id` int(11) NOT NULL AUTO_INCREMENT,\n  `provider` enum('twilio','vonage','custom') NOT NULL DEFAULT 'twilio',\n  `enabled` int(11) NOT NULL DEFAULT '0',\n  `twilio_account_sid` varchar(100) DEFAULT NULL,\n  `twilio_auth_token` varchar(255) DEFAULT NULL,\n  `twilio_from_number` varchar(20) DEFAULT NULL,\n  `vonage_api_key` varchar(100) DEFAULT NULL,\n  `vonage_api_secret` varchar(255) DEFAULT NULL,\n  `vonage_from_number` varchar(20) DEFAULT NULL,\n  `custom_webhook_url` varchar(500) DEFAULT NULL,\n  `custom_webhook_method` enum('GET','POST') DEFAULT 'POST',\n  `custom_webhook_headers` text DEFAULT NULL,\n  `custom_webhook_body_template` text DEFAULT NULL,\n  `created_by` int(11) DEFAULT NULL,\n  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`) /*T![clustered_index] CLUSTERED */\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin\n",
+  "stderr": "",
+  "execution_time_ms": 1519
+}

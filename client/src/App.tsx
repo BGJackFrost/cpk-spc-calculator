@@ -230,6 +230,9 @@ import IoTUnifiedDashboard from "./pages/IoTUnifiedDashboard";
 import WebhookEscalationPage from "./pages/WebhookEscalationPage";
 import LatencyMonitoringPage from "./pages/LatencyMonitoringPage";
 import EscalationConfigPage from "./pages/EscalationConfigPage";
+import SmsSettings from "./pages/SmsSettings";
+import EscalationDashboard from "./pages/EscalationDashboard";
+import AutoResolveSettings from "./pages/AutoResolveSettings";
 
 function Router() {
   return (
@@ -458,6 +461,9 @@ function Router() {
       <Route path="/iot-unified-dashboard" component={IoTUnifiedDashboard} />
       <Route path="/webhook-escalation" component={WebhookEscalationPage} />
       <Route path="/escalation-config" component={EscalationConfigPage} />
+      <Route path="/sms-settings" component={SmsSettings} />
+      <Route path="/escalation-dashboard" component={EscalationDashboard} />
+      <Route path="/auto-resolve-settings" component={AutoResolveSettings} />
       <Route path="/latency-monitoring" component={LatencyMonitoringPage} />
       <Route path="/ai-model-performance" component={AiModelPerformance} />
       <Route path="/404" component={NotFound} />

@@ -38,6 +38,9 @@ import { notificationRouter } from "./routers/notificationRouter";
 import { aiExportRouter } from "./routers/aiExportRouter";
 import { cacheMonitoringRouter } from "./routers/cacheMonitoringRouter";
 import { alertWebhookRouter } from "./routers/alertWebhookRouter";
+import { smsRouter } from "./routers/smsRouter";
+import { escalationHistoryRouter } from "./routers/escalationHistoryRouter";
+import { autoResolveRouter } from "./routers/autoResolveRouter";
 import { triggerLicenseExpiryCheck } from "./scheduledJobs";
 import { triggerWebhooks, testWebhook } from "./webhookService";
 import { storagePut } from "./storage";
@@ -11250,6 +11253,12 @@ Hãy trả về JSON với format:
   aiExport: aiExportRouter,
   // Cache Monitoring - Monitor and manage cache
   cacheMonitoring: cacheMonitoringRouter,
+  // SMS Notification
+  sms: smsRouter,
+  // Escalation History Dashboard
+  escalationHistory: escalationHistoryRouter,
+  // Auto-resolve Configuration
+  autoResolve: autoResolveRouter,
   // Telegram Bot Integration
   telegram: telegramRouter,
   // Floor Plan Management

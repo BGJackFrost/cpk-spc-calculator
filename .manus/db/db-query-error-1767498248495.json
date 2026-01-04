@@ -1,0 +1,8 @@
+{
+  "query": "ALTER TABLE escalation_history ADD COLUMN updated_at BIGINT;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute ALTER TABLE escalation_history ADD COLUMN updated_at BIGINT;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1060 (42S21) at line 1: Duplicate column name 'updated_at'"
+  ]
+}

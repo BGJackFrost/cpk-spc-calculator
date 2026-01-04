@@ -242,6 +242,9 @@ const fallbackLabelsVi: Record<string, string> = {
   "nav.opcuaConnections": "Kết nối OPC-UA",
   "nav.iotAlarmThreshold": "Ngưỡng Cảnh báo IoT",
   "nav.cacheMonitoring": "Giám sát Cache",
+  "nav.smsNotificationSettings": "Cấu hình SMS",
+  "nav.escalationDashboard": "Dashboard Escalation",
+  "nav.autoResolveSettings": "Cấu hình Auto-resolve",
 };
 
 const fallbackLabelsEn: Record<string, string> = {
@@ -434,6 +437,9 @@ const fallbackLabelsEn: Record<string, string> = {
   "nav.opcuaConnections": "OPC-UA Connections",
   "nav.iotAlarmThreshold": "IoT Alarm Thresholds",
   "nav.cacheMonitoring": "Cache Monitoring",
+  "nav.smsNotificationSettings": "SMS Settings",
+  "nav.escalationDashboard": "Escalation Dashboard",
+  "nav.autoResolveSettings": "Auto-resolve Settings",
 };
 
 const MIN_WIDTH = 200;
