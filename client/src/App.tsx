@@ -233,6 +233,9 @@ import EscalationConfigPage from "./pages/EscalationConfigPage";
 import SmsSettings from "./pages/SmsSettings";
 import EscalationDashboard from "./pages/EscalationDashboard";
 import AutoResolveSettings from "./pages/AutoResolveSettings";
+import EscalationWebhookSettings from "./pages/EscalationWebhookSettings";
+import EscalationTemplates from "./pages/EscalationTemplates";
+import EscalationReports from "./pages/EscalationReports";
 
 function Router() {
   return (
@@ -464,6 +467,9 @@ function Router() {
       <Route path="/sms-settings" component={SmsSettings} />
       <Route path="/escalation-dashboard" component={EscalationDashboard} />
       <Route path="/auto-resolve-settings" component={AutoResolveSettings} />
+      <Route path="/escalation-webhook-settings" component={EscalationWebhookSettings} />
+      <Route path="/escalation-templates" component={EscalationTemplates} />
+      <Route path="/escalation-reports" component={EscalationReports} />
       <Route path="/latency-monitoring" component={LatencyMonitoringPage} />
       <Route path="/ai-model-performance" component={AiModelPerformance} />
       <Route path="/404" component={NotFound} />

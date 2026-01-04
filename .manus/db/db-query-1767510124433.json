@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS escalation_webhook_configs (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  name VARCHAR(100) NOT NULL,\n  description TEXT,\n  channel_type ENUM('slack', 'teams', 'discord', 'custom') NOT NULL,\n  webhook_url VARCHAR(500) NOT NULL,\n  slack_channel VARCHAR(100),\n  slack_mentions TEXT,\n  teams_title VARCHAR(200),\n  custom_headers TEXT,\n  custom_body_template TEXT,\n  include_details BOOLEAN DEFAULT TRUE NOT NULL,\n  include_chart BOOLEAN DEFAULT FALSE NOT NULL,\n  is_active BOOLEAN DEFAULT TRUE NOT NULL,\n  created_by INT,\n  created_at BIGINT NOT NULL,\n  updated_at BIGINT NOT NULL,\n  INDEX idx_webhook_config_active (is_active),\n  INDEX idx_webhook_config_type (channel_type)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute CREATE TABLE IF NOT EXISTS escalation_webhook_configs (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  name VARCHAR(100) NOT NULL,\n  description TEXT,\n  channel_type ENUM('slack', 'teams', 'discord', 'custom') NOT NULL,\n  webhook_url VARCHAR(500) NOT NULL,\n  slack_channel VARCHAR(100),\n  slack_mentions TEXT,\n  teams_title VARCHAR(200),\n  custom_headers TEXT,\n  custom_body_template TEXT,\n  include_details BOOLEAN DEFAULT TRUE NOT NULL,\n  include_chart BOOLEAN DEFAULT FALSE NOT NULL,\n  is_active BOOLEAN DEFAULT TRUE NOT NULL,\n  created_by INT,\n  created_at BIGINT NOT NULL,\n  updated_at BIGINT NOT NULL,\n  INDEX idx_webhook_config_active (is_active),\n  INDEX idx_webhook_config_type (channel_type)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1612
+}

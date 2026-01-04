@@ -41,6 +41,9 @@ import { alertWebhookRouter } from "./routers/alertWebhookRouter";
 import { smsRouter } from "./routers/smsRouter";
 import { escalationHistoryRouter } from "./routers/escalationHistoryRouter";
 import { autoResolveRouter } from "./routers/autoResolveRouter";
+import { escalationWebhookRouter } from "./routers/escalationWebhookRouter";
+import { escalationTemplateRouter } from "./routers/escalationTemplateRouter";
+import { escalationReportRouter } from "./routers/escalationReportRouter";
 import { triggerLicenseExpiryCheck } from "./scheduledJobs";
 import { triggerWebhooks, testWebhook } from "./webhookService";
 import { storagePut } from "./storage";
@@ -11259,6 +11262,12 @@ Hãy trả về JSON với format:
   escalationHistory: escalationHistoryRouter,
   // Auto-resolve Configuration
   autoResolve: autoResolveRouter,
+  // Escalation Webhook (Slack, Teams, Discord)
+  escalationWebhook: escalationWebhookRouter,
+  // Escalation Templates
+  escalationTemplate: escalationTemplateRouter,
+  // Escalation Reports
+  escalationReport: escalationReportRouter,
   // Telegram Bot Integration
   telegram: telegramRouter,
   // Floor Plan Management

@@ -4023,3 +4023,138 @@ export const autoResolveLogs = mysqlTable("auto_resolve_logs", {
   index("idx_auto_resolve_log_config").on(table.configId),
   index("idx_auto_resolve_log_created").on(table.createdAt),
 ]);
+
+
+// Escalation Webhook Configs
+export const escalationWebhookConfigs = mysqlTable("escalation_webhook_configs", {
+  id: int().autoincrement().primaryKey(),
+  name: varchar("name", { length: 100 }).notNull(),
+  description: text("description"),
+  channelType: mysqlEnum("channel_type", ["slack", "teams", "discord", "custom"]).notNull(),
+  webhookUrl: varchar("webhook_url", { length: 500 }).notNull(),
+  slackChannel: varchar("slack_channel", { length: 100 }),
+  slackMentions: text("slack_mentions"),
+  teamsTitle: varchar("teams_title", { length: 200 }),
+  customHeaders: text("custom_headers"),
+  customBodyTemplate: text("custom_body_template"),
+  includeDetails: boolean("include_details").default(true).notNull(),
+  includeChart: boolean("include_chart").default(false).notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdBy: int("created_by"),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+  updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
+},
+(table) => [
+  index("idx_webhook_config_active").on(table.isActive),
+  index("idx_webhook_config_type").on(table.channelType),
+]);
+
+// Escalation Webhook Logs
+export const escalationWebhookLogs = mysqlTable("escalation_webhook_logs", {
+  id: int().autoincrement().primaryKey(),
+  webhookConfigId: int("webhook_config_id").notNull(),
+  escalationHistoryId: int("escalation_history_id"),
+  escalationLevel: int("escalation_level").notNull(),
+  alertType: varchar("alert_type", { length: 50 }).notNull(),
+  alertTitle: varchar("alert_title", { length: 255 }).notNull(),
+  alertMessage: text("alert_message"),
+  channelType: varchar("channel_type", { length: 20 }).notNull(),
+  requestPayload: text("request_payload"),
+  responseStatus: int("response_status"),
+  responseBody: text("response_body"),
+  success: boolean("success").default(false).notNull(),
+  errorMessage: text("error_message"),
+  sentAt: bigint("sent_at", { mode: "number" }).notNull(),
+},
+(table) => [
+  index("idx_webhook_log_config").on(table.webhookConfigId),
+  index("idx_webhook_log_escalation").on(table.escalationHistoryId),
+  index("idx_webhook_log_sent").on(table.sentAt),
+]);
+
+// Escalation Templates
+export const escalationTemplates = mysqlTable("escalation_templates", {
+  id: int().autoincrement().primaryKey(),
+  name: varchar("name", { length: 100 }).notNull(),
+  description: text("description"),
+  level1TimeoutMinutes: int("level1_timeout_minutes").default(15).notNull(),
+  level1Emails: text("level1_emails"),
+  level1Webhooks: text("level1_webhooks"),
+  level1SmsEnabled: boolean("level1_sms_enabled").default(false).notNull(),
+  level1SmsPhones: text("level1_sms_phones"),
+  level2TimeoutMinutes: int("level2_timeout_minutes").default(30).notNull(),
+  level2Emails: text("level2_emails"),
+  level2Webhooks: text("level2_webhooks"),
+  level2SmsEnabled: boolean("level2_sms_enabled").default(false).notNull(),
+  level2SmsPhones: text("level2_sms_phones"),
+  level3TimeoutMinutes: int("level3_timeout_minutes").default(60).notNull(),
+  level3Emails: text("level3_emails"),
+  level3Webhooks: text("level3_webhooks"),
+  level3SmsEnabled: boolean("level3_sms_enabled").default(false).notNull(),
+  level3SmsPhones: text("level3_sms_phones"),
+  alertTypes: text("alert_types"),
+  productionLineIds: text("production_line_ids"),
+  machineIds: text("machine_ids"),
+  isDefault: boolean("is_default").default(false).notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdBy: int("created_by"),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+  updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
+},
+(table) => [
+  index("idx_template_active").on(table.isActive),
+  index("idx_template_default").on(table.isDefault),
+]);
+
+// Escalation Report Configs
+export const escalationReportConfigs = mysqlTable("escalation_report_configs", {
+  id: int().autoincrement().primaryKey(),
+  name: varchar("name", { length: 100 }).notNull(),
+  description: text("description"),
+  frequency: mysqlEnum("frequency", ["daily", "weekly", "monthly"]).notNull(),
+  dayOfWeek: int("day_of_week"),
+  dayOfMonth: int("day_of_month"),
+  timeOfDay: varchar("time_of_day", { length: 10 }).notNull(),
+  timezone: varchar("timezone", { length: 50 }).default("Asia/Ho_Chi_Minh").notNull(),
+  emailRecipients: text("email_recipients"),
+  webhookConfigIds: text("webhook_config_ids"),
+  includeStats: boolean("include_stats").default(true).notNull(),
+  includeTopAlerts: boolean("include_top_alerts").default(true).notNull(),
+  includeResolvedAlerts: boolean("include_resolved_alerts").default(true).notNull(),
+  includeTrends: boolean("include_trends").default(true).notNull(),
+  alertTypes: text("alert_types"),
+  productionLineIds: text("production_line_ids"),
+  isActive: boolean("is_active").default(true).notNull(),
+  lastRunAt: bigint("last_run_at", { mode: "number" }),
+  nextRunAt: bigint("next_run_at", { mode: "number" }),
+  createdBy: int("created_by"),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+  updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
+},
+(table) => [
+  index("idx_report_config_active").on(table.isActive),
+  index("idx_report_config_next_run").on(table.nextRunAt),
+]);
+
+// Escalation Report History
+export const escalationReportHistory = mysqlTable("escalation_report_history", {
+  id: int().autoincrement().primaryKey(),
+  configId: int("config_id").notNull(),
+  reportPeriodStart: bigint("report_period_start", { mode: "number" }).notNull(),
+  reportPeriodEnd: bigint("report_period_end", { mode: "number" }).notNull(),
+  totalAlerts: int("total_alerts").default(0).notNull(),
+  resolvedAlerts: int("resolved_alerts").default(0).notNull(),
+  pendingAlerts: int("pending_alerts").default(0).notNull(),
+  avgResolutionTimeMinutes: int("avg_resolution_time_minutes"),
+  emailsSent: int("emails_sent").default(0).notNull(),
+  webhooksSent: int("webhooks_sent").default(0).notNull(),
+  status: mysqlEnum("status", ["sent", "partial", "failed"]).notNull(),
+  errorMessage: text("error_message"),
+  reportData: text("report_data"),
+  sentAt: bigint("sent_at", { mode: "number" }).notNull(),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+},
+(table) => [
+  index("idx_report_history_config").on(table.configId),
+  index("idx_report_history_sent").on(table.sentAt),
+]);

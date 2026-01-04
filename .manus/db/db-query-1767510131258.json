@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS escalation_webhook_logs (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  webhook_config_id INT NOT NULL,\n  escalation_history_id INT,\n  escalation_level INT NOT NULL,\n  alert_type VARCHAR(50) NOT NULL,\n  alert_title VARCHAR(255) NOT NULL,\n  alert_message TEXT,\n  channel_type VARCHAR(20) NOT NULL,\n  request_payload TEXT,\n  response_status INT,\n  response_body TEXT,\n  success BOOLEAN DEFAULT FALSE NOT NULL,\n  error_message TEXT,\n  sent_at BIGINT NOT NULL,\n  INDEX idx_webhook_log_config (webhook_config_id),\n  INDEX idx_webhook_log_escalation (escalation_history_id),\n  INDEX idx_webhook_log_sent (sent_at)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute CREATE TABLE IF NOT EXISTS escalation_webhook_logs (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  webhook_config_id INT NOT NULL,\n  escalation_history_id INT,\n  escalation_level INT NOT NULL,\n  alert_type VARCHAR(50) NOT NULL,\n  alert_title VARCHAR(255) NOT NULL,\n  alert_message TEXT,\n  channel_type VARCHAR(20) NOT NULL,\n  request_payload TEXT,\n  response_status INT,\n  response_body TEXT,\n  success BOOLEAN DEFAULT FALSE NOT NULL,\n  error_message TEXT,\n  sent_at BIGINT NOT NULL,\n  INDEX idx_webhook_log_config (webhook_config_id),\n  INDEX idx_webhook_log_escalation (escalation_history_id),\n  INDEX idx_webhook_log_sent (sent_at)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1519
+}
