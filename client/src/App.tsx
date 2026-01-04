@@ -237,6 +237,9 @@ import AutoResolveSettings from "./pages/AutoResolveSettings";
 import EscalationWebhookSettings from "./pages/EscalationWebhookSettings";
 import EscalationTemplates from "./pages/EscalationTemplates";
 import EscalationReports from "./pages/EscalationReports";
+import WidgetConfigScreen from "./pages/WidgetConfigScreen";
+import ConflictResolutionScreen from "./pages/ConflictResolutionScreen";
+import PushNotificationSettings from "./pages/PushNotificationSettings";
 
 function Router() {
   return (
@@ -473,6 +476,9 @@ function Router() {
       <Route path="/escalation-templates" component={EscalationTemplates} />
       <Route path="/escalation-reports" component={EscalationReports} />
       <Route path="/latency-monitoring" component={LatencyMonitoringPage} />
+      <Route path="/widget-config" component={WidgetConfigScreen} />
+      <Route path="/conflict-resolution" component={ConflictResolutionScreen} />
+      <Route path="/push-notification-settings" component={PushNotificationSettings} />
       <Route path="/ai-model-performance" component={AiModelPerformance} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />

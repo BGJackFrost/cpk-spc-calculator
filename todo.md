@@ -3271,7 +3271,7 @@
 - [ ] Phát hiện OEE giảm mạnh (> 10% so với tuần trước)
 - [ ] Gửi email tự động cho quản lý khi phát hiện cảnh báo
 - [ ] Scheduled job kiểm tra OEE định kỳ (mỗi giờ)
-- [ ] Cấu hình ngưỡng cảnh báo và danh sách email nhận
+- [x] Cấu hình ngưỡng cảnh báo và danh sách email nhận
 
 ### 3. Dashboard so sánh CPK với dự báo xu hướng
 - [ ] Tạo trang CpkComparisonDashboard.tsx
@@ -7669,3 +7669,29 @@
 - [x] WidgetService.ts - Enhanced với native bridge integration
 - [x] Background task registration
 - [x] Platform-specific setup instructions
+
+## Phase 96: Mobile App Advanced UI Features
+
+### Widget Configuration Screen
+- [x] WidgetConfigScreen.tsx - Màn hình cấu hình widget
+- [x] Chọn dây chuyền sản xuất muốn theo dõi
+- [x] Chọn sản phẩm muốn theo dõi
+- [x] Chọn loại metric hiển thị (CPK/OEE/Both)
+- [x] Cấu hình refresh interval
+- [x] Lưu cấu hình vào AsyncStorage
+
+### Conflict Resolution UI
+- [x] ConflictResolutionScreen.tsx - Màn hình xử lý xung đột
+- [x] Hiển thị danh sách conflicts pending
+- [x] So sánh local vs server data
+- [x] Nút chọn Keep Local / Keep Server / Merge
+- [x] Batch resolve cho nhiều conflicts
+- [x] Hiển thị lịch sử resolved conflicts
+
+### Push Notification Settings
+- [x] NotificationSettingsScreen.tsx - Màn hình cài đặt notification
+- [x] Toggle cho từng loại notification (CPK, OEE, SPC, IoT, Escalation)
+- [x] Cấu hình ngưỡng cảnh báo
+- [x] Quiet hours setting
+- [x] Test notification button
+- [x] Lưu settings vào server

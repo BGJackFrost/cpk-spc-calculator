@@ -245,6 +245,9 @@ const fallbackLabelsVi: Record<string, string> = {
   "nav.smsNotificationSettings": "Cấu hình SMS",
   "nav.escalationDashboard": "Dashboard Escalation",
   "nav.autoResolveSettings": "Cấu hình Auto-resolve",
+  "nav.pushNotificationSettings": "Cài đặt Push Notification",
+  "nav.widgetConfig": "Cấu hình Widget",
+  "nav.conflictResolution": "Xử lý Xung đột",
 };
 
 const fallbackLabelsEn: Record<string, string> = {
@@ -440,6 +443,9 @@ const fallbackLabelsEn: Record<string, string> = {
   "nav.smsNotificationSettings": "SMS Settings",
   "nav.escalationDashboard": "Escalation Dashboard",
   "nav.autoResolveSettings": "Auto-resolve Settings",
+  "nav.pushNotificationSettings": "Push Notification Settings",
+  "nav.widgetConfig": "Widget Configuration",
+  "nav.conflictResolution": "Conflict Resolution",
 };
 
 const MIN_WIDTH = 200;

@@ -12,6 +12,9 @@ import {
   Video,
   Radio,
   Wifi,
+  Smartphone,
+  GitMerge,
+  LayoutGrid,
   type LucideIcon
 } from "lucide-react";
 
@@ -370,6 +373,9 @@ export const SYSTEM_MENU: SystemMenuConfig = {
         { id: "notification-center", icon: Bell, labelKey: "nav.notificationCenter", path: "/notification-center" },
         { id: "alert-analytics", icon: BarChart3, labelKey: "nav.alertAnalytics", path: "/alert-analytics", adminOnly: true },
         { id: "unified-alert-kpi", icon: BarChart3, labelKey: "nav.unifiedAlertKpi", path: "/unified-alert-kpi", adminOnly: true },
+        { id: "push-notification-settings", icon: BellRing, labelKey: "nav.pushNotificationSettings", path: "/push-notification-settings" },
+        { id: "widget-config", icon: LayoutGrid, labelKey: "nav.widgetConfig", path: "/widget-config" },
+        { id: "conflict-resolution", icon: GitMerge, labelKey: "nav.conflictResolution", path: "/conflict-resolution" },
       ],
     },
     {
