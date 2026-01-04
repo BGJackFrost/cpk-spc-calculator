@@ -238,6 +238,9 @@ import EscalationWebhookSettings from "./pages/EscalationWebhookSettings";
 import EscalationTemplates from "./pages/EscalationTemplates";
 import EscalationReports from "./pages/EscalationReports";
 import WidgetConfigScreen from "./pages/WidgetConfigScreen";
+import SyncDashboard from "./pages/SyncDashboard";
+import WidgetPreview from "./pages/WidgetPreview";
+import FCMTestPage from "./pages/FCMTestPage";
 import ConflictResolutionScreen from "./pages/ConflictResolutionScreen";
 import PushNotificationSettings from "./pages/PushNotificationSettings";
 
@@ -477,6 +480,9 @@ function Router() {
       <Route path="/escalation-reports" component={EscalationReports} />
       <Route path="/latency-monitoring" component={LatencyMonitoringPage} />
       <Route path="/widget-config" component={WidgetConfigScreen} />
+      <Route path="/sync-dashboard" component={SyncDashboard} />
+      <Route path="/widget-preview" component={WidgetPreview} />
+      <Route path="/fcm-test" component={FCMTestPage} />
       <Route path="/conflict-resolution" component={ConflictResolutionScreen} />
       <Route path="/push-notification-settings" component={PushNotificationSettings} />
       <Route path="/ai-model-performance" component={AiModelPerformance} />

@@ -45,6 +45,9 @@ import { escalationWebhookRouter } from "./routers/escalationWebhookRouter";
 import { escalationTemplateRouter } from "./routers/escalationTemplateRouter";
 import { escalationReportRouter } from "./routers/escalationReportRouter";
 import { firebasePushRouter } from "./routers/firebasePushRouter";
+import { fcmIntegrationRouter } from "./routers/fcmIntegrationRouter";
+import { syncRouter } from "./routers/syncRouter";
+import { widgetDataRouter } from "./routers/widgetDataRouter";
 import { mobileRouter } from "./mobileRouter";
 import { triggerLicenseExpiryCheck } from "./scheduledJobs";
 import { triggerWebhooks, testWebhook } from "./webhookService";
@@ -3755,6 +3758,9 @@ const emailNotificationRouter = router({
 export const appRouter = router({
   alertWebhook: alertWebhookRouter,
   firebasePush: firebasePushRouter,
+  fcmIntegration: fcmIntegrationRouter,
+  sync: syncRouter,
+  widgetData: widgetDataRouter,
   mobile: mobileRouter,
   system: systemRouter,
   theme: themeRouter,

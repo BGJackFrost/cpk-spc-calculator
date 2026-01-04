@@ -7695,3 +7695,40 @@
 - [x] Quiet hours setting
 - [x] Test notification button
 - [x] Lưu settings vào server
+
+
+## Phase 98: Mobile App Advanced Features - FCM, Sync, Widget API
+
+### Firebase Cloud Messaging Integration
+- [x] Tạo fcmIntegrationRouter với các endpoints nâng cao
+- [x] API gửi notification đến device token
+- [x] API gửi notification đến topic
+- [x] API gửi CPK alert notification
+- [x] API test notification
+- [x] Lịch sử notifications đã gửi
+- [x] Thống kê FCM (total sent, success rate)
+- [x] Trang FCMTestPage để test gửi notifications
+
+### Sync Service với IndexedDB
+- [x] Tạo syncRouter cho offline sync
+- [x] API pushChanges - đẩy thay đổi từ client lên server
+- [x] API pullChanges - kéo thay đổi từ server về client
+- [x] Conflict detection khi server data mới hơn
+- [x] API resolveConflict (client_wins, server_wins, merge)
+- [x] API createTestConflict để tạo conflict mẫu
+- [x] Thống kê sync operations
+- [x] Trang SyncDashboard hiển thị trạng thái sync và conflicts
+
+### Widget Preview Live API
+- [x] Tạo widgetDataRouter cho widget data
+- [x] API getCpkSummary - lấy dữ liệu CPK realtime
+- [x] API getOeeRealtime - lấy dữ liệu OEE realtime
+- [x] API getActiveAlerts - lấy danh sách alerts
+- [x] API getQuickStats - lấy thống kê nhanh
+- [x] API getEmbedUrl - tạo URL embed cho widget
+- [x] API saveConfig - lưu cấu hình widget
+- [x] Trang WidgetPreview để preview các widget
+
+### Unit Tests
+- [x] syncRouter.test.ts - 9 tests passed
+- [x] widgetDataRouter.test.ts - 11 tests passed
