@@ -7441,3 +7441,67 @@
 - [x] /escalation-webhook-settings
 - [x] /escalation-templates
 - [x] /escalation-reports
+
+
+## Phase 89 - COMPLETED: AI Alert Prioritization, Realtime Dashboard & Firebase Push
+
+### AI-powered Alert Prioritization
+- [x] Tạo bảng ai_priority_rules để lưu quy tắc phân loại
+- [x] Tạo bảng ai_priority_history để lưu lịch sử phân loại
+- [x] Tạo bảng ai_priority_model_configs để cấu hình model AI
+- [x] Tạo service aiAlertPrioritizationService với các chức năng:
+  - [x] Rule-based prioritization với điều kiện JSON
+  - [x] AI-powered prioritization sử dụng LLM
+  - [x] Hybrid mode kết hợp cả hai phương pháp
+  - [x] Tự động điều chỉnh priority theo trend và frequency
+- [x] Tạo router aiAlertPrioritizationRouter với CRUD quy tắc
+- [x] Tạo trang AlertPrioritizationSettings với:
+  - [x] Quản lý quy tắc phân loại
+  - [x] Cấu hình model AI
+  - [x] Kiểm tra phân loại với dữ liệu mẫu
+
+### Dashboard Realtime Escalation
+- [x] Tạo bảng escalation_realtime_stats để lưu thống kê
+- [x] Tạo service escalationRealtimeStatsService với:
+  - [x] Tính toán stats theo thời gian thực
+  - [x] Lưu snapshot thống kê định kỳ
+  - [x] Lấy time series data cho biểu đồ
+  - [x] Thống kê theo giờ và ngày
+- [x] Tạo router escalationRealtimeDashboardRouter
+- [x] Tạo trang EscalationRealtimeDashboard với:
+  - [x] Summary cards (tổng, critical, pending, resolved)
+  - [x] Biểu đồ xu hướng theo thời gian (Area chart)
+  - [x] Biểu đồ phân bố theo mức độ (Pie chart)
+  - [x] Biểu đồ phân bố theo trạng thái (Pie chart)
+  - [x] Biểu đồ top loại cảnh báo (Bar chart)
+  - [x] Bảng cảnh báo đang hoạt động
+  - [x] Bộ lọc theo thời gian, dây chuyền, loại cảnh báo
+  - [x] Auto-refresh mỗi 30 giây
+
+### Firebase Push Notification
+- [x] Tạo bảng firebase_device_tokens để lưu token thiết bị
+- [x] Tạo bảng firebase_push_configs để cấu hình push
+- [x] Tạo bảng firebase_push_history để lưu lịch sử
+- [x] Tạo bảng firebase_topics và firebase_topic_subscriptions
+- [x] Tạo service firebasePushService với:
+  - [x] Đăng ký/hủy đăng ký device token
+  - [x] Cấu hình push theo mức độ ưu tiên
+  - [x] Quiet hours (giờ yên tĩnh)
+  - [x] Lọc theo loại cảnh báo và dây chuyền
+  - [x] Gửi push notification (simulated)
+  - [x] Topic management
+- [x] Tạo router firebasePushRouter
+- [x] Tạo trang PushNotificationSettings với:
+  - [x] Cài đặt bật/tắt push
+  - [x] Cấu hình mức độ ưu tiên
+  - [x] Cấu hình quiet hours
+  - [x] Quản lý thiết bị đã đăng ký
+  - [x] Lịch sử thông báo
+  - [x] Gửi thông báo thử nghiệm
+
+### Integration
+- [x] Thêm routes mới vào App.tsx
+- [x] Thêm menu items vào DashboardLayout
+- [x] Thêm menu items vào systemMenu.ts
+- [x] Viết unit tests cho AI Alert Prioritization
+- [x] Viết unit tests cho Firebase Push Service
