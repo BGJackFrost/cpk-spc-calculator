@@ -7505,3 +7505,43 @@
 - [x] Thêm menu items vào systemMenu.ts
 - [x] Viết unit tests cho AI Alert Prioritization
 - [x] Viết unit tests cho Firebase Push Service
+
+## Phase 90 - AI/IoT Review, Firebase Admin SDK & Mobile App
+
+### 1. Rà soát và đánh giá hệ thống AI
+- [x] Kiểm tra tất cả các trang AI (35 routes)
+- [x] Xác định các trang có lỗi hoặc thiếu chức năng (2 trang thiếu DashboardLayout)
+- [x] Đánh giá tích hợp tRPC cho các trang AI
+- [x] Kiểm tra các biểu đồ và dashboard AI
+
+### 2. Rà soát và đánh giá hệ thống IoT (Hoàn thành)
+- [x] Kiểm tra tất cả các trang IoT (5 trang)
+- [x] Xác định các trang có lỗi hoặc thiếu chức năng (2 trang thiếu DashboardLayout)
+- [x] Đánh giá tích hợp realtime cho IoT
+- [x] Kiểm tra các biểu đồ và dashboard IoT
+
+### 3. Sửa lỗi và nâng cấp AI/IoT
+- [x] Sửa các lỗi phát hiện được (CpkForecastingPage, DefectDetectionPage)
+- [x] Nâng cấp các chức năng còn thiếu
+- [x] Tối ưu hiệu suất
+
+### 4. Firebase Admin SDK Integration
+- [x] Cài đặt firebase-admin package
+- [x] Tạo Firebase service với Admin SDK (firebaseAdminService.ts)
+- [x] Tích hợp gửi push notification thực tế
+- [x] Tạo API endpoints cho Firebase (firebasePushRouter.ts)
+- [ ] Viết unit tests
+
+### 5. Export báo cáo Escalation định kỳ
+- [x] Tạo escalation report service (PDF/Excel) (escalationExportService.ts)
+- [x] Tạo scheduled job gửi báo cáo định kỳ
+- [x] Tạo UI cấu hình báo cáo định kỳ
+- [ ] Viết unit tests
+
+### 6. Mobile App React Native
+- [x] Khởi tạo project React Native (cpk-spc-mobile)
+- [x] Tích hợp Firebase Cloud Messaging
+- [x] Tạo màn hình Dashboard
+- [x] Tạo màn hình Alerts
+- [x] Tạo màn hình Settings
+- [ ] Build APK cho Android

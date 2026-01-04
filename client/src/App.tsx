@@ -195,6 +195,7 @@ import AiPredictionHistory from "./pages/ai/AiPredictionHistory";
 import ModelVersionComparison from "./pages/ModelVersionComparison";
 import CpkForecastingPage from "./pages/ai/CpkForecastingPage";
 import DefectDetectionPage from "./pages/ai/DefectDetectionPage";
+import FirebasePushSettingsPage from "./pages/ai/FirebasePushSettingsPage";
 import CpkComparisonPage from "./pages/ai/CpkComparisonPage";
 import AdvancedAnalyticsDashboard from "./pages/AdvancedAnalyticsDashboard";
 import NotificationPreferences from "./pages/NotificationPreferences";
@@ -451,6 +452,7 @@ function Router() {
       <Route path="/model-version-comparison" component={ModelVersionComparison} />
       <Route path="/cpk-forecasting" component={CpkForecastingPage} />
       <Route path="/defect-detection" component={DefectDetectionPage} />
+      <Route path="/firebase-push-settings" component={FirebasePushSettingsPage} />
       <Route path="/cpk-comparison" component={CpkComparisonPage} />
       <Route path="/advanced-analytics-dashboard" component={AdvancedAnalyticsDashboard} />
       <Route path="/notification-preferences" component={NotificationPreferences} />

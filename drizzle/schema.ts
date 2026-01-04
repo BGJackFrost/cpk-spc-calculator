@@ -4158,3 +4158,112 @@ export const escalationReportHistory = mysqlTable("escalation_report_history", {
   index("idx_report_history_config").on(table.configId),
   index("idx_report_history_sent").on(table.sentAt),
 ]);
+
+
+// ============ Firebase Push Notification Tables ============
+
+// Firebase Configuration
+export const firebaseConfig = mysqlTable("firebase_config", {
+  id: int().autoincrement().primaryKey(),
+  projectId: varchar("project_id", { length: 255 }).notNull(),
+  clientEmail: varchar("client_email", { length: 255 }).notNull(),
+  privateKey: text("private_key").notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdBy: int("created_by"),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+  updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
+});
+
+// Device Tokens - Store FCM tokens from mobile devices
+export const firebaseDeviceTokens = mysqlTable("firebase_device_tokens", {
+  id: int().autoincrement().primaryKey(),
+  userId: varchar("user_id", { length: 100 }).notNull(),
+  token: varchar("token", { length: 500 }).notNull(),
+  platform: mysqlEnum("platform", ["android", "ios", "web"]).notNull(),
+  deviceName: varchar("device_name", { length: 255 }),
+  deviceModel: varchar("device_model", { length: 100 }),
+  appVersion: varchar("app_version", { length: 50 }),
+  isActive: boolean("is_active").default(true).notNull(),
+  lastUsedAt: bigint("last_used_at", { mode: "number" }),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+  updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
+},
+(table) => [
+  index("idx_device_token_user").on(table.userId),
+  index("idx_device_token_active").on(table.isActive),
+  index("idx_device_token_platform").on(table.platform),
+]);
+
+// Push Notification Settings per User
+export const firebasePushSettings = mysqlTable("firebase_push_settings", {
+  id: int().autoincrement().primaryKey(),
+  userId: varchar("user_id", { length: 100 }).notNull(),
+  enabled: boolean("enabled").default(true).notNull(),
+  // Alert type settings
+  iotAlerts: boolean("iot_alerts").default(true).notNull(),
+  spcAlerts: boolean("spc_alerts").default(true).notNull(),
+  cpkAlerts: boolean("cpk_alerts").default(true).notNull(),
+  escalationAlerts: boolean("escalation_alerts").default(true).notNull(),
+  systemAlerts: boolean("system_alerts").default(true).notNull(),
+  // Severity settings
+  criticalOnly: boolean("critical_only").default(false).notNull(),
+  // Quiet hours
+  quietHoursEnabled: boolean("quiet_hours_enabled").default(false).notNull(),
+  quietHoursStart: varchar("quiet_hours_start", { length: 10 }),
+  quietHoursEnd: varchar("quiet_hours_end", { length: 10 }),
+  // Filters
+  productionLineIds: text("production_line_ids"),
+  machineIds: text("machine_ids"),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+  updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
+},
+(table) => [
+  index("idx_push_settings_user").on(table.userId),
+]);
+
+// Push Notification History
+export const firebasePushHistory = mysqlTable("firebase_push_history", {
+  id: int().autoincrement().primaryKey(),
+  userId: varchar("user_id", { length: 100 }),
+  deviceTokenId: int("device_token_id"),
+  title: varchar("title", { length: 255 }).notNull(),
+  body: text("body").notNull(),
+  data: text("data"),
+  alertType: mysqlEnum("alert_type", ["iot_alert", "spc_alert", "cpk_alert", "escalation_alert", "system", "test"]).notNull(),
+  severity: mysqlEnum("severity", ["info", "warning", "critical"]).notNull(),
+  status: mysqlEnum("status", ["pending", "sent", "delivered", "failed"]).notNull(),
+  messageId: varchar("message_id", { length: 255 }),
+  errorMessage: text("error_message"),
+  sentAt: bigint("sent_at", { mode: "number" }),
+  deliveredAt: bigint("delivered_at", { mode: "number" }),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+},
+(table) => [
+  index("idx_push_history_user").on(table.userId),
+  index("idx_push_history_status").on(table.status),
+  index("idx_push_history_type").on(table.alertType),
+  index("idx_push_history_created").on(table.createdAt),
+]);
+
+// Firebase Topics - For group notifications
+export const firebaseTopics = mysqlTable("firebase_topics", {
+  id: int().autoincrement().primaryKey(),
+  name: varchar("name", { length: 100 }).notNull(),
+  displayName: varchar("display_name", { length: 255 }).notNull(),
+  description: text("description"),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+  updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
+});
+
+// Topic Subscriptions
+export const firebaseTopicSubscriptions = mysqlTable("firebase_topic_subscriptions", {
+  id: int().autoincrement().primaryKey(),
+  topicId: int("topic_id").notNull(),
+  deviceTokenId: int("device_token_id").notNull(),
+  subscribedAt: bigint("subscribed_at", { mode: "number" }).notNull(),
+},
+(table) => [
+  index("idx_topic_sub_topic").on(table.topicId),
+  index("idx_topic_sub_device").on(table.deviceTokenId),
+]);
