@@ -1,9 +1,10 @@
 /**
  * IoT Overview Dashboard
  * Dashboard tổng quan IoT với thống kê thiết bị, alarm và biểu đồ trend
+ * Bao gồm biểu đồ MTTR/MTBF
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -26,9 +27,13 @@ import {
   CheckCircle,
   RefreshCw,
   TrendingUp,
+  TrendingDown,
   Activity,
   Clock,
   Zap,
+  Wrench,
+  Timer,
+  Gauge,
 } from 'lucide-react';
 import {
   AreaChart,
@@ -42,7 +47,9 @@ import {
   Pie,
   Cell,
   Legend,
-  BarChart,
+  LineChart,
+  Line,
+  ComposedChart,
   Bar,
 } from 'recharts';
 import { trpc } from '@/lib/trpc';
@@ -57,9 +64,26 @@ const SEVERITY_COLORS = {
   info: '#3b82f6',
 };
 
+// Colors for MTTR/MTBF charts
+const MTTR_MTBF_COLORS = {
+  mttr: '#f59e0b', // Amber
+  mtbf: '#10b981', // Emerald
+  availability: '#6366f1', // Indigo
+};
+
 export default function IotOverviewDashboard() {
   const [timeRange, setTimeRange] = useState('7d');
   const [autoRefresh, setAutoRefresh] = useState(true);
+
+  // Calculate days from timeRange
+  const days = useMemo(() => {
+    switch (timeRange) {
+      case '7d': return 7;
+      case '14d': return 14;
+      case '30d': return 30;
+      default: return 7;
+    }
+  }, [timeRange]);
 
   // Fetch device stats
   const { data: deviceStats, isLoading: loadingDevices, refetch: refetchDevices } = 
@@ -79,6 +103,14 @@ export default function IotOverviewDashboard() {
   // Fetch devices for list
   const { data: devices, isLoading: loadingDeviceList } = 
     trpc.iotCrud.getDevices.useQuery({ limit: 100 });
+
+  // Fetch MTTR/MTBF trend data
+  const { data: mttrMtbfTrend, isLoading: loadingMttrMtbf, refetch: refetchMttrMtbf } = 
+    trpc.iotCrud.getMttrMtbfTrend.useQuery({ days });
+
+  // Fetch MTTR/MTBF summary
+  const { data: mttrMtbfSummary, isLoading: loadingMttrMtbfSummary, refetch: refetchMttrMtbfSummary } = 
+    trpc.iotCrud.getMttrMtbfSummary.useQuery({ days });
 
   // SSE for realtime updates
   const { isConnected } = useSSE({
@@ -108,10 +140,12 @@ export default function IotOverviewDashboard() {
       refetchDevices();
       refetchAlarms();
       refetchRecentAlarms();
+      refetchMttrMtbf();
+      refetchMttrMtbfSummary();
     }, 30000);
 
     return () => clearInterval(interval);
-  }, [autoRefresh, refetchDevices, refetchAlarms, refetchRecentAlarms]);
+  }, [autoRefresh, refetchDevices, refetchAlarms, refetchRecentAlarms, refetchMttrMtbf, refetchMttrMtbfSummary]);
 
   // Calculate device status counts
   const onlineDevices = devices?.filter(d => d.status === 'online').length || 0;
@@ -121,7 +155,6 @@ export default function IotOverviewDashboard() {
 
   // Generate mock trend data (in real app, this would come from API)
   const generateTrendData = () => {
-    const days = timeRange === '7d' ? 7 : timeRange === '14d' ? 14 : 30;
     const data = [];
     for (let i = days - 1; i >= 0; i--) {
       const date = new Date();
@@ -146,11 +179,38 @@ export default function IotOverviewDashboard() {
     { name: 'Warning', value: alarmStats?.warning || 0, color: SEVERITY_COLORS.warning },
   ];
 
+  // Format MTTR/MTBF trend data for chart
+  const formattedMttrMtbfTrend = useMemo(() => {
+    if (!mttrMtbfTrend || !Array.isArray(mttrMtbfTrend)) return [];
+    return mttrMtbfTrend.map((item: any) => ({
+      date: new Date(item.date).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }),
+      mttr: item.mttr,
+      mtbf: item.mtbf,
+      availability: Math.round(item.availability * 100),
+    }));
+  }, [mttrMtbfTrend]);
+
   const handleRefresh = () => {
     refetchDevices();
     refetchAlarms();
     refetchRecentAlarms();
+    refetchMttrMtbf();
+    refetchMttrMtbfSummary();
     toast.success('Đã làm mới dữ liệu');
+  };
+
+  // Render trend indicator
+  const renderTrendIndicator = (trend: string, changePercent: number) => {
+    const isUp = trend === 'up';
+    const Icon = isUp ? TrendingUp : TrendingDown;
+    const color = isUp ? 'text-green-500' : 'text-red-500';
+    
+    return (
+      <span className={`flex items-center gap-1 text-xs ${color}`}>
+        <Icon className="h-3 w-3" />
+        {changePercent}%
+      </span>
+    );
   };
 
   return (
@@ -272,6 +332,108 @@ export default function IotOverviewDashboard() {
           </Card>
         </div>
 
+        {/* MTTR/MTBF Summary Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* MTTR Card */}
+          <Card className="border-l-4 border-l-amber-500">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Timer className="h-4 w-4 text-amber-500" />
+                MTTR (Mean Time To Repair)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loadingMttrMtbfSummary ? (
+                <Skeleton className="h-10 w-24" />
+              ) : (
+                <div className="space-y-1">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-3xl font-bold text-amber-600">
+                      {mttrMtbfSummary?.mttr?.current || 0}
+                    </span>
+                    <span className="text-sm text-muted-foreground">phút</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {mttrMtbfSummary?.mttr && renderTrendIndicator(
+                      mttrMtbfSummary.mttr.trend,
+                      mttrMtbfSummary.mttr.changePercent
+                    )}
+                    <span className="text-xs text-muted-foreground">
+                      so với kỳ trước
+                    </span>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* MTBF Card */}
+          <Card className="border-l-4 border-l-emerald-500">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Wrench className="h-4 w-4 text-emerald-500" />
+                MTBF (Mean Time Between Failures)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loadingMttrMtbfSummary ? (
+                <Skeleton className="h-10 w-24" />
+              ) : (
+                <div className="space-y-1">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-3xl font-bold text-emerald-600">
+                      {mttrMtbfSummary?.mtbf?.current || 0}
+                    </span>
+                    <span className="text-sm text-muted-foreground">giờ</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {mttrMtbfSummary?.mtbf && renderTrendIndicator(
+                      mttrMtbfSummary.mtbf.trend,
+                      mttrMtbfSummary.mtbf.changePercent
+                    )}
+                    <span className="text-xs text-muted-foreground">
+                      so với kỳ trước
+                    </span>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Availability Card */}
+          <Card className="border-l-4 border-l-indigo-500">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Gauge className="h-4 w-4 text-indigo-500" />
+                Availability
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loadingMttrMtbfSummary ? (
+                <Skeleton className="h-10 w-24" />
+              ) : (
+                <div className="space-y-1">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-3xl font-bold text-indigo-600">
+                      {mttrMtbfSummary?.availability?.current || 0}
+                    </span>
+                    <span className="text-sm text-muted-foreground">%</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {mttrMtbfSummary?.availability && renderTrendIndicator(
+                      mttrMtbfSummary.availability.trend,
+                      mttrMtbfSummary.availability.changePercent
+                    )}
+                    <span className="text-xs text-muted-foreground">
+                      so với kỳ trước
+                    </span>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
         {/* Alarm Stats by Severity */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card className="border-l-4 border-l-red-500">
@@ -327,7 +489,7 @@ export default function IotOverviewDashboard() {
                 Xu hướng Alarm
               </CardTitle>
               <CardDescription>
-                Số lượng alarm theo ngày trong {timeRange === '7d' ? '7' : timeRange === '14d' ? '14' : '30'} ngày qua
+                Số lượng alarm theo ngày trong {days} ngày qua
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -403,6 +565,94 @@ export default function IotOverviewDashboard() {
                   </PieChart>
                 </ResponsiveContainer>
               </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* MTTR/MTBF Charts Row */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* MTTR Trend Chart */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Timer className="h-5 w-5 text-amber-500" />
+                Xu hướng MTTR
+              </CardTitle>
+              <CardDescription>
+                Thời gian sửa chữa trung bình (phút) trong {days} ngày qua
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loadingMttrMtbf ? (
+                <Skeleton className="h-[300px] w-full" />
+              ) : (
+                <div className="h-[300px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart data={formattedMttrMtbfTrend}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="date" />
+                      <YAxis yAxisId="left" />
+                      <YAxis yAxisId="right" orientation="right" />
+                      <Tooltip />
+                      <Legend />
+                      <Bar
+                        yAxisId="left"
+                        dataKey="mttr"
+                        fill={MTTR_MTBF_COLORS.mttr}
+                        name="MTTR (phút)"
+                        radius={[4, 4, 0, 0]}
+                      />
+                      <Line
+                        yAxisId="right"
+                        type="monotone"
+                        dataKey="availability"
+                        stroke={MTTR_MTBF_COLORS.availability}
+                        name="Availability (%)"
+                        strokeWidth={2}
+                        dot={{ fill: MTTR_MTBF_COLORS.availability }}
+                      />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* MTBF Trend Chart */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Wrench className="h-5 w-5 text-emerald-500" />
+                Xu hướng MTBF
+              </CardTitle>
+              <CardDescription>
+                Thời gian giữa các lần hỏng (giờ) trong {days} ngày qua
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loadingMttrMtbf ? (
+                <Skeleton className="h-[300px] w-full" />
+              ) : (
+                <div className="h-[300px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={formattedMttrMtbfTrend}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="date" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Area
+                        type="monotone"
+                        dataKey="mtbf"
+                        stroke={MTTR_MTBF_COLORS.mtbf}
+                        fill={MTTR_MTBF_COLORS.mtbf}
+                        fillOpacity={0.3}
+                        name="MTBF (giờ)"
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

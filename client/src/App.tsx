@@ -260,6 +260,7 @@ import WorkOrderNotificationConfig from "./pages/WorkOrderNotificationConfig";
 import MttrMtbfReport from "./pages/MttrMtbfReport";
 import IotDeviceCrud from "./pages/IotDeviceCrud";
 import IotAlarmCrud from "./pages/IotAlarmCrud";
+import NotificationPreferencesPage from "./pages/NotificationPreferencesPage";
 
 function Router() {
   return (
@@ -520,6 +521,7 @@ function Router() {
       {/* Phase 101: IoT Frontend Management */}
       <Route path="/iot-device-crud" component={IotDeviceCrud} />
       <Route path="/iot-alarm-crud" component={IotAlarmCrud} />
+      <Route path="/notification-preferences" component={NotificationPreferencesPage} />
       <Route path="/work-order-notification-config" component={WorkOrderNotificationConfig} />
       <Route path="/mttr-mtbf-report" component={MttrMtbfReport} />
       <Route path="/404" component={NotFound} />

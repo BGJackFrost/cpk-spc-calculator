@@ -1,14 +1,16 @@
 /**
  * IoT Notification Service
  * Gửi thông báo qua Email/Telegram khi có IoT alarm critical
+ * Tích hợp với notification preferences để kiểm tra trước khi gửi
  */
 
 import { sendEmail } from '../emailService';
 import { sendTelegramAlert } from './telegramService';
 import { notifyOwner } from '../_core/notification';
 import { getDb } from '../db';
-import { iotAlarms, iotDevices, emailNotificationSettings } from '../../drizzle/schema';
+import { iotAlarms, iotDevices, emailNotificationSettings, notificationPreferences } from '../../drizzle/schema';
 import { eq } from 'drizzle-orm';
+import * as notificationPreferencesService from './notificationPreferencesService';
 
 // Notification channels
 export type NotificationChannel = 'email' | 'telegram' | 'owner' | 'all';
@@ -291,15 +293,99 @@ async function getNotificationPreferences(): Promise<{
 }
 
 /**
+ * Check if notification should be sent based on user preferences
+ * Returns detailed info about which channels to use
+ */
+export async function checkNotificationPreferences(
+  userId: number,
+  severity: AlarmSeverity
+): Promise<{
+  shouldSend: boolean;
+  reason?: string;
+  channels: {
+    email: boolean;
+    telegram: boolean;
+    push: boolean;
+  };
+  emailAddress?: string;
+  telegramChatId?: string;
+}> {
+  try {
+    const prefs = await notificationPreferencesService.getOrCreatePreferences(userId);
+    
+    if (!prefs) {
+      return {
+        shouldSend: true,
+        reason: 'No preferences found, using defaults',
+        channels: { email: true, telegram: false, push: true },
+      };
+    }
+
+    // Check quiet hours
+    if (prefs.quietHoursEnabled && prefs.quietHoursStart && prefs.quietHoursEnd) {
+      const isQuietTime = notificationPreferencesService.isWithinQuietHours(
+        prefs.quietHoursStart,
+        prefs.quietHoursEnd
+      );
+      if (isQuietTime) {
+        return {
+          shouldSend: false,
+          reason: 'Within quiet hours',
+          channels: { email: false, telegram: false, push: false },
+        };
+      }
+    }
+
+    // Check severity filter
+    const severityFilter = prefs.severityFilter as 'all' | 'warning_up' | 'critical_only';
+    const shouldSendBySeverity = notificationPreferencesService.shouldSendNotification(
+      severity,
+      severityFilter
+    );
+
+    if (!shouldSendBySeverity) {
+      return {
+        shouldSend: false,
+        reason: `Severity ${severity} filtered out by ${severityFilter}`,
+        channels: { email: false, telegram: false, push: false },
+      };
+    }
+
+    // Determine which channels to use
+    return {
+      shouldSend: true,
+      channels: {
+        email: !!prefs.emailEnabled,
+        telegram: !!prefs.telegramEnabled,
+        push: !!prefs.pushEnabled,
+      },
+      emailAddress: prefs.emailAddress || undefined,
+      telegramChatId: prefs.telegramChatId || undefined,
+    };
+  } catch (error) {
+    console.error('Error checking notification preferences:', error);
+    // Default to sending on error
+    return {
+      shouldSend: true,
+      reason: 'Error checking preferences, using defaults',
+      channels: { email: true, telegram: false, push: true },
+    };
+  }
+}
+
+/**
  * Send IoT alarm notification to all configured channels
+ * Now integrates with user notification preferences
  */
 export async function sendIotAlarmNotification(
   alarmId: number,
-  channels: NotificationChannel = 'all'
+  channels: NotificationChannel = 'all',
+  targetUserId?: number
 ): Promise<{
   success: boolean;
   results: NotificationResult[];
   alarm?: IotAlarmNotification;
+  skippedReason?: string;
 }> {
   const db = getDb();
   if (!db) {
@@ -346,7 +432,57 @@ export async function sendIotAlarmNotification(
     createdAt: new Date(alarmData.createdAt!),
   };
 
-  // Get notification preferences
+  // Check user notification preferences if targetUserId is provided
+  if (targetUserId) {
+    const prefsCheck = await checkNotificationPreferences(targetUserId, alarm.alarmType);
+    
+    if (!prefsCheck.shouldSend) {
+      return {
+        success: true,
+        results: [{
+          channel: 'system',
+          success: true,
+          error: `Notification skipped: ${prefsCheck.reason}`,
+          timestamp: new Date(),
+        }],
+        alarm,
+        skippedReason: prefsCheck.reason,
+      };
+    }
+
+    // Send to enabled channels based on user preferences
+    const results: NotificationResult[] = [];
+
+    // Email
+    if (prefsCheck.channels.email && (channels === 'all' || channels === 'email')) {
+      const recipients = prefsCheck.emailAddress ? [prefsCheck.emailAddress] : [];
+      if (recipients.length > 0) {
+        const emailResult = await sendEmailNotification(alarm, recipients);
+        results.push(emailResult);
+      }
+    }
+
+    // Telegram
+    if (prefsCheck.channels.telegram && (channels === 'all' || channels === 'telegram')) {
+      const telegramResult = await sendTelegramNotification(alarm);
+      results.push(telegramResult);
+    }
+
+    // Owner notification (always for critical)
+    if (alarm.alarmType === 'critical' && (channels === 'all' || channels === 'owner')) {
+      const ownerResult = await sendOwnerNotification(alarm);
+      results.push(ownerResult);
+    }
+
+    const successCount = results.filter(r => r.success).length;
+    return {
+      success: successCount > 0 || results.length === 0,
+      results,
+      alarm,
+    };
+  }
+
+  // Fallback to global notification preferences
   const prefs = await getNotificationPreferences();
 
   // Check if should send notification based on severity
@@ -395,10 +531,12 @@ export async function sendIotAlarmNotification(
 /**
  * Send notification for critical alarm immediately after creation
  * This should be called from iotDbService.createAlarm when alarmType is 'critical'
+ * Now checks user notification preferences before sending
  */
 export async function notifyOnCriticalAlarm(
   alarmId: number,
-  alarmType: string
+  alarmType: string,
+  targetUserId?: number
 ): Promise<void> {
   // Only send notification for critical alarms
   if (alarmType !== 'critical') {
@@ -406,15 +544,48 @@ export async function notifyOnCriticalAlarm(
   }
 
   try {
-    const result = await sendIotAlarmNotification(alarmId, 'all');
+    const result = await sendIotAlarmNotification(alarmId, 'all', targetUserId);
     
-    if (!result.success) {
+    if (result.skippedReason) {
+      console.log('Critical alarm notification skipped:', result.skippedReason);
+    } else if (!result.success) {
       console.warn('Failed to send critical alarm notification:', result.results);
     } else {
       console.log('Critical alarm notification sent:', result.results.map(r => `${r.channel}: ${r.success}`).join(', '));
     }
   } catch (error) {
     console.error('Error sending critical alarm notification:', error);
+  }
+}
+
+/**
+ * Send notification for any alarm based on severity and user preferences
+ * This is the main entry point for alarm notifications
+ */
+export async function notifyOnAlarm(
+  alarmId: number,
+  alarmType: string,
+  targetUserId?: number
+): Promise<{
+  sent: boolean;
+  channels: string[];
+  skippedReason?: string;
+}> {
+  try {
+    const result = await sendIotAlarmNotification(alarmId, 'all', targetUserId);
+    
+    return {
+      sent: result.success,
+      channels: result.results.filter(r => r.success).map(r => r.channel),
+      skippedReason: result.skippedReason,
+    };
+  } catch (error) {
+    console.error('Error sending alarm notification:', error);
+    return {
+      sent: false,
+      channels: [],
+      skippedReason: error instanceof Error ? error.message : 'Unknown error',
+    };
   }
 }
 
@@ -453,8 +624,63 @@ export async function testNotificationChannels(): Promise<{
   };
 }
 
+/**
+ * Test notification with user preferences
+ */
+export async function testNotificationWithPreferences(
+  userId: number
+): Promise<{
+  prefsCheck: Awaited<ReturnType<typeof checkNotificationPreferences>>;
+  results?: {
+    email?: NotificationResult;
+    telegram?: NotificationResult;
+    owner?: NotificationResult;
+  };
+}> {
+  const prefsCheck = await checkNotificationPreferences(userId, 'warning');
+
+  if (!prefsCheck.shouldSend) {
+    return { prefsCheck };
+  }
+
+  const testAlarm: IotAlarmNotification = {
+    alarmId: 0,
+    deviceId: 0,
+    deviceCode: 'TEST-001',
+    deviceName: 'Test Device',
+    alarmType: 'warning',
+    alarmCode: 'TEST_NOTIFICATION',
+    message: 'This is a test notification from IoT Notification Service',
+    value: '25.5',
+    threshold: '30',
+    location: 'Test Location',
+    createdAt: new Date(),
+  };
+
+  const results: {
+    email?: NotificationResult;
+    telegram?: NotificationResult;
+    owner?: NotificationResult;
+  } = {};
+
+  if (prefsCheck.channels.email && prefsCheck.emailAddress) {
+    results.email = await sendEmailNotification(testAlarm, [prefsCheck.emailAddress]);
+  }
+
+  if (prefsCheck.channels.telegram) {
+    results.telegram = await sendTelegramNotification(testAlarm);
+  }
+
+  results.owner = await sendOwnerNotification(testAlarm);
+
+  return { prefsCheck, results };
+}
+
 export default {
   sendIotAlarmNotification,
   notifyOnCriticalAlarm,
+  notifyOnAlarm,
   testNotificationChannels,
+  testNotificationWithPreferences,
+  checkNotificationPreferences,
 };

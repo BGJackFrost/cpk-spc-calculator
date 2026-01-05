@@ -8102,3 +8102,31 @@
 - [x] Test shouldSendNotification logic
 - [x] Test isWithinQuietHours logic
 - [x] Test pass thành công (9/9 tests)
+
+## Phase 103 - Notification Integration, UI Preferences, MTTR/MTBF Charts
+
+### Tích hợp gửi thông báo thực tế dựa trên notification preferences
+- [x] Cập nhật iotNotificationService để kiểm tra notification preferences trước khi gửi
+- [x] Kiểm tra quiet hours trước khi gửi thông báo
+- [x] Kiểm tra severity filter (all/warning_up/critical_only)
+- [x] Kiểm tra enabled channels (email/telegram/push)
+- [x] Tích hợp vào createAlarm trong iotDbService
+
+### Trang UI cấu hình notification preferences
+- [x] Tạo NotificationPreferencesPage.tsx
+- [x] Form cấu hình enabled channels (email/telegram/push)
+- [x] Form cấu hình severity filter
+- [x] Form cấu hình quiet hours (start/end time)
+- [x] Thêm route /notification-preferences vào App.tsx
+- [x] Thêm menu item vào IOT_MENU trong systemMenu.ts
+
+### Biểu đồ MTTR/MTBF vào Dashboard tổng quan IoT
+- [x] Tính toán MTTR (Mean Time To Repair) từ alarm data
+- [x] Tính toán MTBF (Mean Time Between Failures) từ alarm data
+- [x] Thêm biểu đồ MTTR trend vào IotOverviewDashboard
+- [x] Thêm biểu đồ MTBF trend vào IotOverviewDashboard
+- [x] Thêm cards hiển thị MTTR/MTBF hiện tại
+
+### Unit Tests
+- [x] Test notification integration với preferences
+- [x] Test MTTR/MTBF calculations
