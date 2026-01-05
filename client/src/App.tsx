@@ -257,6 +257,8 @@ import PushNotificationSettings from "./pages/PushNotificationSettings";
 import Model3DManagement from "./pages/Model3DManagement";
 import WorkOrderNotificationConfig from "./pages/WorkOrderNotificationConfig";
 import MttrMtbfReport from "./pages/MttrMtbfReport";
+import IotDeviceCrud from "./pages/IotDeviceCrud";
+import IotAlarmCrud from "./pages/IotAlarmCrud";
 
 function Router() {
   return (
@@ -513,6 +515,9 @@ function Router() {
       <Route path="/ai-model-performance" component={AiModelPerformance} />
       {/* Phase 98: IoT Enhancement */}
       <Route path="/model-3d-management" component={Model3DManagement} />
+      {/* Phase 101: IoT Frontend Management */}
+      <Route path="/iot-device-crud" component={IotDeviceCrud} />
+      <Route path="/iot-alarm-crud" component={IotAlarmCrud} />
       <Route path="/work-order-notification-config" component={WorkOrderNotificationConfig} />
       <Route path="/mttr-mtbf-report" component={MttrMtbfReport} />
       <Route path="/404" component={NotFound} />

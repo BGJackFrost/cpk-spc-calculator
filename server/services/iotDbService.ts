@@ -187,6 +187,16 @@ export async function createAlarm(input: CreateAlarmInput) {
     createdAt: new Date(),
   }).$returningId();
   
+  // Send notification for critical alarms
+  if (input.alarmType === 'critical') {
+    try {
+      const { notifyOnCriticalAlarm } = await import('./iotNotificationService');
+      await notifyOnCriticalAlarm(alarm.id, input.alarmType);
+    } catch (error) {
+      console.error('Error sending critical alarm notification:', error);
+    }
+  }
+  
   return getAlarmById(alarm.id);
 }
 

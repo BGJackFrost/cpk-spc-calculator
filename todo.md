@@ -8021,3 +8021,49 @@
 - [x] Tạo service workOrderNotificationScheduler.ts
 - [x] Tạo service smsNotificationService.ts (Twilio)
 - [x] Thêm API triggerScheduledCheck để test thủ công
+
+
+## Phase 101: IoT Frontend Management & Notifications
+
+### Task 1: Trang quản lý IoT trong Frontend
+- [ ] Tạo IotDeviceManagement.tsx với CRUD đầy đủ
+- [ ] Tạo IotAlarmManagement.tsx với CRUD đầy đủ
+- [ ] Thêm routes vào App.tsx
+- [ ] Thêm menu items vào IoT system menu
+
+### Task 2: Tích hợp Realtime Notifications
+- [ ] Tạo iotNotificationService.ts cho email/Telegram
+- [ ] Tích hợp với iotDbService khi có alarm critical
+- [ ] Tạo cấu hình notification preferences
+
+### Task 3: Seed dữ liệu mẫu
+- [ ] Chạy seedIotDevices() để tạo devices mẫu
+- [ ] Chạy seedIotAlarms() để tạo alarms mẫu
+- [ ] Chạy seedIotThresholds() để tạo thresholds mẫu
+- [ ] Test CRUD operations với dữ liệu thực
+
+
+## Phase 101 - IoT Frontend Management & Notifications
+
+### Trang quản lý IoT Frontend
+- [x] Tạo trang IotDeviceCrud.tsx cho CRUD devices
+- [x] Tạo trang IotAlarmCrud.tsx cho CRUD alarms
+- [x] Thêm routes /iot-device-crud và /iot-alarm-crud vào App.tsx
+- [x] Thêm menu items vào IOT_MENU trong systemMenu.ts
+- [x] Thêm translations cho menu items mới
+
+### Realtime Notifications cho IoT Alarms
+- [x] Tạo iotNotificationService.ts với các hàm gửi thông báo
+- [x] Tích hợp sendEmailNotification cho alarm critical
+- [x] Tích hợp sendTelegramNotification qua telegramService
+- [x] Tích hợp sendOwnerNotification qua notifyOwner
+- [x] Cập nhật createAlarm trong iotDbService để gọi notification khi alarm critical
+
+### Seed Data cho IoT
+- [x] Tạo iotSeedService.ts với seedIotDevices() và seedIotAlarms()
+- [x] Sử dụng hàm seed có sẵn trong iotDbService (seedIotDevices, seedIotAlarms, seedIotThresholds)
+- [x] API endpoints đã có sẵn trong iotCrudRouter
+
+### Unit Tests
+- [x] Viết unit test cho iotNotificationService
+- [x] Test pass thành công (5/5 tests)
