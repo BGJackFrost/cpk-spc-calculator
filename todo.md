@@ -8243,3 +8243,10 @@
 - [x] Device Management - 10 thiết bị (8 online, 1 offline, 1 maintenance)
 - [x] Sensor Dashboard - 10 sensors với realtime charts, auto refresh 5s
 
+
+
+## Phase 108 - IoT Enhancement: MQTT Realtime, Work Order Management, OEE Alert (Jan 6, 2025)
+- [x] MQTT Realtime: Hook useMqttRealtime và MqttRealtimeWidget hiển thị sensors realtime
+- [x] Work Order Management: Trang IotWorkOrderManagement với workflow và thống kê MTTR
+- [x] OEE Alert Config: Bảng iot_oee_alert_config/history, trang IotOeeAlertConfig
+- [x] Tests: 12 tests passed cho iotOeeAlert

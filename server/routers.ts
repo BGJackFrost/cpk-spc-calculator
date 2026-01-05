@@ -37,6 +37,7 @@ import { iotAlertEscalationRouter } from "./routers/iotAlertEscalationRouter";
 import { iotAnalyticsRouter } from "./routers/iotAnalyticsRouter";
 import { iotProtocolRouter } from "./routers/iotProtocolRouter";
 import { iotCrudRouter } from "./routers/iotCrudRouter";
+import { iotOeeAlertRouter } from "./routers/iotOeeAlertRouter";
 import { telegramRouter } from "./routers/telegramRouter";
 import { floorPlanRouter } from "./routers/floorPlanRouter";
 import { notificationRouter } from "./routers/notificationRouter";
@@ -3814,6 +3815,7 @@ export const appRouter = router({
   machineIntegration: machineIntegrationRouter,
   machineApi: machinePublicRouter,
   iotCrud: iotCrudRouter,
+  iotOeeAlert: iotOeeAlertRouter,
   quickAccess: quickAccessRouter,
   alerts: alertAnalyticsRouter,
   webhookHistory: webhookHistoryRouter,
