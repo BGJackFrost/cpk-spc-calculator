@@ -8184,3 +8184,25 @@
 - [x] Test API testTelegramNotification
 - [x] Test MTTR/MTBF calculation từ work orders
 - [x] Test scheduled reports date range calculation
+
+
+## P## Phase 105 - MTTR/MTBF Enhancement: Trend Charts, Telegram Reports, Device Comparison
+### Biểu đồ trend MTTR/MTBF trên Dashboard
+- [x] Tạo component MttrMtbfTrendWidget cho Dashboard
+- [x] Hiển thị biểu đồ Line Chart với MTTR và MTBF theo thời gian
+- [x] Thêm bộ lọc khoảng thời gian (7 ngày, 30 ngày, 90 ngày)
+- [x] Tích hợp widget vào IotOverviewDashboard
+### Tích hợp gửi báo cáo định kỳ qua Telegram
+- [x] Cập nhật scheduledMttrMtbfService để hỗ trợ gửi Telegram
+- [x] Thêm trường notificationChannel (email/telegram/both) vào scheduled_mttr_mtbf_reports
+- [x] Tạo hàm formatMttrMtbfReportForTelegram
+- [x] Cập nhật UI ScheduledMttrMtbfReports với tùy chọn kênh thông báo
+### So sánh MTTR/MTBF giữa các thiết bị
+- [x] Tạo API getMttrMtbfComparison để so sánh nhiều thiết bị
+- [x] Tạo trang MttrMtbfComparison với biểu đồ Bar Chart
+- [x] Thêm bảng xếp hạng thiết bị theo MTTR/MTBF
+- [x] Thêm biểu đồ Radar Chart so sánh đa chiều
+### Unit Tests
+- [x] Test MttrMtbfTrendWidget
+- [x] Test Telegram report formatting
+- [x] Test getMttrMtbfComparison API

@@ -1,11 +1,13 @@
 /**
  * Scheduled MTTR/MTBF Report Service
  * Handles scheduled export of MTTR/MTBF reports (daily/weekly/monthly)
+ * Supports both Email and Telegram notification channels
  */
 
 import { getDb } from '../db';
 import { sendEmail, getSmtpConfig } from '../emailService';
 import { mttrMtbfExportService } from '../mttrMtbfExportService';
+import telegramService from './telegramService';
 
 // Types
 export interface ScheduledMttrMtbfConfig {
@@ -20,6 +22,8 @@ export interface ScheduledMttrMtbfConfig {
   timeOfDay: string; // HH:mm
   recipients: string[]; // email addresses
   format: 'excel' | 'pdf' | 'both';
+  notificationChannel: 'email' | 'telegram' | 'both'; // Phase 105: Notification channel
+  telegramConfigId?: number; // Phase 105: Reference to telegram_config
   isActive: boolean;
   createdBy?: number;
   lastSentAt?: string;
@@ -52,6 +56,8 @@ export async function getScheduledMttrMtbfConfigs(userId?: number): Promise<Sche
       timeOfDay: row.time_of_day,
       recipients: JSON.parse(row.recipients || '[]'),
       format: row.format,
+      notificationChannel: row.notification_channel || 'email',
+      telegramConfigId: row.telegram_config_id,
       isActive: row.is_active === 1,
       createdBy: row.created_by,
       lastSentAt: row.last_sent_at,
@@ -75,8 +81,8 @@ export async function createScheduledMttrMtbfConfig(config: ScheduledMttrMtbfCon
     const result = await db.execute({
       sql: `INSERT INTO scheduled_mttr_mtbf_reports 
             (name, target_type, target_id, target_name, frequency, day_of_week, day_of_month, 
-             time_of_day, recipients, format, is_active, created_by)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             time_of_day, recipients, format, notification_channel, telegram_config_id, is_active, created_by)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       args: [
         config.name,
         config.targetType,
@@ -88,6 +94,8 @@ export async function createScheduledMttrMtbfConfig(config: ScheduledMttrMtbfCon
         config.timeOfDay,
         JSON.stringify(config.recipients),
         config.format,
+        config.notificationChannel || 'email',
+        config.telegramConfigId || null,
         config.isActive ? 1 : 0,
         config.createdBy || null,
       ],
@@ -150,6 +158,14 @@ export async function updateScheduledMttrMtbfConfig(id: number, config: Partial<
     if (config.format !== undefined) {
       updates.push('format = ?');
       args.push(config.format);
+    }
+    if (config.notificationChannel !== undefined) {
+      updates.push('notification_channel = ?');
+      args.push(config.notificationChannel);
+    }
+    if (config.telegramConfigId !== undefined) {
+      updates.push('telegram_config_id = ?');
+      args.push(config.telegramConfigId);
     }
     if (config.isActive !== undefined) {
       updates.push('is_active = ?');
@@ -225,98 +241,248 @@ function getDateRange(frequency: 'daily' | 'weekly' | 'monthly'): { startDate: D
 }
 
 /**
+ * Format MTTR/MTBF report for Telegram
+ */
+function formatMttrMtbfReportForTelegram(
+  config: ScheduledMttrMtbfConfig,
+  startDate: Date,
+  endDate: Date,
+  reportData?: any
+): string {
+  const frequencyText = {
+    daily: 'hàng ngày',
+    weekly: 'hàng tuần',
+    monthly: 'hàng tháng',
+  }[config.frequency];
+
+  const targetTypeText = {
+    device: 'Thiết bị',
+    machine: 'Máy móc',
+    production_line: 'Dây chuyền',
+  }[config.targetType];
+
+  // Get summary data if available
+  const summary = reportData?.summary || {};
+  const mttr = summary.mttr ? `${summary.mttr.toFixed(1)} phút` : 'N/A';
+  const mtbf = summary.mtbf ? `${(summary.mtbf / 60).toFixed(1)} giờ` : 'N/A';
+  const availability = summary.availability ? `${(summary.availability * 100).toFixed(1)}%` : 'N/A';
+  const totalFailures = summary.totalFailures || 0;
+
+  return `
+📊 *Báo cáo MTTR/MTBF ${frequencyText}*
+
+📍 *${targetTypeText}:* ${config.targetName}
+📅 *Khoảng thời gian:* ${startDate.toLocaleDateString('vi-VN')} - ${endDate.toLocaleDateString('vi-VN')}
+
+📈 *Chỉ số KPI:*
+• MTTR: ${mttr}
+• MTBF: ${mtbf}
+• Availability: ${availability}
+• Tổng số lỗi: ${totalFailures}
+
+⏰ *Thời gian gửi:* ${new Date().toLocaleString('vi-VN')}
+
+_Báo cáo tự động từ hệ thống CPK/SPC Calculator_
+`;
+}
+
+/**
  * Send scheduled MTTR/MTBF report
+ * Supports Email, Telegram, or both channels
  */
 export async function sendScheduledMttrMtbfReport(config: ScheduledMttrMtbfConfig): Promise<{ success: boolean; error?: string }> {
   try {
-    // Check SMTP config
-    const smtpConfig = await getSmtpConfig();
-    if (!smtpConfig) {
-      return { success: false, error: 'SMTP chưa được cấu hình' };
-    }
+    const errors: string[] = [];
+    let emailSuccess = true;
+    let telegramSuccess = true;
 
     // Calculate date range
     const { startDate, endDate } = getDateRange(config.frequency);
 
-    // Generate reports
-    const attachments: Array<{ filename: string; content: Buffer; contentType: string }> = [];
-
-    if (config.format === 'excel' || config.format === 'both') {
-      const excelBuffer = await mttrMtbfExportService.exportToExcel(
+    // Get report data for Telegram message
+    let reportData: any = null;
+    try {
+      reportData = await mttrMtbfExportService.getReportData(
         config.targetType,
         config.targetId,
         startDate,
         endDate,
         config.targetName
       );
-      attachments.push({
-        filename: `mttr-mtbf-${config.targetType}-${config.targetId}-${Date.now()}.xlsx`,
-        content: excelBuffer,
-        contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      });
+    } catch (e) {
+      console.warn('[ScheduledMttrMtbf] Could not get report data for Telegram:', e);
     }
 
-    if (config.format === 'pdf' || config.format === 'both') {
-      const pdfBuffer = await mttrMtbfExportService.exportToPdf(
-        config.targetType,
-        config.targetId,
-        startDate,
-        endDate,
-        config.targetName
-      );
-      attachments.push({
-        filename: `mttr-mtbf-${config.targetType}-${config.targetId}-${Date.now()}.pdf`,
-        content: pdfBuffer,
-        contentType: 'application/pdf',
-      });
+    // Send via Email if configured
+    if (config.notificationChannel === 'email' || config.notificationChannel === 'both') {
+      const smtpConfig = await getSmtpConfig();
+      if (!smtpConfig) {
+        errors.push('SMTP chưa được cấu hình');
+        emailSuccess = false;
+      } else {
+        // Generate reports
+        const attachments: Array<{ filename: string; content: Buffer; contentType: string }> = [];
+
+        if (config.format === 'excel' || config.format === 'both') {
+          const excelBuffer = await mttrMtbfExportService.exportToExcel(
+            config.targetType,
+            config.targetId,
+            startDate,
+            endDate,
+            config.targetName
+          );
+          attachments.push({
+            filename: `mttr-mtbf-${config.targetType}-${config.targetId}-${Date.now()}.xlsx`,
+            content: excelBuffer,
+            contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          });
+        }
+
+        if (config.format === 'pdf' || config.format === 'both') {
+          const pdfBuffer = await mttrMtbfExportService.exportToPdf(
+            config.targetType,
+            config.targetId,
+            startDate,
+            endDate,
+            config.targetName
+          );
+          attachments.push({
+            filename: `mttr-mtbf-${config.targetType}-${config.targetId}-${Date.now()}.pdf`,
+            content: pdfBuffer,
+            contentType: 'application/pdf',
+          });
+        }
+
+        // Prepare email content
+        const frequencyText = {
+          daily: 'hàng ngày',
+          weekly: 'hàng tuần',
+          monthly: 'hàng tháng',
+        }[config.frequency];
+
+        const targetTypeText = {
+          device: 'Thiết bị',
+          machine: 'Máy móc',
+          production_line: 'Dây chuyền',
+        }[config.targetType];
+
+        const html = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #3b82f6;">📊 Báo cáo MTTR/MTBF ${frequencyText}</h2>
+            
+            <p>Xin chào,</p>
+            <p>Đây là báo cáo MTTR/MTBF ${frequencyText} cho <strong>${targetTypeText}: ${config.targetName}</strong>.</p>
+            
+            <div style="background: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0;">
+              <p style="margin: 0;"><strong>Khoảng thời gian:</strong> ${startDate.toLocaleDateString('vi-VN')} - ${endDate.toLocaleDateString('vi-VN')}</p>
+              <p style="margin: 5px 0 0;"><strong>Định dạng:</strong> ${config.format === 'both' ? 'Excel & PDF' : config.format.toUpperCase()}</p>
+            </div>
+            
+            <p>Vui lòng xem file đính kèm để biết chi tiết.</p>
+            
+            <hr style="border: 1px solid #e5e7eb; margin: 20px 0;" />
+            <p style="color: #6b7280; font-size: 12px;">
+              Báo cáo tự động từ hệ thống CPK/SPC Calculator<br/>
+              Thời gian gửi: ${new Date().toLocaleString('vi-VN')}
+            </p>
+          </div>
+        `;
+
+        // Send email with attachments
+        const emailResult = await sendEmail(
+          config.recipients.join(','),
+          `[MTTR/MTBF] Báo cáo ${frequencyText} - ${config.targetName}`,
+          html
+        );
+
+        if (!emailResult.success) {
+          errors.push(`Email: ${emailResult.error}`);
+          emailSuccess = false;
+        }
+      }
     }
 
-    // Prepare email content
-    const frequencyText = {
-      daily: 'hàng ngày',
-      weekly: 'hàng tuần',
-      monthly: 'hàng tháng',
-    }[config.frequency];
+    // Send via Telegram if configured
+    if (config.notificationChannel === 'telegram' || config.notificationChannel === 'both') {
+      if (!config.telegramConfigId) {
+        errors.push('Telegram config chưa được chọn');
+        telegramSuccess = false;
+      } else {
+        const telegramConfig = await telegramService.getTelegramConfigById(config.telegramConfigId);
+        if (!telegramConfig) {
+          errors.push('Không tìm thấy cấu hình Telegram');
+          telegramSuccess = false;
+        } else if (!telegramConfig.isActive) {
+          errors.push('Cấu hình Telegram đã bị vô hiệu hóa');
+          telegramSuccess = false;
+        } else {
+          // Format message for Telegram
+          const telegramMessage = formatMttrMtbfReportForTelegram(config, startDate, endDate, reportData);
+          
+          // Send via Telegram API
+          const telegramResult = await sendTelegramMessage(
+            telegramConfig.botToken,
+            telegramConfig.chatId,
+            telegramMessage
+          );
 
-    const targetTypeText = {
-      device: 'Thiết bị',
-      machine: 'Máy móc',
-      production_line: 'Dây chuyền',
-    }[config.targetType];
+          if (!telegramResult.success) {
+            errors.push(`Telegram: ${telegramResult.error}`);
+            telegramSuccess = false;
+          }
+        }
+      }
+    }
 
-    const html = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #3b82f6;">📊 Báo cáo MTTR/MTBF ${frequencyText}</h2>
-        
-        <p>Xin chào,</p>
-        <p>Đây là báo cáo MTTR/MTBF ${frequencyText} cho <strong>${targetTypeText}: ${config.targetName}</strong>.</p>
-        
-        <div style="background: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0;">
-          <p style="margin: 0;"><strong>Khoảng thời gian:</strong> ${startDate.toLocaleDateString('vi-VN')} - ${endDate.toLocaleDateString('vi-VN')}</p>
-          <p style="margin: 5px 0 0;"><strong>Định dạng:</strong> ${config.format === 'both' ? 'Excel & PDF' : config.format.toUpperCase()}</p>
-        </div>
-        
-        <p>Vui lòng xem file đính kèm để biết chi tiết.</p>
-        
-        <hr style="border: 1px solid #e5e7eb; margin: 20px 0;" />
-        <p style="color: #6b7280; font-size: 12px;">
-          Báo cáo tự động từ hệ thống CPK/SPC Calculator<br/>
-          Thời gian gửi: ${new Date().toLocaleString('vi-VN')}
-        </p>
-      </div>
-    `;
+    // Determine overall success
+    const overallSuccess = (config.notificationChannel === 'email' && emailSuccess) ||
+                          (config.notificationChannel === 'telegram' && telegramSuccess) ||
+                          (config.notificationChannel === 'both' && (emailSuccess || telegramSuccess));
 
-    // Send email with attachments
-    const result = await sendEmail(
-      config.recipients.join(','),
-      `[MTTR/MTBF] Báo cáo ${frequencyText} - ${config.targetName}`,
-      html
-    );
-
-    return { success: result.success, error: result.error };
+    return {
+      success: overallSuccess,
+      error: errors.length > 0 ? errors.join('; ') : undefined,
+    };
   } catch (error) {
     console.error('[ScheduledMttrMtbf] Error sending report:', error);
     return { success: false, error: error instanceof Error ? error.message : 'Lỗi không xác định' };
+  }
+}
+
+/**
+ * Send Telegram message directly
+ */
+async function sendTelegramMessage(
+  botToken: string,
+  chatId: string,
+  message: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: message,
+        parse_mode: 'Markdown',
+        disable_web_page_preview: true,
+      }),
+    });
+
+    const result = await response.json();
+
+    if (!result.ok) {
+      return { success: false, error: result.description || 'Unknown error' };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('[ScheduledMttrMtbf] Error sending Telegram message:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 }
 

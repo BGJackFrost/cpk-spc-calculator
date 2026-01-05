@@ -12193,6 +12193,8 @@ Hãy trả về JSON với format:
         timeOfDay: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/),
         recipients: z.array(z.string().email()),
         format: z.enum(['excel', 'pdf', 'both']),
+        notificationChannel: z.enum(['email', 'telegram', 'both']).default('email'),
+        telegramConfigId: z.number().optional(),
         isActive: z.boolean().default(true),
       }))
       .mutation(async ({ input, ctx }) => {
@@ -12221,6 +12223,8 @@ Hãy trả về JSON với format:
         timeOfDay: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).optional(),
         recipients: z.array(z.string().email()).optional(),
         format: z.enum(['excel', 'pdf', 'both']).optional(),
+        notificationChannel: z.enum(['email', 'telegram', 'both']).optional(),
+        telegramConfigId: z.number().optional().nullable(),
         isActive: z.boolean().optional(),
       }))
       .mutation(async ({ input }) => {

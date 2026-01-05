@@ -5622,6 +5622,8 @@ export const scheduledMttrMtbfReports = mysqlTable("scheduled_mttr_mtbf_reports"
   timeOfDay: varchar("time_of_day", { length: 5 }).default('08:00').notNull(),
   recipients: text().notNull(), // JSON array of emails
   format: mysqlEnum(['excel','pdf','both']).default('excel').notNull(),
+  notificationChannel: mysqlEnum("notification_channel", ['email','telegram','both']).default('email').notNull(),
+  telegramConfigId: int("telegram_config_id"), // Reference to telegram_config table
   isActive: int("is_active").default(1).notNull(),
   lastSentAt: timestamp("last_sent_at", { mode: 'string' }),
   lastSentStatus: mysqlEnum("last_sent_status", ['success','failed','pending']),

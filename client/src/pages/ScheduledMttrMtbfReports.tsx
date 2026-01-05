@@ -59,6 +59,7 @@ import {
   CheckCircle,
   XCircle,
   AlertTriangle,
+  MessageSquare,
 } from 'lucide-react';
 
 const DAYS_OF_WEEK = [
@@ -86,7 +87,12 @@ export default function ScheduledMttrMtbfReports() {
   const [formTimeOfDay, setFormTimeOfDay] = useState('08:00');
   const [formRecipients, setFormRecipients] = useState('');
   const [formFormat, setFormFormat] = useState<'excel' | 'pdf' | 'both'>('excel');
+  const [formNotificationChannel, setFormNotificationChannel] = useState<'email' | 'telegram' | 'both'>('email');
+  const [formTelegramConfigId, setFormTelegramConfigId] = useState<string>('');
   const [formIsActive, setFormIsActive] = useState(true);
+
+  // Fetch Telegram configs
+  const { data: telegramConfigs } = trpc.telegram.getConfigs.useQuery();
 
   // Fetch configs
   const { data: configs, isLoading, refetch } = trpc.scheduledMttrMtbf.getConfigs.useQuery();
@@ -147,13 +153,21 @@ export default function ScheduledMttrMtbfReports() {
     setFormTimeOfDay('08:00');
     setFormRecipients('');
     setFormFormat('excel');
+    setFormNotificationChannel('email');
+    setFormTelegramConfigId('');
     setFormIsActive(true);
   };
 
   const handleCreate = () => {
     const recipients = formRecipients.split(',').map(e => e.trim()).filter(e => e);
-    if (recipients.length === 0) {
+    
+    // Validate based on notification channel
+    if ((formNotificationChannel === 'email' || formNotificationChannel === 'both') && recipients.length === 0) {
       toast.error('Vui lòng nhập ít nhất một email');
+      return;
+    }
+    if ((formNotificationChannel === 'telegram' || formNotificationChannel === 'both') && !formTelegramConfigId) {
+      toast.error('Vui lòng chọn cấu hình Telegram');
       return;
     }
 
@@ -168,6 +182,8 @@ export default function ScheduledMttrMtbfReports() {
       timeOfDay: formTimeOfDay,
       recipients,
       format: formFormat,
+      notificationChannel: formNotificationChannel,
+      telegramConfigId: formTelegramConfigId ? parseInt(formTelegramConfigId) : undefined,
       isActive: formIsActive,
     });
   };
@@ -189,6 +205,8 @@ export default function ScheduledMttrMtbfReports() {
       timeOfDay: formTimeOfDay,
       recipients,
       format: formFormat,
+      notificationChannel: formNotificationChannel,
+      telegramConfigId: formTelegramConfigId ? parseInt(formTelegramConfigId) : null,
       isActive: formIsActive,
     });
   };
@@ -205,6 +223,8 @@ export default function ScheduledMttrMtbfReports() {
     setFormTimeOfDay(config.timeOfDay);
     setFormRecipients(config.recipients.join(', '));
     setFormFormat(config.format);
+    setFormNotificationChannel(config.notificationChannel || 'email');
+    setFormTelegramConfigId(config.telegramConfigId?.toString() || '');
     setFormIsActive(config.isActive);
   };
 
@@ -395,16 +415,55 @@ export default function ScheduledMttrMtbfReports() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Email nhận báo cáo</Label>
-                  <Input
-                    value={formRecipients}
-                    onChange={(e) => setFormRecipients(e.target.value)}
-                    placeholder="email1@example.com, email2@example.com"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Nhiều email cách nhau bằng dấu phẩy
-                  </p>
+                  <Label>Kênh thông báo</Label>
+                  <Select value={formNotificationChannel} onValueChange={(v: any) => setFormNotificationChannel(v)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="email"><Mail className="w-4 h-4 inline mr-2" />Email</SelectItem>
+                      <SelectItem value="telegram"><MessageSquare className="w-4 h-4 inline mr-2" />Telegram</SelectItem>
+                      <SelectItem value="both"><Activity className="w-4 h-4 inline mr-2" />Cả hai</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
+
+                {(formNotificationChannel === 'email' || formNotificationChannel === 'both') && (
+                  <div className="space-y-2">
+                    <Label>Email nhận báo cáo</Label>
+                    <Input
+                      value={formRecipients}
+                      onChange={(e) => setFormRecipients(e.target.value)}
+                      placeholder="email1@example.com, email2@example.com"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Nhiều email cách nhau bằng dấu phẩy
+                    </p>
+                  </div>
+                )}
+
+                {(formNotificationChannel === 'telegram' || formNotificationChannel === 'both') && (
+                  <div className="space-y-2">
+                    <Label>Cấu hình Telegram</Label>
+                    <Select value={formTelegramConfigId} onValueChange={setFormTelegramConfigId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Chọn cấu hình Telegram" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {telegramConfigs?.filter(c => c.isActive).map(config => (
+                          <SelectItem key={config.id} value={config.id.toString()}>
+                            {config.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {(!telegramConfigs || telegramConfigs.filter(c => c.isActive).length === 0) && (
+                      <p className="text-xs text-amber-600">
+                        Chưa có cấu hình Telegram nào. Vui lòng cấu hình trong trang Cài đặt Telegram.
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 <div className="flex items-center justify-between">
                   <Label>Kích hoạt</Label>
@@ -550,12 +609,46 @@ export default function ScheduledMttrMtbfReports() {
               </div>
 
               <div className="space-y-2">
-                <Label>Email nhận báo cáo</Label>
-                <Input
-                  value={formRecipients}
-                  onChange={(e) => setFormRecipients(e.target.value)}
-                />
+                <Label>Kênh thông báo</Label>
+                <Select value={formNotificationChannel} onValueChange={(v: any) => setFormNotificationChannel(v)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="email"><Mail className="w-4 h-4 inline mr-2" />Email</SelectItem>
+                    <SelectItem value="telegram"><MessageSquare className="w-4 h-4 inline mr-2" />Telegram</SelectItem>
+                    <SelectItem value="both"><Activity className="w-4 h-4 inline mr-2" />Cả hai</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
+
+              {(formNotificationChannel === 'email' || formNotificationChannel === 'both') && (
+                <div className="space-y-2">
+                  <Label>Email nhận báo cáo</Label>
+                  <Input
+                    value={formRecipients}
+                    onChange={(e) => setFormRecipients(e.target.value)}
+                  />
+                </div>
+              )}
+
+              {(formNotificationChannel === 'telegram' || formNotificationChannel === 'both') && (
+                <div className="space-y-2">
+                  <Label>Cấu hình Telegram</Label>
+                  <Select value={formTelegramConfigId} onValueChange={setFormTelegramConfigId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Chọn cấu hình Telegram" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {telegramConfigs?.filter(c => c.isActive).map(config => (
+                        <SelectItem key={config.id} value={config.id.toString()}>
+                          {config.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
               <div className="flex items-center justify-between">
                 <Label>Kích hoạt</Label>
@@ -599,6 +692,7 @@ export default function ScheduledMttrMtbfReports() {
                     <TableHead>Tần suất</TableHead>
                     <TableHead>Giờ gửi</TableHead>
                     <TableHead>Định dạng</TableHead>
+                    <TableHead>Kênh</TableHead>
                     <TableHead>Trạng thái</TableHead>
                     <TableHead>Lần gửi cuối</TableHead>
                     <TableHead className="text-right">Thao tác</TableHead>
@@ -633,6 +727,16 @@ export default function ScheduledMttrMtbfReports() {
                               <FileSpreadsheet className="w-4 h-4 text-green-600" />
                               <FileText className="w-4 h-4 text-red-600" />
                             </>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          {(config.notificationChannel === 'email' || config.notificationChannel === 'both') && (
+                            <Mail className="w-4 h-4 text-blue-600" />
+                          )}
+                          {(config.notificationChannel === 'telegram' || config.notificationChannel === 'both') && (
+                            <MessageSquare className="w-4 h-4 text-sky-500" />
                           )}
                         </div>
                       </TableCell>
