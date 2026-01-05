@@ -196,7 +196,19 @@
     "mttrMtbfReport": "Báo cáo MTTR/MTBF",
     "mttrMtbfComparison": "So sánh MTTR/MTBF",
     "mttrMtbfThresholds": "Ngưỡng Cảnh báo MTTR/MTBF",
-    "mttrMtbfPrediction": "Dự đoán MTTR/MTBF"
+    "mttrMtbfPrediction": "Dự đoán MTTR/MTBF",
+    "iot3DFloorPlan": "Sơ đồ Nhà máy 3D",
+    "model3DManagement": "Quản lý Model 3D",
+    "iotOverviewDashboard": "Tổng quan IoT",
+    "iotDeviceCrud": "Quản lý Thiết bị",
+    "iotAlarmCrud": "Quản lý Cảnh báo",
+    "iotWorkOrders": "Phiếu Công việc",
+    "iotScheduledOta": "Lịch Cập nhật OTA",
+    "workOrderNotificationConfig": "Cấu hình Thông báo",
+    "smsNotificationSettings": "Cài đặt SMS",
+    "escalationDashboard": "Dashboard Escalation",
+    "autoResolveSettings": "Cài đặt Tự động Xử lý",
+    "notificationPreferences": "Tùy chọn Thông báo"
   },
   "dashboard": {
     "welcome": "Xin chào",
@@ -484,6 +496,8 @@
     "aiSettings": "Cài đặt AI",
     "iotOverview": "Tổng quan IoT",
     "iotConnections": "Kết nối IoT",
-    "iotConfig": "Cấu hình IoT"
+    "iotConfig": "Cấu hình IoT",
+    "iotMaintenance": "Bảo trì IoT",
+    "iotRealtime": "Giám sát Realtime"
   }
 }

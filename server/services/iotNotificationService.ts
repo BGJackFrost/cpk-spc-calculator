@@ -45,7 +45,7 @@ export interface IotAlarmNotification {
  * Get device info by ID
  */
 async function getDeviceInfo(deviceId: number): Promise<{ deviceCode: string; deviceName: string; location?: string } | null> {
-  const db = getDb();
+  const db = await getDb();
   if (!db) return null;
 
   try {
@@ -266,7 +266,7 @@ async function getNotificationPreferences(): Promise<{
     criticalOnly: false, // Send for all severity levels
   };
 
-  const db = getDb();
+  const db = await getDb();
   if (!db) return defaults;
 
   try {
@@ -387,7 +387,7 @@ export async function sendIotAlarmNotification(
   alarm?: IotAlarmNotification;
   skippedReason?: string;
 }> {
-  const db = getDb();
+  const db = await getDb();
   if (!db) {
     return {
       success: false,

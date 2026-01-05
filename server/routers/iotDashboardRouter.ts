@@ -74,6 +74,24 @@ export const iotDashboardRouter = router({
       return device;
     }),
 
+  // Get devices for Sensor Dashboard
+  getDevices: protectedProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) return [];
+    
+    const devices = await db.select().from(iotDevices);
+    return devices.map(d => ({
+      id: d.id,
+      name: d.deviceName || d.deviceCode,
+      type: d.deviceType,
+      status: d.status,
+      protocol: d.protocol || 'mqtt',
+      lastValue: Math.random() * 100,
+      unit: d.deviceType === 'sensor' ? '°C' : '',
+      lastUpdate: d.updatedAt || new Date().toISOString()
+    }));
+  }),
+
   // Delete device
   deleteDevice: protectedProcedure
     .input(z.object({ id: z.number() }))

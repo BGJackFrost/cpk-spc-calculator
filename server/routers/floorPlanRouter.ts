@@ -38,7 +38,7 @@ const floorPlanConfigSchema = z.object({
 export const floorPlanRouter = router({
   // Get all floor plans
   getAll: publicProcedure.query(async () => {
-    const db = getDb();
+    const db = await getDb();
     if (!db) return [];
 
     try {
@@ -69,7 +69,7 @@ export const floorPlanRouter = router({
   getById: publicProcedure
     .input(z.object({ id: z.number() }))
     .query(async ({ input }) => {
-      const db = getDb();
+      const db = await getDb();
       if (!db) return null;
 
       try {
@@ -103,7 +103,7 @@ export const floorPlanRouter = router({
   getByProductionLine: publicProcedure
     .input(z.object({ productionLineId: z.number() }))
     .query(async ({ input }) => {
-      const db = getDb();
+      const db = await getDb();
       if (!db) return null;
 
       try {
@@ -138,7 +138,7 @@ export const floorPlanRouter = router({
   create: protectedProcedure
     .input(floorPlanConfigSchema)
     .mutation(async ({ input, ctx }) => {
-      const db = getDb();
+      const db = await getDb();
       if (!db) return null;
 
       try {
@@ -171,7 +171,7 @@ export const floorPlanRouter = router({
       ...floorPlanConfigSchema.shape,
     }))
     .mutation(async ({ input }) => {
-      const db = getDb();
+      const db = await getDb();
       if (!db) return { success: false };
 
       try {
@@ -202,7 +202,7 @@ export const floorPlanRouter = router({
   delete: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input }) => {
-      const db = getDb();
+      const db = await getDb();
       if (!db) return { success: false };
 
       try {
@@ -221,7 +221,7 @@ export const floorPlanRouter = router({
       machinePositions: z.array(machinePositionSchema),
     }))
     .mutation(async ({ input }) => {
-      const db = getDb();
+      const db = await getDb();
       if (!db) return { success: false };
 
       try {

@@ -35,7 +35,7 @@ export interface UpdateDeviceInput extends Partial<CreateDeviceInput> {
 }
 
 export async function createDevice(input: CreateDeviceInput) {
-  const db = getDb();
+  const db = await getDb();
   if (!db) throw new Error("Database not available");
   
   const [device] = await db.insert(iotDevices).values({
@@ -62,7 +62,7 @@ export async function createDevice(input: CreateDeviceInput) {
 }
 
 export async function getDeviceById(id: number) {
-  const db = getDb();
+  const db = await getDb();
   if (!db) return null;
   
   const [device] = await db.select().from(iotDevices).where(eq(iotDevices.id, id));
@@ -77,7 +77,7 @@ export async function getDevices(options?: {
   limit?: number;
   offset?: number;
 }) {
-  const db = getDb();
+  const db = await getDb();
   if (!db) return [];
   
   let query = db.select().from(iotDevices);
@@ -123,7 +123,7 @@ export async function getDevices(options?: {
 }
 
 export async function updateDevice(input: UpdateDeviceInput) {
-  const db = getDb();
+  const db = await getDb();
   if (!db) throw new Error("Database not available");
   
   const { id, ...data } = input;
@@ -139,7 +139,7 @@ export async function updateDevice(input: UpdateDeviceInput) {
 }
 
 export async function deleteDevice(id: number) {
-  const db = getDb();
+  const db = await getDb();
   if (!db) throw new Error("Database not available");
   
   await db.delete(iotDevices).where(eq(iotDevices.id, id));
@@ -147,7 +147,7 @@ export async function deleteDevice(id: number) {
 }
 
 export async function getDeviceStats() {
-  const db = getDb();
+  const db = await getDb();
   if (!db) return { total: 0, online: 0, offline: 0, maintenance: 0, error: 0 };
   
   const devices = await db.select().from(iotDevices);
@@ -174,7 +174,7 @@ export interface CreateAlarmInput {
 }
 
 export async function createAlarm(input: CreateAlarmInput) {
-  const db = getDb();
+  const db = await getDb();
   if (!db) throw new Error("Database not available");
   
   const [alarm] = await db.insert(iotAlarms).values({
@@ -201,7 +201,7 @@ export async function createAlarm(input: CreateAlarmInput) {
 }
 
 export async function getAlarmById(id: number) {
-  const db = getDb();
+  const db = await getDb();
   if (!db) return null;
   
   const [alarm] = await db.select().from(iotAlarms).where(eq(iotAlarms.id, id));
@@ -218,7 +218,7 @@ export async function getAlarms(options?: {
   limit?: number;
   offset?: number;
 }) {
-  const db = getDb();
+  const db = await getDb();
   if (!db) return [];
   
   let query = db.select().from(iotAlarms);
@@ -275,7 +275,7 @@ export async function getAlarms(options?: {
 }
 
 export async function acknowledgeAlarm(id: number, acknowledgedBy?: string) {
-  const db = getDb();
+  const db = await getDb();
   if (!db) throw new Error("Database not available");
   
   await db.update(iotAlarms)
@@ -289,7 +289,7 @@ export async function acknowledgeAlarm(id: number, acknowledgedBy?: string) {
 }
 
 export async function resolveAlarm(id: number, resolvedBy?: string, resolution?: string) {
-  const db = getDb();
+  const db = await getDb();
   if (!db) throw new Error("Database not available");
   
   await db.update(iotAlarms)
@@ -302,7 +302,7 @@ export async function resolveAlarm(id: number, resolvedBy?: string, resolution?:
 }
 
 export async function batchAcknowledgeAlarms(ids: number[], acknowledgedBy?: string) {
-  const db = getDb();
+  const db = await getDb();
   if (!db) throw new Error("Database not available");
   
   const results = [];
@@ -315,7 +315,7 @@ export async function batchAcknowledgeAlarms(ids: number[], acknowledgedBy?: str
 }
 
 export async function getAlarmStats() {
-  const db = getDb();
+  const db = await getDb();
   if (!db) return { total: 0, unacknowledged: 0, unresolved: 0, critical: 0, error: 0, warning: 0 };
   
   const alarms = await db.select().from(iotAlarms);
@@ -349,7 +349,7 @@ export interface UpdateThresholdInput extends Partial<CreateThresholdInput> {
 }
 
 export async function createThreshold(input: CreateThresholdInput) {
-  const db = getDb();
+  const db = await getDb();
   if (!db) throw new Error("Database not available");
   
   const [threshold] = await db.insert(iotAlertThresholds).values({
@@ -368,7 +368,7 @@ export async function createThreshold(input: CreateThresholdInput) {
 }
 
 export async function getThresholdById(id: number) {
-  const db = getDb();
+  const db = await getDb();
   if (!db) return null;
   
   const [threshold] = await db.select().from(iotAlertThresholds).where(eq(iotAlertThresholds.id, id));
@@ -381,7 +381,7 @@ export async function getThresholds(options?: {
   isEnabled?: boolean;
   limit?: number;
 }) {
-  const db = getDb();
+  const db = await getDb();
   if (!db) return [];
   
   let query = db.select().from(iotAlertThresholds);
@@ -412,7 +412,7 @@ export async function getThresholds(options?: {
 }
 
 export async function updateThreshold(input: UpdateThresholdInput) {
-  const db = getDb();
+  const db = await getDb();
   if (!db) throw new Error("Database not available");
   
   const { id, ...data } = input;
@@ -437,7 +437,7 @@ export async function updateThreshold(input: UpdateThresholdInput) {
 }
 
 export async function deleteThreshold(id: number) {
-  const db = getDb();
+  const db = await getDb();
   if (!db) throw new Error("Database not available");
   
   await db.delete(iotAlertThresholds).where(eq(iotAlertThresholds.id, id));
@@ -447,7 +447,7 @@ export async function deleteThreshold(id: number) {
 // ==================== SEED DATA ====================
 
 export async function seedIotDevices() {
-  const db = getDb();
+  const db = await getDb();
   if (!db) throw new Error("Database not available");
   
   const sampleDevices = [
@@ -475,7 +475,7 @@ export async function seedIotDevices() {
 }
 
 export async function seedIotAlarms() {
-  const db = getDb();
+  const db = await getDb();
   if (!db) throw new Error("Database not available");
   
   const devices = await getDevices({ limit: 5 });
@@ -505,7 +505,7 @@ export async function seedIotAlarms() {
 }
 
 export async function seedIotThresholds() {
-  const db = getDb();
+  const db = await getDb();
   if (!db) throw new Error("Database not available");
   
   const devices = await getDevices({ limit: 5 });

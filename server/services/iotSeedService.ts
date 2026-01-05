@@ -180,7 +180,7 @@ export async function seedIotDevices(): Promise<{
   skipped: number;
   error?: string;
 }> {
-  const db = getDb();
+  const db = await getDb();
   if (!db) {
     return { success: false, inserted: 0, skipped: 0, error: 'Database not available' };
   }
@@ -236,7 +236,7 @@ export async function seedIotAlarms(): Promise<{
   inserted: number;
   error?: string;
 }> {
-  const db = getDb();
+  const db = await getDb();
   if (!db) {
     return { success: false, inserted: 0, error: 'Database not available' };
   }
@@ -278,7 +278,7 @@ export async function clearIotData(): Promise<{
   deletedAlarms: number;
   error?: string;
 }> {
-  const db = getDb();
+  const db = await getDb();
   if (!db) {
     return { success: false, deletedDevices: 0, deletedAlarms: 0, error: 'Database not available' };
   }

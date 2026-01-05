@@ -36,7 +36,7 @@ export const firebasePushRouter = router({
   
   // Get Firebase config status
   getConfigStatus: protectedProcedure.query(async () => {
-    const db = getDb();
+    const db = await getDb();
     if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
     const configs = await db.select().from(firebaseConfig).where(eq(firebaseConfig.isActive, true)).limit(1);
@@ -56,7 +56,7 @@ export const firebasePushRouter = router({
       privateKey: z.string().min(1),
     }))
     .mutation(async ({ input, ctx }) => {
-      const db = getDb();
+      const db = await getDb();
       if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
       const now = Date.now();
@@ -87,7 +87,7 @@ export const firebasePushRouter = router({
 
   // Initialize Firebase from stored config
   initializeFromConfig: protectedProcedure.mutation(async () => {
-    const db = getDb();
+    const db = await getDb();
     if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
     const configs = await db.select().from(firebaseConfig).where(eq(firebaseConfig.isActive, true)).limit(1);
@@ -118,7 +118,7 @@ export const firebasePushRouter = router({
       appVersion: z.string().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
-      const db = getDb();
+      const db = await getDb();
       if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
       const userId = ctx.user?.openId || ctx.user?.id;
@@ -173,7 +173,7 @@ export const firebasePushRouter = router({
   unregisterDeviceToken: protectedProcedure
     .input(z.object({ token: z.string() }))
     .mutation(async ({ input, ctx }) => {
-      const db = getDb();
+      const db = await getDb();
       if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
       await db
@@ -186,7 +186,7 @@ export const firebasePushRouter = router({
 
   // Get user's device tokens
   getMyDeviceTokens: protectedProcedure.query(async ({ ctx }) => {
-    const db = getDb();
+    const db = await getDb();
     if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
     const userId = ctx.user?.openId || ctx.user?.id;
@@ -208,7 +208,7 @@ export const firebasePushRouter = router({
 
   // Get user's push settings
   getMyPushSettings: protectedProcedure.query(async ({ ctx }) => {
-    const db = getDb();
+    const db = await getDb();
     if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
     const userId = ctx.user?.openId || ctx.user?.id;
@@ -258,7 +258,7 @@ export const firebasePushRouter = router({
       machineIds: z.string().nullable().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
-      const db = getDb();
+      const db = await getDb();
       if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
       const userId = ctx.user?.openId || ctx.user?.id;
@@ -310,7 +310,7 @@ export const firebasePushRouter = router({
 
   // Send test notification to current user
   sendTestNotification: protectedProcedure.mutation(async ({ ctx }) => {
-    const db = getDb();
+    const db = await getDb();
     if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
     const userId = ctx.user?.openId || ctx.user?.id;
@@ -371,7 +371,7 @@ export const firebasePushRouter = router({
       severity: z.enum(['info', 'warning', 'critical']),
     }))
     .mutation(async ({ input }) => {
-      const db = getDb();
+      const db = await getDb();
       if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
       // Get all active tokens for these users
@@ -444,7 +444,7 @@ export const firebasePushRouter = router({
 
   // Get all topics
   getTopics: protectedProcedure.query(async () => {
-    const db = getDb();
+    const db = await getDb();
     if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
     const topics = await db
@@ -464,7 +464,7 @@ export const firebasePushRouter = router({
       description: z.string().optional(),
     }))
     .mutation(async ({ input }) => {
-      const db = getDb();
+      const db = await getDb();
       if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
       const now = Date.now();
@@ -487,7 +487,7 @@ export const firebasePushRouter = router({
       deviceTokenId: z.number(),
     }))
     .mutation(async ({ input }) => {
-      const db = getDb();
+      const db = await getDb();
       if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
       // Get topic and token
@@ -520,7 +520,7 @@ export const firebasePushRouter = router({
       deviceTokenId: z.number(),
     }))
     .mutation(async ({ input }) => {
-      const db = getDb();
+      const db = await getDb();
       if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
       // Get topic and token
@@ -561,7 +561,7 @@ export const firebasePushRouter = router({
       endDate: z.number().optional(),
     }))
     .query(async ({ input, ctx }) => {
-      const db = getDb();
+      const db = await getDb();
       if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
       const userId = ctx.user?.openId || ctx.user?.id;
@@ -618,7 +618,7 @@ export const firebasePushRouter = router({
       days: z.number().min(1).max(90).default(7),
     }))
     .query(async ({ input }) => {
-      const db = getDb();
+      const db = await getDb();
       if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
       const startDate = Date.now() - input.days * 24 * 60 * 60 * 1000;

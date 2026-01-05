@@ -13,7 +13,7 @@ import { eq } from 'drizzle-orm';
 export const notificationRouter = router({
   // Get user notification settings
   getSettings: protectedProcedure.query(async ({ ctx }) => {
-    const db = getDb();
+    const db = await getDb();
     if (!db) {
       return {
         iotAlerts: true,

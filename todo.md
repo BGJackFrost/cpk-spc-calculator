@@ -8228,3 +8228,18 @@
 - [x] Tạo component MttrMtbfPredictionChart.tsx
 - [x] Tạo trang /mttr-mtbf-prediction
 - [x] Viết unit tests
+
+
+## Phase 105 - IoT Module Review & Bug Fixes (2026-01-05)
+
+### Lỗi đã sửa
+- [x] Sửa lỗi Menu IoT thiếu translations (vi.json, en.json)
+- [x] Sửa lỗi "db.select is not a function" trong IoT CRUD (async/await getDb())
+- [x] Sửa lỗi Sensor Dashboard không có dữ liệu (thêm getDevices procedure)
+- [x] Sửa lỗi syntax trong getDeviceStats và getAlarmStats
+
+### Các trang IoT đã kiểm tra và xác nhận hoạt động
+- [x] IoT Overview Dashboard - 10 thiết bị, MTTR 54 phút, MTBF 157 giờ
+- [x] Device Management - 10 thiết bị (8 online, 1 offline, 1 maintenance)
+- [x] Sensor Dashboard - 10 sensors với realtime charts, auto refresh 5s
+

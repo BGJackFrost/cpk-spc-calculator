@@ -57,7 +57,7 @@ export async function getAllSensors(filters?: {
   sensorType?: string;
   status?: string;
 }): Promise<SensorDevice[]> {
-  const db = getDb();
+  const db = await getDb();
   if (!db) return generateMockSensors(filters);
 
   try {
@@ -145,7 +145,7 @@ export async function getSensorReadings(
   deviceId: number,
   timeRange: '1h' | '6h' | '24h' | '7d' = '1h'
 ): Promise<SensorReading[]> {
-  const db = getDb();
+  const db = await getDb();
   
   const now = new Date();
   const startTime = new Date();
@@ -198,7 +198,7 @@ export async function getActiveAlerts(filters?: {
   severity?: 'warning' | 'critical';
   acknowledged?: boolean;
 }): Promise<SensorAlert[]> {
-  const db = getDb();
+  const db = await getDb();
   
   if (!db) {
     return generateMockAlerts(filters);
@@ -268,7 +268,7 @@ export async function recordSensorReading(
   value: number,
   unit: string
 ): Promise<{ reading: SensorReading; alert?: SensorAlert }> {
-  const db = getDb();
+  const db = await getDb();
   const timestamp = new Date();
   const quality = getQuality(value, sensorType);
 
@@ -331,7 +331,7 @@ export async function recordSensorReading(
 
 // Acknowledge alert
 export async function acknowledgeAlert(alertId: number): Promise<boolean> {
-  const db = getDb();
+  const db = await getDb();
   if (!db) return true;
 
   try {
