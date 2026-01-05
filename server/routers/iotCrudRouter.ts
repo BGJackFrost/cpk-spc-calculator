@@ -7,6 +7,7 @@ import { z } from "zod";
 import { router, publicProcedure, protectedProcedure } from "../_core/trpc";
 import * as iotDbService from "../services/iotDbService";
 import { getMttrMtbfStats, calculateMttrMtbf } from "../db";
+import { seedAllIotWorkOrderData, seedIotTechnicians, seedIotMaintenanceSchedules, seedIotWorkOrders, seedIotFailureEvents } from "../services/iotSeedService";
 
 export const iotCrudRouter = router({
   // ==================== DEVICE ENDPOINTS ====================
@@ -313,6 +314,33 @@ export const iotCrudRouter = router({
         totalRepairs: Math.floor(Math.random() * 18) + 5,
         totalDowntimeMinutes: Math.floor(Math.random() * 500) + 100,
       };
+    }),
+
+  // ==================== SEED DATA ENDPOINTS ====================
+
+  seedWorkOrderData: protectedProcedure
+    .mutation(async () => {
+      return await seedAllIotWorkOrderData();
+    }),
+
+  seedTechnicians: protectedProcedure
+    .mutation(async () => {
+      return await seedIotTechnicians();
+    }),
+
+  seedMaintenanceSchedules: protectedProcedure
+    .mutation(async () => {
+      return await seedIotMaintenanceSchedules();
+    }),
+
+  seedWorkOrders: protectedProcedure
+    .mutation(async () => {
+      return await seedIotWorkOrders();
+    }),
+
+  seedFailureEvents: protectedProcedure
+    .mutation(async () => {
+      return await seedIotFailureEvents();
     }),
 });
 

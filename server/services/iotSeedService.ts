@@ -341,3 +341,458 @@ export default {
   seedAllIotData,
   clearIotData,
 };
+
+
+// ==================== WORK ORDER SEED DATA ====================
+
+// Sample technicians data
+const SAMPLE_TECHNICIANS = [
+  {
+    department: 'Maintenance',
+    skills: ['electrical', 'plc', 'automation'],
+    certifications: [{ name: 'PLC Programming', expiryDate: '2026-12-31' }],
+    experienceYears: 5,
+    hourlyRate: '150000',
+    availability: 'available' as const,
+    phone: '0901234567',
+    email: 'tech1@company.com',
+  },
+  {
+    department: 'Maintenance',
+    skills: ['mechanical', 'hydraulics', 'pneumatics'],
+    certifications: [{ name: 'Hydraulics Specialist', expiryDate: '2026-06-30' }],
+    experienceYears: 8,
+    hourlyRate: '180000',
+    availability: 'available' as const,
+    phone: '0902345678',
+    email: 'tech2@company.com',
+  },
+  {
+    department: 'Automation',
+    skills: ['scada', 'hmi', 'robot'],
+    certifications: [{ name: 'SCADA Expert', expiryDate: '2025-12-31' }],
+    experienceYears: 10,
+    hourlyRate: '200000',
+    availability: 'available' as const,
+    phone: '0903456789',
+    email: 'tech3@company.com',
+  },
+  {
+    department: 'Instrumentation',
+    skills: ['calibration', 'sensors', 'process_control'],
+    certifications: [{ name: 'Calibration Technician', expiryDate: '2026-03-31' }],
+    experienceYears: 6,
+    hourlyRate: '160000',
+    availability: 'busy' as const,
+    phone: '0904567890',
+    email: 'tech4@company.com',
+  },
+  {
+    department: 'General',
+    skills: ['basic_maintenance', 'cleaning'],
+    certifications: [{ name: 'Safety Training', expiryDate: '2025-06-30' }],
+    experienceYears: 2,
+    hourlyRate: '100000',
+    availability: 'on_leave' as const,
+    phone: '0905678901',
+    email: 'tech5@company.com',
+  },
+];
+
+// Sample maintenance schedules
+const SAMPLE_SCHEDULES = [
+  {
+    title: 'Kiểm tra nhiệt độ hàng ngày',
+    description: 'Kiểm tra nhiệt độ các thiết bị hàng ngày',
+    maintenanceType: 'inspection' as const,
+    priority: 'medium' as const,
+    estimatedDuration: 30,
+    recurrenceRule: 'FREQ=DAILY',
+    status: 'scheduled' as const,
+  },
+  {
+    title: 'Bôi trơn hàng tuần',
+    description: 'Bôi trơn các bộ phận chuyển động hàng tuần',
+    maintenanceType: 'preventive' as const,
+    priority: 'medium' as const,
+    estimatedDuration: 60,
+    recurrenceRule: 'FREQ=WEEKLY',
+    status: 'scheduled' as const,
+  },
+  {
+    title: 'Hiệu chuẩn hàng tháng',
+    description: 'Hiệu chuẩn cảm biến và thiết bị đo hàng tháng',
+    maintenanceType: 'calibration' as const,
+    priority: 'high' as const,
+    estimatedDuration: 120,
+    recurrenceRule: 'FREQ=MONTHLY',
+    status: 'scheduled' as const,
+  },
+  {
+    title: 'Bảo dưỡng tổng thể hàng quý',
+    description: 'Bảo dưỡng tổng thể hàng quý',
+    maintenanceType: 'preventive' as const,
+    priority: 'high' as const,
+    estimatedDuration: 480,
+    recurrenceRule: 'FREQ=MONTHLY;INTERVAL=3',
+    status: 'scheduled' as const,
+  },
+];
+
+// Work order types and statuses
+const WORK_ORDER_TYPES = ['corrective', 'preventive', 'predictive', 'emergency', 'inspection'] as const;
+const WORK_ORDER_STATUSES = ['created', 'assigned', 'in_progress', 'completed', 'cancelled', 'on_hold', 'verified'] as const;
+const PRIORITIES = ['low', 'medium', 'high', 'critical'] as const;
+
+// Failure types
+const FAILURE_TYPES = ['breakdown', 'degradation', 'intermittent', 'planned_stop'] as const;
+const SEVERITIES = ['minor', 'moderate', 'major', 'critical'] as const;
+const ROOT_CAUSE_CATEGORIES = ['mechanical', 'electrical', 'software', 'operator_error', 'wear', 'environmental', 'unknown'] as const;
+const RESOLUTION_TYPES = ['repair', 'replace', 'adjust', 'reset', 'other'] as const;
+
+function randomDate(start: Date, end: Date): Date {
+  return new Date(start.getTime() + Math.random() * (end.getTime() - start.getTime()));
+}
+
+function randomElement<T>(arr: readonly T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function randomInt(min: number, max: number): number {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function formatDateForMySQL(date: Date): string {
+  return date.toISOString().slice(0, 19).replace('T', ' ');
+}
+
+import {
+  iotTechnicians,
+  iotMaintenanceSchedules,
+  iotMaintenanceWorkOrders,
+  iotFailureEvents,
+  users,
+} from '../../drizzle/schema';
+
+/**
+ * Seed IoT Technicians
+ */
+export async function seedIotTechnicians(): Promise<{
+  success: boolean;
+  count: number;
+  error?: string;
+}> {
+  const db = await getDb();
+  if (!db) {
+    return { success: false, count: 0, error: 'Database not available' };
+  }
+
+  try {
+    // Get first user to link technicians
+    const [firstUser] = await db.select().from(users).limit(1);
+    if (!firstUser) {
+      return { success: false, count: 0, error: 'No users found. Please create users first.' };
+    }
+
+    let count = 0;
+    for (let i = 0; i < SAMPLE_TECHNICIANS.length; i++) {
+      const tech = SAMPLE_TECHNICIANS[i];
+      
+      // Check if technician already exists
+      const [existing] = await db
+        .select()
+        .from(iotTechnicians)
+        .where(eq(iotTechnicians.email, tech.email))
+        .limit(1);
+
+      if (!existing) {
+        await db.insert(iotTechnicians).values({
+          userId: firstUser.id,
+          employeeId: `TECH-${String(i + 1).padStart(3, '0')}`,
+          department: tech.department,
+          skills: tech.skills,
+          certifications: tech.certifications,
+          experienceYears: tech.experienceYears,
+          hourlyRate: tech.hourlyRate,
+          availability: tech.availability,
+          phone: tech.phone,
+          email: tech.email,
+          totalWorkOrders: randomInt(10, 100),
+          completedWorkOrders: randomInt(5, 80),
+          avgCompletionTime: randomInt(30, 180),
+          rating: String((4 + Math.random()).toFixed(2)),
+        });
+        count++;
+      }
+    }
+
+    return { success: true, count };
+  } catch (error) {
+    console.error('Error seeding IoT technicians:', error);
+    return {
+      success: false,
+      count: 0,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
+
+/**
+ * Seed IoT Maintenance Schedules
+ */
+export async function seedIotMaintenanceSchedules(): Promise<{
+  success: boolean;
+  count: number;
+  error?: string;
+}> {
+  const db = await getDb();
+  if (!db) {
+    return { success: false, count: 0, error: 'Database not available' };
+  }
+
+  try {
+    // Get devices
+    const devices = await db.select().from(iotDevices).limit(10);
+    if (devices.length === 0) {
+      return { success: false, count: 0, error: 'No IoT devices found. Please seed devices first.' };
+    }
+
+    // Get technicians
+    const technicians = await db.select().from(iotTechnicians).limit(5);
+
+    let count = 0;
+    for (const schedule of SAMPLE_SCHEDULES) {
+      for (const device of devices.slice(0, 3)) {
+        const scheduledDate = new Date();
+        scheduledDate.setDate(scheduledDate.getDate() + randomInt(1, 30));
+
+        await db.insert(iotMaintenanceSchedules).values({
+          deviceId: device.id,
+          title: `${schedule.title} - ${device.deviceName}`,
+          description: schedule.description,
+          maintenanceType: schedule.maintenanceType,
+          priority: schedule.priority,
+          scheduledDate: formatDateForMySQL(scheduledDate),
+          estimatedDuration: schedule.estimatedDuration,
+          assignedTo: technicians.length > 0 ? randomElement(technicians).id : null,
+          status: schedule.status,
+          recurrenceRule: schedule.recurrenceRule,
+          nextOccurrence: formatDateForMySQL(new Date(scheduledDate.getTime() + 7 * 24 * 60 * 60 * 1000)),
+        });
+        count++;
+      }
+    }
+
+    return { success: true, count };
+  } catch (error) {
+    console.error('Error seeding IoT maintenance schedules:', error);
+    return {
+      success: false,
+      count: 0,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
+
+/**
+ * Seed IoT Work Orders
+ */
+export async function seedIotWorkOrders(): Promise<{
+  success: boolean;
+  count: number;
+  error?: string;
+}> {
+  const db = await getDb();
+  if (!db) {
+    return { success: false, count: 0, error: 'Database not available' };
+  }
+
+  try {
+    // Get devices and technicians
+    const devices = await db.select().from(iotDevices).limit(10);
+    const technicians = await db.select().from(iotTechnicians).limit(5);
+
+    if (devices.length === 0) {
+      return { success: false, count: 0, error: 'No IoT devices found. Please seed devices first.' };
+    }
+
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    let count = 0;
+    // Generate 50 work orders
+    for (let i = 0; i < 50; i++) {
+      const device = randomElement(devices);
+      const technician = technicians.length > 0 ? randomElement(technicians) : null;
+      const workOrderType = randomElement(WORK_ORDER_TYPES);
+      const priority = randomElement(PRIORITIES);
+      const status = randomElement(WORK_ORDER_STATUSES);
+      
+      const createdAt = randomDate(thirtyDaysAgo, now);
+      const dueDate = new Date(createdAt.getTime() + randomInt(1, 7) * 24 * 60 * 60 * 1000);
+
+      let startedAt = null;
+      let completedAt = null;
+      let actualDuration = null;
+      let assignedAt = null;
+
+      if (status === 'completed' || status === 'verified') {
+        assignedAt = formatDateForMySQL(new Date(createdAt.getTime() + randomInt(1, 4) * 60 * 60 * 1000));
+        startedAt = formatDateForMySQL(new Date(createdAt.getTime() + randomInt(2, 8) * 60 * 60 * 1000));
+        completedAt = formatDateForMySQL(new Date(createdAt.getTime() + randomInt(4, 24) * 60 * 60 * 1000));
+        actualDuration = randomInt(30, 480);
+      } else if (status === 'in_progress' || status === 'on_hold') {
+        assignedAt = formatDateForMySQL(new Date(createdAt.getTime() + randomInt(1, 4) * 60 * 60 * 1000));
+        startedAt = formatDateForMySQL(new Date(createdAt.getTime() + randomInt(2, 8) * 60 * 60 * 1000));
+      } else if (status === 'assigned') {
+        assignedAt = formatDateForMySQL(new Date(createdAt.getTime() + randomInt(1, 4) * 60 * 60 * 1000));
+      }
+
+      const workOrderNumber = `WO-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}-${String(i + 1).padStart(4, '0')}`;
+
+      await db.insert(iotMaintenanceWorkOrders).values({
+        workOrderNumber,
+        title: `${workOrderType === 'corrective' ? 'Sửa chữa' : workOrderType === 'preventive' ? 'Bảo dưỡng' : workOrderType === 'predictive' ? 'Bảo trì dự đoán' : workOrderType === 'emergency' ? 'Khẩn cấp' : 'Kiểm tra'} - ${device.deviceName}`,
+        description: `Work order cho thiết bị ${device.deviceCode} - ${device.deviceName}`,
+        deviceId: device.id,
+        workOrderType,
+        priority,
+        status,
+        estimatedDuration: randomInt(30, 240),
+        actualDuration,
+        estimatedCost: String(randomInt(100, 5000) * 1000),
+        actualCost: status === 'completed' || status === 'verified' ? String(randomInt(80, 6000) * 1000) : null,
+        requiredSkills: ['electrical', 'mechanical'].slice(0, randomInt(1, 2)),
+        assignedTo: technician?.id || null,
+        assignedAt,
+        startedAt,
+        completedAt,
+        dueDate: formatDateForMySQL(dueDate),
+        completionNotes: status === 'completed' || status === 'verified' ? `Hoàn thành công việc ${workOrderNumber}` : null,
+        rootCause: status === 'completed' || status === 'verified' ? 'Linh kiện hao mòn theo thời gian' : null,
+        actionsTaken: status === 'completed' || status === 'verified' ? 'Thay thế linh kiện và kiểm tra vận hành' : null,
+      });
+      count++;
+    }
+
+    return { success: true, count };
+  } catch (error) {
+    console.error('Error seeding IoT work orders:', error);
+    return {
+      success: false,
+      count: 0,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
+
+/**
+ * Seed IoT Failure Events
+ */
+export async function seedIotFailureEvents(): Promise<{
+  success: boolean;
+  count: number;
+  error?: string;
+}> {
+  const db = await getDb();
+  if (!db) {
+    return { success: false, count: 0, error: 'Database not available' };
+  }
+
+  try {
+    // Get devices
+    const devices = await db.select().from(iotDevices).limit(10);
+    if (devices.length === 0) {
+      return { success: false, count: 0, error: 'No IoT devices found. Please seed devices first.' };
+    }
+
+    const now = new Date();
+    const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+
+    let count = 0;
+    // Generate 30 failure events
+    for (let i = 0; i < 30; i++) {
+      const device = randomElement(devices);
+      const failureType = randomElement(FAILURE_TYPES);
+      const severity = randomElement(SEVERITIES);
+      const rootCauseCategory = randomElement(ROOT_CAUSE_CATEGORIES);
+      const resolutionType = randomElement(RESOLUTION_TYPES);
+      
+      const failureStartAt = randomDate(sixtyDaysAgo, now);
+      const downtimeDuration = randomInt(15, 480);
+      const repairDuration = randomInt(10, downtimeDuration);
+      const waitingDuration = downtimeDuration - repairDuration;
+      const failureEndAt = new Date(failureStartAt.getTime() + downtimeDuration * 60 * 1000);
+      const repairStartAt = new Date(failureStartAt.getTime() + waitingDuration * 60 * 1000);
+      const repairEndAt = failureEndAt;
+      const isResolved = Math.random() > 0.2;
+
+      await db.insert(iotFailureEvents).values({
+        targetType: 'device',
+        targetId: device.id,
+        failureCode: `F-${String(i + 1).padStart(4, '0')}`,
+        failureType,
+        severity,
+        description: `Sự cố ${failureType} trên thiết bị ${device.deviceName}`,
+        failureStartAt: formatDateForMySQL(failureStartAt),
+        failureEndAt: isResolved ? formatDateForMySQL(failureEndAt) : null,
+        repairStartAt: isResolved ? formatDateForMySQL(repairStartAt) : null,
+        repairEndAt: isResolved ? formatDateForMySQL(repairEndAt) : null,
+        downtimeDuration: isResolved ? downtimeDuration : null,
+        repairDuration: isResolved ? repairDuration : null,
+        waitingDuration: isResolved ? waitingDuration : null,
+        rootCauseCategory,
+        rootCause: isResolved ? `Nguyên nhân: ${rootCauseCategory}` : null,
+        resolutionType: isResolved ? resolutionType : null,
+        resolution: isResolved ? `Đã ${resolutionType === 'repair' ? 'sửa chữa' : resolutionType === 'replace' ? 'thay thế' : 'xử lý'} thành công` : null,
+        timeSincePreviousFailure: String(randomInt(24, 720)),
+      });
+      count++;
+    }
+
+    return { success: true, count };
+  } catch (error) {
+    console.error('Error seeding IoT failure events:', error);
+    return {
+      success: false,
+      count: 0,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
+
+/**
+ * Seed all IoT Work Order data
+ */
+export async function seedAllIotWorkOrderData(): Promise<{
+  success: boolean;
+  technicians: { count: number };
+  schedules: { count: number };
+  workOrders: { count: number };
+  failureEvents: { count: number };
+  error?: string;
+}> {
+  const techniciansResult = await seedIotTechnicians();
+  if (!techniciansResult.success) {
+    return {
+      success: false,
+      technicians: { count: 0 },
+      schedules: { count: 0 },
+      workOrders: { count: 0 },
+      failureEvents: { count: 0 },
+      error: techniciansResult.error,
+    };
+  }
+
+  const schedulesResult = await seedIotMaintenanceSchedules();
+  const workOrdersResult = await seedIotWorkOrders();
+  const failureEventsResult = await seedIotFailureEvents();
+
+  return {
+    success: true,
+    technicians: { count: techniciansResult.count },
+    schedules: { count: schedulesResult.count },
+    workOrders: { count: workOrdersResult.count },
+    failureEvents: { count: failureEventsResult.count },
+  };
+}
