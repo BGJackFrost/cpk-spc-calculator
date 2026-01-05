@@ -36,6 +36,7 @@ import { iotDeviceManagementRouter } from "./routers/iotDeviceManagementRouter";
 import { iotAlertEscalationRouter } from "./routers/iotAlertEscalationRouter";
 import { iotAnalyticsRouter } from "./routers/iotAnalyticsRouter";
 import { iotProtocolRouter } from "./routers/iotProtocolRouter";
+import { iotCrudRouter } from "./routers/iotCrudRouter";
 import { telegramRouter } from "./routers/telegramRouter";
 import { floorPlanRouter } from "./routers/floorPlanRouter";
 import { notificationRouter } from "./routers/notificationRouter";
@@ -3808,6 +3809,7 @@ export const appRouter = router({
   legacyDbConnection: legacyDatabaseConnectionRouter,
   machineIntegration: machineIntegrationRouter,
   machineApi: machinePublicRouter,
+  iotCrud: iotCrudRouter,
   quickAccess: quickAccessRouter,
   alerts: alertAnalyticsRouter,
   webhookHistory: webhookHistoryRouter,
