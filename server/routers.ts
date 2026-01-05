@@ -55,6 +55,8 @@ import { widgetDataRouter } from "./routers/widgetDataRouter";
 import { firmwareOtaRouter } from "./routers/firmwareOtaRouter";
 import { floorPlanIntegrationRouter } from "./routers/floorPlanIntegrationRouter";
 import { predictiveMaintenanceRouter } from "./routers/predictiveMaintenanceRouter";
+import { scheduledOtaRouter } from "./scheduledOtaRouter";
+import { maintenanceWorkOrderRouter } from "./maintenanceWorkOrderRouter";
 import { mobileRouter } from "./mobileRouter";
 import { triggerLicenseExpiryCheck } from "./scheduledJobs";
 import { triggerWebhooks, testWebhook } from "./webhookService";
@@ -3771,6 +3773,8 @@ export const appRouter = router({
   firmwareOta: firmwareOtaRouter,
   floorPlanIntegration: floorPlanIntegrationRouter,
   predictiveMaintenance: predictiveMaintenanceRouter,
+  scheduledOta: scheduledOtaRouter,
+  maintenanceWorkOrder: maintenanceWorkOrderRouter,
   mobile: mobileRouter,
   system: systemRouter,
   theme: themeRouter,

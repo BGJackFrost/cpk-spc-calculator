@@ -236,6 +236,9 @@ import IoTAnalytics from "./pages/IoTAnalytics";
 import IoTFirmwareOTA from "./pages/IoTFirmwareOTA";
 import IoTFloorPlanIntegration from "./pages/IoTFloorPlanIntegration";
 import IoTPredictiveMaintenance from "./pages/IoTPredictiveMaintenance";
+import IoTScheduledOTA from "./pages/IoTScheduledOTA";
+import IoT3DFloorPlan from "./pages/IoT3DFloorPlan";
+import IoTWorkOrders from "./pages/IoTWorkOrders";
 import WebhookEscalationPage from "./pages/WebhookEscalationPage";
 import LatencyMonitoringPage from "./pages/LatencyMonitoringPage";
 import EscalationConfigPage from "./pages/EscalationConfigPage";
@@ -486,6 +489,9 @@ function Router() {
       <Route path="/iot-firmware-ota" component={IoTFirmwareOTA} />
       <Route path="/iot-floor-plan-integration" component={IoTFloorPlanIntegration} />
       <Route path="/iot-predictive-maintenance" component={IoTPredictiveMaintenance} />
+      <Route path="/iot-scheduled-ota" component={IoTScheduledOTA} />
+      <Route path="/iot-3d-floor-plan" component={IoT3DFloorPlan} />
+      <Route path="/iot-work-orders" component={IoTWorkOrders} />
       <Route path="/webhook-escalation" component={WebhookEscalationPage} />
       <Route path="/escalation-config" component={EscalationConfigPage} />
       <Route path="/sms-settings" component={SmsSettings} />

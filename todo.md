@@ -7881,3 +7881,39 @@
 - [x] Tạo cảnh báo tự động khi dự đoán thiết bị sắp hỏng
 - [x] Hiển thị confidence score và factors ảnh hưởng đến dự đoán
 
+
+
+## Phase 97: IoT Advanced Features - Part 2
+
+### 1. Scheduled OTA Deployment
+- [x] Tạo bảng iot_ota_schedules để lưu lịch cập nhật
+- [x] Tạo service scheduledOtaService.ts
+- [x] Thêm API endpoints cho scheduled OTA
+- [x] Tạo UI lên lịch cập nhật firmware
+- [x] Thêm cron job xử lý scheduled deployments
+- [x] Hỗ trợ recurring schedules (hàng ngày, hàng tuần)
+- [x] Thêm validation giờ thấp điểm (off-peak hours)
+- [x] Gửi notification trước khi cập nhật
+
+### 2. 3D Floor Plan với Three.js
+- [x] Cài đặt @react-three/fiber và @react-three/drei
+- [x] Tạo component FloorPlan3D.tsx
+- [x] Hỗ trợ load model 3D (GLTF/GLB)
+- [x] Hiển thị thiết bị IoT trên mô hình 3D
+- [x] Thêm camera controls (orbit, pan, zoom)
+- [x] Hiển thị trạng thái thiết bị với màu sắc
+- [x] Click vào thiết bị để xem chi tiết
+- [x] Thêm animation cho thiết bị đang hoạt động
+- [x] Tạo trang IoT3DFloorPlan.tsx
+
+### 3. Maintenance Work Order tự động
+- [x] Tạo bảng iot_maintenance_work_orders
+- [x] Tạo bảng iot_work_order_tasks
+- [x] Tạo service maintenanceWorkOrderService.ts
+- [x] Tích hợp với predictive maintenance
+- [x] Tự động tạo work order khi dự đoán cần bảo trì
+- [x] Gán kỹ thuật viên tự động dựa trên skill
+- [x] Tạo UI quản lý work orders
+- [x] Thêm workflow: Created → Assigned → In Progress → Completed
+- [x] Gửi notification cho kỹ thuật viên được gán
+- [x] Báo cáo thống kê work orders

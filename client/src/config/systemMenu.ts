@@ -7,7 +7,7 @@ import {
   Gauge, ClipboardList, Building2, ShieldCheck, Boxes, Moon, Sun, Zap,
   Target, HardHat, Hammer, Truck, Brain, Bell, Download, BellRing, Award,
   Thermometer, DollarSign, CreditCard, Receipt, FileCheck, Lock, Unlock,
-  Star, Lightbulb, Map,
+  Star, Lightbulb, Map, Box,
   MessageSquare,
   Video,
   Radio,
@@ -554,6 +554,16 @@ export const IOT_MENU: SystemMenuConfig = {
         { id: "iot-floor-plan", icon: Map, labelKey: "nav.iotFloorPlan", path: "/iot-floor-plan" },
         { id: "iot-unified-dashboard", icon: Gauge, labelKey: "nav.iotUnifiedDashboard", path: "/iot-unified-dashboard" },
         { id: "floor-plan-designer", icon: Map, labelKey: "nav.floorPlanDesigner", path: "/floor-plan-designer", adminOnly: true },
+        { id: "iot-3d-floor-plan", icon: Box, labelKey: "nav.iot3DFloorPlan", path: "/iot-3d-floor-plan" },
+      ],
+    },
+    {
+      id: "iot-maintenance",
+      labelKey: "menuGroup.iotMaintenance",
+      icon: Wrench,
+      items: [
+        { id: "iot-work-orders", icon: ClipboardList, labelKey: "nav.iotWorkOrders", path: "/iot-work-orders" },
+        { id: "iot-scheduled-ota", icon: Calendar, labelKey: "nav.iotScheduledOta", path: "/iot-scheduled-ota", adminOnly: true },
       ],
     },
     {

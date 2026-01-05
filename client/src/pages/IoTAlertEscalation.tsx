@@ -41,7 +41,7 @@ function EscalationRulesTab() {
     alertType: '',
     severityFilter: [] as string[],
     escalationLevels: [
-      { level: 1, delayMinutes: 5, channels: ['email'] as const[], recipients: [''], message: '' },
+      { level: 1, delayMinutes: 5, channels: ['email'] as ('email' | 'sms' | 'push')[], recipients: [''], message: '' },
     ],
     cooldownMinutes: 30,
   });

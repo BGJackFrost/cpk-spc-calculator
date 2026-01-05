@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `iot_work_order_tasks` (\n  `id` int AUTO_INCREMENT PRIMARY KEY,\n  `work_order_id` int NOT NULL,\n  `task_number` int NOT NULL,\n  `title` varchar(255) NOT NULL,\n  `description` text,\n  `estimated_duration` int DEFAULT 15,\n  `actual_duration` int,\n  `status` enum('pending','in_progress','completed','skipped') DEFAULT 'pending',\n  `assigned_to` int,\n  `completed_by` int,\n  `completed_at` timestamp NULL,\n  `notes` text,\n  `checklist_items` json,\n  `required_tools` json,\n  `safety_precautions` text,\n  `created_at` timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,\n  `updated_at` timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL,\n  INDEX `idx_task_wo` (`work_order_id`),\n  INDEX `idx_task_status` (`status`),\n  INDEX `idx_task_assigned` (`assigned_to`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute CREATE TABLE IF NOT EXISTS `iot_work_order_tasks` (\n  `id` int AUTO_INCREMENT PRIMARY KEY,\n  `work_order_id` int NOT NULL,\n  `task_number` int NOT NULL,\n  `title` varchar(255) NOT NULL,\n  `description` text,\n  `estimated_duration` int DEFAULT 15,\n  `actual_duration` int,\n  `status` enum('pending','in_progress','completed','skipped') DEFAULT 'pending',\n  `assigned_to` int,\n  `completed_by` int,\n  `completed_at` timestamp NULL,\n  `notes` text,\n  `checklist_items` json,\n  `required_tools` json,\n  `safety_precautions` text,\n  `created_at` timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,\n  `updated_at` timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL,\n  INDEX `idx_task_wo` (`work_order_id`),\n  INDEX `idx_task_status` (`status`),\n  INDEX `idx_task_assigned` (`assigned_to`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1633
+}

@@ -5013,3 +5013,269 @@ export type IotMaintenancePrediction = typeof iotMaintenancePredictions.$inferSe
 export type InsertIotMaintenancePrediction = typeof iotMaintenancePredictions.$inferInsert;
 export type IotDeviceHealthHistory = typeof iotDeviceHealthHistory.$inferSelect;
 export type InsertIotDeviceHealthHistory = typeof iotDeviceHealthHistory.$inferInsert;
+
+
+// ============================================
+// Phase 97: Advanced IoT Features - Part 2
+// ============================================
+
+// IoT OTA Schedules - Lịch cập nhật firmware tự động
+export const iotOtaSchedules = mysqlTable("iot_ota_schedules", {
+  id: int().autoincrement().primaryKey(),
+  name: varchar({ length: 100 }).notNull(),
+  description: text(),
+  firmwarePackageId: int("firmware_package_id").notNull(),
+  targetDeviceIds: json("target_device_ids").notNull(),
+  targetGroupIds: json("target_group_ids"),
+  scheduleType: mysqlEnum("schedule_type", ['once','daily','weekly','monthly']).default('once'),
+  scheduledTime: varchar("scheduled_time", { length: 5 }).notNull(), // HH:MM format
+  scheduledDate: timestamp("scheduled_date", { mode: 'string' }), // For 'once' type
+  daysOfWeek: json("days_of_week"), // [0-6] for weekly, 0=Sunday
+  dayOfMonth: int("day_of_month"), // 1-31 for monthly
+  offPeakOnly: tinyint("off_peak_only").default(1),
+  offPeakStartTime: varchar("off_peak_start_time", { length: 5 }).default('22:00'),
+  offPeakEndTime: varchar("off_peak_end_time", { length: 5 }).default('06:00'),
+  timezone: varchar({ length: 50 }).default('Asia/Ho_Chi_Minh'),
+  maxConcurrentDevices: int("max_concurrent_devices").default(10),
+  retryOnFailure: tinyint("retry_on_failure").default(1),
+  maxRetries: int("max_retries").default(3),
+  notifyBeforeMinutes: int("notify_before_minutes").default(30),
+  notifyChannels: json("notify_channels"), // ['email','sms','webhook']
+  status: mysqlEnum(['active','paused','completed','cancelled']).default('active'),
+  lastRunAt: timestamp("last_run_at", { mode: 'string' }),
+  nextRunAt: timestamp("next_run_at", { mode: 'string' }),
+  totalRuns: int("total_runs").default(0),
+  successfulRuns: int("successful_runs").default(0),
+  failedRuns: int("failed_runs").default(0),
+  createdBy: int("created_by"),
+  createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+  index("idx_ota_schedule_firmware").on(table.firmwarePackageId),
+  index("idx_ota_schedule_status").on(table.status),
+  index("idx_ota_schedule_next_run").on(table.nextRunAt),
+]);
+
+// IoT OTA Schedule Runs - Lịch sử chạy scheduled OTA
+export const iotOtaScheduleRuns = mysqlTable("iot_ota_schedule_runs", {
+  id: int().autoincrement().primaryKey(),
+  scheduleId: int("schedule_id").notNull(),
+  deploymentId: int("deployment_id"), // Link to iot_ota_deployments
+  runStartedAt: timestamp("run_started_at", { mode: 'string' }).notNull(),
+  runCompletedAt: timestamp("run_completed_at", { mode: 'string' }),
+  status: mysqlEnum(['pending','running','completed','failed','cancelled']).default('pending'),
+  totalDevices: int("total_devices").default(0),
+  successCount: int("success_count").default(0),
+  failedCount: int("failed_count").default(0),
+  skippedCount: int("skipped_count").default(0),
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+  index("idx_schedule_run_schedule").on(table.scheduleId),
+  index("idx_schedule_run_status").on(table.status),
+  index("idx_schedule_run_started").on(table.runStartedAt),
+]);
+
+// IoT 3D Floor Plans - Sơ đồ mặt bằng 3D
+export const iot3dFloorPlans = mysqlTable("iot_3d_floor_plans", {
+  id: int().autoincrement().primaryKey(),
+  name: varchar({ length: 100 }).notNull(),
+  description: text(),
+  buildingName: varchar("building_name", { length: 100 }),
+  floorNumber: int("floor_number").default(1),
+  modelUrl: varchar("model_url", { length: 500 }).notNull(), // GLTF/GLB file URL
+  modelFormat: mysqlEnum("model_format", ['gltf','glb','obj','fbx']).default('glb'),
+  modelScale: decimal("model_scale", { precision: 10, scale: 4 }).default('1.0000'),
+  thumbnailUrl: varchar("thumbnail_url", { length: 500 }),
+  cameraPosition: json("camera_position"), // {x, y, z}
+  cameraTarget: json("camera_target"), // {x, y, z}
+  lightingConfig: json("lighting_config"), // ambient, directional lights
+  environmentMap: varchar("environment_map", { length: 500 }),
+  floorDimensions: json("floor_dimensions"), // {width, height, depth}
+  gridEnabled: tinyint("grid_enabled").default(1),
+  gridSize: int("grid_size").default(10),
+  status: mysqlEnum(['draft','active','archived']).default('draft'),
+  createdBy: int("created_by"),
+  createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+  index("idx_3d_floor_status").on(table.status),
+  index("idx_3d_floor_building").on(table.buildingName),
+]);
+
+// IoT 3D Device Positions - Vị trí thiết bị trên mô hình 3D
+export const iot3dDevicePositions = mysqlTable("iot_3d_device_positions", {
+  id: int().autoincrement().primaryKey(),
+  deviceId: int("device_id").notNull(),
+  floorPlan3dId: int("floor_plan_3d_id").notNull(),
+  positionX: decimal("position_x", { precision: 10, scale: 4 }).notNull(),
+  positionY: decimal("position_y", { precision: 10, scale: 4 }).notNull(),
+  positionZ: decimal("position_z", { precision: 10, scale: 4 }).notNull(),
+  rotationX: decimal("rotation_x", { precision: 10, scale: 4 }).default('0'),
+  rotationY: decimal("rotation_y", { precision: 10, scale: 4 }).default('0'),
+  rotationZ: decimal("rotation_z", { precision: 10, scale: 4 }).default('0'),
+  scale: decimal({ precision: 10, scale: 4 }).default('1.0000'),
+  modelOverride: varchar("model_override", { length: 500 }), // Custom 3D model for device
+  labelVisible: tinyint("label_visible").default(1),
+  labelOffset: json("label_offset"), // {x, y, z}
+  animationEnabled: tinyint("animation_enabled").default(1),
+  animationType: mysqlEnum("animation_type", ['none','pulse','rotate','bounce','glow']).default('pulse'),
+  interactionEnabled: tinyint("interaction_enabled").default(1),
+  createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+  index("idx_3d_pos_device").on(table.deviceId),
+  index("idx_3d_pos_floor").on(table.floorPlan3dId),
+]);
+
+// IoT Maintenance Work Orders - Phiếu công việc bảo trì
+export const iotMaintenanceWorkOrders = mysqlTable("iot_maintenance_work_orders", {
+  id: int().autoincrement().primaryKey(),
+  workOrderNumber: varchar("work_order_number", { length: 50 }).notNull(),
+  title: varchar({ length: 255 }).notNull(),
+  description: text(),
+  deviceId: int("device_id").notNull(),
+  predictionId: int("prediction_id"), // Link to iot_maintenance_predictions
+  scheduleId: int("schedule_id"), // Link to iot_maintenance_schedules
+  workOrderType: mysqlEnum("work_order_type", ['predictive','preventive','corrective','emergency','inspection']).notNull(),
+  priority: mysqlEnum(['low','medium','high','critical']).default('medium'),
+  status: mysqlEnum(['created','assigned','in_progress','on_hold','completed','cancelled','verified']).default('created'),
+  estimatedDuration: int("estimated_duration").default(60), // minutes
+  actualDuration: int("actual_duration"),
+  estimatedCost: decimal("estimated_cost", { precision: 12, scale: 2 }),
+  actualCost: decimal("actual_cost", { precision: 12, scale: 2 }),
+  requiredSkills: json("required_skills"), // ['electrical','mechanical','plc']
+  requiredParts: json("required_parts"), // [{partId, quantity}]
+  assignedTo: int("assigned_to"),
+  assignedTeam: varchar("assigned_team", { length: 100 }),
+  assignedAt: timestamp("assigned_at", { mode: 'string' }),
+  startedAt: timestamp("started_at", { mode: 'string' }),
+  completedAt: timestamp("completed_at", { mode: 'string' }),
+  verifiedBy: int("verified_by"),
+  verifiedAt: timestamp("verified_at", { mode: 'string' }),
+  dueDate: timestamp("due_date", { mode: 'string' }),
+  completionNotes: text("completion_notes"),
+  rootCause: text("root_cause"),
+  actionsTaken: text("actions_taken"),
+  preventiveMeasures: text("preventive_measures"),
+  attachments: json(), // [{url, name, type}]
+  createdBy: int("created_by"),
+  createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+  index("idx_wo_number").on(table.workOrderNumber),
+  index("idx_wo_device").on(table.deviceId),
+  index("idx_wo_status").on(table.status),
+  index("idx_wo_priority").on(table.priority),
+  index("idx_wo_assigned").on(table.assignedTo),
+  index("idx_wo_due_date").on(table.dueDate),
+]);
+
+// IoT Work Order Tasks - Các công việc chi tiết trong work order
+export const iotWorkOrderTasks = mysqlTable("iot_work_order_tasks", {
+  id: int().autoincrement().primaryKey(),
+  workOrderId: int("work_order_id").notNull(),
+  taskNumber: int("task_number").notNull(),
+  title: varchar({ length: 255 }).notNull(),
+  description: text(),
+  estimatedDuration: int("estimated_duration").default(15), // minutes
+  actualDuration: int("actual_duration"),
+  status: mysqlEnum(['pending','in_progress','completed','skipped']).default('pending'),
+  assignedTo: int("assigned_to"),
+  completedBy: int("completed_by"),
+  completedAt: timestamp("completed_at", { mode: 'string' }),
+  notes: text(),
+  checklistItems: json("checklist_items"), // [{item, checked}]
+  requiredTools: json("required_tools"),
+  safetyPrecautions: text("safety_precautions"),
+  createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+  index("idx_task_wo").on(table.workOrderId),
+  index("idx_task_status").on(table.status),
+  index("idx_task_assigned").on(table.assignedTo),
+]);
+
+// IoT Work Order Comments - Bình luận/ghi chú trong work order
+export const iotWorkOrderComments = mysqlTable("iot_work_order_comments", {
+  id: int().autoincrement().primaryKey(),
+  workOrderId: int("work_order_id").notNull(),
+  userId: int("user_id").notNull(),
+  comment: text().notNull(),
+  attachments: json(),
+  isInternal: tinyint("is_internal").default(0), // Internal notes vs visible to all
+  createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+  index("idx_comment_wo").on(table.workOrderId),
+  index("idx_comment_user").on(table.userId),
+]);
+
+// IoT Work Order History - Lịch sử thay đổi work order
+export const iotWorkOrderHistory = mysqlTable("iot_work_order_history", {
+  id: int().autoincrement().primaryKey(),
+  workOrderId: int("work_order_id").notNull(),
+  userId: int("user_id"),
+  action: varchar({ length: 50 }).notNull(), // 'created','status_changed','assigned','completed'
+  previousValue: text("previous_value"),
+  newValue: text("new_value"),
+  description: text(),
+  createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+  index("idx_history_wo").on(table.workOrderId),
+  index("idx_history_action").on(table.action),
+]);
+
+// IoT Technicians - Kỹ thuật viên bảo trì
+export const iotTechnicians = mysqlTable("iot_technicians", {
+  id: int().autoincrement().primaryKey(),
+  userId: int("user_id").notNull(),
+  employeeId: varchar("employee_id", { length: 50 }),
+  department: varchar({ length: 100 }),
+  skills: json(), // ['electrical','mechanical','plc','hvac']
+  certifications: json(), // [{name, expiryDate}]
+  experienceYears: int("experience_years").default(0),
+  hourlyRate: decimal("hourly_rate", { precision: 10, scale: 2 }),
+  availability: mysqlEnum(['available','busy','on_leave','unavailable']).default('available'),
+  currentWorkOrderId: int("current_work_order_id"),
+  totalWorkOrders: int("total_work_orders").default(0),
+  completedWorkOrders: int("completed_work_orders").default(0),
+  avgCompletionTime: int("avg_completion_time"), // minutes
+  rating: decimal({ precision: 3, scale: 2 }).default('5.00'),
+  phone: varchar({ length: 20 }),
+  email: varchar({ length: 100 }),
+  createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+  index("idx_tech_user").on(table.userId),
+  index("idx_tech_availability").on(table.availability),
+  index("idx_tech_department").on(table.department),
+]);
+
+// Type exports for Phase 97
+export type IotOtaSchedule = typeof iotOtaSchedules.$inferSelect;
+export type InsertIotOtaSchedule = typeof iotOtaSchedules.$inferInsert;
+export type IotOtaScheduleRun = typeof iotOtaScheduleRuns.$inferSelect;
+export type InsertIotOtaScheduleRun = typeof iotOtaScheduleRuns.$inferInsert;
+export type Iot3dFloorPlan = typeof iot3dFloorPlans.$inferSelect;
+export type InsertIot3dFloorPlan = typeof iot3dFloorPlans.$inferInsert;
+export type Iot3dDevicePosition = typeof iot3dDevicePositions.$inferSelect;
+export type InsertIot3dDevicePosition = typeof iot3dDevicePositions.$inferInsert;
+export type IotMaintenanceWorkOrder = typeof iotMaintenanceWorkOrders.$inferSelect;
+export type InsertIotMaintenanceWorkOrder = typeof iotMaintenanceWorkOrders.$inferInsert;
+export type IotWorkOrderTask = typeof iotWorkOrderTasks.$inferSelect;
+export type InsertIotWorkOrderTask = typeof iotWorkOrderTasks.$inferInsert;
+export type IotWorkOrderComment = typeof iotWorkOrderComments.$inferSelect;
+export type InsertIotWorkOrderComment = typeof iotWorkOrderComments.$inferInsert;
+export type IotWorkOrderHistory = typeof iotWorkOrderHistory.$inferSelect;
+export type InsertIotWorkOrderHistory = typeof iotWorkOrderHistory.$inferInsert;
+export type IotTechnician = typeof iotTechnicians.$inferSelect;
+export type InsertIotTechnician = typeof iotTechnicians.$inferInsert;
