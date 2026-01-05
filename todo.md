@@ -8000,3 +8000,24 @@
 - [x] Export báo cáo MTTR/MTBF ra Excel
 - [ ] Bao gồm biểu đồ xu hướng trong báo cáo
 - [ ] Bao gồm bảng thống kê chi tiết
+
+
+## Phase 100: IoT Enhancement - Credentials, 3D Model Test, Scheduled Notifications
+
+### Cấu hình Credentials
+- [x] Yêu cầu và cấu hình Twilio Account SID/Auth Token
+- [x] Yêu cầu và cấu hình Firebase Service Account (Project ID, Client Email, Private Key)
+- [x] Kiểm tra kết nối Twilio/Firebase
+
+### Upload Model 3D mẫu
+- [x] Tìm và tải file GLTF/GLB mẫu (DamagedHelmet, BoxAnimated, CesiumMilkTruck)
+- [x] Upload lên S3 và tạo database records
+- [ ] Kiểm tra hiển thị model trong floor plan (cần test trên UI)
+
+### Scheduled Notifications cho Work Order
+- [x] Tạo cron job kiểm tra work order sắp đến hạn (mỗi giờ tại :30)
+- [x] Tạo cron job kiểm tra work order quá hạn (8:00, 14:00, 20:00)
+- [x] Gửi thông báo tự động cho kỹ thuật viên (Push/SMS)
+- [x] Tạo service workOrderNotificationScheduler.ts
+- [x] Tạo service smsNotificationService.ts (Twilio)
+- [x] Thêm API triggerScheduledCheck để test thủ công

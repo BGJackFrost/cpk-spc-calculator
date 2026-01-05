@@ -498,6 +498,26 @@ export function initScheduledJobs(): void {
   
   console.log('[ScheduledJob] Scheduled: NTF PowerPoint report at 10:00 AM on 1st (Asia/Ho_Chi_Minh)');
   
+  // Work Order Due Soon check - runs every hour at :30
+  cron.schedule('0 30 * * * *', async () => {
+    console.log('[ScheduledJob] Triggered: Work order due soon check');
+    await checkWorkOrderNotifications();
+  }, {
+    timezone: 'Asia/Ho_Chi_Minh'
+  });
+  
+  console.log('[ScheduledJob] Scheduled: Work order due soon check every hour at :30 (Asia/Ho_Chi_Minh)');
+  
+  // Work Order Overdue check - runs at 8:00 AM, 14:00, and 20:00 daily
+  cron.schedule('0 0 8,14,20 * * *', async () => {
+    console.log('[ScheduledJob] Triggered: Work order overdue check');
+    await checkWorkOrderNotifications();
+  }, {
+    timezone: 'Asia/Ho_Chi_Minh'
+  });
+  
+  console.log('[ScheduledJob] Scheduled: Work order overdue check at 8:00, 14:00, 20:00 (Asia/Ho_Chi_Minh)');
+  
   // OEE daily alert - runs at 8:30 AM daily
   cron.schedule('0 30 8 * * *', async () => {
     console.log('[ScheduledJob] Triggered: OEE daily alert check');
@@ -3644,4 +3664,44 @@ export async function triggerWeeklyAccuracyReportJob(): Promise<{
   message: string;
 }> {
   return await triggerWeeklyAccuracyReport();
+}
+
+
+/**
+ * Check work order notifications (due soon and overdue)
+ */
+async function checkWorkOrderNotifications(): Promise<void> {
+  try {
+    const { checkWorkOrderNotifications: runCheck } = await import('./services/workOrderNotificationScheduler');
+    const result = await runCheck();
+    
+    console.log(`[ScheduledJob] Work order notification check completed:
+      - Due Soon: ${result.dueSoon.checked} checked, ${result.dueSoon.notified} notified
+      - Overdue: ${result.overdue.checked} checked, ${result.overdue.notified} notified`);
+  } catch (error) {
+    console.error('[ScheduledJob] Error checking work order notifications:', error);
+  }
+}
+
+/**
+ * Manually trigger work order notification check (for testing)
+ */
+export async function triggerWorkOrderNotificationCheck(): Promise<{
+  dueSoon: { checked: number; notified: number; errors: number };
+  overdue: { checked: number; notified: number; errors: number };
+}> {
+  try {
+    const { checkWorkOrderNotifications: runCheck } = await import('./services/workOrderNotificationScheduler');
+    const result = await runCheck();
+    return {
+      dueSoon: result.dueSoon,
+      overdue: result.overdue,
+    };
+  } catch (error) {
+    console.error('[ScheduledJob] Error triggering work order notification check:', error);
+    return {
+      dueSoon: { checked: 0, notified: 0, errors: 1 },
+      overdue: { checked: 0, notified: 0, errors: 1 },
+    };
+  }
 }

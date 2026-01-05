@@ -11885,6 +11885,16 @@ Hãy trả về JSON với format:
         const { workOrderNotificationService } = await import('./workOrderNotificationService');
         return await workOrderNotificationService.sendNotification(input);
       }),
+
+    // Trigger scheduled notification check (admin only)
+    triggerScheduledCheck: protectedProcedure
+      .mutation(async ({ ctx }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin access required' });
+        }
+        const { triggerWorkOrderNotificationCheck } = await import('./scheduledJobs');
+        return await triggerWorkOrderNotificationCheck();
+      }),
   }),
 
   // MTTR/MTBF Report Router
