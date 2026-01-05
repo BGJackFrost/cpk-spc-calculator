@@ -4683,3 +4683,1123 @@ export async function getLatencyPercentileTrends(filters: {
     return [];
   }
 }
+
+
+// ============================================
+// Phase 98: IoT Enhancement - 3D Model Upload, Work Order Notifications, MTTR/MTBF Report
+// ============================================
+
+// 3D Models
+export async function get3dModels(filters?: { category?: string; isPublic?: boolean; isActive?: boolean }) {
+  const db = await getDb();
+  try {
+    const conditions: string[] = [];
+    const values: any[] = [];
+    
+    if (filters?.category) {
+      conditions.push('category = ?');
+      values.push(filters.category);
+    }
+    if (filters?.isPublic !== undefined) {
+      conditions.push('is_public = ?');
+      values.push(filters.isPublic ? 1 : 0);
+    }
+    if (filters?.isActive !== undefined) {
+      conditions.push('is_active = ?');
+      values.push(filters.isActive ? 1 : 0);
+    }
+    
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    
+    const result = await db.execute({
+      sql: `SELECT * FROM iot_3d_models ${whereClause} ORDER BY created_at DESC`,
+      args: values,
+    } as any);
+    
+    return (result as any).rows || [];
+  } catch (error) {
+    console.error('[DB] Error getting 3D models:', error);
+    return [];
+  }
+}
+
+export async function get3dModelById(id: number) {
+  const db = await getDb();
+  try {
+    const result = await db.execute({
+      sql: 'SELECT * FROM iot_3d_models WHERE id = ?',
+      args: [id],
+    } as any);
+    return ((result as any).rows || [])[0] || null;
+  } catch (error) {
+    console.error('[DB] Error getting 3D model by ID:', error);
+    return null;
+  }
+}
+
+export async function create3dModel(data: {
+  name: string;
+  description?: string;
+  category?: string;
+  modelUrl: string;
+  modelFormat?: string;
+  thumbnailUrl?: string;
+  fileSize?: number;
+  defaultScale?: number;
+  defaultRotationX?: number;
+  defaultRotationY?: number;
+  defaultRotationZ?: number;
+  boundingBoxWidth?: number;
+  boundingBoxHeight?: number;
+  boundingBoxDepth?: number;
+  manufacturer?: string;
+  modelNumber?: string;
+  tags?: string[];
+  metadata?: any;
+  isPublic?: boolean;
+  uploadedBy?: number;
+}) {
+  const db = await getDb();
+  try {
+    const result = await db.execute({
+      sql: `INSERT INTO iot_3d_models 
+        (name, description, category, model_url, model_format, thumbnail_url, file_size,
+         default_scale, default_rotation_x, default_rotation_y, default_rotation_z,
+         bounding_box_width, bounding_box_height, bounding_box_depth,
+         manufacturer, model_number, tags, metadata, is_public, uploaded_by)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [
+        data.name,
+        data.description || null,
+        data.category || 'machine',
+        data.modelUrl,
+        data.modelFormat || 'glb',
+        data.thumbnailUrl || null,
+        data.fileSize || null,
+        data.defaultScale || 1,
+        data.defaultRotationX || 0,
+        data.defaultRotationY || 0,
+        data.defaultRotationZ || 0,
+        data.boundingBoxWidth || null,
+        data.boundingBoxHeight || null,
+        data.boundingBoxDepth || null,
+        data.manufacturer || null,
+        data.modelNumber || null,
+        data.tags ? JSON.stringify(data.tags) : null,
+        data.metadata ? JSON.stringify(data.metadata) : null,
+        data.isPublic ? 1 : 0,
+        data.uploadedBy || null,
+      ],
+    } as any);
+    return { id: (result as any).insertId };
+  } catch (error) {
+    console.error('[DB] Error creating 3D model:', error);
+    throw error;
+  }
+}
+
+export async function update3dModel(id: number, data: Partial<{
+  name: string;
+  description: string;
+  category: string;
+  modelUrl: string;
+  modelFormat: string;
+  thumbnailUrl: string;
+  fileSize: number;
+  defaultScale: number;
+  defaultRotationX: number;
+  defaultRotationY: number;
+  defaultRotationZ: number;
+  boundingBoxWidth: number;
+  boundingBoxHeight: number;
+  boundingBoxDepth: number;
+  manufacturer: string;
+  modelNumber: string;
+  tags: string[];
+  metadata: any;
+  isPublic: boolean;
+  isActive: boolean;
+}>) {
+  const db = await getDb();
+  try {
+    const updates: string[] = [];
+    const values: any[] = [];
+    
+    if (data.name !== undefined) { updates.push('name = ?'); values.push(data.name); }
+    if (data.description !== undefined) { updates.push('description = ?'); values.push(data.description); }
+    if (data.category !== undefined) { updates.push('category = ?'); values.push(data.category); }
+    if (data.modelUrl !== undefined) { updates.push('model_url = ?'); values.push(data.modelUrl); }
+    if (data.modelFormat !== undefined) { updates.push('model_format = ?'); values.push(data.modelFormat); }
+    if (data.thumbnailUrl !== undefined) { updates.push('thumbnail_url = ?'); values.push(data.thumbnailUrl); }
+    if (data.fileSize !== undefined) { updates.push('file_size = ?'); values.push(data.fileSize); }
+    if (data.defaultScale !== undefined) { updates.push('default_scale = ?'); values.push(data.defaultScale); }
+    if (data.defaultRotationX !== undefined) { updates.push('default_rotation_x = ?'); values.push(data.defaultRotationX); }
+    if (data.defaultRotationY !== undefined) { updates.push('default_rotation_y = ?'); values.push(data.defaultRotationY); }
+    if (data.defaultRotationZ !== undefined) { updates.push('default_rotation_z = ?'); values.push(data.defaultRotationZ); }
+    if (data.boundingBoxWidth !== undefined) { updates.push('bounding_box_width = ?'); values.push(data.boundingBoxWidth); }
+    if (data.boundingBoxHeight !== undefined) { updates.push('bounding_box_height = ?'); values.push(data.boundingBoxHeight); }
+    if (data.boundingBoxDepth !== undefined) { updates.push('bounding_box_depth = ?'); values.push(data.boundingBoxDepth); }
+    if (data.manufacturer !== undefined) { updates.push('manufacturer = ?'); values.push(data.manufacturer); }
+    if (data.modelNumber !== undefined) { updates.push('model_number = ?'); values.push(data.modelNumber); }
+    if (data.tags !== undefined) { updates.push('tags = ?'); values.push(JSON.stringify(data.tags)); }
+    if (data.metadata !== undefined) { updates.push('metadata = ?'); values.push(JSON.stringify(data.metadata)); }
+    if (data.isPublic !== undefined) { updates.push('is_public = ?'); values.push(data.isPublic ? 1 : 0); }
+    if (data.isActive !== undefined) { updates.push('is_active = ?'); values.push(data.isActive ? 1 : 0); }
+    
+    if (updates.length === 0) return { success: true };
+    
+    values.push(id);
+    await db.execute({
+      sql: `UPDATE iot_3d_models SET ${updates.join(', ')} WHERE id = ?`,
+      args: values,
+    } as any);
+    return { success: true };
+  } catch (error) {
+    console.error('[DB] Error updating 3D model:', error);
+    throw error;
+  }
+}
+
+export async function delete3dModel(id: number) {
+  const db = await getDb();
+  try {
+    await db.execute({
+      sql: 'DELETE FROM iot_3d_models WHERE id = ?',
+      args: [id],
+    } as any);
+    return { success: true };
+  } catch (error) {
+    console.error('[DB] Error deleting 3D model:', error);
+    throw error;
+  }
+}
+
+// 3D Model Instances
+export async function get3dModelInstances(floorPlan3dId: number) {
+  const db = await getDb();
+  try {
+    const result = await db.execute({
+      sql: `SELECT i.*, m.name as model_name, m.model_url, m.model_format, m.thumbnail_url
+            FROM iot_3d_model_instances i
+            LEFT JOIN iot_3d_models m ON i.model_id = m.id
+            WHERE i.floor_plan_3d_id = ?
+            ORDER BY i.created_at DESC`,
+      args: [floorPlan3dId],
+    } as any);
+    return (result as any).rows || [];
+  } catch (error) {
+    console.error('[DB] Error getting 3D model instances:', error);
+    return [];
+  }
+}
+
+export async function create3dModelInstance(data: {
+  modelId: number;
+  floorPlan3dId: number;
+  deviceId?: number;
+  machineId?: number;
+  name?: string;
+  positionX: number;
+  positionY: number;
+  positionZ: number;
+  rotationX?: number;
+  rotationY?: number;
+  rotationZ?: number;
+  scaleX?: number;
+  scaleY?: number;
+  scaleZ?: number;
+  visible?: boolean;
+  opacity?: number;
+  wireframe?: boolean;
+  castShadow?: boolean;
+  receiveShadow?: boolean;
+  clickable?: boolean;
+  tooltip?: string;
+  popupContent?: string;
+  animationEnabled?: boolean;
+  animationType?: string;
+  animationSpeed?: number;
+  metadata?: any;
+}) {
+  const db = await getDb();
+  try {
+    const result = await db.execute({
+      sql: `INSERT INTO iot_3d_model_instances 
+        (model_id, floor_plan_3d_id, device_id, machine_id, name,
+         position_x, position_y, position_z, rotation_x, rotation_y, rotation_z,
+         scale_x, scale_y, scale_z, visible, opacity, wireframe, cast_shadow, receive_shadow,
+         clickable, tooltip, popup_content, animation_enabled, animation_type, animation_speed, metadata)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [
+        data.modelId,
+        data.floorPlan3dId,
+        data.deviceId || null,
+        data.machineId || null,
+        data.name || null,
+        data.positionX,
+        data.positionY,
+        data.positionZ,
+        data.rotationX || 0,
+        data.rotationY || 0,
+        data.rotationZ || 0,
+        data.scaleX || 1,
+        data.scaleY || 1,
+        data.scaleZ || 1,
+        data.visible !== false ? 1 : 0,
+        data.opacity || 1,
+        data.wireframe ? 1 : 0,
+        data.castShadow !== false ? 1 : 0,
+        data.receiveShadow !== false ? 1 : 0,
+        data.clickable !== false ? 1 : 0,
+        data.tooltip || null,
+        data.popupContent || null,
+        data.animationEnabled ? 1 : 0,
+        data.animationType || 'none',
+        data.animationSpeed || 1,
+        data.metadata ? JSON.stringify(data.metadata) : null,
+      ],
+    } as any);
+    return { id: (result as any).insertId };
+  } catch (error) {
+    console.error('[DB] Error creating 3D model instance:', error);
+    throw error;
+  }
+}
+
+export async function update3dModelInstance(id: number, data: Partial<{
+  positionX: number;
+  positionY: number;
+  positionZ: number;
+  rotationX: number;
+  rotationY: number;
+  rotationZ: number;
+  scaleX: number;
+  scaleY: number;
+  scaleZ: number;
+  visible: boolean;
+  opacity: number;
+  wireframe: boolean;
+  castShadow: boolean;
+  receiveShadow: boolean;
+  clickable: boolean;
+  tooltip: string;
+  popupContent: string;
+  animationEnabled: boolean;
+  animationType: string;
+  animationSpeed: number;
+  metadata: any;
+}>) {
+  const db = await getDb();
+  try {
+    const updates: string[] = [];
+    const values: any[] = [];
+    
+    if (data.positionX !== undefined) { updates.push('position_x = ?'); values.push(data.positionX); }
+    if (data.positionY !== undefined) { updates.push('position_y = ?'); values.push(data.positionY); }
+    if (data.positionZ !== undefined) { updates.push('position_z = ?'); values.push(data.positionZ); }
+    if (data.rotationX !== undefined) { updates.push('rotation_x = ?'); values.push(data.rotationX); }
+    if (data.rotationY !== undefined) { updates.push('rotation_y = ?'); values.push(data.rotationY); }
+    if (data.rotationZ !== undefined) { updates.push('rotation_z = ?'); values.push(data.rotationZ); }
+    if (data.scaleX !== undefined) { updates.push('scale_x = ?'); values.push(data.scaleX); }
+    if (data.scaleY !== undefined) { updates.push('scale_y = ?'); values.push(data.scaleY); }
+    if (data.scaleZ !== undefined) { updates.push('scale_z = ?'); values.push(data.scaleZ); }
+    if (data.visible !== undefined) { updates.push('visible = ?'); values.push(data.visible ? 1 : 0); }
+    if (data.opacity !== undefined) { updates.push('opacity = ?'); values.push(data.opacity); }
+    if (data.wireframe !== undefined) { updates.push('wireframe = ?'); values.push(data.wireframe ? 1 : 0); }
+    if (data.castShadow !== undefined) { updates.push('cast_shadow = ?'); values.push(data.castShadow ? 1 : 0); }
+    if (data.receiveShadow !== undefined) { updates.push('receive_shadow = ?'); values.push(data.receiveShadow ? 1 : 0); }
+    if (data.clickable !== undefined) { updates.push('clickable = ?'); values.push(data.clickable ? 1 : 0); }
+    if (data.tooltip !== undefined) { updates.push('tooltip = ?'); values.push(data.tooltip); }
+    if (data.popupContent !== undefined) { updates.push('popup_content = ?'); values.push(data.popupContent); }
+    if (data.animationEnabled !== undefined) { updates.push('animation_enabled = ?'); values.push(data.animationEnabled ? 1 : 0); }
+    if (data.animationType !== undefined) { updates.push('animation_type = ?'); values.push(data.animationType); }
+    if (data.animationSpeed !== undefined) { updates.push('animation_speed = ?'); values.push(data.animationSpeed); }
+    if (data.metadata !== undefined) { updates.push('metadata = ?'); values.push(JSON.stringify(data.metadata)); }
+    
+    if (updates.length === 0) return { success: true };
+    
+    values.push(id);
+    await db.execute({
+      sql: `UPDATE iot_3d_model_instances SET ${updates.join(', ')} WHERE id = ?`,
+      args: values,
+    } as any);
+    return { success: true };
+  } catch (error) {
+    console.error('[DB] Error updating 3D model instance:', error);
+    throw error;
+  }
+}
+
+export async function delete3dModelInstance(id: number) {
+  const db = await getDb();
+  try {
+    await db.execute({
+      sql: 'DELETE FROM iot_3d_model_instances WHERE id = ?',
+      args: [id],
+    } as any);
+    return { success: true };
+  } catch (error) {
+    console.error('[DB] Error deleting 3D model instance:', error);
+    throw error;
+  }
+}
+
+// Technician Notification Preferences
+export async function getTechnicianNotificationPrefs(technicianId: number) {
+  const db = await getDb();
+  try {
+    const result = await db.execute({
+      sql: 'SELECT * FROM iot_technician_notification_prefs WHERE technician_id = ?',
+      args: [technicianId],
+    } as any);
+    return ((result as any).rows || [])[0] || null;
+  } catch (error) {
+    console.error('[DB] Error getting technician notification prefs:', error);
+    return null;
+  }
+}
+
+export async function upsertTechnicianNotificationPrefs(technicianId: number, data: {
+  pushEnabled?: boolean;
+  pushToken?: string;
+  pushPlatform?: string;
+  smsEnabled?: boolean;
+  phoneNumber?: string;
+  phoneCountryCode?: string;
+  emailEnabled?: boolean;
+  email?: string;
+  notifyNewWorkOrder?: boolean;
+  notifyAssigned?: boolean;
+  notifyStatusChange?: boolean;
+  notifyDueSoon?: boolean;
+  notifyOverdue?: boolean;
+  notifyComment?: boolean;
+  minPriorityForPush?: string;
+  minPriorityForSms?: string;
+  quietHoursEnabled?: boolean;
+  quietHoursStart?: string;
+  quietHoursEnd?: string;
+}) {
+  const db = await getDb();
+  try {
+    // Check if exists
+    const existing = await getTechnicianNotificationPrefs(technicianId);
+    
+    if (existing) {
+      // Update
+      const updates: string[] = [];
+      const values: any[] = [];
+      
+      if (data.pushEnabled !== undefined) { updates.push('push_enabled = ?'); values.push(data.pushEnabled ? 1 : 0); }
+      if (data.pushToken !== undefined) { updates.push('push_token = ?'); values.push(data.pushToken); }
+      if (data.pushPlatform !== undefined) { updates.push('push_platform = ?'); values.push(data.pushPlatform); }
+      if (data.smsEnabled !== undefined) { updates.push('sms_enabled = ?'); values.push(data.smsEnabled ? 1 : 0); }
+      if (data.phoneNumber !== undefined) { updates.push('phone_number = ?'); values.push(data.phoneNumber); }
+      if (data.phoneCountryCode !== undefined) { updates.push('phone_country_code = ?'); values.push(data.phoneCountryCode); }
+      if (data.emailEnabled !== undefined) { updates.push('email_enabled = ?'); values.push(data.emailEnabled ? 1 : 0); }
+      if (data.email !== undefined) { updates.push('email = ?'); values.push(data.email); }
+      if (data.notifyNewWorkOrder !== undefined) { updates.push('notify_new_work_order = ?'); values.push(data.notifyNewWorkOrder ? 1 : 0); }
+      if (data.notifyAssigned !== undefined) { updates.push('notify_assigned = ?'); values.push(data.notifyAssigned ? 1 : 0); }
+      if (data.notifyStatusChange !== undefined) { updates.push('notify_status_change = ?'); values.push(data.notifyStatusChange ? 1 : 0); }
+      if (data.notifyDueSoon !== undefined) { updates.push('notify_due_soon = ?'); values.push(data.notifyDueSoon ? 1 : 0); }
+      if (data.notifyOverdue !== undefined) { updates.push('notify_overdue = ?'); values.push(data.notifyOverdue ? 1 : 0); }
+      if (data.notifyComment !== undefined) { updates.push('notify_comment = ?'); values.push(data.notifyComment ? 1 : 0); }
+      if (data.minPriorityForPush !== undefined) { updates.push('min_priority_for_push = ?'); values.push(data.minPriorityForPush); }
+      if (data.minPriorityForSms !== undefined) { updates.push('min_priority_for_sms = ?'); values.push(data.minPriorityForSms); }
+      if (data.quietHoursEnabled !== undefined) { updates.push('quiet_hours_enabled = ?'); values.push(data.quietHoursEnabled ? 1 : 0); }
+      if (data.quietHoursStart !== undefined) { updates.push('quiet_hours_start = ?'); values.push(data.quietHoursStart); }
+      if (data.quietHoursEnd !== undefined) { updates.push('quiet_hours_end = ?'); values.push(data.quietHoursEnd); }
+      
+      if (updates.length > 0) {
+        values.push(technicianId);
+        await db.execute({
+          sql: `UPDATE iot_technician_notification_prefs SET ${updates.join(', ')} WHERE technician_id = ?`,
+          args: values,
+        } as any);
+      }
+    } else {
+      // Insert
+      await db.execute({
+        sql: `INSERT INTO iot_technician_notification_prefs 
+          (technician_id, push_enabled, push_token, push_platform, sms_enabled, phone_number, phone_country_code,
+           email_enabled, email, notify_new_work_order, notify_assigned, notify_status_change,
+           notify_due_soon, notify_overdue, notify_comment, min_priority_for_push, min_priority_for_sms,
+           quiet_hours_enabled, quiet_hours_start, quiet_hours_end)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        args: [
+          technicianId,
+          data.pushEnabled !== false ? 1 : 0,
+          data.pushToken || null,
+          data.pushPlatform || 'web',
+          data.smsEnabled ? 1 : 0,
+          data.phoneNumber || null,
+          data.phoneCountryCode || '+84',
+          data.emailEnabled !== false ? 1 : 0,
+          data.email || null,
+          data.notifyNewWorkOrder !== false ? 1 : 0,
+          data.notifyAssigned !== false ? 1 : 0,
+          data.notifyStatusChange !== false ? 1 : 0,
+          data.notifyDueSoon !== false ? 1 : 0,
+          data.notifyOverdue !== false ? 1 : 0,
+          data.notifyComment ? 1 : 0,
+          data.minPriorityForPush || 'medium',
+          data.minPriorityForSms || 'high',
+          data.quietHoursEnabled ? 1 : 0,
+          data.quietHoursStart || '22:00',
+          data.quietHoursEnd || '07:00',
+        ],
+      } as any);
+    }
+    return { success: true };
+  } catch (error) {
+    console.error('[DB] Error upserting technician notification prefs:', error);
+    throw error;
+  }
+}
+
+// Work Order Notifications
+export async function createWorkOrderNotification(data: {
+  workOrderId: number;
+  technicianId: number;
+  notificationType: string;
+  channel: string;
+  title: string;
+  message: string;
+  metadata?: any;
+}) {
+  const db = await getDb();
+  try {
+    const result = await db.execute({
+      sql: `INSERT INTO iot_work_order_notifications 
+        (work_order_id, technician_id, notification_type, channel, title, message, metadata)
+        VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      args: [
+        data.workOrderId,
+        data.technicianId,
+        data.notificationType,
+        data.channel,
+        data.title,
+        data.message,
+        data.metadata ? JSON.stringify(data.metadata) : null,
+      ],
+    } as any);
+    return { id: (result as any).insertId };
+  } catch (error) {
+    console.error('[DB] Error creating work order notification:', error);
+    throw error;
+  }
+}
+
+export async function updateNotificationStatus(id: number, status: string, externalMessageId?: string, failureReason?: string) {
+  const db = await getDb();
+  try {
+    const updates: string[] = ['status = ?'];
+    const values: any[] = [status];
+    
+    if (status === 'sent') {
+      updates.push('sent_at = NOW()');
+    } else if (status === 'delivered') {
+      updates.push('delivered_at = NOW()');
+    } else if (status === 'read') {
+      updates.push('read_at = NOW()');
+    } else if (status === 'failed') {
+      updates.push('failed_at = NOW()');
+      if (failureReason) {
+        updates.push('failure_reason = ?');
+        values.push(failureReason);
+      }
+    }
+    
+    if (externalMessageId) {
+      updates.push('external_message_id = ?');
+      values.push(externalMessageId);
+    }
+    
+    values.push(id);
+    await db.execute({
+      sql: `UPDATE iot_work_order_notifications SET ${updates.join(', ')} WHERE id = ?`,
+      args: values,
+    } as any);
+    return { success: true };
+  } catch (error) {
+    console.error('[DB] Error updating notification status:', error);
+    throw error;
+  }
+}
+
+export async function getWorkOrderNotifications(workOrderId: number) {
+  const db = await getDb();
+  try {
+    const result = await db.execute({
+      sql: `SELECT n.*, t.user_id as technician_user_id
+            FROM iot_work_order_notifications n
+            LEFT JOIN iot_technicians t ON n.technician_id = t.id
+            WHERE n.work_order_id = ?
+            ORDER BY n.created_at DESC`,
+      args: [workOrderId],
+    } as any);
+    return (result as any).rows || [];
+  } catch (error) {
+    console.error('[DB] Error getting work order notifications:', error);
+    return [];
+  }
+}
+
+// SMS Config
+export async function getSmsConfig() {
+  const db = await getDb();
+  try {
+    const result = await db.execute({
+      sql: 'SELECT * FROM iot_sms_config ORDER BY id DESC LIMIT 1',
+      args: [],
+    } as any);
+    return ((result as any).rows || [])[0] || null;
+  } catch (error) {
+    console.error('[DB] Error getting SMS config:', error);
+    return null;
+  }
+}
+
+export async function upsertSmsConfig(data: {
+  provider?: string;
+  accountSid?: string;
+  authToken?: string;
+  fromNumber?: string;
+  maxSmsPerDay?: number;
+  maxSmsPerHour?: number;
+  cooldownMinutes?: number;
+  isEnabled?: boolean;
+}) {
+  const db = await getDb();
+  try {
+    const existing = await getSmsConfig();
+    
+    if (existing) {
+      const updates: string[] = [];
+      const values: any[] = [];
+      
+      if (data.provider !== undefined) { updates.push('provider = ?'); values.push(data.provider); }
+      if (data.accountSid !== undefined) { updates.push('account_sid = ?'); values.push(data.accountSid); }
+      if (data.authToken !== undefined) { updates.push('auth_token = ?'); values.push(data.authToken); }
+      if (data.fromNumber !== undefined) { updates.push('from_number = ?'); values.push(data.fromNumber); }
+      if (data.maxSmsPerDay !== undefined) { updates.push('max_sms_per_day = ?'); values.push(data.maxSmsPerDay); }
+      if (data.maxSmsPerHour !== undefined) { updates.push('max_sms_per_hour = ?'); values.push(data.maxSmsPerHour); }
+      if (data.cooldownMinutes !== undefined) { updates.push('cooldown_minutes = ?'); values.push(data.cooldownMinutes); }
+      if (data.isEnabled !== undefined) { updates.push('is_enabled = ?'); values.push(data.isEnabled ? 1 : 0); }
+      
+      if (updates.length > 0) {
+        values.push(existing.id);
+        await db.execute({
+          sql: `UPDATE iot_sms_config SET ${updates.join(', ')} WHERE id = ?`,
+          args: values,
+        } as any);
+      }
+    } else {
+      await db.execute({
+        sql: `INSERT INTO iot_sms_config 
+          (provider, account_sid, auth_token, from_number, max_sms_per_day, max_sms_per_hour, cooldown_minutes, is_enabled)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        args: [
+          data.provider || 'twilio',
+          data.accountSid || null,
+          data.authToken || null,
+          data.fromNumber || null,
+          data.maxSmsPerDay || 100,
+          data.maxSmsPerHour || 20,
+          data.cooldownMinutes || 5,
+          data.isEnabled ? 1 : 0,
+        ],
+      } as any);
+    }
+    return { success: true };
+  } catch (error) {
+    console.error('[DB] Error upserting SMS config:', error);
+    throw error;
+  }
+}
+
+// Push Config
+export async function getPushConfig() {
+  const db = await getDb();
+  try {
+    const result = await db.execute({
+      sql: 'SELECT * FROM iot_push_config ORDER BY id DESC LIMIT 1',
+      args: [],
+    } as any);
+    return ((result as any).rows || [])[0] || null;
+  } catch (error) {
+    console.error('[DB] Error getting push config:', error);
+    return null;
+  }
+}
+
+export async function upsertPushConfig(data: {
+  provider?: string;
+  projectId?: string;
+  serverKey?: string;
+  vapidPublicKey?: string;
+  vapidPrivateKey?: string;
+  isEnabled?: boolean;
+}) {
+  const db = await getDb();
+  try {
+    const existing = await getPushConfig();
+    
+    if (existing) {
+      const updates: string[] = [];
+      const values: any[] = [];
+      
+      if (data.provider !== undefined) { updates.push('provider = ?'); values.push(data.provider); }
+      if (data.projectId !== undefined) { updates.push('project_id = ?'); values.push(data.projectId); }
+      if (data.serverKey !== undefined) { updates.push('server_key = ?'); values.push(data.serverKey); }
+      if (data.vapidPublicKey !== undefined) { updates.push('vapid_public_key = ?'); values.push(data.vapidPublicKey); }
+      if (data.vapidPrivateKey !== undefined) { updates.push('vapid_private_key = ?'); values.push(data.vapidPrivateKey); }
+      if (data.isEnabled !== undefined) { updates.push('is_enabled = ?'); values.push(data.isEnabled ? 1 : 0); }
+      
+      if (updates.length > 0) {
+        values.push(existing.id);
+        await db.execute({
+          sql: `UPDATE iot_push_config SET ${updates.join(', ')} WHERE id = ?`,
+          args: values,
+        } as any);
+      }
+    } else {
+      await db.execute({
+        sql: `INSERT INTO iot_push_config 
+          (provider, project_id, server_key, vapid_public_key, vapid_private_key, is_enabled)
+          VALUES (?, ?, ?, ?, ?, ?)`,
+        args: [
+          data.provider || 'firebase',
+          data.projectId || null,
+          data.serverKey || null,
+          data.vapidPublicKey || null,
+          data.vapidPrivateKey || null,
+          data.isEnabled ? 1 : 0,
+        ],
+      } as any);
+    }
+    return { success: true };
+  } catch (error) {
+    console.error('[DB] Error upserting push config:', error);
+    throw error;
+  }
+}
+
+// MTTR/MTBF Statistics
+export async function getMttrMtbfStats(filters: {
+  targetType: string;
+  targetId: number;
+  periodType?: string;
+  startDate?: Date;
+  endDate?: Date;
+}) {
+  const db = await getDb();
+  try {
+    const conditions: string[] = ['target_type = ?', 'target_id = ?'];
+    const values: any[] = [filters.targetType, filters.targetId];
+    
+    if (filters.periodType) {
+      conditions.push('period_type = ?');
+      values.push(filters.periodType);
+    }
+    if (filters.startDate) {
+      conditions.push('period_start >= ?');
+      values.push(filters.startDate.toISOString().slice(0, 19).replace('T', ' '));
+    }
+    if (filters.endDate) {
+      conditions.push('period_end <= ?');
+      values.push(filters.endDate.toISOString().slice(0, 19).replace('T', ' '));
+    }
+    
+    const result = await db.execute({
+      sql: `SELECT * FROM iot_mttr_mtbf_stats 
+            WHERE ${conditions.join(' AND ')}
+            ORDER BY period_start DESC`,
+      args: values,
+    } as any);
+    return (result as any).rows || [];
+  } catch (error) {
+    console.error('[DB] Error getting MTTR/MTBF stats:', error);
+    return [];
+  }
+}
+
+export async function createMttrMtbfStats(data: {
+  targetType: string;
+  targetId: number;
+  periodType: string;
+  periodStart: Date;
+  periodEnd: Date;
+  mttr?: number;
+  mttrMin?: number;
+  mttrMax?: number;
+  mttrStdDev?: number;
+  mtbf?: number;
+  mtbfMin?: number;
+  mtbfMax?: number;
+  mtbfStdDev?: number;
+  mttf?: number;
+  availability?: number;
+  totalFailures?: number;
+  totalRepairs?: number;
+  totalDowntimeMinutes?: number;
+  totalUptimeHours?: number;
+  correctiveWorkOrders?: number;
+  preventiveWorkOrders?: number;
+  predictiveWorkOrders?: number;
+  emergencyWorkOrders?: number;
+  totalLaborCost?: number;
+  totalPartsCost?: number;
+  totalMaintenanceCost?: number;
+}) {
+  const db = await getDb();
+  try {
+    const result = await db.execute({
+      sql: `INSERT INTO iot_mttr_mtbf_stats 
+        (target_type, target_id, period_type, period_start, period_end,
+         mttr, mttr_min, mttr_max, mttr_std_dev,
+         mtbf, mtbf_min, mtbf_max, mtbf_std_dev, mttf, availability,
+         total_failures, total_repairs, total_downtime_minutes, total_uptime_hours,
+         corrective_work_orders, preventive_work_orders, predictive_work_orders, emergency_work_orders,
+         total_labor_cost, total_parts_cost, total_maintenance_cost)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [
+        data.targetType,
+        data.targetId,
+        data.periodType,
+        data.periodStart.toISOString().slice(0, 19).replace('T', ' '),
+        data.periodEnd.toISOString().slice(0, 19).replace('T', ' '),
+        data.mttr || null,
+        data.mttrMin || null,
+        data.mttrMax || null,
+        data.mttrStdDev || null,
+        data.mtbf || null,
+        data.mtbfMin || null,
+        data.mtbfMax || null,
+        data.mtbfStdDev || null,
+        data.mttf || null,
+        data.availability || null,
+        data.totalFailures || 0,
+        data.totalRepairs || 0,
+        data.totalDowntimeMinutes || 0,
+        data.totalUptimeHours || 0,
+        data.correctiveWorkOrders || 0,
+        data.preventiveWorkOrders || 0,
+        data.predictiveWorkOrders || 0,
+        data.emergencyWorkOrders || 0,
+        data.totalLaborCost || 0,
+        data.totalPartsCost || 0,
+        data.totalMaintenanceCost || 0,
+      ],
+    } as any);
+    return { id: (result as any).insertId };
+  } catch (error) {
+    console.error('[DB] Error creating MTTR/MTBF stats:', error);
+    throw error;
+  }
+}
+
+// Failure Events
+export async function getFailureEvents(filters: {
+  targetType?: string;
+  targetId?: number;
+  workOrderId?: number;
+  failureType?: string;
+  severity?: string;
+  startDate?: Date;
+  endDate?: Date;
+  limit?: number;
+}) {
+  const db = await getDb();
+  try {
+    const conditions: string[] = [];
+    const values: any[] = [];
+    
+    if (filters.targetType) {
+      conditions.push('target_type = ?');
+      values.push(filters.targetType);
+    }
+    if (filters.targetId) {
+      conditions.push('target_id = ?');
+      values.push(filters.targetId);
+    }
+    if (filters.workOrderId) {
+      conditions.push('work_order_id = ?');
+      values.push(filters.workOrderId);
+    }
+    if (filters.failureType) {
+      conditions.push('failure_type = ?');
+      values.push(filters.failureType);
+    }
+    if (filters.severity) {
+      conditions.push('severity = ?');
+      values.push(filters.severity);
+    }
+    if (filters.startDate) {
+      conditions.push('failure_start_at >= ?');
+      values.push(filters.startDate.toISOString().slice(0, 19).replace('T', ' '));
+    }
+    if (filters.endDate) {
+      conditions.push('failure_start_at <= ?');
+      values.push(filters.endDate.toISOString().slice(0, 19).replace('T', ' '));
+    }
+    
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const limitClause = filters.limit ? `LIMIT ${filters.limit}` : '';
+    
+    const result = await db.execute({
+      sql: `SELECT * FROM iot_failure_events ${whereClause} ORDER BY failure_start_at DESC ${limitClause}`,
+      args: values,
+    } as any);
+    return (result as any).rows || [];
+  } catch (error) {
+    console.error('[DB] Error getting failure events:', error);
+    return [];
+  }
+}
+
+export async function createFailureEvent(data: {
+  targetType: string;
+  targetId: number;
+  workOrderId?: number;
+  failureCode?: string;
+  failureType?: string;
+  severity?: string;
+  description?: string;
+  failureStartAt: Date;
+  failureEndAt?: Date;
+  repairStartAt?: Date;
+  repairEndAt?: Date;
+  downtimeDuration?: number;
+  repairDuration?: number;
+  waitingDuration?: number;
+  rootCauseCategory?: string;
+  rootCause?: string;
+  resolutionType?: string;
+  resolution?: string;
+  previousFailureId?: number;
+  timeSincePreviousFailure?: number;
+  reportedBy?: number;
+  verifiedBy?: number;
+}) {
+  const db = await getDb();
+  try {
+    const result = await db.execute({
+      sql: `INSERT INTO iot_failure_events 
+        (target_type, target_id, work_order_id, failure_code, failure_type, severity, description,
+         failure_start_at, failure_end_at, repair_start_at, repair_end_at,
+         downtime_duration, repair_duration, waiting_duration,
+         root_cause_category, root_cause, resolution_type, resolution,
+         previous_failure_id, time_since_previous_failure, reported_by, verified_by)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [
+        data.targetType,
+        data.targetId,
+        data.workOrderId || null,
+        data.failureCode || null,
+        data.failureType || 'breakdown',
+        data.severity || 'moderate',
+        data.description || null,
+        data.failureStartAt.toISOString().slice(0, 19).replace('T', ' '),
+        data.failureEndAt ? data.failureEndAt.toISOString().slice(0, 19).replace('T', ' ') : null,
+        data.repairStartAt ? data.repairStartAt.toISOString().slice(0, 19).replace('T', ' ') : null,
+        data.repairEndAt ? data.repairEndAt.toISOString().slice(0, 19).replace('T', ' ') : null,
+        data.downtimeDuration || null,
+        data.repairDuration || null,
+        data.waitingDuration || null,
+        data.rootCauseCategory || 'unknown',
+        data.rootCause || null,
+        data.resolutionType || 'repair',
+        data.resolution || null,
+        data.previousFailureId || null,
+        data.timeSincePreviousFailure || null,
+        data.reportedBy || null,
+        data.verifiedBy || null,
+      ],
+    } as any);
+    return { id: (result as any).insertId };
+  } catch (error) {
+    console.error('[DB] Error creating failure event:', error);
+    throw error;
+  }
+}
+
+export async function updateFailureEvent(id: number, data: Partial<{
+  failureEndAt: Date;
+  repairStartAt: Date;
+  repairEndAt: Date;
+  downtimeDuration: number;
+  repairDuration: number;
+  waitingDuration: number;
+  rootCauseCategory: string;
+  rootCause: string;
+  resolutionType: string;
+  resolution: string;
+  verifiedBy: number;
+}>) {
+  const db = await getDb();
+  try {
+    const updates: string[] = [];
+    const values: any[] = [];
+    
+    if (data.failureEndAt !== undefined) { 
+      updates.push('failure_end_at = ?'); 
+      values.push(data.failureEndAt.toISOString().slice(0, 19).replace('T', ' ')); 
+    }
+    if (data.repairStartAt !== undefined) { 
+      updates.push('repair_start_at = ?'); 
+      values.push(data.repairStartAt.toISOString().slice(0, 19).replace('T', ' ')); 
+    }
+    if (data.repairEndAt !== undefined) { 
+      updates.push('repair_end_at = ?'); 
+      values.push(data.repairEndAt.toISOString().slice(0, 19).replace('T', ' ')); 
+    }
+    if (data.downtimeDuration !== undefined) { updates.push('downtime_duration = ?'); values.push(data.downtimeDuration); }
+    if (data.repairDuration !== undefined) { updates.push('repair_duration = ?'); values.push(data.repairDuration); }
+    if (data.waitingDuration !== undefined) { updates.push('waiting_duration = ?'); values.push(data.waitingDuration); }
+    if (data.rootCauseCategory !== undefined) { updates.push('root_cause_category = ?'); values.push(data.rootCauseCategory); }
+    if (data.rootCause !== undefined) { updates.push('root_cause = ?'); values.push(data.rootCause); }
+    if (data.resolutionType !== undefined) { updates.push('resolution_type = ?'); values.push(data.resolutionType); }
+    if (data.resolution !== undefined) { updates.push('resolution = ?'); values.push(data.resolution); }
+    if (data.verifiedBy !== undefined) { updates.push('verified_by = ?'); values.push(data.verifiedBy); }
+    
+    if (updates.length === 0) return { success: true };
+    
+    values.push(id);
+    await db.execute({
+      sql: `UPDATE iot_failure_events SET ${updates.join(', ')} WHERE id = ?`,
+      args: values,
+    } as any);
+    return { success: true };
+  } catch (error) {
+    console.error('[DB] Error updating failure event:', error);
+    throw error;
+  }
+}
+
+// Calculate MTTR/MTBF from failure events
+export async function calculateMttrMtbf(targetType: string, targetId: number, periodStart: Date, periodEnd: Date) {
+  const db = await getDb();
+  try {
+    // Get all failure events in the period
+    const result = await db.execute({
+      sql: `SELECT 
+              COUNT(*) as total_failures,
+              AVG(repair_duration) as avg_repair_time,
+              MIN(repair_duration) as min_repair_time,
+              MAX(repair_duration) as max_repair_time,
+              STDDEV(repair_duration) as std_repair_time,
+              SUM(downtime_duration) as total_downtime,
+              AVG(time_since_previous_failure) as avg_time_between_failures,
+              MIN(time_since_previous_failure) as min_time_between_failures,
+              MAX(time_since_previous_failure) as max_time_between_failures,
+              STDDEV(time_since_previous_failure) as std_time_between_failures
+            FROM iot_failure_events
+            WHERE target_type = ? AND target_id = ?
+              AND failure_start_at >= ? AND failure_start_at <= ?
+              AND repair_duration IS NOT NULL`,
+      args: [
+        targetType,
+        targetId,
+        periodStart.toISOString().slice(0, 19).replace('T', ' '),
+        periodEnd.toISOString().slice(0, 19).replace('T', ' '),
+      ],
+    } as any);
+    
+    const stats = ((result as any).rows || [])[0] || {};
+    
+    // Calculate total period hours
+    const periodHours = (periodEnd.getTime() - periodStart.getTime()) / (1000 * 60 * 60);
+    const totalDowntimeHours = (Number(stats.total_downtime) || 0) / 60;
+    const totalUptimeHours = periodHours - totalDowntimeHours;
+    
+    // MTTR in minutes
+    const mttr = Number(stats.avg_repair_time) || 0;
+    // MTBF in hours
+    const mtbf = Number(stats.avg_time_between_failures) || 0;
+    // Availability = MTBF / (MTBF + MTTR/60)
+    const availability = mtbf > 0 ? mtbf / (mtbf + mttr / 60) : 0;
+    
+    return {
+      mttr,
+      mttrMin: Number(stats.min_repair_time) || 0,
+      mttrMax: Number(stats.max_repair_time) || 0,
+      mttrStdDev: Number(stats.std_repair_time) || 0,
+      mtbf,
+      mtbfMin: Number(stats.min_time_between_failures) || 0,
+      mtbfMax: Number(stats.max_time_between_failures) || 0,
+      mtbfStdDev: Number(stats.std_time_between_failures) || 0,
+      availability,
+      totalFailures: Number(stats.total_failures) || 0,
+      totalDowntimeMinutes: Number(stats.total_downtime) || 0,
+      totalUptimeHours,
+    };
+  } catch (error) {
+    console.error('[DB] Error calculating MTTR/MTBF:', error);
+    return null;
+  }
+}
+
+// Get work order counts by type for MTTR/MTBF report
+export async function getWorkOrderCountsByType(targetType: string, targetId: number, periodStart: Date, periodEnd: Date) {
+  const db = await getDb();
+  try {
+    // Map target type to appropriate table/column
+    let deviceCondition = '';
+    if (targetType === 'device') {
+      deviceCondition = 'device_id = ?';
+    } else if (targetType === 'machine') {
+      deviceCondition = 'device_id IN (SELECT id FROM iot_devices WHERE machine_id = ?)';
+    } else {
+      deviceCondition = 'device_id IN (SELECT id FROM iot_devices WHERE production_line_id = ?)';
+    }
+    
+    const result = await db.execute({
+      sql: `SELECT 
+              work_order_type,
+              COUNT(*) as count,
+              SUM(actual_cost) as total_cost,
+              SUM(actual_duration) as total_duration
+            FROM iot_maintenance_work_orders
+            WHERE ${deviceCondition}
+              AND created_at >= ? AND created_at <= ?
+            GROUP BY work_order_type`,
+      args: [
+        targetId,
+        periodStart.toISOString().slice(0, 19).replace('T', ' '),
+        periodEnd.toISOString().slice(0, 19).replace('T', ' '),
+      ],
+    } as any);
+    
+    const counts: Record<string, number> = {
+      corrective: 0,
+      preventive: 0,
+      predictive: 0,
+      emergency: 0,
+      inspection: 0,
+    };
+    let totalLaborCost = 0;
+    
+    for (const row of (result as any).rows || []) {
+      counts[row.work_order_type] = Number(row.count) || 0;
+      totalLaborCost += Number(row.total_cost) || 0;
+    }
+    
+    return {
+      correctiveWorkOrders: counts.corrective,
+      preventiveWorkOrders: counts.preventive,
+      predictiveWorkOrders: counts.predictive,
+      emergencyWorkOrders: counts.emergency,
+      totalLaborCost,
+    };
+  } catch (error) {
+    console.error('[DB] Error getting work order counts:', error);
+    return {
+      correctiveWorkOrders: 0,
+      preventiveWorkOrders: 0,
+      predictiveWorkOrders: 0,
+      emergencyWorkOrders: 0,
+      totalLaborCost: 0,
+    };
+  }
+}

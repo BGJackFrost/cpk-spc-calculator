@@ -5279,3 +5279,303 @@ export type IotWorkOrderHistory = typeof iotWorkOrderHistory.$inferSelect;
 export type InsertIotWorkOrderHistory = typeof iotWorkOrderHistory.$inferInsert;
 export type IotTechnician = typeof iotTechnicians.$inferSelect;
 export type InsertIotTechnician = typeof iotTechnicians.$inferInsert;
+
+
+// ============================================
+// Phase 98: IoT Enhancement - 3D Model Upload, Work Order Notifications, MTTR/MTBF Report
+// ============================================
+
+// IoT 3D Models - Quản lý model 3D cho sơ đồ nhà máy
+export const iot3dModels = mysqlTable("iot_3d_models", {
+  id: int().autoincrement().primaryKey(),
+  name: varchar({ length: 100 }).notNull(),
+  description: text(),
+  category: mysqlEnum(['machine','equipment','building','zone','furniture','custom']).default('machine'),
+  modelUrl: varchar("model_url", { length: 500 }).notNull(), // S3 URL to GLTF/GLB file
+  modelFormat: mysqlEnum("model_format", ['gltf','glb']).default('glb'),
+  thumbnailUrl: varchar("thumbnail_url", { length: 500 }),
+  fileSize: int("file_size"), // bytes
+  // Transform defaults
+  defaultScale: decimal("default_scale", { precision: 10, scale: 4 }).default('1.0000'),
+  defaultRotationX: decimal("default_rotation_x", { precision: 10, scale: 4 }).default('0'),
+  defaultRotationY: decimal("default_rotation_y", { precision: 10, scale: 4 }).default('0'),
+  defaultRotationZ: decimal("default_rotation_z", { precision: 10, scale: 4 }).default('0'),
+  // Bounding box info
+  boundingBoxWidth: decimal("bounding_box_width", { precision: 10, scale: 4 }),
+  boundingBoxHeight: decimal("bounding_box_height", { precision: 10, scale: 4 }),
+  boundingBoxDepth: decimal("bounding_box_depth", { precision: 10, scale: 4 }),
+  // Metadata
+  manufacturer: varchar({ length: 100 }),
+  modelNumber: varchar("model_number", { length: 100 }),
+  tags: json(), // ['plc','sensor','motor']
+  metadata: json(),
+  isPublic: tinyint("is_public").default(0), // Shared across floor plans
+  isActive: tinyint("is_active").default(1).notNull(),
+  uploadedBy: int("uploaded_by"),
+  createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+  index("idx_3d_model_category").on(table.category),
+  index("idx_3d_model_active").on(table.isActive),
+  index("idx_3d_model_public").on(table.isPublic),
+]);
+
+// IoT 3D Model Instances - Instance của model 3D trên floor plan
+export const iot3dModelInstances = mysqlTable("iot_3d_model_instances", {
+  id: int().autoincrement().primaryKey(),
+  modelId: int("model_id").notNull(), // FK to iot_3d_models
+  floorPlan3dId: int("floor_plan_3d_id").notNull(), // FK to iot_3d_floor_plans
+  deviceId: int("device_id"), // Optional link to IoT device
+  machineId: int("machine_id"), // Optional link to machine
+  name: varchar({ length: 100 }),
+  // Position
+  positionX: decimal("position_x", { precision: 10, scale: 4 }).notNull(),
+  positionY: decimal("position_y", { precision: 10, scale: 4 }).notNull(),
+  positionZ: decimal("position_z", { precision: 10, scale: 4 }).notNull(),
+  // Rotation (Euler angles in radians)
+  rotationX: decimal("rotation_x", { precision: 10, scale: 4 }).default('0'),
+  rotationY: decimal("rotation_y", { precision: 10, scale: 4 }).default('0'),
+  rotationZ: decimal("rotation_z", { precision: 10, scale: 4 }).default('0'),
+  // Scale
+  scaleX: decimal("scale_x", { precision: 10, scale: 4 }).default('1.0000'),
+  scaleY: decimal("scale_y", { precision: 10, scale: 4 }).default('1.0000'),
+  scaleZ: decimal("scale_z", { precision: 10, scale: 4 }).default('1.0000'),
+  // Display options
+  visible: tinyint().default(1).notNull(),
+  opacity: decimal({ precision: 3, scale: 2 }).default('1.00'),
+  wireframe: tinyint().default(0),
+  castShadow: tinyint("cast_shadow").default(1),
+  receiveShadow: tinyint("receive_shadow").default(1),
+  // Interaction
+  clickable: tinyint().default(1).notNull(),
+  tooltip: varchar({ length: 255 }),
+  popupContent: text("popup_content"),
+  // Animation
+  animationEnabled: tinyint("animation_enabled").default(0),
+  animationType: mysqlEnum("animation_type", ['none','rotate','pulse','bounce','custom']).default('none'),
+  animationSpeed: decimal("animation_speed", { precision: 5, scale: 2 }).default('1.00'),
+  metadata: json(),
+  createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+  index("idx_3d_instance_model").on(table.modelId),
+  index("idx_3d_instance_floor").on(table.floorPlan3dId),
+  index("idx_3d_instance_device").on(table.deviceId),
+  index("idx_3d_instance_machine").on(table.machineId),
+]);
+
+// IoT Technician Notification Preferences - Cấu hình thông báo cho kỹ thuật viên
+export const iotTechnicianNotificationPrefs = mysqlTable("iot_technician_notification_prefs", {
+  id: int().autoincrement().primaryKey(),
+  technicianId: int("technician_id").notNull(), // FK to iot_technicians
+  // Push Notification
+  pushEnabled: tinyint("push_enabled").default(1).notNull(),
+  pushToken: text("push_token"), // Firebase FCM token
+  pushPlatform: mysqlEnum("push_platform", ['web','android','ios']).default('web'),
+  // SMS Notification
+  smsEnabled: tinyint("sms_enabled").default(0).notNull(),
+  phoneNumber: varchar("phone_number", { length: 20 }),
+  phoneCountryCode: varchar("phone_country_code", { length: 5 }).default('+84'),
+  // Email Notification
+  emailEnabled: tinyint("email_enabled").default(1).notNull(),
+  email: varchar({ length: 100 }),
+  // Notification Types
+  notifyNewWorkOrder: tinyint("notify_new_work_order").default(1).notNull(),
+  notifyAssigned: tinyint("notify_assigned").default(1).notNull(),
+  notifyStatusChange: tinyint("notify_status_change").default(1).notNull(),
+  notifyDueSoon: tinyint("notify_due_soon").default(1).notNull(),
+  notifyOverdue: tinyint("notify_overdue").default(1).notNull(),
+  notifyComment: tinyint("notify_comment").default(0).notNull(),
+  // Priority Filter
+  minPriorityForPush: mysqlEnum("min_priority_for_push", ['low','medium','high','critical']).default('medium'),
+  minPriorityForSms: mysqlEnum("min_priority_for_sms", ['low','medium','high','critical']).default('high'),
+  // Quiet Hours
+  quietHoursEnabled: tinyint("quiet_hours_enabled").default(0).notNull(),
+  quietHoursStart: varchar("quiet_hours_start", { length: 5 }).default('22:00'),
+  quietHoursEnd: varchar("quiet_hours_end", { length: 5 }).default('07:00'),
+  // Metadata
+  lastPushAt: timestamp("last_push_at", { mode: 'string' }),
+  lastSmsAt: timestamp("last_sms_at", { mode: 'string' }),
+  lastEmailAt: timestamp("last_email_at", { mode: 'string' }),
+  createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+  index("idx_notif_pref_technician").on(table.technicianId),
+]);
+
+// IoT Work Order Notifications - Lịch sử thông báo work order
+export const iotWorkOrderNotifications = mysqlTable("iot_work_order_notifications", {
+  id: int().autoincrement().primaryKey(),
+  workOrderId: int("work_order_id").notNull(),
+  technicianId: int("technician_id").notNull(),
+  notificationType: mysqlEnum("notification_type", ['new_work_order','assigned','status_change','due_soon','overdue','comment','escalation']).notNull(),
+  channel: mysqlEnum(['push','sms','email']).notNull(),
+  title: varchar({ length: 255 }).notNull(),
+  message: text().notNull(),
+  // Delivery status
+  status: mysqlEnum(['pending','sent','delivered','failed','read']).default('pending'),
+  sentAt: timestamp("sent_at", { mode: 'string' }),
+  deliveredAt: timestamp("delivered_at", { mode: 'string' }),
+  readAt: timestamp("read_at", { mode: 'string' }),
+  failedAt: timestamp("failed_at", { mode: 'string' }),
+  failureReason: text("failure_reason"),
+  // External IDs
+  externalMessageId: varchar("external_message_id", { length: 100 }), // Firebase/Twilio message ID
+  // Metadata
+  metadata: json(),
+  createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+  index("idx_wo_notif_work_order").on(table.workOrderId),
+  index("idx_wo_notif_technician").on(table.technicianId),
+  index("idx_wo_notif_status").on(table.status),
+  index("idx_wo_notif_type").on(table.notificationType),
+  index("idx_wo_notif_created").on(table.createdAt),
+]);
+
+// IoT SMS Config - Cấu hình Twilio SMS
+export const iotSmsConfig = mysqlTable("iot_sms_config", {
+  id: int().autoincrement().primaryKey(),
+  provider: mysqlEnum(['twilio','nexmo','aws_sns']).default('twilio'),
+  accountSid: varchar("account_sid", { length: 100 }),
+  authToken: varchar("auth_token", { length: 100 }),
+  fromNumber: varchar("from_number", { length: 20 }),
+  // Rate limiting
+  maxSmsPerDay: int("max_sms_per_day").default(100),
+  maxSmsPerHour: int("max_sms_per_hour").default(20),
+  cooldownMinutes: int("cooldown_minutes").default(5),
+  // Status
+  isEnabled: tinyint("is_enabled").default(0).notNull(),
+  lastTestedAt: timestamp("last_tested_at", { mode: 'string' }),
+  testResult: text("test_result"),
+  createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+// IoT Push Config - Cấu hình Firebase Push Notification
+export const iotPushConfig = mysqlTable("iot_push_config", {
+  id: int().autoincrement().primaryKey(),
+  provider: mysqlEnum(['firebase','onesignal','pusher']).default('firebase'),
+  projectId: varchar("project_id", { length: 100 }),
+  serverKey: text("server_key"),
+  vapidPublicKey: text("vapid_public_key"),
+  vapidPrivateKey: text("vapid_private_key"),
+  // Status
+  isEnabled: tinyint("is_enabled").default(0).notNull(),
+  lastTestedAt: timestamp("last_tested_at", { mode: 'string' }),
+  testResult: text("test_result"),
+  createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+// IoT MTTR/MTBF Statistics - Thống kê MTTR/MTBF
+export const iotMttrMtbfStats = mysqlTable("iot_mttr_mtbf_stats", {
+  id: int().autoincrement().primaryKey(),
+  // Target (device, machine, or production line)
+  targetType: mysqlEnum("target_type", ['device','machine','production_line']).notNull(),
+  targetId: int("target_id").notNull(),
+  // Time period
+  periodType: mysqlEnum("period_type", ['daily','weekly','monthly','quarterly','yearly']).notNull(),
+  periodStart: timestamp("period_start", { mode: 'string' }).notNull(),
+  periodEnd: timestamp("period_end", { mode: 'string' }).notNull(),
+  // MTTR - Mean Time To Repair (minutes)
+  mttr: decimal({ precision: 10, scale: 2 }), // Average repair time
+  mttrMin: decimal("mttr_min", { precision: 10, scale: 2 }), // Minimum repair time
+  mttrMax: decimal("mttr_max", { precision: 10, scale: 2 }), // Maximum repair time
+  mttrStdDev: decimal("mttr_std_dev", { precision: 10, scale: 2 }), // Standard deviation
+  // MTBF - Mean Time Between Failures (hours)
+  mtbf: decimal({ precision: 12, scale: 2 }), // Average time between failures
+  mtbfMin: decimal("mtbf_min", { precision: 12, scale: 2 }),
+  mtbfMax: decimal("mtbf_max", { precision: 12, scale: 2 }),
+  mtbfStdDev: decimal("mtbf_std_dev", { precision: 12, scale: 2 }),
+  // MTTF - Mean Time To Failure (hours)
+  mttf: decimal({ precision: 12, scale: 2 }),
+  // Availability
+  availability: decimal({ precision: 5, scale: 4 }), // MTBF / (MTBF + MTTR)
+  // Counts
+  totalFailures: int("total_failures").default(0),
+  totalRepairs: int("total_repairs").default(0),
+  totalDowntimeMinutes: int("total_downtime_minutes").default(0),
+  totalUptimeHours: decimal("total_uptime_hours", { precision: 12, scale: 2 }).default('0'),
+  // Work order breakdown
+  correctiveWorkOrders: int("corrective_work_orders").default(0),
+  preventiveWorkOrders: int("preventive_work_orders").default(0),
+  predictiveWorkOrders: int("predictive_work_orders").default(0),
+  emergencyWorkOrders: int("emergency_work_orders").default(0),
+  // Cost analysis
+  totalLaborCost: decimal("total_labor_cost", { precision: 12, scale: 2 }).default('0'),
+  totalPartsCost: decimal("total_parts_cost", { precision: 12, scale: 2 }).default('0'),
+  totalMaintenanceCost: decimal("total_maintenance_cost", { precision: 12, scale: 2 }).default('0'),
+  // Metadata
+  calculatedAt: timestamp("calculated_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+  createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+  index("idx_mttr_mtbf_target").on(table.targetType, table.targetId),
+  index("idx_mttr_mtbf_period").on(table.periodType, table.periodStart),
+  index("idx_mttr_mtbf_calculated").on(table.calculatedAt),
+]);
+
+// IoT Failure Events - Sự kiện hỏng hóc để tính MTBF
+export const iotFailureEvents = mysqlTable("iot_failure_events", {
+  id: int().autoincrement().primaryKey(),
+  targetType: mysqlEnum("target_type", ['device','machine','production_line']).notNull(),
+  targetId: int("target_id").notNull(),
+  workOrderId: int("work_order_id"), // Link to work order
+  // Failure details
+  failureCode: varchar("failure_code", { length: 50 }),
+  failureType: mysqlEnum("failure_type", ['breakdown','degradation','intermittent','planned_stop']).default('breakdown'),
+  severity: mysqlEnum(['minor','moderate','major','critical']).default('moderate'),
+  description: text(),
+  // Timing
+  failureStartAt: timestamp("failure_start_at", { mode: 'string' }).notNull(),
+  failureEndAt: timestamp("failure_end_at", { mode: 'string' }),
+  repairStartAt: timestamp("repair_start_at", { mode: 'string' }),
+  repairEndAt: timestamp("repair_end_at", { mode: 'string' }),
+  // Calculated durations (minutes)
+  downtimeDuration: int("downtime_duration"), // Total downtime
+  repairDuration: int("repair_duration"), // Time spent repairing
+  waitingDuration: int("waiting_duration"), // Time waiting for parts/technician
+  // Root cause
+  rootCauseCategory: mysqlEnum("root_cause_category", ['mechanical','electrical','software','operator_error','wear','environmental','unknown']).default('unknown'),
+  rootCause: text("root_cause"),
+  // Resolution
+  resolutionType: mysqlEnum("resolution_type", ['repair','replace','adjust','reset','other']).default('repair'),
+  resolution: text(),
+  // Previous failure reference (for MTBF calculation)
+  previousFailureId: int("previous_failure_id"),
+  timeSincePreviousFailure: decimal("time_since_previous_failure", { precision: 12, scale: 2 }), // hours
+  // Metadata
+  reportedBy: int("reported_by"),
+  verifiedBy: int("verified_by"),
+  createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+  index("idx_failure_target").on(table.targetType, table.targetId),
+  index("idx_failure_work_order").on(table.workOrderId),
+  index("idx_failure_start").on(table.failureStartAt),
+  index("idx_failure_type").on(table.failureType),
+  index("idx_failure_severity").on(table.severity),
+]);
+
+// Type exports for Phase 98
+export type Iot3dModel = typeof iot3dModels.$inferSelect;
+export type InsertIot3dModel = typeof iot3dModels.$inferInsert;
+export type Iot3dModelInstance = typeof iot3dModelInstances.$inferSelect;
+export type InsertIot3dModelInstance = typeof iot3dModelInstances.$inferInsert;
+export type IotTechnicianNotificationPref = typeof iotTechnicianNotificationPrefs.$inferSelect;
+export type InsertIotTechnicianNotificationPref = typeof iotTechnicianNotificationPrefs.$inferInsert;
+export type IotWorkOrderNotification = typeof iotWorkOrderNotifications.$inferSelect;
+export type InsertIotWorkOrderNotification = typeof iotWorkOrderNotifications.$inferInsert;
+export type IotSmsConfig = typeof iotSmsConfig.$inferSelect;
+export type InsertIotSmsConfig = typeof iotSmsConfig.$inferInsert;
+export type IotPushConfig = typeof iotPushConfig.$inferSelect;
+export type InsertIotPushConfig = typeof iotPushConfig.$inferInsert;
+export type IotMttrMtbfStat = typeof iotMttrMtbfStats.$inferSelect;
+export type InsertIotMttrMtbfStat = typeof iotMttrMtbfStats.$inferInsert;
+export type IotFailureEvent = typeof iotFailureEvents.$inferSelect;
+export type InsertIotFailureEvent = typeof iotFailureEvents.$inferInsert;

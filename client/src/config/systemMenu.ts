@@ -555,6 +555,7 @@ export const IOT_MENU: SystemMenuConfig = {
         { id: "iot-unified-dashboard", icon: Gauge, labelKey: "nav.iotUnifiedDashboard", path: "/iot-unified-dashboard" },
         { id: "floor-plan-designer", icon: Map, labelKey: "nav.floorPlanDesigner", path: "/floor-plan-designer", adminOnly: true },
         { id: "iot-3d-floor-plan", icon: Box, labelKey: "nav.iot3DFloorPlan", path: "/iot-3d-floor-plan" },
+        { id: "model-3d-management", icon: Box, labelKey: "nav.model3DManagement", path: "/model-3d-management", adminOnly: true },
       ],
     },
     {
@@ -564,6 +565,8 @@ export const IOT_MENU: SystemMenuConfig = {
       items: [
         { id: "iot-work-orders", icon: ClipboardList, labelKey: "nav.iotWorkOrders", path: "/iot-work-orders" },
         { id: "iot-scheduled-ota", icon: Calendar, labelKey: "nav.iotScheduledOta", path: "/iot-scheduled-ota", adminOnly: true },
+        { id: "mttr-mtbf-report", icon: BarChart3, labelKey: "nav.mttrMtbfReport", path: "/mttr-mtbf-report" },
+        { id: "work-order-notification-config", icon: Bell, labelKey: "nav.workOrderNotificationConfig", path: "/work-order-notification-config", adminOnly: true },
       ],
     },
     {

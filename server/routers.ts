@@ -243,6 +243,32 @@ import {
   getLoginStats,
   getDb,
   getCustomValidationRulesByProduct,
+  // Phase 98: 3D Models, Notifications, MTTR/MTBF
+  get3dModels,
+  get3dModelById,
+  create3dModel,
+  update3dModel,
+  delete3dModel,
+  get3dModelInstances,
+  create3dModelInstance,
+  update3dModelInstance,
+  delete3dModelInstance,
+  getTechnicianNotificationPrefs,
+  upsertTechnicianNotificationPrefs,
+  createWorkOrderNotification,
+  updateNotificationStatus,
+  getWorkOrderNotifications,
+  getSmsConfig,
+  upsertSmsConfig,
+  getPushConfig,
+  upsertPushConfig,
+  getMttrMtbfStats,
+  createMttrMtbfStats,
+  getFailureEvents,
+  createFailureEvent,
+  updateFailureEvent,
+  calculateMttrMtbf,
+  getWorkOrderCountsByType,
 } from "./db";
 import { sql } from "drizzle-orm";
 import { invokeLLM } from "./_core/llm";
@@ -11529,6 +11555,523 @@ Hãy trả về JSON với format:
       .query(async ({ input }) => {
         const { getLatencyPercentileTrends } = await import('./db');
         return await getLatencyPercentileTrends(input);
+      }),
+  }),
+
+  // ============================================
+  // Phase 98: IoT Enhancement - 3D Model Upload, Work Order Notifications, MTTR/MTBF Report
+  // ============================================
+
+  // 3D Model Management Router
+  model3d: router({
+    // Get all 3D models
+    getAll: protectedProcedure
+      .input(z.object({
+        category: z.string().optional(),
+        isPublic: z.boolean().optional(),
+        isActive: z.boolean().optional(),
+      }).optional())
+      .query(async ({ input }) => {
+        return await get3dModels(input || {});
+      }),
+
+    // Get single 3D model
+    getById: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        return await get3dModelById(input.id);
+      }),
+
+    // Create 3D model
+    create: protectedProcedure
+      .input(z.object({
+        name: z.string().min(1),
+        description: z.string().optional(),
+        category: z.enum(['machine', 'equipment', 'building', 'zone', 'furniture', 'custom']).optional(),
+        modelUrl: z.string().url(),
+        modelFormat: z.enum(['gltf', 'glb']).optional(),
+        thumbnailUrl: z.string().url().optional(),
+        fileSize: z.number().optional(),
+        defaultScale: z.number().optional(),
+        defaultRotationX: z.number().optional(),
+        defaultRotationY: z.number().optional(),
+        defaultRotationZ: z.number().optional(),
+        boundingBoxWidth: z.number().optional(),
+        boundingBoxHeight: z.number().optional(),
+        boundingBoxDepth: z.number().optional(),
+        manufacturer: z.string().optional(),
+        modelNumber: z.string().optional(),
+        tags: z.array(z.string()).optional(),
+        metadata: z.any().optional(),
+        isPublic: z.boolean().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        return await create3dModel({
+          ...input,
+          uploadedBy: ctx.user?.id,
+        });
+      }),
+
+    // Update 3D model
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        name: z.string().optional(),
+        description: z.string().optional(),
+        category: z.enum(['machine', 'equipment', 'building', 'zone', 'furniture', 'custom']).optional(),
+        modelUrl: z.string().url().optional(),
+        modelFormat: z.enum(['gltf', 'glb']).optional(),
+        thumbnailUrl: z.string().url().optional(),
+        fileSize: z.number().optional(),
+        defaultScale: z.number().optional(),
+        defaultRotationX: z.number().optional(),
+        defaultRotationY: z.number().optional(),
+        defaultRotationZ: z.number().optional(),
+        boundingBoxWidth: z.number().optional(),
+        boundingBoxHeight: z.number().optional(),
+        boundingBoxDepth: z.number().optional(),
+        manufacturer: z.string().optional(),
+        modelNumber: z.string().optional(),
+        tags: z.array(z.string()).optional(),
+        metadata: z.any().optional(),
+        isPublic: z.boolean().optional(),
+        isActive: z.boolean().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { id, ...data } = input;
+        return await update3dModel(id, data);
+      }),
+
+    // Delete 3D model
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        return await delete3dModel(input.id);
+      }),
+
+    // Upload 3D model file to S3
+    uploadFile: protectedProcedure
+      .input(z.object({
+        fileName: z.string(),
+        fileData: z.string(), // Base64 encoded
+        contentType: z.string(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const buffer = Buffer.from(input.fileData, 'base64');
+        const fileKey = `3d-models/${Date.now()}-${input.fileName}`;
+        const { url } = await storagePut(fileKey, buffer, input.contentType);
+        return { url, fileKey, fileSize: buffer.length };
+      }),
+
+    // Get instances for a floor plan
+    getInstances: protectedProcedure
+      .input(z.object({ floorPlan3dId: z.number() }))
+      .query(async ({ input }) => {
+        return await get3dModelInstances(input.floorPlan3dId);
+      }),
+
+    // Create instance
+    createInstance: protectedProcedure
+      .input(z.object({
+        modelId: z.number(),
+        floorPlan3dId: z.number(),
+        deviceId: z.number().optional(),
+        machineId: z.number().optional(),
+        name: z.string().optional(),
+        positionX: z.number(),
+        positionY: z.number(),
+        positionZ: z.number(),
+        rotationX: z.number().optional(),
+        rotationY: z.number().optional(),
+        rotationZ: z.number().optional(),
+        scaleX: z.number().optional(),
+        scaleY: z.number().optional(),
+        scaleZ: z.number().optional(),
+        visible: z.boolean().optional(),
+        opacity: z.number().optional(),
+        wireframe: z.boolean().optional(),
+        castShadow: z.boolean().optional(),
+        receiveShadow: z.boolean().optional(),
+        clickable: z.boolean().optional(),
+        tooltip: z.string().optional(),
+        popupContent: z.string().optional(),
+        animationEnabled: z.boolean().optional(),
+        animationType: z.enum(['none', 'rotate', 'pulse', 'bounce', 'custom']).optional(),
+        animationSpeed: z.number().optional(),
+        metadata: z.any().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        return await create3dModelInstance(input);
+      }),
+
+    // Update instance
+    updateInstance: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        positionX: z.number().optional(),
+        positionY: z.number().optional(),
+        positionZ: z.number().optional(),
+        rotationX: z.number().optional(),
+        rotationY: z.number().optional(),
+        rotationZ: z.number().optional(),
+        scaleX: z.number().optional(),
+        scaleY: z.number().optional(),
+        scaleZ: z.number().optional(),
+        visible: z.boolean().optional(),
+        opacity: z.number().optional(),
+        wireframe: z.boolean().optional(),
+        castShadow: z.boolean().optional(),
+        receiveShadow: z.boolean().optional(),
+        clickable: z.boolean().optional(),
+        tooltip: z.string().optional(),
+        popupContent: z.string().optional(),
+        animationEnabled: z.boolean().optional(),
+        animationType: z.enum(['none', 'rotate', 'pulse', 'bounce', 'custom']).optional(),
+        animationSpeed: z.number().optional(),
+        metadata: z.any().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { id, ...data } = input;
+        return await update3dModelInstance(id, data);
+      }),
+
+    // Delete instance
+    deleteInstance: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        return await delete3dModelInstance(input.id);
+      }),
+  }),
+
+  // Work Order Notification Router
+  workOrderNotification: router({
+    // Get technician notification preferences
+    getPrefs: protectedProcedure
+      .input(z.object({ technicianId: z.number() }))
+      .query(async ({ input }) => {
+        return await getTechnicianNotificationPrefs(input.technicianId);
+      }),
+
+    // Update technician notification preferences
+    updatePrefs: protectedProcedure
+      .input(z.object({
+        technicianId: z.number(),
+        pushEnabled: z.boolean().optional(),
+        pushToken: z.string().optional(),
+        pushPlatform: z.enum(['web', 'android', 'ios']).optional(),
+        smsEnabled: z.boolean().optional(),
+        phoneNumber: z.string().optional(),
+        phoneCountryCode: z.string().optional(),
+        emailEnabled: z.boolean().optional(),
+        email: z.string().email().optional(),
+        notifyNewWorkOrder: z.boolean().optional(),
+        notifyAssigned: z.boolean().optional(),
+        notifyStatusChange: z.boolean().optional(),
+        notifyDueSoon: z.boolean().optional(),
+        notifyOverdue: z.boolean().optional(),
+        notifyComment: z.boolean().optional(),
+        minPriorityForPush: z.enum(['low', 'medium', 'high', 'critical']).optional(),
+        minPriorityForSms: z.enum(['low', 'medium', 'high', 'critical']).optional(),
+        quietHoursEnabled: z.boolean().optional(),
+        quietHoursStart: z.string().optional(),
+        quietHoursEnd: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { technicianId, ...data } = input;
+        return await upsertTechnicianNotificationPrefs(technicianId, data);
+      }),
+
+    // Get notifications for a work order
+    getByWorkOrder: protectedProcedure
+      .input(z.object({ workOrderId: z.number() }))
+      .query(async ({ input }) => {
+        return await getWorkOrderNotifications(input.workOrderId);
+      }),
+
+    // Send notification (internal use)
+    send: protectedProcedure
+      .input(z.object({
+        workOrderId: z.number(),
+        technicianId: z.number(),
+        notificationType: z.enum(['new_work_order', 'assigned', 'status_change', 'due_soon', 'overdue', 'comment', 'escalation']),
+        channel: z.enum(['push', 'sms', 'email']),
+        title: z.string(),
+        message: z.string(),
+        metadata: z.any().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        return await createWorkOrderNotification(input);
+      }),
+
+    // Update notification status
+    updateStatus: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        status: z.enum(['pending', 'sent', 'delivered', 'failed', 'read']),
+        externalMessageId: z.string().optional(),
+        failureReason: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        return await updateNotificationStatus(input.id, input.status, input.externalMessageId, input.failureReason);
+      }),
+
+    // Get SMS config
+    getSmsConfig: protectedProcedure.query(async () => {
+      return await getSmsConfig();
+    }),
+
+    // Update SMS config
+    updateSmsConfig: protectedProcedure
+      .input(z.object({
+        provider: z.enum(['twilio', 'nexmo', 'aws_sns']).optional(),
+        accountSid: z.string().optional(),
+        authToken: z.string().optional(),
+        fromNumber: z.string().optional(),
+        maxSmsPerDay: z.number().optional(),
+        maxSmsPerHour: z.number().optional(),
+        cooldownMinutes: z.number().optional(),
+        isEnabled: z.boolean().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        return await upsertSmsConfig(input);
+      }),
+
+    // Get Push config
+    getPushConfig: protectedProcedure.query(async () => {
+      return await getPushConfig();
+    }),
+
+    // Update Push config
+    updatePushConfig: protectedProcedure
+      .input(z.object({
+        provider: z.enum(['firebase', 'onesignal', 'pusher']).optional(),
+        projectId: z.string().optional(),
+        serverKey: z.string().optional(),
+        vapidPublicKey: z.string().optional(),
+        vapidPrivateKey: z.string().optional(),
+        isEnabled: z.boolean().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        return await upsertPushConfig(input);
+      }),
+  }),
+
+  // MTTR/MTBF Report Router
+  mttrMtbf: router({
+    // Get MTTR/MTBF statistics
+    getStats: protectedProcedure
+      .input(z.object({
+        targetType: z.enum(['device', 'machine', 'production_line']),
+        targetId: z.number(),
+        periodType: z.enum(['daily', 'weekly', 'monthly', 'quarterly', 'yearly']).optional(),
+        startDate: z.date().optional(),
+        endDate: z.date().optional(),
+      }))
+      .query(async ({ input }) => {
+        return await getMttrMtbfStats(input);
+      }),
+
+    // Calculate and create MTTR/MTBF stats for a period
+    calculate: protectedProcedure
+      .input(z.object({
+        targetType: z.enum(['device', 'machine', 'production_line']),
+        targetId: z.number(),
+        periodType: z.enum(['daily', 'weekly', 'monthly', 'quarterly', 'yearly']),
+        periodStart: z.date(),
+        periodEnd: z.date(),
+      }))
+      .mutation(async ({ input }) => {
+        // Calculate MTTR/MTBF from failure events
+        const mttrMtbfData = await calculateMttrMtbf(
+          input.targetType,
+          input.targetId,
+          input.periodStart,
+          input.periodEnd
+        );
+
+        if (!mttrMtbfData) {
+          throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Failed to calculate MTTR/MTBF' });
+        }
+
+        // Get work order counts
+        const workOrderCounts = await getWorkOrderCountsByType(
+          input.targetType,
+          input.targetId,
+          input.periodStart,
+          input.periodEnd
+        );
+
+        // Create stats record
+        return await createMttrMtbfStats({
+          targetType: input.targetType,
+          targetId: input.targetId,
+          periodType: input.periodType,
+          periodStart: input.periodStart,
+          periodEnd: input.periodEnd,
+          ...mttrMtbfData,
+          ...workOrderCounts,
+        });
+      }),
+
+    // Get failure events
+    getFailureEvents: protectedProcedure
+      .input(z.object({
+        targetType: z.enum(['device', 'machine', 'production_line']).optional(),
+        targetId: z.number().optional(),
+        workOrderId: z.number().optional(),
+        failureType: z.enum(['breakdown', 'degradation', 'intermittent', 'planned_stop']).optional(),
+        severity: z.enum(['minor', 'moderate', 'major', 'critical']).optional(),
+        startDate: z.date().optional(),
+        endDate: z.date().optional(),
+        limit: z.number().optional(),
+      }))
+      .query(async ({ input }) => {
+        return await getFailureEvents(input);
+      }),
+
+    // Create failure event
+    createFailureEvent: protectedProcedure
+      .input(z.object({
+        targetType: z.enum(['device', 'machine', 'production_line']),
+        targetId: z.number(),
+        workOrderId: z.number().optional(),
+        failureCode: z.string().optional(),
+        failureType: z.enum(['breakdown', 'degradation', 'intermittent', 'planned_stop']).optional(),
+        severity: z.enum(['minor', 'moderate', 'major', 'critical']).optional(),
+        description: z.string().optional(),
+        failureStartAt: z.date(),
+        failureEndAt: z.date().optional(),
+        repairStartAt: z.date().optional(),
+        repairEndAt: z.date().optional(),
+        downtimeDuration: z.number().optional(),
+        repairDuration: z.number().optional(),
+        waitingDuration: z.number().optional(),
+        rootCauseCategory: z.enum(['mechanical', 'electrical', 'software', 'operator_error', 'wear', 'environmental', 'unknown']).optional(),
+        rootCause: z.string().optional(),
+        resolutionType: z.enum(['repair', 'replace', 'adjust', 'reset', 'other']).optional(),
+        resolution: z.string().optional(),
+        previousFailureId: z.number().optional(),
+        timeSincePreviousFailure: z.number().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        return await createFailureEvent({
+          ...input,
+          reportedBy: ctx.user?.id,
+        });
+      }),
+
+    // Update failure event
+    updateFailureEvent: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        failureEndAt: z.date().optional(),
+        repairStartAt: z.date().optional(),
+        repairEndAt: z.date().optional(),
+        downtimeDuration: z.number().optional(),
+        repairDuration: z.number().optional(),
+        waitingDuration: z.number().optional(),
+        rootCauseCategory: z.enum(['mechanical', 'electrical', 'software', 'operator_error', 'wear', 'environmental', 'unknown']).optional(),
+        rootCause: z.string().optional(),
+        resolutionType: z.enum(['repair', 'replace', 'adjust', 'reset', 'other']).optional(),
+        resolution: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const { id, ...data } = input;
+        return await updateFailureEvent(id, {
+          ...data,
+          verifiedBy: ctx.user?.id,
+        });
+      }),
+
+    // Get summary report
+    getSummaryReport: protectedProcedure
+      .input(z.object({
+        targetType: z.enum(['device', 'machine', 'production_line']),
+        targetId: z.number(),
+        startDate: z.date(),
+        endDate: z.date(),
+      }))
+      .query(async ({ input }) => {
+        // Get MTTR/MTBF data
+        const mttrMtbfData = await calculateMttrMtbf(
+          input.targetType,
+          input.targetId,
+          input.startDate,
+          input.endDate
+        );
+
+        // Get work order counts
+        const workOrderCounts = await getWorkOrderCountsByType(
+          input.targetType,
+          input.targetId,
+          input.startDate,
+          input.endDate
+        );
+
+        // Get failure events
+        const failureEvents = await getFailureEvents({
+          targetType: input.targetType,
+          targetId: input.targetId,
+          startDate: input.startDate,
+          endDate: input.endDate,
+        });
+
+        // Get historical stats for trend
+        const historicalStats = await getMttrMtbfStats({
+          targetType: input.targetType,
+          targetId: input.targetId,
+          startDate: new Date(input.startDate.getTime() - 90 * 24 * 60 * 60 * 1000), // 90 days before
+          endDate: input.endDate,
+        });
+
+        return {
+          current: {
+            ...mttrMtbfData,
+            ...workOrderCounts,
+          },
+          failureEvents,
+          historicalStats,
+          period: {
+            start: input.startDate,
+            end: input.endDate,
+          },
+        };
+      }),
+
+    // Compare MTTR/MTBF across multiple targets
+    compare: protectedProcedure
+      .input(z.object({
+        targets: z.array(z.object({
+          targetType: z.enum(['device', 'machine', 'production_line']),
+          targetId: z.number(),
+          name: z.string(),
+        })),
+        startDate: z.date(),
+        endDate: z.date(),
+      }))
+      .query(async ({ input }) => {
+        const results = await Promise.all(
+          input.targets.map(async (target) => {
+            const mttrMtbfData = await calculateMttrMtbf(
+              target.targetType,
+              target.targetId,
+              input.startDate,
+              input.endDate
+            );
+            const workOrderCounts = await getWorkOrderCountsByType(
+              target.targetType,
+              target.targetId,
+              input.startDate,
+              input.endDate
+            );
+            return {
+              ...target,
+              ...mttrMtbfData,
+              ...workOrderCounts,
+            };
+          })
+        );
+        return results;
       }),
   }),
 });

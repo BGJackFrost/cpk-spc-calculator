@@ -7917,3 +7917,63 @@
 - [x] Thêm workflow: Created → Assigned → In Progress → Completed
 - [x] Gửi notification cho kỹ thuật viên được gán
 - [x] Báo cáo thống kê work orders
+
+## Phase 98: IoT Enhancement - 3D Model Upload, Work Order Notifications, MTTR/MTBF Report
+
+### 1. Upload Model 3D (GLTF/GLB)
+- [ ] Tạo API endpoint upload file GLTF/GLB lên S3
+- [ ] Tạo bảng database lưu thông tin model 3D
+- [ ] Tạo UI upload model với preview
+- [ ] Tích hợp GLTFLoader vào Three.js component
+- [ ] Hỗ trợ scale, position, rotation cho model
+
+### 2. Notification Push/SMS cho Work Order
+- [ ] Tạo service gửi notification khi có work order mới
+- [ ] Tích hợp với Firebase Push Notification
+- [ ] Tích hợp với Twilio SMS
+- [ ] Cấu hình notification preferences cho kỹ thuật viên
+- [ ] Gửi notification khi work order được assign/update
+
+### 3. Báo cáo MTTR/MTBF
+- [ ] Tạo service tính toán MTTR/MTBF từ work orders
+- [ ] Tạo API endpoints cho báo cáo
+- [ ] Tạo UI dashboard với biểu đồ trend
+- [ ] Export báo cáo PDF/Excel
+- [ ] So sánh MTTR/MTBF theo thiết bị/dây chuyền
+
+
+
+## Phase 98: IoT Enhancement - 3D Model Upload, Work Order Notifications, MTTR/MTBF Report
+
+### Upload Model 3D (GLTF/GLB)
+- [x] Tạo bảng iot_3d_models để lưu thông tin model 3D
+- [x] Tạo bảng iot_3d_model_instances để lưu các instance của model trong floor plan
+- [x] API upload file GLTF/GLB lên S3
+- [x] API CRUD cho 3D models
+- [x] Trang quản lý Model 3D (Model3DManagement.tsx)
+- [x] Hiển thị danh sách models dạng grid với thumbnail
+- [x] Form tạo/sửa model với các thông số scale, rotation
+- [x] Tích hợp vào menu IoT
+
+### Notification Push/SMS cho Work Order
+- [x] Tạo bảng iot_technician_notification_prefs để lưu cấu hình thông báo
+- [x] Tạo bảng iot_work_order_notifications để lưu lịch sử thông báo
+- [x] Tạo bảng iot_sms_config để cấu hình Twilio SMS
+- [x] Tạo bảng iot_push_config để cấu hình Firebase Push
+- [x] API cấu hình SMS (Twilio)
+- [x] API cấu hình Push Notification (Firebase)
+- [x] API quản lý notification preferences cho technician
+- [x] Trang cấu hình Notification (WorkOrderNotificationConfig.tsx)
+- [x] Tích hợp vào menu IoT
+
+### Báo cáo MTTR/MTBF
+- [x] Tạo bảng iot_mttr_mtbf_stats để lưu thống kê MTTR/MTBF
+- [x] Tạo bảng iot_failure_events để lưu các sự kiện hỏng hóc
+- [x] API tính toán MTTR/MTBF từ failure events
+- [x] API lấy báo cáo tổng hợp MTTR/MTBF
+- [x] API so sánh MTTR/MTBF giữa các đối tượng
+- [x] Trang báo cáo MTTR/MTBF (MttrMtbfReport.tsx)
+- [x] Biểu đồ xu hướng MTTR/MTBF theo thời gian
+- [x] Biểu đồ phân bố work order theo loại
+- [x] Danh sách failure events
+- [x] Tích hợp vào menu IoT
