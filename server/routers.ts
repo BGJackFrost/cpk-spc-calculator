@@ -32,6 +32,10 @@ import { visionRouter } from "./routers/visionRouter";
 import { predictiveAnalyticsRouter } from "./routers/predictiveAnalyticsRouter";
 import { predictiveAlertRouter } from "./routers/predictiveAlertRouter";
 import { iotSensorRouter } from "./routers/iotSensorRouter";
+import { iotDeviceManagementRouter } from "./routers/iotDeviceManagementRouter";
+import { iotAlertEscalationRouter } from "./routers/iotAlertEscalationRouter";
+import { iotAnalyticsRouter } from "./routers/iotAnalyticsRouter";
+import { iotProtocolRouter } from "./routers/iotProtocolRouter";
 import { telegramRouter } from "./routers/telegramRouter";
 import { floorPlanRouter } from "./routers/floorPlanRouter";
 import { notificationRouter } from "./routers/notificationRouter";
@@ -11260,6 +11264,14 @@ Hãy trả về JSON với format:
   predictiveAlert: predictiveAlertRouter,
   // IoT Sensor - Real-time sensor data and alerts
   iotSensor: iotSensorRouter,
+  // IoT Device Management - Groups, Templates, Health, Maintenance
+  iotDeviceManagement: iotDeviceManagementRouter,
+  // IoT Alert Escalation - Rules, Correlations, Processing
+  iotAlertEscalation: iotAlertEscalationRouter,
+  // IoT Analytics - Reports, Widgets, Data Aggregation
+  iotAnalytics: iotAnalyticsRouter,
+  // IoT Protocol - MQTT, OPC-UA, Modbus Connection Management
+  iotProtocol: iotProtocolRouter,
   // Push Notifications
   notification: notificationRouter,
   // AI Export - PDF/Excel reports

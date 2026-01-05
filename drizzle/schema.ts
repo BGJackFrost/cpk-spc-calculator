@@ -1,4 +1,4 @@
-import { mysqlTable, mysqlSchema, AnyMySqlColumn, primaryKey, unique, int, varchar, timestamp, text, json, mysqlEnum, index, double, bigint, float, tinyint, datetime, boolean, decimal } from "drizzle-orm/mysql-core"
+import { mysqlTable, mysqlSchema, AnyMySqlColumn, int, varchar, timestamp, index, json, decimal, text, mysqlEnum, datetime, bigint, tinyint } from "drizzle-orm/mysql-core"
 import { sql } from "drizzle-orm"
 
 export const accountLockouts = mysqlTable("account_lockouts", {
@@ -352,6 +352,64 @@ export const aiModelVersions = mysqlTable("ai_model_versions", {
 	index("idx_active").on(table.modelId, table.isActive),
 ]);
 
+export const aiPredictionAccuracyStats = mysqlTable("ai_prediction_accuracy_stats", {
+	id: int().autoincrement().notNull(),
+	periodType: mysqlEnum("period_type", ['daily','weekly','monthly']).notNull(),
+	periodStart: timestamp("period_start", { mode: 'string' }).notNull(),
+	periodEnd: timestamp("period_end", { mode: 'string' }).notNull(),
+	predictionType: mysqlEnum("prediction_type", ['cpk','oee','defect_rate','trend']).notNull(),
+	productId: int("product_id"),
+	productionLineId: int("production_line_id"),
+	totalPredictions: int("total_predictions").default(0).notNull(),
+	verifiedPredictions: int("verified_predictions").default(0).notNull(),
+	mae: decimal({ precision: 15, scale: 6 }),
+	rmse: decimal({ precision: 15, scale: 6 }),
+	mape: decimal({ precision: 10, scale: 4 }),
+	r2Score: decimal("r2_score", { precision: 5, scale: 4 }),
+	withinConfidenceRate: decimal("within_confidence_rate", { precision: 5, scale: 2 }),
+	trendAccuracy: decimal("trend_accuracy", { precision: 5, scale: 2 }),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("idx_ai_pred_acc_period").on(table.periodType, table.periodStart),
+	index("idx_ai_pred_acc_type").on(table.predictionType),
+]);
+
+export const aiPredictionHistory = mysqlTable("ai_prediction_history", {
+	id: int().autoincrement().notNull(),
+	predictionType: mysqlEnum("prediction_type", ['cpk','oee','defect_rate','trend']).notNull(),
+	modelId: int("model_id"),
+	modelName: varchar("model_name", { length: 100 }),
+	modelVersion: varchar("model_version", { length: 50 }),
+	productId: int("product_id"),
+	productCode: varchar("product_code", { length: 100 }),
+	productionLineId: int("production_line_id"),
+	workstationId: int("workstation_id"),
+	predictedValue: decimal("predicted_value", { precision: 15, scale: 6 }).notNull(),
+	predictedAt: timestamp("predicted_at", { mode: 'string' }).notNull(),
+	forecastHorizon: int("forecast_horizon").default(7),
+	confidenceLevel: decimal("confidence_level", { precision: 5, scale: 2 }),
+	confidenceLower: decimal("confidence_lower", { precision: 15, scale: 6 }),
+	confidenceUpper: decimal("confidence_upper", { precision: 15, scale: 6 }),
+	actualValue: decimal("actual_value", { precision: 15, scale: 6 }),
+	actualRecordedAt: timestamp("actual_recorded_at", { mode: 'string' }),
+	absoluteError: decimal("absolute_error", { precision: 15, scale: 6 }),
+	percentError: decimal("percent_error", { precision: 10, scale: 4 }),
+	squaredError: decimal("squared_error", { precision: 20, scale: 8 }),
+	isWithinConfidence: int("is_within_confidence"),
+	status: mysqlEnum(['pending','verified','expired']).default('pending').notNull(),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("idx_ai_pred_hist_type").on(table.predictionType),
+	index("idx_ai_pred_hist_product").on(table.productId),
+	index("idx_ai_pred_hist_line").on(table.productionLineId),
+	index("idx_ai_pred_hist_predicted_at").on(table.predictedAt),
+	index("idx_ai_pred_hist_status").on(table.status),
+]);
+
 export const aiPredictionReports = mysqlTable("ai_prediction_reports", {
 	id: int().autoincrement().notNull(),
 	reportId: varchar("report_id", { length: 64 }).notNull(),
@@ -382,6 +440,37 @@ export const aiPredictionReports = mysqlTable("ai_prediction_reports", {
 	index("idx_ai_prediction_reports_status").on(table.status),
 ]);
 
+export const aiPredictionThresholds = mysqlTable("ai_prediction_thresholds", {
+	id: int().autoincrement().notNull(),
+	name: varchar({ length: 255 }).notNull(),
+	description: text(),
+	productId: int("product_id"),
+	productionLineId: int("production_line_id"),
+	workstationId: int("workstation_id"),
+	cpkWarning: decimal("cpk_warning", { precision: 5, scale: 3 }).default('1.330').notNull(),
+	cpkCritical: decimal("cpk_critical", { precision: 5, scale: 3 }).default('1.000').notNull(),
+	cpkTarget: decimal("cpk_target", { precision: 5, scale: 3 }).default('1.670'),
+	oeeWarning: decimal("oee_warning", { precision: 5, scale: 2 }).default('75.00').notNull(),
+	oeeCritical: decimal("oee_critical", { precision: 5, scale: 2 }).default('60.00').notNull(),
+	oeeTarget: decimal("oee_target", { precision: 5, scale: 2 }).default('85.00'),
+	trendDeclineWarning: decimal("trend_decline_warning", { precision: 5, scale: 2 }).default('5.00'),
+	trendDeclineCritical: decimal("trend_decline_critical", { precision: 5, scale: 2 }).default('10.00'),
+	emailAlertEnabled: int("email_alert_enabled").default(1).notNull(),
+	alertEmails: text("alert_emails"),
+	webhookEnabled: int("webhook_enabled").default(0).notNull(),
+	webhookUrl: varchar("webhook_url", { length: 500 }),
+	priority: int().default(0).notNull(),
+	isActive: int("is_active").default(1).notNull(),
+	createdBy: int("created_by"),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("idx_ai_pred_thresh_product").on(table.productId),
+	index("idx_ai_pred_thresh_line").on(table.productionLineId),
+	index("idx_ai_pred_thresh_active").on(table.isActive),
+]);
+
 export const aiPredictions = mysqlTable("ai_predictions", {
 	id: int().autoincrement().notNull(),
 	modelId: int("model_id").notNull(),
@@ -403,6 +492,27 @@ export const aiPredictions = mysqlTable("ai_predictions", {
 	inputData: text("input_data"),
 	prediction: text(),
 });
+
+export const aiPriorityModelConfigs = mysqlTable("ai_priority_model_configs", {
+	id: int().autoincrement().notNull(),
+	name: varchar({ length: 100 }).notNull(),
+	description: text(),
+	modelType: mysqlEnum("model_type", ['llm','rule_based','hybrid']).default('hybrid').notNull(),
+	llmPromptTemplate: text("llm_prompt_template"),
+	featureWeights: text("feature_weights"),
+	thresholds: text(),
+	isActive: tinyint("is_active").default(0).notNull(),
+	isDefault: tinyint("is_default").default(0).notNull(),
+	accuracy: decimal({ precision: 5, scale: 2 }),
+	lastTrainedAt: bigint("last_trained_at", { mode: "number" }),
+	createdBy: int("created_by"),
+	createdAt: bigint("created_at", { mode: "number" }).notNull(),
+	updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
+},
+(table) => [
+	index("idx_priority_model_active").on(table.isActive),
+	index("idx_priority_model_default").on(table.isDefault),
+]);
 
 export const aiTrainedModels = mysqlTable("ai_trained_models", {
 	id: int().autoincrement().notNull(),
@@ -442,6 +552,38 @@ export const aiTrainedModels = mysqlTable("ai_trained_models", {
 	index("model_id").on(table.modelId),
 	index("idx_ai_trained_models_status").on(table.status),
 	index("idx_ai_trained_models_model_type").on(table.modelType),
+]);
+
+export const aiTrainingDatasets = mysqlTable("ai_training_datasets", {
+	id: int().autoincrement().notNull(),
+	name: varchar({ length: 255 }).notNull(),
+	description: text(),
+	filePath: varchar("file_path", { length: 500 }).notNull(),
+	fileUrl: varchar("file_url", { length: 500 }),
+	fileSize: bigint("file_size", { mode: "number" }),
+	fileType: varchar("file_type", { length: 50 }),
+	rowCount: int("row_count"),
+	columnCount: int("column_count"),
+	columnNames: text("column_names"),
+	datasetType: mysqlEnum("dataset_type", ['cpk_forecast','anomaly_detection','quality_prediction','custom']).notNull(),
+	productCode: varchar("product_code", { length: 100 }),
+	workstationId: int("workstation_id"),
+	machineId: int("machine_id"),
+	fixtureId: int("fixture_id"),
+	dateFrom: timestamp("date_from", { mode: 'string' }),
+	dateTo: timestamp("date_to", { mode: 'string' }),
+	status: mysqlEnum(['uploaded','processing','ready','failed']).default('uploaded').notNull(),
+	validationStatus: mysqlEnum("validation_status", ['pending','valid','invalid']),
+	validationErrors: text("validation_errors"),
+	metadata: text(),
+	createdBy: int("created_by"),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("idx_ai_training_datasets_status").on(table.status),
+	index("idx_ai_training_datasets_type").on(table.datasetType),
+	index("idx_ai_training_datasets_created_at").on(table.createdAt),
 ]);
 
 export const aiTrainingHistory = mysqlTable("ai_training_history", {
@@ -505,38 +647,6 @@ export const aiTrainingJobs = mysqlTable("ai_training_jobs", {
 	index("idx_ai_training_jobs_created_at").on(table.createdAt),
 ]);
 
-export const aiTrainingDatasets = mysqlTable("ai_training_datasets", {
-	id: int().autoincrement().notNull(),
-	name: varchar({ length: 255 }).notNull(),
-	description: text(),
-	filePath: varchar("file_path", { length: 500 }).notNull(),
-	fileUrl: varchar("file_url", { length: 500 }),
-	fileSize: bigint("file_size", { mode: "number" }),
-	fileType: varchar("file_type", { length: 50 }),
-	rowCount: int("row_count"),
-	columnCount: int("column_count"),
-	columnNames: text("column_names"),
-	datasetType: mysqlEnum("dataset_type", ['cpk_forecast', 'anomaly_detection', 'quality_prediction', 'custom']).notNull(),
-	productCode: varchar("product_code", { length: 100 }),
-	workstationId: int("workstation_id"),
-	machineId: int("machine_id"),
-	fixtureId: int("fixture_id"),
-	dateFrom: timestamp("date_from", { mode: 'string' }),
-	dateTo: timestamp("date_to", { mode: 'string' }),
-	status: mysqlEnum(['uploaded', 'processing', 'ready', 'failed']).default('uploaded').notNull(),
-	validationStatus: mysqlEnum("validation_status", ['pending', 'valid', 'invalid']),
-	validationErrors: text("validation_errors"),
-	metadata: text(),
-	createdBy: int("created_by"),
-	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
-	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
-},
-(table) => [
-	index("idx_ai_training_datasets_status").on(table.status),
-	index("idx_ai_training_datasets_type").on(table.datasetType),
-	index("idx_ai_training_datasets_created_at").on(table.createdAt),
-]);
-
 export const alertAnalytics = mysqlTable("alert_analytics", {
 	id: int().autoincrement().notNull(),
 	date: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
@@ -569,6 +679,47 @@ export const alertNotificationLogs = mysqlTable("alert_notification_logs", {
 	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
 });
 
+export const alertPriorityHistory = mysqlTable("alert_priority_history", {
+	id: int().autoincrement().notNull(),
+	alertId: int("alert_id").notNull(),
+	escalationHistoryId: int("escalation_history_id"),
+	previousPriority: varchar("previous_priority", { length: 20 }),
+	newPriority: mysqlEnum("new_priority", ['critical','high','medium','low']).notNull(),
+	assignedBy: mysqlEnum("assigned_by", ['ai','rule','manual']).notNull(),
+	aiConfidence: decimal("ai_confidence", { precision: 5, scale: 2 }),
+	aiReasoning: text("ai_reasoning"),
+	matchedRuleIds: text("matched_rule_ids"),
+	contextData: text("context_data"),
+	createdBy: int("created_by"),
+	createdAt: bigint("created_at", { mode: "number" }).notNull(),
+},
+(table) => [
+	index("idx_priority_history_alert").on(table.alertId),
+	index("idx_priority_history_escalation").on(table.escalationHistoryId),
+	index("idx_priority_history_priority").on(table.newPriority),
+	index("idx_priority_history_created").on(table.createdAt),
+]);
+
+export const alertPriorityRules = mysqlTable("alert_priority_rules", {
+	id: int().autoincrement().notNull(),
+	name: varchar({ length: 100 }).notNull(),
+	description: text(),
+	alertType: varchar("alert_type", { length: 50 }).notNull(),
+	condition: text().notNull(),
+	priority: mysqlEnum(['critical','high','medium','low']).notNull(),
+	weight: int().default(1).notNull(),
+	autoAssign: tinyint("auto_assign").default(1).notNull(),
+	isActive: tinyint("is_active").default(1).notNull(),
+	createdBy: int("created_by"),
+	createdAt: bigint("created_at", { mode: "number" }).notNull(),
+	updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
+},
+(table) => [
+	index("idx_priority_rule_type").on(table.alertType),
+	index("idx_priority_rule_active").on(table.isActive),
+	index("idx_priority_rule_priority").on(table.priority),
+]);
+
 export const alertSettings = mysqlTable("alert_settings", {
 	id: int().autoincrement().notNull(),
 	mappingId: int(),
@@ -579,6 +730,52 @@ export const alertSettings = mysqlTable("alert_settings", {
 	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
 	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
 });
+
+export const alertWebhookConfigs = mysqlTable("alert_webhook_configs", {
+	id: int().autoincrement().notNull(),
+	name: varchar({ length: 100 }).notNull(),
+	description: text(),
+	channelType: mysqlEnum("channel_type", ['slack','teams','email','discord','custom']).notNull(),
+	webhookUrl: varchar("webhook_url", { length: 500 }),
+	emailRecipients: json("email_recipients"),
+	emailSubjectTemplate: varchar("email_subject_template", { length: 255 }),
+	slackChannel: varchar("slack_channel", { length: 100 }),
+	slackBotToken: varchar("slack_bot_token", { length: 255 }),
+	teamsWebhookUrl: varchar("teams_webhook_url", { length: 500 }),
+	alertTypes: json("alert_types"),
+	productionLineIds: json("production_line_ids"),
+	machineIds: json("machine_ids"),
+	minSeverity: mysqlEnum("min_severity", ['info','warning','critical']).default('warning').notNull(),
+	rateLimitMinutes: int("rate_limit_minutes").default(5),
+	lastAlertSentAt: timestamp("last_alert_sent_at", { mode: 'string' }),
+	isActive: int("is_active").default(1).notNull(),
+	testMode: int("test_mode").default(0).notNull(),
+	createdBy: int("created_by"),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const alertWebhookLogs = mysqlTable("alert_webhook_logs", {
+	id: int().autoincrement().notNull(),
+	webhookConfigId: int("webhook_config_id").notNull(),
+	alertType: varchar("alert_type", { length: 50 }).notNull(),
+	alertTitle: varchar("alert_title", { length: 255 }).notNull(),
+	alertMessage: text("alert_message"),
+	alertData: json("alert_data"),
+	channelType: varchar("channel_type", { length: 20 }).notNull(),
+	recipientInfo: varchar("recipient_info", { length: 255 }),
+	status: mysqlEnum(['pending','sent','failed','rate_limited']).default('pending').notNull(),
+	responseCode: int("response_code"),
+	responseBody: text("response_body"),
+	errorMessage: text("error_message"),
+	sentAt: timestamp("sent_at", { mode: 'string' }),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+	index("idx_webhook_config").on(table.webhookConfigId),
+	index("idx_alert_type").on(table.alertType),
+	index("idx_created_at").on(table.createdAt),
+]);
 
 export const analyticsCache = mysqlTable("analytics_cache", {
 	id: int().autoincrement().notNull(),
@@ -689,6 +886,57 @@ export const auditLogs = mysqlTable("audit_logs", {
 	index("idx_audit_logs_created").on(table.createdAt),
 	index("idx_audit_created").on(table.createdAt),
 	index("idx_audit_user_created").on(table.userId, table.createdAt),
+]);
+
+export const autoResolveConfigs = mysqlTable("auto_resolve_configs", {
+	id: int().autoincrement().notNull(),
+	name: varchar({ length: 100 }).notNull(),
+	description: text(),
+	alertType: varchar("alert_type", { length: 100 }).notNull(),
+	checkIntervalMinutes: int("check_interval_minutes").default(5).notNull(),
+	consecutiveOkCount: int("consecutive_ok_count").default(3).notNull(),
+	metricThreshold: decimal("metric_threshold", { precision: 10, scale: 4 }),
+	metricOperator: mysqlEnum("metric_operator", ['gt','gte','lt','lte','eq']).default('gte').notNull(),
+	autoResolveAfterMinutes: int("auto_resolve_after_minutes"),
+	notifyOnAutoResolve: int("notify_on_auto_resolve").default(1).notNull(),
+	notifyEmails: text("notify_emails"),
+	notifyPhones: text("notify_phones"),
+	productionLineIds: json("production_line_ids"),
+	machineIds: json("machine_ids"),
+	isActive: int("is_active").default(1).notNull(),
+	lastRunAt: timestamp("last_run_at", { mode: 'string' }),
+	createdBy: int("created_by"),
+	createdAt: bigint("created_at", { mode: "number" }).notNull(),
+	updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
+	notificationChannels: varchar("notification_channels", { length: 255 }),
+},
+(table) => [
+	index("idx_auto_resolve_type").on(table.alertType),
+	index("idx_auto_resolve_active").on(table.isActive),
+]);
+
+export const autoResolveLogs = mysqlTable("auto_resolve_logs", {
+	id: int().autoincrement().notNull(),
+	configId: int("config_id").notNull(),
+	escalationHistoryId: int("escalation_history_id").notNull(),
+	alertId: int("alert_id").notNull(),
+	resolveReason: varchar("resolve_reason", { length: 255 }).notNull(),
+	metricValueAtResolve: decimal("metric_value_at_resolve", { precision: 10, scale: 4 }),
+	consecutiveOkCount: int("consecutive_ok_count").default(0).notNull(),
+	notificationsSent: int("notifications_sent").default(0).notNull(),
+	notificationErrors: text("notification_errors"),
+	resolvedAt: timestamp("resolved_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	createdAt: bigint("created_at", { mode: "number" }).notNull(),
+	escalationId: int("escalation_id"),
+	alertType: varchar("alert_type", { length: 50 }),
+	reason: text(),
+	metricValue: decimal("metric_value", { precision: 10, scale: 4 }),
+	notificationSent: tinyint("notification_sent").default(0),
+},
+(table) => [
+	index("idx_auto_resolve_log_config").on(table.configId),
+	index("idx_auto_resolve_log_esc").on(table.escalationHistoryId),
+	index("idx_auto_resolve_log_resolved").on(table.resolvedAt),
 ]);
 
 export const batchOperationLogs = mysqlTable("batch_operation_logs", {
@@ -1045,6 +1293,206 @@ export const escalationConfigs = mysqlTable("escalation_configs", {
 	index("level").on(table.level),
 ]);
 
+export const escalationHistory = mysqlTable("escalation_history", {
+	id: int().autoincrement().notNull(),
+	alertId: int("alert_id").notNull(),
+	alertType: varchar("alert_type", { length: 100 }).notNull(),
+	alertMessage: text("alert_message"),
+	alertSeverity: mysqlEnum("alert_severity", ['info','warning','critical']).default('warning').notNull(),
+	escalationLevel: int("escalation_level").notNull(),
+	escalationLevelName: varchar("escalation_level_name", { length: 100 }).notNull(),
+	escalationConfigId: int("escalation_config_id"),
+	triggeredAt: timestamp("triggered_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	acknowledgedAt: bigint("acknowledged_at", { mode: "number" }),
+	acknowledgedBy: int("acknowledged_by"),
+	resolvedAt: bigint("resolved_at", { mode: "number" }),
+	resolvedBy: int("resolved_by"),
+	resolutionNotes: text("resolution_notes"),
+	autoResolved: int("auto_resolved").default(0).notNull(),
+	autoResolveReason: varchar("auto_resolve_reason", { length: 255 }),
+	emailsSent: int("emails_sent").default(0).notNull(),
+	smsSent: int("sms_sent").default(0).notNull(),
+	webhooksSent: int("webhooks_sent").default(0).notNull(),
+	notifiedEmails: text("notified_emails"),
+	notifiedPhones: text("notified_phones"),
+	productionLineId: int("production_line_id"),
+	machineId: int("machine_id"),
+	productId: int("product_id"),
+	metricValue: decimal("metric_value", { precision: 10, scale: 4 }),
+	thresholdValue: decimal("threshold_value", { precision: 10, scale: 4 }),
+	status: mysqlEnum(['active','acknowledged','resolved','auto_resolved','expired']).default('active').notNull(),
+	createdAt: bigint("created_at", { mode: "number" }).notNull(),
+	updatedAt: bigint("updated_at", { mode: "number" }),
+	currentLevel: int("current_level").default(1),
+	severity: varchar({ length: 20 }).default('medium'),
+	alertTitle: varchar("alert_title", { length: 255 }),
+	maxLevel: int("max_level").default(3),
+	notificationsSent: int("notifications_sent").default(0),
+	autoResolvedReason: text("auto_resolved_reason"),
+	notes: text(),
+	metadata: json(),
+},
+(table) => [
+	index("idx_esc_hist_alert").on(table.alertId),
+	index("idx_esc_hist_level").on(table.escalationLevel),
+	index("idx_esc_hist_status").on(table.status),
+	index("idx_esc_hist_triggered").on(table.triggeredAt),
+	index("idx_esc_hist_line").on(table.productionLineId),
+]);
+
+export const escalationRealtimeStats = mysqlTable("escalation_realtime_stats", {
+	id: int().autoincrement().notNull(),
+	timestamp: bigint({ mode: "number" }).notNull(),
+	intervalMinutes: int("interval_minutes").default(5).notNull(),
+	totalAlerts: int("total_alerts").default(0).notNull(),
+	criticalAlerts: int("critical_alerts").default(0).notNull(),
+	highAlerts: int("high_alerts").default(0).notNull(),
+	mediumAlerts: int("medium_alerts").default(0).notNull(),
+	lowAlerts: int("low_alerts").default(0).notNull(),
+	resolvedAlerts: int("resolved_alerts").default(0).notNull(),
+	pendingAlerts: int("pending_alerts").default(0).notNull(),
+	escalatedAlerts: int("escalated_alerts").default(0).notNull(),
+	avgResolutionTimeMinutes: int("avg_resolution_time_minutes"),
+	productionLineId: int("production_line_id"),
+	alertType: varchar("alert_type", { length: 50 }),
+	createdAt: bigint("created_at", { mode: "number" }).notNull(),
+},
+(table) => [
+	index("idx_realtime_stats_timestamp").on(table.timestamp),
+	index("idx_realtime_stats_interval").on(table.intervalMinutes),
+	index("idx_realtime_stats_line").on(table.productionLineId),
+]);
+
+export const escalationReportConfigs = mysqlTable("escalation_report_configs", {
+	id: int().autoincrement().notNull(),
+	name: varchar({ length: 100 }).notNull(),
+	description: text(),
+	frequency: mysqlEnum(['daily','weekly','monthly']).default('weekly').notNull(),
+	dayOfWeek: int("day_of_week").default(1),
+	dayOfMonth: int("day_of_month").default(1),
+	timeOfDay: varchar("time_of_day", { length: 5 }).default('08:00').notNull(),
+	timezone: varchar({ length: 50 }).default('Asia/Ho_Chi_Minh').notNull(),
+	emailRecipients: json("email_recipients"),
+	webhookConfigIds: json("webhook_config_ids"),
+	includeStats: tinyint("include_stats").default(1).notNull(),
+	includeTopAlerts: tinyint("include_top_alerts").default(1).notNull(),
+	includeResolvedAlerts: tinyint("include_resolved_alerts").default(1).notNull(),
+	includeTrends: tinyint("include_trends").default(1).notNull(),
+	alertTypes: json("alert_types"),
+	productionLineIds: json("production_line_ids"),
+	isActive: tinyint("is_active").default(1).notNull(),
+	lastRunAt: bigint("last_run_at", { mode: "number" }),
+	nextRunAt: bigint("next_run_at", { mode: "number" }),
+	createdBy: int("created_by"),
+	createdAt: bigint("created_at", { mode: "number" }).notNull(),
+	updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
+},
+(table) => [
+	index("idx_esc_report_active").on(table.isActive),
+	index("idx_esc_report_next_run").on(table.nextRunAt),
+]);
+
+export const escalationReportHistory = mysqlTable("escalation_report_history", {
+	id: int().autoincrement().notNull(),
+	configId: int("config_id").notNull(),
+	reportPeriodStart: bigint("report_period_start", { mode: "number" }).notNull(),
+	reportPeriodEnd: bigint("report_period_end", { mode: "number" }).notNull(),
+	totalAlerts: int("total_alerts").default(0).notNull(),
+	resolvedAlerts: int("resolved_alerts").default(0).notNull(),
+	pendingAlerts: int("pending_alerts").default(0).notNull(),
+	avgResolutionTimeMinutes: int("avg_resolution_time_minutes"),
+	emailsSent: int("emails_sent").default(0).notNull(),
+	webhooksSent: int("webhooks_sent").default(0).notNull(),
+	status: mysqlEnum(['pending','sent','partial','failed']).default('pending').notNull(),
+	errorMessage: text("error_message"),
+	reportData: json("report_data"),
+	sentAt: bigint("sent_at", { mode: "number" }),
+	createdAt: bigint("created_at", { mode: "number" }).notNull(),
+},
+(table) => [
+	index("idx_esc_report_hist_config").on(table.configId),
+	index("idx_esc_report_hist_period").on(table.reportPeriodStart, table.reportPeriodEnd),
+	index("idx_esc_report_hist_created").on(table.createdAt),
+]);
+
+export const escalationTemplates = mysqlTable("escalation_templates", {
+	id: int().autoincrement().notNull(),
+	name: varchar({ length: 100 }).notNull(),
+	description: text(),
+	level1TimeoutMinutes: int("level1_timeout_minutes").default(15).notNull(),
+	level1Emails: json("level1_emails"),
+	level1Webhooks: json("level1_webhooks"),
+	level1SmsEnabled: tinyint("level1_sms_enabled").default(0).notNull(),
+	level1SmsPhones: json("level1_sms_phones"),
+	level2TimeoutMinutes: int("level2_timeout_minutes").default(30).notNull(),
+	level2Emails: json("level2_emails"),
+	level2Webhooks: json("level2_webhooks"),
+	level2SmsEnabled: tinyint("level2_sms_enabled").default(0).notNull(),
+	level2SmsPhones: json("level2_sms_phones"),
+	level3TimeoutMinutes: int("level3_timeout_minutes").default(60).notNull(),
+	level3Emails: json("level3_emails"),
+	level3Webhooks: json("level3_webhooks"),
+	level3SmsEnabled: tinyint("level3_sms_enabled").default(0).notNull(),
+	level3SmsPhones: json("level3_sms_phones"),
+	alertTypes: json("alert_types"),
+	productionLineIds: json("production_line_ids"),
+	machineIds: json("machine_ids"),
+	isDefault: tinyint("is_default").default(0).notNull(),
+	isActive: tinyint("is_active").default(1).notNull(),
+	createdBy: int("created_by"),
+	createdAt: bigint("created_at", { mode: "number" }).notNull(),
+	updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
+},
+(table) => [
+	index("idx_escalation_template_active").on(table.isActive),
+	index("idx_escalation_template_default").on(table.isDefault),
+]);
+
+export const escalationWebhookConfigs = mysqlTable("escalation_webhook_configs", {
+	id: int().autoincrement().notNull(),
+	name: varchar({ length: 100 }).notNull(),
+	description: text(),
+	channelType: mysqlEnum("channel_type", ['slack','teams','discord','custom']).notNull(),
+	webhookUrl: varchar("webhook_url", { length: 500 }).notNull(),
+	slackChannel: varchar("slack_channel", { length: 100 }),
+	slackMentions: json("slack_mentions"),
+	teamsTitle: varchar("teams_title", { length: 200 }),
+	customHeaders: json("custom_headers"),
+	customBodyTemplate: text("custom_body_template"),
+	includeDetails: tinyint("include_details").default(1).notNull(),
+	includeChart: tinyint("include_chart").default(0).notNull(),
+	isActive: tinyint("is_active").default(1).notNull(),
+	createdBy: int("created_by"),
+	createdAt: bigint("created_at", { mode: "number" }).notNull(),
+	updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
+},
+(table) => [
+	index("idx_esc_webhook_active").on(table.isActive),
+	index("idx_esc_webhook_type").on(table.channelType),
+]);
+
+export const escalationWebhookLogs = mysqlTable("escalation_webhook_logs", {
+	id: int().autoincrement().notNull(),
+	webhookConfigId: int("webhook_config_id").notNull(),
+	escalationHistoryId: int("escalation_history_id"),
+	escalationLevel: int("escalation_level").notNull(),
+	alertType: varchar("alert_type", { length: 50 }).notNull(),
+	alertTitle: varchar("alert_title", { length: 255 }).notNull(),
+	alertMessage: text("alert_message"),
+	channelType: varchar("channel_type", { length: 20 }).notNull(),
+	requestPayload: text("request_payload"),
+	responseStatus: int("response_status"),
+	responseBody: text("response_body"),
+	success: tinyint().default(0).notNull(),
+	errorMessage: text("error_message"),
+	sentAt: bigint("sent_at", { mode: "number" }).notNull(),
+},
+(table) => [
+	index("idx_esc_webhook_log_config").on(table.webhookConfigId),
+	index("idx_esc_webhook_log_history").on(table.escalationHistoryId),
+	index("idx_esc_webhook_log_sent").on(table.sentAt),
+]);
+
 export const exportHistory = mysqlTable("export_history", {
 	id: int().autoincrement().notNull(),
 	userId: int().notNull(),
@@ -1072,6 +1520,131 @@ export const failedLoginAttempts = mysqlTable("failed_login_attempts", {
 	attemptedAt: timestamp("attempted_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
 });
 
+export const firebaseConfig = mysqlTable("firebase_config", {
+	id: int().autoincrement().notNull(),
+	projectId: varchar("project_id", { length: 255 }).notNull(),
+	clientEmail: varchar("client_email", { length: 255 }).notNull(),
+	privateKey: text("private_key").notNull(),
+	isActive: tinyint("is_active").default(1).notNull(),
+	createdBy: int("created_by"),
+	createdAt: bigint("created_at", { mode: "number" }).notNull(),
+	updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
+});
+
+export const firebaseDeviceTokens = mysqlTable("firebase_device_tokens", {
+	id: int().autoincrement().notNull(),
+	userId: int("user_id").notNull(),
+	token: varchar({ length: 500 }).notNull(),
+	deviceType: mysqlEnum("device_type", ['android','ios','web']).notNull(),
+	deviceName: varchar("device_name", { length: 100 }),
+	deviceModel: varchar("device_model", { length: 100 }),
+	appVersion: varchar("app_version", { length: 20 }),
+	isActive: tinyint("is_active").default(1).notNull(),
+	lastUsedAt: bigint("last_used_at", { mode: "number" }),
+	createdAt: bigint("created_at", { mode: "number" }).notNull(),
+	updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
+},
+(table) => [
+	index("idx_device_token_user").on(table.userId),
+	index("idx_device_token_active").on(table.isActive),
+]);
+
+export const firebasePushConfigs = mysqlTable("firebase_push_configs", {
+	id: int().autoincrement().notNull(),
+	userId: int("user_id").notNull(),
+	enablePush: tinyint("enable_push").default(1).notNull(),
+	enableCriticalAlerts: tinyint("enable_critical_alerts").default(1).notNull(),
+	enableHighAlerts: tinyint("enable_high_alerts").default(1).notNull(),
+	enableMediumAlerts: tinyint("enable_medium_alerts").default(0).notNull(),
+	enableLowAlerts: tinyint("enable_low_alerts").default(0).notNull(),
+	quietHoursStart: varchar("quiet_hours_start", { length: 10 }),
+	quietHoursEnd: varchar("quiet_hours_end", { length: 10 }),
+	alertTypes: text("alert_types"),
+	productionLineIds: text("production_line_ids"),
+	createdAt: bigint("created_at", { mode: "number" }).notNull(),
+	updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
+},
+(table) => [
+	index("idx_push_config_user").on(table.userId),
+]);
+
+export const firebasePushHistory = mysqlTable("firebase_push_history", {
+	id: int().autoincrement().notNull(),
+	userId: int("user_id").notNull(),
+	deviceTokenId: int("device_token_id"),
+	escalationHistoryId: int("escalation_history_id"),
+	title: varchar({ length: 255 }).notNull(),
+	body: text().notNull(),
+	data: text(),
+	priority: mysqlEnum(['critical','high','medium','low']).notNull(),
+	status: mysqlEnum(['sent','delivered','failed','clicked']).notNull(),
+	errorMessage: text("error_message"),
+	sentAt: bigint("sent_at", { mode: "number" }).notNull(),
+	deliveredAt: bigint("delivered_at", { mode: "number" }),
+	clickedAt: bigint("clicked_at", { mode: "number" }),
+	createdAt: bigint("created_at", { mode: "number" }).notNull(),
+},
+(table) => [
+	index("idx_push_history_user").on(table.userId),
+	index("idx_push_history_escalation").on(table.escalationHistoryId),
+	index("idx_push_history_status").on(table.status),
+	index("idx_push_history_sent").on(table.sentAt),
+]);
+
+export const firebasePushSettings = mysqlTable("firebase_push_settings", {
+	id: int().autoincrement().notNull(),
+	userId: varchar("user_id", { length: 100 }).notNull(),
+	enabled: tinyint().default(1).notNull(),
+	iotAlerts: tinyint("iot_alerts").default(1).notNull(),
+	spcAlerts: tinyint("spc_alerts").default(1).notNull(),
+	cpkAlerts: tinyint("cpk_alerts").default(1).notNull(),
+	escalationAlerts: tinyint("escalation_alerts").default(1).notNull(),
+	systemAlerts: tinyint("system_alerts").default(1).notNull(),
+	criticalOnly: tinyint("critical_only").default(0).notNull(),
+	quietHoursEnabled: tinyint("quiet_hours_enabled").default(0).notNull(),
+	quietHoursStart: varchar("quiet_hours_start", { length: 10 }),
+	quietHoursEnd: varchar("quiet_hours_end", { length: 10 }),
+	productionLineIds: text("production_line_ids"),
+	machineIds: text("machine_ids"),
+	createdAt: bigint("created_at", { mode: "number" }).notNull(),
+	updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
+},
+(table) => [
+	index("idx_push_settings_user").on(table.userId),
+]);
+
+export const firebaseTopicSubscriptions = mysqlTable("firebase_topic_subscriptions", {
+	id: int().autoincrement().notNull(),
+	userId: int("user_id").notNull(),
+	topicId: int("topic_id").notNull(),
+	deviceTokenId: int("device_token_id").notNull(),
+	subscribedAt: bigint("subscribed_at", { mode: "number" }).notNull(),
+	unsubscribedAt: bigint("unsubscribed_at", { mode: "number" }),
+	isActive: tinyint("is_active").default(1).notNull(),
+},
+(table) => [
+	index("idx_subscription_user").on(table.userId),
+	index("idx_subscription_topic").on(table.topicId),
+	index("idx_subscription_active").on(table.isActive),
+]);
+
+export const firebaseTopics = mysqlTable("firebase_topics", {
+	id: int().autoincrement().notNull(),
+	name: varchar({ length: 100 }).notNull(),
+	description: text(),
+	topicKey: varchar("topic_key", { length: 100 }).notNull(),
+	alertType: varchar("alert_type", { length: 50 }),
+	productionLineId: int("production_line_id"),
+	isActive: tinyint("is_active").default(1).notNull(),
+	subscriberCount: int("subscriber_count").default(0).notNull(),
+	createdAt: bigint("created_at", { mode: "number" }).notNull(),
+	updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
+},
+(table) => [
+	index("idx_topic_key").on(table.topicKey),
+	index("idx_topic_active").on(table.isActive),
+]);
+
 export const fixtures = mysqlTable("fixtures", {
 	id: int().autoincrement().notNull(),
 	machineId: int().notNull(),
@@ -1091,6 +1664,46 @@ export const fixtures = mysqlTable("fixtures", {
 (table) => [
 	index("idx_fixtures_machine_id").on(table.machineId),
 	index("idx_fixtures_active").on(table.isActive),
+]);
+
+export const floorPlanConfigs = mysqlTable("floor_plan_configs", {
+	id: int().autoincrement().notNull(),
+	name: varchar({ length: 100 }).notNull(),
+	description: text(),
+	productionLineId: int("production_line_id"),
+	width: int().default(800).notNull(),
+	height: int().default(600).notNull(),
+	gridSize: int("grid_size").default(20).notNull(),
+	backgroundColor: varchar("background_color", { length: 20 }).default('#f8fafc'),
+	backgroundImage: varchar("background_image", { length: 500 }),
+	machinePositions: json("machine_positions"),
+	isActive: int("is_active").default(1).notNull(),
+	createdBy: int("created_by"),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const floorPlanItems = mysqlTable("floor_plan_items", {
+	id: int().autoincrement().notNull(),
+	floorPlanId: int("floor_plan_id").notNull(),
+	itemType: mysqlEnum("item_type", ['machine','workstation','conveyor','storage','wall','door','custom']).notNull(),
+	name: varchar({ length: 100 }).notNull(),
+	x: int().default(0).notNull(),
+	y: int().default(0).notNull(),
+	width: int().default(80).notNull(),
+	height: int().default(60).notNull(),
+	rotation: int().default(0).notNull(),
+	color: varchar({ length: 20 }).default('#3b82f6'),
+	machineId: int("machine_id"),
+	metadata: json(),
+	zIndex: int("z_index").default(1).notNull(),
+	isLocked: int("is_locked").default(0).notNull(),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("idx_floor_plan").on(table.floorPlanId),
+	index("idx_machine").on(table.machineId),
 ]);
 
 export const iotAlarms = mysqlTable("iot_alarms", {
@@ -1275,6 +1888,37 @@ export const kpiReportHistory = mysqlTable("kpi_report_history", {
 	reportData: text("report_data"),
 	fileUrl: varchar("file_url", { length: 500 }),
 	sentAt: timestamp("sent_at", { mode: 'string' }),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+});
+
+export const latencyMetrics = mysqlTable("latency_metrics", {
+	id: int().autoincrement().notNull(),
+	sourceType: mysqlEnum("source_type", ['iot_device','webhook','api','database','mqtt']).notNull(),
+	sourceId: varchar("source_id", { length: 100 }).notNull(),
+	sourceName: varchar("source_name", { length: 200 }),
+	latencyMs: int("latency_ms").notNull(),
+	hourOfDay: int("hour_of_day").notNull(),
+	dayOfWeek: int("day_of_week").notNull(),
+	endpoint: varchar({ length: 255 }),
+	statusCode: int("status_code"),
+	isSuccess: int("is_success").default(1).notNull(),
+	measuredAt: timestamp("measured_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+	index("idx_source").on(table.sourceType, table.sourceId),
+	index("idx_time_bucket").on(table.hourOfDay, table.dayOfWeek),
+	index("idx_measured_at").on(table.measuredAt),
+]);
+
+export const latencyRecords = mysqlTable("latency_records", {
+	id: int().autoincrement().notNull(),
+	deviceId: int("device_id"),
+	deviceName: varchar("device_name", { length: 100 }),
+	sourceType: mysqlEnum("source_type", ['sensor','plc','gateway','server']).notNull(),
+	latencyMs: decimal("latency_ms", { precision: 10, scale: 2 }).notNull(),
+	timestamp: timestamp({ mode: 'string' }).notNull(),
+	metadata: json(),
 	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
 });
 
@@ -1479,6 +2123,23 @@ export const machineDataLogs = mysqlTable("machine_data_logs", {
 	userAgent: varchar({ length: 500 }),
 	errorMessage: text(),
 	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+});
+
+export const machineDowntimeRecords = mysqlTable("machine_downtime_records", {
+	id: int().autoincrement().notNull(),
+	machineId: int("machine_id").notNull(),
+	machineName: varchar("machine_name", { length: 100 }),
+	productionLineId: int("production_line_id"),
+	downtimeCategory: varchar("downtime_category", { length: 100 }).notNull(),
+	downtimeReason: varchar("downtime_reason", { length: 255 }).notNull(),
+	startTime: timestamp("start_time", { mode: 'string' }).notNull(),
+	endTime: timestamp("end_time", { mode: 'string' }),
+	durationMinutes: int("duration_minutes"),
+	severity: mysqlEnum(['minor','moderate','major','critical']).default('moderate').notNull(),
+	resolvedBy: int("resolved_by"),
+	resolution: text(),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
 });
 
 export const machineFieldMappings = mysqlTable("machine_field_mappings", {
@@ -1777,6 +2438,40 @@ export const memoryLeakReports = mysqlTable("memory_leak_reports", {
 },
 (table) => [
 	index("memory_leak_reports_report_id_unique").on(table.reportId),
+]);
+
+export const mobileDevices = mysqlTable("mobile_devices", {
+	id: int().autoincrement().notNull(),
+	userId: int("user_id").notNull(),
+	token: varchar({ length: 500 }).notNull(),
+	platform: mysqlEnum(['ios','android']).notNull(),
+	deviceName: varchar("device_name", { length: 255 }),
+	deviceModel: varchar("device_model", { length: 255 }),
+	isActive: int("is_active").default(1).notNull(),
+	lastActiveAt: timestamp("last_active_at", { mode: 'string' }),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("idx_mobile_devices_user").on(table.userId),
+	index("idx_mobile_devices_token").on(table.token),
+]);
+
+export const mobileNotificationSettings = mysqlTable("mobile_notification_settings", {
+	id: int().autoincrement().notNull(),
+	userId: int("user_id").notNull(),
+	enabled: int().default(1).notNull(),
+	cpkAlerts: int("cpk_alerts").default(1).notNull(),
+	spcAlerts: int("spc_alerts").default(1).notNull(),
+	oeeAlerts: int("oee_alerts").default(1).notNull(),
+	dailyReport: int("daily_report").default(0).notNull(),
+	soundEnabled: int("sound_enabled").default(1).notNull(),
+	vibrationEnabled: int("vibration_enabled").default(1).notNull(),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("idx_mobile_notification_user").on(table.userId),
 ]);
 
 export const modulePermissions = mysqlTable("module_permissions", {
@@ -2725,6 +3420,44 @@ export const slowQueryLogs = mysqlTable("slow_query_logs", {
 	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
 });
 
+export const smsConfigs = mysqlTable("sms_configs", {
+	id: int().autoincrement().notNull(),
+	provider: mysqlEnum(['twilio','vonage','custom']).default('twilio').notNull(),
+	enabled: int().default(0).notNull(),
+	twilioAccountSid: varchar("twilio_account_sid", { length: 100 }),
+	twilioAuthToken: varchar("twilio_auth_token", { length: 255 }),
+	twilioFromNumber: varchar("twilio_from_number", { length: 20 }),
+	vonageApiKey: varchar("vonage_api_key", { length: 100 }),
+	vonageApiSecret: varchar("vonage_api_secret", { length: 255 }),
+	vonageFromNumber: varchar("vonage_from_number", { length: 20 }),
+	customWebhookUrl: varchar("custom_webhook_url", { length: 500 }),
+	customWebhookMethod: mysqlEnum("custom_webhook_method", ['GET','POST']).default('POST'),
+	customWebhookHeaders: text("custom_webhook_headers"),
+	customWebhookBodyTemplate: text("custom_webhook_body_template"),
+	createdBy: int("created_by"),
+	createdAt: bigint("created_at", { mode: "number" }).notNull(),
+	updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
+});
+
+export const smsLogs = mysqlTable("sms_logs", {
+	id: int().autoincrement().notNull(),
+	provider: varchar({ length: 20 }).notNull(),
+	toNumber: varchar("to_number", { length: 20 }).notNull(),
+	message: text().notNull(),
+	status: mysqlEnum(['pending','sent','failed']).default('pending').notNull(),
+	messageId: varchar("message_id", { length: 100 }),
+	errorMessage: text("error_message"),
+	escalationId: int("escalation_id"),
+	alertId: int("alert_id"),
+	createdAt: bigint("created_at", { mode: "number" }).notNull(),
+	escalationLevel: int("escalation_level"),
+},
+(table) => [
+	index("idx_sms_status").on(table.status),
+	index("idx_sms_escalation").on(table.escalationId),
+	index("idx_sms_created").on(table.createdAt),
+]);
+
 export const smtpConfig = mysqlTable("smtp_config", {
 	id: int().autoincrement().notNull(),
 	host: varchar({ length: 255 }).notNull(),
@@ -3274,6 +4007,30 @@ export const technicians = mysqlTable("technicians", {
 	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
 });
 
+export const telegramConfig = mysqlTable("telegram_config", {
+	id: int().autoincrement().notNull(),
+	botToken: varchar("bot_token", { length: 255 }).notNull(),
+	chatId: varchar("chat_id", { length: 100 }).notNull(),
+	name: varchar({ length: 100 }).notNull(),
+	description: text(),
+	isActive: int("is_active").default(1).notNull(),
+	alertTypes: json("alert_types"),
+	createdBy: int("created_by"),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const telegramMessageHistory = mysqlTable("telegram_message_history", {
+	id: int().autoincrement().notNull(),
+	configId: int("config_id").notNull(),
+	messageType: varchar("message_type", { length: 50 }).notNull(),
+	content: text().notNull(),
+	status: mysqlEnum(['sent','failed','pending']).default('pending').notNull(),
+	errorMessage: text("error_message"),
+	sentAt: timestamp("sent_at", { mode: 'string' }),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+});
+
 export const trustedDevices = mysqlTable("trusted_devices", {
 	id: int().autoincrement().notNull(),
 	userId: int("user_id").notNull(),
@@ -3531,6 +4288,59 @@ export const webhookConfig = mysqlTable("webhook_config", {
 	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
 });
 
+export const webhookEscalationLogs = mysqlTable("webhook_escalation_logs", {
+	id: int().autoincrement().notNull(),
+	ruleId: int("rule_id").notNull(),
+	sourceWebhookId: int("source_webhook_id").notNull(),
+	originalAlertId: int("original_alert_id"),
+	originalAlertType: varchar("original_alert_type", { length: 50 }),
+	currentLevel: int("current_level").default(1).notNull(),
+	escalatedAt: timestamp("escalated_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	targetType: varchar("target_type", { length: 20 }).notNull(),
+	targetValue: varchar("target_value", { length: 500 }).notNull(),
+	status: mysqlEnum(['pending','sent','acknowledged','resolved','failed']).default('pending').notNull(),
+	responseCode: int("response_code"),
+	responseBody: text("response_body"),
+	errorMessage: text("error_message"),
+	resolvedAt: timestamp("resolved_at", { mode: 'string' }),
+	resolvedBy: int("resolved_by"),
+	resolutionNote: text("resolution_note"),
+	metadata: json(),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+	index("idx_rule").on(table.ruleId),
+	index("idx_source_webhook").on(table.sourceWebhookId),
+	index("idx_status").on(table.status),
+	index("idx_created_at").on(table.createdAt),
+]);
+
+export const webhookEscalationRules = mysqlTable("webhook_escalation_rules", {
+	id: int().autoincrement().notNull(),
+	name: varchar({ length: 100 }).notNull(),
+	description: text(),
+	sourceWebhookId: int("source_webhook_id").notNull(),
+	triggerAfterFailures: int("trigger_after_failures").default(3).notNull(),
+	triggerAfterMinutes: int("trigger_after_minutes").default(15).notNull(),
+	level1Targets: json("level1_targets"),
+	level1DelayMinutes: int("level1_delay_minutes").default(0).notNull(),
+	level2Targets: json("level2_targets"),
+	level2DelayMinutes: int("level2_delay_minutes").default(15).notNull(),
+	level3Targets: json("level3_targets"),
+	level3DelayMinutes: int("level3_delay_minutes").default(30).notNull(),
+	autoResolveOnSuccess: int("auto_resolve_on_success").default(1).notNull(),
+	notifyOnEscalate: int("notify_on_escalate").default(1).notNull(),
+	notifyOnResolve: int("notify_on_resolve").default(1).notNull(),
+	isActive: int("is_active").default(1).notNull(),
+	createdBy: int("created_by"),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("idx_source_webhook").on(table.sourceWebhookId),
+	index("idx_active").on(table.isActive),
+]);
+
 export const webhookLogs = mysqlTable("webhook_logs", {
 	id: int().autoincrement().notNull(),
 	webhookId: int().notNull(),
@@ -3667,639 +4477,253 @@ export const workstations = mysqlTable("workstations", {
 ]);
 
 
-// AI Prediction Thresholds - Cấu hình ngưỡng cảnh báo tùy chỉnh theo sản phẩm/dây chuyền
-export const aiPredictionThresholds = mysqlTable("ai_prediction_thresholds", {
-	id: int().autoincrement().notNull(),
-	name: varchar({ length: 255 }).notNull(),
-	description: text(),
-	productId: int("product_id"),
-	productionLineId: int("production_line_id"),
-	workstationId: int("workstation_id"),
-	cpkWarning: decimal("cpk_warning", { precision: 5, scale: 3 }).default('1.330').notNull(),
-	cpkCritical: decimal("cpk_critical", { precision: 5, scale: 3 }).default('1.000').notNull(),
-	cpkTarget: decimal("cpk_target", { precision: 5, scale: 3 }).default('1.670'),
-	oeeWarning: decimal("oee_warning", { precision: 5, scale: 2 }).default('75.00').notNull(),
-	oeeCritical: decimal("oee_critical", { precision: 5, scale: 2 }).default('60.00').notNull(),
-	oeeTarget: decimal("oee_target", { precision: 5, scale: 2 }).default('85.00'),
-	trendDeclineWarning: decimal("trend_decline_warning", { precision: 5, scale: 2 }).default('5.00'),
-	trendDeclineCritical: decimal("trend_decline_critical", { precision: 5, scale: 2 }).default('10.00'),
-	emailAlertEnabled: int("email_alert_enabled").default(1).notNull(),
-	alertEmails: text("alert_emails"),
-	webhookEnabled: int("webhook_enabled").default(0).notNull(),
-	webhookUrl: varchar("webhook_url", { length: 500 }),
-	priority: int().default(0).notNull(),
-	isActive: int("is_active").default(1).notNull(),
-	createdBy: int("created_by"),
-	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
-	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
-},
-(table) => [
-	index("idx_ai_pred_thresh_product").on(table.productId),
-	index("idx_ai_pred_thresh_line").on(table.productionLineId),
-	index("idx_ai_pred_thresh_active").on(table.isActive),
-]);
+// ============ IoT Enhancement Tables ============
 
-// AI Prediction History - Lưu lịch sử predictions để so sánh độ chính xác
-export const aiPredictionHistory = mysqlTable("ai_prediction_history", {
-	id: int().autoincrement().notNull(),
-	predictionType: mysqlEnum("prediction_type", ['cpk', 'oee', 'defect_rate', 'trend']).notNull(),
-	modelId: int("model_id"),
-	modelName: varchar("model_name", { length: 100 }),
-	modelVersion: varchar("model_version", { length: 50 }),
-	productId: int("product_id"),
-	productCode: varchar("product_code", { length: 100 }),
-	productionLineId: int("production_line_id"),
-	workstationId: int("workstation_id"),
-	predictedValue: decimal("predicted_value", { precision: 15, scale: 6 }).notNull(),
-	predictedAt: timestamp("predicted_at", { mode: 'string' }).notNull(),
-	forecastHorizon: int("forecast_horizon").default(7),
-	confidenceLevel: decimal("confidence_level", { precision: 5, scale: 2 }),
-	confidenceLower: decimal("confidence_lower", { precision: 15, scale: 6 }),
-	confidenceUpper: decimal("confidence_upper", { precision: 15, scale: 6 }),
-	actualValue: decimal("actual_value", { precision: 15, scale: 6 }),
-	actualRecordedAt: timestamp("actual_recorded_at", { mode: 'string' }),
-	absoluteError: decimal("absolute_error", { precision: 15, scale: 6 }),
-	percentError: decimal("percent_error", { precision: 10, scale: 4 }),
-	squaredError: decimal("squared_error", { precision: 20, scale: 8 }),
-	isWithinConfidence: int("is_within_confidence"),
-	status: mysqlEnum(['pending', 'verified', 'expired']).default('pending').notNull(),
-	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
-	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
-},
-(table) => [
-	index("idx_ai_pred_hist_type").on(table.predictionType),
-	index("idx_ai_pred_hist_product").on(table.productId),
-	index("idx_ai_pred_hist_line").on(table.productionLineId),
-	index("idx_ai_pred_hist_predicted_at").on(table.predictedAt),
-	index("idx_ai_pred_hist_status").on(table.status),
-]);
-
-// AI Prediction Accuracy Stats - Thống kê độ chính xác tổng hợp
-export const aiPredictionAccuracyStats = mysqlTable("ai_prediction_accuracy_stats", {
-	id: int().autoincrement().notNull(),
-	periodType: mysqlEnum("period_type", ['daily', 'weekly', 'monthly']).notNull(),
-	periodStart: timestamp("period_start", { mode: 'string' }).notNull(),
-	periodEnd: timestamp("period_end", { mode: 'string' }).notNull(),
-	predictionType: mysqlEnum("prediction_type", ['cpk', 'oee', 'defect_rate', 'trend']).notNull(),
-	productId: int("product_id"),
-	productionLineId: int("production_line_id"),
-	totalPredictions: int("total_predictions").default(0).notNull(),
-	verifiedPredictions: int("verified_predictions").default(0).notNull(),
-	mae: decimal({ precision: 15, scale: 6 }),
-	rmse: decimal({ precision: 15, scale: 6 }),
-	mape: decimal({ precision: 10, scale: 4 }),
-	r2Score: decimal("r2_score", { precision: 5, scale: 4 }),
-	withinConfidenceRate: decimal("within_confidence_rate", { precision: 5, scale: 2 }),
-	trendAccuracy: decimal("trend_accuracy", { precision: 5, scale: 2 }),
-	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
-	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
-},
-(table) => [
-	index("idx_ai_pred_acc_period").on(table.periodType, table.periodStart),
-	index("idx_ai_pred_acc_type").on(table.predictionType),
-]);
-
-
-// Telegram Bot Configuration
-export const telegramConfig = mysqlTable("telegram_config", {
-	id: int().autoincrement().notNull(),
-	botToken: varchar("bot_token", { length: 255 }).notNull(),
-	chatId: varchar("chat_id", { length: 100 }).notNull(),
-	name: varchar({ length: 100 }).notNull(),
-	description: text(),
-	isActive: int("is_active").default(1).notNull(),
-	alertTypes: json("alert_types"), // ['spc_violation', 'cpk_alert', 'iot_critical', 'maintenance']
-	createdBy: int("created_by"),
-	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
-	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
-});
-
-// Telegram Message History
-export const telegramMessageHistory = mysqlTable("telegram_message_history", {
-	id: int().autoincrement().notNull(),
-	configId: int("config_id").notNull(),
-	messageType: varchar("message_type", { length: 50 }).notNull(),
-	content: text().notNull(),
-	status: mysqlEnum(['sent', 'failed', 'pending']).default('pending').notNull(),
-	errorMessage: text("error_message"),
-	sentAt: timestamp("sent_at", { mode: 'string' }),
-	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
-});
-
-// Floor Plan Configurations
-export const floorPlanConfigs = mysqlTable("floor_plan_configs", {
-	id: int().autoincrement().notNull(),
-	name: varchar({ length: 100 }).notNull(),
-	description: text(),
-	productionLineId: int("production_line_id"),
-	width: int().default(800).notNull(),
-	height: int().default(600).notNull(),
-	gridSize: int("grid_size").default(20).notNull(),
-	backgroundColor: varchar("background_color", { length: 20 }).default('#f8fafc'),
-	backgroundImage: varchar("background_image", { length: 500 }),
-	machinePositions: json("machine_positions"), // Array of MachinePosition
-	isActive: int("is_active").default(1).notNull(),
-	createdBy: int("created_by"),
-	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
-	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
-});
-
-// Latency Monitoring Records
-export const latencyRecords = mysqlTable("latency_records", {
-	id: int().autoincrement().notNull(),
-	deviceId: int("device_id"),
-	deviceName: varchar("device_name", { length: 100 }),
-	sourceType: mysqlEnum("source_type", ['sensor', 'plc', 'gateway', 'server']).notNull(),
-	latencyMs: decimal("latency_ms", { precision: 10, scale: 2 }).notNull(),
-	timestamp: timestamp({ mode: 'string' }).notNull(),
-	metadata: json(),
-	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
-});
-
-// Machine Downtime Records for Pareto Analysis
-export const machineDowntimeRecords = mysqlTable("machine_downtime_records", {
-	id: int().autoincrement().notNull(),
-	machineId: int("machine_id").notNull(),
-	machineName: varchar("machine_name", { length: 100 }),
-	productionLineId: int("production_line_id"),
-	downtimeCategory: varchar("downtime_category", { length: 100 }).notNull(),
-	downtimeReason: varchar("downtime_reason", { length: 255 }).notNull(),
-	startTime: timestamp("start_time", { mode: 'string' }).notNull(),
-	endTime: timestamp("end_time", { mode: 'string' }),
-	durationMinutes: int("duration_minutes"),
-	severity: mysqlEnum(['minor', 'moderate', 'major', 'critical']).default('moderate').notNull(),
-	resolvedBy: int("resolved_by"),
-	resolution: text(),
-	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
-	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
-});
-
-
-// Alert Webhook Configurations - Multi-channel notifications
-export const alertWebhookConfigs = mysqlTable("alert_webhook_configs", {
-	id: int().autoincrement().notNull(),
-	name: varchar({ length: 100 }).notNull(),
-	description: text(),
-	channelType: mysqlEnum("channel_type", ['slack', 'teams', 'email', 'discord', 'custom']).notNull(),
-	webhookUrl: varchar("webhook_url", { length: 500 }),
-	// For email channel
-	emailRecipients: json("email_recipients"), // Array of email addresses
-	emailSubjectTemplate: varchar("email_subject_template", { length: 255 }),
-	// For Slack
-	slackChannel: varchar("slack_channel", { length: 100 }),
-	slackBotToken: varchar("slack_bot_token", { length: 255 }),
-	// For Teams
-	teamsWebhookUrl: varchar("teams_webhook_url", { length: 500 }),
-	// Alert types to trigger
-	alertTypes: json("alert_types"), // Array of alert types: ['cpk_warning', 'cpk_critical', 'spc_violation', 'machine_down', 'iot_alarm']
-	// Filters
-	productionLineIds: json("production_line_ids"), // Filter by production lines
-	machineIds: json("machine_ids"), // Filter by machines
-	minSeverity: mysqlEnum("min_severity", ['info', 'warning', 'critical']).default('warning').notNull(),
-	// Rate limiting
-	rateLimitMinutes: int("rate_limit_minutes").default(5), // Min minutes between alerts
-	lastAlertSentAt: timestamp("last_alert_sent_at", { mode: 'string' }),
-	// Status
-	isActive: int("is_active").default(1).notNull(),
-	testMode: int("test_mode").default(0).notNull(),
-	// Metadata
-	createdBy: int("created_by"),
-	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
-	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
-});
-
-// Alert Webhook Logs - Track sent notifications
-export const alertWebhookLogs = mysqlTable("alert_webhook_logs", {
-	id: int().autoincrement().notNull(),
-	webhookConfigId: int("webhook_config_id").notNull(),
-	alertType: varchar("alert_type", { length: 50 }).notNull(),
-	alertTitle: varchar("alert_title", { length: 255 }).notNull(),
-	alertMessage: text("alert_message"),
-	alertData: json("alert_data"),
-	channelType: varchar("channel_type", { length: 20 }).notNull(),
-	recipientInfo: varchar("recipient_info", { length: 255 }), // Channel/email/etc
-	status: mysqlEnum(['pending', 'sent', 'failed', 'rate_limited']).default('pending').notNull(),
-	responseCode: int("response_code"),
-	responseBody: text("response_body"),
-	errorMessage: text("error_message"),
-	sentAt: timestamp("sent_at", { mode: 'string' }),
-	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
-},
-(table) => [
-	index("idx_webhook_config").on(table.webhookConfigId),
-	index("idx_alert_type").on(table.alertType),
-	index("idx_created_at").on(table.createdAt),
-]);
-
-// Floor Plan Items - Detailed items for designer
-export const floorPlanItems = mysqlTable("floor_plan_items", {
-	id: int().autoincrement().notNull(),
-	floorPlanId: int("floor_plan_id").notNull(),
-	itemType: mysqlEnum("item_type", ['machine', 'workstation', 'conveyor', 'storage', 'wall', 'door', 'custom']).notNull(),
-	name: varchar({ length: 100 }).notNull(),
-	x: int().default(0).notNull(),
-	y: int().default(0).notNull(),
-	width: int().default(80).notNull(),
-	height: int().default(60).notNull(),
-	rotation: int().default(0).notNull(),
-	color: varchar({ length: 20 }).default('#3b82f6'),
-	machineId: int("machine_id"), // Link to actual machine
-	metadata: json(),
-	zIndex: int("z_index").default(1).notNull(),
-	isLocked: int("is_locked").default(0).notNull(),
-	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
-	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
-},
-(table) => [
-	index("idx_floor_plan").on(table.floorPlanId),
-	index("idx_machine").on(table.machineId),
-]);
-
-
-// SMS Notification Configuration
-export const smsConfigs = mysqlTable("sms_configs", {
+// IoT Device Groups
+export const iotDeviceGroups = mysqlTable("iot_device_groups", {
   id: int().autoincrement().primaryKey(),
-  provider: mysqlEnum("provider", ["twilio", "vonage", "custom"]).default("twilio").notNull(),
-  enabled: boolean("enabled").default(false).notNull(),
-  // Twilio config
-  twilioAccountSid: varchar("twilio_account_sid", { length: 100 }),
-  twilioAuthToken: varchar("twilio_auth_token", { length: 100 }),
-  twilioFromNumber: varchar("twilio_from_number", { length: 20 }),
-  // Vonage config
-  vonageApiKey: varchar("vonage_api_key", { length: 100 }),
-  vonageApiSecret: varchar("vonage_api_secret", { length: 100 }),
-  vonageFromNumber: varchar("vonage_from_number", { length: 20 }),
-  // Custom webhook config
-  customWebhookUrl: varchar("custom_webhook_url", { length: 500 }),
-  customWebhookMethod: varchar("custom_webhook_method", { length: 10 }).default("POST"),
-  customWebhookHeaders: text("custom_webhook_headers"),
-  customWebhookBodyTemplate: text("custom_webhook_body_template"),
-  createdAt: bigint("created_at", { mode: "number" }).notNull(),
-  updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
-});
-
-// SMS Logs
-export const smsLogs = mysqlTable("sms_logs", {
-  id: int().autoincrement().primaryKey(),
-  provider: varchar("provider", { length: 20 }).notNull(),
-  toNumber: varchar("to_number", { length: 20 }).notNull(),
-  message: text("message").notNull(),
-  status: mysqlEnum("status", ["pending", "sent", "failed"]).default("pending").notNull(),
-  messageId: varchar("message_id", { length: 100 }),
-  errorMessage: text("error_message"),
-  alertId: int("alert_id"),
-  escalationLevel: int("escalation_level"),
-  createdAt: bigint("created_at", { mode: "number" }).notNull(),
-},
-(table) => [
-  index("idx_sms_status").on(table.status),
-  index("idx_sms_created_at").on(table.createdAt),
-]);
-
-// Escalation History
-export const escalationHistory = mysqlTable("escalation_history", {
-  id: int().autoincrement().primaryKey(),
-  alertId: int("alert_id"),
-  alertType: varchar("alert_type", { length: 50 }).notNull(),
-  alertTitle: varchar("alert_title", { length: 255 }).notNull(),
-  alertMessage: text("alert_message"),
-  severity: mysqlEnum("severity", ["low", "medium", "high", "critical"]).default("medium").notNull(),
-  status: mysqlEnum("status", ["active", "acknowledged", "resolved", "auto_resolved"]).default("active").notNull(),
-  currentLevel: int("current_level").default(1).notNull(),
-  maxLevel: int("max_level").default(3).notNull(),
-  notificationsSent: int("notifications_sent").default(0).notNull(),
-  acknowledgedAt: bigint("acknowledged_at", { mode: "number" }),
-  acknowledgedBy: int("acknowledged_by"),
-  resolvedAt: bigint("resolved_at", { mode: "number" }),
-  resolvedBy: int("resolved_by"),
-  autoResolvedReason: text("auto_resolved_reason"),
-  notes: text("notes"),
-  metadata: json("metadata"),
-  createdAt: bigint("created_at", { mode: "number" }).notNull(),
-  updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
-},
-(table) => [
-  index("idx_escalation_status").on(table.status),
-  index("idx_escalation_severity").on(table.severity),
-  index("idx_escalation_alert_type").on(table.alertType),
-  index("idx_escalation_created_at").on(table.createdAt),
-]);
-
-// Auto-resolve Configuration
-export const autoResolveConfigs = mysqlTable("auto_resolve_configs", {
-  id: int().autoincrement().primaryKey(),
-  name: varchar("name", { length: 100 }).notNull(),
-  description: text("description"),
-  alertType: varchar("alert_type", { length: 50 }).notNull(),
-  isActive: boolean("is_active").default(true).notNull(),
-  metricThreshold: double("metric_threshold"),
-  metricOperator: mysqlEnum("metric_operator", ["gt", "gte", "lt", "lte", "eq"]),
-  consecutiveOkCount: int("consecutive_ok_count").default(3).notNull(),
-  autoResolveAfterMinutes: int("auto_resolve_after_minutes").default(30).notNull(),
-  notifyOnAutoResolve: boolean("notify_on_auto_resolve").default(true).notNull(),
-  notificationChannels: varchar("notification_channels", { length: 255 }),
-  createdBy: int("created_by"),
-  createdAt: bigint("created_at", { mode: "number" }).notNull(),
-  updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
-},
-(table) => [
-  index("idx_auto_resolve_alert_type").on(table.alertType),
-  index("idx_auto_resolve_active").on(table.isActive),
-]);
-
-// Auto-resolve Logs
-export const autoResolveLogs = mysqlTable("auto_resolve_logs", {
-  id: int().autoincrement().primaryKey(),
-  configId: int("config_id").notNull(),
-  escalationId: int("escalation_id"),
-  alertType: varchar("alert_type", { length: 50 }).notNull(),
-  reason: text("reason").notNull(),
-  metricValue: double("metric_value"),
-  consecutiveOkCount: int("consecutive_ok_count"),
-  notificationSent: boolean("notification_sent").default(false).notNull(),
-  createdAt: bigint("created_at", { mode: "number" }).notNull(),
-},
-(table) => [
-  index("idx_auto_resolve_log_config").on(table.configId),
-  index("idx_auto_resolve_log_created").on(table.createdAt),
-]);
-
-
-// Escalation Webhook Configs
-export const escalationWebhookConfigs = mysqlTable("escalation_webhook_configs", {
-  id: int().autoincrement().primaryKey(),
-  name: varchar("name", { length: 100 }).notNull(),
-  description: text("description"),
-  channelType: mysqlEnum("channel_type", ["slack", "teams", "discord", "custom"]).notNull(),
-  webhookUrl: varchar("webhook_url", { length: 500 }).notNull(),
-  slackChannel: varchar("slack_channel", { length: 100 }),
-  slackMentions: text("slack_mentions"),
-  teamsTitle: varchar("teams_title", { length: 200 }),
-  customHeaders: text("custom_headers"),
-  customBodyTemplate: text("custom_body_template"),
-  includeDetails: boolean("include_details").default(true).notNull(),
-  includeChart: boolean("include_chart").default(false).notNull(),
-  isActive: boolean("is_active").default(true).notNull(),
-  createdBy: int("created_by"),
-  createdAt: bigint("created_at", { mode: "number" }).notNull(),
-  updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
-},
-(table) => [
-  index("idx_webhook_config_active").on(table.isActive),
-  index("idx_webhook_config_type").on(table.channelType),
-]);
-
-// Escalation Webhook Logs
-export const escalationWebhookLogs = mysqlTable("escalation_webhook_logs", {
-  id: int().autoincrement().primaryKey(),
-  webhookConfigId: int("webhook_config_id").notNull(),
-  escalationHistoryId: int("escalation_history_id"),
-  escalationLevel: int("escalation_level").notNull(),
-  alertType: varchar("alert_type", { length: 50 }).notNull(),
-  alertTitle: varchar("alert_title", { length: 255 }).notNull(),
-  alertMessage: text("alert_message"),
-  channelType: varchar("channel_type", { length: 20 }).notNull(),
-  requestPayload: text("request_payload"),
-  responseStatus: int("response_status"),
-  responseBody: text("response_body"),
-  success: boolean("success").default(false).notNull(),
-  errorMessage: text("error_message"),
-  sentAt: bigint("sent_at", { mode: "number" }).notNull(),
-},
-(table) => [
-  index("idx_webhook_log_config").on(table.webhookConfigId),
-  index("idx_webhook_log_escalation").on(table.escalationHistoryId),
-  index("idx_webhook_log_sent").on(table.sentAt),
-]);
-
-// Escalation Templates
-export const escalationTemplates = mysqlTable("escalation_templates", {
-  id: int().autoincrement().primaryKey(),
-  name: varchar("name", { length: 100 }).notNull(),
-  description: text("description"),
-  level1TimeoutMinutes: int("level1_timeout_minutes").default(15).notNull(),
-  level1Emails: text("level1_emails"),
-  level1Webhooks: text("level1_webhooks"),
-  level1SmsEnabled: boolean("level1_sms_enabled").default(false).notNull(),
-  level1SmsPhones: text("level1_sms_phones"),
-  level2TimeoutMinutes: int("level2_timeout_minutes").default(30).notNull(),
-  level2Emails: text("level2_emails"),
-  level2Webhooks: text("level2_webhooks"),
-  level2SmsEnabled: boolean("level2_sms_enabled").default(false).notNull(),
-  level2SmsPhones: text("level2_sms_phones"),
-  level3TimeoutMinutes: int("level3_timeout_minutes").default(60).notNull(),
-  level3Emails: text("level3_emails"),
-  level3Webhooks: text("level3_webhooks"),
-  level3SmsEnabled: boolean("level3_sms_enabled").default(false).notNull(),
-  level3SmsPhones: text("level3_sms_phones"),
-  alertTypes: text("alert_types"),
-  productionLineIds: text("production_line_ids"),
-  machineIds: text("machine_ids"),
-  isDefault: boolean("is_default").default(false).notNull(),
-  isActive: boolean("is_active").default(true).notNull(),
-  createdBy: int("created_by"),
-  createdAt: bigint("created_at", { mode: "number" }).notNull(),
-  updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
-},
-(table) => [
-  index("idx_template_active").on(table.isActive),
-  index("idx_template_default").on(table.isDefault),
-]);
-
-// Escalation Report Configs
-export const escalationReportConfigs = mysqlTable("escalation_report_configs", {
-  id: int().autoincrement().primaryKey(),
-  name: varchar("name", { length: 100 }).notNull(),
-  description: text("description"),
-  frequency: mysqlEnum("frequency", ["daily", "weekly", "monthly"]).notNull(),
-  dayOfWeek: int("day_of_week"),
-  dayOfMonth: int("day_of_month"),
-  timeOfDay: varchar("time_of_day", { length: 10 }).notNull(),
-  timezone: varchar("timezone", { length: 50 }).default("Asia/Ho_Chi_Minh").notNull(),
-  emailRecipients: text("email_recipients"),
-  webhookConfigIds: text("webhook_config_ids"),
-  includeStats: boolean("include_stats").default(true).notNull(),
-  includeTopAlerts: boolean("include_top_alerts").default(true).notNull(),
-  includeResolvedAlerts: boolean("include_resolved_alerts").default(true).notNull(),
-  includeTrends: boolean("include_trends").default(true).notNull(),
-  alertTypes: text("alert_types"),
-  productionLineIds: text("production_line_ids"),
-  isActive: boolean("is_active").default(true).notNull(),
-  lastRunAt: bigint("last_run_at", { mode: "number" }),
-  nextRunAt: bigint("next_run_at", { mode: "number" }),
-  createdBy: int("created_by"),
-  createdAt: bigint("created_at", { mode: "number" }).notNull(),
-  updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
-},
-(table) => [
-  index("idx_report_config_active").on(table.isActive),
-  index("idx_report_config_next_run").on(table.nextRunAt),
-]);
-
-// Escalation Report History
-export const escalationReportHistory = mysqlTable("escalation_report_history", {
-  id: int().autoincrement().primaryKey(),
-  configId: int("config_id").notNull(),
-  reportPeriodStart: bigint("report_period_start", { mode: "number" }).notNull(),
-  reportPeriodEnd: bigint("report_period_end", { mode: "number" }).notNull(),
-  totalAlerts: int("total_alerts").default(0).notNull(),
-  resolvedAlerts: int("resolved_alerts").default(0).notNull(),
-  pendingAlerts: int("pending_alerts").default(0).notNull(),
-  avgResolutionTimeMinutes: int("avg_resolution_time_minutes"),
-  emailsSent: int("emails_sent").default(0).notNull(),
-  webhooksSent: int("webhooks_sent").default(0).notNull(),
-  status: mysqlEnum("status", ["sent", "partial", "failed"]).notNull(),
-  errorMessage: text("error_message"),
-  reportData: text("report_data"),
-  sentAt: bigint("sent_at", { mode: "number" }).notNull(),
-  createdAt: bigint("created_at", { mode: "number" }).notNull(),
-},
-(table) => [
-  index("idx_report_history_config").on(table.configId),
-  index("idx_report_history_sent").on(table.sentAt),
-]);
-
-
-// ============ Firebase Push Notification Tables ============
-
-// Firebase Configuration
-export const firebaseConfig = mysqlTable("firebase_config", {
-  id: int().autoincrement().primaryKey(),
-  projectId: varchar("project_id", { length: 255 }).notNull(),
-  clientEmail: varchar("client_email", { length: 255 }).notNull(),
-  privateKey: text("private_key").notNull(),
-  isActive: boolean("is_active").default(true).notNull(),
-  createdBy: int("created_by"),
-  createdAt: bigint("created_at", { mode: "number" }).notNull(),
-  updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
-});
-
-// Device Tokens - Store FCM tokens from mobile devices
-export const firebaseDeviceTokens = mysqlTable("firebase_device_tokens", {
-  id: int().autoincrement().primaryKey(),
-  userId: varchar("user_id", { length: 100 }).notNull(),
-  token: varchar("token", { length: 500 }).notNull(),
-  platform: mysqlEnum("platform", ["android", "ios", "web"]).notNull(),
-  deviceName: varchar("device_name", { length: 255 }),
-  deviceModel: varchar("device_model", { length: 100 }),
-  appVersion: varchar("app_version", { length: 50 }),
-  isActive: boolean("is_active").default(true).notNull(),
-  lastUsedAt: bigint("last_used_at", { mode: "number" }),
-  createdAt: bigint("created_at", { mode: "number" }).notNull(),
-  updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
-},
-(table) => [
-  index("idx_device_token_user").on(table.userId),
-  index("idx_device_token_active").on(table.isActive),
-  index("idx_device_token_platform").on(table.platform),
-]);
-
-// Push Notification Settings per User
-export const firebasePushSettings = mysqlTable("firebase_push_settings", {
-  id: int().autoincrement().primaryKey(),
-  userId: varchar("user_id", { length: 100 }).notNull(),
-  enabled: boolean("enabled").default(true).notNull(),
-  // Alert type settings
-  iotAlerts: boolean("iot_alerts").default(true).notNull(),
-  spcAlerts: boolean("spc_alerts").default(true).notNull(),
-  cpkAlerts: boolean("cpk_alerts").default(true).notNull(),
-  escalationAlerts: boolean("escalation_alerts").default(true).notNull(),
-  systemAlerts: boolean("system_alerts").default(true).notNull(),
-  // Severity settings
-  criticalOnly: boolean("critical_only").default(false).notNull(),
-  // Quiet hours
-  quietHoursEnabled: boolean("quiet_hours_enabled").default(false).notNull(),
-  quietHoursStart: varchar("quiet_hours_start", { length: 10 }),
-  quietHoursEnd: varchar("quiet_hours_end", { length: 10 }),
-  // Filters
-  productionLineIds: text("production_line_ids"),
-  machineIds: text("machine_ids"),
-  createdAt: bigint("created_at", { mode: "number" }).notNull(),
-  updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
-},
-(table) => [
-  index("idx_push_settings_user").on(table.userId),
-]);
-
-// Push Notification History
-export const firebasePushHistory = mysqlTable("firebase_push_history", {
-  id: int().autoincrement().primaryKey(),
-  userId: varchar("user_id", { length: 100 }),
-  deviceTokenId: int("device_token_id"),
-  title: varchar("title", { length: 255 }).notNull(),
-  body: text("body").notNull(),
-  data: text("data"),
-  alertType: mysqlEnum("alert_type", ["iot_alert", "spc_alert", "cpk_alert", "escalation_alert", "system", "test"]).notNull(),
-  severity: mysqlEnum("severity", ["info", "warning", "critical"]).notNull(),
-  status: mysqlEnum("status", ["pending", "sent", "delivered", "failed"]).notNull(),
-  messageId: varchar("message_id", { length: 255 }),
-  errorMessage: text("error_message"),
-  sentAt: bigint("sent_at", { mode: "number" }),
-  deliveredAt: bigint("delivered_at", { mode: "number" }),
-  createdAt: bigint("created_at", { mode: "number" }).notNull(),
-},
-(table) => [
-  index("idx_push_history_user").on(table.userId),
-  index("idx_push_history_status").on(table.status),
-  index("idx_push_history_type").on(table.alertType),
-  index("idx_push_history_created").on(table.createdAt),
-]);
-
-// Firebase Topics - For group notifications
-export const firebaseTopics = mysqlTable("firebase_topics", {
-  id: int().autoincrement().primaryKey(),
-  name: varchar("name", { length: 100 }).notNull(),
-  displayName: varchar("display_name", { length: 255 }).notNull(),
-  description: text("description"),
-  isActive: boolean("is_active").default(true).notNull(),
-  createdAt: bigint("created_at", { mode: "number" }).notNull(),
-  updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
-});
-
-// Topic Subscriptions
-export const firebaseTopicSubscriptions = mysqlTable("firebase_topic_subscriptions", {
-  id: int().autoincrement().primaryKey(),
-  topicId: int("topic_id").notNull(),
-  deviceTokenId: int("device_token_id").notNull(),
-  subscribedAt: bigint("subscribed_at", { mode: "number" }).notNull(),
-},
-(table) => [
-  index("idx_topic_sub_topic").on(table.topicId),
-  index("idx_topic_sub_device").on(table.deviceTokenId),
-]);
-
-
-// Mobile App Tables
-export const mobileDevices = mysqlTable("mobile_devices", {
-  id: int().autoincrement().primaryKey(),
-  userId: int("user_id").notNull(),
-  token: varchar("token", { length: 500 }).notNull(),
-  platform: mysqlEnum("platform", ["ios", "android"]).notNull(),
-  deviceName: varchar("device_name", { length: 255 }),
-  deviceModel: varchar("device_model", { length: 255 }),
+  name: varchar({ length: 100 }).notNull(),
+  description: text(),
+  parentGroupId: int("parent_group_id"),
+  location: varchar({ length: 255 }),
+  icon: varchar({ length: 50 }).default('folder'),
+  color: varchar({ length: 20 }).default('#3b82f6'),
+  sortOrder: int("sort_order").default(0),
   isActive: int("is_active").default(1).notNull(),
-  lastActiveAt: timestamp("last_active_at", { mode: 'string' }),
+  createdBy: int("created_by"),
   createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
 },
 (table) => [
-  index("idx_mobile_devices_user").on(table.userId),
-  index("idx_mobile_devices_token").on(table.token),
+  index("idx_iot_groups_parent").on(table.parentGroupId),
+  index("idx_iot_groups_name").on(table.name),
 ]);
 
-export const mobileNotificationSettings = mysqlTable("mobile_notification_settings", {
+// IoT Device Templates
+export const iotDeviceTemplates = mysqlTable("iot_device_templates", {
   id: int().autoincrement().primaryKey(),
-  userId: int("user_id").notNull(),
-  enabled: int("enabled").default(1).notNull(),
-  cpkAlerts: int("cpk_alerts").default(1).notNull(),
-  spcAlerts: int("spc_alerts").default(1).notNull(),
-  oeeAlerts: int("oee_alerts").default(1).notNull(),
-  dailyReport: int("daily_report").default(0).notNull(),
-  soundEnabled: int("sound_enabled").default(1).notNull(),
-  vibrationEnabled: int("vibration_enabled").default(1).notNull(),
+  name: varchar({ length: 100 }).notNull(),
+  description: text(),
+  deviceType: mysqlEnum("device_type", ['plc','sensor','gateway','hmi','scada','other']).notNull(),
+  manufacturer: varchar({ length: 100 }),
+  model: varchar({ length: 100 }),
+  protocol: mysqlEnum(['modbus_tcp','modbus_rtu','opc_ua','mqtt','http','tcp','serial']).notNull(),
+  defaultConfig: json("default_config"),
+  metricsConfig: json("metrics_config"),
+  alertThresholds: json("alert_thresholds"),
+  tags: json(),
+  icon: varchar({ length: 50 }).default('cpu'),
+  isActive: int("is_active").default(1).notNull(),
+  createdBy: int("created_by"),
   createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
 },
 (table) => [
-  index("idx_mobile_notification_user").on(table.userId),
+  index("idx_iot_templates_device_type").on(table.deviceType),
+  index("idx_iot_templates_protocol").on(table.protocol),
 ]);
+
+// IoT Device Health Scores
+export const iotDeviceHealth = mysqlTable("iot_device_health", {
+  id: int().autoincrement().primaryKey(),
+  deviceId: int("device_id").notNull(),
+  healthScore: decimal("health_score", { precision: 5, scale: 2 }).default('100.00'),
+  availabilityScore: decimal("availability_score", { precision: 5, scale: 2 }).default('100.00'),
+  performanceScore: decimal("performance_score", { precision: 5, scale: 2 }).default('100.00'),
+  qualityScore: decimal("quality_score", { precision: 5, scale: 2 }).default('100.00'),
+  uptimeHours: decimal("uptime_hours", { precision: 10, scale: 2 }).default('0'),
+  downtimeHours: decimal("downtime_hours", { precision: 10, scale: 2 }).default('0'),
+  errorCount: int("error_count").default(0),
+  warningCount: int("warning_count").default(0),
+  lastErrorAt: timestamp("last_error_at", { mode: 'string' }),
+  lastMaintenanceAt: timestamp("last_maintenance_at", { mode: 'string' }),
+  nextMaintenanceAt: timestamp("next_maintenance_at", { mode: 'string' }),
+  calculatedAt: timestamp("calculated_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+  createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+  index("idx_iot_health_device").on(table.deviceId),
+  index("idx_iot_health_score").on(table.healthScore),
+  index("idx_iot_health_calculated").on(table.calculatedAt),
+]);
+
+// IoT Maintenance Schedules
+export const iotMaintenanceSchedules = mysqlTable("iot_maintenance_schedules", {
+  id: int().autoincrement().primaryKey(),
+  deviceId: int("device_id").notNull(),
+  title: varchar({ length: 255 }).notNull(),
+  description: text(),
+  maintenanceType: mysqlEnum("maintenance_type", ['preventive','corrective','predictive','calibration','inspection']).notNull(),
+  priority: mysqlEnum(['low','medium','high','critical']).default('medium'),
+  scheduledDate: timestamp("scheduled_date", { mode: 'string' }).notNull(),
+  estimatedDuration: int("estimated_duration").default(60),
+  assignedTo: int("assigned_to"),
+  status: mysqlEnum(['scheduled','in_progress','completed','cancelled','overdue']).default('scheduled'),
+  completedAt: timestamp("completed_at", { mode: 'string' }),
+  completedBy: int("completed_by"),
+  notes: text(),
+  partsUsed: json("parts_used"),
+  cost: decimal({ precision: 12, scale: 2 }),
+  recurrenceRule: varchar("recurrence_rule", { length: 255 }),
+  nextOccurrence: timestamp("next_occurrence", { mode: 'string' }),
+  createdBy: int("created_by"),
+  createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+  index("idx_iot_maintenance_device").on(table.deviceId),
+  index("idx_iot_maintenance_scheduled").on(table.scheduledDate),
+  index("idx_iot_maintenance_status").on(table.status),
+  index("idx_iot_maintenance_assigned").on(table.assignedTo),
+]);
+
+// IoT Device Firmware
+export const iotDeviceFirmware = mysqlTable("iot_device_firmware", {
+  id: int().autoincrement().primaryKey(),
+  deviceId: int("device_id").notNull(),
+  version: varchar({ length: 50 }).notNull(),
+  releaseDate: timestamp("release_date", { mode: 'string' }),
+  changelog: text(),
+  fileUrl: varchar("file_url", { length: 500 }),
+  fileSize: int("file_size"),
+  checksum: varchar({ length: 64 }),
+  status: mysqlEnum(['available','downloading','installing','installed','failed','rollback']).default('available'),
+  installedAt: timestamp("installed_at", { mode: 'string' }),
+  installedBy: int("installed_by"),
+  previousVersion: varchar("previous_version", { length: 50 }),
+  isCurrent: int("is_current").default(0),
+  createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+  index("idx_iot_firmware_device").on(table.deviceId),
+  index("idx_iot_firmware_version").on(table.version),
+  index("idx_iot_firmware_status").on(table.status),
+]);
+
+// IoT Device Commissioning
+export const iotDeviceCommissioning = mysqlTable("iot_device_commissioning", {
+  id: int().autoincrement().primaryKey(),
+  deviceId: int("device_id").notNull(),
+  stepNumber: int("step_number").notNull(),
+  stepName: varchar("step_name", { length: 100 }).notNull(),
+  stepDescription: text("step_description"),
+  status: mysqlEnum(['pending','in_progress','completed','failed','skipped']).default('pending'),
+  startedAt: timestamp("started_at", { mode: 'string' }),
+  completedAt: timestamp("completed_at", { mode: 'string' }),
+  completedBy: int("completed_by"),
+  verificationData: json("verification_data"),
+  notes: text(),
+  createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+  index("idx_iot_commissioning_device").on(table.deviceId),
+  index("idx_iot_commissioning_step").on(table.stepNumber),
+  index("idx_iot_commissioning_status").on(table.status),
+]);
+
+// IoT Alert Escalation Rules
+export const iotAlertEscalationRules = mysqlTable("iot_alert_escalation_rules", {
+  id: int().autoincrement().primaryKey(),
+  name: varchar({ length: 100 }).notNull(),
+  description: text(),
+  alertType: varchar("alert_type", { length: 50 }),
+  severityFilter: json("severity_filter"),
+  deviceFilter: json("device_filter"),
+  groupFilter: json("group_filter"),
+  escalationLevels: json("escalation_levels").notNull(),
+  cooldownMinutes: int("cooldown_minutes").default(30),
+  isActive: int("is_active").default(1).notNull(),
+  createdBy: int("created_by"),
+  createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+  index("idx_iot_escalation_alert_type").on(table.alertType),
+  index("idx_iot_escalation_active").on(table.isActive),
+]);
+
+// IoT Alert Correlations
+export const iotAlertCorrelations = mysqlTable("iot_alert_correlations", {
+  id: int().autoincrement().primaryKey(),
+  name: varchar({ length: 100 }).notNull(),
+  description: text(),
+  correlationWindowMinutes: int("correlation_window_minutes").default(5),
+  sourceAlertPattern: json("source_alert_pattern").notNull(),
+  relatedAlertPattern: json("related_alert_pattern").notNull(),
+  actionType: mysqlEnum("action_type", ['suppress','merge','escalate','notify']).default('merge'),
+  actionConfig: json("action_config"),
+  isActive: int("is_active").default(1).notNull(),
+  createdBy: int("created_by"),
+  createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+// IoT Analytics Reports
+export const iotAnalyticsReports = mysqlTable("iot_analytics_reports", {
+  id: int().autoincrement().primaryKey(),
+  name: varchar({ length: 100 }).notNull(),
+  description: text(),
+  reportType: mysqlEnum("report_type", ['device_health','energy_consumption','utilization','maintenance','alerts','custom']).notNull(),
+  deviceIds: json("device_ids"),
+  groupIds: json("group_ids"),
+  metrics: json().notNull(),
+  timeRange: varchar("time_range", { length: 50 }).default('7d'),
+  aggregation: mysqlEnum(['minute','hour','day','week','month']).default('hour'),
+  filters: json(),
+  chartConfig: json("chart_config"),
+  scheduleEnabled: int("schedule_enabled").default(0),
+  scheduleFrequency: mysqlEnum("schedule_frequency", ['daily','weekly','monthly']),
+  scheduleTime: varchar("schedule_time", { length: 10 }),
+  recipients: json(),
+  lastGeneratedAt: timestamp("last_generated_at", { mode: 'string' }),
+  createdBy: int("created_by"),
+  createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+  index("idx_iot_analytics_report_type").on(table.reportType),
+  index("idx_iot_analytics_created_by").on(table.createdBy),
+]);
+
+// IoT Dashboard Widgets
+export const iotDashboardWidgets = mysqlTable("iot_dashboard_widgets", {
+  id: int().autoincrement().primaryKey(),
+  userId: int("user_id").notNull(),
+  widgetType: mysqlEnum("widget_type", ['device_status','health_score','alerts','chart','map','kpi','custom']).notNull(),
+  title: varchar({ length: 100 }).notNull(),
+  config: json().notNull(),
+  position: json().notNull(),
+  size: json().notNull(),
+  refreshInterval: int("refresh_interval").default(30),
+  isVisible: int("is_visible").default(1).notNull(),
+  createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+  index("idx_iot_widgets_user").on(table.userId),
+  index("idx_iot_widgets_type").on(table.widgetType),
+]);
+
+// Type exports for IoT Enhancement
+export type IotDeviceGroup = typeof iotDeviceGroups.$inferSelect;
+export type InsertIotDeviceGroup = typeof iotDeviceGroups.$inferInsert;
+export type IotDeviceTemplate = typeof iotDeviceTemplates.$inferSelect;
+export type InsertIotDeviceTemplate = typeof iotDeviceTemplates.$inferInsert;
+export type IotDeviceHealthType = typeof iotDeviceHealth.$inferSelect;
+export type InsertIotDeviceHealth = typeof iotDeviceHealth.$inferInsert;
+export type IotMaintenanceSchedule = typeof iotMaintenanceSchedules.$inferSelect;
+export type InsertIotMaintenanceSchedule = typeof iotMaintenanceSchedules.$inferInsert;
+export type IotDeviceFirmwareType = typeof iotDeviceFirmware.$inferSelect;
+export type InsertIotDeviceFirmware = typeof iotDeviceFirmware.$inferInsert;
+export type IotDeviceCommissioningType = typeof iotDeviceCommissioning.$inferSelect;
+export type InsertIotDeviceCommissioning = typeof iotDeviceCommissioning.$inferInsert;
+export type IotAlertEscalationRule = typeof iotAlertEscalationRules.$inferSelect;
+export type InsertIotAlertEscalationRule = typeof iotAlertEscalationRules.$inferInsert;
+export type IotAlertCorrelationType = typeof iotAlertCorrelations.$inferSelect;
+export type InsertIotAlertCorrelation = typeof iotAlertCorrelations.$inferInsert;
+export type IotAnalyticsReportType = typeof iotAnalyticsReports.$inferSelect;
+export type InsertIotAnalyticsReport = typeof iotAnalyticsReports.$inferInsert;
+export type IotDashboardWidgetType = typeof iotDashboardWidgets.$inferSelect;
+export type InsertIotDashboardWidget = typeof iotDashboardWidgets.$inferInsert;

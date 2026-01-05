@@ -228,6 +228,11 @@ import IoTFloorPlan from "./pages/IoTFloorPlan";
 import FloorPlanDesignerPage from "./pages/FloorPlanDesignerPage";
 import AlertWebhookSettings from "./pages/AlertWebhookSettings";
 import IoTUnifiedDashboard from "./pages/IoTUnifiedDashboard";
+import IoTEnhancedDashboard from "./pages/IoTEnhancedDashboard";
+import IoTDeviceManagement from "./pages/IoTDeviceManagement";
+import IoTProtocolManagement from "./pages/IoTProtocolManagement";
+import IoTAlertEscalation from "./pages/IoTAlertEscalation";
+import IoTAnalytics from "./pages/IoTAnalytics";
 import WebhookEscalationPage from "./pages/WebhookEscalationPage";
 import LatencyMonitoringPage from "./pages/LatencyMonitoringPage";
 import EscalationConfigPage from "./pages/EscalationConfigPage";
@@ -470,6 +475,11 @@ function Router() {
       <Route path="/floor-plan-designer" component={FloorPlanDesignerPage} />
       <Route path="/alert-webhook-settings" component={AlertWebhookSettings} />
       <Route path="/iot-unified-dashboard" component={IoTUnifiedDashboard} />
+      <Route path="/iot-enhanced-dashboard" component={IoTEnhancedDashboard} />
+      <Route path="/iot-device-management" component={IoTDeviceManagement} />
+      <Route path="/iot-protocol-management" component={IoTProtocolManagement} />
+      <Route path="/iot-alert-escalation" component={IoTAlertEscalation} />
+      <Route path="/iot-analytics" component={IoTAnalytics} />
       <Route path="/webhook-escalation" component={WebhookEscalationPage} />
       <Route path="/escalation-config" component={EscalationConfigPage} />
       <Route path="/sms-settings" component={SmsSettings} />

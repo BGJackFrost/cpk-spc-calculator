@@ -7732,3 +7732,112 @@
 ### Unit Tests
 - [x] syncRouter.test.ts - 9 tests passed
 - [x] widgetDataRouter.test.ts - 11 tests passed
+
+
+## Phase 95: IoT System Enhancement - Nâng cấp chi tiết hệ thống IoT
+
+### 1. Device Management Enhancement
+- [ ] Thêm Device Groups (nhóm thiết bị theo khu vực/chức năng)
+- [ ] Thêm Device Templates (mẫu cấu hình thiết bị)
+- [ ] Thêm Device Health Score (điểm sức khỏe thiết bị)
+- [ ] Thêm Device Maintenance Schedule (lịch bảo trì)
+- [ ] Thêm Device Firmware Management (quản lý firmware)
+- [ ] Thêm Device Commissioning Workflow (quy trình đưa thiết bị vào hoạt động)
+
+### 2. Protocol Integration Enhancement
+- [ ] Cải tiến MQTT với QoS levels và retained messages
+- [ ] Thêm MQTT Last Will Testament (LWT) support
+- [ ] Cải tiến OPC-UA với subscription management
+- [ ] Thêm OPC-UA Historical Access
+- [ ] Cải tiến Modbus với batch read/write
+- [ ] Thêm Protocol Converter (chuyển đổi giữa các protocol)
+
+### 3. IoT Dashboard Enhancement
+- [ ] Thêm Customizable Widget System
+- [ ] Thêm Multi-device Comparison View
+- [ ] Thêm Trend Analysis với anomaly detection
+- [ ] Thêm Geographic Map View cho devices
+- [ ] Thêm 3D Floor Plan với device positions
+- [ ] Thêm Real-time KPI Cards với sparklines
+
+### 4. Alert System Enhancement
+- [ ] Thêm Alert Escalation Rules (quy tắc leo thang cảnh báo)
+- [ ] Thêm Alert Correlation (tương quan cảnh báo)
+- [ ] Thêm Alert Suppression Rules (quy tắc ẩn cảnh báo)
+- [ ] Thêm Multi-channel Notifications (Email, SMS, Webhook, Teams, Slack)
+- [ ] Thêm Alert Analytics Dashboard
+- [ ] Thêm Alert Response SLA Tracking
+
+### 5. IoT Data Analytics
+- [ ] Thêm Time Series Analysis với moving averages
+- [ ] Thêm Predictive Maintenance indicators
+- [ ] Thêm Energy Consumption Analytics
+- [ ] Thêm Device Utilization Reports
+- [ ] Thêm Comparative Analysis giữa các thiết bị
+- [ ] Thêm Custom Report Builder cho IoT data
+
+
+
+## Phase 95: IoT System Enhancement (Completed)
+
+### Device Management
+- [x] Device Groups (hierarchical organization)
+- [x] Device Templates (pre-configured settings)
+- [x] Device Health Score calculation
+- [x] Maintenance Scheduling
+- [x] Device Management Service (CRUD, health calculation)
+- [x] Device Management Router (tRPC endpoints)
+- [x] Device Management Page (IoTDeviceManagement.tsx)
+
+### Protocol Integration
+- [x] MQTT Client Management
+- [x] OPC-UA Client Management
+- [x] Modbus TCP/RTU Client Management
+- [x] Protocol Configuration UI
+- [x] Connection Monitoring
+- [x] Auto-reconnect mechanism
+- [x] Protocol Service (iotProtocolService.ts)
+- [x] Protocol Router (iotProtocolRouter.ts)
+- [x] Protocol Management Page (IoTProtocolManagement.tsx)
+
+### Dashboard Enhancement
+- [x] Enhanced IoT Dashboard with widgets
+- [x] Real-time metrics charts
+- [x] Device status overview
+- [x] Protocol status card
+- [x] Maintenance calendar
+- [x] Alert summary card
+- [x] Enhanced Dashboard Page (IoTEnhancedDashboard.tsx)
+
+### Alert System
+- [x] Escalation Rules CRUD
+- [x] Alert Correlations
+- [x] Multi-channel notifications (email, SMS, webhook, Slack, Teams)
+- [x] Escalation levels with delays
+- [x] Cooldown periods
+- [x] Test escalation feature
+- [x] Alert Escalation Service (iotAlertEscalationService.ts)
+- [x] Alert Escalation Router (iotAlertEscalationRouter.ts)
+- [x] Alert Escalation Page (IoTAlertEscalation.tsx)
+
+### Analytics & Reporting
+- [x] Custom Analytics Reports
+- [x] Scheduled Report Generation
+- [x] Trend Analysis
+- [x] Data Aggregation
+- [x] Dashboard Widgets CRUD
+- [x] Analytics Service (iotAnalyticsService.ts)
+- [x] Analytics Router (iotAnalyticsRouter.ts)
+- [x] Analytics Page (IoTAnalytics.tsx)
+
+### Database Tables Created
+- [x] iot_device_groups
+- [x] iot_device_templates
+- [x] iot_device_health
+- [x] iot_maintenance_schedules
+- [x] iot_firmware_versions
+- [x] iot_device_commissioning
+- [x] iot_escalation_rules
+- [x] iot_alert_correlations
+- [x] iot_analytics_reports
+- [x] iot_dashboard_widgets
