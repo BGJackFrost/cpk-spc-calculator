@@ -40,6 +40,7 @@ import { iotCrudRouter } from "./routers/iotCrudRouter";
 import { telegramRouter } from "./routers/telegramRouter";
 import { floorPlanRouter } from "./routers/floorPlanRouter";
 import { notificationRouter } from "./routers/notificationRouter";
+import { notificationPreferencesRouter } from "./routers/notificationPreferencesRouter";
 import { aiExportRouter } from "./routers/aiExportRouter";
 import { cacheMonitoringRouter } from "./routers/cacheMonitoringRouter";
 import { alertWebhookRouter } from "./routers/alertWebhookRouter";
@@ -11312,6 +11313,8 @@ Hãy trả về JSON với format:
   iotProtocol: iotProtocolRouter,
   // Push Notifications
   notification: notificationRouter,
+  // Notification Preferences - User notification settings
+  notificationPreferences: notificationPreferencesRouter,
   // AI Export - PDF/Excel reports
   aiExport: aiExportRouter,
   // Cache Monitoring - Monitor and manage cache

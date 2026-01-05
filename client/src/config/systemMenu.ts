@@ -548,6 +548,7 @@ export const IOT_MENU: SystemMenuConfig = {
       defaultOpen: true,
       items: [
         { id: "iot-dashboard", icon: LayoutDashboard, labelKey: "nav.iotDashboard", path: "/iot-dashboard" },
+        { id: "iot-overview-dashboard", icon: Gauge, labelKey: "nav.iotOverviewDashboard", path: "/iot-overview-dashboard" },
         { id: "iot-device-crud", icon: Cpu, labelKey: "nav.iotDeviceCrud", path: "/iot-device-crud" },
         { id: "iot-alarm-crud", icon: Bell, labelKey: "nav.iotAlarmCrud", path: "/iot-alarm-crud" },
         { id: "iot-realtime-dashboard", icon: Zap, labelKey: "nav.iotRealtimeDashboard", path: "/iot-realtime-dashboard", licenseFeature: "iot_realtime" },

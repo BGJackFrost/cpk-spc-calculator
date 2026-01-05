@@ -5,7 +5,14 @@ export type SseEventType =
   | "cpk_alert"
   | "plan_status_change"
   | "kpi_alert"
-  | "heartbeat";
+  | "heartbeat"
+  | "iot_alarm"
+  | "iot_alarm_new"
+  | "iot_alarm_update"
+  | "iot_alarm_ack"
+  | "iot_alarm_resolved"
+  | "iot_device_status"
+  | "iot_metric_update";
 
 export interface SseEvent {
   type: SseEventType;
@@ -22,6 +29,9 @@ interface UseSSEOptions {
   onOeeUpdate?: (data: any) => void;
   onMachineStatus?: (data: any) => void;
   onSpcRuleViolation?: (data: any) => void;
+  onIotAlarm?: (data: any) => void;
+  onIotDeviceStatus?: (data: any) => void;
+  onEvent?: (event: SseEvent) => void;
   onError?: (error: Event) => void;
   onConnect?: () => void;
   onDisconnect?: () => void;
@@ -100,7 +110,11 @@ function initGlobalSSE() {
     };
 
     // Setup event listeners
-    const eventTypes = ["spc_analysis_complete", "cpk_alert", "plan_status_change", "kpi_alert", "heartbeat"];
+    const eventTypes = [
+      "spc_analysis_complete", "cpk_alert", "plan_status_change", "kpi_alert", "heartbeat",
+      "iot_alarm", "iot_alarm_new", "iot_alarm_update", "iot_alarm_ack", "iot_alarm_resolved",
+      "iot_device_status", "iot_metric_update"
+    ];
     eventTypes.forEach((eventType) => {
       globalEventSource!.addEventListener(eventType, (event) => {
         try {
@@ -182,6 +196,9 @@ export function useSSE(options: UseSSEOptions = {}) {
     onPlanStatusChange,
     onKpiAlert,
     onHeartbeat,
+    onIotAlarm,
+    onIotDeviceStatus,
+    onEvent,
     onConnect,
     onDisconnect,
     enabled = true,
@@ -190,12 +207,12 @@ export function useSSE(options: UseSSEOptions = {}) {
   const [isConnected, setIsConnected] = useState(globalConnected);
   const [lastEvent, setLastEvent] = useState<SseEvent | null>(null);
   const [connectionError, setConnectionError] = useState<string | null>(null);
-  const callbacksRef = useRef({ onSpcAnalysisComplete, onCpkAlert, onPlanStatusChange, onKpiAlert, onHeartbeat, onConnect, onDisconnect });
+  const callbacksRef = useRef({ onSpcAnalysisComplete, onCpkAlert, onPlanStatusChange, onKpiAlert, onHeartbeat, onIotAlarm, onIotDeviceStatus, onEvent, onConnect, onDisconnect });
 
   // Update callbacks ref
   useEffect(() => {
-    callbacksRef.current = { onSpcAnalysisComplete, onCpkAlert, onPlanStatusChange, onKpiAlert, onHeartbeat, onConnect, onDisconnect };
-  }, [onSpcAnalysisComplete, onCpkAlert, onPlanStatusChange, onKpiAlert, onHeartbeat, onConnect, onDisconnect]);
+    callbacksRef.current = { onSpcAnalysisComplete, onCpkAlert, onPlanStatusChange, onKpiAlert, onHeartbeat, onIotAlarm, onIotDeviceStatus, onEvent, onConnect, onDisconnect };
+  }, [onSpcAnalysisComplete, onCpkAlert, onPlanStatusChange, onKpiAlert, onHeartbeat, onIotAlarm, onIotDeviceStatus, onEvent, onConnect, onDisconnect]);
 
   useEffect(() => {
     if (!enabled) {
@@ -206,6 +223,9 @@ export function useSSE(options: UseSSEOptions = {}) {
       setLastEvent(event);
       setIsConnected(globalConnected);
       setConnectionError(globalConnected ? null : "Disconnected");
+      
+      // Call generic event handler
+      callbacksRef.current.onEvent?.(event);
       
       switch (event.type) {
         case "spc_analysis_complete":
@@ -225,6 +245,16 @@ export function useSSE(options: UseSSEOptions = {}) {
             callbacksRef.current.onConnect?.();
           }
           callbacksRef.current.onHeartbeat?.(event.data);
+          break;
+        case "iot_alarm":
+        case "iot_alarm_new":
+        case "iot_alarm_update":
+        case "iot_alarm_ack":
+        case "iot_alarm_resolved":
+          callbacksRef.current.onIotAlarm?.(event.data);
+          break;
+        case "iot_device_status":
+          callbacksRef.current.onIotDeviceStatus?.(event.data);
           break;
       }
     };

@@ -156,6 +156,7 @@ import PerformanceTrendsDashboard from "./pages/PerformanceTrendsDashboard";
 import SystemHealthDashboard from "./pages/SystemHealthDashboard";
 import SecurityDashboard from "./pages/SecurityDashboard";
 import IoTDashboard from "./pages/IoTDashboard";
+import IotOverviewDashboard from "./pages/IotOverviewDashboard";
 import IotRealtimeDashboard from "./pages/IotRealtimeDashboard";
 import AiMlDashboard from "./pages/ai/AiMlDashboard";
 import AiDashboard from "./pages/ai/AiDashboard";
@@ -426,6 +427,7 @@ function Router() {
       <Route path="/security-dashboard" component={SecurityDashboard} />
       <Route path="/cache-monitoring" component={CacheMonitoringDashboard} />
       <Route path="/iot-dashboard" component={IoTDashboard} />
+      <Route path="/iot-overview-dashboard" component={IotOverviewDashboard} />
       <Route path="/iot-realtime-dashboard" component={IotRealtimeDashboard} />
       <Route path="/mqtt-connections" component={MqttConnectionManagement} />
       <Route path="/opcua-connections" component={OpcuaConnectionManagement} />

@@ -8067,3 +8067,38 @@
 ### Unit Tests
 - [x] Viết unit test cho iotNotificationService
 - [x] Test pass thành công (5/5 tests)
+
+
+## Phase 102 - Dashboard IoT, Notification Preferences, SSE Realtime
+
+### Dashboard tổng quan IoT
+- [x] Tạo IotOverviewDashboard.tsx với thống kê thiết bị online/offline
+- [x] Hiển thị số alarm chưa xử lý theo severity
+- [x] Biểu đồ trend alarm 7/14/30 ngày
+- [x] Biểu đồ phân bố alarm theo severity (Pie chart)
+- [x] Danh sách alarm gần đây với status
+- [x] Thêm route /iot-overview-dashboard vào App.tsx
+- [x] Thêm menu item vào IOT_MENU trong systemMenu.ts
+- [x] Thêm translations cho menu item mới
+
+### Notification Preferences
+- [x] Tạo bảng notification_preferences trong database
+- [x] Tạo notificationPreferencesService.ts với CRUD operations
+- [x] Tạo notificationPreferencesRouter.ts với tRPC endpoints
+- [x] Tích hợp router vào routers.ts
+- [x] Hỗ trợ cấu hình email/telegram/push notifications
+- [x] Hỗ trợ severity filter (all/warning_up/critical_only)
+- [x] Hỗ trợ quiet hours configuration
+
+### WebSocket/SSE Realtime
+- [x] Thêm event types mới: iot_alarm_new, iot_alarm_update, iot_alarm_ack, iot_alarm_resolved
+- [x] Thêm hàm notify mới: notifyIotAlarmNew, notifyIotAlarmUpdate, notifyIotAlarmResolved
+- [x] Cập nhật useSSE hook với event types mới cho IoT
+- [x] Thêm callbacks: onIotAlarm, onIotDeviceStatus, onEvent
+- [x] Tích hợp SSE vào IotOverviewDashboard cho realtime updates
+
+### Unit Tests
+- [x] Viết unit test cho notification preferences service
+- [x] Test shouldSendNotification logic
+- [x] Test isWithinQuietHours logic
+- [x] Test pass thành công (9/9 tests)

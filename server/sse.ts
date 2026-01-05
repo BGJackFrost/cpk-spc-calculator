@@ -19,7 +19,10 @@ export type SseEventType =
   | "iot_device_status"
   | "iot_metric_update"
   | "iot_alarm"
+  | "iot_alarm_new"
+  | "iot_alarm_update"
   | "iot_alarm_ack"
+  | "iot_alarm_resolved"
   | "iot_batch_metrics";
 
 export interface SseEvent {
@@ -427,6 +430,59 @@ export function notifyIotBatchMetrics(data: {
 export function sendSseEvent(eventType: string, data: any) {
   broadcastEvent({
     type: eventType as SseEventType,
+    data,
+    timestamp: new Date(),
+  });
+}
+
+
+// ============ New IoT Alarm Events for Phase 102 ============
+
+// Send IoT alarm new event (when a new alarm is created)
+export function notifyIotAlarmNew(data: {
+  alarmId: number;
+  deviceId: number;
+  deviceName?: string;
+  alarmType: string;
+  severity: string;
+  message: string;
+  value?: number;
+  threshold?: number;
+  createdAt: Date;
+}) {
+  broadcastEvent({
+    type: "iot_alarm_new",
+    data,
+    timestamp: new Date(),
+  });
+}
+
+// Send IoT alarm update event (when alarm is acknowledged)
+export function notifyIotAlarmUpdate(data: {
+  alarmId: number;
+  deviceId: number;
+  status: string;
+  acknowledgedBy?: string;
+  acknowledgedAt?: Date;
+  notes?: string;
+}) {
+  broadcastEvent({
+    type: "iot_alarm_update",
+    data,
+    timestamp: new Date(),
+  });
+}
+
+// Send IoT alarm resolved event
+export function notifyIotAlarmResolved(data: {
+  alarmId: number;
+  deviceId: number;
+  resolvedBy?: string;
+  resolvedAt: Date;
+  resolution?: string;
+}) {
+  broadcastEvent({
+    type: "iot_alarm_resolved",
     data,
     timestamp: new Date(),
   });

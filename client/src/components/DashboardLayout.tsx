@@ -253,6 +253,8 @@ const fallbackLabelsVi: Record<string, string> = {
   "nav.firmwareOta": "Firmware OTA Update",
   "nav.floorPlanIntegration": "Sơ đồ Mặt bằng",
   "nav.predictiveMaintenanceAI": "Bảo trì Dự đoán AI",
+  "nav.iotOverviewDashboard": "Dashboard Tổng quan IoT",
+  "nav.notificationPreferences": "Cài đặt Thông báo",
 };
 
 const fallbackLabelsEn: Record<string, string> = {
@@ -456,6 +458,8 @@ const fallbackLabelsEn: Record<string, string> = {
   "nav.pushNotificationSettings": "Push Notification Settings",
   "nav.widgetConfig": "Widget Configuration",
   "nav.conflictResolution": "Conflict Resolution",
+  "nav.iotOverviewDashboard": "IoT Overview Dashboard",
+  "nav.notificationPreferences": "Notification Preferences",
 };
 
 const MIN_WIDTH = 200;

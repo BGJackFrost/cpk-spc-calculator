@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS notification_preferences (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  user_id INT NOT NULL,\n  email_enabled INT DEFAULT 1 NOT NULL,\n  email_address VARCHAR(255),\n  telegram_enabled INT DEFAULT 0 NOT NULL,\n  telegram_chat_id VARCHAR(100),\n  push_enabled INT DEFAULT 1 NOT NULL,\n  severity_filter ENUM('all', 'warning_up', 'critical_only') DEFAULT 'warning_up' NOT NULL,\n  quiet_hours_enabled INT DEFAULT 0 NOT NULL,\n  quiet_hours_start VARCHAR(5) DEFAULT '22:00',\n  quiet_hours_end VARCHAR(5) DEFAULT '07:00',\n  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,\n  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL,\n  INDEX idx_notification_user (user_id)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute CREATE TABLE IF NOT EXISTS notification_preferences (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  user_id INT NOT NULL,\n  email_enabled INT DEFAULT 1 NOT NULL,\n  email_address VARCHAR(255),\n  telegram_enabled INT DEFAULT 0 NOT NULL,\n  telegram_chat_id VARCHAR(100),\n  push_enabled INT DEFAULT 1 NOT NULL,\n  severity_filter ENUM('all', 'warning_up', 'critical_only') DEFAULT 'warning_up' NOT NULL,\n  quiet_hours_enabled INT DEFAULT 0 NOT NULL,\n  quiet_hours_start VARCHAR(5) DEFAULT '22:00',\n  quiet_hours_end VARCHAR(5) DEFAULT '07:00',\n  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,\n  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL,\n  INDEX idx_notification_user (user_id)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1541
+}

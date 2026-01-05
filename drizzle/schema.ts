@@ -5579,3 +5579,32 @@ export type IotMttrMtbfStat = typeof iotMttrMtbfStats.$inferSelect;
 export type InsertIotMttrMtbfStat = typeof iotMttrMtbfStats.$inferInsert;
 export type IotFailureEvent = typeof iotFailureEvents.$inferSelect;
 export type InsertIotFailureEvent = typeof iotFailureEvents.$inferInsert;
+
+// Phase 102 - Notification Preferences
+export const notificationPreferences = mysqlTable("notification_preferences", {
+  id: int().autoincrement().notNull().primaryKey(),
+  userId: int("user_id").notNull(),
+  // Email settings
+  emailEnabled: int("email_enabled").default(1).notNull(),
+  emailAddress: varchar("email_address", { length: 255 }),
+  // Telegram settings
+  telegramEnabled: int("telegram_enabled").default(0).notNull(),
+  telegramChatId: varchar("telegram_chat_id", { length: 100 }),
+  // Push notification settings
+  pushEnabled: int("push_enabled").default(1).notNull(),
+  // Severity filter: 'all', 'warning_up', 'critical_only'
+  severityFilter: mysqlEnum("severity_filter", ['all', 'warning_up', 'critical_only']).default('warning_up').notNull(),
+  // Quiet hours
+  quietHoursEnabled: int("quiet_hours_enabled").default(0).notNull(),
+  quietHoursStart: varchar("quiet_hours_start", { length: 5 }).default('22:00'),
+  quietHoursEnd: varchar("quiet_hours_end", { length: 5 }).default('07:00'),
+  // Timestamps
+  createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+  index("idx_notification_user").on(table.userId),
+]);
+
+export type NotificationPreference = typeof notificationPreferences.$inferSelect;
+export type InsertNotificationPreference = typeof notificationPreferences.$inferInsert;
