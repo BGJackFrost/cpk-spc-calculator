@@ -4727,3 +4727,289 @@ export type IotAnalyticsReportType = typeof iotAnalyticsReports.$inferSelect;
 export type InsertIotAnalyticsReport = typeof iotAnalyticsReports.$inferInsert;
 export type IotDashboardWidgetType = typeof iotDashboardWidgets.$inferSelect;
 export type InsertIotDashboardWidget = typeof iotDashboardWidgets.$inferInsert;
+
+
+// ============================================
+// Phase 96: Advanced IoT Features
+// ============================================
+
+// IoT Firmware Packages - Quản lý firmware packages
+export const iotFirmwarePackages = mysqlTable("iot_firmware_packages", {
+  id: int().autoincrement().primaryKey(),
+  name: varchar({ length: 100 }).notNull(),
+  version: varchar({ length: 50 }).notNull(),
+  description: text(),
+  deviceType: mysqlEnum("device_type", ['plc','sensor','gateway','hmi','scada','other']).notNull(),
+  manufacturer: varchar({ length: 100 }),
+  model: varchar({ length: 100 }),
+  fileUrl: varchar("file_url", { length: 500 }).notNull(),
+  fileSize: int("file_size").notNull(),
+  checksum: varchar({ length: 64 }).notNull(),
+  checksumType: mysqlEnum("checksum_type", ['md5','sha1','sha256']).default('sha256'),
+  releaseNotes: text("release_notes"),
+  minRequiredVersion: varchar("min_required_version", { length: 50 }),
+  isStable: int("is_stable").default(1).notNull(),
+  isBeta: int("is_beta").default(0).notNull(),
+  downloadCount: int("download_count").default(0),
+  status: mysqlEnum(['draft','published','deprecated','archived']).default('draft'),
+  publishedAt: timestamp("published_at", { mode: 'string' }),
+  publishedBy: int("published_by"),
+  createdBy: int("created_by"),
+  createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+  index("idx_firmware_pkg_device_type").on(table.deviceType),
+  index("idx_firmware_pkg_version").on(table.version),
+  index("idx_firmware_pkg_status").on(table.status),
+]);
+
+// IoT OTA Deployments - Quản lý quá trình deploy firmware
+export const iotOtaDeployments = mysqlTable("iot_ota_deployments", {
+  id: int().autoincrement().primaryKey(),
+  name: varchar({ length: 100 }).notNull(),
+  description: text(),
+  firmwarePackageId: int("firmware_package_id").notNull(),
+  deploymentType: mysqlEnum("deployment_type", ['immediate','scheduled','phased']).default('immediate'),
+  targetDeviceIds: json("target_device_ids").notNull(),
+  targetGroupIds: json("target_group_ids"),
+  scheduledAt: timestamp("scheduled_at", { mode: 'string' }),
+  phasedConfig: json("phased_config"),
+  totalDevices: int("total_devices").default(0),
+  successCount: int("success_count").default(0),
+  failedCount: int("failed_count").default(0),
+  pendingCount: int("pending_count").default(0),
+  inProgressCount: int("in_progress_count").default(0),
+  status: mysqlEnum(['draft','scheduled','in_progress','paused','completed','cancelled','failed']).default('draft'),
+  startedAt: timestamp("started_at", { mode: 'string' }),
+  completedAt: timestamp("completed_at", { mode: 'string' }),
+  rollbackEnabled: int("rollback_enabled").default(1).notNull(),
+  rollbackOnFailurePercent: int("rollback_on_failure_percent").default(20),
+  notifyOnComplete: int("notify_on_complete").default(1),
+  notifyOnFailure: int("notify_on_failure").default(1),
+  createdBy: int("created_by"),
+  createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+  index("idx_ota_deployment_firmware").on(table.firmwarePackageId),
+  index("idx_ota_deployment_status").on(table.status),
+  index("idx_ota_deployment_scheduled").on(table.scheduledAt),
+]);
+
+// IoT OTA Device Status - Trạng thái cập nhật từng thiết bị
+export const iotOtaDeviceStatus = mysqlTable("iot_ota_device_status", {
+  id: int().autoincrement().primaryKey(),
+  deploymentId: int("deployment_id").notNull(),
+  deviceId: int("device_id").notNull(),
+  previousVersion: varchar("previous_version", { length: 50 }),
+  targetVersion: varchar("target_version", { length: 50 }).notNull(),
+  status: mysqlEnum(['pending','downloading','downloaded','installing','verifying','completed','failed','rollback']).default('pending'),
+  progress: int().default(0),
+  downloadProgress: int("download_progress").default(0),
+  installProgress: int("install_progress").default(0),
+  errorCode: varchar("error_code", { length: 50 }),
+  errorMessage: text("error_message"),
+  retryCount: int("retry_count").default(0),
+  maxRetries: int("max_retries").default(3),
+  startedAt: timestamp("started_at", { mode: 'string' }),
+  downloadedAt: timestamp("downloaded_at", { mode: 'string' }),
+  installedAt: timestamp("installed_at", { mode: 'string' }),
+  completedAt: timestamp("completed_at", { mode: 'string' }),
+  rolledBackAt: timestamp("rolled_back_at", { mode: 'string' }),
+  logs: json(),
+  createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+  index("idx_ota_status_deployment").on(table.deploymentId),
+  index("idx_ota_status_device").on(table.deviceId),
+  index("idx_ota_status_status").on(table.status),
+]);
+
+// IoT Floor Plans - Sơ đồ mặt bằng nhà máy
+export const iotFloorPlans = mysqlTable("iot_floor_plans", {
+  id: int().autoincrement().primaryKey(),
+  name: varchar({ length: 100 }).notNull(),
+  description: text(),
+  buildingName: varchar("building_name", { length: 100 }),
+  floorNumber: int("floor_number").default(1),
+  imageUrl: varchar("image_url", { length: 500 }).notNull(),
+  imageWidth: int("image_width").notNull(),
+  imageHeight: int("image_height").notNull(),
+  scaleMetersPerPixel: decimal("scale_meters_per_pixel", { precision: 10, scale: 6 }),
+  originX: int("origin_x").default(0),
+  originY: int("origin_y").default(0),
+  rotation: int().default(0),
+  metadata: json(),
+  isActive: int("is_active").default(1).notNull(),
+  sortOrder: int("sort_order").default(0),
+  createdBy: int("created_by"),
+  createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+  index("idx_floor_plan_building").on(table.buildingName),
+  index("idx_floor_plan_active").on(table.isActive),
+]);
+
+// IoT Floor Plan Zones - Vùng/khu vực trên sơ đồ
+export const iotFloorPlanZones = mysqlTable("iot_floor_plan_zones", {
+  id: int().autoincrement().primaryKey(),
+  floorPlanId: int("floor_plan_id").notNull(),
+  name: varchar({ length: 100 }).notNull(),
+  description: text(),
+  zoneType: mysqlEnum("zone_type", ['production','warehouse','office','maintenance','restricted','common']).default('production'),
+  coordinates: json().notNull(),
+  color: varchar({ length: 20 }).default('#3b82f6'),
+  opacity: decimal({ precision: 3, scale: 2 }).default('0.30'),
+  borderColor: varchar("border_color", { length: 20 }).default('#1d4ed8'),
+  borderWidth: int("border_width").default(2),
+  isClickable: int("is_clickable").default(1).notNull(),
+  alertThreshold: int("alert_threshold").default(3),
+  metadata: json(),
+  isActive: int("is_active").default(1).notNull(),
+  createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+  index("idx_floor_zone_plan").on(table.floorPlanId),
+  index("idx_floor_zone_type").on(table.zoneType),
+]);
+
+// IoT Device Positions - Vị trí thiết bị trên sơ đồ
+export const iotDevicePositions = mysqlTable("iot_device_positions", {
+  id: int().autoincrement().primaryKey(),
+  deviceId: int("device_id").notNull(),
+  floorPlanId: int("floor_plan_id").notNull(),
+  zoneId: int("zone_id"),
+  positionX: int("position_x").notNull(),
+  positionY: int("position_y").notNull(),
+  rotation: int().default(0),
+  iconSize: int("icon_size").default(32),
+  iconType: varchar("icon_type", { length: 50 }).default('default'),
+  labelPosition: mysqlEnum("label_position", ['top','bottom','left','right','none']).default('bottom'),
+  showLabel: int("show_label").default(1).notNull(),
+  showStatus: int("show_status").default(1).notNull(),
+  customIcon: varchar("custom_icon", { length: 500 }),
+  metadata: json(),
+  createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+  index("idx_device_pos_device").on(table.deviceId),
+  index("idx_device_pos_floor").on(table.floorPlanId),
+  index("idx_device_pos_zone").on(table.zoneId),
+]);
+
+// IoT Prediction Models - Cấu hình model AI cho predictive maintenance
+export const iotPredictionModels = mysqlTable("iot_prediction_models", {
+  id: int().autoincrement().primaryKey(),
+  name: varchar({ length: 100 }).notNull(),
+  description: text(),
+  modelType: mysqlEnum("model_type", ['health_decay','failure_prediction','anomaly_detection','remaining_life','maintenance_scheduling']).notNull(),
+  targetDeviceTypes: json("target_device_types"),
+  targetDeviceIds: json("target_device_ids"),
+  targetGroupIds: json("target_group_ids"),
+  inputFeatures: json("input_features").notNull(),
+  outputMetric: varchar("output_metric", { length: 50 }).notNull(),
+  algorithm: mysqlEnum(['linear_regression','random_forest','gradient_boosting','neural_network','lstm','arima','prophet']).default('gradient_boosting'),
+  hyperparameters: json(),
+  trainingConfig: json("training_config"),
+  predictionHorizonDays: int("prediction_horizon_days").default(30),
+  confidenceThreshold: decimal("confidence_threshold", { precision: 5, scale: 2 }).default('0.70'),
+  alertThreshold: decimal("alert_threshold", { precision: 5, scale: 2 }).default('0.80'),
+  isActive: int("is_active").default(1).notNull(),
+  lastTrainedAt: timestamp("last_trained_at", { mode: 'string' }),
+  trainingAccuracy: decimal("training_accuracy", { precision: 5, scale: 4 }),
+  validationAccuracy: decimal("validation_accuracy", { precision: 5, scale: 4 }),
+  createdBy: int("created_by"),
+  createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+  index("idx_pred_model_type").on(table.modelType),
+  index("idx_pred_model_active").on(table.isActive),
+]);
+
+// IoT Maintenance Predictions - Kết quả dự đoán bảo trì
+export const iotMaintenancePredictions = mysqlTable("iot_maintenance_predictions", {
+  id: int().autoincrement().primaryKey(),
+  modelId: int("model_id").notNull(),
+  deviceId: int("device_id").notNull(),
+  predictionType: mysqlEnum("prediction_type", ['failure','maintenance_needed','health_decline','anomaly','remaining_life']).notNull(),
+  predictedDate: timestamp("predicted_date", { mode: 'string' }),
+  predictedValue: decimal("predicted_value", { precision: 10, scale: 4 }),
+  confidenceScore: decimal("confidence_score", { precision: 5, scale: 4 }).notNull(),
+  severity: mysqlEnum(['low','medium','high','critical']).default('medium'),
+  currentHealthScore: decimal("current_health_score", { precision: 5, scale: 2 }),
+  predictedHealthScore: decimal("predicted_health_score", { precision: 5, scale: 2 }),
+  daysUntilMaintenance: int("days_until_maintenance"),
+  contributingFactors: json("contributing_factors"),
+  recommendedActions: json("recommended_actions"),
+  llmAnalysis: text("llm_analysis"),
+  status: mysqlEnum(['active','acknowledged','scheduled','resolved','expired']).default('active'),
+  acknowledgedBy: int("acknowledged_by"),
+  acknowledgedAt: timestamp("acknowledged_at", { mode: 'string' }),
+  scheduledMaintenanceId: int("scheduled_maintenance_id"),
+  resolvedAt: timestamp("resolved_at", { mode: 'string' }),
+  actualOutcome: text("actual_outcome"),
+  wasAccurate: int("was_accurate"),
+  createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+  index("idx_pred_model").on(table.modelId),
+  index("idx_pred_device").on(table.deviceId),
+  index("idx_pred_type").on(table.predictionType),
+  index("idx_pred_status").on(table.status),
+  index("idx_pred_severity").on(table.severity),
+  index("idx_pred_date").on(table.predictedDate),
+]);
+
+// IoT Device Health History - Lịch sử health score để training AI
+export const iotDeviceHealthHistory = mysqlTable("iot_device_health_history", {
+  id: int().autoincrement().primaryKey(),
+  deviceId: int("device_id").notNull(),
+  healthScore: decimal("health_score", { precision: 5, scale: 2 }).notNull(),
+  availabilityScore: decimal("availability_score", { precision: 5, scale: 2 }),
+  performanceScore: decimal("performance_score", { precision: 5, scale: 2 }),
+  qualityScore: decimal("quality_score", { precision: 5, scale: 2 }),
+  uptimeHours: decimal("uptime_hours", { precision: 10, scale: 2 }),
+  downtimeHours: decimal("downtime_hours", { precision: 10, scale: 2 }),
+  errorCount: int("error_count").default(0),
+  warningCount: int("warning_count").default(0),
+  temperature: decimal({ precision: 6, scale: 2 }),
+  vibration: decimal({ precision: 8, scale: 4 }),
+  powerConsumption: decimal("power_consumption", { precision: 10, scale: 2 }),
+  cycleCount: int("cycle_count"),
+  operatingHours: decimal("operating_hours", { precision: 12, scale: 2 }),
+  additionalMetrics: json("additional_metrics"),
+  recordedAt: timestamp("recorded_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+  createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+  index("idx_health_hist_device").on(table.deviceId),
+  index("idx_health_hist_recorded").on(table.recordedAt),
+  index("idx_health_hist_score").on(table.healthScore),
+]);
+
+// Type exports for Phase 96
+export type IotFirmwarePackage = typeof iotFirmwarePackages.$inferSelect;
+export type InsertIotFirmwarePackage = typeof iotFirmwarePackages.$inferInsert;
+export type IotOtaDeployment = typeof iotOtaDeployments.$inferSelect;
+export type InsertIotOtaDeployment = typeof iotOtaDeployments.$inferInsert;
+export type IotOtaDeviceStatus = typeof iotOtaDeviceStatus.$inferSelect;
+export type InsertIotOtaDeviceStatus = typeof iotOtaDeviceStatus.$inferInsert;
+export type IotFloorPlan = typeof iotFloorPlans.$inferSelect;
+export type InsertIotFloorPlan = typeof iotFloorPlans.$inferInsert;
+export type IotFloorPlanZone = typeof iotFloorPlanZones.$inferSelect;
+export type InsertIotFloorPlanZone = typeof iotFloorPlanZones.$inferInsert;
+export type IotDevicePosition = typeof iotDevicePositions.$inferSelect;
+export type InsertIotDevicePosition = typeof iotDevicePositions.$inferInsert;
+export type IotPredictionModel = typeof iotPredictionModels.$inferSelect;
+export type InsertIotPredictionModel = typeof iotPredictionModels.$inferInsert;
+export type IotMaintenancePrediction = typeof iotMaintenancePredictions.$inferSelect;
+export type InsertIotMaintenancePrediction = typeof iotMaintenancePredictions.$inferInsert;
+export type IotDeviceHealthHistory = typeof iotDeviceHealthHistory.$inferSelect;
+export type InsertIotDeviceHealthHistory = typeof iotDeviceHealthHistory.$inferInsert;

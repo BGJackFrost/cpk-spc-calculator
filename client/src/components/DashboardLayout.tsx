@@ -248,6 +248,9 @@ const fallbackLabelsVi: Record<string, string> = {
   "nav.pushNotificationSettings": "Cài đặt Push Notification",
   "nav.widgetConfig": "Cấu hình Widget",
   "nav.conflictResolution": "Xử lý Xung đột",
+  "nav.firmwareOta": "Firmware OTA Update",
+  "nav.floorPlanIntegration": "Sơ đồ Mặt bằng",
+  "nav.predictiveMaintenance": "Bảo trì Dự đoán AI",
 };
 
 const fallbackLabelsEn: Record<string, string> = {
@@ -439,6 +442,9 @@ const fallbackLabelsEn: Record<string, string> = {
   "nav.mqttConnections": "MQTT Connections",
   "nav.opcuaConnections": "OPC-UA Connections",
   "nav.iotAlarmThreshold": "IoT Alarm Thresholds",
+  "nav.firmwareOta": "Firmware OTA Update",
+  "nav.floorPlanIntegration": "Floor Plan Integration",
+  "nav.predictiveMaintenance": "Predictive Maintenance AI",
   "nav.cacheMonitoring": "Cache Monitoring",
   "nav.smsNotificationSettings": "SMS Settings",
   "nav.escalationDashboard": "Escalation Dashboard",

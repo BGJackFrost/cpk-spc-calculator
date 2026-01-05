@@ -7841,3 +7841,43 @@
 - [x] iot_alert_correlations
 - [x] iot_analytics_reports
 - [x] iot_dashboard_widgets
+
+
+## Phase 96: Advanced IoT Features (Firmware OTA, Floor Plan, Predictive Maintenance)
+
+### Firmware OTA Update
+- [x] Tạo bảng iot_firmware_packages (lưu firmware packages)
+- [x] Tạo bảng iot_ota_deployments (theo dõi quá trình cập nhật)
+- [x] Tạo bảng iot_ota_device_status (trạng thái cập nhật từng thiết bị)
+- [x] Tạo service quản lý firmware OTA (upload, validate, deploy)
+- [x] Tạo API endpoints cho firmware management
+- [x] Tạo trang quản lý Firmware Packages (upload, version control)
+- [x] Tạo trang OTA Deployment (chọn devices, schedule, rollback)
+- [x] Hiển thị tiến trình cập nhật realtime cho từng thiết bị
+- [x] Hỗ trợ rollback firmware khi cập nhật thất bại
+- [x] Thêm validation checksum firmware trước khi deploy
+
+### Floor Plan Integration
+- [x] Tạo bảng iot_floor_plans (lưu sơ đồ mặt bằng)
+- [x] Tạo bảng iot_floor_plan_zones (vùng/khu vực trên sơ đồ)
+- [x] Tạo bảng iot_device_positions (vị trí thiết bị trên sơ đồ)
+- [x] Tạo service quản lý floor plan và device positions
+- [x] Tạo API endpoints cho floor plan management
+- [x] Tạo trang quản lý Floor Plans (upload SVG/image, set scale)
+- [x] Tạo component Floor Plan Viewer với drag-drop thiết bị
+- [x] Hiển thị trạng thái thiết bị realtime trên sơ đồ (màu sắc, icon)
+- [x] Hỗ trợ zoom, pan và click để xem chi tiết thiết bị
+- [x] Thêm heatmap hiển thị mật độ cảnh báo theo vùng
+
+### Predictive Maintenance (AI)
+- [x] Tạo bảng iot_prediction_models (cấu hình model AI)
+- [x] Tạo bảng iot_maintenance_predictions (kết quả dự đoán)
+- [x] Tạo bảng iot_device_health_history (lịch sử health score)
+- [x] Tạo service AI prediction (phân tích health score trend)
+- [x] Tạo API endpoints cho predictive maintenance
+- [x] Tạo trang Predictive Maintenance Dashboard
+- [x] Hiển thị biểu đồ dự đoán thời điểm cần bảo trì
+- [x] Tích hợp LLM để phân tích pattern và đưa ra khuyến nghị
+- [x] Tạo cảnh báo tự động khi dự đoán thiết bị sắp hỏng
+- [x] Hiển thị confidence score và factors ảnh hưởng đến dự đoán
+

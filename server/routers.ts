@@ -52,6 +52,9 @@ import { firebasePushRouter } from "./routers/firebasePushRouter";
 import { fcmIntegrationRouter } from "./routers/fcmIntegrationRouter";
 import { syncRouter } from "./routers/syncRouter";
 import { widgetDataRouter } from "./routers/widgetDataRouter";
+import { firmwareOtaRouter } from "./routers/firmwareOtaRouter";
+import { floorPlanIntegrationRouter } from "./routers/floorPlanIntegrationRouter";
+import { predictiveMaintenanceRouter } from "./routers/predictiveMaintenanceRouter";
 import { mobileRouter } from "./mobileRouter";
 import { triggerLicenseExpiryCheck } from "./scheduledJobs";
 import { triggerWebhooks, testWebhook } from "./webhookService";
@@ -3765,6 +3768,9 @@ export const appRouter = router({
   fcmIntegration: fcmIntegrationRouter,
   sync: syncRouter,
   widgetData: widgetDataRouter,
+  firmwareOta: firmwareOtaRouter,
+  floorPlanIntegration: floorPlanIntegrationRouter,
+  predictiveMaintenance: predictiveMaintenanceRouter,
   mobile: mobileRouter,
   system: systemRouter,
   theme: themeRouter,

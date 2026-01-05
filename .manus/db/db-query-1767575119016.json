@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS iot_device_positions (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  device_id INT NOT NULL,\n  floor_plan_id INT NOT NULL,\n  zone_id INT,\n  position_x INT NOT NULL,\n  position_y INT NOT NULL,\n  rotation INT DEFAULT 0,\n  icon_size INT DEFAULT 32,\n  icon_type VARCHAR(50) DEFAULT 'default',\n  label_position ENUM('top','bottom','left','right','none') DEFAULT 'bottom',\n  show_label INT DEFAULT 1 NOT NULL,\n  show_status INT DEFAULT 1 NOT NULL,\n  custom_icon VARCHAR(500),\n  metadata JSON,\n  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,\n  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL,\n  INDEX idx_device_pos_device (device_id),\n  INDEX idx_device_pos_floor (floor_plan_id),\n  INDEX idx_device_pos_zone (zone_id)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute CREATE TABLE IF NOT EXISTS iot_device_positions (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  device_id INT NOT NULL,\n  floor_plan_id INT NOT NULL,\n  zone_id INT,\n  position_x INT NOT NULL,\n  position_y INT NOT NULL,\n  rotation INT DEFAULT 0,\n  icon_size INT DEFAULT 32,\n  icon_type VARCHAR(50) DEFAULT 'default',\n  label_position ENUM('top','bottom','left','right','none') DEFAULT 'bottom',\n  show_label INT DEFAULT 1 NOT NULL,\n  show_status INT DEFAULT 1 NOT NULL,\n  custom_icon VARCHAR(500),\n  metadata JSON,\n  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,\n  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL,\n  INDEX idx_device_pos_device (device_id),\n  INDEX idx_device_pos_floor (floor_plan_id),\n  INDEX idx_device_pos_zone (zone_id)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1644
+}
