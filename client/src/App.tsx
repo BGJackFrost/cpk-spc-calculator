@@ -260,6 +260,8 @@ import WorkOrderNotificationConfig from "./pages/WorkOrderNotificationConfig";
 import MttrMtbfReport from "./pages/MttrMtbfReport";
 import ScheduledMttrMtbfReports from "./pages/ScheduledMttrMtbfReports";
 import MttrMtbfComparison from "./pages/MttrMtbfComparison";
+import MttrMtbfThresholds from "./pages/MttrMtbfThresholds";
+import MttrMtbfPrediction from "./pages/MttrMtbfPrediction";
 import IotDeviceCrud from "./pages/IotDeviceCrud";
 import IotAlarmCrud from "./pages/IotAlarmCrud";
 import NotificationPreferencesPage from "./pages/NotificationPreferencesPage";
@@ -528,6 +530,8 @@ function Router() {
       <Route path="/mttr-mtbf-report" component={MttrMtbfReport} />
       <Route path="/scheduled-mttr-mtbf-reports" component={ScheduledMttrMtbfReports} />
       <Route path="/mttr-mtbf-comparison" component={MttrMtbfComparison} />
+      <Route path="/mttr-mtbf-thresholds" component={MttrMtbfThresholds} />
+      <Route path="/mttr-mtbf-prediction" component={MttrMtbfPrediction} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

@@ -192,7 +192,11 @@
     "telegramSettings": "Cài đặt Telegram",
     "alertWebhookSettings": "Cấu hình Webhook Cảnh báo",
     "webhookEscalation": "Webhook Escalation",
-    "latencyMonitoring": "Giám sát Độ trễ"
+    "latencyMonitoring": "Giám sát Độ trễ",
+    "mttrMtbfReport": "Báo cáo MTTR/MTBF",
+    "mttrMtbfComparison": "So sánh MTTR/MTBF",
+    "mttrMtbfThresholds": "Ngưỡng Cảnh báo MTTR/MTBF",
+    "mttrMtbfPrediction": "Dự đoán MTTR/MTBF"
   },
   "dashboard": {
     "welcome": "Xin chào",

@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS mttr_mtbf_alert_history (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  threshold_id INT NOT NULL,\n  target_type ENUM('device','machine','production_line') NOT NULL,\n  target_id INT NOT NULL,\n  target_name VARCHAR(255),\n  alert_type ENUM('mttr_warning','mttr_critical','mtbf_warning','mtbf_critical','availability_warning','availability_critical') NOT NULL,\n  current_value DECIMAL(15, 4),\n  threshold_value DECIMAL(15, 4),\n  message TEXT,\n  email_sent INT DEFAULT 0,\n  telegram_sent INT DEFAULT 0,\n  acknowledged_at TIMESTAMP NULL,\n  acknowledged_by INT,\n  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,\n  INDEX idx_threshold_id (threshold_id),\n  INDEX idx_target (target_type, target_id),\n  INDEX idx_alert_type (alert_type),\n  INDEX idx_created_at (created_at)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute CREATE TABLE IF NOT EXISTS mttr_mtbf_alert_history (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  threshold_id INT NOT NULL,\n  target_type ENUM('device','machine','production_line') NOT NULL,\n  target_id INT NOT NULL,\n  target_name VARCHAR(255),\n  alert_type ENUM('mttr_warning','mttr_critical','mtbf_warning','mtbf_critical','availability_warning','availability_critical') NOT NULL,\n  current_value DECIMAL(15, 4),\n  threshold_value DECIMAL(15, 4),\n  message TEXT,\n  email_sent INT DEFAULT 0,\n  telegram_sent INT DEFAULT 0,\n  acknowledged_at TIMESTAMP NULL,\n  acknowledged_by INT,\n  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,\n  INDEX idx_threshold_id (threshold_id),\n  INDEX idx_target (target_type, target_id),\n  INDEX idx_alert_type (alert_type),\n  INDEX idx_created_at (created_at)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1629
+}

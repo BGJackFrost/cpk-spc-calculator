@@ -7556,13 +7556,13 @@
 - [x] Tạo Firebase service với Admin SDK (firebaseAdminService.ts)
 - [x] Tích hợp gửi push notification thực tế
 - [x] Tạo API endpoints cho Firebase (firebasePushRouter.ts)
-- [ ] Viết unit tests
+- [x] Viết unit tests
 
 ### 5. Export báo cáo Escalation định kỳ
 - [x] Tạo escalation report service (PDF/Excel) (escalationExportService.ts)
 - [x] Tạo scheduled job gửi báo cáo định kỳ
 - [x] Tạo UI cấu hình báo cáo định kỳ
-- [ ] Viết unit tests
+- [x] Viết unit tests
 
 ### 6. Mobile App React Native
 - [x] Khởi tạo project React Native (cpk-spc-mobile)
@@ -8206,3 +8206,25 @@
 - [x] Test MttrMtbfTrendWidget
 - [x] Test Telegram report formatting
 - [x] Test getMttrMtbfComparison API
+
+## Phase 106 - MTTR/MTBF Advanced Features
+
+### Xuất báo cáo so sánh MTTR/MTBF ra PDF/Excel
+- [x] Tạo API endpoint exportComparisonPdf
+- [x] Tạo API endpoint exportComparisonExcel
+- [x] Tích hợp nút Export vào trang /mttr-mtbf-comparison
+- [x] Viết unit tests
+
+### Tích hợp cảnh báo tự động khi MTTR/MTBF vượt ngưỡng
+- [x] Tạo bảng mttr_mtbf_thresholds trong database
+- [x] Tạo service mttrMtbfAlertService.ts
+- [x] Thêm logic kiểm tra ngưỡng khi tính toán MTTR/MTBF
+- [x] Tạo trang UI cấu hình ngưỡng cảnh báo
+- [x] Viết unit tests
+
+### Thêm biểu đồ dự đoán xu hướng MTTR/MTBF bằng AI
+- [x] Tạo service mttrMtbfPredictionService.ts với thuật toán dự đoán
+- [x] Tích hợp LLM để sinh khuyến nghị
+- [x] Tạo component MttrMtbfPredictionChart.tsx
+- [x] Tạo trang /mttr-mtbf-prediction
+- [x] Viết unit tests

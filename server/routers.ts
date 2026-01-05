@@ -58,6 +58,9 @@ import { firmwareOtaRouter } from "./routers/firmwareOtaRouter";
 import { floorPlanIntegrationRouter } from "./routers/floorPlanIntegrationRouter";
 import { predictiveMaintenanceRouter } from "./routers/predictiveMaintenanceRouter";
 import { scheduledOtaRouter } from "./scheduledOtaRouter";
+import { mttrMtbfComparisonRouter } from "./routers/mttrMtbfComparisonRouter";
+import { mttrMtbfAlertRouter } from "./routers/mttrMtbfAlertRouter";
+import { mttrMtbfPredictionRouter } from "./routers/mttrMtbfPredictionRouter";
 import { maintenanceWorkOrderRouter } from "./maintenanceWorkOrderRouter";
 import { mobileRouter } from "./mobileRouter";
 import { triggerLicenseExpiryCheck } from "./scheduledJobs";
@@ -12271,6 +12274,15 @@ Hãy trả về JSON với format:
         return { success: true };
       }),
   }),
+
+  // MTTR/MTBF Comparison Export
+  mttrMtbfComparison: mttrMtbfComparisonRouter,
+
+  // MTTR/MTBF Alert Thresholds
+  mttrMtbfAlert: mttrMtbfAlertRouter,
+
+  // MTTR/MTBF AI Prediction
+  mttrMtbfPrediction: mttrMtbfPredictionRouter,
 });
 
 export type AppRouter = typeof appRouter;

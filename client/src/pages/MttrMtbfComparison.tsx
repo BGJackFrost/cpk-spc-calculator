@@ -13,7 +13,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { trpc } from '@/lib/trpc';
+import { useToast } from '@/hooks/use-toast';
 import {
   BarChart3,
   RefreshCw,
@@ -28,6 +30,9 @@ import {
   Activity,
   Clock,
   Wrench,
+  FileSpreadsheet,
+  FileText,
+  Loader2,
 } from 'lucide-react';
 import {
   BarChart,
@@ -84,6 +89,45 @@ export default function MttrMtbfComparison() {
   const [selectedItems, setSelectedItems] = useState<number[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [days, setDays] = useState(30);
+  const [isExporting, setIsExporting] = useState(false);
+  const { toast } = useToast();
+
+  // Export mutations
+  const exportExcelMutation = trpc.mttrMtbfComparison.exportExcel.useMutation({
+    onSuccess: (data) => {
+      window.open(data.url, '_blank');
+      toast({
+        title: 'Xuất Excel thành công',
+        description: `File ${data.filename} đã được tạo`,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Lỗi xuất Excel',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+    onSettled: () => setIsExporting(false),
+  });
+
+  const exportPdfMutation = trpc.mttrMtbfComparison.exportPdf.useMutation({
+    onSuccess: (data) => {
+      window.open(data.url, '_blank');
+      toast({
+        title: 'Xuất PDF thành công',
+        description: `File ${data.filename} đã được tạo`,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Lỗi xuất PDF',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+    onSettled: () => setIsExporting(false),
+  });
 
   // Generate comparison data
   const allData = useMemo(() => {
@@ -191,6 +235,32 @@ export default function MttrMtbfComparison() {
     production_line: 'Dây chuyền',
   }[targetType];
 
+  // Handle export
+  const handleExport = (format: 'excel' | 'pdf') => {
+    setIsExporting(true);
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+
+    const targetIds = comparisonData.map(item => item.id);
+
+    if (format === 'excel') {
+      exportExcelMutation.mutate({
+        targetType,
+        targetIds,
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+      });
+    } else {
+      exportPdfMutation.mutate({
+        targetType,
+        targetIds,
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+      });
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -218,10 +288,28 @@ export default function MttrMtbfComparison() {
                 <SelectItem value="90">90 ngày</SelectItem>
               </SelectContent>
             </Select>
-            <Button variant="outline">
-              <Download className="w-4 h-4 mr-2" />
-              Xuất báo cáo
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" disabled={isExporting}>
+                  {isExporting ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Download className="w-4 h-4 mr-2" />
+                  )}
+                  Xuất báo cáo
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => handleExport('excel')}>
+                  <FileSpreadsheet className="w-4 h-4 mr-2 text-green-600" />
+                  Xuất Excel (.xlsx)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport('pdf')}>
+                  <FileText className="w-4 h-4 mr-2 text-red-600" />
+                  Xuất PDF (.pdf)
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
@@ -282,9 +370,21 @@ export default function MttrMtbfComparison() {
               <div className="flex items-center gap-3">
                 <Trophy className="w-10 h-10 text-green-600" />
                 <div>
-                  <p className="text-xs text-green-600 font-medium">MTBF cao nhất</p>
-                  <p className="text-lg font-bold text-green-700">{stats.bestMtbf.name}</p>
-                  <p className="text-sm text-green-600">{stats.bestMtbf.mtbf} giờ</p>
+                  <p className="text-sm text-muted-foreground">MTBF tốt nhất</p>
+                  <p className="text-lg font-bold">{stats.bestMtbf?.name}</p>
+                  <p className="text-sm text-green-600">{stats.bestMtbf?.mtbf} giờ</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="bg-gradient-to-br from-red-50 to-red-100 dark:from-red-950/30 dark:to-red-900/20">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="w-10 h-10 text-red-600" />
+                <div>
+                  <p className="text-sm text-muted-foreground">MTBF kém nhất</p>
+                  <p className="text-lg font-bold">{stats.worstMtbf?.name}</p>
+                  <p className="text-sm text-red-600">{stats.worstMtbf?.mtbf} giờ</p>
                 </div>
               </div>
             </CardContent>
@@ -292,23 +392,11 @@ export default function MttrMtbfComparison() {
           <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/30 dark:to-blue-900/20">
             <CardContent className="pt-6">
               <div className="flex items-center gap-3">
-                <Wrench className="w-10 h-10 text-blue-600" />
+                <Clock className="w-10 h-10 text-blue-600" />
                 <div>
-                  <p className="text-xs text-blue-600 font-medium">MTTR thấp nhất</p>
-                  <p className="text-lg font-bold text-blue-700">{stats.bestMttr.name}</p>
-                  <p className="text-sm text-blue-600">{stats.bestMttr.mttr} phút</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-950/30 dark:to-amber-900/20">
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <AlertTriangle className="w-10 h-10 text-amber-600" />
-                <div>
-                  <p className="text-xs text-amber-600 font-medium">Cần cải thiện MTBF</p>
-                  <p className="text-lg font-bold text-amber-700">{stats.worstMtbf.name}</p>
-                  <p className="text-sm text-amber-600">{stats.worstMtbf.mtbf} giờ</p>
+                  <p className="text-sm text-muted-foreground">MTTR trung bình</p>
+                  <p className="text-2xl font-bold">{stats.avgMttr}</p>
+                  <p className="text-sm text-muted-foreground">phút</p>
                 </div>
               </div>
             </CardContent>
@@ -318,9 +406,8 @@ export default function MttrMtbfComparison() {
               <div className="flex items-center gap-3">
                 <Activity className="w-10 h-10 text-purple-600" />
                 <div>
-                  <p className="text-xs text-purple-600 font-medium">Availability TB</p>
-                  <p className="text-lg font-bold text-purple-700">{stats.avgAvailability}%</p>
-                  <p className="text-sm text-purple-600">MTBF TB: {stats.avgMtbf}h</p>
+                  <p className="text-sm text-muted-foreground">Availability TB</p>
+                  <p className="text-2xl font-bold">{stats.avgAvailability}%</p>
                 </div>
               </div>
             </CardContent>
@@ -328,122 +415,53 @@ export default function MttrMtbfComparison() {
         </div>
 
         {/* Charts */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Bar Chart */}
-          <Card>
-            <CardHeader>
-              <CardTitle>So sánh MTTR & MTBF</CardTitle>
-              <CardDescription>
-                Biểu đồ cột so sánh các chỉ số
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[400px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={comparisonData} layout="vertical">
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis type="number" />
-                    <YAxis 
-                      dataKey="name" 
-                      type="category" 
-                      width={80}
-                      tick={{ fontSize: 11 }}
-                    />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: 'hsl(var(--card))',
-                        border: '1px solid hsl(var(--border))',
-                        borderRadius: '8px',
-                      }}
-                    />
-                    <Legend />
-                    <Bar dataKey="mttr" name="MTTR (phút)" fill="#3b82f6" />
-                    <Bar dataKey="mtbf" name="MTBF (giờ)" fill="#22c55e" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
+        <Tabs defaultValue="bar" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="bar">Biểu đồ cột</TabsTrigger>
+            <TabsTrigger value="radar">Biểu đồ Radar</TabsTrigger>
+            <TabsTrigger value="scatter">MTTR vs MTBF</TabsTrigger>
+          </TabsList>
 
-          {/* Scatter Plot */}
-          <Card>
-            <CardHeader>
-              <CardTitle>MTTR vs MTBF</CardTitle>
-              <CardDescription>
-                Phân bố MTTR và MTBF (kích thước = số lỗi)
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[400px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <ScatterChart>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis 
-                      type="number" 
-                      dataKey="x" 
-                      name="MTTR" 
-                      unit=" phút"
-                      label={{ value: 'MTTR (phút)', position: 'bottom' }}
-                    />
-                    <YAxis 
-                      type="number" 
-                      dataKey="y" 
-                      name="MTBF" 
-                      unit=" giờ"
-                      label={{ value: 'MTBF (giờ)', angle: -90, position: 'insideLeft' }}
-                    />
-                    <ZAxis type="number" dataKey="z" range={[50, 400]} />
-                    <Tooltip 
-                      cursor={{ strokeDasharray: '3 3' }}
-                      content={({ active, payload }) => {
-                        if (active && payload && payload.length) {
-                          const data = payload[0].payload;
-                          return (
-                            <div className="bg-card border rounded-lg p-3 shadow-lg">
-                              <p className="font-bold">{data.name}</p>
-                              <p className="text-sm">MTTR: {data.x} phút</p>
-                              <p className="text-sm">MTBF: {data.y} giờ</p>
-                              <p className="text-sm">Availability: {(data.availability * 100).toFixed(1)}%</p>
-                            </div>
-                          );
-                        }
-                        return null;
-                      }}
-                    />
-                    <Scatter 
-                      data={scatterData} 
-                      fill="#8b5cf6"
-                    >
-                      {scatterData.map((entry, index) => (
-                        <Cell 
-                          key={`cell-${index}`} 
-                          fill={entry.availability > 0.95 ? '#22c55e' : entry.availability > 0.90 ? '#f59e0b' : '#ef4444'}
-                        />
-                      ))}
-                    </Scatter>
-                  </ScatterChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+          <TabsContent value="bar">
+            <Card>
+              <CardHeader>
+                <CardTitle>So sánh MTTR/MTBF</CardTitle>
+                <CardDescription>
+                  So sánh chỉ số MTTR và MTBF giữa các {targetTypeLabel.toLowerCase()}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[400px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={comparisonData} layout="vertical">
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis type="number" />
+                      <YAxis dataKey="name" type="category" width={100} />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="mttr" name="MTTR (phút)" fill="#ef4444" />
+                      <Bar dataKey="mtbf" name="MTBF (giờ)" fill="#22c55e" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-        {/* Radar Chart with Selection */}
-        <Card>
-          <CardHeader>
-            <CardTitle>So sánh đa chiều</CardTitle>
-            <CardDescription>
-              Chọn tối đa 8 mục để so sánh trên biểu đồ radar
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-              <div className="lg:col-span-3">
+          <TabsContent value="radar">
+            <Card>
+              <CardHeader>
+                <CardTitle>So sánh đa chiều</CardTitle>
+                <CardDescription>
+                  Chọn tối đa 8 {targetTypeLabel.toLowerCase()} để so sánh (click vào bảng bên dưới)
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
                 <div className="h-[400px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <RadarChart data={radarData}>
                       <PolarGrid />
-                      <PolarAngleAxis dataKey="metric" tick={{ fontSize: 12 }} />
+                      <PolarAngleAxis dataKey="metric" />
                       <PolarRadiusAxis angle={30} domain={[0, 100]} />
                       {selectedData.map((item, index) => (
                         <Radar
@@ -452,8 +470,7 @@ export default function MttrMtbfComparison() {
                           dataKey={item.name}
                           stroke={COLORS[index % COLORS.length]}
                           fill={COLORS[index % COLORS.length]}
-                          fillOpacity={0.15}
-                          strokeWidth={2}
+                          fillOpacity={0.2}
                         />
                       ))}
                       <Legend />
@@ -461,35 +478,125 @@ export default function MttrMtbfComparison() {
                     </RadarChart>
                   </ResponsiveContainer>
                 </div>
-              </div>
-              <div>
-                <p className="text-sm font-medium mb-3">Chọn để so sánh ({selectedItems.length}/8):</p>
-                <ScrollArea className="h-[360px] pr-4">
-                  <div className="space-y-2">
-                    {comparisonData.map(item => (
-                      <div 
-                        key={item.id}
-                        className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors ${
-                          selectedItems.includes(item.id) || (selectedItems.length === 0 && comparisonData.indexOf(item) < 5)
-                            ? 'bg-primary/10 border border-primary/30'
-                            : 'hover:bg-muted'
-                        }`}
-                        onClick={() => toggleItemSelection(item.id)}
-                      >
-                        <Checkbox 
-                          checked={selectedItems.includes(item.id) || (selectedItems.length === 0 && comparisonData.indexOf(item) < 5)}
-                        />
-                        <div className="flex-1">
-                          <p className="text-sm font-medium">{item.name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            MTBF: {item.mtbf}h | MTTR: {item.mttr}m
-                          </p>
-                        </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="scatter">
+            <Card>
+              <CardHeader>
+                <CardTitle>Phân bố MTTR vs MTBF</CardTitle>
+                <CardDescription>
+                  Kích thước điểm thể hiện số lượng lỗi
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[400px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ScatterChart>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis 
+                        dataKey="x" 
+                        name="MTTR" 
+                        unit=" phút"
+                        label={{ value: 'MTTR (phút)', position: 'bottom' }}
+                      />
+                      <YAxis 
+                        dataKey="y" 
+                        name="MTBF" 
+                        unit=" giờ"
+                        label={{ value: 'MTBF (giờ)', angle: -90, position: 'left' }}
+                      />
+                      <ZAxis dataKey="z" range={[50, 400]} />
+                      <Tooltip 
+                        cursor={{ strokeDasharray: '3 3' }}
+                        content={({ active, payload }) => {
+                          if (active && payload && payload.length) {
+                            const data = payload[0].payload;
+                            return (
+                              <div className="bg-background border rounded-lg p-3 shadow-lg">
+                                <p className="font-bold">{data.name}</p>
+                                <p>MTTR: {data.x} phút</p>
+                                <p>MTBF: {data.y} giờ</p>
+                                <p>Availability: {(data.availability * 100).toFixed(1)}%</p>
+                              </div>
+                            );
+                          }
+                          return null;
+                        }}
+                      />
+                      <Scatter data={scatterData}>
+                        {scatterData.map((entry, index) => (
+                          <Cell 
+                            key={`cell-${index}`} 
+                            fill={entry.availability > 0.95 ? '#22c55e' : entry.availability > 0.90 ? '#f59e0b' : '#ef4444'}
+                          />
+                        ))}
+                      </Scatter>
+                    </ScatterChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+
+        {/* Ranking Table */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Bảng xếp hạng</CardTitle>
+            <CardDescription>
+              Xếp hạng {targetTypeLabel.toLowerCase()} theo hiệu suất tổng hợp
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {comparisonData.slice(0, 10).map((item, index) => {
+                const score = (item.mtbf / 3) + (100 - item.mttr) + (item.availability * 100);
+                return (
+                  <div 
+                    key={item.id}
+                    className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-colors ${
+                      selectedItems.includes(item.id) 
+                        ? 'bg-primary/10 border border-primary' 
+                        : 'bg-muted/50 hover:bg-muted'
+                    }`}
+                    onClick={() => toggleItemSelection(item.id)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${
+                        index === 0 ? 'bg-yellow-500 text-white' :
+                        index === 1 ? 'bg-gray-400 text-white' :
+                        index === 2 ? 'bg-amber-600 text-white' :
+                        'bg-muted text-muted-foreground'
+                      }`}>
+                        {index + 1}
                       </div>
-                    ))}
+                      <div>
+                        <p className="font-medium">{item.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          MTBF: {item.mtbf}h | MTTR: {item.mttr}p | Avail: {(item.availability * 100).toFixed(1)}%
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={
+                        item.availability > 0.95 && item.mtbf > 150 ? 'default' :
+                        item.availability > 0.90 && item.mtbf > 100 ? 'secondary' :
+                        'destructive'
+                      }>
+                        {item.availability > 0.95 && item.mtbf > 150 ? 'Tốt' :
+                         item.availability > 0.90 && item.mtbf > 100 ? 'Trung bình' :
+                         'Cần cải thiện'}
+                      </Badge>
+                      <Checkbox 
+                        checked={selectedItems.includes(item.id)}
+                        onCheckedChange={() => toggleItemSelection(item.id)}
+                      />
+                    </div>
                   </div>
-                </ScrollArea>
-              </div>
+                );
+              })}
             </div>
           </CardContent>
         </Card>
@@ -497,7 +604,7 @@ export default function MttrMtbfComparison() {
         {/* Detailed Table */}
         <Card>
           <CardHeader>
-            <CardTitle>Bảng chi tiết</CardTitle>
+            <CardTitle>Bảng dữ liệu chi tiết</CardTitle>
             <CardDescription>
               Dữ liệu chi tiết của tất cả {targetTypeLabel.toLowerCase()}
             </CardDescription>
