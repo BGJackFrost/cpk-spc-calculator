@@ -137,12 +137,59 @@ export default function WorkOrderNotificationConfig() {
     updatePushMutation.mutate(pushConfig);
   };
 
+  // Test SMS mutation
+  const testSmsMutation = trpc.workOrderNotification.testSms.useMutation({
+    onSuccess: (data) => {
+      if (data.success) {
+        toast.success(`SMS test thành công! Message ID: ${data.messageId}`);
+      } else {
+        toast.error(`SMS test thất bại: ${data.error}`);
+      }
+    },
+    onError: (error) => {
+      toast.error(`Lỗi: ${error.message}`);
+    },
+  });
+
+  // Test Push mutation
+  const testPushMutation = trpc.workOrderNotification.testPush.useMutation({
+    onSuccess: (data) => {
+      if (data.success) {
+        toast.success(`Push test thành công! Message ID: ${data.messageId}`);
+      } else {
+        toast.error(`Push test thất bại: ${data.error}`);
+      }
+    },
+    onError: (error) => {
+      toast.error(`Lỗi: ${error.message}`);
+    },
+  });
+
+  const [testPhoneNumber, setTestPhoneNumber] = useState("");
+  const [testPushToken, setTestPushToken] = useState("");
+
   const handleTestSms = () => {
-    toast.info("Chức năng test SMS sẽ được triển khai khi có cấu hình Twilio hợp lệ");
+    if (!testPhoneNumber) {
+      toast.error("Vui lòng nhập số điện thoại test");
+      return;
+    }
+    if (!smsConfig.accountSid || !smsConfig.authToken) {
+      toast.error("Vui lòng cấu hình Account SID và Auth Token trước");
+      return;
+    }
+    testSmsMutation.mutate({ phoneNumber: testPhoneNumber });
   };
 
   const handleTestPush = () => {
-    toast.info("Chức năng test Push Notification sẽ được triển khai khi có cấu hình Firebase hợp lệ");
+    if (!testPushToken) {
+      toast.error("Vui lòng nhập Push Token test");
+      return;
+    }
+    if (!pushConfig.projectId || !pushConfig.serverKey) {
+      toast.error("Vui lòng cấu hình Project ID và Server Key trước");
+      return;
+    }
+    testPushMutation.mutate({ token: testPushToken });
   };
 
   return (
@@ -301,11 +348,34 @@ export default function WorkOrderNotificationConfig() {
                   </div>
                 </div>
 
-                <div className="flex justify-end gap-2 pt-4">
-                  <Button variant="outline" onClick={handleTestSms}>
-                    <TestTube className="w-4 h-4 mr-2" />
+                <div className="border-t pt-4">
+                  <h4 className="font-medium mb-3 flex items-center gap-2">
+                    <TestTube className="w-4 h-4" />
                     Test SMS
-                  </Button>
+                  </h4>
+                  <div className="flex gap-2">
+                    <Input
+                      value={testPhoneNumber}
+                      onChange={(e) => setTestPhoneNumber(e.target.value)}
+                      placeholder="+84xxxxxxxxx"
+                      className="max-w-xs"
+                    />
+                    <Button 
+                      variant="outline" 
+                      onClick={handleTestSms}
+                      disabled={testSmsMutation.isPending}
+                    >
+                      {testSmsMutation.isPending ? (
+                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <TestTube className="w-4 h-4 mr-2" />
+                      )}
+                      Gửi SMS Test
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-4">
                   <Button
                     onClick={handleSaveSmsConfig}
                     disabled={updateSmsMutation.isPending}
@@ -428,11 +498,37 @@ export default function WorkOrderNotificationConfig() {
                   </div>
                 </div>
 
+                <div className="border-t pt-4">
+                  <h4 className="font-medium mb-3 flex items-center gap-2">
+                    <TestTube className="w-4 h-4" />
+                    Test Push Notification
+                  </h4>
+                  <div className="flex gap-2">
+                    <Input
+                      value={testPushToken}
+                      onChange={(e) => setTestPushToken(e.target.value)}
+                      placeholder="FCM Device Token"
+                      className="flex-1"
+                    />
+                    <Button 
+                      variant="outline" 
+                      onClick={handleTestPush}
+                      disabled={testPushMutation.isPending}
+                    >
+                      {testPushMutation.isPending ? (
+                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <TestTube className="w-4 h-4 mr-2" />
+                      )}
+                      Gửi Push Test
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Lấy FCM Token từ ứng dụng mobile hoặc web của bạn
+                  </p>
+                </div>
+
                 <div className="flex justify-end gap-2 pt-4">
-                  <Button variant="outline" onClick={handleTestPush}>
-                    <TestTube className="w-4 h-4 mr-2" />
-                    Test Push
-                  </Button>
                   <Button
                     onClick={handleSavePushConfig}
                     disabled={updatePushMutation.isPending}

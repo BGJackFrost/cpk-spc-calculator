@@ -1,5 +1,6 @@
-import { useState, useRef } from "react";
+import { useState, useRef, Suspense, lazy } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
+import { Model3DViewer } from "@/components/Model3DViewer";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,6 +48,7 @@ import {
   RefreshCw,
   Download,
   FileBox,
+  Loader2,
 } from "lucide-react";
 
 const CATEGORIES = [
@@ -754,43 +756,56 @@ export default function Model3DManagement() {
 
         {/* Preview Dialog */}
         <Dialog open={isPreviewDialogOpen} onOpenChange={setIsPreviewDialogOpen}>
-          <DialogContent className="max-w-4xl">
+          <DialogContent className="max-w-5xl max-h-[90vh]">
             <DialogHeader>
-              <DialogTitle>{selectedModel?.name}</DialogTitle>
+              <DialogTitle className="flex items-center gap-2">
+                <Box className="w-5 h-5" />
+                {selectedModel?.name}
+              </DialogTitle>
               <DialogDescription>
-                Xem trước model 3D
+                Xem trước model 3D - Sử dụng chuột để xoay, zoom và di chuyển
               </DialogDescription>
             </DialogHeader>
 
-            <div className="aspect-video bg-muted rounded-lg flex items-center justify-center">
+            <div className="h-[500px] rounded-lg overflow-hidden">
               {selectedModel?.model_url ? (
-                <div className="text-center">
-                  <FileBox className="w-24 h-24 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground mb-4">
-                    Preview 3D model sẽ được hiển thị khi tích hợp vào sơ đồ nhà máy
-                  </p>
-                  <Button
-                    variant="outline"
-                    onClick={() => window.open(selectedModel.model_url, "_blank")}
-                  >
-                    <Download className="w-4 h-4 mr-2" />
-                    Tải xuống file
-                  </Button>
-                </div>
+                <Model3DViewer
+                  modelUrl={selectedModel.model_url}
+                  modelName={selectedModel.name}
+                  modelFormat={selectedModel.model_format || 'glb'}
+                  defaultScale={Number(selectedModel.default_scale) || 1}
+                  defaultRotationX={Number(selectedModel.default_rotation_x) || 0}
+                  defaultRotationY={Number(selectedModel.default_rotation_y) || 0}
+                  defaultRotationZ={Number(selectedModel.default_rotation_z) || 0}
+                  showControls={true}
+                  showInfo={true}
+                  autoRotate={false}
+                />
               ) : (
-                <p className="text-muted-foreground">Không có file model</p>
+                <div className="h-full flex items-center justify-center bg-muted">
+                  <div className="text-center">
+                    <FileBox className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+                    <p className="text-muted-foreground">Không có file model</p>
+                  </div>
+                </div>
               )}
             </div>
 
             {selectedModel && (
-              <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="grid grid-cols-3 gap-4 text-sm border-t pt-4">
                 <div>
                   <span className="text-muted-foreground">Danh mục:</span>{" "}
-                  {CATEGORIES.find((c) => c.value === selectedModel.category)?.label}
+                  <Badge variant="outline">
+                    {CATEGORIES.find((c) => c.value === selectedModel.category)?.label}
+                  </Badge>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Định dạng:</span>{" "}
-                  {selectedModel.model_format?.toUpperCase()}
+                  <Badge>{selectedModel.model_format?.toUpperCase()}</Badge>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Kích thước file:</span>{" "}
+                  {formatFileSize(selectedModel.file_size)}
                 </div>
                 <div>
                   <span className="text-muted-foreground">Nhà sản xuất:</span>{" "}
@@ -801,15 +816,25 @@ export default function Model3DManagement() {
                   {selectedModel.model_number || "N/A"}
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Scale:</span>{" "}
-                  {selectedModel.default_scale}
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Kích thước:</span>{" "}
-                  {formatFileSize(selectedModel.file_size)}
+                  <span className="text-muted-foreground">Scale mặc định:</span>{" "}
+                  {selectedModel.default_scale || 1}
                 </div>
               </div>
             )}
+
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => window.open(selectedModel?.model_url, "_blank")}
+                disabled={!selectedModel?.model_url}
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Tải xuống file
+              </Button>
+              <Button variant="outline" onClick={() => setIsPreviewDialogOpen(false)}>
+                Đóng
+              </Button>
+            </div>
           </DialogContent>
         </Dialog>
       </div>

@@ -11854,6 +11854,37 @@ Hãy trả về JSON với format:
       .mutation(async ({ input }) => {
         return await upsertPushConfig(input);
       }),
+
+    // Test SMS configuration
+    testSms: protectedProcedure
+      .input(z.object({ phoneNumber: z.string() }))
+      .mutation(async ({ input }) => {
+        const { workOrderNotificationService } = await import('./workOrderNotificationService');
+        return await workOrderNotificationService.testSmsConfig(input.phoneNumber);
+      }),
+
+    // Test Push configuration
+    testPush: protectedProcedure
+      .input(z.object({ token: z.string() }))
+      .mutation(async ({ input }) => {
+        const { workOrderNotificationService } = await import('./workOrderNotificationService');
+        return await workOrderNotificationService.testPushConfig(input.token);
+      }),
+
+    // Send notification to technician
+    sendNotification: protectedProcedure
+      .input(z.object({
+        workOrderId: z.number(),
+        technicianId: z.number(),
+        notificationType: z.enum(['new_work_order', 'assigned', 'status_change', 'due_soon', 'overdue', 'comment', 'escalation']),
+        title: z.string(),
+        message: z.string(),
+        metadata: z.any().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { workOrderNotificationService } = await import('./workOrderNotificationService');
+        return await workOrderNotificationService.sendNotification(input);
+      }),
   }),
 
   // MTTR/MTBF Report Router
@@ -12072,6 +12103,56 @@ Hãy trả về JSON với format:
           })
         );
         return results;
+      }),
+
+    // Export to Excel
+    exportExcel: protectedProcedure
+      .input(z.object({
+        targetType: z.enum(['device', 'machine', 'production_line']),
+        targetId: z.number(),
+        startDate: z.date(),
+        endDate: z.date(),
+        targetName: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { mttrMtbfExportService } = await import('./mttrMtbfExportService');
+        const buffer = await mttrMtbfExportService.exportToExcel(
+          input.targetType,
+          input.targetId,
+          input.startDate,
+          input.endDate,
+          input.targetName
+        );
+        return {
+          data: buffer.toString('base64'),
+          filename: `mttr-mtbf-report-${input.targetType}-${input.targetId}-${Date.now()}.xlsx`,
+          contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        };
+      }),
+
+    // Export to PDF
+    exportPdf: protectedProcedure
+      .input(z.object({
+        targetType: z.enum(['device', 'machine', 'production_line']),
+        targetId: z.number(),
+        startDate: z.date(),
+        endDate: z.date(),
+        targetName: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { mttrMtbfExportService } = await import('./mttrMtbfExportService');
+        const buffer = await mttrMtbfExportService.exportToPdf(
+          input.targetType,
+          input.targetId,
+          input.startDate,
+          input.endDate,
+          input.targetName
+        );
+        return {
+          data: buffer.toString('base64'),
+          filename: `mttr-mtbf-report-${input.targetType}-${input.targetId}-${Date.now()}.pdf`,
+          contentType: 'application/pdf',
+        };
       }),
   }),
 });

@@ -7977,3 +7977,26 @@
 - [x] Biểu đồ phân bố work order theo loại
 - [x] Danh sách failure events
 - [x] Tích hợp vào menu IoT
+
+
+## Phase 99: IoT Enhancement Part 2
+
+### Three.js Viewer để Preview Model 3D
+- [x] Tích hợp Three.js viewer vào trang quản lý Model 3D
+- [x] Hỗ trợ load và preview file GLTF/GLB từ S3
+- [x] Thêm camera controls (orbit, zoom, pan)
+- [x] Hiển thị thông tin model (vertices, faces, materials)
+- [x] Thêm lighting và environment map
+
+### SMS/Push thực tế cho Work Order
+- [x] Tích hợp Twilio SDK để gửi SMS thực tế
+- [x] Tích hợp Firebase Admin SDK để gửi Push Notification
+- [x] Tạo service gửi notification khi có work order mới
+- [x] Gửi notification khi work order được assign/update
+- [x] Lưu lịch sử gửi notification vào database
+
+### Export báo cáo MTTR/MTBF
+- [x] Export báo cáo MTTR/MTBF ra PDF
+- [x] Export báo cáo MTTR/MTBF ra Excel
+- [ ] Bao gồm biểu đồ xu hướng trong báo cáo
+- [ ] Bao gồm bảng thống kê chi tiết

@@ -50,7 +50,15 @@ import {
   CheckCircle,
   XCircle,
   FileText,
+  FileSpreadsheet,
+  File,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 // Chart components
 import {
@@ -122,6 +130,77 @@ export default function MttrMtbfReport() {
       periodType: "monthly",
       periodStart: new Date(startDate),
       periodEnd: new Date(endDate),
+    });
+  };
+
+  // Export mutations
+  const exportExcelMutation = trpc.mttrMtbf.exportExcel.useMutation({
+    onSuccess: (data) => {
+      // Convert base64 to blob and download
+      const byteCharacters = atob(data.data);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: data.contentType });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = data.filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success('Xuất báo cáo Excel thành công!');
+    },
+    onError: (error) => {
+      toast.error(`Lỗi xuất Excel: ${error.message}`);
+    },
+  });
+
+  const exportPdfMutation = trpc.mttrMtbf.exportPdf.useMutation({
+    onSuccess: (data) => {
+      // Convert base64 to blob and download
+      const byteCharacters = atob(data.data);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: data.contentType });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = data.filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success('Xuất báo cáo PDF thành công!');
+    },
+    onError: (error) => {
+      toast.error(`Lỗi xuất PDF: ${error.message}`);
+    },
+  });
+
+  const handleExportExcel = () => {
+    exportExcelMutation.mutate({
+      targetType,
+      targetId,
+      startDate: new Date(startDate),
+      endDate: new Date(endDate),
+      targetName: `${targetType === 'device' ? 'Thiết bị' : targetType === 'machine' ? 'Máy móc' : 'Dây chuyền'} #${targetId}`,
+    });
+  };
+
+  const handleExportPdf = () => {
+    exportPdfMutation.mutate({
+      targetType,
+      targetId,
+      startDate: new Date(startDate),
+      endDate: new Date(endDate),
+      targetName: `${targetType === 'device' ? 'Thiết bị' : targetType === 'machine' ? 'Máy móc' : 'Dây chuyền'} #${targetId}`,
     });
   };
 
@@ -201,10 +280,31 @@ export default function MttrMtbfReport() {
               )}
               Tính toán
             </Button>
-            <Button variant="outline">
-              <Download className="w-4 h-4 mr-2" />
-              Xuất báo cáo
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  variant="outline"
+                  disabled={exportExcelMutation.isPending || exportPdfMutation.isPending}
+                >
+                  {(exportExcelMutation.isPending || exportPdfMutation.isPending) ? (
+                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Download className="w-4 h-4 mr-2" />
+                  )}
+                  Xuất báo cáo
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleExportExcel}>
+                  <FileSpreadsheet className="w-4 h-4 mr-2" />
+                  Xuất Excel (.xlsx)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportPdf}>
+                  <File className="w-4 h-4 mr-2" />
+                  Xuất PDF (.pdf)
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
