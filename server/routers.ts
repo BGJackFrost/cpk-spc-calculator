@@ -12170,6 +12170,103 @@ Hãy trả về JSON với format:
         };
       }),
   }),
+
+  // Scheduled MTTR/MTBF Reports Router
+  scheduledMttrMtbf: router({
+    // Get all scheduled configs
+    getConfigs: protectedProcedure
+      .query(async ({ ctx }) => {
+        const { getScheduledMttrMtbfConfigs } = await import('./services/scheduledMttrMtbfService');
+        return getScheduledMttrMtbfConfigs(ctx.user?.id);
+      }),
+
+    // Create new scheduled config
+    createConfig: protectedProcedure
+      .input(z.object({
+        name: z.string().min(1, 'Tên không được để trống'),
+        targetType: z.enum(['device', 'machine', 'production_line']),
+        targetId: z.number(),
+        targetName: z.string(),
+        frequency: z.enum(['daily', 'weekly', 'monthly']),
+        dayOfWeek: z.number().min(0).max(6).optional(),
+        dayOfMonth: z.number().min(1).max(31).optional(),
+        timeOfDay: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/),
+        recipients: z.array(z.string().email()),
+        format: z.enum(['excel', 'pdf', 'both']),
+        isActive: z.boolean().default(true),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const { createScheduledMttrMtbfConfig } = await import('./services/scheduledMttrMtbfService');
+        const id = await createScheduledMttrMtbfConfig({
+          ...input,
+          createdBy: ctx.user?.id,
+        });
+        if (!id) {
+          throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Không thể tạo cấu hình' });
+        }
+        return { id };
+      }),
+
+    // Update scheduled config
+    updateConfig: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        name: z.string().optional(),
+        targetType: z.enum(['device', 'machine', 'production_line']).optional(),
+        targetId: z.number().optional(),
+        targetName: z.string().optional(),
+        frequency: z.enum(['daily', 'weekly', 'monthly']).optional(),
+        dayOfWeek: z.number().min(0).max(6).optional().nullable(),
+        dayOfMonth: z.number().min(1).max(31).optional().nullable(),
+        timeOfDay: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).optional(),
+        recipients: z.array(z.string().email()).optional(),
+        format: z.enum(['excel', 'pdf', 'both']).optional(),
+        isActive: z.boolean().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { updateScheduledMttrMtbfConfig } = await import('./services/scheduledMttrMtbfService');
+        const { id, ...data } = input;
+        const success = await updateScheduledMttrMtbfConfig(id, data as any);
+        if (!success) {
+          throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Không thể cập nhật cấu hình' });
+        }
+        return { success: true };
+      }),
+
+    // Delete scheduled config
+    deleteConfig: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const { deleteScheduledMttrMtbfConfig } = await import('./services/scheduledMttrMtbfService');
+        const success = await deleteScheduledMttrMtbfConfig(input.id);
+        if (!success) {
+          throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Không thể xóa cấu hình' });
+        }
+        return { success: true };
+      }),
+
+    // Send report manually
+    sendNow: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const { getScheduledMttrMtbfConfigs, sendScheduledMttrMtbfReport, updateScheduledMttrMtbfConfig } = await import('./services/scheduledMttrMtbfService');
+        const configs = await getScheduledMttrMtbfConfigs();
+        const config = configs.find(c => c.id === input.id);
+        if (!config) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Không tìm thấy cấu hình' });
+        }
+        const result = await sendScheduledMttrMtbfReport(config);
+        await updateScheduledMttrMtbfConfig(input.id, {
+          lastSentAt: new Date().toISOString(),
+          lastSentStatus: result.success ? 'success' : 'failed',
+          lastSentError: result.error,
+        });
+        if (!result.success) {
+          throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: result.error || 'Lỗi gửi báo cáo' });
+        }
+        return { success: true };
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

@@ -409,6 +409,32 @@
 - [x] Thêm route /about vào App.tsx
 - [x] Thêm menu "Thông tin Hệ thống" vào DashboardLayout
 
+## Phase 104 - IoT Enhancement: Test Notification, MTTR/MTBF Integration, Export Reports
+
+### Test gửi thông báo email/Telegram
+- [ ] Thêm API testEmailNotification để gửi email test
+- [ ] Thêm API testTelegramNotification để gửi Telegram test
+- [ ] Thêm nút Test trong NotificationPreferencesPage
+- [ ] Hiển thị kết quả test (success/error)
+
+### Tích hợp dữ liệu MTTR/MTBF thực tế từ work orders
+- [ ] Tạo service tính MTTR từ work_orders (thời gian từ created đến completed)
+- [ ] Tạo service tính MTBF từ work_orders (thời gian giữa các failures)
+- [ ] Cập nhật getMttrMtbfTrend để lấy dữ liệu thực từ work_orders
+- [ ] Cập nhật getMttrMtbfSummary để lấy dữ liệu thực từ work_orders
+
+### Export báo cáo MTTR/MTBF theo định kỳ
+- [ ] Tạo service export báo cáo MTTR/MTBF ra Excel
+- [ ] Thêm API exportMttrMtbfReport
+- [ ] Tạo UI cấu hình scheduled reports (daily/weekly/monthly)
+- [ ] Tạo trang UI export báo cáo MTTR/MTBF
+
+### Unit Tests
+- [ ] Test API testEmailNotification
+- [ ] Test API testTelegramNotification
+- [ ] Test MTTR/MTBF calculation từ work orders
+- [ ] Test export báo cáo MTTR/MTBF
+
 ## Phase 14 - SPC Plan Visualization và Quản lý Rules
 
 ### Trang quản lý Rules
@@ -8130,3 +8156,31 @@
 ### Unit Tests
 - [x] Test notification integration với preferences
 - [x] Test MTTR/MTBF calculations
+
+
+## Phase 104 - IoT Enhancement: Test Notification, MTTR/MTBF Integration, Export Reports
+
+### Test gửi thông báo email/Telegram
+- [x] Thêm API testEmailNotification để gửi email test
+- [x] Thêm API testTelegramNotification để gửi Telegram test
+- [x] Thêm nút Test trong NotificationPreferencesPage
+- [x] Hiển thị kết quả test (success/error)
+
+### Tích hợp dữ liệu MTTR/MTBF thực tế từ work orders
+- [x] Cập nhật calculateMttrMtbf để lấy MTTR từ work_orders (thời gian từ created đến completed)
+- [x] Cập nhật calculateMttrMtbf để tính MTBF từ work_orders (thời gian giữa các failures)
+- [x] Kết hợp dữ liệu từ failure_events và work_orders
+- [x] Thêm thông tin nguồn dữ liệu (dataSource) vào kết quả
+
+### Export báo cáo MTTR/MTBF theo định kỳ
+- [x] Tạo service scheduledMttrMtbfService cho báo cáo định kỳ
+- [x] Tạo bảng scheduled_mttr_mtbf_reports trong database
+- [x] Thêm API scheduledMttrMtbf router (CRUD + sendNow)
+- [x] Tạo trang UI ScheduledMttrMtbfReports
+- [x] Thêm route /scheduled-mttr-mtbf-reports
+
+### Unit Tests
+- [x] Test API testEmailNotification
+- [x] Test API testTelegramNotification
+- [x] Test MTTR/MTBF calculation từ work orders
+- [x] Test scheduled reports date range calculation

@@ -5608,3 +5608,29 @@ export const notificationPreferences = mysqlTable("notification_preferences", {
 
 export type NotificationPreference = typeof notificationPreferences.$inferSelect;
 export type InsertNotificationPreference = typeof notificationPreferences.$inferInsert;
+
+// Scheduled MTTR/MTBF Reports - Cấu hình báo cáo định kỳ
+export const scheduledMttrMtbfReports = mysqlTable("scheduled_mttr_mtbf_reports", {
+  id: int().autoincrement().primaryKey(),
+  name: varchar({ length: 200 }).notNull(),
+  targetType: mysqlEnum("target_type", ['device','machine','production_line']).notNull(),
+  targetId: int("target_id").notNull(),
+  targetName: varchar("target_name", { length: 255 }).notNull(),
+  frequency: mysqlEnum(['daily','weekly','monthly']).notNull(),
+  dayOfWeek: int("day_of_week"), // 0-6 for weekly
+  dayOfMonth: int("day_of_month"), // 1-31 for monthly
+  timeOfDay: varchar("time_of_day", { length: 5 }).default('08:00').notNull(),
+  recipients: text().notNull(), // JSON array of emails
+  format: mysqlEnum(['excel','pdf','both']).default('excel').notNull(),
+  isActive: int("is_active").default(1).notNull(),
+  lastSentAt: timestamp("last_sent_at", { mode: 'string' }),
+  lastSentStatus: mysqlEnum("last_sent_status", ['success','failed','pending']),
+  lastSentError: text("last_sent_error"),
+  createdBy: int("created_by"),
+  createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+  index("idx_scheduled_mttr_target").on(table.targetType, table.targetId),
+  index("idx_scheduled_mttr_active").on(table.isActive),
+]);

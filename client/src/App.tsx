@@ -258,6 +258,7 @@ import PushNotificationSettings from "./pages/PushNotificationSettings";
 import Model3DManagement from "./pages/Model3DManagement";
 import WorkOrderNotificationConfig from "./pages/WorkOrderNotificationConfig";
 import MttrMtbfReport from "./pages/MttrMtbfReport";
+import ScheduledMttrMtbfReports from "./pages/ScheduledMttrMtbfReports";
 import IotDeviceCrud from "./pages/IotDeviceCrud";
 import IotAlarmCrud from "./pages/IotAlarmCrud";
 import NotificationPreferencesPage from "./pages/NotificationPreferencesPage";
@@ -524,6 +525,7 @@ function Router() {
       <Route path="/notification-preferences" component={NotificationPreferencesPage} />
       <Route path="/work-order-notification-config" component={WorkOrderNotificationConfig} />
       <Route path="/mttr-mtbf-report" component={MttrMtbfReport} />
+      <Route path="/scheduled-mttr-mtbf-reports" component={ScheduledMttrMtbfReports} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

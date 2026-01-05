@@ -29,6 +29,8 @@ import {
   CheckCircle,
   AlertTriangle,
   Info,
+  Send,
+  Loader2,
 } from 'lucide-react';
 import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
@@ -74,6 +76,46 @@ export default function NotificationPreferencesPage() {
     },
   });
 
+  // Test email mutation
+  const testEmailMutation = trpc.notificationPreferences.testEmail.useMutation({
+    onSuccess: (data) => {
+      if (data.success) {
+        toast.success('Đã gửi email test thành công!', {
+          description: `SMTP Server: ${data.smtpHost}`,
+        });
+      } else {
+        toast.error('Gửi email test thất bại', {
+          description: data.error,
+        });
+      }
+    },
+    onError: (error) => {
+      toast.error('Lỗi khi gửi email test', {
+        description: error.message,
+      });
+    },
+  });
+
+  // Test Telegram mutation
+  const testTelegramMutation = trpc.notificationPreferences.testTelegram.useMutation({
+    onSuccess: (data) => {
+      if (data.success) {
+        toast.success('Đã gửi tin nhắn Telegram test thành công!', {
+          description: `Bot: ${data.botName}`,
+        });
+      } else {
+        toast.error('Gửi Telegram test thất bại', {
+          description: data.error,
+        });
+      }
+    },
+    onError: (error) => {
+      toast.error('Lỗi khi gửi Telegram test', {
+        description: error.message,
+      });
+    },
+  });
+
   // Load preferences into form
   useEffect(() => {
     if (preferences) {
@@ -107,6 +149,24 @@ export default function NotificationPreferencesPage() {
   // Handle reset
   const handleReset = () => {
     resetMutation.mutate();
+  };
+
+  // Handle test email
+  const handleTestEmail = () => {
+    if (!emailAddress) {
+      toast.error('Vui lòng nhập địa chỉ email trước');
+      return;
+    }
+    testEmailMutation.mutate({ email: emailAddress });
+  };
+
+  // Handle test Telegram
+  const handleTestTelegram = () => {
+    if (!telegramChatId) {
+      toast.error('Vui lòng nhập Chat ID trước');
+      return;
+    }
+    testTelegramMutation.mutate({ chatId: telegramChatId });
   };
 
   // Severity filter descriptions
@@ -182,24 +242,38 @@ export default function NotificationPreferencesPage() {
           <CardContent className="space-y-6">
             {/* Email */}
             <div className="flex items-start justify-between p-4 border rounded-lg">
-              <div className="flex items-start gap-4">
+              <div className="flex items-start gap-4 flex-1">
                 <div className="p-2 bg-blue-100 rounded-lg">
                   <Mail className="h-5 w-5 text-blue-600" />
                 </div>
-                <div className="space-y-1">
+                <div className="space-y-1 flex-1">
                   <Label className="text-base font-medium">Email</Label>
                   <p className="text-sm text-muted-foreground">
                     Nhận thông báo qua email
                   </p>
                   {emailEnabled && (
-                    <div className="mt-2">
-                      <Input
-                        type="email"
-                        placeholder="your@email.com"
-                        value={emailAddress}
-                        onChange={(e) => setEmailAddress(e.target.value)}
-                        className="max-w-xs"
-                      />
+                    <div className="mt-2 flex gap-2 items-end">
+                      <div className="flex-1 max-w-xs">
+                        <Input
+                          type="email"
+                          placeholder="your@email.com"
+                          value={emailAddress}
+                          onChange={(e) => setEmailAddress(e.target.value)}
+                        />
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleTestEmail}
+                        disabled={testEmailMutation.isPending || !emailAddress}
+                      >
+                        {testEmailMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Send className="h-4 w-4" />
+                        )}
+                        <span className="ml-1">Test</span>
+                      </Button>
                     </div>
                   )}
                 </div>
@@ -212,26 +286,42 @@ export default function NotificationPreferencesPage() {
 
             {/* Telegram */}
             <div className="flex items-start justify-between p-4 border rounded-lg">
-              <div className="flex items-start gap-4">
+              <div className="flex items-start gap-4 flex-1">
                 <div className="p-2 bg-sky-100 rounded-lg">
                   <MessageSquare className="h-5 w-5 text-sky-600" />
                 </div>
-                <div className="space-y-1">
+                <div className="space-y-1 flex-1">
                   <Label className="text-base font-medium">Telegram</Label>
                   <p className="text-sm text-muted-foreground">
                     Nhận thông báo qua Telegram
                   </p>
                   {telegramEnabled && (
                     <div className="mt-2">
-                      <Input
-                        type="text"
-                        placeholder="Chat ID"
-                        value={telegramChatId}
-                        onChange={(e) => setTelegramChatId(e.target.value)}
-                        className="max-w-xs"
-                      />
+                      <div className="flex gap-2 items-end">
+                        <div className="flex-1 max-w-xs">
+                          <Input
+                            type="text"
+                            placeholder="Chat ID"
+                            value={telegramChatId}
+                            onChange={(e) => setTelegramChatId(e.target.value)}
+                          />
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleTestTelegram}
+                          disabled={testTelegramMutation.isPending || !telegramChatId}
+                        >
+                          {testTelegramMutation.isPending ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Send className="h-4 w-4" />
+                          )}
+                          <span className="ml-1">Test</span>
+                        </Button>
+                      </div>
                       <p className="text-xs text-muted-foreground mt-1">
-                        Liên hệ admin để lấy Chat ID
+                        Liên hệ admin để lấy Chat ID hoặc sử dụng @userinfobot trên Telegram
                       </p>
                     </div>
                   )}

@@ -5677,12 +5677,12 @@ export async function updateFailureEvent(id: number, data: Partial<{
   }
 }
 
-// Calculate MTTR/MTBF from failure events
+// Calculate MTTR/MTBF from failure events AND work orders
 export async function calculateMttrMtbf(targetType: string, targetId: number, periodStart: Date, periodEnd: Date) {
   const db = await getDb();
   try {
-    // Get all failure events in the period
-    const result = await db.execute({
+    // First, get data from failure events
+    const failureResult = await db.execute({
       sql: `SELECT 
               COUNT(*) as total_failures,
               AVG(repair_duration) as avg_repair_time,
@@ -5706,33 +5706,133 @@ export async function calculateMttrMtbf(targetType: string, targetId: number, pe
       ],
     } as any);
     
-    const stats = ((result as any).rows || [])[0] || {};
+    const failureStats = ((failureResult as any).rows || [])[0] || {};
+    
+    // Second, get MTTR from work orders (time from created to completed)
+    let deviceCondition = '';
+    if (targetType === 'device') {
+      deviceCondition = 'device_id = ?';
+    } else if (targetType === 'machine') {
+      deviceCondition = 'device_id IN (SELECT id FROM iot_devices WHERE machine_id = ?)';
+    } else {
+      deviceCondition = 'device_id IN (SELECT id FROM iot_devices WHERE production_line_id = ?)';
+    }
+    
+    const workOrderResult = await db.execute({
+      sql: `SELECT 
+              COUNT(*) as total_work_orders,
+              AVG(TIMESTAMPDIFF(MINUTE, created_at, completed_at)) as avg_repair_time_wo,
+              MIN(TIMESTAMPDIFF(MINUTE, created_at, completed_at)) as min_repair_time_wo,
+              MAX(TIMESTAMPDIFF(MINUTE, created_at, completed_at)) as max_repair_time_wo,
+              STDDEV(TIMESTAMPDIFF(MINUTE, created_at, completed_at)) as std_repair_time_wo,
+              SUM(actual_duration) as total_actual_duration
+            FROM iot_maintenance_work_orders
+            WHERE ${deviceCondition}
+              AND status = 'completed'
+              AND completed_at IS NOT NULL
+              AND created_at >= ? AND created_at <= ?`,
+      args: [
+        targetId,
+        periodStart.toISOString().slice(0, 19).replace('T', ' '),
+        periodEnd.toISOString().slice(0, 19).replace('T', ' '),
+      ],
+    } as any);
+    
+    const woStats = ((workOrderResult as any).rows || [])[0] || {};
+    
+    // Third, calculate MTBF from work orders (time between corrective work orders)
+    const mtbfResult = await db.execute({
+      sql: `SELECT 
+              created_at
+            FROM iot_maintenance_work_orders
+            WHERE ${deviceCondition}
+              AND work_order_type IN ('corrective', 'emergency')
+              AND created_at >= ? AND created_at <= ?
+            ORDER BY created_at ASC`,
+      args: [
+        targetId,
+        periodStart.toISOString().slice(0, 19).replace('T', ' '),
+        periodEnd.toISOString().slice(0, 19).replace('T', ' '),
+      ],
+    } as any);
+    
+    const woTimestamps = ((mtbfResult as any).rows || []).map((r: any) => new Date(r.created_at).getTime());
+    
+    // Calculate time between failures from work orders
+    let mtbfFromWo = 0;
+    let mtbfMinWo = 0;
+    let mtbfMaxWo = 0;
+    const timeBetweenFailures: number[] = [];
+    
+    if (woTimestamps.length > 1) {
+      for (let i = 1; i < woTimestamps.length; i++) {
+        const diffHours = (woTimestamps[i] - woTimestamps[i-1]) / (1000 * 60 * 60);
+        timeBetweenFailures.push(diffHours);
+      }
+      mtbfFromWo = timeBetweenFailures.reduce((a, b) => a + b, 0) / timeBetweenFailures.length;
+      mtbfMinWo = Math.min(...timeBetweenFailures);
+      mtbfMaxWo = Math.max(...timeBetweenFailures);
+    }
     
     // Calculate total period hours
     const periodHours = (periodEnd.getTime() - periodStart.getTime()) / (1000 * 60 * 60);
-    const totalDowntimeHours = (Number(stats.total_downtime) || 0) / 60;
+    const totalDowntimeHours = (Number(failureStats.total_downtime) || 0) / 60;
     const totalUptimeHours = periodHours - totalDowntimeHours;
     
-    // MTTR in minutes
-    const mttr = Number(stats.avg_repair_time) || 0;
-    // MTBF in hours
-    const mtbf = Number(stats.avg_time_between_failures) || 0;
+    // Combine data: prioritize work order data if available, fallback to failure events
+    const hasWorkOrderData = Number(woStats.total_work_orders) > 0;
+    const hasFailureData = Number(failureStats.total_failures) > 0;
+    
+    // MTTR: prefer work order actual data
+    const mttr = hasWorkOrderData 
+      ? Number(woStats.avg_repair_time_wo) || 0
+      : Number(failureStats.avg_repair_time) || 0;
+    const mttrMin = hasWorkOrderData
+      ? Number(woStats.min_repair_time_wo) || 0
+      : Number(failureStats.min_repair_time) || 0;
+    const mttrMax = hasWorkOrderData
+      ? Number(woStats.max_repair_time_wo) || 0
+      : Number(failureStats.max_repair_time) || 0;
+    const mttrStdDev = hasWorkOrderData
+      ? Number(woStats.std_repair_time_wo) || 0
+      : Number(failureStats.std_repair_time) || 0;
+    
+    // MTBF: combine both sources
+    const mtbfFromFailure = Number(failureStats.avg_time_between_failures) || 0;
+    const mtbf = mtbfFromWo > 0 ? mtbfFromWo : mtbfFromFailure;
+    const mtbfMin = mtbfMinWo > 0 ? mtbfMinWo : Number(failureStats.min_time_between_failures) || 0;
+    const mtbfMax = mtbfMaxWo > 0 ? mtbfMaxWo : Number(failureStats.max_time_between_failures) || 0;
+    const mtbfStdDev = Number(failureStats.std_time_between_failures) || 0;
+    
     // Availability = MTBF / (MTBF + MTTR/60)
     const availability = mtbf > 0 ? mtbf / (mtbf + mttr / 60) : 0;
     
+    // Total failures = max of both sources
+    const totalFailures = Math.max(
+      Number(failureStats.total_failures) || 0,
+      Number(woStats.total_work_orders) || 0
+    );
+    
     return {
       mttr,
-      mttrMin: Number(stats.min_repair_time) || 0,
-      mttrMax: Number(stats.max_repair_time) || 0,
-      mttrStdDev: Number(stats.std_repair_time) || 0,
+      mttrMin,
+      mttrMax,
+      mttrStdDev,
       mtbf,
-      mtbfMin: Number(stats.min_time_between_failures) || 0,
-      mtbfMax: Number(stats.max_time_between_failures) || 0,
-      mtbfStdDev: Number(stats.std_time_between_failures) || 0,
+      mtbfMin,
+      mtbfMax,
+      mtbfStdDev,
       availability,
-      totalFailures: Number(stats.total_failures) || 0,
-      totalDowntimeMinutes: Number(stats.total_downtime) || 0,
+      totalFailures,
+      totalDowntimeMinutes: Number(failureStats.total_downtime) || Number(woStats.total_actual_duration) || 0,
       totalUptimeHours,
+      // Additional data source info
+      dataSource: {
+        failureEvents: hasFailureData,
+        workOrders: hasWorkOrderData,
+        workOrderCount: Number(woStats.total_work_orders) || 0,
+        failureEventCount: Number(failureStats.total_failures) || 0,
+      },
     };
   } catch (error) {
     console.error('[DB] Error calculating MTTR/MTBF:', error);
