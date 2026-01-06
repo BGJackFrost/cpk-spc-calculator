@@ -8256,3 +8256,10 @@
 - [x] Thêm notification push khi có alert OEE critical
 - [x] Tạo báo cáo tự động MTTR/MTBF theo tuần/tháng
 - [x] Viết unit tests cho các tính năng mới
+
+
+## Phase 110 - IoT Enhancement Part 3 (Jan 6, 2025)
+- [x] Thêm biểu đồ trend cho sensors trong MqttRealtimeWidget
+- [x] Cấu hình ngưỡng OEE critical theo từng production line
+- [x] Export báo cáo MTTR/MTBF sang PDF/Excel (đã có sẵn trong MttrMtbfReport.tsx)
+- [x] Viết unit tests cho các tính năng mới

@@ -242,6 +242,7 @@ import IoT3DFloorPlan from "./pages/IoT3DFloorPlan";
 import IoTWorkOrders from "./pages/IoTWorkOrders";
 import IotWorkOrderManagement from "./pages/IotWorkOrderManagement";
 import IotOeeAlertConfig from "./pages/IotOeeAlertConfig";
+import OeeThresholdsByLine from "./pages/OeeThresholdsByLine";
 import WebhookEscalationPage from "./pages/WebhookEscalationPage";
 import LatencyMonitoringPage from "./pages/LatencyMonitoringPage";
 import EscalationConfigPage from "./pages/EscalationConfigPage";
@@ -508,6 +509,7 @@ function Router() {
       <Route path="/iot-work-orders" component={IoTWorkOrders} />
       <Route path="/iot-work-order-management" component={IotWorkOrderManagement} />
       <Route path="/iot-oee-alert-config" component={IotOeeAlertConfig} />
+      <Route path="/oee-thresholds-by-line" component={OeeThresholdsByLine} />
       <Route path="/webhook-escalation" component={WebhookEscalationPage} />
       <Route path="/escalation-config" component={EscalationConfigPage} />
       <Route path="/sms-settings" component={SmsSettings} />

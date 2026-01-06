@@ -62,6 +62,7 @@ import { scheduledOtaRouter } from "./scheduledOtaRouter";
 import { mttrMtbfComparisonRouter } from "./routers/mttrMtbfComparisonRouter";
 import { mttrMtbfAlertRouter } from "./routers/mttrMtbfAlertRouter";
 import { mttrMtbfPredictionRouter } from "./routers/mttrMtbfPredictionRouter";
+import { oeeThresholdsRouter } from "./routers/oeeThresholdsRouter";
 import { maintenanceWorkOrderRouter } from "./maintenanceWorkOrderRouter";
 import { mobileRouter } from "./mobileRouter";
 import { triggerLicenseExpiryCheck } from "./scheduledJobs";
@@ -12285,6 +12286,8 @@ Hãy trả về JSON với format:
 
   // MTTR/MTBF AI Prediction
   mttrMtbfPrediction: mttrMtbfPredictionRouter,
+  // OEE Thresholds by Production Line
+  oeeThresholds: oeeThresholdsRouter,
 });
 
 export type AppRouter = typeof appRouter;
