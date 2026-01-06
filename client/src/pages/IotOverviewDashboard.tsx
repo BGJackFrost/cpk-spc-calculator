@@ -1,11 +1,12 @@
 /**
  * IoT Overview Dashboard
  * Dashboard tổng quan IoT với thống kê thiết bị, alarm và biểu đồ trend
- * Bao gồm biểu đồ MTTR/MTBF
+ * Bao gồm biểu đồ MTTR/MTBF và DraggableWidgetGrid cho phép tùy chỉnh layout
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
+import DraggableWidgetGrid, { WidgetConfig, WidgetConfigButton } from '@/components/DraggableWidgetGrid';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,6 +18,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Cpu,
   Wifi,
@@ -34,6 +46,11 @@ import {
   Wrench,
   Timer,
   Gauge,
+  Settings,
+  RotateCcw,
+  Eye,
+  EyeOff,
+  GripVertical,
 } from 'lucide-react';
 import {
   AreaChart,
@@ -58,6 +75,7 @@ import { toast } from 'sonner';
 import MttrMtbfComparisonWidget from '@/components/MttrMtbfComparisonWidget';
 import MqttRealtimeWidget from '@/components/MqttRealtimeWidget';
 import OeeLineComparisonRealtime from '@/components/OeeLineComparisonRealtime';
+import AlertMessageHistoryWidget from '@/components/AlertMessageHistoryWidget';
 
 // Colors for severity
 const SEVERITY_COLORS = {
@@ -74,9 +92,28 @@ const MTTR_MTBF_COLORS = {
   availability: '#6366f1', // Indigo
 };
 
+// Widget definitions
+const DEFAULT_WIDGETS: WidgetConfig[] = [
+  { id: 'stats_cards', title: 'Thống kê thiết bị', visible: true, order: 0, colSpan: 4 },
+  { id: 'mttr_mtbf_summary', title: 'MTTR/MTBF Summary', visible: true, order: 1, colSpan: 4 },
+  { id: 'alarm_severity', title: 'Alarm theo Severity', visible: true, order: 2, colSpan: 4 },
+  { id: 'alarm_trend', title: 'Xu hướng Alarm', visible: true, order: 3, colSpan: 2 },
+  { id: 'severity_distribution', title: 'Phân bố Severity', visible: true, order: 4, colSpan: 2 },
+  { id: 'mttr_trend', title: 'Xu hướng MTTR', visible: true, order: 5, colSpan: 2 },
+  { id: 'mtbf_trend', title: 'Xu hướng MTBF', visible: true, order: 6, colSpan: 2 },
+  { id: 'mttr_mtbf_comparison', title: 'So sánh MTTR/MTBF', visible: true, order: 7, colSpan: 4 },
+  { id: 'oee_comparison', title: 'So sánh OEE Realtime', visible: true, order: 8, colSpan: 4 },
+  { id: 'mqtt_realtime', title: 'Sensors Realtime', visible: true, order: 9, colSpan: 4 },
+  { id: 'alert_history', title: 'Lịch sử gửi Alert', visible: true, order: 10, colSpan: 4 },
+  { id: 'recent_alarms', title: 'Alarm gần đây', visible: true, order: 11, colSpan: 4 },
+];
+
 export default function IotOverviewDashboard() {
   const [timeRange, setTimeRange] = useState('7d');
   const [autoRefresh, setAutoRefresh] = useState(true);
+  const [editMode, setEditMode] = useState(false);
+  const [showConfigDialog, setShowConfigDialog] = useState(false);
+  const [widgets, setWidgets] = useState<WidgetConfig[]>(DEFAULT_WIDGETS);
 
   // Calculate days from timeRange
   const days = useMemo(() => {
@@ -114,6 +151,37 @@ export default function IotOverviewDashboard() {
   // Fetch MTTR/MTBF summary
   const { data: mttrMtbfSummary, isLoading: loadingMttrMtbfSummary, refetch: refetchMttrMtbfSummary } = 
     trpc.iotCrud.getMttrMtbfSummary.useQuery({ days });
+
+  // Fetch user's widget layout
+  const { data: savedLayout, refetch: refetchLayout } = trpc.iotDashboard.getWidgetLayout.useQuery();
+
+  // Save widget layout mutation
+  const saveLayoutMutation = trpc.iotDashboard.saveWidgetLayout.useMutation({
+    onSuccess: () => {
+      toast.success('Đã lưu layout dashboard');
+    },
+    onError: (error) => {
+      toast.error('Lỗi lưu layout: ' + error.message);
+    },
+  });
+
+  // Load saved layout on mount
+  useEffect(() => {
+    if (savedLayout && savedLayout.length > 0) {
+      const mergedWidgets = DEFAULT_WIDGETS.map(defaultWidget => {
+        const saved = savedLayout.find((s: any) => s.widgetKey === defaultWidget.id);
+        if (saved) {
+          return {
+            ...defaultWidget,
+            visible: saved.isVisible === 1,
+            order: saved.displayOrder,
+          };
+        }
+        return defaultWidget;
+      });
+      setWidgets(mergedWidgets.sort((a, b) => a.order - b.order));
+    }
+  }, [savedLayout]);
 
   // SSE for realtime updates
   const { isConnected } = useSSE({
@@ -216,276 +284,292 @@ export default function IotOverviewDashboard() {
     );
   };
 
-  return (
-    <DashboardLayout>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">IoT Overview Dashboard</h1>
-            <p className="text-muted-foreground">
-              Tổng quan thiết bị IoT và cảnh báo
-            </p>
+  // Handle layout change from DraggableWidgetGrid
+  const handleLayoutChange = useCallback((newWidgets: WidgetConfig[]) => {
+    setWidgets(newWidgets);
+    // Auto-save when layout changes
+    const layoutData = newWidgets.map(w => ({
+      widgetKey: w.id,
+      isVisible: w.visible ? 1 : 0,
+      displayOrder: w.order,
+    }));
+    saveLayoutMutation.mutate({ widgets: layoutData });
+  }, [saveLayoutMutation]);
+
+  // Reset layout to default
+  const handleResetLayout = useCallback(() => {
+    setWidgets(DEFAULT_WIDGETS);
+    const layoutData = DEFAULT_WIDGETS.map(w => ({
+      widgetKey: w.id,
+      isVisible: 1,
+      displayOrder: w.order,
+    }));
+    saveLayoutMutation.mutate({ widgets: layoutData });
+    setShowConfigDialog(false);
+  }, [saveLayoutMutation]);
+
+  // Toggle widget visibility
+  const handleToggleWidget = useCallback((widgetId: string) => {
+    setWidgets(prev => prev.map(w => 
+      w.id === widgetId ? { ...w, visible: !w.visible } : w
+    ));
+  }, []);
+
+  // Save config from dialog
+  const handleSaveConfig = useCallback(() => {
+    const layoutData = widgets.map(w => ({
+      widgetKey: w.id,
+      isVisible: w.visible ? 1 : 0,
+      displayOrder: w.order,
+    }));
+    saveLayoutMutation.mutate({ widgets: layoutData });
+    setShowConfigDialog(false);
+  }, [widgets, saveLayoutMutation]);
+
+  // Render individual widget content
+  const renderWidget = useCallback((widgetId: string) => {
+    switch (widgetId) {
+      case 'stats_cards':
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Total Devices */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Tổng thiết bị</CardTitle>
+                <Cpu className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                {loadingDevices ? (
+                  <Skeleton className="h-8 w-20" />
+                ) : (
+                  <>
+                    <div className="text-2xl font-bold">{totalDevices}</div>
+                    <p className="text-xs text-muted-foreground">
+                      {onlineDevices} online, {offlineDevices} offline
+                    </p>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Online Devices */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Thiết bị Online</CardTitle>
+                <Wifi className="h-4 w-4 text-green-500" />
+              </CardHeader>
+              <CardContent>
+                {loadingDevices ? (
+                  <Skeleton className="h-8 w-20" />
+                ) : (
+                  <>
+                    <div className="text-2xl font-bold text-green-600">{onlineDevices}</div>
+                    <p className="text-xs text-muted-foreground">
+                      {totalDevices > 0 ? Math.round((onlineDevices / totalDevices) * 100) : 0}% hoạt động
+                    </p>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Offline Devices */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Thiết bị Offline</CardTitle>
+                <WifiOff className="h-4 w-4 text-red-500" />
+              </CardHeader>
+              <CardContent>
+                {loadingDevices ? (
+                  <Skeleton className="h-8 w-20" />
+                ) : (
+                  <>
+                    <div className="text-2xl font-bold text-red-600">{offlineDevices}</div>
+                    <p className="text-xs text-muted-foreground">
+                      {warningDevices} cảnh báo
+                    </p>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Unresolved Alarms */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Alarm chưa xử lý</CardTitle>
+                <Bell className="h-4 w-4 text-orange-500" />
+              </CardHeader>
+              <CardContent>
+                {loadingAlarms ? (
+                  <Skeleton className="h-8 w-20" />
+                ) : (
+                  <>
+                    <div className="text-2xl font-bold text-orange-600">
+                      {alarmStats?.unresolved || 0}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {alarmStats?.unacknowledged || 0} chưa xác nhận
+                    </p>
+                  </>
+                )}
+              </CardContent>
+            </Card>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
-              <span className="text-sm text-muted-foreground">
-                {isConnected ? 'Realtime' : 'Offline'}
-              </span>
-            </div>
-            <Select value={timeRange} onValueChange={setTimeRange}>
-              <SelectTrigger className="w-[120px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="7d">7 ngày</SelectItem>
-                <SelectItem value="14d">14 ngày</SelectItem>
-                <SelectItem value="30d">30 ngày</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button variant="outline" size="icon" onClick={handleRefresh}>
-              <RefreshCw className="h-4 w-4" />
-            </Button>
+        );
+
+      case 'mttr_mtbf_summary':
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* MTTR Card */}
+            <Card className="border-l-4 border-l-amber-500">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Timer className="h-4 w-4 text-amber-500" />
+                  MTTR (Mean Time To Repair)
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {loadingMttrMtbfSummary ? (
+                  <Skeleton className="h-10 w-24" />
+                ) : (
+                  <div className="space-y-1">
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-3xl font-bold text-amber-600">
+                        {mttrMtbfSummary?.mttr?.current || 0}
+                      </span>
+                      <span className="text-sm text-muted-foreground">phút</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {mttrMtbfSummary?.mttr && renderTrendIndicator(
+                        mttrMtbfSummary.mttr.trend,
+                        mttrMtbfSummary.mttr.changePercent
+                      )}
+                      <span className="text-xs text-muted-foreground">
+                        so với kỳ trước
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* MTBF Card */}
+            <Card className="border-l-4 border-l-emerald-500">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Wrench className="h-4 w-4 text-emerald-500" />
+                  MTBF (Mean Time Between Failures)
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {loadingMttrMtbfSummary ? (
+                  <Skeleton className="h-10 w-24" />
+                ) : (
+                  <div className="space-y-1">
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-3xl font-bold text-emerald-600">
+                        {mttrMtbfSummary?.mtbf?.current || 0}
+                      </span>
+                      <span className="text-sm text-muted-foreground">giờ</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {mttrMtbfSummary?.mtbf && renderTrendIndicator(
+                        mttrMtbfSummary.mtbf.trend,
+                        mttrMtbfSummary.mtbf.changePercent
+                      )}
+                      <span className="text-xs text-muted-foreground">
+                        so với kỳ trước
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Availability Card */}
+            <Card className="border-l-4 border-l-indigo-500">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Gauge className="h-4 w-4 text-indigo-500" />
+                  Availability
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {loadingMttrMtbfSummary ? (
+                  <Skeleton className="h-10 w-24" />
+                ) : (
+                  <div className="space-y-1">
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-3xl font-bold text-indigo-600">
+                        {mttrMtbfSummary?.availability?.current || 0}
+                      </span>
+                      <span className="text-sm text-muted-foreground">%</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {mttrMtbfSummary?.availability && renderTrendIndicator(
+                        mttrMtbfSummary.availability.trend,
+                        mttrMtbfSummary.availability.changePercent
+                      )}
+                      <span className="text-xs text-muted-foreground">
+                        so với kỳ trước
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
-        </div>
+        );
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Total Devices */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Tổng thiết bị</CardTitle>
-              <Cpu className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              {loadingDevices ? (
-                <Skeleton className="h-8 w-20" />
-              ) : (
-                <>
-                  <div className="text-2xl font-bold">{totalDevices}</div>
-                  <p className="text-xs text-muted-foreground">
-                    {onlineDevices} online, {offlineDevices} offline
-                  </p>
-                </>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Online Devices */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Thiết bị Online</CardTitle>
-              <Wifi className="h-4 w-4 text-green-500" />
-            </CardHeader>
-            <CardContent>
-              {loadingDevices ? (
-                <Skeleton className="h-8 w-20" />
-              ) : (
-                <>
-                  <div className="text-2xl font-bold text-green-600">{onlineDevices}</div>
-                  <p className="text-xs text-muted-foreground">
-                    {totalDevices > 0 ? Math.round((onlineDevices / totalDevices) * 100) : 0}% hoạt động
-                  </p>
-                </>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Offline Devices */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Thiết bị Offline</CardTitle>
-              <WifiOff className="h-4 w-4 text-red-500" />
-            </CardHeader>
-            <CardContent>
-              {loadingDevices ? (
-                <Skeleton className="h-8 w-20" />
-              ) : (
-                <>
-                  <div className="text-2xl font-bold text-red-600">{offlineDevices}</div>
-                  <p className="text-xs text-muted-foreground">
-                    {warningDevices} cảnh báo
-                  </p>
-                </>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Unresolved Alarms */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Alarm chưa xử lý</CardTitle>
-              <Bell className="h-4 w-4 text-orange-500" />
-            </CardHeader>
-            <CardContent>
-              {loadingAlarms ? (
-                <Skeleton className="h-8 w-20" />
-              ) : (
-                <>
-                  <div className="text-2xl font-bold text-orange-600">
-                    {alarmStats?.unresolved || 0}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {alarmStats?.unacknowledged || 0} chưa xác nhận
-                  </p>
-                </>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* MTTR/MTBF Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* MTTR Card */}
-          <Card className="border-l-4 border-l-amber-500">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Timer className="h-4 w-4 text-amber-500" />
-                MTTR (Mean Time To Repair)
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {loadingMttrMtbfSummary ? (
-                <Skeleton className="h-10 w-24" />
-              ) : (
-                <div className="space-y-1">
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-3xl font-bold text-amber-600">
-                      {mttrMtbfSummary?.mttr?.current || 0}
-                    </span>
-                    <span className="text-sm text-muted-foreground">phút</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {mttrMtbfSummary?.mttr && renderTrendIndicator(
-                      mttrMtbfSummary.mttr.trend,
-                      mttrMtbfSummary.mttr.changePercent
-                    )}
-                    <span className="text-xs text-muted-foreground">
-                      so với kỳ trước
-                    </span>
-                  </div>
+      case 'alarm_severity':
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card className="border-l-4 border-l-red-500">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 text-red-500" />
+                  Critical
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-red-600">
+                  {alarmStats?.critical || 0}
                 </div>
-              )}
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          {/* MTBF Card */}
-          <Card className="border-l-4 border-l-emerald-500">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Wrench className="h-4 w-4 text-emerald-500" />
-                MTBF (Mean Time Between Failures)
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {loadingMttrMtbfSummary ? (
-                <Skeleton className="h-10 w-24" />
-              ) : (
-                <div className="space-y-1">
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-3xl font-bold text-emerald-600">
-                      {mttrMtbfSummary?.mtbf?.current || 0}
-                    </span>
-                    <span className="text-sm text-muted-foreground">giờ</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {mttrMtbfSummary?.mtbf && renderTrendIndicator(
-                      mttrMtbfSummary.mtbf.trend,
-                      mttrMtbfSummary.mtbf.changePercent
-                    )}
-                    <span className="text-xs text-muted-foreground">
-                      so với kỳ trước
-                    </span>
-                  </div>
+            <Card className="border-l-4 border-l-orange-500">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-orange-500" />
+                  Error
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-orange-600">
+                  {alarmStats?.error || 0}
                 </div>
-              )}
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          {/* Availability Card */}
-          <Card className="border-l-4 border-l-indigo-500">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Gauge className="h-4 w-4 text-indigo-500" />
-                Availability
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {loadingMttrMtbfSummary ? (
-                <Skeleton className="h-10 w-24" />
-              ) : (
-                <div className="space-y-1">
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-3xl font-bold text-indigo-600">
-                      {mttrMtbfSummary?.availability?.current || 0}
-                    </span>
-                    <span className="text-sm text-muted-foreground">%</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {mttrMtbfSummary?.availability && renderTrendIndicator(
-                      mttrMtbfSummary.availability.trend,
-                      mttrMtbfSummary.availability.changePercent
-                    )}
-                    <span className="text-xs text-muted-foreground">
-                      so với kỳ trước
-                    </span>
-                  </div>
+            <Card className="border-l-4 border-l-yellow-500">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                  Warning
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-yellow-600">
+                  {alarmStats?.warning || 0}
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+              </CardContent>
+            </Card>
+          </div>
+        );
 
-        {/* Alarm Stats by Severity */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="border-l-4 border-l-red-500">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <AlertCircle className="h-4 w-4 text-red-500" />
-                Critical
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-red-600">
-                {alarmStats?.critical || 0}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-l-4 border-l-orange-500">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4 text-orange-500" />
-                Error
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-orange-600">
-                {alarmStats?.error || 0}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-l-4 border-l-yellow-500">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4 text-yellow-500" />
-                Warning
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-yellow-600">
-                {alarmStats?.warning || 0}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Charts Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Alarm Trend Chart */}
-          <Card>
+      case 'alarm_trend':
+        return (
+          <Card className="h-full">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <TrendingUp className="h-5 w-5" />
@@ -533,9 +617,11 @@ export default function IotOverviewDashboard() {
               </div>
             </CardContent>
           </Card>
+        );
 
-          {/* Severity Distribution */}
-          <Card>
+      case 'severity_distribution':
+        return (
+          <Card className="h-full">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Activity className="h-5 w-5" />
@@ -570,12 +656,11 @@ export default function IotOverviewDashboard() {
               </div>
             </CardContent>
           </Card>
-        </div>
+        );
 
-        {/* MTTR/MTBF Charts Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* MTTR Trend Chart */}
-          <Card>
+      case 'mttr_trend':
+        return (
+          <Card className="h-full">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Timer className="h-5 w-5 text-amber-500" />
@@ -620,9 +705,11 @@ export default function IotOverviewDashboard() {
               )}
             </CardContent>
           </Card>
+        );
 
-          {/* MTBF Trend Chart */}
-          <Card>
+      case 'mtbf_trend':
+        return (
+          <Card className="h-full">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Wrench className="h-5 w-5 text-emerald-500" />
@@ -658,102 +745,233 @@ export default function IotOverviewDashboard() {
               )}
             </CardContent>
           </Card>
+        );
+
+      case 'mttr_mtbf_comparison':
+        return <MttrMtbfComparisonWidget className="" />;
+
+      case 'oee_comparison':
+        return <OeeLineComparisonRealtime className="" />;
+
+      case 'mqtt_realtime':
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Activity className="h-5 w-5 text-blue-500" />
+                Sensors Realtime & Trend
+              </CardTitle>
+              <CardDescription>
+                Theo dõi sensors realtime và biểu đồ xu hướng. Click vào sensor để thêm vào biểu đồ trend.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <MqttRealtimeWidget 
+                className="" 
+                showMessages={false} 
+                maxSensors={16} 
+              />
+            </CardContent>
+          </Card>
+        );
+
+      case 'alert_history':
+        return <AlertMessageHistoryWidget className="" />;
+
+      case 'recent_alarms':
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Bell className="h-5 w-5" />
+                Alarm gần đây
+              </CardTitle>
+              <CardDescription>
+                10 alarm chưa xử lý gần nhất
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loadingRecentAlarms ? (
+                <div className="space-y-2">
+                  {[1, 2, 3].map(i => (
+                    <Skeleton key={i} className="h-16 w-full" />
+                  ))}
+                </div>
+              ) : recentAlarms && recentAlarms.length > 0 ? (
+                <div className="space-y-2">
+                  {recentAlarms.map((alarm: any) => (
+                    <div
+                      key={alarm.id}
+                      className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`p-2 rounded-full ${
+                          alarm.alarmType === 'critical' ? 'bg-red-100 text-red-600' :
+                          alarm.alarmType === 'error' ? 'bg-orange-100 text-orange-600' :
+                          'bg-yellow-100 text-yellow-600'
+                        }`}>
+                          {alarm.alarmType === 'critical' ? (
+                            <AlertCircle className="h-4 w-4" />
+                          ) : (
+                            <AlertTriangle className="h-4 w-4" />
+                          )}
+                        </div>
+                        <div>
+                          <p className="font-medium">{alarm.message}</p>
+                          <p className="text-sm text-muted-foreground">
+                            Device ID: {alarm.deviceId} • {alarm.alarmCode}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant={
+                          alarm.alarmType === 'critical' ? 'destructive' :
+                          alarm.alarmType === 'error' ? 'default' :
+                          'secondary'
+                        }>
+                          {alarm.alarmType}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          {new Date(alarm.createdAt).toLocaleString('vi-VN')}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+                  <CheckCircle className="h-12 w-12 mb-2 text-green-500" />
+                  <p>Không có alarm chưa xử lý</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        );
+
+      default:
+        return null;
+    }
+  }, [
+    loadingDevices, loadingAlarms, loadingRecentAlarms, loadingMttrMtbf, loadingMttrMtbfSummary,
+    totalDevices, onlineDevices, offlineDevices, warningDevices, alarmStats, recentAlarms,
+    mttrMtbfSummary, formattedMttrMtbfTrend, trendData, severityData, days, renderTrendIndicator
+  ]);
+
+  return (
+    <DashboardLayout>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">IoT Overview Dashboard</h1>
+            <p className="text-muted-foreground">
+              Tổng quan thiết bị IoT và cảnh báo
+            </p>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
+              <span className="text-sm text-muted-foreground">
+                {isConnected ? 'Realtime' : 'Offline'}
+              </span>
+            </div>
+            <Select value={timeRange} onValueChange={setTimeRange}>
+              <SelectTrigger className="w-[120px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="7d">7 ngày</SelectItem>
+                <SelectItem value="14d">14 ngày</SelectItem>
+                <SelectItem value="30d">30 ngày</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button 
+              variant={editMode ? "default" : "outline"} 
+              size="sm" 
+              onClick={() => setEditMode(!editMode)}
+              className="gap-2"
+            >
+              <GripVertical className="h-4 w-4" />
+              {editMode ? 'Xong' : 'Sắp xếp'}
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setShowConfigDialog(true)} className="gap-2">
+              <Settings className="h-4 w-4" />
+              Tùy chỉnh
+            </Button>
+            <Button variant="outline" size="icon" onClick={handleRefresh}>
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
 
-        {/* MTTR/MTBF Comparison Widget */}
-        <MttrMtbfComparisonWidget className="" />
-
-        {/* OEE Line Comparison Realtime */}
-        <OeeLineComparisonRealtime className="" />
-
-        {/* MQTT Realtime Sensors Widget with Trend Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Activity className="h-5 w-5 text-blue-500" />
-              Sensors Realtime & Trend
-            </CardTitle>
-            <CardDescription>
-              Theo dõi sensors realtime và biểu đồ xu hướng. Click vào sensor để thêm vào biểu đồ trend.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <MqttRealtimeWidget 
-              className="" 
-              showMessages={false} 
-              maxSensors={16} 
-            />
-          </CardContent>
-        </Card>
-
-        {/* Recent Alarms */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Bell className="h-5 w-5" />
-              Alarm gần đây
-            </CardTitle>
-            <CardDescription>
-              10 alarm chưa xử lý gần nhất
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {loadingRecentAlarms ? (
-              <div className="space-y-2">
-                {[1, 2, 3].map(i => (
-                  <Skeleton key={i} className="h-16 w-full" />
-                ))}
-              </div>
-            ) : recentAlarms && recentAlarms.length > 0 ? (
-              <div className="space-y-2">
-                {recentAlarms.map((alarm: any) => (
-                  <div
-                    key={alarm.id}
-                    className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-full ${
-                        alarm.alarmType === 'critical' ? 'bg-red-100 text-red-600' :
-                        alarm.alarmType === 'error' ? 'bg-orange-100 text-orange-600' :
-                        'bg-yellow-100 text-yellow-600'
-                      }`}>
-                        {alarm.alarmType === 'critical' ? (
-                          <AlertCircle className="h-4 w-4" />
-                        ) : (
-                          <AlertTriangle className="h-4 w-4" />
-                        )}
+        {/* Widget Config Dialog */}
+        <Dialog open={showConfigDialog} onOpenChange={setShowConfigDialog}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Tùy chỉnh Dashboard</DialogTitle>
+              <DialogDescription>
+                Chọn các widget muốn hiển thị trên dashboard
+              </DialogDescription>
+            </DialogHeader>
+            <ScrollArea className="max-h-[400px] pr-4">
+              <div className="space-y-3">
+                {widgets
+                  .sort((a, b) => a.order - b.order)
+                  .map(widget => (
+                    <div
+                      key={widget.id}
+                      className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Checkbox
+                          id={widget.id}
+                          checked={widget.visible}
+                          onCheckedChange={() => handleToggleWidget(widget.id)}
+                        />
+                        <Label htmlFor={widget.id} className="cursor-pointer">
+                          {widget.title}
+                        </Label>
                       </div>
-                      <div>
-                        <p className="font-medium">{alarm.message}</p>
-                        <p className="text-sm text-muted-foreground">
-                          Device ID: {alarm.deviceId} • {alarm.alarmCode}
-                        </p>
-                      </div>
+                      {widget.visible ? (
+                        <Eye className="h-4 w-4 text-green-500" />
+                      ) : (
+                        <EyeOff className="h-4 w-4 text-muted-foreground" />
+                      )}
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant={
-                        alarm.alarmType === 'critical' ? 'destructive' :
-                        alarm.alarmType === 'error' ? 'default' :
-                        'secondary'
-                      }>
-                        {alarm.alarmType}
-                      </Badge>
-                      <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        {new Date(alarm.createdAt).toLocaleString('vi-VN')}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+                  ))}
               </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-                <CheckCircle className="h-12 w-12 mb-2 text-green-500" />
-                <p>Không có alarm chưa xử lý</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+            </ScrollArea>
+            <DialogFooter className="flex-col sm:flex-row gap-2">
+              <Button variant="outline" onClick={handleResetLayout} className="gap-2">
+                <RotateCcw className="h-4 w-4" />
+                Reset mặc định
+              </Button>
+              <Button onClick={handleSaveConfig}>Lưu thay đổi</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Draggable Widget Grid */}
+        {editMode ? (
+          <DraggableWidgetGrid
+            widgets={widgets}
+            onLayoutChange={handleLayoutChange}
+            renderWidget={renderWidget}
+            gridCols={4}
+          />
+        ) : (
+          <div className="space-y-6">
+            {widgets
+              .filter(w => w.visible)
+              .sort((a, b) => a.order - b.order)
+              .map(widget => (
+                <div key={widget.id}>
+                  {renderWidget(widget.id)}
+                </div>
+              ))}
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );

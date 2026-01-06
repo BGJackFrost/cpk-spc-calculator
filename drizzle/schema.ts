@@ -5700,3 +5700,67 @@ export type MttrMtbfThreshold = typeof mttrMtbfThresholds.$inferSelect;
 export type InsertMttrMtbfThreshold = typeof mttrMtbfThresholds.$inferInsert;
 export type MttrMtbfAlertHistory = typeof mttrMtbfAlertHistory.$inferSelect;
 export type InsertMttrMtbfAlertHistory = typeof mttrMtbfAlertHistory.$inferInsert;
+
+
+// Phase 113 - Scheduled OEE Reports (Telegram/Slack)
+export const scheduledOeeReports = mysqlTable("scheduled_oee_reports", {
+  id: int().autoincrement().primaryKey(),
+  name: varchar({ length: 200 }).notNull(),
+  description: text(),
+  // Target
+  productionLineIds: json("production_line_ids").notNull(), // Array of production line IDs
+  // Schedule
+  frequency: mysqlEnum(['daily','weekly','monthly']).default('weekly').notNull(),
+  dayOfWeek: int("day_of_week"), // 0-6 for weekly (0=Sunday)
+  dayOfMonth: int("day_of_month"), // 1-31 for monthly
+  hour: int().default(8).notNull(), // Hour to send (0-23)
+  minute: int().default(0).notNull(), // Minute to send (0-59)
+  timezone: varchar({ length: 50 }).default('Asia/Ho_Chi_Minh'),
+  // Notification channels
+  notificationChannel: mysqlEnum("notification_channel", ['telegram','slack','both']).default('telegram').notNull(),
+  telegramConfigId: int("telegram_config_id"), // Reference to telegram_config
+  slackWebhookUrl: varchar("slack_webhook_url", { length: 500 }),
+  // Report settings
+  includeAvailability: int("include_availability").default(1).notNull(),
+  includePerformance: int("include_performance").default(1).notNull(),
+  includeQuality: int("include_quality").default(1).notNull(),
+  includeComparison: int("include_comparison").default(1).notNull(),
+  includeTrend: int("include_trend").default(1).notNull(),
+  // Status
+  isActive: int("is_active").default(1).notNull(),
+  lastSentAt: timestamp("last_sent_at", { mode: 'string' }),
+  nextScheduledAt: timestamp("next_scheduled_at", { mode: 'string' }),
+  // Metadata
+  createdBy: int("created_by"),
+  createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+  index("idx_scheduled_oee_active").on(table.isActive),
+  index("idx_scheduled_oee_next").on(table.nextScheduledAt),
+]);
+
+// History of sent OEE reports
+export const scheduledOeeReportHistory = mysqlTable("scheduled_oee_report_history", {
+  id: int().autoincrement().primaryKey(),
+  reportId: int("report_id").notNull(),
+  reportName: varchar("report_name", { length: 200 }),
+  // Sent details
+  sentAt: timestamp("sent_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+  channel: mysqlEnum(['telegram','slack']).notNull(),
+  status: mysqlEnum(['sent','failed']).notNull(),
+  errorMessage: text("error_message"),
+  // Report data snapshot
+  reportData: json("report_data"), // Snapshot of OEE data sent
+  // Metadata
+  createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+  index("idx_oee_report_history_report").on(table.reportId),
+  index("idx_oee_report_history_sent").on(table.sentAt),
+]);
+
+export type ScheduledOeeReport = typeof scheduledOeeReports.$inferSelect;
+export type InsertScheduledOeeReport = typeof scheduledOeeReports.$inferInsert;
+export type ScheduledOeeReportHistory = typeof scheduledOeeReportHistory.$inferSelect;
+export type InsertScheduledOeeReportHistory = typeof scheduledOeeReportHistory.$inferInsert;

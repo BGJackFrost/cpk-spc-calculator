@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { router, protectedProcedure, publicProcedure } from "../_core/trpc";
 import { getDb } from "../db";
-import { iotDevices, iotDeviceData, iotAlarms } from "../../drizzle/schema";
-import { eq, desc, and, gte, lte, sql } from "drizzle-orm";
+import { iotDevices, iotDeviceData, iotAlarms, userDashboardConfigs, notificationLogs, telegramMessageHistory } from "../../drizzle/schema";
+import { eq, desc, and, gte, lte, sql, asc, or } from "drizzle-orm";
 import { cache, cacheKeys, TTL, withCache, invalidateRelatedCaches } from "../cache";
 
 export const iotDashboardRouter = router({
@@ -326,6 +326,163 @@ export const iotDashboardRouter = router({
     .mutation(async ({ input }) => {
       const { writeIoTValue } = await import("../services/iotConnectionService");
       return { success: await writeIoTValue(input.connectionId, input.nodeIdOrRegister, input.value) };
+    }),
+
+  // ============ Widget Layout Management ============
+
+  // Get user's widget layout for IoT Dashboard
+  getWidgetLayout: protectedProcedure.query(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) return [];
+
+    const configs = await db.select()
+      .from(userDashboardConfigs)
+      .where(eq(userDashboardConfigs.userId, ctx.user.id))
+      .orderBy(asc(userDashboardConfigs.displayOrder));
+
+    // Filter only IoT dashboard widgets
+    const iotWidgetKeys = [
+      'stats_cards', 'mttr_mtbf_summary', 'alarm_severity', 'alarm_trend',
+      'severity_distribution', 'mttr_trend', 'mtbf_trend', 'mttr_mtbf_comparison',
+      'oee_comparison', 'mqtt_realtime', 'alert_history', 'recent_alarms'
+    ];
+
+    return configs.filter(c => iotWidgetKeys.includes(c.widgetKey));
+  }),
+
+  // Save user's widget layout for IoT Dashboard
+  saveWidgetLayout: protectedProcedure
+    .input(z.object({
+      widgets: z.array(z.object({
+        widgetKey: z.string(),
+        isVisible: z.number(),
+        displayOrder: z.number(),
+      })),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      // Delete existing IoT widget configs for this user
+      const iotWidgetKeys = [
+        'stats_cards', 'mttr_mtbf_summary', 'alarm_severity', 'alarm_trend',
+        'severity_distribution', 'mttr_trend', 'mtbf_trend', 'mttr_mtbf_comparison',
+        'oee_comparison', 'mqtt_realtime', 'alert_history', 'recent_alarms'
+      ];
+
+      // Delete old configs
+      for (const key of iotWidgetKeys) {
+        await db.delete(userDashboardConfigs)
+          .where(and(
+            eq(userDashboardConfigs.userId, ctx.user.id),
+            eq(userDashboardConfigs.widgetKey, key)
+          ));
+      }
+
+      // Insert new configs
+      for (const widget of input.widgets) {
+        await db.insert(userDashboardConfigs).values({
+          userId: ctx.user.id,
+          widgetKey: widget.widgetKey,
+          isVisible: widget.isVisible,
+          displayOrder: widget.displayOrder,
+        });
+      }
+
+      return { success: true };
+    }),
+
+  // ============ Alert Message History ============
+
+  // Get alert message history (Telegram/Slack/Email)
+  getAlertMessageHistory: protectedProcedure
+    .input(z.object({
+      channel: z.string().optional(),
+      status: z.string().optional(),
+      startDate: z.date().optional(),
+      endDate: z.date().optional(),
+      limit: z.number().default(50),
+    }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return [];
+
+      const results: any[] = [];
+
+      // Get from notification_logs
+      try {
+        let notifConditions: any[] = [];
+        if (input.channel && input.channel !== 'all') {
+          notifConditions.push(eq(notificationLogs.channelType, input.channel));
+        }
+        if (input.status && input.status !== 'all') {
+          notifConditions.push(eq(notificationLogs.status, input.status as any));
+        }
+        if (input.startDate) {
+          notifConditions.push(gte(notificationLogs.createdAt, input.startDate.toISOString()));
+        }
+        if (input.endDate) {
+          notifConditions.push(lte(notificationLogs.createdAt, input.endDate.toISOString()));
+        }
+
+        const notifLogs = await db.select()
+          .from(notificationLogs)
+          .where(notifConditions.length > 0 ? and(...notifConditions) : undefined)
+          .orderBy(desc(notificationLogs.createdAt))
+          .limit(input.limit);
+
+        results.push(...notifLogs.map(n => ({
+          id: n.id,
+          channelType: n.channelType,
+          alertTitle: n.subject || 'Notification',
+          alertMessage: n.message,
+          status: n.status,
+          errorMessage: n.errorMessage,
+          createdAt: n.createdAt,
+          source: 'notification_logs',
+        })));
+      } catch (e) {
+        console.error('Error fetching notification_logs:', e);
+      }
+
+      // Get from telegram_message_history
+      try {
+        if (!input.channel || input.channel === 'all' || input.channel === 'telegram') {
+          let telegramConditions: any[] = [];
+          if (input.status && input.status !== 'all') {
+            telegramConditions.push(eq(telegramMessageHistory.status, input.status as any));
+          }
+          if (input.startDate) {
+            telegramConditions.push(gte(telegramMessageHistory.createdAt, input.startDate.toISOString()));
+          }
+          if (input.endDate) {
+            telegramConditions.push(lte(telegramMessageHistory.createdAt, input.endDate.toISOString()));
+          }
+
+          const telegramLogs = await db.select()
+            .from(telegramMessageHistory)
+            .where(telegramConditions.length > 0 ? and(...telegramConditions) : undefined)
+            .orderBy(desc(telegramMessageHistory.createdAt))
+            .limit(input.limit);
+
+          results.push(...telegramLogs.map(t => ({
+            id: `telegram_${t.id}`,
+            channelType: 'telegram',
+            alertTitle: t.messageType || 'Telegram Alert',
+            alertMessage: t.content,
+            status: t.status,
+            errorMessage: t.errorMessage,
+            createdAt: t.createdAt,
+            source: 'telegram_message_history',
+          })));
+        }
+      } catch (e) {
+        console.error('Error fetching telegram_message_history:', e);
+      }
+
+      // Sort by createdAt descending and limit
+      results.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      return results.slice(0, input.limit);
     }),
 });
 

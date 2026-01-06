@@ -8294,3 +8294,38 @@
 
 ### Unit Tests
 - [x] 15 tests passed cho các tính năng mới
+
+## Phase 113 - IoT Enhancement Part 6 (Jan 6, 2025)
+
+### Tích hợp DraggableWidgetGrid vào IotOverviewDashboard
+- [ ] Import DraggableWidgetGrid component vào IotOverviewDashboard
+- [ ] Chuyển đổi các widget hiện tại thành draggable widgets
+- [ ] Lưu layout preference vào database theo user
+- [ ] Thêm nút reset layout và toggle edit mode
+
+### Gửi báo cáo OEE định kỳ qua Telegram/Slack
+- [ ] Tạo bảng scheduled_oee_reports trong database
+- [ ] Tạo service scheduledOeeReportService.ts
+- [ ] Tạo API endpoints cho CRUD scheduled reports
+- [ ] Tạo trang UI ScheduledOeeReports.tsx
+- [ ] Tích hợp cron job gửi báo cáo
+
+### Dashboard widget cho lịch sử gửi alert
+- [ ] Tạo bảng alert_message_history trong database
+- [ ] Tạo component AlertMessageHistoryWidget
+- [ ] Hiển thị lịch sử gửi Telegram/Slack với status
+- [ ] Thêm filter theo channel và thời gian
+
+### Unit Tests
+- [ ] Viết tests cho các tính năng mới
+
+## Phase 113 - IoT Dashboard Enhancements
+- [x] Tích hợp DraggableWidgetGrid vào IotOverviewDashboard
+- [x] Thêm tính năng gửi báo cáo OEE định kỳ qua Telegram/Slack
+- [x] Tạo dashboard widget cho lịch sử gửi alert Telegram/Slack
+- [x] Tạo trang quản lý ScheduledOeeReports
+- [x] Thêm route /scheduled-oee-reports
+- [x] Tạo bảng scheduled_oee_reports và scheduled_oee_report_history
+- [x] Tạo scheduledOeeReportService.ts
+- [x] Tạo scheduledOeeReportRouter.ts
+- [x] Tạo AlertMessageHistoryWidget component

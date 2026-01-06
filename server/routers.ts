@@ -62,6 +62,7 @@ import { scheduledOtaRouter } from "./scheduledOtaRouter";
 import { mttrMtbfComparisonRouter } from "./routers/mttrMtbfComparisonRouter";
 import { mttrMtbfAlertRouter } from "./routers/mttrMtbfAlertRouter";
 import { mttrMtbfPredictionRouter } from "./routers/mttrMtbfPredictionRouter";
+import { scheduledOeeReportRouter } from "./routers/scheduledOeeReportRouter";
 import { oeeThresholdsRouter } from "./routers/oeeThresholdsRouter";
 import { maintenanceWorkOrderRouter } from "./maintenanceWorkOrderRouter";
 import { mobileRouter } from "./mobileRouter";
@@ -3817,6 +3818,7 @@ export const appRouter = router({
   machineApi: machinePublicRouter,
   iotCrud: iotCrudRouter,
   iotOeeAlert: iotOeeAlertRouter,
+  scheduledOeeReport: scheduledOeeReportRouter,
   quickAccess: quickAccessRouter,
   alerts: alertAnalyticsRouter,
   webhookHistory: webhookHistoryRouter,
