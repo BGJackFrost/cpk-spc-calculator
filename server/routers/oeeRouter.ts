@@ -2015,4 +2015,94 @@ export const oeeRouter = router({
         count: thresholds.length,
       };
     }),
+
+  // Get realtime OEE by production lines for comparison
+  getRealtimeOeeByLines: publicProcedure
+    .input(z.object({
+      lineIds: z.array(z.number()),
+    }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db || input.lineIds.length === 0) return [];
+
+      const results = [];
+
+      for (const lineId of input.lineIds) {
+        // Get production line info
+        const [line] = await db
+          .select()
+          .from(productionLines)
+          .where(eq(productionLines.id, lineId));
+
+        if (!line) continue;
+
+        // Get latest OEE record for this line (within last 24 hours)
+        const [latestOee] = await db
+          .select({
+            oee: oeeRecords.oee,
+            availability: oeeRecords.availability,
+            performance: oeeRecords.performance,
+            quality: oeeRecords.quality,
+            recordDate: oeeRecords.recordDate,
+          })
+          .from(oeeRecords)
+          .leftJoin(machines, eq(oeeRecords.machineId, machines.id))
+          .where(
+            and(
+              eq(machines.productionLineId, lineId),
+              gte(oeeRecords.recordDate, new Date(Date.now() - 24 * 60 * 60 * 1000))
+            )
+          )
+          .orderBy(desc(oeeRecords.recordDate))
+          .limit(1);
+
+        // Get previous OEE record for trend calculation
+        const [prevOee] = await db
+          .select({
+            oee: oeeRecords.oee,
+          })
+          .from(oeeRecords)
+          .leftJoin(machines, eq(oeeRecords.machineId, machines.id))
+          .where(
+            and(
+              eq(machines.productionLineId, lineId),
+              gte(oeeRecords.recordDate, new Date(Date.now() - 48 * 60 * 60 * 1000)),
+              lte(oeeRecords.recordDate, new Date(Date.now() - 24 * 60 * 60 * 1000))
+            )
+          )
+          .orderBy(desc(oeeRecords.recordDate))
+          .limit(1);
+
+        // Get target OEE for this line
+        const [target] = await db
+          .select()
+          .from(oeeTargets)
+          .where(eq(oeeTargets.productionLineId, lineId))
+          .limit(1);
+
+        const currentOee = latestOee ? Number(latestOee.oee) : 0;
+        const prevOeeValue = prevOee ? Number(prevOee.oee) : currentOee;
+        const changePercent = prevOeeValue > 0 ? ((currentOee - prevOeeValue) / prevOeeValue) * 100 : 0;
+
+        let trend: 'up' | 'down' | 'stable' = 'stable';
+        if (changePercent > 2) trend = 'up';
+        else if (changePercent < -2) trend = 'down';
+
+        results.push({
+          lineId: line.id,
+          lineName: line.name,
+          lineCode: line.code,
+          currentOee,
+          targetOee: target ? Number(target.targetOee) : 85,
+          availability: latestOee ? Number(latestOee.availability) : 0,
+          performance: latestOee ? Number(latestOee.performance) : 0,
+          quality: latestOee ? Number(latestOee.quality) : 0,
+          trend,
+          changePercent: Math.abs(changePercent),
+          lastUpdated: latestOee?.recordDate?.toISOString() || new Date().toISOString(),
+        });
+      }
+
+      return results;
+    }),
 });

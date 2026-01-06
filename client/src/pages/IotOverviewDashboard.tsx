@@ -57,6 +57,7 @@ import { useSSE } from '@/hooks/useSSE';
 import { toast } from 'sonner';
 import MttrMtbfComparisonWidget from '@/components/MttrMtbfComparisonWidget';
 import MqttRealtimeWidget from '@/components/MqttRealtimeWidget';
+import OeeLineComparisonRealtime from '@/components/OeeLineComparisonRealtime';
 
 // Colors for severity
 const SEVERITY_COLORS = {
@@ -662,8 +663,28 @@ export default function IotOverviewDashboard() {
         {/* MTTR/MTBF Comparison Widget */}
         <MttrMtbfComparisonWidget className="" />
 
-        {/* MQTT Realtime Sensors Widget */}
-        <MqttRealtimeWidget className="" showMessages={false} maxSensors={12} />
+        {/* OEE Line Comparison Realtime */}
+        <OeeLineComparisonRealtime className="" />
+
+        {/* MQTT Realtime Sensors Widget with Trend Chart */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Activity className="h-5 w-5 text-blue-500" />
+              Sensors Realtime & Trend
+            </CardTitle>
+            <CardDescription>
+              Theo dõi sensors realtime và biểu đồ xu hướng. Click vào sensor để thêm vào biểu đồ trend.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <MqttRealtimeWidget 
+              className="" 
+              showMessages={false} 
+              maxSensors={16} 
+            />
+          </CardContent>
+        </Card>
 
         {/* Recent Alarms */}
         <Card>

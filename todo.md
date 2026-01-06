@@ -8263,3 +8263,10 @@
 - [x] Cấu hình ngưỡng OEE critical theo từng production line
 - [x] Export báo cáo MTTR/MTBF sang PDF/Excel (đã có sẵn trong MttrMtbfReport.tsx)
 - [x] Viết unit tests cho các tính năng mới
+
+## Phase 111 - IoT Enhancement Part 4 (Jan 6, 2025)
+- [x] Notification tự động khi OEE vượt ngưỡng critical theo cấu hình từng dây chuyền
+- [x] Tích hợp biểu đồ trend sensors vào IotOverviewDashboard để xem tổng quan
+- [x] Thêm tính năng so sánh OEE giữa các dây chuyền theo thời gian thực
+- [x] Component OeeLineComparisonRealtime với bar/line/radar charts
+- [x] API getRealtimeOeeByLines trong oeeRouter
