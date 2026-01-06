@@ -19,6 +19,9 @@ import {
   Activity,
   AlertTriangle,
   CheckCircle,
+  Download,
+  FileSpreadsheet,
+  FileText,
 } from 'lucide-react';
 import {
   BarChart,
@@ -40,6 +43,12 @@ import {
 } from 'recharts';
 import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface LineOeeData {
   lineId: number;
@@ -62,6 +71,47 @@ interface OeeTrendPoint {
 }
 
 const LINE_COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
+
+// Export Dropdown Component
+function ExportDropdown({ lineIds, timeRange, disabled }: { lineIds: number[]; timeRange: string; disabled: boolean }) {
+  const exportExcel = trpc.oee.exportLineComparisonExcel.useMutation({
+    onSuccess: (data) => {
+      window.open(data.url, '_blank');
+      toast.success('Đã xuất file Excel thành công');
+    },
+    onError: (error) => toast.error('Lỗi xuất Excel: ' + error.message),
+  });
+
+  const exportPdf = trpc.oee.exportLineComparisonPdf.useMutation({
+    onSuccess: (data) => {
+      window.open(data.url, '_blank');
+      toast.success('Đã xuất báo cáo thành công');
+    },
+    onError: (error) => toast.error('Lỗi xuất báo cáo: ' + error.message),
+  });
+
+  const isExporting = exportExcel.isPending || exportPdf.isPending;
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="icon" disabled={disabled || isExporting}>
+          <Download className={`h-4 w-4 ${isExporting ? 'animate-pulse' : ''}`} />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem onClick={() => exportExcel.mutate({ lineIds, timeRange })} disabled={exportExcel.isPending}>
+          <FileSpreadsheet className="h-4 w-4 mr-2" />
+          Xuất Excel
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => exportPdf.mutate({ lineIds, timeRange })} disabled={exportPdf.isPending}>
+          <FileText className="h-4 w-4 mr-2" />
+          Xuất PDF/HTML
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
 
 export default function OeeLineComparisonRealtime({ className = '' }: { className?: string }) {
   const [selectedLines, setSelectedLines] = useState<number[]>([]);
@@ -215,6 +265,7 @@ export default function OeeLineComparisonRealtime({ className = '' }: { classNam
             <Button variant="outline" size="icon" onClick={() => refetchOee()} disabled={loadingOee}>
               <RefreshCw className={`h-4 w-4 ${loadingOee ? 'animate-spin' : ''}`} />
             </Button>
+            <ExportDropdown lineIds={selectedLines} timeRange={timeRange} disabled={selectedLines.length === 0} />
           </div>
         </div>
       </CardHeader>

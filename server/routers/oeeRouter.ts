@@ -2105,4 +2105,228 @@ export const oeeRouter = router({
 
       return results;
     }),
+
+  // Export OEE Line comparison to Excel (realtime)
+  exportLineComparisonExcel: protectedProcedure
+    .input(z.object({
+      lineIds: z.array(z.number()),
+      timeRange: z.string().default('4h'),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db || input.lineIds.length === 0) {
+        throw new Error('No lines selected');
+      }
+
+      const results = [];
+      for (const lineId of input.lineIds) {
+        const [line] = await db
+          .select()
+          .from(productionLines)
+          .where(eq(productionLines.id, lineId));
+
+        if (!line) continue;
+
+        const [latestOee] = await db
+          .select({
+            oee: oeeRecords.oee,
+            availability: oeeRecords.availability,
+            performance: oeeRecords.performance,
+            quality: oeeRecords.quality,
+            recordDate: oeeRecords.recordDate,
+          })
+          .from(oeeRecords)
+          .leftJoin(machines, eq(oeeRecords.machineId, machines.id))
+          .where(
+            and(
+              eq(machines.productionLineId, lineId),
+              gte(oeeRecords.recordDate, new Date(Date.now() - 24 * 60 * 60 * 1000))
+            )
+          )
+          .orderBy(desc(oeeRecords.recordDate))
+          .limit(1);
+
+        const [target] = await db
+          .select()
+          .from(oeeTargets)
+          .where(eq(oeeTargets.productionLineId, lineId))
+          .limit(1);
+
+        results.push({
+          lineCode: line.code,
+          lineName: line.name,
+          oee: latestOee ? Number(latestOee.oee) : 0,
+          availability: latestOee ? Number(latestOee.availability) : 0,
+          performance: latestOee ? Number(latestOee.performance) : 0,
+          quality: latestOee ? Number(latestOee.quality) : 0,
+          targetOee: target ? Number(target.targetOee) : 85,
+          recordDate: latestOee?.recordDate?.toISOString() || new Date().toISOString(),
+        });
+      }
+
+      const workbook = new ExcelJS.Workbook();
+      const sheet = workbook.addWorksheet('OEE Comparison');
+
+      sheet.columns = [
+        { header: 'Mã dây chuyền', key: 'lineCode', width: 15 },
+        { header: 'Tên dây chuyền', key: 'lineName', width: 30 },
+        { header: 'OEE (%)', key: 'oee', width: 12 },
+        { header: 'Availability (%)', key: 'availability', width: 15 },
+        { header: 'Performance (%)', key: 'performance', width: 15 },
+        { header: 'Quality (%)', key: 'quality', width: 12 },
+        { header: 'Target OEE (%)', key: 'targetOee', width: 15 },
+        { header: 'Thời gian cập nhật', key: 'recordDate', width: 20 },
+      ];
+
+      sheet.getRow(1).font = { bold: true };
+      sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F81BD' } };
+      sheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+
+      results.forEach(row => {
+        const excelRow = sheet.addRow({
+          ...row,
+          recordDate: new Date(row.recordDate).toLocaleString('vi-VN'),
+        });
+
+        const oeeCell = excelRow.getCell('oee');
+        if (row.oee >= row.targetOee) {
+          oeeCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF92D050' } };
+        } else if (row.oee >= row.targetOee * 0.9) {
+          oeeCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFC000' } };
+        } else {
+          oeeCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFF0000' } };
+        }
+      });
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      const fileName = `oee-line-comparison-${Date.now()}.xlsx`;
+      
+      const { url } = await storagePut(
+        `reports/${fileName}`,
+        Buffer.from(buffer),
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      );
+
+      return { url, fileName };
+    }),
+
+  // Export OEE Line comparison to PDF (realtime)
+  exportLineComparisonPdf: protectedProcedure
+    .input(z.object({
+      lineIds: z.array(z.number()),
+      timeRange: z.string().default('4h'),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db || input.lineIds.length === 0) {
+        throw new Error('No lines selected');
+      }
+
+      const results = [];
+      for (const lineId of input.lineIds) {
+        const [line] = await db
+          .select()
+          .from(productionLines)
+          .where(eq(productionLines.id, lineId));
+
+        if (!line) continue;
+
+        const [latestOee] = await db
+          .select({
+            oee: oeeRecords.oee,
+            availability: oeeRecords.availability,
+            performance: oeeRecords.performance,
+            quality: oeeRecords.quality,
+          })
+          .from(oeeRecords)
+          .leftJoin(machines, eq(oeeRecords.machineId, machines.id))
+          .where(
+            and(
+              eq(machines.productionLineId, lineId),
+              gte(oeeRecords.recordDate, new Date(Date.now() - 24 * 60 * 60 * 1000))
+            )
+          )
+          .orderBy(desc(oeeRecords.recordDate))
+          .limit(1);
+
+        const [target] = await db
+          .select()
+          .from(oeeTargets)
+          .where(eq(oeeTargets.productionLineId, lineId))
+          .limit(1);
+
+        results.push({
+          lineCode: line.code,
+          lineName: line.name,
+          oee: latestOee ? Number(latestOee.oee) : 0,
+          availability: latestOee ? Number(latestOee.availability) : 0,
+          performance: latestOee ? Number(latestOee.performance) : 0,
+          quality: latestOee ? Number(latestOee.quality) : 0,
+          targetOee: target ? Number(target.targetOee) : 85,
+        });
+      }
+
+      const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    h1 { color: #333; text-align: center; }
+    .meta { text-align: center; color: #666; margin-bottom: 20px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #ddd; padding: 10px; text-align: center; }
+    th { background-color: #4F81BD; color: white; }
+    .good { background-color: #92D050; }
+    .warning { background-color: #FFC000; }
+    .bad { background-color: #FF6B6B; color: white; }
+    .footer { margin-top: 30px; text-align: center; color: #999; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <h1>Báo cáo So sánh OEE Dây chuyền</h1>
+  <p class="meta">Khoảng thời gian: ${input.timeRange} | Tạo lúc: ${new Date().toLocaleString('vi-VN')}</p>
+  <table>
+    <thead>
+      <tr>
+        <th>STT</th>
+        <th>Mã dây chuyền</th>
+        <th>Tên dây chuyền</th>
+        <th>OEE (%)</th>
+        <th>Availability (%)</th>
+        <th>Performance (%)</th>
+        <th>Quality (%)</th>
+        <th>Target (%)</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${results.map((r, i) => `
+        <tr>
+          <td>${i + 1}</td>
+          <td>${r.lineCode}</td>
+          <td>${r.lineName}</td>
+          <td class="${r.oee >= r.targetOee ? 'good' : r.oee >= r.targetOee * 0.9 ? 'warning' : 'bad'}">${r.oee.toFixed(1)}</td>
+          <td>${r.availability.toFixed(1)}</td>
+          <td>${r.performance.toFixed(1)}</td>
+          <td>${r.quality.toFixed(1)}</td>
+          <td>${r.targetOee}</td>
+        </tr>
+      `).join('')}
+    </tbody>
+  </table>
+  <p class="footer">Hệ thống CPK/SPC - Báo cáo tự động</p>
+</body>
+</html>
+      `;
+
+      const fileName = `oee-line-comparison-${Date.now()}.html`;
+      const { url } = await storagePut(
+        `reports/${fileName}`,
+        Buffer.from(html),
+        'text/html'
+      );
+
+      return { url, fileName, format: 'html' };
+    }),
 });

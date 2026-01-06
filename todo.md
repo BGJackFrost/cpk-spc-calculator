@@ -8270,3 +8270,27 @@
 - [x] Thêm tính năng so sánh OEE giữa các dây chuyền theo thời gian thực
 - [x] Component OeeLineComparisonRealtime với bar/line/radar charts
 - [x] API getRealtimeOeeByLines trong oeeRouter
+
+
+## Phase 112 - IoT Enhancement Part 5 (Jan 6, 2025)
+
+### Dashboard tùy chỉnh kéo thả widget
+- [x] Cài đặt thư viện dnd-kit cho drag and drop
+- [x] Tạo DraggableWidgetGrid component với dnd-kit
+- [x] Lưu layout widget vào database theo user (đã có sẵn user_dashboard_configs)
+- [x] Thêm nút reset layout về mặc định
+
+### Export báo cáo OEE so sánh
+- [x] Tạo API exportLineComparisonExcel trong oeeRouter
+- [x] Tạo API exportLineComparisonPdf trong oeeRouter
+- [x] Thêm nút Export vào OeeLineComparisonRealtime component
+- [x] Export Excel với màu sắc theo trạng thái OEE
+
+### Tích hợp Telegram/Slack cho alert OEE
+- [x] Tạo slackService.ts với message templates cho các loại alert
+- [x] Trang OeeAlertIntegrations để cấu hình Telegram/Slack
+- [x] Hướng dẫn thiết lập Telegram Bot và Slack Webhook
+- [x] Tích hợp vào OEE alert workflow (sử dụng telegramService đã có)
+
+### Unit Tests
+- [x] 15 tests passed cho các tính năng mới
