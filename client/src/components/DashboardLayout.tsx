@@ -256,6 +256,7 @@ const fallbackLabelsVi: Record<string, string> = {
   "nav.iotOverviewDashboard": "Dashboard Tổng quan IoT",
   "nav.notificationPreferences": "Cài đặt Thông báo",
   "nav.mttrMtbfComparison": "So sánh MTTR/MTBF",
+  "nav.iotUserGuide": "Hướng dẫn IoT",
 };
 
 const fallbackLabelsEn: Record<string, string> = {
@@ -462,6 +463,7 @@ const fallbackLabelsEn: Record<string, string> = {
   "nav.iotOverviewDashboard": "IoT Overview Dashboard",
   "nav.notificationPreferences": "Notification Preferences",
   "nav.mttrMtbfComparison": "MTTR/MTBF Comparison",
+  "nav.iotUserGuide": "IoT User Guide",
 };
 
 const MIN_WIDTH = 200;

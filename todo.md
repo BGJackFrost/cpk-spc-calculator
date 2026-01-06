@@ -8329,3 +8329,49 @@
 - [x] Tạo scheduledOeeReportService.ts
 - [x] Tạo scheduledOeeReportRouter.ts
 - [x] Tạo AlertMessageHistoryWidget component
+
+
+## Phase 114: IoT System Review & User Guide
+
+### Kiểm tra chức năng IoT
+- [x] Kiểm tra IoT Dashboard
+- [x] Kiểm tra Device Management (CRUD)
+- [x] Kiểm tra Alarm Management (CRUD)
+- [x] Kiểm tra IoT Work Orders (CRUD)
+- [x] Kiểm tra IoT Gateway Config (CRUD)
+- [x] Kiểm tra Alarm Threshold Config (CRUD)
+- [x] Kiểm tra IoT Realtime Dashboard
+- [x] Kiểm tra Sensor Dashboard
+- [x] Kiểm tra Factory Floor Plan
+
+### Xây dựng trang hướng dẫn sử dụng IoT
+- [x] Tạo trang IoTUserGuide.tsx
+- [x] Viết mô tả, mục đích và lợi ích cho 23+ chức năng IoT
+- [x] Thêm route /iot-user-guide vào App.tsx
+- [x] Thêm menu IoT User Guide vào systemMenu.ts
+- [x] Thêm translations cho IoT User Guide
+
+### Các chức năng đã document:
+- [x] IoT Dashboard
+- [x] Device Management
+- [x] Alarm Management
+- [x] IoT Realtime Dashboard
+- [x] Sensor Dashboard
+- [x] Factory Floor Plan
+- [x] IoT Work Orders
+- [x] MTTR/MTBF Report
+- [x] IoT Gateway Config
+- [x] MQTT Connections
+- [x] OPC-UA Connections
+- [x] Alarm Threshold Config
+- [x] Telegram Settings
+- [x] Notification Preferences
+- [x] SMS Notification Settings
+- [x] Escalation Dashboard
+- [x] Auto-resolve Settings
+- [x] Latency Monitoring
+- [x] Unified IoT Dashboard
+- [x] Layout Designer
+- [x] 3D Factory Floor Plan
+- [x] 3D Model Management
+- [x] IoT Scheduled OTA

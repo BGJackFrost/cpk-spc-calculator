@@ -601,6 +601,7 @@ export const IOT_MENU: SystemMenuConfig = {
         { id: "auto-resolve-settings", icon: Zap, labelKey: "nav.autoResolveSettings", path: "/auto-resolve-settings", adminOnly: true },
         { id: "latency-monitoring", icon: Activity, labelKey: "nav.latencyMonitoring", path: "/latency-monitoring", adminOnly: true },
         { id: "notification-preferences", icon: Bell, labelKey: "nav.notificationPreferences", path: "/notification-preferences" },
+        { id: "iot-user-guide", icon: BookOpen, labelKey: "nav.iotUserGuide", path: "/iot-user-guide" },
       ],
     },
   ],

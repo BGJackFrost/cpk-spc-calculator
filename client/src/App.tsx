@@ -270,6 +270,7 @@ import MttrMtbfPrediction from "./pages/MttrMtbfPrediction";
 import IotDeviceCrud from "./pages/IotDeviceCrud";
 import IotAlarmCrud from "./pages/IotAlarmCrud";
 import NotificationPreferencesPage from "./pages/NotificationPreferencesPage";
+import IoTUserGuide from "./pages/IoTUserGuide";
 
 function Router() {
   return (
@@ -536,6 +537,7 @@ function Router() {
       <Route path="/iot-device-crud" component={IotDeviceCrud} />
       <Route path="/iot-alarm-crud" component={IotAlarmCrud} />
       <Route path="/notification-preferences" component={NotificationPreferencesPage} />
+      <Route path="/iot-user-guide" component={IoTUserGuide} />
       <Route path="/work-order-notification-config" component={WorkOrderNotificationConfig} />
       <Route path="/mttr-mtbf-report" component={MttrMtbfReport} />
       <Route path="/scheduled-mttr-mtbf-reports" component={ScheduledMttrMtbfReports} />
