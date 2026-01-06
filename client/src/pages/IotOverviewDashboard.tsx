@@ -56,6 +56,7 @@ import { trpc } from '@/lib/trpc';
 import { useSSE } from '@/hooks/useSSE';
 import { toast } from 'sonner';
 import MttrMtbfComparisonWidget from '@/components/MttrMtbfComparisonWidget';
+import MqttRealtimeWidget from '@/components/MqttRealtimeWidget';
 
 // Colors for severity
 const SEVERITY_COLORS = {
@@ -660,6 +661,9 @@ export default function IotOverviewDashboard() {
 
         {/* MTTR/MTBF Comparison Widget */}
         <MttrMtbfComparisonWidget className="" />
+
+        {/* MQTT Realtime Sensors Widget */}
+        <MqttRealtimeWidget className="" showMessages={false} maxSensors={12} />
 
         {/* Recent Alarms */}
         <Card>

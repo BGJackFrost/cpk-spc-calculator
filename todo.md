@@ -8250,3 +8250,9 @@
 - [x] Work Order Management: Trang IotWorkOrderManagement với workflow và thống kê MTTR
 - [x] OEE Alert Config: Bảng iot_oee_alert_config/history, trang IotOeeAlertConfig
 - [x] Tests: 12 tests passed cho iotOeeAlert
+
+## Phase 109 - IoT Enhancement Part 2 (Jan 6, 2025)
+- [x] Tích hợp MqttRealtimeWidget vào IotOverviewDashboard để hiển thị sensors realtime
+- [x] Thêm notification push khi có alert OEE critical
+- [x] Tạo báo cáo tự động MTTR/MTBF theo tuần/tháng
+- [x] Viết unit tests cho các tính năng mới

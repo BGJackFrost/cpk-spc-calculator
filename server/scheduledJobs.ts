@@ -19,6 +19,7 @@ import { sendWeeklyAccuracyReport, triggerWeeklyAccuracyReport } from './service
 import { cacheAlertService } from './services/cacheAlertService';
 import { cacheReportService } from './services/cacheReportService';
 import { cacheWarmingService } from './services/cacheWarmingService';
+import { checkAndSendDueReports as checkMttrMtbfReports } from './services/scheduledMttrMtbfService';
 
 // Track if jobs are already initialized
 let jobsInitialized = false;
@@ -726,6 +727,23 @@ export function initScheduledJobs(): void {
   });
   
   console.log('[ScheduledJob] Scheduled: Webhook failure escalation check every 5 minutes (Asia/Ho_Chi_Minh)');
+  
+  // MTTR/MTBF scheduled reports - runs every 5 minutes to check for due reports
+  cron.schedule('0 */5 * * * *', async () => {
+    console.log('[ScheduledJob] Triggered: MTTR/MTBF scheduled reports check');
+    try {
+      const result = await checkMttrMtbfReports();
+      if (result.sent > 0 || result.failed > 0) {
+        console.log(`[ScheduledJob] MTTR/MTBF reports: sent=${result.sent}, failed=${result.failed}`);
+      }
+    } catch (error) {
+      console.error('[ScheduledJob] Error checking MTTR/MTBF scheduled reports:', error);
+    }
+  }, {
+    timezone: 'Asia/Ho_Chi_Minh'
+  });
+  
+  console.log('[ScheduledJob] Scheduled: MTTR/MTBF reports check every 5 minutes (Asia/Ho_Chi_Minh)');
   
   // Cache warming on startup
   setTimeout(async () => {

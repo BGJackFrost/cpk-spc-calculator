@@ -39,9 +39,32 @@ export async function getAlertStatistics(days = 7): Promise<any> {
   return { total: stats.total || 0, bySeverity: { critical: stats.critical || 0, warning: stats.warning || 0, info: stats.info || 0 }, acknowledged: stats.acknowledged || 0, pending: stats.pending || 0 };
 }
 
-export async function runAllAlertChecks(): Promise<{ configId: number; alertsTriggered: number }[]> {
+export async function sendOeeCriticalNotification(alert: AlertResult): Promise<boolean> {
+  try {
+    const { notifyOwner } = await import('../_core/notification');
+    const title = `🚨 OEE Critical Alert: ${alert.targetName}`;
+    const content = `**Alert Type:** ${alert.alertType}\n**Severity:** ${alert.severity.toUpperCase()}\n**Current Value:** ${alert.currentValue.toFixed(1)}%\n**Threshold:** ${alert.thresholdValue}%\n**Message:** ${alert.message}\n\n**Time:** ${new Date().toLocaleString('vi-VN')}`;
+    return await notifyOwner({ title, content });
+  } catch (error) {
+    console.error('[OeeAlert] Failed to send notification:', error);
+    return false;
+  }
+}
+
+export async function runAllAlertChecks(): Promise<{ configId: number; alertsTriggered: number; notificationsSent: number }[]> {
   const configs = await getAlertConfigs();
-  const results: { configId: number; alertsTriggered: number }[] = [];
-  for (const config of configs) { const alerts = await checkOeeAlerts(config); for (const alert of alerts) await saveAlertHistory(alert); results.push({ configId: config.id, alertsTriggered: alerts.length }); }
+  const results: { configId: number; alertsTriggered: number; notificationsSent: number }[] = [];
+  for (const config of configs) {
+    const alerts = await checkOeeAlerts(config);
+    let notificationsSent = 0;
+    for (const alert of alerts) {
+      await saveAlertHistory(alert);
+      if (alert.severity === 'critical') {
+        const sent = await sendOeeCriticalNotification(alert);
+        if (sent) notificationsSent++;
+      }
+    }
+    results.push({ configId: config.id, alertsTriggered: alerts.length, notificationsSent });
+  }
   return results;
 }
