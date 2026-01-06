@@ -8389,3 +8389,12 @@
 - [x] Tạo tab FAQ trong trang IoT User Guide
 - [x] Hỗ trợ tìm kiếm FAQ
 - [x] Phân loại FAQ theo category
+
+
+## Phase 116: Thay thế video mẫu bằng video thực tế
+- [x] Tìm kiếm video hướng dẫn IoT/MQTT thực tế trên YouTube
+- [x] Tìm kiếm video hướng dẫn OPC-UA thực tế trên YouTube
+- [x] Tìm kiếm video hướng dẫn SPC/CPK thực tế trên YouTube
+- [x] Tìm kiếm video hướng dẫn OEE/MES thực tế trên YouTube
+- [x] Cập nhật IoTUserGuide.tsx với YouTube ID thực tế
+- [x] Test và lưu checkpoint

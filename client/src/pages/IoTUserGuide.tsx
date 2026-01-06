@@ -84,7 +84,7 @@ const videoTutorials: VideoTutorial[] = [
     description: 'Tổng quan về hệ thống IoT trong nhà máy, các thành phần chính và cách thức hoạt động.',
     duration: '8:45',
     category: 'overview',
-    youtubeId: 'dQw4w9WgXcQ',
+    youtubeId: 'wEtH6tT9HA4', // Getting Started with Industry 4.0
     relatedFeatures: ['IoT Dashboard', 'Device Management'],
   },
   {
@@ -93,7 +93,7 @@ const videoTutorials: VideoTutorial[] = [
     description: 'Cách sử dụng bảng điều khiển IoT để theo dõi trạng thái thiết bị và cảnh báo.',
     duration: '12:30',
     category: 'overview',
-    youtubeId: 'dQw4w9WgXcQ',
+    youtubeId: 'fnMpWVN7Tz0', // What is Smart Manufacturing - Industry 4.0
     relatedFeatures: ['IoT Dashboard', 'Alarm Management'],
   },
   {
@@ -102,7 +102,7 @@ const videoTutorials: VideoTutorial[] = [
     description: 'Hướng dẫn chi tiết cách thêm, sửa, xóa và cấu hình thiết bị IoT trong hệ thống.',
     duration: '15:20',
     category: 'overview',
-    youtubeId: 'dQw4w9WgXcQ',
+    youtubeId: 'g3vpGMWokJ8', // What Are Industrial Sensors? The Basics Explained
     relatedFeatures: ['Device Management', 'IoT Gateway Config'],
   },
   // Kết nối
@@ -112,7 +112,7 @@ const videoTutorials: VideoTutorial[] = [
     description: 'Hướng dẫn cấu hình MQTT Broker để thu thập dữ liệu từ thiết bị IoT.',
     duration: '10:15',
     category: 'connections',
-    youtubeId: 'dQw4w9WgXcQ',
+    youtubeId: 'kIZkMBexqjE', // How MQTT Works: A Deep Dive Into MQTT Protocol
     relatedFeatures: ['MQTT Connections', 'IoT Gateway Config'],
   },
   {
@@ -121,7 +121,7 @@ const videoTutorials: VideoTutorial[] = [
     description: 'Cách thiết lập kết nối OPC-UA để giao tiếp với thiết bị công nghiệp.',
     duration: '14:00',
     category: 'connections',
-    youtubeId: 'dQw4w9WgXcQ',
+    youtubeId: 't688GD6jNzE', // What is OPC UA? Industrial IoT Communication explained
     relatedFeatures: ['OPC-UA Connections', 'IoT Realtime Dashboard'],
   },
   {
@@ -130,7 +130,7 @@ const videoTutorials: VideoTutorial[] = [
     description: 'Hướng dẫn thiết lập và quản lý IoT Gateway trong hệ thống.',
     duration: '11:45',
     category: 'connections',
-    youtubeId: 'dQw4w9WgXcQ',
+    youtubeId: 'GVVnKYBponQ', // Industrial Connectivity - Short Introduction in MQTT
     relatedFeatures: ['IoT Gateway Config', 'Device Management'],
   },
   // Cảnh báo & Thông báo
@@ -140,7 +140,7 @@ const videoTutorials: VideoTutorial[] = [
     description: 'Cách xem, xác nhận và xử lý các cảnh báo từ thiết bị IoT.',
     duration: '9:30',
     category: 'alerts',
-    youtubeId: 'dQw4w9WgXcQ',
+    youtubeId: 'Pql_4KFF44Q', // What is SCADA? SCADA tutorial for beginners
     relatedFeatures: ['Alarm Management', 'Alarm Threshold Config'],
   },
   {
@@ -149,7 +149,7 @@ const videoTutorials: VideoTutorial[] = [
     description: 'Hướng dẫn thiết lập ngưỡng cảnh báo cho các thông số đo lường.',
     duration: '8:00',
     category: 'alerts',
-    youtubeId: 'dQw4w9WgXcQ',
+    youtubeId: 'Kw_ZMiMNi04', // Introduction to Statistical Process Control Charts
     relatedFeatures: ['Alarm Threshold Config', 'Alarm Management'],
   },
   {
@@ -158,7 +158,7 @@ const videoTutorials: VideoTutorial[] = [
     description: 'Cách cấu hình gửi thông báo cảnh báo qua Telegram Bot.',
     duration: '7:15',
     category: 'alerts',
-    youtubeId: 'dQw4w9WgXcQ',
+    youtubeId: 'n6fCVm0yAC4', // Industrial IoT Sensors: Transforming Real-Time Equipment
     relatedFeatures: ['Telegram Settings', 'Notification Preferences'],
   },
   {
@@ -167,7 +167,7 @@ const videoTutorials: VideoTutorial[] = [
     description: 'Hướng dẫn thiết lập gửi SMS thông báo qua Twilio.',
     duration: '6:45',
     category: 'alerts',
-    youtubeId: 'dQw4w9WgXcQ',
+    youtubeId: 'xuIeRk13-08', // Understanding Predictive Maintenance
     relatedFeatures: ['SMS Notification Settings', 'Notification Preferences'],
   },
   {
@@ -176,7 +176,7 @@ const videoTutorials: VideoTutorial[] = [
     description: 'Cách thiết lập quy trình escalation và tự động resolve cảnh báo.',
     duration: '10:00',
     category: 'alerts',
-    youtubeId: 'dQw4w9WgXcQ',
+    youtubeId: 'n6Fdfn2rGK4', // Predictive Maintenance: Optimize Your Operations
     relatedFeatures: ['Escalation Dashboard', 'Auto-resolve Settings'],
   },
   // Giám sát Realtime
@@ -186,7 +186,7 @@ const videoTutorials: VideoTutorial[] = [
     description: 'Cách sử dụng dashboard realtime để theo dõi dữ liệu từ thiết bị IoT.',
     duration: '13:00',
     category: 'monitoring',
-    youtubeId: 'dQw4w9WgXcQ',
+    youtubeId: '3c8VevhxfH4', // PLC SCADA Full Course - InTouch
     relatedFeatures: ['IoT Realtime Dashboard', 'Sensor Dashboard'],
   },
   {
@@ -195,7 +195,7 @@ const videoTutorials: VideoTutorial[] = [
     description: 'Hướng dẫn sử dụng dashboard sensor để giám sát tất cả cảm biến.',
     duration: '9:00',
     category: 'monitoring',
-    youtubeId: 'dQw4w9WgXcQ',
+    youtubeId: '9QBSwJwzC54', // Core Sensors in Industrial Automation
     relatedFeatures: ['Sensor Dashboard', 'IoT Dashboard'],
   },
   {
@@ -204,7 +204,7 @@ const videoTutorials: VideoTutorial[] = [
     description: 'Cách theo dõi và phân tích độ trễ trong hệ thống IoT.',
     duration: '7:30',
     category: 'monitoring',
-    youtubeId: 'dQw4w9WgXcQ',
+    youtubeId: 'gpxvy2M-GvA', // Complete Guide to Manufacturing Automation Architecture
     relatedFeatures: ['Latency Monitoring', 'IoT Gateway Config'],
   },
   // Sơ đồ nhà máy
@@ -214,7 +214,7 @@ const videoTutorials: VideoTutorial[] = [
     description: 'Cách xem và tương tác với sơ đồ mặt bằng nhà máy IoT.',
     duration: '8:30',
     category: 'floorplan',
-    youtubeId: 'dQw4w9WgXcQ',
+    youtubeId: '4z7pTGJ9Ae8', // An illustrated guide to Smart Manufacturing - Industry 4.0
     relatedFeatures: ['Factory Floor Plan', 'Device Management'],
   },
   {
@@ -223,7 +223,7 @@ const videoTutorials: VideoTutorial[] = [
     description: 'Hướng dẫn sử dụng công cụ thiết kế layout sơ đồ nhà máy.',
     duration: '15:00',
     category: 'floorplan',
-    youtubeId: 'dQw4w9WgXcQ',
+    youtubeId: 'if84SAo1jww', // Industry 4.0 Training with Smart Factory (Amatrol)
     relatedFeatures: ['Layout Designer', 'Factory Floor Plan'],
   },
   {
@@ -232,7 +232,7 @@ const videoTutorials: VideoTutorial[] = [
     description: 'Cách sử dụng và tương tác với sơ đồ nhà máy 3D.',
     duration: '12:00',
     category: 'floorplan',
-    youtubeId: 'dQw4w9WgXcQ',
+    youtubeId: '8SIguP643cM', // What is a Digital Factory
     relatedFeatures: ['3D Factory Floor Plan', '3D Model Management'],
   },
   {
@@ -241,7 +241,7 @@ const videoTutorials: VideoTutorial[] = [
     description: 'Hướng dẫn upload và quản lý các model 3D cho thiết bị.',
     duration: '10:30',
     category: 'floorplan',
-    youtubeId: 'dQw4w9WgXcQ',
+    youtubeId: 'tDURkVEylj8', // Smart Factory Automation is Revolutionizing Manufacturing
     relatedFeatures: ['3D Model Management', '3D Factory Floor Plan'],
   },
   // Bảo trì
@@ -251,7 +251,7 @@ const videoTutorials: VideoTutorial[] = [
     description: 'Cách tạo và theo dõi phiếu công việc bảo trì thiết bị IoT.',
     duration: '11:00',
     category: 'maintenance',
-    youtubeId: 'dQw4w9WgXcQ',
+    youtubeId: 'ZvGe4qFQdSU', // What is MES (Manufacturing Execution System)?
     relatedFeatures: ['IoT Work Orders', 'Device Management'],
   },
   {
@@ -260,7 +260,7 @@ const videoTutorials: VideoTutorial[] = [
     description: 'Cách xem và phân tích báo cáo MTTR/MTBF cho thiết bị.',
     duration: '9:45',
     category: 'maintenance',
-    youtubeId: 'dQw4w9WgXcQ',
+    youtubeId: 'F9ETypl9aKg', // OEE (Overall Equipment Effectiveness) – What is it and...
     relatedFeatures: ['MTTR/MTBF Report', 'IoT Work Orders'],
   },
   {
@@ -269,7 +269,7 @@ const videoTutorials: VideoTutorial[] = [
     description: 'Hướng dẫn lập lịch và thực hiện cập nhật firmware từ xa.',
     duration: '13:30',
     category: 'maintenance',
-    youtubeId: 'dQw4w9WgXcQ',
+    youtubeId: 'STXYjQrH-eA', // OEE – Overall Equipment Effectiveness: What It Is and How...
     relatedFeatures: ['IoT Scheduled OTA', 'Device Management'],
   },
   // Nâng cao
@@ -279,7 +279,7 @@ const videoTutorials: VideoTutorial[] = [
     description: 'Cách sử dụng và tùy chỉnh Unified Dashboard với widgets.',
     duration: '14:00',
     category: 'advanced',
-    youtubeId: 'dQw4w9WgXcQ',
+    youtubeId: 'omsDVexPYUU', // What is SPC Statistical Process Control?
     relatedFeatures: ['Unified IoT Dashboard', 'IoT Dashboard'],
   },
   {
@@ -288,7 +288,7 @@ const videoTutorials: VideoTutorial[] = [
     description: 'Cách sử dụng biểu đồ Pareto để phân tích sự cố thiết bị.',
     duration: '8:15',
     category: 'advanced',
-    youtubeId: 'dQw4w9WgXcQ',
+    youtubeId: 'H6St9mCKWuA', // PROCESS CAPABILITY: Explaining Cp, Cpk, Pp, Ppk
     relatedFeatures: ['Factory Floor Plan', 'Alarm Management'],
   },
   {
@@ -297,7 +297,7 @@ const videoTutorials: VideoTutorial[] = [
     description: 'Cách kết hợp dữ liệu IoT với phân tích SPC/CPK.',
     duration: '16:00',
     category: 'advanced',
-    youtubeId: 'dQw4w9WgXcQ',
+    youtubeId: 'mp_weUOJsQc', // Complete STATISTICAL PROCESS CONTROL (SPC) Training
     relatedFeatures: ['IoT Realtime Dashboard', 'SPC Analysis'],
   },
 ];
