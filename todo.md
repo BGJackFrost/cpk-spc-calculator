@@ -8375,3 +8375,17 @@
 - [x] 3D Factory Floor Plan
 - [x] 3D Model Management
 - [x] IoT Scheduled OTA
+
+## Phase 115: IoT Video Tutorials & FAQ
+
+### Video Tutorials
+- [x] Thêm video tutorials cho các chức năng IoT chính
+- [x] Tạo tab Video trong trang IoT User Guide
+- [x] Hỗ trợ nhúng video YouTube
+- [x] Phân loại video theo category
+
+### FAQ (Câu hỏi thường gặp)
+- [x] Thêm FAQ cho hệ thống IoT (32 câu hỏi)
+- [x] Tạo tab FAQ trong trang IoT User Guide
+- [x] Hỗ trợ tìm kiếm FAQ
+- [x] Phân loại FAQ theo category
