@@ -61,7 +61,18 @@ export interface FloorPlanItem {
   iotDeviceId?: number;
   iotDeviceCode?: string;
   iotDeviceType?: string;
+  layerId?: string; // Layer mà item thuộc về
   metadata?: Record<string, any>;
+}
+
+// Layer interface
+export interface FloorPlanLayer {
+  id: string;
+  name: string;
+  visible: boolean;
+  locked: boolean;
+  color: string;
+  zIndex: number;
 }
 
 export interface FloorPlanConfig {
@@ -72,9 +83,18 @@ export interface FloorPlanConfig {
   gridSize: number;
   showGrid: boolean;
   items: FloorPlanItem[];
+  layers?: FloorPlanLayer[]; // Danh sách layers
   createdAt?: Date;
   updatedAt?: Date;
 }
+
+// Default layers
+const DEFAULT_LAYERS: FloorPlanLayer[] = [
+  { id: 'layer-default', name: 'Mặc định', visible: true, locked: false, color: '#6b7280', zIndex: 0 },
+  { id: 'layer-machines', name: 'Máy móc', visible: true, locked: false, color: '#3b82f6', zIndex: 1 },
+  { id: 'layer-workstations', name: 'Công trạm', visible: true, locked: false, color: '#10b981', zIndex: 2 },
+  { id: 'layer-iot', name: 'Thiết bị IoT', visible: true, locked: false, color: '#8b5cf6', zIndex: 3 },
+];
 
 // Palette items
 const PALETTE_ITEMS = [
@@ -128,6 +148,9 @@ function FloorItem({
   onRotate,
   onResize,
   gridSize,
+  isLayerVisible = true,
+  isLayerLocked = false,
+  onIoTClick,
 }: {
   item: FloorPlanItem;
   isSelected: boolean;
@@ -136,7 +159,12 @@ function FloorItem({
   onRotate: () => void;
   onResize: (width: number, height: number) => void;
   gridSize: number;
+  isLayerVisible?: boolean;
+  isLayerLocked?: boolean;
+  onIoTClick?: () => void;
 }) {
+  // Ẩn item nếu layer không hiển thị
+  if (!isLayerVisible) return null;
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: item.id,
     data: { type: 'floor', item },
@@ -207,30 +235,54 @@ function FloorItem({
   return (
     <div
       ref={setNodeRef}
-      style={style}
-      {...listeners}
-      {...attributes}
+      style={{
+        ...style,
+        pointerEvents: isLayerLocked ? 'none' : 'auto',
+        opacity: isLayerLocked ? 0.6 : (isDragging ? 0.7 : 1),
+      }}
+      {...(isLayerLocked ? {} : listeners)}
+      {...(isLayerLocked ? {} : attributes)}
       onClick={(e) => {
         e.stopPropagation();
+        if (isLayerLocked) return;
         onSelect();
+      }}
+      onDoubleClick={(e) => {
+        e.stopPropagation();
+        // Double click vào IoT device để mở popup chi tiết
+        if (item.type === 'iot_device' && onIoTClick) {
+          onIoTClick();
+        }
       }}
       className={`rounded shadow-md flex items-center justify-center text-white text-xs font-medium select-none ${
         isSelected ? 'ring-2 ring-primary ring-offset-2' : ''
-      }`}
+      } ${isLayerLocked ? 'cursor-not-allowed' : ''} ${item.type === 'iot_device' ? 'cursor-pointer' : ''}`}
     >
       {/* Status indicator */}
       {item.status && (
         <div
-          className="absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-white"
+          className="absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-white animate-pulse"
           style={{ backgroundColor: statusColors[item.status] }}
         />
+      )}
+
+      {/* IoT device icon */}
+      {item.type === 'iot_device' && (
+        <Cpu className="w-4 h-4 mr-1" />
       )}
 
       {/* Item name */}
       <span className="truncate px-1">{item.name}</span>
 
-      {/* Selected controls */}
-      {isSelected && !isDragging && (
+      {/* Lock indicator */}
+      {isLayerLocked && (
+        <div className="absolute -top-1 -left-1 w-4 h-4 bg-orange-500 rounded-full flex items-center justify-center">
+          <span className="text-[8px]">🔒</span>
+        </div>
+      )}
+
+      {/* Selected controls - chỉ hiển thị khi không bị lock */}
+      {isSelected && !isDragging && !isLayerLocked && (
         <>
           {/* Delete button */}
           <button
@@ -253,6 +305,20 @@ function FloorItem({
           >
             <RotateCw className="w-3 h-3 text-white" />
           </button>
+
+          {/* Info button cho IoT device */}
+          {item.type === 'iot_device' && onIoTClick && (
+            <button
+              className="absolute -bottom-3 -left-3 w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center hover:bg-purple-600"
+              onClick={(e) => {
+                e.stopPropagation();
+                onIoTClick();
+              }}
+              title="Xem chi tiết thiết bị"
+            >
+              <Cpu className="w-3 h-3 text-white" />
+            </button>
+          )}
 
           {/* Resize handle */}
           <div
@@ -283,6 +349,8 @@ export function FloorPlanDesigner({
   machines = [],
   iotDevices = [],
   onIotDeviceStatusChange,
+  autoRefreshInterval = 30000, // 30 giây mặc định
+  onIotDeviceClick,
 }: {
   initialConfig?: FloorPlanConfig;
   onSave?: (config: FloorPlanConfig) => void;
@@ -290,6 +358,8 @@ export function FloorPlanDesigner({
   machines?: Array<{ id: number; name: string; status?: string }>;
   iotDevices?: IoTDeviceForLayout[];
   onIotDeviceStatusChange?: (deviceId: number, status: string) => void;
+  autoRefreshInterval?: number; // Interval auto-refresh IoT status (ms)
+  onIotDeviceClick?: (device: IoTDeviceForLayout) => void; // Callback khi click vào IoT device
 }) {
   const [config, setConfig] = useState<FloorPlanConfig>(
     initialConfig || {
@@ -299,14 +369,57 @@ export function FloorPlanDesigner({
       gridSize: 20,
       showGrid: true,
       items: [],
+      layers: DEFAULT_LAYERS,
     }
   );
 
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [showLayerPanel, setShowLayerPanel] = useState(false);
   const canvasRef = useRef<HTMLDivElement>(null);
+
+  // Khởi tạo layers nếu chưa có
+  useEffect(() => {
+    if (!config.layers || config.layers.length === 0) {
+      setConfig(prev => ({ ...prev, layers: DEFAULT_LAYERS }));
+    }
+  }, []);
+
+  // Auto-refresh IoT device status
+  useEffect(() => {
+    if (autoRefreshInterval <= 0 || iotDevices.length === 0) return;
+
+    const intervalId = setInterval(() => {
+      // Cập nhật trạng thái IoT devices trên sơ đồ
+      setConfig(prev => ({
+        ...prev,
+        items: prev.items.map(item => {
+          if (item.type === 'iot_device' && item.iotDeviceId) {
+            const device = iotDevices.find(d => d.id === item.iotDeviceId);
+            if (device) {
+              const statusColors: Record<string, string> = {
+                online: '#22c55e',
+                offline: '#6b7280',
+                error: '#ef4444',
+                maintenance: '#3b82f6',
+              };
+              return {
+                ...item,
+                status: device.status,
+                color: statusColors[device.status] || '#6b7280',
+              };
+            }
+          }
+          return item;
+        }),
+      }));
+    }, autoRefreshInterval);
+
+    return () => clearInterval(intervalId);
+  }, [autoRefreshInterval, iotDevices]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -630,6 +743,10 @@ export function FloorPlanDesigner({
               <Grid3X3 className={`w-4 h-4 ${config.showGrid ? 'text-primary' : ''}`} />
             </Button>
 
+            <Button variant="outline" size="sm" onClick={() => setShowLayerPanel(true)}>
+              <Layers className="w-4 h-4" />
+            </Button>
+
             <Button variant="outline" size="sm" onClick={() => setShowSettings(true)}>
               <Settings className="w-4 h-4" />
             </Button>
@@ -663,18 +780,32 @@ export function FloorPlanDesigner({
               }}
               onClick={() => setSelectedItemId(null)}
             >
-              {config.items.map((item) => (
-                <FloorItem
-                  key={item.id}
-                  item={item}
-                  isSelected={item.id === selectedItemId}
-                  onSelect={() => setSelectedItemId(item.id)}
-                  onDelete={() => handleDeleteItem(item.id)}
-                  onRotate={() => handleRotateItem(item.id)}
-                  onResize={(w, h) => handleResizeItem(item.id, w, h)}
-                  gridSize={config.gridSize}
-                />
-              ))}
+              {config.items.map((item) => {
+                const layer = config.layers?.find(l => l.id === item.layerId);
+                const isLayerVisible = layer ? layer.visible : true;
+                const isLayerLocked = layer ? layer.locked : false;
+                
+                // Tìm IoT device tương ứng
+                const iotDevice = item.type === 'iot_device' && item.iotDeviceId
+                  ? iotDevices.find(d => d.id === item.iotDeviceId)
+                  : undefined;
+
+                return (
+                  <FloorItem
+                    key={item.id}
+                    item={item}
+                    isSelected={item.id === selectedItemId}
+                    onSelect={() => setSelectedItemId(item.id)}
+                    onDelete={() => handleDeleteItem(item.id)}
+                    onRotate={() => handleRotateItem(item.id)}
+                    onResize={(w, h) => handleResizeItem(item.id, w, h)}
+                    gridSize={config.gridSize}
+                    isLayerVisible={isLayerVisible}
+                    isLayerLocked={isLayerLocked}
+                    onIoTClick={iotDevice && onIotDeviceClick ? () => onIotDeviceClick(iotDevice) : undefined}
+                  />
+                );
+              })}
             </div>
           </div>
         </div>
@@ -761,6 +892,22 @@ export function FloorPlanDesigner({
                   />
                 </div>
 
+                {/* Layer selector */}
+                <div>
+                  <Label className="text-xs">Layer</Label>
+                  <select
+                    value={selectedItem.layerId || 'layer-default'}
+                    onChange={(e) => updateSelectedItem({ layerId: e.target.value })}
+                    className="w-full h-8 text-sm border rounded px-2 bg-background"
+                  >
+                    {(config.layers || DEFAULT_LAYERS).map(layer => (
+                      <option key={layer.id} value={layer.id}>
+                        {layer.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
                 <div className="flex gap-2">
                   <Button
                     variant="outline"
@@ -832,6 +979,121 @@ export function FloorPlanDesigner({
                   value={config.gridSize}
                   onChange={(e) => setConfig((prev) => ({ ...prev, gridSize: parseInt(e.target.value) || 20 }))}
                 />
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Layer Panel Dialog */}
+        <Dialog open={showLayerPanel} onOpenChange={setShowLayerPanel}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Layers className="w-5 h-5" />
+                Quản lý Layers
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              {(config.layers || DEFAULT_LAYERS).map((layer, index) => (
+                <div
+                  key={layer.id}
+                  className={`flex items-center gap-3 p-3 rounded-lg border ${
+                    selectedLayerId === layer.id ? 'border-primary bg-primary/5' : 'border-border'
+                  }`}
+                  onClick={() => setSelectedLayerId(layer.id)}
+                >
+                  {/* Layer color indicator */}
+                  <div
+                    className="w-4 h-4 rounded"
+                    style={{ backgroundColor: layer.color }}
+                  />
+
+                  {/* Layer name */}
+                  <div className="flex-1">
+                    <Input
+                      value={layer.name}
+                      onChange={(e) => {
+                        setConfig(prev => ({
+                          ...prev,
+                          layers: prev.layers?.map(l =>
+                            l.id === layer.id ? { ...l, name: e.target.value } : l
+                          ),
+                        }));
+                      }}
+                      className="h-7 text-sm"
+                    />
+                  </div>
+
+                  {/* Visibility toggle */}
+                  <Button
+                    variant={layer.visible ? 'default' : 'outline'}
+                    size="sm"
+                    className="w-8 h-8 p-0"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setConfig(prev => ({
+                        ...prev,
+                        layers: prev.layers?.map(l =>
+                          l.id === layer.id ? { ...l, visible: !l.visible } : l
+                        ),
+                      }));
+                    }}
+                    title={layer.visible ? 'Ẩn layer' : 'Hiển layer'}
+                  >
+                    {layer.visible ? '👁' : '🙈'}
+                  </Button>
+
+                  {/* Lock toggle */}
+                  <Button
+                    variant={layer.locked ? 'destructive' : 'outline'}
+                    size="sm"
+                    className="w-8 h-8 p-0"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setConfig(prev => ({
+                        ...prev,
+                        layers: prev.layers?.map(l =>
+                          l.id === layer.id ? { ...l, locked: !l.locked } : l
+                        ),
+                      }));
+                    }}
+                    title={layer.locked ? 'Mở khóa layer' : 'Khóa layer'}
+                  >
+                    {layer.locked ? '🔒' : '🔓'}
+                  </Button>
+
+                  {/* Items count */}
+                  <Badge variant="secondary" className="text-xs">
+                    {config.items.filter(i => (i.layerId || 'layer-default') === layer.id).length}
+                  </Badge>
+                </div>
+              ))}
+
+              {/* Add new layer button */}
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => {
+                  const newLayer: FloorPlanLayer = {
+                    id: `layer-${Date.now()}`,
+                    name: `Layer ${(config.layers?.length || 0) + 1}`,
+                    visible: true,
+                    locked: false,
+                    color: `#${Math.floor(Math.random()*16777215).toString(16).padStart(6, '0')}`,
+                    zIndex: (config.layers?.length || 0),
+                  };
+                  setConfig(prev => ({
+                    ...prev,
+                    layers: [...(prev.layers || DEFAULT_LAYERS), newLayer],
+                  }));
+                }}
+              >
+                + Thêm Layer mới
+              </Button>
+
+              <div className="text-xs text-muted-foreground pt-2 border-t">
+                <p>👁 = Hiển/Ẩn layer</p>
+                <p>🔒 = Khóa/Mở khóa (không thể di chuyển/chỉnh sửa)</p>
               </div>
             </div>
           </DialogContent>

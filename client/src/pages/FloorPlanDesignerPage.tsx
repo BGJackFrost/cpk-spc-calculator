@@ -1,6 +1,7 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
 import { FloorPlanDesigner, FloorPlanConfig, FloorPlanItem, IoTDeviceForLayout } from '@/components/FloorPlanDesigner';
+import { IoTDeviceDetailPopup, IoTDeviceForPopup } from '@/components/IoTDeviceDetailPopup';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -47,11 +48,25 @@ export default function FloorPlanDesignerPage() {
   const [importFileName, setImportFileName] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // IoT Device Popup state
+  const [selectedIoTDevice, setSelectedIoTDevice] = useState<IoTDeviceForPopup | null>(null);
+  const [isIoTPopupOpen, setIsIoTPopupOpen] = useState(false);
+
+  // Auto-refresh interval (30 giây)
+  const AUTO_REFRESH_INTERVAL = 30000;
+
   // Queries
   const { data: floorPlans, refetch: refetchPlans } = trpc.floorPlan.list.useQuery();
   const { data: productionLines } = trpc.productionLine.list.useQuery();
   const { data: machines } = trpc.machine.list.useQuery();
-  const { data: iotDevicesData } = trpc.iotCrud.getDevices.useQuery({});
+  // Auto-refresh IoT devices mỗi 30 giây khi đang thiết kế
+  const { data: iotDevicesData, refetch: refetchIoTDevices } = trpc.iotCrud.getDevices.useQuery(
+    {},
+    {
+      refetchInterval: isDesigning ? AUTO_REFRESH_INTERVAL : false,
+      refetchIntervalInBackground: false,
+    }
+  );
 
   // Mutations
   const createMutation = trpc.floorPlan.create.useMutation({
@@ -297,7 +312,7 @@ export default function FloorPlanDesignerPage() {
   })) || [];
 
   // Convert IoT devices to format for designer
-  const iotDeviceList = (iotDevicesData as any[])?.map((d: any) => ({
+  const iotDeviceList: IoTDeviceForLayout[] = (iotDevicesData as any[])?.map((d: any) => ({
     id: d.id,
     deviceCode: d.deviceCode || d.device_code || '',
     deviceName: d.deviceName || d.device_name || '',
@@ -305,6 +320,31 @@ export default function FloorPlanDesignerPage() {
     status: (d.status || 'offline') as 'online' | 'offline' | 'error' | 'maintenance',
     location: d.location || '',
   })) || [];
+
+  // Handler khi click vào IoT device trên sơ đồ
+  const handleIoTDeviceClick = useCallback((device: IoTDeviceForLayout) => {
+    // Tìm thông tin đầy đủ của device từ iotDevicesData
+    const fullDevice = (iotDevicesData as any[])?.find((d: any) => d.id === device.id);
+    if (fullDevice) {
+      const popupDevice: IoTDeviceForPopup = {
+        id: fullDevice.id,
+        deviceCode: fullDevice.deviceCode || fullDevice.device_code || '',
+        deviceName: fullDevice.deviceName || fullDevice.device_name || '',
+        deviceType: fullDevice.deviceType || fullDevice.device_type || 'other',
+        status: (fullDevice.status || 'offline') as 'online' | 'offline' | 'error' | 'maintenance',
+        location: fullDevice.location || '',
+        lastHeartbeat: fullDevice.lastHeartbeat || fullDevice.last_heartbeat,
+        manufacturer: fullDevice.manufacturer,
+        model: fullDevice.model,
+        firmwareVersion: fullDevice.firmwareVersion || fullDevice.firmware_version,
+        ipAddress: fullDevice.ipAddress || fullDevice.ip_address,
+        macAddress: fullDevice.macAddress || fullDevice.mac_address,
+        healthScore: fullDevice.healthScore || fullDevice.health_score,
+      };
+      setSelectedIoTDevice(popupDevice);
+      setIsIoTPopupOpen(true);
+    }
+  }, [iotDevicesData]);
 
   if (isDesigning && currentConfig) {
     return (
@@ -352,6 +392,16 @@ export default function FloorPlanDesignerPage() {
             onSave={handleSaveConfig}
             machines={machineList}
             iotDevices={iotDeviceList}
+            autoRefreshInterval={AUTO_REFRESH_INTERVAL}
+            onIotDeviceClick={handleIoTDeviceClick}
+          />
+
+          {/* IoT Device Detail Popup */}
+          <IoTDeviceDetailPopup
+            device={selectedIoTDevice}
+            open={isIoTPopupOpen}
+            onOpenChange={setIsIoTPopupOpen}
+            onRefresh={() => refetchIoTDevices()}
           />
         </div>
       </DashboardLayout>
