@@ -67,6 +67,9 @@ import { userGuideRouter } from "./routers/userGuideRouter";
 import { edgeGatewayRouter } from "./routers/edgeGatewayRouter";
 import { timeseriesRouter } from "./routers/timeseriesRouter";
 import { anomalyDetectionRouter } from "./routers/anomalyDetectionRouter";
+import { anomalyAlertRouter } from "./routers/anomalyAlertRouter";
+import { edgeGatewaySimulatorRouter } from "./routers/edgeGatewaySimulatorRouter";
+import { modelAutoRetrainingRouter } from "./routers/modelAutoRetrainingRouter";
 import { oeeThresholdsRouter } from "./routers/oeeThresholdsRouter";
 import { maintenanceWorkOrderRouter } from "./maintenanceWorkOrderRouter";
 import { mobileRouter } from "./mobileRouter";
@@ -12300,6 +12303,11 @@ Hãy trả về JSON với format:
   edgeGateway: edgeGatewayRouter,
   timeseries: timeseriesRouter,
   anomalyDetectionAI: anomalyDetectionRouter,
+
+  // Phase 17 - Alert System, Edge Simulator, Auto-Retraining
+  anomalyAlert: anomalyAlertRouter,
+  edgeSimulator: edgeGatewaySimulatorRouter,
+  modelAutoRetrain: modelAutoRetrainingRouter,
 });
 
 export type AppRouter = typeof appRouter;

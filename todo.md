@@ -8550,3 +8550,38 @@
 - [x] Real-time anomaly detection
 - [x] Anomaly Detection Dashboard UI
 - [x] Severity classification
+
+
+## Phase 17 - Alert System, Edge Simulator, Auto-Retraining
+
+### Alert System Integration
+- [x] Tạo bảng anomaly_alert_configs (cấu hình cảnh báo)
+- [x] Tạo bảng anomaly_alert_history (lịch sử cảnh báo)
+- [x] Tạo service anomalyAlertService.ts
+- [x] Tạo router anomalyAlertRouter.ts
+- [x] Hỗ trợ gửi cảnh báo qua Email, Telegram, Slack
+- [x] Cơ chế cooldown để tránh spam cảnh báo
+- [x] Acknowledge và resolve alerts
+
+### Edge Gateway Simulator
+- [x] Tạo bảng edge_simulator_configs (cấu hình simulator)
+- [x] Tạo bảng edge_simulator_sessions (phiên chạy simulator)
+- [x] Tạo service edgeGatewaySimulatorService.ts
+- [x] Tạo router edgeGatewaySimulatorRouter.ts
+- [x] Mô phỏng sensor data với noise, drift, anomaly
+- [x] Mô phỏng network latency và packet loss
+- [x] Mô phỏng offline scenarios với buffering
+
+### Model Auto-Retraining
+- [x] Tạo bảng model_retraining_configs (cấu hình retrain)
+- [x] Tạo bảng model_retraining_history (lịch sử retrain)
+- [x] Tạo service modelAutoRetrainingService.ts
+- [x] Tạo router modelAutoRetrainingRouter.ts
+- [x] Kiểm tra accuracy/F1 score định kỳ
+- [x] Tự động trigger retrain khi dưới ngưỡng
+- [x] Thông báo khi retrain hoàn thành/thất bại
+
+### Unit Tests
+- [x] Unit tests cho anomalyAlertService
+- [x] Unit tests cho edgeGatewaySimulatorService
+- [x] Unit tests cho modelAutoRetrainingService
