@@ -63,6 +63,7 @@ import { mttrMtbfComparisonRouter } from "./routers/mttrMtbfComparisonRouter";
 import { mttrMtbfAlertRouter } from "./routers/mttrMtbfAlertRouter";
 import { mttrMtbfPredictionRouter } from "./routers/mttrMtbfPredictionRouter";
 import { scheduledOeeReportRouter } from "./routers/scheduledOeeReportRouter";
+import { userGuideRouter } from "./routers/userGuideRouter";
 import { oeeThresholdsRouter } from "./routers/oeeThresholdsRouter";
 import { maintenanceWorkOrderRouter } from "./maintenanceWorkOrderRouter";
 import { mobileRouter } from "./mobileRouter";
@@ -3823,6 +3824,7 @@ export const appRouter = router({
   alerts: alertAnalyticsRouter,
   webhookHistory: webhookHistoryRouter,
   videoTutorial: videoTutorialRouter,
+  userGuide: userGuideRouter,
   aiAdvanced: aiAdvancedRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
