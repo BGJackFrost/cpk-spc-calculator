@@ -8398,3 +8398,26 @@
 - [x] Tìm kiếm video hướng dẫn OEE/MES thực tế trên YouTube
 - [x] Cập nhật IoTUserGuide.tsx với YouTube ID thực tế
 - [x] Test và lưu checkpoint
+
+## Bug Fixes - Phase 10.3 (IoT Issues)
+
+### Model 3D Management
+- [ ] Sửa lỗi JSON khi upload Model 3D (Unexpected token '<', "<html>..." is not valid JSON)
+
+### Layout Designer
+- [ ] Sửa lỗi vị trí con trỏ không đúng khi đặt Object (Máy móc, Công trạm) trong thiết kế Layout
+
+### IoT Dashboard
+- [ ] Sửa các nút View/Settings/Delete không hoạt động trong IoT Device Dashboard
+
+### IoT Data
+- [ ] Rà soát và thêm dữ liệu thực cho IoT features vào database (thay thế dữ liệu ảo)
+
+
+
+## Bug Fixes - Phase 10.3 (IoT Issues)
+
+- [x] Sửa lỗi JSON khi upload Model 3D (lỗi "Unexpected token '<'")
+- [x] Sửa lỗi vị trí con trỏ trong Layout Designer (tính toán zoom)
+- [x] Thêm chức năng cho các nút View/Settings/Delete trong IoT Dashboard
+- [x] Thêm dữ liệu thực cho IoT features vào database (devices, data points, alarms)

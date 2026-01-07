@@ -1,0 +1,9 @@
+{
+  "query": "INSERT INTO iot_3d_models (name, model_url, model_format, category, is_public) VALUES ('Test Model Direct', 'https://example.com/test.glb', 'glb', 'machine', 0);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute INSERT INTO iot_3d_models (name, model_url, model_format, category, is_public) VALUES ('Test Model Direct', 'https://example.com/test.glb', 'glb', 'machine', 0);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1553
+}

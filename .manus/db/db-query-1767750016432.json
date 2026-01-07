@@ -1,0 +1,9 @@
+{
+  "query": "INSERT INTO iot_data_points (device_id, tag_name, tag_type, value, quality, timestamp) \nSELECT id, 'temperature', 'analog', '25.40', 'good', NOW() FROM iot_devices WHERE device_code = 'TEMP-001'\nUNION ALL\nSELECT id, 'pressure', 'analog', '1013.25', 'good', NOW() FROM iot_devices WHERE device_code = 'PRESS-002'\nUNION ALL\nSELECT id, 'vibration', 'analog', '2.80', 'uncertain', NOW() FROM iot_devices WHERE device_code = 'VIB-003'\nUNION ALL\nSELECT id, 'power', 'analog', '0.00', 'bad', NOW() FROM iot_devices WHERE device_code = 'PWR-004';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute INSERT INTO iot_data_points (device_id, tag_name, tag_type, value, quality, timestamp) \nSELECT id, 'temperature', 'analog', '25.40', 'good', NOW() FROM iot_devices WHERE device_code = 'TEMP-001'\nUNION ALL\nSELECT id, 'pressure', 'analog', '1013.25', 'good', NOW() FROM iot_devices WHERE device_code = 'PRESS-002'\nUNION ALL\nSELECT id, 'vibration', 'analog', '2.80', 'uncertain', NOW() FROM iot_devices WHERE device_code = 'VIB-003'\nUNION ALL\nSELECT id, 'power', 'analog', '0.00', 'bad', NOW() FROM iot_devices WHERE device_code = 'PWR-004';",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1544
+}

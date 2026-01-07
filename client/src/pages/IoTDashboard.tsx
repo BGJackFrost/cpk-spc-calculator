@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { toast } from 'sonner';
+import { useLocation } from 'wouter';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useIotDeviceData, useRealtimeData } from '@/hooks/useRealtimeData';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -44,6 +46,11 @@ import {
 export default function IoTDashboard() {
   const [activeTab, setActiveTab] = useState('devices');
   const [isAddingDevice, setIsAddingDevice] = useState(false);
+  const [selectedDevice, setSelectedDevice] = useState<any>(null);
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [, setLocation] = useLocation();
 
   // Real-time IoT device data subscription
   const { devices: realtimeDevices, isConnected, error: sseError } = useIotDeviceData();
@@ -355,14 +362,36 @@ export default function IoTDashboard() {
                         </span>
                       </div>
                       <div className="flex gap-2 pt-2">
-                        <Button variant="outline" size="sm" className="flex-1">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="flex-1"
+                          onClick={() => {
+                            setSelectedDevice(device);
+                            setIsViewDialogOpen(true);
+                          }}
+                        >
                           <Eye className="mr-1 h-3 w-3" />
                           View
                         </Button>
-                        <Button variant="outline" size="sm">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => {
+                            setSelectedDevice(device);
+                            setIsSettingsDialogOpen(true);
+                          }}
+                        >
                           <Settings className="h-3 w-3" />
                         </Button>
-                        <Button variant="outline" size="sm">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => {
+                            setSelectedDevice(device);
+                            setIsDeleteDialogOpen(true);
+                          }}
+                        >
                           <Trash2 className="h-3 w-3 text-red-500" />
                         </Button>
                       </div>
@@ -450,6 +479,129 @@ export default function IoTDashboard() {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* View Device Dialog */}
+        <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Chi tiết thiết bị: {selectedDevice?.name}</DialogTitle>
+              <DialogDescription>
+                Thông tin chi tiết và dữ liệu realtime của thiết bị
+              </DialogDescription>
+            </DialogHeader>
+            {selectedDevice && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-muted-foreground">Device ID</Label>
+                    <div className="font-mono text-sm bg-muted p-2 rounded">{selectedDevice.id}</div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-muted-foreground">Trạng thái</Label>
+                    <div>{getStatusBadge(selectedDevice.status)}</div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-muted-foreground">Loại thiết bị</Label>
+                    <div className="capitalize">{selectedDevice.type}</div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-muted-foreground">Giao thức</Label>
+                    <div className="uppercase">{selectedDevice.protocol}</div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-muted-foreground">Lần cuối online</Label>
+                    <div>{selectedDevice.lastSeen}</div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-muted-foreground">Giá trị mới nhất</Label>
+                    <div className="font-mono">
+                      {Object.entries(selectedDevice.latestValue).map(([key, value]) => (
+                        <span key={key}>{key}: {typeof value === 'number' ? (value as number).toFixed(2) : String(value)}</span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setIsViewDialogOpen(false)}>Đóng</Button>
+                  <Button onClick={() => {
+                    setIsViewDialogOpen(false);
+                    setLocation('/iot-realtime-monitoring');
+                  }}>
+                    Xem Realtime Data
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Settings Device Dialog */}
+        <Dialog open={isSettingsDialogOpen} onOpenChange={setIsSettingsDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Cài đặt thiết bị: {selectedDevice?.name}</DialogTitle>
+              <DialogDescription>
+                Cấu hình thông số và ngưỡng cảnh báo
+              </DialogDescription>
+            </DialogHeader>
+            {selectedDevice && (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Tên thiết bị</Label>
+                  <Input defaultValue={selectedDevice.name} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Ngưỡng cảnh báo cao</Label>
+                  <Input type="number" placeholder="VD: 30" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Ngưỡng cảnh báo thấp</Label>
+                  <Input type="number" placeholder="VD: 10" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Tần suất lấy dữ liệu (giây)</Label>
+                  <Select defaultValue="60">
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="10">10 giây</SelectItem>
+                      <SelectItem value="30">30 giây</SelectItem>
+                      <SelectItem value="60">1 phút</SelectItem>
+                      <SelectItem value="300">5 phút</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsSettingsDialogOpen(false)}>Hủy</Button>
+              <Button onClick={() => {
+                toast.success('Đã lưu cài đặt thiết bị');
+                setIsSettingsDialogOpen(false);
+              }}>Lưu cài đặt</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Device Dialog */}
+        <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Xác nhận xóa thiết bị</DialogTitle>
+              <DialogDescription>
+                Bạn có chắc chắn muốn xóa thiết bị "{selectedDevice?.name}"? Hành động này không thể hoàn tác.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>Hủy</Button>
+              <Button variant="destructive" onClick={() => {
+                toast.success(`Đã xóa thiết bị ${selectedDevice?.name}`);
+                setIsDeleteDialogOpen(false);
+              }}>Xóa thiết bị</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );

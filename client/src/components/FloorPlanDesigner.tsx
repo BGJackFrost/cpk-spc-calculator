@@ -321,9 +321,12 @@ export function FloorPlanDesigner({
       const rect = canvasRef.current.getBoundingClientRect();
       const paletteItem = activeData.item as typeof PALETTE_ITEMS[0];
       
-      // Calculate position relative to canvas
-      const x = snapToGrid((event.activatorEvent as MouseEvent).clientX - rect.left + delta.x - paletteItem.width / 2);
-      const y = snapToGrid((event.activatorEvent as MouseEvent).clientY - rect.top + delta.y - paletteItem.height / 2);
+      // Calculate position relative to canvas, accounting for zoom
+      // The canvas has transform: scale(zoom), so we need to divide by zoom to get actual position
+      const dropX = (event.activatorEvent as MouseEvent).clientX + delta.x;
+      const dropY = (event.activatorEvent as MouseEvent).clientY + delta.y;
+      const x = snapToGrid((dropX - rect.left) / zoom - paletteItem.width / 2);
+      const y = snapToGrid((dropY - rect.top) / zoom - paletteItem.height / 2);
 
       // Check if dropped inside canvas
       if (x >= 0 && y >= 0 && x < config.width && y < config.height) {

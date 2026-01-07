@@ -1,0 +1,202 @@
+{
+  "query": "DESCRIBE iot_3d_models;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute DESCRIBE iot_3d_models;",
+  "rows": [
+    {
+      "Field": "id",
+      "Type": "int(11)",
+      "Null": "NO",
+      "Key": "PRI",
+      "Default": "NULL",
+      "Extra": "auto_increment"
+    },
+    {
+      "Field": "name",
+      "Type": "varchar(100)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "description",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "category",
+      "Type": "enum('machine','equipment','building','zone','furniture','custom')",
+      "Null": "YES",
+      "Key": "MUL",
+      "Default": "machine",
+      "Extra": ""
+    },
+    {
+      "Field": "model_url",
+      "Type": "varchar(500)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "model_format",
+      "Type": "enum('gltf','glb')",
+      "Null": "YES",
+      "Key": "",
+      "Default": "glb",
+      "Extra": ""
+    },
+    {
+      "Field": "thumbnail_url",
+      "Type": "varchar(500)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "file_size",
+      "Type": "int(11)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "default_scale",
+      "Type": "decimal(10,4)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "1.0000",
+      "Extra": ""
+    },
+    {
+      "Field": "default_rotation_x",
+      "Type": "decimal(10,4)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "0",
+      "Extra": ""
+    },
+    {
+      "Field": "default_rotation_y",
+      "Type": "decimal(10,4)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "0",
+      "Extra": ""
+    },
+    {
+      "Field": "default_rotation_z",
+      "Type": "decimal(10,4)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "0",
+      "Extra": ""
+    },
+    {
+      "Field": "bounding_box_width",
+      "Type": "decimal(10,4)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "bounding_box_height",
+      "Type": "decimal(10,4)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "bounding_box_depth",
+      "Type": "decimal(10,4)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "manufacturer",
+      "Type": "varchar(100)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "model_number",
+      "Type": "varchar(100)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "tags",
+      "Type": "json",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "metadata",
+      "Type": "json",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "is_public",
+      "Type": "tinyint(4)",
+      "Null": "YES",
+      "Key": "MUL",
+      "Default": "0",
+      "Extra": ""
+    },
+    {
+      "Field": "is_active",
+      "Type": "tinyint(4)",
+      "Null": "NO",
+      "Key": "MUL",
+      "Default": "1",
+      "Extra": ""
+    },
+    {
+      "Field": "uploaded_by",
+      "Type": "int(11)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "created_at",
+      "Type": "timestamp",
+      "Null": "NO",
+      "Key": "",
+      "Default": "CURRENT_TIMESTAMP",
+      "Extra": ""
+    },
+    {
+      "Field": "updated_at",
+      "Type": "timestamp",
+      "Null": "NO",
+      "Key": "",
+      "Default": "CURRENT_TIMESTAMP",
+      "Extra": "DEFAULT_GENERATED on update CURRENT_TIMESTAMP"
+    }
+  ],
+  "messages": [],
+  "stdout": "Field\tType\tNull\tKey\tDefault\tExtra\nid\tint(11)\tNO\tPRI\tNULL\tauto_increment\nname\tvarchar(100)\tNO\t\tNULL\t\ndescription\ttext\tYES\t\tNULL\t\ncategory\tenum('machine','equipment','building','zone','furniture','custom')\tYES\tMUL\tmachine\t\nmodel_url\tvarchar(500)\tNO\t\tNULL\t\nmodel_format\tenum('gltf','glb')\tYES\t\tglb\t\nthumbnail_url\tvarchar(500)\tYES\t\tNULL\t\nfile_size\tint(11)\tYES\t\tNULL\t\ndefault_scale\tdecimal(10,4)\tYES\t\t1.0000\t\ndefault_rotation_x\tdecimal(10,4)\tYES\t\t0\t\ndefault_rotation_y\tdecimal(10,4)\tYES\t\t0\t\ndefault_rotation_z\tdecimal(10,4)\tYES\t\t0\t\nbounding_box_width\tdecimal(10,4)\tYES\t\tNULL\t\nbounding_box_height\tdecimal(10,4)\tYES\t\tNULL\t\nbounding_box_depth\tdecimal(10,4)\tYES\t\tNULL\t\nmanufacturer\tvarchar(100)\tYES\t\tNULL\t\nmodel_number\tvarchar(100)\tYES\t\tNULL\t\ntags\tjson\tYES\t\tNULL\t\nmetadata\tjson\tYES\t\tNULL\t\nis_public\ttinyint(4)\tYES\tMUL\t0\t\nis_active\ttinyint(4)\tNO\tMUL\t1\t\nuploaded_by\tint(11)\tYES\t\tNULL\t\ncreated_at\ttimestamp\tNO\t\tCURRENT_TIMESTAMP\t\nupdated_at\ttimestamp\tNO\t\tCURRENT_TIMESTAMP\tDEFAULT_GENERATED on update CURRENT_TIMESTAMP\n",
+  "stderr": "",
+  "execution_time_ms": 1515
+}

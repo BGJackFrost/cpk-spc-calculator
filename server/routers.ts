@@ -11578,7 +11578,7 @@ Hãy trả về JSON với format:
   // 3D Model Management Router
   model3d: router({
     // Get all 3D models
-    getAll: protectedProcedure
+    getAll: publicProcedure
       .input(z.object({
         category: z.string().optional(),
         isPublic: z.boolean().optional(),
@@ -11603,7 +11603,7 @@ Hãy trả về JSON với format:
         category: z.enum(['machine', 'equipment', 'building', 'zone', 'furniture', 'custom']).optional(),
         modelUrl: z.string().url(),
         modelFormat: z.enum(['gltf', 'glb']).optional(),
-        thumbnailUrl: z.string().url().optional(),
+        thumbnailUrl: z.string().optional(),
         fileSize: z.number().optional(),
         defaultScale: z.number().optional(),
         defaultRotationX: z.number().optional(),
@@ -11634,7 +11634,7 @@ Hãy trả về JSON với format:
         category: z.enum(['machine', 'equipment', 'building', 'zone', 'furniture', 'custom']).optional(),
         modelUrl: z.string().url().optional(),
         modelFormat: z.enum(['gltf', 'glb']).optional(),
-        thumbnailUrl: z.string().url().optional(),
+        thumbnailUrl: z.string().optional(),
         fileSize: z.number().optional(),
         defaultScale: z.number().optional(),
         defaultRotationX: z.number().optional(),

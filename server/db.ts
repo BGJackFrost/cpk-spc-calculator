@@ -4693,30 +4693,30 @@ export async function getLatencyPercentileTrends(filters: {
 export async function get3dModels(filters?: { category?: string; isPublic?: boolean; isActive?: boolean }) {
   const db = await getDb();
   try {
-    const conditions: string[] = [];
-    const values: any[] = [];
+    // Build query using sql template tag for proper parameter binding
+    let query;
     
-    if (filters?.category) {
-      conditions.push('category = ?');
-      values.push(filters.category);
+    if (filters?.category && filters?.isPublic !== undefined && filters?.isActive !== undefined) {
+      query = sql`SELECT * FROM iot_3d_models WHERE category = ${filters.category} AND is_public = ${filters.isPublic ? 1 : 0} AND is_active = ${filters.isActive ? 1 : 0} ORDER BY created_at DESC`;
+    } else if (filters?.category && filters?.isPublic !== undefined) {
+      query = sql`SELECT * FROM iot_3d_models WHERE category = ${filters.category} AND is_public = ${filters.isPublic ? 1 : 0} ORDER BY created_at DESC`;
+    } else if (filters?.category && filters?.isActive !== undefined) {
+      query = sql`SELECT * FROM iot_3d_models WHERE category = ${filters.category} AND is_active = ${filters.isActive ? 1 : 0} ORDER BY created_at DESC`;
+    } else if (filters?.isPublic !== undefined && filters?.isActive !== undefined) {
+      query = sql`SELECT * FROM iot_3d_models WHERE is_public = ${filters.isPublic ? 1 : 0} AND is_active = ${filters.isActive ? 1 : 0} ORDER BY created_at DESC`;
+    } else if (filters?.category) {
+      query = sql`SELECT * FROM iot_3d_models WHERE category = ${filters.category} ORDER BY created_at DESC`;
+    } else if (filters?.isPublic !== undefined) {
+      query = sql`SELECT * FROM iot_3d_models WHERE is_public = ${filters.isPublic ? 1 : 0} ORDER BY created_at DESC`;
+    } else if (filters?.isActive !== undefined) {
+      query = sql`SELECT * FROM iot_3d_models WHERE is_active = ${filters.isActive ? 1 : 0} ORDER BY created_at DESC`;
+    } else {
+      query = sql`SELECT * FROM iot_3d_models ORDER BY created_at DESC`;
     }
-    if (filters?.isPublic !== undefined) {
-      conditions.push('is_public = ?');
-      values.push(filters.isPublic ? 1 : 0);
-    }
-    if (filters?.isActive !== undefined) {
-      conditions.push('is_active = ?');
-      values.push(filters.isActive ? 1 : 0);
-    }
     
-    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const result = await db.execute(query);
     
-    const result = await db.execute({
-      sql: `SELECT * FROM iot_3d_models ${whereClause} ORDER BY created_at DESC`,
-      args: values,
-    } as any);
-    
-    return (result as any).rows || [];
+    return (result[0] as any[]) || [];
   } catch (error) {
     console.error('[DB] Error getting 3D models:', error);
     return [];
@@ -4726,11 +4726,10 @@ export async function get3dModels(filters?: { category?: string; isPublic?: bool
 export async function get3dModelById(id: number) {
   const db = await getDb();
   try {
-    const result = await db.execute({
-      sql: 'SELECT * FROM iot_3d_models WHERE id = ?',
-      args: [id],
-    } as any);
-    return ((result as any).rows || [])[0] || null;
+    const result = await db.execute(sql`
+      SELECT * FROM iot_3d_models WHERE id = ${id}
+    `);
+    return (result[0] as any[])[0] || null;
   } catch (error) {
     console.error('[DB] Error getting 3D model by ID:', error);
     return null;
@@ -4761,37 +4760,36 @@ export async function create3dModel(data: {
 }) {
   const db = await getDb();
   try {
-    const result = await db.execute({
-      sql: `INSERT INTO iot_3d_models 
+    const result = await db.execute(sql`
+      INSERT INTO iot_3d_models 
         (name, description, category, model_url, model_format, thumbnail_url, file_size,
          default_scale, default_rotation_x, default_rotation_y, default_rotation_z,
          bounding_box_width, bounding_box_height, bounding_box_depth,
          manufacturer, model_number, tags, metadata, is_public, uploaded_by)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      args: [
-        data.name,
-        data.description || null,
-        data.category || 'machine',
-        data.modelUrl,
-        data.modelFormat || 'glb',
-        data.thumbnailUrl || null,
-        data.fileSize || null,
-        data.defaultScale || 1,
-        data.defaultRotationX || 0,
-        data.defaultRotationY || 0,
-        data.defaultRotationZ || 0,
-        data.boundingBoxWidth || null,
-        data.boundingBoxHeight || null,
-        data.boundingBoxDepth || null,
-        data.manufacturer || null,
-        data.modelNumber || null,
-        data.tags ? JSON.stringify(data.tags) : null,
-        data.metadata ? JSON.stringify(data.metadata) : null,
-        data.isPublic ? 1 : 0,
-        data.uploadedBy || null,
-      ],
-    } as any);
-    return { id: (result as any).insertId };
+        VALUES (
+          ${data.name},
+          ${data.description || null},
+          ${data.category || 'machine'},
+          ${data.modelUrl},
+          ${data.modelFormat || 'glb'},
+          ${data.thumbnailUrl || null},
+          ${data.fileSize || null},
+          ${data.defaultScale || 1},
+          ${data.defaultRotationX || 0},
+          ${data.defaultRotationY || 0},
+          ${data.defaultRotationZ || 0},
+          ${data.boundingBoxWidth || null},
+          ${data.boundingBoxHeight || null},
+          ${data.boundingBoxDepth || null},
+          ${data.manufacturer || null},
+          ${data.modelNumber || null},
+          ${data.tags ? JSON.stringify(data.tags) : null},
+          ${data.metadata ? JSON.stringify(data.metadata) : null},
+          ${data.isPublic ? 1 : 0},
+          ${data.uploadedBy || null}
+        )
+    `);
+    return { id: (result as any)[0]?.insertId || (result as any).insertId };
   } catch (error) {
     console.error('[DB] Error creating 3D model:', error);
     throw error;
@@ -4849,10 +4847,10 @@ export async function update3dModel(id: number, data: Partial<{
     if (updates.length === 0) return { success: true };
     
     values.push(id);
-    await db.execute({
-      sql: `UPDATE iot_3d_models SET ${updates.join(', ')} WHERE id = ?`,
-      args: values,
-    } as any);
+    await db.execute(sql.raw(
+      `UPDATE iot_3d_models SET ${updates.join(', ')} WHERE id = ?`,
+      values
+    ));
     return { success: true };
   } catch (error) {
     console.error('[DB] Error updating 3D model:', error);
@@ -4863,10 +4861,7 @@ export async function update3dModel(id: number, data: Partial<{
 export async function delete3dModel(id: number) {
   const db = await getDb();
   try {
-    await db.execute({
-      sql: 'DELETE FROM iot_3d_models WHERE id = ?',
-      args: [id],
-    } as any);
+    await db.execute(sql`DELETE FROM iot_3d_models WHERE id = ${id}`);
     return { success: true };
   } catch (error) {
     console.error('[DB] Error deleting 3D model:', error);
@@ -4878,15 +4873,14 @@ export async function delete3dModel(id: number) {
 export async function get3dModelInstances(floorPlan3dId: number) {
   const db = await getDb();
   try {
-    const result = await db.execute({
-      sql: `SELECT i.*, m.name as model_name, m.model_url, m.model_format, m.thumbnail_url
-            FROM iot_3d_model_instances i
-            LEFT JOIN iot_3d_models m ON i.model_id = m.id
-            WHERE i.floor_plan_3d_id = ?
-            ORDER BY i.created_at DESC`,
-      args: [floorPlan3dId],
-    } as any);
-    return (result as any).rows || [];
+    const result = await db.execute(sql`
+      SELECT i.*, m.name as model_name, m.model_url, m.model_format, m.thumbnail_url
+      FROM iot_3d_model_instances i
+      LEFT JOIN iot_3d_models m ON i.model_id = m.id
+      WHERE i.floor_plan_3d_id = ${floorPlan3dId}
+      ORDER BY i.created_at DESC
+    `);
+    return (result[0] as any[]) || [];
   } catch (error) {
     console.error('[DB] Error getting 3D model instances:', error);
     return [];
@@ -4923,43 +4917,42 @@ export async function create3dModelInstance(data: {
 }) {
   const db = await getDb();
   try {
-    const result = await db.execute({
-      sql: `INSERT INTO iot_3d_model_instances 
+    const result = await db.execute(sql`
+      INSERT INTO iot_3d_model_instances 
         (model_id, floor_plan_3d_id, device_id, machine_id, name,
          position_x, position_y, position_z, rotation_x, rotation_y, rotation_z,
          scale_x, scale_y, scale_z, visible, opacity, wireframe, cast_shadow, receive_shadow,
          clickable, tooltip, popup_content, animation_enabled, animation_type, animation_speed, metadata)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      args: [
-        data.modelId,
-        data.floorPlan3dId,
-        data.deviceId || null,
-        data.machineId || null,
-        data.name || null,
-        data.positionX,
-        data.positionY,
-        data.positionZ,
-        data.rotationX || 0,
-        data.rotationY || 0,
-        data.rotationZ || 0,
-        data.scaleX || 1,
-        data.scaleY || 1,
-        data.scaleZ || 1,
-        data.visible !== false ? 1 : 0,
-        data.opacity || 1,
-        data.wireframe ? 1 : 0,
-        data.castShadow !== false ? 1 : 0,
-        data.receiveShadow !== false ? 1 : 0,
-        data.clickable !== false ? 1 : 0,
-        data.tooltip || null,
-        data.popupContent || null,
-        data.animationEnabled ? 1 : 0,
-        data.animationType || 'none',
-        data.animationSpeed || 1,
-        data.metadata ? JSON.stringify(data.metadata) : null,
-      ],
-    } as any);
-    return { id: (result as any).insertId };
+        VALUES (
+          ${data.modelId},
+          ${data.floorPlan3dId},
+          ${data.deviceId || null},
+          ${data.machineId || null},
+          ${data.name || null},
+          ${data.positionX},
+          ${data.positionY},
+          ${data.positionZ},
+          ${data.rotationX || 0},
+          ${data.rotationY || 0},
+          ${data.rotationZ || 0},
+          ${data.scaleX || 1},
+          ${data.scaleY || 1},
+          ${data.scaleZ || 1},
+          ${data.visible !== false ? 1 : 0},
+          ${data.opacity || 1},
+          ${data.wireframe ? 1 : 0},
+          ${data.castShadow !== false ? 1 : 0},
+          ${data.receiveShadow !== false ? 1 : 0},
+          ${data.clickable !== false ? 1 : 0},
+          ${data.tooltip || null},
+          ${data.popupContent || null},
+          ${data.animationEnabled ? 1 : 0},
+          ${data.animationType || 'none'},
+          ${data.animationSpeed || 1},
+          ${data.metadata ? JSON.stringify(data.metadata) : null}
+        )
+    `);
+    return { id: (result as any)[0]?.insertId || (result as any).insertId };
   } catch (error) {
     console.error('[DB] Error creating 3D model instance:', error);
     throw error;
@@ -5019,10 +5012,10 @@ export async function update3dModelInstance(id: number, data: Partial<{
     if (updates.length === 0) return { success: true };
     
     values.push(id);
-    await db.execute({
-      sql: `UPDATE iot_3d_model_instances SET ${updates.join(', ')} WHERE id = ?`,
-      args: values,
-    } as any);
+    await db.execute(sql.raw(
+      `UPDATE iot_3d_model_instances SET ${updates.join(', ')} WHERE id = ?`,
+      values
+    ));
     return { success: true };
   } catch (error) {
     console.error('[DB] Error updating 3D model instance:', error);
@@ -5033,10 +5026,7 @@ export async function update3dModelInstance(id: number, data: Partial<{
 export async function delete3dModelInstance(id: number) {
   const db = await getDb();
   try {
-    await db.execute({
-      sql: 'DELETE FROM iot_3d_model_instances WHERE id = ?',
-      args: [id],
-    } as any);
+    await db.execute(sql`DELETE FROM iot_3d_model_instances WHERE id = ${id}`);
     return { success: true };
   } catch (error) {
     console.error('[DB] Error deleting 3D model instance:', error);

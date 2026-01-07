@@ -1,0 +1,34 @@
+{
+  "query": "SELECT id, name, model_url, category FROM iot_3d_models;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute SELECT id, name, model_url, category FROM iot_3d_models;",
+  "rows": [
+    {
+      "id": "1",
+      "name": "Industrial Helmet",
+      "model_url": "https://d2xsxph8kpxj0f.cloudfront.net/310519663243606474/RpnsLdN3u3f6PBDr9mn7Zq/3d-models/1767584222650-DamagedHelmet.glb",
+      "category": "equipment"
+    },
+    {
+      "id": "2",
+      "name": "Animated Box",
+      "model_url": "https://d2xsxph8kpxj0f.cloudfront.net/310519663243606474/RpnsLdN3u3f6PBDr9mn7Zq/3d-models/1767584225705-BoxAnimated.glb",
+      "category": "custom"
+    },
+    {
+      "id": "3",
+      "name": "Milk Truck",
+      "model_url": "https://d2xsxph8kpxj0f.cloudfront.net/310519663243606474/RpnsLdN3u3f6PBDr9mn7Zq/3d-models/1767584226218-CesiumMilkTruck.glb",
+      "category": "equipment"
+    },
+    {
+      "id": "30001",
+      "name": "Test Model Direct",
+      "model_url": "https://example.com/test.glb",
+      "category": "machine"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tmodel_url\tcategory\n1\tIndustrial Helmet\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663243606474/RpnsLdN3u3f6PBDr9mn7Zq/3d-models/1767584222650-DamagedHelmet.glb\tequipment\n2\tAnimated Box\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663243606474/RpnsLdN3u3f6PBDr9mn7Zq/3d-models/1767584225705-BoxAnimated.glb\tcustom\n3\tMilk Truck\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663243606474/RpnsLdN3u3f6PBDr9mn7Zq/3d-models/1767584226218-CesiumMilkTruck.glb\tequipment\n30001\tTest Model Direct\thttps://example.com/test.glb\tmachine\n",
+  "stderr": "",
+  "execution_time_ms": 1541
+}
