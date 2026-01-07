@@ -8489,3 +8489,24 @@
 - [x] Tạo sơ đồ tổng quan hệ thống IoT (iot-system-diagram.png)
 - [x] Tạo sơ đồ luồng dữ liệu chi tiết (iot-data-flow-diagram.png)
 - [x] Viết hướng dẫn sử dụng hệ thống IoT đầy đủ (IoT-System-User-Guide.md)
+
+
+## Phase 14 - Cải tiến IoT User Guide
+
+### Bookmark/Đánh dấu phần quan trọng
+- [x] Tạo bảng user_bookmarks trong database để lưu bookmark
+- [x] Tạo component BookmarkButton cho phép đánh dấu section
+- [x] Tạo trang My Bookmarks hiển thị danh sách bookmark đã lưu
+- [x] Tích hợp bookmark vào trang IoT User Guide
+
+### Chatbot AI hỗ trợ IoT
+- [x] Tạo component IoTChatWidget cho IoT User Guide
+- [x] Tạo API endpoint chatbot với context về hệ thống IoT
+- [x] Tích hợp chatbot vào trang IoT User Guide
+- [x] Thêm knowledge base về IoT cho chatbot
+
+### Video Walkthrough cho Tutorial
+- [x] Thêm trường videoUrl vào tutorial modules (sử dụng YouTube videos có sẵn)
+- [x] Tạo component VideoPlayer cho video walkthrough (tích hợp YouTube embed)
+- [x] Cập nhật UI hiển thị video trong từng module
+- [x] Thêm video placeholder/demo cho các module (24 videos đã được liên kết)
