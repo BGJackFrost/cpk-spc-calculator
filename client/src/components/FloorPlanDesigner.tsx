@@ -1,4 +1,7 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { MiniMap } from './MiniMap';
+import { GroupManager, FloorPlanGroup } from './GroupManager';
+import { SelectionBox } from './SelectionBox';
 import {
   DndContext,
   DragEndEvent,
@@ -43,6 +46,11 @@ import {
   Minimize2,
   Copy,
   Layers,
+  Map,
+  Group,
+  Ungroup,
+  Focus,
+  MousePointer2,
 } from 'lucide-react';
 
 // Types
@@ -62,6 +70,7 @@ export interface FloorPlanItem {
   iotDeviceCode?: string;
   iotDeviceType?: string;
   layerId?: string; // Layer mà item thuộc về
+  groupId?: string; // Group mà item thuộc về
   metadata?: Record<string, any>;
 }
 
@@ -84,6 +93,7 @@ export interface FloorPlanConfig {
   showGrid: boolean;
   items: FloorPlanItem[];
   layers?: FloorPlanLayer[]; // Danh sách layers
+  groups?: FloorPlanGroup[]; // Danh sách groups
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -374,12 +384,18 @@ export function FloorPlanDesigner({
   );
 
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]); // Multi-select
   const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showLayerPanel, setShowLayerPanel] = useState(false);
+  const [showGroupPanel, setShowGroupPanel] = useState(false);
+  const [showMiniMap, setShowMiniMap] = useState(true);
+  const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
+  const [viewportOffset, setViewportOffset] = useState({ x: 0, y: 0 });
   const canvasRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Khởi tạo layers nếu chưa có
   useEffect(() => {
@@ -420,6 +436,183 @@ export function FloorPlanDesigner({
 
     return () => clearInterval(intervalId);
   }, [autoRefreshInterval, iotDevices]);
+
+  // Track viewport scroll position
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      setViewportOffset({
+        x: container.scrollLeft / zoom,
+        y: container.scrollTop / zoom,
+      });
+    };
+
+    container.addEventListener('scroll', handleScroll);
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [zoom]);
+
+  // Calculate bounds of all items for zoom to fit
+  const calculateBounds = useCallback(() => {
+    if (config.items.length === 0) {
+      return { minX: 0, minY: 0, maxX: config.width, maxY: config.height };
+    }
+
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    config.items.forEach((item) => {
+      minX = Math.min(minX, item.x);
+      minY = Math.min(minY, item.y);
+      maxX = Math.max(maxX, item.x + item.width);
+      maxY = Math.max(maxY, item.y + item.height);
+    });
+
+    // Add padding
+    const padding = 50;
+    return {
+      minX: Math.max(0, minX - padding),
+      minY: Math.max(0, minY - padding),
+      maxX: Math.min(config.width, maxX + padding),
+      maxY: Math.min(config.height, maxY + padding),
+    };
+  }, [config.items, config.width, config.height]);
+
+  // Zoom to fit all items
+  const handleZoomToFit = useCallback(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const bounds = calculateBounds();
+    const contentWidth = bounds.maxX - bounds.minX;
+    const contentHeight = bounds.maxY - bounds.minY;
+
+    const containerWidth = container.clientWidth - 20; // Account for padding
+    const containerHeight = container.clientHeight - 20;
+
+    const scaleX = containerWidth / contentWidth;
+    const scaleY = containerHeight / contentHeight;
+    const newZoom = Math.min(Math.max(0.25, Math.min(scaleX, scaleY)), 2);
+
+    setZoom(newZoom);
+
+    // Center the content
+    setTimeout(() => {
+      const centerX = (bounds.minX + bounds.maxX) / 2;
+      const centerY = (bounds.minY + bounds.maxY) / 2;
+      container.scrollLeft = centerX * newZoom - containerWidth / 2;
+      container.scrollTop = centerY * newZoom - containerHeight / 2;
+    }, 50);
+  }, [calculateBounds]);
+
+  // Handle viewport change from mini-map
+  const handleViewportChange = useCallback((x: number, y: number) => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    container.scrollLeft = x * zoom;
+    container.scrollTop = y * zoom;
+  }, [zoom]);
+
+  // Get viewport dimensions
+  const getViewportDimensions = useCallback(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return { width: 800, height: 600 };
+    return { width: container.clientWidth, height: container.clientHeight };
+  }, []);
+
+  // Group management functions
+  const handleCreateGroup = useCallback((name: string, itemIds: string[]) => {
+    const groupId = `group-${Date.now()}`;
+    const newGroup: FloorPlanGroup = {
+      id: groupId,
+      name,
+      itemIds,
+      color: `#${Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0')}`,
+      locked: false,
+      createdAt: Date.now(),
+    };
+
+    setConfig((prev) => ({
+      ...prev,
+      groups: [...(prev.groups || []), newGroup],
+      items: prev.items.map((item) =>
+        itemIds.includes(item.id) ? { ...item, groupId } : item
+      ),
+    }));
+
+    setSelectedItemIds([]);
+  }, []);
+
+  const handleDeleteGroup = useCallback((groupId: string) => {
+    setConfig((prev) => ({
+      ...prev,
+      groups: (prev.groups || []).filter((g) => g.id !== groupId),
+      items: prev.items.map((item) =>
+        item.groupId === groupId ? { ...item, groupId: undefined } : item
+      ),
+    }));
+  }, []);
+
+  const handleUngroupItems = useCallback((groupId: string) => {
+    setConfig((prev) => ({
+      ...prev,
+      groups: (prev.groups || []).filter((g) => g.id !== groupId),
+      items: prev.items.map((item) =>
+        item.groupId === groupId ? { ...item, groupId: undefined } : item
+      ),
+    }));
+  }, []);
+
+  const handleRenameGroup = useCallback((groupId: string, newName: string) => {
+    setConfig((prev) => ({
+      ...prev,
+      groups: (prev.groups || []).map((g) =>
+        g.id === groupId ? { ...g, name: newName } : g
+      ),
+    }));
+  }, []);
+
+  const handleToggleGroupLock = useCallback((groupId: string) => {
+    setConfig((prev) => ({
+      ...prev,
+      groups: (prev.groups || []).map((g) =>
+        g.id === groupId ? { ...g, locked: !g.locked } : g
+      ),
+    }));
+  }, []);
+
+  const handleSelectGroup = useCallback((groupId: string) => {
+    const group = config.groups?.find((g) => g.id === groupId);
+    if (group) {
+      setSelectedItemIds(group.itemIds);
+      setSelectedItemId(null);
+    }
+  }, [config.groups]);
+
+  // Handle multi-select with Ctrl+Click
+  const handleItemClick = useCallback((itemId: string, event: React.MouseEvent) => {
+    if (event.ctrlKey || event.metaKey || isMultiSelectMode) {
+      // Toggle selection
+      setSelectedItemIds((prev) =>
+        prev.includes(itemId)
+          ? prev.filter((id) => id !== itemId)
+          : [...prev, itemId]
+      );
+      setSelectedItemId(null);
+    } else {
+      // Single select
+      setSelectedItemId(itemId);
+      setSelectedItemIds([]);
+    }
+  }, [isMultiSelectMode]);
+
+  // Handle selection box change
+  const handleSelectionChange = useCallback((ids: string[]) => {
+    if (ids.length > 0) {
+      setSelectedItemIds(ids);
+      setSelectedItemId(null);
+    }
+  }, []);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -722,6 +915,7 @@ export function FloorPlanDesigner({
                 variant="outline"
                 size="sm"
                 onClick={() => setZoom((z) => Math.max(0.25, z - 0.25))}
+                title="Thu nhỏ"
               >
                 <ZoomOut className="w-4 h-4" />
               </Button>
@@ -730,10 +924,52 @@ export function FloorPlanDesigner({
                 variant="outline"
                 size="sm"
                 onClick={() => setZoom((z) => Math.min(2, z + 0.25))}
+                title="Phóng to"
               >
                 <ZoomIn className="w-4 h-4" />
               </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleZoomToFit}
+                title="Zoom to Fit - Hiển thị toàn bộ sơ đồ"
+              >
+                <Focus className="w-4 h-4" />
+              </Button>
             </div>
+
+            {/* Multi-select mode toggle */}
+            <Button
+              variant={isMultiSelectMode ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setIsMultiSelectMode(!isMultiSelectMode)}
+              title={isMultiSelectMode ? 'Tắt chế độ chọn nhiều' : 'Bật chế độ chọn nhiều (hoặc giữ Ctrl+Click)'}
+            >
+              <MousePointer2 className="w-4 h-4" />
+            </Button>
+
+            {/* Group button - only show when multiple items selected */}
+            {selectedItemIds.length >= 2 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowGroupPanel(true)}
+                title="Tạo nhóm từ các đối tượng đã chọn"
+              >
+                <Group className="w-4 h-4 mr-1" />
+                Nhóm ({selectedItemIds.length})
+              </Button>
+            )}
+
+            {/* Mini-map toggle */}
+            <Button
+              variant={showMiniMap ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setShowMiniMap(!showMiniMap)}
+              title={showMiniMap ? 'Ẩn Mini-map' : 'Hiển Mini-map'}
+            >
+              <Map className="w-4 h-4" />
+            </Button>
 
             <Button
               variant="outline"
@@ -763,7 +999,10 @@ export function FloorPlanDesigner({
           </div>
 
           {/* Canvas */}
-          <div className="flex-1 overflow-auto border rounded bg-gray-100 dark:bg-gray-900">
+          <div 
+            ref={scrollContainerRef}
+            className="flex-1 overflow-auto border rounded bg-gray-100 dark:bg-gray-900 relative"
+          >
             <div
               ref={canvasRef}
               className="relative bg-white dark:bg-gray-800"
@@ -778,12 +1017,31 @@ export function FloorPlanDesigner({
                   : 'none',
                 backgroundSize: `${config.gridSize}px ${config.gridSize}px`,
               }}
-              onClick={() => setSelectedItemId(null)}
+              onClick={(e) => {
+                // Clear selection when clicking on empty canvas
+                if (e.target === e.currentTarget) {
+                  setSelectedItemId(null);
+                  if (!e.ctrlKey && !e.metaKey && !isMultiSelectMode) {
+                    setSelectedItemIds([]);
+                  }
+                }
+              }}
             >
+              {/* Selection Box for multi-select */}
+              <SelectionBox
+                items={config.items}
+                zoom={zoom}
+                onSelectionChange={handleSelectionChange}
+                canvasRef={canvasRef}
+                enabled={isMultiSelectMode}
+              />
+
               {config.items.map((item) => {
                 const layer = config.layers?.find(l => l.id === item.layerId);
                 const isLayerVisible = layer ? layer.visible : true;
                 const isLayerLocked = layer ? layer.locked : false;
+                const isInSelectedGroup = selectedItemIds.includes(item.id);
+                const group = config.groups?.find(g => g.id === item.groupId);
                 
                 // Tìm IoT device tương ứng
                 const iotDevice = item.type === 'iot_device' && item.iotDeviceId
@@ -794,19 +1052,33 @@ export function FloorPlanDesigner({
                   <FloorItem
                     key={item.id}
                     item={item}
-                    isSelected={item.id === selectedItemId}
-                    onSelect={() => setSelectedItemId(item.id)}
+                    isSelected={item.id === selectedItemId || isInSelectedGroup}
+                    onSelect={() => handleItemClick(item.id, window.event as any)}
                     onDelete={() => handleDeleteItem(item.id)}
                     onRotate={() => handleRotateItem(item.id)}
                     onResize={(w, h) => handleResizeItem(item.id, w, h)}
                     gridSize={config.gridSize}
                     isLayerVisible={isLayerVisible}
-                    isLayerLocked={isLayerLocked}
+                    isLayerLocked={isLayerLocked || group?.locked}
                     onIoTClick={iotDevice && onIotDeviceClick ? () => onIotDeviceClick(iotDevice) : undefined}
                   />
                 );
               })}
             </div>
+
+            {/* Mini-map */}
+            {showMiniMap && (
+              <MiniMap
+                config={config}
+                viewportX={viewportOffset.x}
+                viewportY={viewportOffset.y}
+                viewportWidth={getViewportDimensions().width}
+                viewportHeight={getViewportDimensions().height}
+                zoom={zoom}
+                onViewportChange={handleViewportChange}
+                onClose={() => setShowMiniMap(false)}
+              />
+            )}
           </div>
         </div>
 
@@ -816,6 +1088,45 @@ export function FloorPlanDesigner({
             <CardTitle className="text-sm">Thuộc tính</CardTitle>
           </CardHeader>
           <CardContent className="p-2 space-y-3">
+            {/* Multi-select info */}
+            {selectedItemIds.length > 0 && (
+              <div className="p-2 bg-primary/10 rounded border border-primary/20">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-medium">Đã chọn {selectedItemIds.length} đối tượng</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-5 px-1 text-xs"
+                    onClick={() => setSelectedItemIds([])}
+                  >
+                    Bỏ chọn
+                  </Button>
+                </div>
+                <div className="flex gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 h-7 text-xs"
+                    onClick={() => setShowGroupPanel(true)}
+                  >
+                    <Group className="w-3 h-3 mr-1" />
+                    Tạo nhóm
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => {
+                      selectedItemIds.forEach(id => handleDeleteItem(id));
+                      setSelectedItemIds([]);
+                    }}
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </Button>
+                </div>
+              </div>
+            )}
+
             {selectedItem ? (
               <>
                 <div>
@@ -942,8 +1253,44 @@ export function FloorPlanDesigner({
                 <p>Kích thước: {config.width} x {config.height}</p>
                 <p>Lưới: {config.gridSize}px</p>
                 <p>Số đối tượng: {config.items.length}</p>
+                <p>Số nhóm: {config.groups?.length || 0}</p>
               </div>
             </div>
+
+            {/* Groups list */}
+            {(config.groups?.length || 0) > 0 && (
+              <div className="pt-3 border-t">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-xs font-medium">Nhóm</h4>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-5 px-1 text-xs"
+                    onClick={() => setShowGroupPanel(true)}
+                  >
+                    Quản lý
+                  </Button>
+                </div>
+                <div className="space-y-1 max-h-24 overflow-y-auto">
+                  {config.groups?.map((group) => (
+                    <div
+                      key={group.id}
+                      className="flex items-center gap-1 text-xs p-1 rounded hover:bg-accent cursor-pointer"
+                      onClick={() => handleSelectGroup(group.id)}
+                    >
+                      <div
+                        className="w-2 h-2 rounded-full"
+                        style={{ backgroundColor: group.color }}
+                      />
+                      <span className="truncate flex-1">{group.name}</span>
+                      <Badge variant="secondary" className="text-[10px] h-4">
+                        {group.itemIds.length}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -1096,6 +1443,32 @@ export function FloorPlanDesigner({
                 <p>🔒 = Khóa/Mở khóa (không thể di chuyển/chỉnh sửa)</p>
               </div>
             </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Group Panel Dialog */}
+        <Dialog open={showGroupPanel} onOpenChange={setShowGroupPanel}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Group className="w-5 h-5" />
+                Quản lý Nhóm
+              </DialogTitle>
+            </DialogHeader>
+            <GroupManager
+              groups={config.groups || []}
+              items={config.items}
+              selectedItemIds={selectedItemIds}
+              onCreateGroup={handleCreateGroup}
+              onDeleteGroup={handleDeleteGroup}
+              onUngroupItems={handleUngroupItems}
+              onRenameGroup={handleRenameGroup}
+              onToggleGroupLock={handleToggleGroupLock}
+              onSelectGroup={(groupId) => {
+                handleSelectGroup(groupId);
+                setShowGroupPanel(false);
+              }}
+            />
           </DialogContent>
         </Dialog>
       </div>

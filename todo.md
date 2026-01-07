@@ -8459,3 +8459,26 @@
 - [x] Hiển thị danh sách IoT devices trong palette
 - [x] Cho phép kéo thả IoT device vào sơ đồ
 - [x] Hiển thị trạng thái thiết bị realtime (online/offline/error/maintenance)
+
+
+## Phase 15 - Layout Designer Navigation Features
+
+### Zoom to Fit
+- [x] Thêm nút Zoom to Fit để hiển thị toàn bộ sơ đồ vừa với viewport
+- [x] Tính toán bounds của tất cả objects trên canvas
+- [x] Tự động điều chỉnh zoom level và pan position
+
+### Mini-map Navigation
+- [x] Thêm Mini-map ở góc dưới phải để điều hướng sơ đồ lớn
+- [x] Hiển thị tổng quan toàn bộ sơ đồ trong mini-map
+- [x] Hiển thị viewport indicator (vùng đang xem) trong mini-map
+- [x] Cho phép click và drag trên mini-map để di chuyển viewport
+- [x] Tự động cập nhật mini-map khi có thay đổi trên canvas
+
+### Group/Ungroup Objects
+- [x] Thêm chức năng chọn nhiều objects (multi-select với Ctrl+Click hoặc drag selection)
+- [x] Thêm nút Group để nhóm các objects đã chọn
+- [x] Thêm nút Ungroup để tách nhóm
+- [x] Di chuyển nhóm objects cùng lúc
+- [x] Hiển thị visual indicator cho grouped objects
+- [x] Lưu thông tin group vào database
