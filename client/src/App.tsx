@@ -274,6 +274,9 @@ import IoTUserGuide from "./pages/IoTUserGuide";
 import EdgeGatewayDashboard from "./pages/EdgeGatewayDashboard";
 import TimeseriesDashboard from "./pages/TimeseriesDashboard";
 import AnomalyDetectionDashboard from "./pages/AnomalyDetectionDashboard";
+import AlertConfigManagement from "./pages/AlertConfigManagement";
+import EdgeSimulatorDashboard from "./pages/EdgeSimulatorDashboard";
+import ModelRetrainingDashboard from "./pages/ModelRetrainingDashboard";
 
 function Router() {
   return (
@@ -551,6 +554,9 @@ function Router() {
       <Route path="/edge-gateway" component={EdgeGatewayDashboard} />
       <Route path="/timeseries-dashboard" component={TimeseriesDashboard} />
       <Route path="/anomaly-detection-ai" component={AnomalyDetectionDashboard} />
+      <Route path="/alert-config-management" component={AlertConfigManagement} />
+      <Route path="/edge-simulator" component={EdgeSimulatorDashboard} />
+      <Route path="/model-retraining" component={ModelRetrainingDashboard} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

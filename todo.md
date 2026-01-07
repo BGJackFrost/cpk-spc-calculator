@@ -8585,3 +8585,27 @@
 - [x] Unit tests cho anomalyAlertService
 - [x] Unit tests cho edgeGatewaySimulatorService
 - [x] Unit tests cho modelAutoRetrainingService
+
+
+## Phase 18 - UI Alert Config, Edge Simulator Dashboard, Scheduled Jobs
+
+### UI Quản lý Alert Config
+- [x] Tạo trang AlertConfigManagement.tsx với danh sách cấu hình cảnh báo
+- [x] Form tạo/sửa cấu hình cảnh báo (ngưỡng, kênh thông báo)
+- [x] Hiển thị lịch sử cảnh báo đã gửi
+- [x] Quản lý kênh thông báo (Email, Telegram, Slack)
+- [x] Test notification cho từng kênh
+
+### Dashboard Edge Simulator
+- [x] Tạo trang EdgeSimulatorDashboard.tsx
+- [x] Giao diện Start/Stop simulator
+- [x] Hiển thị realtime stats (data points, latency, errors)
+- [x] Biểu đồ trực quan dữ liệu simulator
+- [x] Cấu hình scenarios (normal, drift, anomaly, offline)
+
+### Tích hợp Model Retraining vào Scheduled Jobs
+- [x] Tạo trang ModelRetrainingDashboard.tsx
+- [x] Cấu hình lịch kiểm tra accuracy tự động
+- [x] Hiển thị lịch sử các job đã chạy
+- [x] Dashboard theo dõi model performance
+- [x] Cảnh báo khi accuracy giảm dưới ngưỡng
