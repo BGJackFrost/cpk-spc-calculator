@@ -8482,3 +8482,10 @@
 - [x] Di chuyển nhóm objects cùng lúc
 - [x] Hiển thị visual indicator cho grouped objects
 - [x] Lưu thông tin group vào database
+
+## Documentation - Tài liệu hệ thống IoT
+
+### Sơ đồ và Hướng dẫn sử dụng
+- [x] Tạo sơ đồ tổng quan hệ thống IoT (iot-system-diagram.png)
+- [x] Tạo sơ đồ luồng dữ liệu chi tiết (iot-data-flow-diagram.png)
+- [x] Viết hướng dẫn sử dụng hệ thống IoT đầy đủ (IoT-System-User-Guide.md)
