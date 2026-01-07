@@ -34,6 +34,8 @@ interface ExportedFloorPlan {
   height: number;
   gridSize: number;
   items: FloorPlanItem[];
+  layers?: any[];
+  groups?: any[];
 }
 
 export default function FloorPlanDesignerPage() {
@@ -132,7 +134,12 @@ export default function FloorPlanDesignerPage() {
       rotation: pos.rotation || 0,
       color: pos.color || '#3b82f6',
       machineId: pos.machineId,
+      iotDeviceId: pos.iotDeviceId,
+      iotDeviceCode: pos.iotDeviceCode,
+      iotDeviceType: pos.iotDeviceType,
       status: pos.status,
+      layerId: pos.layerId,
+      groupId: pos.groupId,
       metadata: pos.metadata,
     }));
 
@@ -150,7 +157,10 @@ export default function FloorPlanDesignerPage() {
   };
 
   const handleSaveConfig = (config: FloorPlanConfig) => {
-    if (!config.id) return;
+    if (!config.id) {
+      toast.error('Không thể lưu: Sơ đồ chưa được tạo');
+      return;
+    }
 
     const machinePositions = config.items.map((item) => ({
       id: item.id,
@@ -163,7 +173,12 @@ export default function FloorPlanDesignerPage() {
       rotation: item.rotation,
       color: item.color,
       machineId: item.machineId,
+      iotDeviceId: item.iotDeviceId,
+      iotDeviceCode: item.iotDeviceCode,
+      iotDeviceType: item.iotDeviceType,
       status: item.status,
+      layerId: item.layerId,
+      groupId: item.groupId,
       metadata: item.metadata,
     }));
 
@@ -196,7 +211,12 @@ export default function FloorPlanDesignerPage() {
       rotation: pos.rotation || 0,
       color: pos.color || '#3b82f6',
       machineId: pos.machineId,
+      iotDeviceId: pos.iotDeviceId,
+      iotDeviceCode: pos.iotDeviceCode,
+      iotDeviceType: pos.iotDeviceType,
       status: pos.status,
+      layerId: pos.layerId,
+      groupId: pos.groupId,
       metadata: pos.metadata,
     }));
 
@@ -208,6 +228,8 @@ export default function FloorPlanDesignerPage() {
       height: plan.height || 800,
       gridSize: plan.gridSize || 20,
       items,
+      layers: plan.layers,
+      groups: plan.groups,
     };
 
     const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
@@ -365,6 +387,8 @@ export default function FloorPlanDesignerPage() {
                       height: currentConfig.height,
                       gridSize: currentConfig.gridSize,
                       items: currentConfig.items,
+                      layers: currentConfig.layers,
+                      groups: currentConfig.groups,
                     };
                     const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
                     const url = URL.createObjectURL(blob);

@@ -397,6 +397,17 @@ export function FloorPlanDesigner({
   const canvasRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
+  // Sync config when initialConfig changes
+  useEffect(() => {
+    if (initialConfig) {
+      setConfig({
+        ...initialConfig,
+        layers: initialConfig.layers || DEFAULT_LAYERS,
+        groups: initialConfig.groups || [],
+      });
+    }
+  }, [initialConfig]);
+
   // Khởi tạo layers nếu chưa có
   useEffect(() => {
     if (!config.layers || config.layers.length === 0) {

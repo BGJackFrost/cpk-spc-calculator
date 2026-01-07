@@ -7,18 +7,27 @@ import { getDb } from '../db';
 import { floorPlanConfigs } from '../../drizzle/schema';
 import { eq, desc } from 'drizzle-orm';
 
-// Machine position schema
+// Machine position schema - flexible to support all FloorPlanItem types
 const machinePositionSchema = z.object({
   id: z.string(),
-  machineId: z.number(),
-  machineName: z.string(),
-  machineType: z.string(),
+  type: z.string().optional(), // machine, workstation, conveyor, storage, wall, door, custom, iot_device
+  name: z.string().optional(),
+  machineId: z.number().optional(),
+  machineName: z.string().optional(),
+  machineType: z.string().optional(),
+  iotDeviceId: z.number().optional(),
+  iotDeviceCode: z.string().optional(),
+  iotDeviceType: z.string().optional(),
   x: z.number(),
   y: z.number(),
-  width: z.number(),
-  height: z.number(),
-  rotation: z.number(),
-  color: z.string(),
+  width: z.number().optional().default(80),
+  height: z.number().optional().default(60),
+  rotation: z.number().optional().default(0),
+  color: z.string().optional().default('#3b82f6'),
+  status: z.string().optional(),
+  layerId: z.string().optional(),
+  groupId: z.string().optional(),
+  metadata: z.record(z.any()).optional(),
 });
 
 // Floor plan config schema
@@ -36,7 +45,36 @@ const floorPlanConfigSchema = z.object({
 });
 
 export const floorPlanRouter = router({
-  // Get all floor plans
+  // Get all floor plans (alias: list)
+  list: publicProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) return [];
+
+    try {
+      const plans = await db.select().from(floorPlanConfigs).orderBy(desc(floorPlanConfigs.createdAt));
+      return plans.map(p => ({
+        id: p.id,
+        name: p.name,
+        description: p.description,
+        productionLineId: p.productionLineId,
+        width: p.width,
+        height: p.height,
+        gridSize: p.gridSize,
+        backgroundColor: p.backgroundColor,
+        backgroundImage: p.backgroundImage,
+        machinePositions: (p.machinePositions as any[]) || [],
+        isActive: p.isActive === 1,
+        createdBy: p.createdBy,
+        createdAt: p.createdAt,
+        updatedAt: p.updatedAt,
+      }));
+    } catch (error) {
+      console.error('Error fetching floor plans:', error);
+      return [];
+    }
+  }),
+
+  // Get all floor plans (legacy alias)
   getAll: publicProcedure.query(async () => {
     const db = await getDb();
     if (!db) return [];

@@ -8510,3 +8510,18 @@
 - [x] Tạo component VideoPlayer cho video walkthrough (tích hợp YouTube embed)
 - [x] Cập nhật UI hiển thị video trong từng module
 - [x] Thêm video placeholder/demo cho các module (24 videos đã được liên kết)
+
+
+## Phase 16 - Layout Designer Bug Fix & IoT Assessment Report
+
+### Bug Fix - Layout Designer Export/Save
+- [x] Sửa lỗi Export Layout không hoạt động (thêm layers, groups vào export data)
+- [x] Sửa lỗi Lưu thiết kế Layout không hoạt động (thêm list endpoint, cập nhật schema, sync config)
+- [x] Kiểm tra và test lại chức năng Layout Designer
+
+### IoT System Assessment Report
+- [x] Rà soát toàn bộ các trang IoT hiện có (16 trang, 56 bảng database, 9 router)
+- [x] Đánh giá các tính năng đã triển khai
+- [x] Phân tích các điểm mạnh và điểm yếu
+- [x] Tạo báo cáo đánh giá hệ thống IoT (docs/IoT-System-Assessment-Report.md)
+- [x] Đề xuất ý tưởng cải tiến cho nhà máy quy mô lớn (8 hướng cải tiến chính)
