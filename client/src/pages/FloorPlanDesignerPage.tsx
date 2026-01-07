@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
-import { FloorPlanDesigner, FloorPlanConfig, FloorPlanItem } from '@/components/FloorPlanDesigner';
+import { FloorPlanDesigner, FloorPlanConfig, FloorPlanItem, IoTDeviceForLayout } from '@/components/FloorPlanDesigner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -51,6 +51,7 @@ export default function FloorPlanDesignerPage() {
   const { data: floorPlans, refetch: refetchPlans } = trpc.floorPlan.list.useQuery();
   const { data: productionLines } = trpc.productionLine.list.useQuery();
   const { data: machines } = trpc.machine.list.useQuery();
+  const { data: iotDevicesData } = trpc.iotCrud.getDevices.useQuery({});
 
   // Mutations
   const createMutation = trpc.floorPlan.create.useMutation({
@@ -295,6 +296,16 @@ export default function FloorPlanDesignerPage() {
     status: 'idle' as const,
   })) || [];
 
+  // Convert IoT devices to format for designer
+  const iotDeviceList = (iotDevicesData as any[])?.map((d: any) => ({
+    id: d.id,
+    deviceCode: d.deviceCode || d.device_code || '',
+    deviceName: d.deviceName || d.device_name || '',
+    deviceType: d.deviceType || d.device_type || 'other',
+    status: (d.status || 'offline') as 'online' | 'offline' | 'error' | 'maintenance',
+    location: d.location || '',
+  })) || [];
+
   if (isDesigning && currentConfig) {
     return (
       <DashboardLayout>
@@ -340,6 +351,7 @@ export default function FloorPlanDesignerPage() {
             initialConfig={currentConfig}
             onSave={handleSaveConfig}
             machines={machineList}
+            iotDevices={iotDeviceList}
           />
         </div>
       </DashboardLayout>

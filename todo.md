@@ -8421,3 +8421,41 @@
 - [x] Sửa lỗi vị trí con trỏ trong Layout Designer (tính toán zoom)
 - [x] Thêm chức năng cho các nút View/Settings/Delete trong IoT Dashboard
 - [x] Thêm dữ liệu thực cho IoT features vào database (devices, data points, alarms)
+
+
+## Phase 14 - Layout Designer Fixes và 3D Model Improvements
+
+### Layout Designer Bug Fixes
+- [ ] Fix Pick and Put bug - Object không nằm đúng vị trí con trỏ khi kéo thả
+- [ ] Sửa lỗi tính toán offset khi drag object trên canvas
+- [ ] Đảm bảo vị trí drop chính xác với vị trí cursor
+
+### 3D Model Management
+- [ ] Thêm chức năng xóa model 3D với dialog xác nhận
+- [ ] Cập nhật danh sách sau khi xóa model
+- [ ] Thêm preview 3D model trước khi upload
+
+### IoT Integration với Layout Designer
+- [ ] Tích hợp IoT devices với Layout Designer
+- [ ] Hiển thị trạng thái thiết bị realtime trên sơ đồ nhà máy
+- [ ] Cập nhật màu sắc/icon theo trạng thái thiết bị
+
+
+## Phase 14 - Layout Designer Improvements và IoT Integration
+
+### Fix Layout Designer Drag-Drop Bug
+- [x] Fix drag-drop positioning bug (object jumps to wrong position after drop)
+- [x] Cập nhật logic handleDragEnd để tính toán vị trí chính xác khi di chuyển object hiện có
+
+### 3D Model Management Improvements
+- [x] Add 3D model delete function with confirmation dialog
+- [x] Add 3D model preview before upload
+- [x] Cập nhật Model3DManagement.tsx với delete confirmation và upload preview dialogs
+
+### IoT Devices Integration with Layout Designer
+- [x] Integrate IoT devices with Layout Designer
+- [x] Thêm IoTDeviceForLayout interface
+- [x] Thêm iotDevices prop vào FloorPlanDesigner
+- [x] Hiển thị danh sách IoT devices trong palette
+- [x] Cho phép kéo thả IoT device vào sơ đồ
+- [x] Hiển thị trạng thái thiết bị realtime (online/offline/error/maintenance)

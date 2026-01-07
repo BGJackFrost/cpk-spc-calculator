@@ -48,7 +48,7 @@ import {
 // Types
 export interface FloorPlanItem {
   id: string;
-  type: 'machine' | 'workstation' | 'conveyor' | 'storage' | 'wall' | 'door' | 'custom';
+  type: 'machine' | 'workstation' | 'conveyor' | 'storage' | 'wall' | 'door' | 'custom' | 'iot_device';
   name: string;
   x: number;
   y: number;
@@ -56,8 +56,11 @@ export interface FloorPlanItem {
   height: number;
   rotation: number;
   color: string;
-  status?: 'running' | 'idle' | 'error' | 'maintenance';
+  status?: 'running' | 'idle' | 'error' | 'maintenance' | 'online' | 'offline';
   machineId?: number;
+  iotDeviceId?: number;
+  iotDeviceCode?: string;
+  iotDeviceType?: string;
   metadata?: Record<string, any>;
 }
 
@@ -160,6 +163,8 @@ function FloorItem({
     idle: '#eab308',
     error: '#ef4444',
     maintenance: '#3b82f6',
+    online: '#22c55e',
+    offline: '#6b7280',
   };
 
   const handleResizeStart = (e: React.MouseEvent) => {
@@ -260,17 +265,31 @@ function FloorItem({
   );
 }
 
+// IoT Device interface
+export interface IoTDeviceForLayout {
+  id: number;
+  deviceCode: string;
+  deviceName: string;
+  deviceType: string;
+  status: 'online' | 'offline' | 'error' | 'maintenance';
+  location?: string;
+}
+
 // Main Designer Component
 export function FloorPlanDesigner({
   initialConfig,
   onSave,
   onExport,
   machines = [],
+  iotDevices = [],
+  onIotDeviceStatusChange,
 }: {
   initialConfig?: FloorPlanConfig;
   onSave?: (config: FloorPlanConfig) => void;
   onExport?: (format: 'png' | 'pdf') => void;
   machines?: Array<{ id: number; name: string; status?: string }>;
+  iotDevices?: IoTDeviceForLayout[];
+  onIotDeviceStatusChange?: (deviceId: number, status: string) => void;
 }) {
   const [config, setConfig] = useState<FloorPlanConfig>(
     initialConfig || {
@@ -350,19 +369,39 @@ export function FloorPlanDesigner({
       }
     }
     // Moving existing item
-    else if (activeData?.type === 'floor') {
-      const item = activeData.item as FloorPlanItem;
-      const newX = snapToGrid(item.x + delta.x / zoom);
-      const newY = snapToGrid(item.y + delta.y / zoom);
+    else if (activeData?.type === 'floor' && canvasRef.current) {
+      const draggedItem = activeData.item as FloorPlanItem;
+      
+      // Get current item from state (not from drag data which has stale position)
+      const currentItem = config.items.find(i => i.id === draggedItem.id);
+      if (!currentItem) return;
+      
+      // Get canvas rect to calculate proper position
+      const rect = canvasRef.current.getBoundingClientRect();
+      
+      // Calculate the final drop position based on cursor position
+      // The activatorEvent gives us the initial mouse position when drag started
+      // delta gives us how much the mouse moved
+      const finalMouseX = (event.activatorEvent as MouseEvent).clientX + delta.x;
+      const finalMouseY = (event.activatorEvent as MouseEvent).clientY + delta.y;
+      
+      // Convert screen coordinates to canvas coordinates
+      // Account for zoom by dividing by zoom (since canvas is scaled)
+      const canvasX = (finalMouseX - rect.left) / zoom;
+      const canvasY = (finalMouseY - rect.top) / zoom;
+      
+      // Center the item on the cursor position
+      const newX = snapToGrid(canvasX - currentItem.width / 2);
+      const newY = snapToGrid(canvasY - currentItem.height / 2);
 
       // Keep within bounds
-      const boundedX = Math.max(0, Math.min(config.width - item.width, newX));
-      const boundedY = Math.max(0, Math.min(config.height - item.height, newY));
+      const boundedX = Math.max(0, Math.min(config.width - currentItem.width, newX));
+      const boundedY = Math.max(0, Math.min(config.height - currentItem.height, newY));
 
       setConfig((prev) => ({
         ...prev,
         items: prev.items.map((i) =>
-          i.id === item.id ? { ...i, x: boundedX, y: boundedY } : i
+          i.id === currentItem.id ? { ...i, x: boundedX, y: boundedY } : i
         ),
       }));
     }
@@ -492,6 +531,62 @@ export function FloorPlanDesigner({
                       {machine.name}
                     </div>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {/* IoT Devices list */}
+            {iotDevices.length > 0 && (
+              <div className="mt-4">
+                <h4 className="text-xs font-medium mb-2 flex items-center gap-1">
+                  <Cpu className="w-3 h-3" />
+                  Thiết bị IoT
+                </h4>
+                <div className="space-y-1 max-h-40 overflow-y-auto">
+                  {iotDevices.map((device) => {
+                    const statusColors: Record<string, string> = {
+                      online: '#22c55e',
+                      offline: '#6b7280',
+                      error: '#ef4444',
+                      maintenance: '#3b82f6',
+                    };
+                    return (
+                      <div
+                        key={device.id}
+                        className="text-xs p-2 border rounded cursor-pointer hover:bg-accent flex items-center gap-2"
+                        onClick={() => {
+                          const newItem: FloorPlanItem = {
+                            id: generateId(),
+                            type: 'iot_device',
+                            name: device.deviceName,
+                            x: 100,
+                            y: 100,
+                            width: 60,
+                            height: 60,
+                            rotation: 0,
+                            color: statusColors[device.status] || '#6b7280',
+                            iotDeviceId: device.id,
+                            iotDeviceCode: device.deviceCode,
+                            iotDeviceType: device.deviceType,
+                            status: device.status,
+                          };
+                          setConfig((prev) => ({
+                            ...prev,
+                            items: [...prev.items, newItem],
+                          }));
+                        }}
+                      >
+                        <div
+                          className="w-2 h-2 rounded-full"
+                          style={{ backgroundColor: statusColors[device.status] || '#6b7280' }}
+                        />
+                        <span className="truncate flex-1">{device.deviceName}</span>
+                        <span className="text-[10px] text-muted-foreground uppercase">
+                          {device.deviceType}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}

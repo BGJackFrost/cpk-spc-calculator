@@ -64,6 +64,11 @@ export default function Model3DManagement() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isPreviewDialogOpen, setIsPreviewDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isUploadPreviewOpen, setIsUploadPreviewOpen] = useState(false);
+  const [modelToDelete, setModelToDelete] = useState<any>(null);
+  const [uploadPreviewUrl, setUploadPreviewUrl] = useState<string>("");
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [selectedModel, setSelectedModel] = useState<any>(null);
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [uploading, setUploading] = useState(false);
@@ -179,25 +184,45 @@ export default function Model3DManagement() {
       return;
     }
 
+    // Create preview URL and show preview dialog
+    const previewUrl = URL.createObjectURL(file);
+    setUploadPreviewUrl(previewUrl);
+    setPendingFile(file);
+    setFormData((prev) => ({
+      ...prev,
+      modelFormat: ext === ".glb" ? "glb" : "gltf",
+      name: prev.name || file.name.replace(/\.(gltf|glb)$/i, ""),
+    }));
+    setIsUploadPreviewOpen(true);
+  };
+
+  const confirmUpload = () => {
+    if (!pendingFile) return;
+    
     setUploading(true);
+    setIsUploadPreviewOpen(false);
 
     // Read file as base64
     const reader = new FileReader();
+    const ext = pendingFile.name.toLowerCase().slice(pendingFile.name.lastIndexOf("."));
     reader.onload = () => {
       const base64 = (reader.result as string).split(",")[1];
       uploadMutation.mutate({
-        fileName: file.name,
+        fileName: pendingFile.name,
         fileData: base64,
         contentType: ext === ".glb" ? "model/gltf-binary" : "model/gltf+json",
       });
-
-      // Set format based on extension
-      setFormData((prev) => ({
-        ...prev,
-        modelFormat: ext === ".glb" ? "glb" : "gltf",
-      }));
     };
-    reader.readAsDataURL(file);
+    reader.readAsDataURL(pendingFile);
+  };
+
+  const cancelUploadPreview = () => {
+    if (uploadPreviewUrl) {
+      URL.revokeObjectURL(uploadPreviewUrl);
+    }
+    setUploadPreviewUrl("");
+    setPendingFile(null);
+    setIsUploadPreviewOpen(false);
   };
 
   const handleCreate = () => {
@@ -216,9 +241,16 @@ export default function Model3DManagement() {
     });
   };
 
-  const handleDelete = (id: number) => {
-    if (confirm("Bạn có chắc muốn xóa model này?")) {
-      deleteMutation.mutate({ id });
+  const handleDelete = (model: any) => {
+    setModelToDelete(model);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (modelToDelete) {
+      deleteMutation.mutate({ id: modelToDelete.id });
+      setIsDeleteDialogOpen(false);
+      setModelToDelete(null);
     }
   };
 
@@ -373,7 +405,7 @@ export default function Model3DManagement() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handleDelete(model.id)}
+                      onClick={() => handleDelete(model)}
                     >
                       <Trash2 className="w-4 h-4 text-destructive" />
                     </Button>
@@ -835,6 +867,141 @@ export default function Model3DManagement() {
                 Đóng
               </Button>
             </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-destructive">
+                <Trash2 className="w-5 h-5" />
+                Xác nhận xóa Model 3D
+              </DialogTitle>
+              <DialogDescription>
+                Bạn có chắc chắn muốn xóa model này? Hành động này không thể hoàn tác.
+              </DialogDescription>
+            </DialogHeader>
+
+            {modelToDelete && (
+              <div className="p-4 bg-muted rounded-lg space-y-2">
+                <div className="flex items-center gap-3">
+                  {modelToDelete.thumbnail_url ? (
+                    <img
+                      src={modelToDelete.thumbnail_url}
+                      alt={modelToDelete.name}
+                      className="w-16 h-16 object-cover rounded"
+                    />
+                  ) : (
+                    <div className="w-16 h-16 bg-background rounded flex items-center justify-center">
+                      <FileBox className="w-8 h-8 text-muted-foreground" />
+                    </div>
+                  )}
+                  <div>
+                    <p className="font-medium">{modelToDelete.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {CATEGORIES.find((c) => c.value === modelToDelete.category)?.label || modelToDelete.category}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <DialogFooter className="gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsDeleteDialogOpen(false);
+                  setModelToDelete(null);
+                }}
+              >
+                Hủy
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={confirmDelete}
+                disabled={deleteMutation.isPending}
+              >
+                {deleteMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Đang xóa...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Xóa Model
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Upload Preview Dialog */}
+        <Dialog open={isUploadPreviewOpen} onOpenChange={(open) => {
+          if (!open) cancelUploadPreview();
+        }}>
+          <DialogContent className="max-w-4xl max-h-[90vh]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Eye className="w-5 h-5" />
+                Xem trước Model 3D
+              </DialogTitle>
+              <DialogDescription>
+                Kiểm tra model trước khi upload. Sử dụng chuột để xoay, zoom và di chuyển.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="h-[400px] rounded-lg overflow-hidden border bg-muted">
+              {uploadPreviewUrl && (
+                <Model3DViewer
+                  modelUrl={uploadPreviewUrl}
+                  modelName={pendingFile?.name || "Preview"}
+                  modelFormat={formData.modelFormat as 'glb' | 'gltf'}
+                  defaultScale={1}
+                  showControls={true}
+                  showInfo={true}
+                  autoRotate={true}
+                />
+              )}
+            </div>
+
+            {pendingFile && (
+              <div className="grid grid-cols-3 gap-4 text-sm border-t pt-4">
+                <div>
+                  <span className="text-muted-foreground">Tên file:</span>{" "}
+                  <span className="font-medium">{pendingFile.name}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Định dạng:</span>{" "}
+                  <Badge>{formData.modelFormat.toUpperCase()}</Badge>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Kích thước:</span>{" "}
+                  {formatFileSize(pendingFile.size)}
+                </div>
+              </div>
+            )}
+
+            <DialogFooter className="gap-2">
+              <Button variant="outline" onClick={cancelUploadPreview}>
+                Hủy
+              </Button>
+              <Button onClick={confirmUpload} disabled={uploading}>
+                {uploading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Đang upload...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-4 h-4 mr-2" />
+                    Xác nhận Upload
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
