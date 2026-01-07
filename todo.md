@@ -8525,3 +8525,28 @@
 - [x] Phân tích các điểm mạnh và điểm yếu
 - [x] Tạo báo cáo đánh giá hệ thống IoT (docs/IoT-System-Assessment-Report.md)
 - [x] Đề xuất ý tưởng cải tiến cho nhà máy quy mô lớn (8 hướng cải tiến chính)
+
+
+## Phase 14 - Edge Gateway, TimescaleDB & Anomaly Detection
+
+### Edge Gateway MVP
+- [x] Edge Gateway Service và Router
+- [x] Edge Gateway Dashboard UI
+- [x] Edge Device management
+- [x] Data buffering và sync
+- [x] Gateway health monitoring
+
+### TimescaleDB Integration
+- [x] Time-series data storage schema
+- [x] Timeseries Service và Router
+- [x] Hourly/Daily aggregations
+- [x] Downsampling cho visualization
+- [x] Time-Series Dashboard UI
+
+### Anomaly Detection với Isolation Forest
+- [x] Isolation Forest implementation
+- [x] Anomaly Detection Service và Router
+- [x] Model training và management
+- [x] Real-time anomaly detection
+- [x] Anomaly Detection Dashboard UI
+- [x] Severity classification

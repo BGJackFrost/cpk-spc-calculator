@@ -1,0 +1,16 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS edge_devices (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  gateway_id INT NOT NULL,\n  device_code VARCHAR(50) NOT NULL,\n  name VARCHAR(100) NOT NULL,\n  device_type ENUM('sensor', 'plc', 'actuator', 'meter', 'camera') NOT NULL,\n  protocol ENUM('modbus_tcp', 'modbus_rtu', 'opcua', 'mqtt', 'http', 'serial') DEFAULT 'modbus_tcp',\n  address VARCHAR(255),\n  polling_interval INT DEFAULT 1000,\n  data_type ENUM('int16', 'int32', 'float32', 'float64', 'bool', 'string') DEFAULT 'float32',\n  scale_factor DECIMAL(10,4) DEFAULT 1.0000,\n  offset DECIMAL(10,4) DEFAULT 0.0000,\n  unit VARCHAR(20),\n  status ENUM('active', 'inactive', 'error', 'disconnected') DEFAULT 'inactive',\n  last_value DECIMAL(15,6),\n  last_read_at BIGINT,\n  error_count INT DEFAULT 0,\n  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,\n  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  INDEX idx_device_gateway (gateway_id),\n  INDEX idx_device_code (device_code),\n  INDEX idx_device_status (status)\n)",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute CREATE TABLE IF NOT EXISTS edge_devices (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  gateway_id INT NOT NULL,\n  device_code VARCHAR(50) NOT NULL,\n  name VARCHAR(100) NOT NULL,\n  device_type ENUM('sensor', 'plc', 'actuator', 'meter', 'camera') NOT NULL,\n  protocol ENUM('modbus_tcp', 'modbus_rtu', 'opcua', 'mqtt', 'http', 'serial') DEFAULT 'modbus_tcp',\n  address VARCHAR(255),\n  polling_interval INT DEFAULT 1000,\n  data_type ENUM('int16', 'int32', 'float32', 'float64', 'bool', 'string') DEFAULT 'float32',\n  scale_factor DECIMAL(10,4) DEFAULT 1.0000,\n  offset DECIMAL(10,4) DEFAULT 0.0000,\n  unit VARCHAR(20),\n  status ENUM('active', 'inactive', 'error', 'disconnected') DEFAULT 'inactive',\n  last_value DECIMAL(15,6),\n  last_read_at BIGINT,\n  error_count INT DEFAULT 0,\n  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,\n  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  INDEX idx_device_gateway (gateway_id),\n  INDEX idx_device_code (device_code),\n  INDEX idx_device_status (status)\n)",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1064 (42000) at line 1: You have an error in your SQL syntax; check the manual that corresponds to your TiDB version for the right syntax to use line 15 column 13 near \"last_value DECIMAL(15,6),",
+    "  last_read_at BIGINT,",
+    "  error_count INT DEFAULT 0,",
+    "  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,",
+    "  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,",
+    "  INDEX idx_device_gateway (gateway_id),",
+    "  INDEX idx_device_code (device_code),",
+    "  INDEX idx_device_status (status)",
+    ")\""
+  ]
+}

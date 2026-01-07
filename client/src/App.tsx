@@ -271,6 +271,9 @@ import IotDeviceCrud from "./pages/IotDeviceCrud";
 import IotAlarmCrud from "./pages/IotAlarmCrud";
 import NotificationPreferencesPage from "./pages/NotificationPreferencesPage";
 import IoTUserGuide from "./pages/IoTUserGuide";
+import EdgeGatewayDashboard from "./pages/EdgeGatewayDashboard";
+import TimeseriesDashboard from "./pages/TimeseriesDashboard";
+import AnomalyDetectionDashboard from "./pages/AnomalyDetectionDashboard";
 
 function Router() {
   return (
@@ -544,6 +547,10 @@ function Router() {
       <Route path="/mttr-mtbf-comparison" component={MttrMtbfComparison} />
       <Route path="/mttr-mtbf-thresholds" component={MttrMtbfThresholds} />
       <Route path="/mttr-mtbf-prediction" component={MttrMtbfPrediction} />
+      {/* Phase 14 - Edge Gateway, TimescaleDB, Anomaly Detection */}
+      <Route path="/edge-gateway" component={EdgeGatewayDashboard} />
+      <Route path="/timeseries-dashboard" component={TimeseriesDashboard} />
+      <Route path="/anomaly-detection-ai" component={AnomalyDetectionDashboard} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

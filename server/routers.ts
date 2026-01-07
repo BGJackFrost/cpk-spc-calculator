@@ -64,6 +64,9 @@ import { mttrMtbfAlertRouter } from "./routers/mttrMtbfAlertRouter";
 import { mttrMtbfPredictionRouter } from "./routers/mttrMtbfPredictionRouter";
 import { scheduledOeeReportRouter } from "./routers/scheduledOeeReportRouter";
 import { userGuideRouter } from "./routers/userGuideRouter";
+import { edgeGatewayRouter } from "./routers/edgeGatewayRouter";
+import { timeseriesRouter } from "./routers/timeseriesRouter";
+import { anomalyDetectionRouter } from "./routers/anomalyDetectionRouter";
 import { oeeThresholdsRouter } from "./routers/oeeThresholdsRouter";
 import { maintenanceWorkOrderRouter } from "./maintenanceWorkOrderRouter";
 import { mobileRouter } from "./mobileRouter";
@@ -12292,6 +12295,11 @@ Hãy trả về JSON với format:
   mttrMtbfPrediction: mttrMtbfPredictionRouter,
   // OEE Thresholds by Production Line
   oeeThresholds: oeeThresholdsRouter,
+
+  // Phase 14 - Edge Gateway, TimescaleDB, Anomaly Detection
+  edgeGateway: edgeGatewayRouter,
+  timeseries: timeseriesRouter,
+  anomalyDetectionAI: anomalyDetectionRouter,
 });
 
 export type AppRouter = typeof appRouter;

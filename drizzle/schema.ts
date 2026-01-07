@@ -5764,3 +5764,245 @@ export type ScheduledOeeReport = typeof scheduledOeeReports.$inferSelect;
 export type InsertScheduledOeeReport = typeof scheduledOeeReports.$inferInsert;
 export type ScheduledOeeReportHistory = typeof scheduledOeeReportHistory.$inferSelect;
 export type InsertScheduledOeeReportHistory = typeof scheduledOeeReportHistory.$inferInsert;
+
+
+// ============================================
+// Phase 14 - Edge Gateway, TimescaleDB, Anomaly Detection
+// ============================================
+
+// Edge Gateway Management
+export const edgeGateways = mysqlTable("edge_gateways", {
+	id: int().autoincrement().notNull().primaryKey(),
+	gatewayCode: varchar("gateway_code", { length: 50 }).notNull(),
+	name: varchar({ length: 100 }).notNull(),
+	description: text(),
+	location: varchar({ length: 255 }),
+	productionLineId: int("production_line_id"),
+	ipAddress: varchar("ip_address", { length: 45 }),
+	macAddress: varchar("mac_address", { length: 17 }),
+	status: mysqlEnum(['online', 'offline', 'syncing', 'error', 'maintenance']).default('offline').notNull(),
+	lastHeartbeat: bigint("last_heartbeat", { mode: 'number' }),
+	lastSyncAt: bigint("last_sync_at", { mode: 'number' }),
+	bufferCapacity: int("buffer_capacity").default(10000),
+	currentBufferSize: int("current_buffer_size").default(0),
+	syncInterval: int("sync_interval").default(60),
+	cpuUsage: decimal("cpu_usage", { precision: 5, scale: 2 }),
+	memoryUsage: decimal("memory_usage", { precision: 5, scale: 2 }),
+	diskUsage: decimal("disk_usage", { precision: 5, scale: 2 }),
+	firmwareVersion: varchar("firmware_version", { length: 50 }),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow(),
+},
+(table) => [
+	index("idx_gateway_code").on(table.gatewayCode),
+	index("idx_gateway_status").on(table.status),
+	index("idx_gateway_line").on(table.productionLineId),
+]);
+
+// Edge Devices connected to Gateway
+export const edgeDevices = mysqlTable("edge_devices", {
+	id: int().autoincrement().notNull().primaryKey(),
+	gatewayId: int("gateway_id").notNull(),
+	deviceCode: varchar("device_code", { length: 50 }).notNull(),
+	name: varchar({ length: 100 }).notNull(),
+	deviceType: mysqlEnum("device_type", ['sensor', 'plc', 'actuator', 'meter', 'camera']).notNull(),
+	protocol: mysqlEnum(['modbus_tcp', 'modbus_rtu', 'opcua', 'mqtt', 'http', 'serial']).default('modbus_tcp'),
+	address: varchar({ length: 255 }),
+	pollingInterval: int("polling_interval").default(1000),
+	dataType: mysqlEnum("data_type", ['int16', 'int32', 'float32', 'float64', 'bool', 'string']).default('float32'),
+	scaleFactor: decimal("scale_factor", { precision: 10, scale: 4 }).default('1.0000'),
+	offset: decimal({ precision: 10, scale: 4 }).default('0.0000'),
+	unit: varchar({ length: 20 }),
+	status: mysqlEnum(['active', 'inactive', 'error', 'disconnected']).default('inactive'),
+	lastValue: decimal("last_value", { precision: 15, scale: 6 }),
+	lastReadAt: bigint("last_read_at", { mode: 'number' }),
+	errorCount: int("error_count").default(0),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow(),
+},
+(table) => [
+	index("idx_device_gateway").on(table.gatewayId),
+	index("idx_device_code").on(table.deviceCode),
+	index("idx_device_status").on(table.status),
+]);
+
+// Edge Data Buffer for offline storage
+export const edgeDataBuffer = mysqlTable("edge_data_buffer", {
+	id: int().autoincrement().notNull().primaryKey(),
+	gatewayId: int("gateway_id").notNull(),
+	deviceId: int("device_id").notNull(),
+	value: decimal({ precision: 15, scale: 6 }).notNull(),
+	rawValue: varchar("raw_value", { length: 100 }),
+	quality: mysqlEnum(['good', 'uncertain', 'bad']).default('good'),
+	capturedAt: bigint("captured_at", { mode: 'number' }).notNull(),
+	syncedAt: bigint("synced_at", { mode: 'number' }),
+	syncStatus: mysqlEnum("sync_status", ['pending', 'synced', 'failed']).default('pending'),
+},
+(table) => [
+	index("idx_buffer_gateway").on(table.gatewayId),
+	index("idx_buffer_device").on(table.deviceId),
+	index("idx_buffer_sync_status").on(table.syncStatus),
+	index("idx_buffer_captured").on(table.capturedAt),
+]);
+
+// Edge Sync Logs
+export const edgeSyncLogs = mysqlTable("edge_sync_logs", {
+	id: int().autoincrement().notNull().primaryKey(),
+	gatewayId: int("gateway_id").notNull(),
+	syncType: mysqlEnum("sync_type", ['full', 'incremental', 'manual']).default('incremental'),
+	startedAt: bigint("started_at", { mode: 'number' }).notNull(),
+	completedAt: bigint("completed_at", { mode: 'number' }),
+	recordsSynced: int("records_synced").default(0),
+	recordsFailed: int("records_failed").default(0),
+	latencyMs: int("latency_ms"),
+	status: mysqlEnum(['running', 'completed', 'failed', 'partial']).default('running'),
+	errorMessage: text("error_message"),
+},
+(table) => [
+	index("idx_sync_gateway").on(table.gatewayId),
+	index("idx_sync_started").on(table.startedAt),
+]);
+
+// Time-Series Data Storage
+export const sensorDataTimeseries = mysqlTable("sensor_data_ts", {
+	id: int().autoincrement().notNull().primaryKey(),
+	deviceId: int("device_id").notNull(),
+	gatewayId: int("gateway_id"),
+	timestamp: bigint({ mode: 'number' }).notNull(),
+	timeBucket: bigint("time_bucket", { mode: 'number' }).notNull(),
+	value: decimal({ precision: 15, scale: 6 }).notNull(),
+	sensorType: varchar("sensor_type", { length: 50 }),
+	unit: varchar({ length: 20 }),
+	quality: mysqlEnum(['good', 'uncertain', 'bad']).default('good'),
+	sourceType: mysqlEnum("source_type", ['edge', 'direct', 'import']).default('direct'),
+	sourceId: varchar("source_id", { length: 50 }),
+},
+(table) => [
+	index("idx_ts_device_time").on(table.deviceId, table.timestamp),
+	index("idx_ts_bucket").on(table.timeBucket),
+	index("idx_ts_gateway").on(table.gatewayId),
+]);
+
+// Hourly Aggregates
+export const sensorDataHourly = mysqlTable("sensor_data_hourly", {
+	id: int().autoincrement().notNull().primaryKey(),
+	deviceId: int("device_id").notNull(),
+	hourBucket: bigint("hour_bucket", { mode: 'number' }).notNull(),
+	minValue: decimal("min_value", { precision: 15, scale: 6 }),
+	maxValue: decimal("max_value", { precision: 15, scale: 6 }),
+	avgValue: decimal("avg_value", { precision: 15, scale: 6 }),
+	sumValue: decimal("sum_value", { precision: 20, scale: 6 }),
+	sampleCount: int("sample_count").default(0),
+	stdDev: decimal("std_dev", { precision: 15, scale: 6 }),
+	variance: decimal({ precision: 15, scale: 6 }),
+	goodCount: int("good_count").default(0),
+	badCount: int("bad_count").default(0),
+},
+(table) => [
+	index("idx_hourly_device").on(table.deviceId),
+	index("idx_hourly_bucket").on(table.hourBucket),
+]);
+
+// Daily Aggregates
+export const sensorDataDaily = mysqlTable("sensor_data_daily", {
+	id: int().autoincrement().notNull().primaryKey(),
+	deviceId: int("device_id").notNull(),
+	dayBucket: bigint("day_bucket", { mode: 'number' }).notNull(),
+	minValue: decimal("min_value", { precision: 15, scale: 6 }),
+	maxValue: decimal("max_value", { precision: 15, scale: 6 }),
+	avgValue: decimal("avg_value", { precision: 15, scale: 6 }),
+	sumValue: decimal("sum_value", { precision: 20, scale: 6 }),
+	sampleCount: int("sample_count").default(0),
+	stdDev: decimal("std_dev", { precision: 15, scale: 6 }),
+	variance: decimal({ precision: 15, scale: 6 }),
+	uptimePercent: decimal("uptime_percent", { precision: 5, scale: 2 }),
+	goodCount: int("good_count").default(0),
+	badCount: int("bad_count").default(0),
+	p50: decimal({ precision: 15, scale: 6 }),
+	p95: decimal({ precision: 15, scale: 6 }),
+	p99: decimal({ precision: 15, scale: 6 }),
+},
+(table) => [
+	index("idx_daily_device").on(table.deviceId),
+	index("idx_daily_bucket").on(table.dayBucket),
+]);
+
+// Isolation Forest Models
+export const isolationForestModels = mysqlTable("isolation_forest_models", {
+	id: int().autoincrement().notNull().primaryKey(),
+	name: varchar({ length: 100 }).notNull(),
+	description: text(),
+	targetType: mysqlEnum("target_type", ['device', 'device_group', 'production_line', 'global']).notNull(),
+	targetId: int("target_id"),
+	sensorType: varchar("sensor_type", { length: 50 }),
+	numTrees: int("num_trees").default(100),
+	sampleSize: int("sample_size").default(256),
+	contamination: decimal({ precision: 5, scale: 4 }).default('0.0100'),
+	maxDepth: int("max_depth"),
+	modelData: json("model_data"),
+	featureStats: json("feature_stats"),
+	status: mysqlEnum(['training', 'active', 'inactive', 'failed']).default('inactive'),
+	accuracy: decimal({ precision: 5, scale: 4 }),
+	precision: decimal({ precision: 5, scale: 4 }),
+	recall: decimal({ precision: 5, scale: 4 }),
+	f1Score: decimal("f1_score", { precision: 5, scale: 4 }),
+	trainedAt: bigint("trained_at", { mode: 'number' }),
+	trainingSamples: int("training_samples"),
+	version: int().default(1),
+	createdBy: int("created_by"),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow(),
+},
+(table) => [
+	index("idx_model_target").on(table.targetType, table.targetId),
+	index("idx_model_status").on(table.status),
+]);
+
+// Anomaly Detections
+export const anomalyDetections = mysqlTable("anomaly_detections", {
+	id: int().autoincrement().notNull().primaryKey(),
+	modelId: int("model_id").notNull(),
+	deviceId: int("device_id"),
+	timestamp: bigint({ mode: 'number' }).notNull(),
+	value: decimal({ precision: 15, scale: 6 }).notNull(),
+	anomalyScore: decimal("anomaly_score", { precision: 10, scale: 6 }).notNull(),
+	isAnomaly: int("is_anomaly").default(0),
+	anomalyType: mysqlEnum("anomaly_type", ['spike', 'drop', 'drift', 'noise', 'pattern', 'unknown']),
+	severity: mysqlEnum(['low', 'medium', 'high', 'critical']).default('low'),
+	confidence: decimal({ precision: 5, scale: 4 }),
+	expectedMin: decimal("expected_min", { precision: 15, scale: 6 }),
+	expectedMax: decimal("expected_max", { precision: 15, scale: 6 }),
+	deviation: decimal({ precision: 10, scale: 4 }),
+	acknowledged: int().default(0),
+	acknowledgedBy: int("acknowledged_by"),
+	acknowledgedAt: bigint("acknowledged_at", { mode: 'number' }),
+	notes: text(),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+	index("idx_anomaly_model").on(table.modelId),
+	index("idx_anomaly_device").on(table.deviceId),
+	index("idx_anomaly_timestamp").on(table.timestamp),
+	index("idx_anomaly_severity").on(table.severity),
+]);
+
+// Anomaly Training Jobs
+export const anomalyTrainingJobs = mysqlTable("anomaly_training_jobs", {
+	id: int().autoincrement().notNull().primaryKey(),
+	modelId: int("model_id").notNull(),
+	status: mysqlEnum(['queued', 'running', 'completed', 'failed', 'cancelled']).default('queued'),
+	startTime: bigint("start_time", { mode: 'number' }),
+	endTime: bigint("end_time", { mode: 'number' }),
+	trainingStartTime: bigint("training_start_time", { mode: 'number' }),
+	trainingEndTime: bigint("training_end_time", { mode: 'number' }),
+	samplesProcessed: int("samples_processed").default(0),
+	progress: int().default(0),
+	errorMessage: text("error_message"),
+	metrics: json(),
+	createdBy: int("created_by"),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+	index("idx_job_model").on(table.modelId),
+	index("idx_job_status").on(table.status),
+]);
