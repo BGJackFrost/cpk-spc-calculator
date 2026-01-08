@@ -8635,3 +8635,35 @@
 - [x] Unit tests cho retrainingPdfExportService
 - [x] Unit tests cho telegramRouter endpoints
 - [x] Unit tests cho modelAutoRetrainingRouter exportPdf
+
+
+## Phase 21 - CPK Alert Enhancement & PDF Control Chart (Completed)
+
+### Custom CPK Thresholds for Automatic Alerts
+- [x] Create cpk_alert_thresholds table in database schema
+- [x] Create cpk_alert_history table for tracking alerts
+- [x] Implement cpkAlertService with custom threshold support
+- [x] Create cpkAlertRouter with CRUD endpoints for thresholds
+- [x] Integrate custom thresholds into existing alert system
+
+### Advanced Filtering for Alert History
+- [x] Add date range filter for alert history
+- [x] Add product code filter
+- [x] Add station name filter
+- [x] Add alert type filter (warning/critical/excellent)
+- [x] Add search functionality
+- [x] Create CpkAlertManagement page with filter UI
+
+### PDF Export with Control Charts
+- [x] Create pdfControlChartService with SVG chart generation
+- [x] Generate X-bar Control Chart SVG
+- [x] Generate R Control Chart SVG
+- [x] Generate Histogram SVG
+- [x] Generate Capability Analysis SVG
+- [x] Add PDF export endpoint to exportRouter
+- [x] Add "PDF + Control Chart" button to Analyze page
+
+### Unit Tests
+- [x] Unit tests for cpkAlertService
+- [x] Unit tests for cpkAlertRouter
+- [x] Unit tests for pdfControlChartService
