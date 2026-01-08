@@ -8667,3 +8667,29 @@
 - [x] Unit tests for cpkAlertService
 - [x] Unit tests for cpkAlertRouter
 - [x] Unit tests for pdfControlChartService
+
+
+## Phase 22 - CPK Trend Chart, Scheduled Jobs & Excel Export
+
+### Biểu đồ trend CPK theo thời gian
+- [x] Tạo endpoint getCpkTrend trong spcRouter
+- [x] Tạo cpkAlertRouter với các endpoint quản lý cảnh báo
+- [x] Tạo trang CpkAlertManagement với biểu đồ trend
+- [x] Bộ lọc theo sản phẩm, công trạm, khoảng thời gian
+- [x] Hiển thị ngưỡng cảnh báo trên biểu đồ (Critical: 1.0, Warning: 1.33, Excellent: 1.67)
+
+### Scheduled job tự động kiểm tra CPK
+- [x] Tạo bảng scheduled_cpk_jobs trong database
+- [x] Tạo scheduledCpkCheckRouter với CRUD endpoints
+- [x] Tạo trang ScheduledCpkJobs để quản lý scheduled jobs
+- [x] Hỗ trợ tần suất: hàng ngày, hàng tuần, hàng tháng
+- [x] Cấu hình ngưỡng cảnh báo và email recipients
+
+### Export Excel cho lịch sử cảnh báo CPK
+- [x] Tạo endpoint exportAlertHistoryExcel trong cpkAlertRouter
+- [x] Sử dụng ExcelJS để tạo file Excel
+- [x] Định dạng màu theo loại cảnh báo
+- [x] Download file từ frontend
+
+### Unit Tests
+- [x] Tạo cpkAlertRouter.test.ts với 11 test cases (all passed)

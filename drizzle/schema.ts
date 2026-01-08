@@ -1,4 +1,4 @@
-import { mysqlTable, mysqlSchema, AnyMySqlColumn, int, varchar, timestamp, index, json, decimal, text, mysqlEnum, datetime, bigint, tinyint } from "drizzle-orm/mysql-core"
+import { mysqlTable, mysqlSchema, AnyMySqlColumn, int, varchar, timestamp, index, json, decimal, text, mysqlEnum, datetime, bigint, tinyint, boolean } from "drizzle-orm/mysql-core"
 import { sql } from "drizzle-orm"
 
 export const accountLockouts = mysqlTable("account_lockouts", {
@@ -6006,3 +6006,27 @@ export const anomalyTrainingJobs = mysqlTable("anomaly_training_jobs", {
 	index("idx_job_model").on(table.modelId),
 	index("idx_job_status").on(table.status),
 ]);
+
+
+// Phase 22 - Scheduled CPK Jobs
+export const scheduledCpkJobs = mysqlTable("scheduled_cpk_jobs", {
+  id: int().primaryKey().autoincrement(),
+  name: varchar({ length: 255 }).notNull(),
+  description: text(),
+  frequency: varchar({ length: 50 }).notNull(), // 'daily', 'weekly', 'monthly'
+  runTime: varchar("run_time", { length: 10 }).notNull(), // HH:mm format
+  dayOfWeek: int("day_of_week"), // 0-6 for weekly
+  dayOfMonth: int("day_of_month"), // 1-31 for monthly
+  productCode: varchar("product_code", { length: 100 }),
+  stationName: varchar("station_name", { length: 255 }),
+  warningThreshold: int("warning_threshold").default(1330), // 1.33 * 1000
+  criticalThreshold: int("critical_threshold").default(1000), // 1.0 * 1000
+  emailRecipients: text("email_recipients"),
+  enableEmail: boolean("enable_email").default(true),
+  enableOwnerNotification: boolean("enable_owner_notification").default(true),
+  isActive: boolean("is_active").default(true),
+  lastRunAt: timestamp("last_run_at", { mode: 'date' }),
+  createdBy: int("created_by"),
+  createdAt: timestamp("created_at", { mode: 'date' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'date' }).defaultNow(),
+});

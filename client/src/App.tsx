@@ -277,6 +277,8 @@ import AnomalyDetectionDashboard from "./pages/AnomalyDetectionDashboard";
 import AlertConfigManagement from "./pages/AlertConfigManagement";
 import EdgeSimulatorDashboard from "./pages/EdgeSimulatorDashboard";
 import ModelRetrainingDashboard from "./pages/ModelRetrainingDashboard";
+import CpkAlertManagement from "./pages/CpkAlertManagement";
+import ScheduledCpkJobs from "./pages/ScheduledCpkJobs";
 
 function Router() {
   return (
@@ -557,6 +559,9 @@ function Router() {
       <Route path="/alert-config-management" component={AlertConfigManagement} />
       <Route path="/edge-simulator" component={EdgeSimulatorDashboard} />
       <Route path="/model-retraining" component={ModelRetrainingDashboard} />
+      {/* Phase 22 - CPK Alert Management */}
+      <Route path="/cpk-alert-management" component={CpkAlertManagement} />
+      <Route path="/scheduled-cpk-jobs" component={ScheduledCpkJobs} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

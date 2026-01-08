@@ -71,6 +71,8 @@ import { anomalyAlertRouter } from "./routers/anomalyAlertRouter";
 import { edgeGatewaySimulatorRouter } from "./routers/edgeGatewaySimulatorRouter";
 import { modelAutoRetrainingRouter } from "./routers/modelAutoRetrainingRouter";
 import { oeeThresholdsRouter } from "./routers/oeeThresholdsRouter";
+import { cpkAlertRouter } from "./routers/cpkAlertRouter";
+import { scheduledCpkCheckRouter } from "./routers/scheduledCpkCheckRouter";
 import { maintenanceWorkOrderRouter } from "./maintenanceWorkOrderRouter";
 import { mobileRouter } from "./mobileRouter";
 import { triggerLicenseExpiryCheck } from "./scheduledJobs";
@@ -2083,6 +2085,72 @@ Trả lời bằng tiếng Việt, ngắn gọn và chuyên nghiệp.`;
         cp: Number(d.cp) || 0,
         ppk: Number(d.ppk) || 0,
       }));
+    }),
+
+  // Get CPK trend data for chart
+  getCpkTrend: protectedProcedure
+    .input(z.object({
+      groupBy: z.enum(['day', 'week', 'month']).default('day'),
+      productCode: z.string().optional(),
+      stationName: z.string().optional(),
+      startDate: z.date().optional(),
+      endDate: z.date().optional(),
+    }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return { items: [] };
+
+      // Default date range based on groupBy
+      const endDate = input.endDate || new Date();
+      const startDate = input.startDate || (() => {
+        const d = new Date();
+        if (input.groupBy === 'day') d.setDate(d.getDate() - 30);
+        else if (input.groupBy === 'week') d.setDate(d.getDate() - 90);
+        else d.setMonth(d.getMonth() - 12);
+        return d;
+      })();
+
+      const conditions = [
+        gte(spcAnalysisHistory.createdAt, startDate),
+        lte(spcAnalysisHistory.createdAt, endDate),
+        sql`cpk IS NOT NULL`,
+      ];
+
+      if (input.productCode) {
+        conditions.push(eq(spcAnalysisHistory.productCode, input.productCode));
+      }
+      if (input.stationName) {
+        conditions.push(eq(spcAnalysisHistory.stationName, input.stationName));
+      }
+
+      const dateFormat = input.groupBy === 'day' 
+        ? sql`DATE(createdAt)`
+        : input.groupBy === 'week'
+        ? sql`DATE_FORMAT(createdAt, '%Y-%u')`
+        : sql`DATE_FORMAT(createdAt, '%Y-%m')`;
+
+      const data = await db
+        .select({
+          date: dateFormat,
+          avgCpk: sql<number>`AVG(cpk) / 1000`,
+          minCpk: sql<number>`MIN(cpk) / 1000`,
+          maxCpk: sql<number>`MAX(cpk) / 1000`,
+          count: sql<number>`COUNT(*)`,
+        })
+        .from(spcAnalysisHistory)
+        .where(and(...conditions))
+        .groupBy(dateFormat)
+        .orderBy(dateFormat);
+
+      return {
+        items: data.map(d => ({
+          date: String(d.date),
+          avgCpk: Number(d.avgCpk) || 0,
+          minCpk: Number(d.minCpk) || 0,
+          maxCpk: Number(d.maxCpk) || 0,
+          count: Number(d.count) || 0,
+        })),
+      };
     }),
 });
 
@@ -12308,6 +12376,10 @@ Hãy trả về JSON với format:
   anomalyAlert: anomalyAlertRouter,
   edgeSimulator: edgeGatewaySimulatorRouter,
   modelAutoRetrain: modelAutoRetrainingRouter,
+
+  // Phase 22 - CPK Alert Management
+  cpkAlert: cpkAlertRouter,
+  scheduledCpkCheck: scheduledCpkCheckRouter,
 });
 
 export type AppRouter = typeof appRouter;
