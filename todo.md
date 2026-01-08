@@ -8693,3 +8693,41 @@
 
 ### Unit Tests
 - [x] Tạo cpkAlertRouter.test.ts với 11 test cases (all passed)
+
+
+## Phase 73 - Inspection History, AI Image Analysis & Factory Layout
+
+### Inspection History với Image Viewer
+- [x] Tạo bảng inspection_records trong database
+- [x] Tạo bảng inspection_images cho lưu trữ hình ảnh kiểm tra
+- [x] Tạo inspectionRouter với CRUD endpoints
+- [x] Tạo trang InspectionHistory với danh sách kiểm tra
+- [x] Image viewer với zoom, pan và gallery view
+- [x] Bộ lọc theo máy, dây chuyền, sản phẩm, kết quả, thời gian
+
+### Tích hợp AI LLM cho phân tích hình ảnh
+- [x] Tạo bảng ai_image_analysis trong database
+- [x] Endpoint analyzeImage sử dụng GPT-4 Vision
+- [x] Hỗ trợ các loại phân tích: defect_detection, quality_assessment, classification, custom
+- [x] Tạo trang AiImageAnalysis với giao diện upload và phân tích
+- [x] Hiển thị kết quả phân tích với defect visualization và quality gauge
+- [x] Lưu lịch sử phân tích và cho phép re-analyze với custom prompt
+
+### Factory Layout Dashboard
+- [x] Tạo bảng factory_layouts cho lưu trữ layout nhà xưởng
+- [x] Tạo bảng factory_layout_zones cho các khu vực trong layout
+- [x] Tạo bảng factory_layout_items cho các thiết bị/máy móc
+- [x] Tạo bảng user_dashboard_layouts cho cài đặt người dùng
+- [x] Tạo factoryLayoutRouter với CRUD endpoints
+- [x] Tạo trang FactoryLayoutDesigner với drag-drop editor
+- [x] Tạo trang FactoryLayoutDashboard với live status view
+- [x] Hỗ trợ zoom, pan và grid snapping
+
+### Menu Integration
+- [x] Thêm menu items vào SPC system (Inspection History, AI Image Analysis)
+- [x] Thêm menu items vào IoT system (Factory Layout Dashboard, Layout Designer)
+- [x] Cập nhật labels tiếng Việt và tiếng Anh
+
+### Unit Tests
+- [x] Tạo inspectionRouter.test.ts với test cases cho CRUD và AI analysis
+- [x] Tạo factoryLayoutRouter.test.ts với test cases cho layout management
