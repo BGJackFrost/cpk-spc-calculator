@@ -8609,3 +8609,29 @@
 - [x] Hiển thị lịch sử các job đã chạy
 - [x] Dashboard theo dõi model performance
 - [x] Cảnh báo khi accuracy giảm dưới ngưỡng
+
+
+## Phase 19 - WebSocket, PDF Export, Telegram Settings
+
+### WebSocket cho Edge Simulator Dashboard
+- [x] Tạo edgeSimulatorWebSocketService.ts với các hàm broadcast
+- [x] Thêm WebSocket endpoints vào edgeGatewaySimulatorRouter
+- [x] Tạo hook useEdgeSimulatorWebSocket cho frontend
+- [x] Tích hợp realtime updates thay vì polling
+
+### Export PDF cho Model Retraining
+- [x] Tạo retrainingPdfExportService.ts với generateRetrainingPdfData và generateRetrainingPdfHtml
+- [x] Thêm endpoint exportPdf vào modelAutoRetrainingRouter
+- [x] Thêm nút Export PDF vào History Tab của ModelRetrainingDashboard
+
+### Cấu hình Telegram Bot Token
+- [x] Thêm tab Telegram vào Settings.tsx
+- [x] Tạo TelegramSettings component với form nhập Bot Token và Chat ID
+- [x] Thêm endpoints getConfig, saveConfig, testConnection vào telegramRouter
+- [x] Hướng dẫn cấu hình Telegram Bot
+
+### Unit Tests
+- [x] Unit tests cho edgeSimulatorWebSocketService
+- [x] Unit tests cho retrainingPdfExportService
+- [x] Unit tests cho telegramRouter endpoints
+- [x] Unit tests cho modelAutoRetrainingRouter exportPdf

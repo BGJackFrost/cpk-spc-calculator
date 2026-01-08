@@ -6,6 +6,7 @@
 import { z } from "zod";
 import { router, protectedProcedure } from "../_core/trpc";
 import * as simulatorService from "../services/edgeGatewaySimulatorService";
+import * as wsService from "../services/edgeSimulatorWebSocketService";
 
 export const edgeGatewaySimulatorRouter = router({
   // Get all simulator configs
@@ -80,5 +81,49 @@ export const edgeGatewaySimulatorRouter = router({
   // Get all running simulators
   getRunning: protectedProcedure.query(async () => {
     return simulatorService.getAllRunningSimulators();
+  }),
+
+  // Get WebSocket info
+  getWebSocketInfo: protectedProcedure.query(async () => {
+    return wsService.getWebSocketInfo();
+  }),
+
+  // Start WebSocket broadcast
+  startWebSocketBroadcast: protectedProcedure
+    .input(z.object({
+      configId: z.number(),
+      intervalMs: z.number().min(100).max(10000).optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const config = await simulatorService.getSimulatorConfigById(input.configId);
+      if (!config) {
+        throw new Error('Simulator config not found');
+      }
+      
+      wsService.startSimulatorBroadcast(
+        input.intervalMs || config.samplingInterval || 1000,
+        () => {
+          // Generate simulated data
+          const baseValue = config.baseValue || 25;
+          const noise = (Math.random() - 0.5) * 2 * (config.noiseLevel || 0.1) * baseValue;
+          const value = baseValue + noise;
+          
+          return {
+            deviceId: `simulator-${config.id}`,
+            metrics: {
+              [config.sensorType || 'value']: value,
+            },
+            status: 'online' as const,
+          };
+        }
+      );
+      
+      return { success: true, message: 'WebSocket broadcast started' };
+    }),
+
+  // Stop WebSocket broadcast
+  stopWebSocketBroadcast: protectedProcedure.mutation(async () => {
+    wsService.stopSimulatorBroadcast();
+    return { success: true, message: 'WebSocket broadcast stopped' };
   }),
 });

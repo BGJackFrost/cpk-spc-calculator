@@ -6,6 +6,7 @@
 import { z } from "zod";
 import { router, protectedProcedure } from "../_core/trpc";
 import * as retrainingService from "../services/modelAutoRetrainingService";
+import { generateRetrainingPdfData, generateRetrainingPdfHtml } from "../services/retrainingPdfExportService";
 
 export const modelAutoRetrainingRouter = router({
   // Get all retraining configs
@@ -89,4 +90,23 @@ export const modelAutoRetrainingRouter = router({
   getStats: protectedProcedure.query(async () => {
     return retrainingService.getRetrainingStats();
   }),
+
+  // Export PDF
+  exportPdf: protectedProcedure
+    .input(z.object({
+      status: z.string().optional(),
+      startDate: z.string().optional(),
+      endDate: z.string().optional(),
+      limit: z.number().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const data = await generateRetrainingPdfData({
+        status: input.status,
+        startDate: input.startDate ? new Date(input.startDate) : undefined,
+        endDate: input.endDate ? new Date(input.endDate) : undefined,
+        limit: input.limit || 100,
+      });
+      const html = generateRetrainingPdfHtml(data);
+      return { html, stats: data.stats };
+    }),
 });

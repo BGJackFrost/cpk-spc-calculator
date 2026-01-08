@@ -24,7 +24,7 @@ import { trpc } from "@/lib/trpc";
 import { 
   Brain, Plus, Settings, History, Clock, CheckCircle, XCircle,
   AlertTriangle, TrendingUp, TrendingDown, RefreshCw, Calendar, 
-  Target, Gauge, BarChart3, Mail
+  Target, Gauge, BarChart3, Mail, FileDown, Loader2
 } from "lucide-react";
 import {
   XAxis,
@@ -146,6 +146,27 @@ export default function ModelRetrainingDashboard() {
     },
     onError: (error) => toast.error(`Lỗi: ${error.message}`),
   });
+
+  const exportPdf = trpc.modelAutoRetrain.exportPdf.useMutation({
+    onSuccess: (data) => {
+      // Create blob and download
+      const blob = new Blob([data.html], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `retraining-report-${new Date().toISOString().split('T')[0]}.html`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success('Đã xuất báo cáo PDF thành công');
+    },
+    onError: (error) => toast.error(`Lỗi xuất PDF: ${error.message}`),
+  });
+
+  const handleExportPdf = () => {
+    exportPdf.mutate({ limit: 100 });
+  };
 
   const handleToggle = (config: RetrainingConfig) => {
     toggleConfig.mutate({ id: config.id, isEnabled: !config.isEnabled });
@@ -527,6 +548,19 @@ export default function ModelRetrainingDashboard() {
                       <SelectItem value="cancelled">Đã hủy</SelectItem>
                     </SelectContent>
                   </Select>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={handleExportPdf}
+                    disabled={exportPdf.isPending}
+                  >
+                    {exportPdf.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <FileDown className="h-4 w-4" />
+                    )}
+                    <span className="ml-1 hidden sm:inline">Export PDF</span>
+                  </Button>
                   <Button variant="outline" size="sm" onClick={() => refetchHistory()}>
                     <RefreshCw className="h-4 w-4" />
                   </Button>

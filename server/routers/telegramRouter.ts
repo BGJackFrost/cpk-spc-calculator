@@ -6,6 +6,80 @@ import { router, publicProcedure, protectedProcedure } from '../_core/trpc';
 import telegramService, { AlertType } from '../services/telegramService';
 
 export const telegramRouter = router({
+  // Get default config for Settings page
+  getConfig: protectedProcedure.query(async () => {
+    const configs = await telegramService.getTelegramConfigs();
+    const defaultConfig = configs.find(c => c.isActive) || configs[0];
+    if (defaultConfig) {
+      return {
+        botToken: defaultConfig.botToken,
+        chatId: defaultConfig.chatId,
+        isEnabled: defaultConfig.isActive,
+      };
+    }
+    return { botToken: '', chatId: '', isEnabled: false };
+  }),
+
+  // Save config from Settings page
+  saveConfig: protectedProcedure
+    .input(z.object({
+      botToken: z.string(),
+      chatId: z.string(),
+      isEnabled: z.boolean(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const configs = await telegramService.getTelegramConfigs();
+      const existingConfig = configs.find(c => c.isActive) || configs[0];
+      
+      if (existingConfig) {
+        return telegramService.updateTelegramConfig(existingConfig.id, {
+          botToken: input.botToken,
+          chatId: input.chatId,
+          isActive: input.isEnabled,
+        });
+      } else {
+        return telegramService.createTelegramConfig({
+          botToken: input.botToken,
+          chatId: input.chatId,
+          name: 'Default Config',
+          isActive: input.isEnabled,
+          alertTypes: ['spc_violation', 'cpk_alert', 'iot_critical', 'maintenance', 'system_error'],
+          createdBy: ctx.user?.id,
+        });
+      }
+    }),
+
+  // Test connection from Settings page
+  testConnection: protectedProcedure
+    .input(z.object({
+      botToken: z.string(),
+      chatId: z.string(),
+    }))
+    .mutation(async ({ input }) => {
+      try {
+        const response = await fetch(
+          `https://api.telegram.org/bot${input.botToken}/sendMessage`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: input.chatId,
+              text: '✅ Test kết nối thành công!\n\nHệ thống CPK/SPC đã kết nối với Telegram Bot của bạn.',
+              parse_mode: 'HTML',
+            }),
+          }
+        );
+        const result = await response.json();
+        if (result.ok) {
+          return { success: true };
+        } else {
+          return { success: false, error: result.description || 'Unknown error' };
+        }
+      } catch (error: any) {
+        return { success: false, error: error.message };
+      }
+    }),
+
   // Get all Telegram configs
   getConfigs: protectedProcedure.query(async () => {
     return telegramService.getTelegramConfigs();

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -39,7 +39,11 @@ import {
   Search,
   Wifi,
   WifiOff,
-  Radio
+  Radio,
+  MessageCircle,
+  Send,
+  Key,
+  Save
 } from "lucide-react";
 import DatabaseExplorer from "@/components/DatabaseExplorer";
 import Breadcrumb from "@/components/Breadcrumb";
@@ -260,6 +264,10 @@ export default function Settings() {
             <TabsTrigger value="sse" className="gap-2">
               <Radio className="h-4 w-4" />
               SSE
+            </TabsTrigger>
+            <TabsTrigger value="telegram" className="gap-2">
+              <MessageCircle className="h-4 w-4" />
+              Telegram
             </TabsTrigger>
           </TabsList>
 
@@ -561,6 +569,11 @@ export default function Settings() {
           {/* SSE Tab */}
           <TabsContent value="sse">
             <SseSettings />
+          </TabsContent>
+
+          {/* Telegram Tab */}
+          <TabsContent value="telegram">
+            <TelegramSettings />
           </TabsContent>
 
         </Tabs>
@@ -915,6 +928,237 @@ function SseSettings() {
               <li>• Cấu hình được lưu vào trình duyệt (localStorage)</li>
               <li>• Tắt các loại thông báo không cần thiết để giảm nhiễu</li>
             </ul>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+
+// Telegram Settings Component
+function TelegramSettings() {
+  const [botToken, setBotToken] = useState("");
+  const [chatId, setChatId] = useState("");
+  const [isEnabled, setIsEnabled] = useState(false);
+  const [isTesting, setIsTesting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Get current config
+  const { data: config, refetch: refetchConfig } = trpc.telegram.getConfig.useQuery();
+
+  // Mutations
+  const saveConfig = trpc.telegram.saveConfig.useMutation({
+    onSuccess: () => {
+      toast.success("Đã lưu cấu hình Telegram");
+      refetchConfig();
+    },
+    onError: (error) => toast.error(`Lỗi: ${error.message}`),
+  });
+
+  const testConnection = trpc.telegram.testConnection.useMutation({
+    onSuccess: (data) => {
+      if (data.success) {
+        toast.success("Kết nối Telegram thành công!");
+      } else {
+        toast.error(`Lỗi: ${data.error}`);
+      }
+    },
+    onError: (error) => toast.error(`Lỗi: ${error.message}`),
+  });
+
+  // Load config on mount
+  useEffect(() => {
+    if (config) {
+      setBotToken(config.botToken || "");
+      setChatId(config.chatId || "");
+      setIsEnabled(config.isEnabled || false);
+    }
+  }, [config]);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await saveConfig.mutateAsync({
+        botToken,
+        chatId,
+        isEnabled,
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleTest = async () => {
+    if (!botToken || !chatId) {
+      toast.error("Vui lòng nhập Bot Token và Chat ID");
+      return;
+    }
+    setIsTesting(true);
+    try {
+      await testConnection.mutateAsync({
+        botToken,
+        chatId,
+      });
+    } finally {
+      setIsTesting(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <Card className="bg-card rounded-xl border border-border/50 shadow-md">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <MessageCircle className="h-5 w-5 text-blue-500" />
+            Cấu hình Telegram Bot
+          </CardTitle>
+          <CardDescription>
+            Cấu hình Telegram Bot để nhận thông báo cảnh báo qua Telegram
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Enable/Disable */}
+          <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+            <div>
+              <Label className="text-base font-medium">Kích hoạt thông báo Telegram</Label>
+              <p className="text-sm text-muted-foreground">
+                Bật để nhận thông báo qua Telegram khi có cảnh báo
+              </p>
+            </div>
+            <Switch
+              checked={isEnabled}
+              onCheckedChange={setIsEnabled}
+            />
+          </div>
+
+          {/* Bot Token */}
+          <div className="space-y-2">
+            <Label htmlFor="botToken" className="flex items-center gap-2">
+              <Key className="h-4 w-4" />
+              Bot Token
+            </Label>
+            <Input
+              id="botToken"
+              type="password"
+              placeholder="Nhập Bot Token từ @BotFather"
+              value={botToken}
+              onChange={(e) => setBotToken(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Tạo bot mới tại{" "}
+              <a 
+                href="https://t.me/BotFather" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-blue-500 hover:underline"
+              >
+                @BotFather
+              </a>
+              {" "}và lấy token
+            </p>
+          </div>
+
+          {/* Chat ID */}
+          <div className="space-y-2">
+            <Label htmlFor="chatId" className="flex items-center gap-2">
+              <MessageCircle className="h-4 w-4" />
+              Chat ID
+            </Label>
+            <Input
+              id="chatId"
+              placeholder="Nhập Chat ID hoặc Group ID"
+              value={chatId}
+              onChange={(e) => setChatId(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Lấy Chat ID bằng cách gửi tin nhắn cho bot và truy cập{" "}
+              <code className="bg-muted px-1 rounded">
+                https://api.telegram.org/bot&lt;TOKEN&gt;/getUpdates
+              </code>
+            </p>
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-3 pt-4">
+            <Button
+              variant="outline"
+              onClick={handleTest}
+              disabled={isTesting || !botToken || !chatId}
+            >
+              {isTesting ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Send className="h-4 w-4 mr-2" />
+              )}
+              Test kết nối
+            </Button>
+            <Button
+              onClick={handleSave}
+              disabled={isSaving}
+            >
+              {isSaving ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Save className="h-4 w-4 mr-2" />
+              )}
+              Lưu cấu hình
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Instructions */}
+      <Card className="bg-card rounded-xl border border-border/50 shadow-md">
+        <CardHeader>
+          <CardTitle className="text-lg">Hướng dẫn cấu hình</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-3">
+            <div className="flex gap-3">
+              <div className="flex-shrink-0 w-8 h-8 bg-blue-500/10 text-blue-500 rounded-full flex items-center justify-center font-semibold">
+                1
+              </div>
+              <div>
+                <p className="font-medium">Tạo Bot Telegram</p>
+                <p className="text-sm text-muted-foreground">
+                  Mở Telegram, tìm @BotFather và gửi lệnh /newbot để tạo bot mới
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <div className="flex-shrink-0 w-8 h-8 bg-blue-500/10 text-blue-500 rounded-full flex items-center justify-center font-semibold">
+                2
+              </div>
+              <div>
+                <p className="font-medium">Lấy Bot Token</p>
+                <p className="text-sm text-muted-foreground">
+                  Sau khi tạo bot, BotFather sẽ gửi cho bạn token. Copy và dán vào ô Bot Token
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <div className="flex-shrink-0 w-8 h-8 bg-blue-500/10 text-blue-500 rounded-full flex items-center justify-center font-semibold">
+                3
+              </div>
+              <div>
+                <p className="font-medium">Lấy Chat ID</p>
+                <p className="text-sm text-muted-foreground">
+                  Gửi tin nhắn cho bot, sau đó truy cập API getUpdates để lấy Chat ID
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <div className="flex-shrink-0 w-8 h-8 bg-blue-500/10 text-blue-500 rounded-full flex items-center justify-center font-semibold">
+                4
+              </div>
+              <div>
+                <p className="font-medium">Test và Lưu</p>
+                <p className="text-sm text-muted-foreground">
+                  Nhấn "Test kết nối" để kiểm tra, sau đó "Lưu cấu hình" để hoàn tất
+                </p>
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
