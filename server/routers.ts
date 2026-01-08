@@ -73,6 +73,9 @@ import { modelAutoRetrainingRouter } from "./routers/modelAutoRetrainingRouter";
 import { oeeThresholdsRouter } from "./routers/oeeThresholdsRouter";
 import { cpkAlertRouter } from "./routers/cpkAlertRouter";
 import { scheduledCpkCheckRouter } from "./routers/scheduledCpkCheckRouter";
+// Phase 10 - Quality Images & Alert Email
+import { qualityImageRouter } from "./routers/qualityImageRouter";
+import { alertEmailRouter } from "./routers/alertEmailRouter";
 import { maintenanceWorkOrderRouter } from "./maintenanceWorkOrderRouter";
 import { mobileRouter } from "./mobileRouter";
 import { triggerLicenseExpiryCheck } from "./scheduledJobs";
@@ -12380,6 +12383,10 @@ Hãy trả về JSON với format:
   // Phase 22 - CPK Alert Management
   cpkAlert: cpkAlertRouter,
   scheduledCpkCheck: scheduledCpkCheckRouter,
+
+  // Phase 10 - Quality Images & Alert Email
+  qualityImage: qualityImageRouter,
+  alertEmail: alertEmailRouter,
 });
 
 export type AppRouter = typeof appRouter;

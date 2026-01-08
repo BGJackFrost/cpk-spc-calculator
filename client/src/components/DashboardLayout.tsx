@@ -257,6 +257,11 @@ const fallbackLabelsVi: Record<string, string> = {
   "nav.notificationPreferences": "Cài đặt Thông báo",
   "nav.mttrMtbfComparison": "So sánh MTTR/MTBF",
   "nav.iotUserGuide": "Hướng dẫn IoT",
+  "menuGroup.aiVision": "AI Vision",
+  "nav.aiVisionDetection": "Phát hiện Lỗi AI",
+  "nav.imageComparison": "So sánh Hình ảnh",
+  "nav.cameraCapture": "Camera Realtime",
+  "nav.alertEmailConfig": "Cấu hình Email Cảnh báo",
 };
 
 const fallbackLabelsEn: Record<string, string> = {
@@ -464,6 +469,11 @@ const fallbackLabelsEn: Record<string, string> = {
   "nav.notificationPreferences": "Notification Preferences",
   "nav.mttrMtbfComparison": "MTTR/MTBF Comparison",
   "nav.iotUserGuide": "IoT User Guide",
+  "menuGroup.aiVision": "AI Vision",
+  "nav.aiVisionDetection": "AI Defect Detection",
+  "nav.imageComparison": "Image Comparison",
+  "nav.cameraCapture": "Camera Realtime",
+  "nav.alertEmailConfig": "Alert Email Config",
 };
 
 const MIN_WIDTH = 200;

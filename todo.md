@@ -8731,3 +8731,33 @@
 ### Unit Tests
 - [x] Tạo inspectionRouter.test.ts với test cases cho CRUD và AI analysis
 - [x] Tạo factoryLayoutRouter.test.ts với test cases cho layout management
+
+
+## Phase 10 - So sánh hình ảnh trước/sau và Camera Realtime
+
+### Database Schema
+- [x] Tạo bảng quality_images cho lưu trữ hình ảnh chất lượng
+- [x] Tạo bảng image_comparisons cho so sánh trước/sau
+- [x] Tạo bảng alert_email_configs cho cấu hình email cảnh báo
+- [x] Tạo bảng alert_email_history cho lịch sử gửi email
+
+### Backend APIs
+- [x] API upload hình ảnh chất lượng với AI analysis
+- [x] API so sánh hình ảnh trước/sau với AI
+- [x] API capture từ camera realtime
+- [x] API CRUD cấu hình email cảnh báo
+- [x] API gửi cảnh báo tự động khi phát hiện lỗi
+- [x] API test email và resend failed alerts
+
+### Frontend Pages
+- [x] Trang ImageComparison - Upload và so sánh hình ảnh trước/sau
+- [x] Trang CameraCapture - Capture hình ảnh từ camera realtime
+- [x] Trang AlertEmailConfig - Cấu hình email cảnh báo tự động
+
+### Menu Integration
+- [x] Thêm menu items vào AI Vision group
+- [x] Cập nhật labels tiếng Việt và tiếng Anh
+
+### Unit Tests
+- [x] Tạo qualityImage.test.ts
+- [x] Tạo alertEmail.test.ts

@@ -10,6 +10,8 @@ import {
   Star, Lightbulb, Map, Box,
   MessageSquare,
   Video,
+  Camera,
+  ArrowLeftRight,
   Radio,
   Wifi,
   Smartphone,
@@ -521,6 +523,9 @@ export const AI_MENU: SystemMenuConfig = {
       icon: Video,
       items: [
         { id: "ai-vision-detection", icon: Video, labelKey: "nav.aiVisionDetection", path: "/ai-vision-detection", licenseFeature: "ai_vision" },
+        { id: "image-comparison", icon: ArrowLeftRight, labelKey: "nav.imageComparison", path: "/image-comparison", licenseFeature: "ai_vision" },
+        { id: "camera-capture", icon: Camera, labelKey: "nav.cameraCapture", path: "/camera-capture", licenseFeature: "ai_vision" },
+        { id: "alert-email-config", icon: Mail, labelKey: "nav.alertEmailConfig", path: "/alert-email-config", licenseFeature: "ai_vision" },
       ],
     },
     {

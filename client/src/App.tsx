@@ -279,6 +279,9 @@ import EdgeSimulatorDashboard from "./pages/EdgeSimulatorDashboard";
 import ModelRetrainingDashboard from "./pages/ModelRetrainingDashboard";
 import CpkAlertManagement from "./pages/CpkAlertManagement";
 import ScheduledCpkJobs from "./pages/ScheduledCpkJobs";
+import ImageComparison from "./pages/ImageComparison";
+import CameraCapture from "./pages/CameraCapture";
+import AlertEmailConfig from "./pages/AlertEmailConfig";
 
 function Router() {
   return (
@@ -562,6 +565,10 @@ function Router() {
       {/* Phase 22 - CPK Alert Management */}
       <Route path="/cpk-alert-management" component={CpkAlertManagement} />
       <Route path="/scheduled-cpk-jobs" component={ScheduledCpkJobs} />
+      {/* Phase 10 - Image Comparison & Camera Capture */}
+      <Route path="/image-comparison" component={ImageComparison} />
+      <Route path="/camera-capture" component={CameraCapture} />
+      <Route path="/alert-email-config" component={AlertEmailConfig} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
