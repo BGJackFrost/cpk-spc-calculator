@@ -17,6 +17,7 @@ import {
   Smartphone,
   GitMerge,
   LayoutGrid,
+  Eye,
   type LucideIcon
 } from "lucide-react";
 
@@ -567,6 +568,11 @@ export const IOT_MENU: SystemMenuConfig = {
         { id: "floor-plan-designer", icon: Map, labelKey: "nav.floorPlanDesigner", path: "/floor-plan-designer", adminOnly: true },
         { id: "iot-3d-floor-plan", icon: Box, labelKey: "nav.iot3DFloorPlan", path: "/iot-3d-floor-plan" },
         { id: "model-3d-management", icon: Box, labelKey: "nav.model3DManagement", path: "/model-3d-management", adminOnly: true },
+        { id: "floor-plan-live", icon: Map, labelKey: "nav.floorPlanLive", path: "/floor-plan-live" },
+        { id: "avi-aoi-dashboard", icon: Eye, labelKey: "nav.aviAoiDashboard", path: "/avi-aoi-dashboard" },
+        { id: "ai-vision-analysis", icon: Camera, labelKey: "nav.aiVisionAnalysis", path: "/ai-vision-analysis" },
+        { id: "advanced-history", icon: History, labelKey: "nav.advancedHistory", path: "/advanced-history" },
+        { id: "machine-api-documentation", icon: FileText, labelKey: "nav.machineApiDocumentation", path: "/machine-api-documentation" },
       ],
     },
     {

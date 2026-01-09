@@ -286,6 +286,11 @@ import AlertEmailConfig from "./pages/AlertEmailConfig";
 import AutoCapture from "./pages/AutoCapture";
 import UnifiedWebhooks from "./pages/UnifiedWebhooks";
 import QualityTrendReport from "./pages/QualityTrendReport";
+import AviAoiDashboard from "./pages/AviAoiDashboard";
+import AdvancedHistory from "./pages/AdvancedHistory";
+import FloorPlanLive from "./pages/FloorPlanLive";
+import MachineApiDocumentation from "./pages/MachineApiDocumentation";
+import AiVisionAnalysis from "./pages/AiVisionAnalysis";
 
 function Router() {
   return (
@@ -577,6 +582,12 @@ function Router() {
       <Route path="/auto-capture" component={AutoCapture} />
       <Route path="/unified-webhooks" component={UnifiedWebhooks} />
       <Route path="/quality-trend-report" component={QualityTrendReport} />
+      {/* Phase 11 - AVI/AOI Dashboard & Advanced Features */}
+      <Route path="/avi-aoi-dashboard" component={AviAoiDashboard} />
+      <Route path="/advanced-history" component={AdvancedHistory} />
+      <Route path="/floor-plan-live" component={FloorPlanLive} />
+      <Route path="/machine-api-documentation" component={MachineApiDocumentation} />
+      <Route path="/ai-vision-analysis" component={AiVisionAnalysis} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

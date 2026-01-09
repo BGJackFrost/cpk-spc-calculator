@@ -8891,3 +8891,56 @@
 ### Unit Tests
 - [x] Tạo emailTemplateRouter.test.ts
 - [x] Tạo webhookTriggerRouter.test.ts
+
+
+## Phase 11 - AVI/AOI Dashboard & Advanced Features (New)
+
+### Dashboard AVI/AOI chuyên biệt
+- [x] Tạo trang AviAoiDashboard.tsx với tổng hợp thông tin kiểm tra
+- [x] Hiển thị thống kê tổng quan (tổng kiểm tra, đạt, không đạt, cảnh báo)
+- [x] Biểu đồ xu hướng kiểm tra theo thời gian (Area Chart)
+- [x] Biểu đồ tỷ lệ kết quả (Pie Chart)
+- [x] Biểu đồ phân tích loại lỗi (Bar Chart)
+- [x] Danh sách kiểm tra gần đây với trạng thái
+- [x] Hiển thị trạng thái máy AVI/AOI realtime
+
+### Floor Plan Live với drag-drop và realtime status
+- [x] Tạo trang FloorPlanLive.tsx với sơ đồ nhà máy
+- [x] Drag-drop để di chuyển vị trí máy trên sơ đồ
+- [x] Hiển thị trạng thái máy realtime (running, idle, error, maintenance, offline)
+- [x] Zoom in/out sơ đồ
+- [x] Auto refresh với interval tùy chỉnh
+- [x] Chi tiết máy khi click (OEE, cycle time, defect rate)
+- [x] Thống kê tổng quan theo trạng thái
+
+### AI Vision Analysis với auto-analysis
+- [x] Tạo trang AiVisionAnalysis.tsx với phân tích hình ảnh tự động
+- [x] Upload hình ảnh bằng drag-drop hoặc file picker
+- [x] Auto-analyze khi nhận hình ảnh mới
+- [x] Hiển thị kết quả phân tích (pass/fail/warning)
+- [x] Đánh dấu vị trí lỗi trên hình ảnh
+- [x] Lịch sử phân tích với filter
+- [x] Cấu hình ngưỡng độ tin cậy và model AI
+
+### Advanced History với bộ lọc đầy đủ
+- [x] Tạo trang AdvancedHistory.tsx với tra cứu nâng cao
+- [x] Bộ lọc theo Serial Number
+- [x] Bộ lọc theo Dây chuyền sản xuất
+- [x] Bộ lọc theo Công trạm
+- [x] Bộ lọc theo Máy
+- [x] Bộ lọc theo Trạng thái (pass/fail/warning)
+- [x] Pagination và export CSV
+- [x] Thống kê tổng quan theo bộ lọc
+
+### Machine API Documentation
+- [x] Tạo trang MachineApiDocumentation.tsx với hướng dẫn chi tiết
+- [x] Hướng dẫn Authentication (API Key)
+- [x] Danh sách endpoints với request/response format
+- [x] Code examples cho Python, C#, JavaScript, cURL
+- [x] Error handling và status codes
+- [x] Webhook configuration guide
+
+### Menu và Routes
+- [x] Thêm routes vào App.tsx
+- [x] Thêm menu items vào systemMenu.ts (IOT_MENU)
+- [x] Thêm translations vào vi.json và en.json
