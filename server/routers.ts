@@ -2023,8 +2023,8 @@ Trả lời bằng tiếng Việt, ngắn gọn và chuyên nghiệp.`;
       };
     }),
 
-  // SPC-02: Get SPC Summary Stats by time range
-  getSummaryStatsByTimeRange: protectedProcedure
+  // SPC-02: Get SPC Summary Stats by time range (alternate version)
+  getSummaryStatsByTimeRangeV2: protectedProcedure
     .input(z.object({
       periodType: z.enum(["shift", "day", "week", "month"]),
       startTime: z.string(),
@@ -2041,8 +2041,8 @@ Trả lời bằng tiếng Việt, ngắn gọn và chuyên nghiệp.`;
       );
     }),
 
-  // SPC-04: Compare CPK by shift
-  compareShiftCpk: protectedProcedure
+  // SPC-04: Compare CPK by shift (alternate version)
+  compareShiftCpkV2: protectedProcedure
     .input(z.object({
       productionLineId: z.number(),
       startDate: z.string(),
@@ -11412,7 +11412,7 @@ Hãy trả về JSON với format:
   // IoT Protocol - MQTT, OPC-UA, Modbus Connection Management
   iotProtocol: iotProtocolRouter,
   // Push Notifications
-  notification: notificationRouter,
+  pushNotification: notificationRouter,
   // Notification Preferences - User notification settings
   notificationPreferences: notificationPreferencesRouter,
   // AI Export - PDF/Excel reports

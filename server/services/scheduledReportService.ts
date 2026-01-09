@@ -1,4 +1,4 @@
-import { db } from "../_core/db";
+import { db } from "../_core/context";
 import { scheduledReports, scheduledReportLogs, productionLines, products, spcAnalysisHistory } from "../../drizzle/schema";
 import { eq, and, desc, lte, gte, inArray } from "drizzle-orm";
 import { sendEmail } from "./emailService";
