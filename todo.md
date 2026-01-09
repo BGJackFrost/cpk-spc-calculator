@@ -8840,3 +8840,54 @@
 - [x] Thêm tính năng test template
 - [x] Thêm lịch sử gửi thông báo
 - [x] Thêm placeholders cho template ({{cpk}}, {{product}}, etc.)
+
+
+## Phase 183 - Auto-trigger Webhook, Email Templates, Dashboard Thống kê
+
+### Auto-trigger Webhook cho SPC Violations
+- [x] Tạo bảng webhook_trigger_rules trong database
+- [x] Tạo webhookTriggerRouter với CRUD operations
+- [x] Hỗ trợ trigger theo SPC Rules (8 Western Electric Rules)
+- [x] Hỗ trợ trigger theo CA Rules
+- [x] Hỗ trợ trigger theo ngưỡng CPK (less_than, greater_than, etc.)
+- [x] Hỗ trợ trigger cho bất kỳ vi phạm nào
+- [x] Cấu hình cooldown giữa các lần trigger
+- [x] Cấu hình mức độ severity tối thiểu
+- [x] Cấu hình scope (production line, workstation, product code)
+- [x] Tạo trang quản lý trigger rules (WebhookTriggerRules.tsx)
+- [x] Thống kê số lần trigger cho mỗi rule
+
+### Email Template System
+- [x] Tạo bảng email_templates trong database
+- [x] Tạo bảng email_template_logs cho lịch sử gửi
+- [x] Tạo emailTemplateRouter với CRUD operations
+- [x] Hỗ trợ HTML và Plain Text templates
+- [x] Hỗ trợ placeholders ({{cpk}}, {{product}}, {{line}}, etc.)
+- [x] Hỗ trợ nhiều email recipients (To, CC, BCC)
+- [x] Cấu hình events để subscribe
+- [x] Cấu hình rate limit giữa các lần gửi
+- [x] Tạo trang quản lý email templates (EmailTemplates.tsx)
+- [x] Thêm mẫu template có sẵn
+- [x] Tính năng test email template
+
+### Dashboard Thống kê Webhook
+- [x] Tạo trang WebhookDashboard.tsx
+- [x] Biểu đồ tỷ lệ thành công/thất bại (Pie Chart)
+- [x] Biểu đồ phân bố theo kênh (Bar Chart)
+- [x] Biểu đồ xu hướng gửi theo thời gian (Area Chart)
+- [x] Thống kê tổng hợp (tổng webhook, email, tỷ lệ thành công)
+- [x] Thống kê auto-trigger rules (active, inactive, triggered)
+- [x] Top templates được sử dụng nhiều nhất
+- [x] Templates có tỷ lệ thất bại cao cần chú ý
+- [x] Lịch sử hoạt động gần đây
+- [x] Bộ lọc theo khoảng thời gian (7/14/30/90 ngày)
+
+### Menu Integration
+- [x] Thêm menu Email Templates vào IoT Config group
+- [x] Thêm menu Auto-trigger Rules vào IoT Config group
+- [x] Thêm menu Webhook Dashboard vào IoT Config group
+- [x] Cập nhật labels tiếng Việt và tiếng Anh
+
+### Unit Tests
+- [x] Tạo emailTemplateRouter.test.ts
+- [x] Tạo webhookTriggerRouter.test.ts
