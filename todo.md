@@ -8975,3 +8975,41 @@
 - [x] Viết unit tests cho realtime SSE events (12 tests)
 - [x] Viết unit tests cho AI Vision Service (13 tests)
 - [x] Tất cả tests pass
+
+## Phase 15.1 - Cập nhật UI sử dụng Real-time SSE và tRPC API
+
+### FloorPlanLive.tsx
+- [ ] Cập nhật FloorPlanLive.tsx sử dụng useFloorPlanSSE hook
+- [ ] Tích hợp trpc.realtime.getMachinesWithStatus API thay vì mock data
+- [ ] Hiển thị trạng thái máy realtime từ SSE events
+
+### AviAoiDashboard.tsx
+- [ ] Cập nhật AviAoiDashboard.tsx sử dụng useAviAoiSSE hook
+- [ ] Tích hợp trpc.realtime.getInspectionData API thay vì mock data
+- [ ] Hiển thị kết quả kiểm tra realtime từ SSE events
+
+### AI Vision Analysis Page
+- [ ] Tạo trang AI Vision Analysis mới (AiVisionAnalysis.tsx)
+- [ ] Giao diện upload hình ảnh (single và batch)
+- [ ] Hiển thị kết quả phân tích từ LLM
+- [ ] Chức năng so sánh 2 hình ảnh
+- [ ] Thêm route và menu cho trang mới
+
+## Phase 15.2 - Cập nhật UI sử dụng Real-time SSE và tRPC API
+
+### FloorPlanLive.tsx
+- [x] Cập nhật FloorPlanLive.tsx sử dụng useFloorPlanSSE hook
+- [x] Tích hợp trpc.realtime.getMachinesWithStatus API thay vì mock data
+- [x] Hiển thị trạng thái máy realtime từ SSE events
+
+### AviAoiDashboard.tsx
+- [x] Cập nhật AviAoiDashboard.tsx sử dụng useAviAoiSSE hook
+- [x] Tích hợp trpc.realtime.getInspectionData API thay vì mock data
+- [x] Hiển thị kết quả kiểm tra realtime từ SSE events
+
+### AI Vision Analysis Page
+- [x] Cập nhật trang AI Vision Analysis (AiVisionAnalysis.tsx) sử dụng tRPC API
+- [x] Giao diện upload hình ảnh (single và batch)
+- [x] Hiển thị kết quả phân tích từ LLM
+- [x] Chức năng so sánh 2 hình ảnh
+- [x] Tích hợp trpc.vision.analyzeWithAI, analyzeWithAIBatch, compareWithAI

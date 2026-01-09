@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,99 +11,231 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
-import { Eye, Upload, Camera, Zap, AlertTriangle, CheckCircle2, XCircle, Settings, History, Image as ImageIcon, Loader2, Cpu, Target, Layers } from "lucide-react";
-import { toast } from "sonner";
+import { Separator } from "@/components/ui/separator";
+import { 
+  Eye, Upload, Camera, Zap, AlertTriangle, CheckCircle2, XCircle, Settings, History, 
+  Image as ImageIcon, Loader2, Cpu, Target, Layers, Brain, GitCompare, Sparkles,
+  Trash2, Info
+} from "lucide-react";
+import { trpc } from "@/lib/trpc";
+import { useToast } from "@/hooks/use-toast";
 
 interface AnalysisResult {
   id: string;
   imageUrl: string;
   status: "pass" | "fail" | "warning";
   confidence: number;
+  qualityScore: number;
   defects: Array<{
     type: string;
     severity: "low" | "medium" | "high" | "critical";
-    location: { x: number; y: number; width: number; height: number };
+    location?: { x: number; y: number; width: number; height: number };
     confidence: number;
+    description: string;
   }>;
+  summary: string;
+  recommendations: string[];
   processingTime: number;
   timestamp: Date;
   serialNumber?: string;
   machineId?: string;
 }
 
-const mockDefectTypes = ["Tray xuoc", "Lom/Mop", "Nut", "Doi mau", "Tap chat", "Bien dang", "Bong khi", "Rach"];
+interface CompareResult {
+  similarity: number;
+  differences: Array<{
+    type: string;
+    description: string;
+    severity: "low" | "medium" | "high" | "critical";
+    location?: { x: number; y: number };
+  }>;
+  overallResult: "match" | "mismatch" | "partial_match";
+  summary: string;
+  recommendations: string[];
+}
 
-const generateMockResult = (imageUrl: string): AnalysisResult => {
-  const hasDefects = Math.random() > 0.6;
-  const defects = hasDefects ? Array.from({ length: Math.floor(Math.random() * 4) + 1 }, () => ({
-    type: mockDefectTypes[Math.floor(Math.random() * mockDefectTypes.length)],
-    severity: (["low", "medium", "high", "critical"] as const)[Math.floor(Math.random() * 4)],
-    location: { x: Math.random() * 80 + 10, y: Math.random() * 80 + 10, width: 5 + Math.random() * 10, height: 5 + Math.random() * 10 },
-    confidence: 0.7 + Math.random() * 0.3,
-  })) : [];
-  
-  return {
-    id: `AN-${Date.now()}`,
-    imageUrl,
-    status: defects.length === 0 ? "pass" : defects.some(d => d.severity === "critical" || d.severity === "high") ? "fail" : "warning",
-    confidence: 0.85 + Math.random() * 0.14,
-    defects,
-    processingTime: 100 + Math.random() * 400,
-    timestamp: new Date(),
-    serialNumber: `SN${Date.now()}`,
-    machineId: "AVI-01",
-  };
+const severityColors = {
+  low: "border-blue-500 text-blue-500",
+  medium: "border-yellow-500 text-yellow-500",
+  high: "border-orange-500 text-orange-500",
+  critical: "border-red-500 text-red-500",
+};
+
+const severityLabels = {
+  low: "Thấp",
+  medium: "Trung bình",
+  high: "Cao",
+  critical: "Nghiêm trọng",
 };
 
 export default function AiVisionAnalysis() {
+  const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState("upload");
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [analyzing, setAnalyzing] = useState(false);
-  const [progress, setProgress] = useState(0);
+  const [imageUrl, setImageUrl] = useState("");
   const [results, setResults] = useState<AnalysisResult[]>([]);
   const [selectedResult, setSelectedResult] = useState<AnalysisResult | null>(null);
   const [autoAnalyze, setAutoAnalyze] = useState(true);
-  const [confidenceThreshold, setConfidenceThreshold] = useState(80);
-  const [selectedModel, setSelectedModel] = useState("default");
+  const [confidenceThreshold, setConfidenceThreshold] = useState(70);
+  const [productType, setProductType] = useState("general");
+  const [inspectionStandard, setInspectionStandard] = useState("IPC-A-610");
+  const [language, setLanguage] = useState<"vi" | "en">("vi");
+  const [saveToDatabase, setSaveToDatabase] = useState(false);
+  
+  // Compare mode state
+  const [compareMode, setCompareMode] = useState(false);
+  const [referenceImageUrl, setReferenceImageUrl] = useState("");
+  const [inspectionImageUrl, setInspectionImageUrl] = useState("");
+  const [compareResult, setCompareResult] = useState<CompareResult | null>(null);
+
+  // Batch mode state
+  const [batchUrls, setBatchUrls] = useState<string[]>([]);
+  const [newBatchUrl, setNewBatchUrl] = useState("");
+
+  // API mutations
+  const analyzeMutation = trpc.vision.analyzeWithAI.useMutation({
+    onSuccess: (data) => {
+      const result: AnalysisResult = {
+        id: `AN-${Date.now()}`,
+        imageUrl: selectedImage || imageUrl,
+        status: data.overallResult as "pass" | "fail" | "warning",
+        confidence: data.defects.length > 0 ? data.defects.reduce((sum, d) => sum + d.confidence, 0) / data.defects.length : 0.95,
+        qualityScore: data.qualityScore,
+        defects: data.defects.map(d => ({
+          type: d.type,
+          severity: d.severity as "low" | "medium" | "high" | "critical",
+          location: d.location,
+          confidence: d.confidence,
+          description: d.description,
+        })),
+        summary: data.summary,
+        recommendations: data.recommendations,
+        processingTime: data.processingTime,
+        timestamp: new Date(),
+        serialNumber: `SN${Date.now()}`,
+      };
+      
+      setResults(prev => [result, ...prev].slice(0, 50));
+      setSelectedResult(result);
+      
+      if (result.status === "fail") {
+        toast({
+          title: "Phát hiện lỗi nghiêm trọng!",
+          description: `${result.defects.length} lỗi được phát hiện`,
+          variant: "destructive",
+        });
+      } else if (result.status === "warning") {
+        toast({
+          title: "Phát hiện lỗi nhẹ",
+          description: `${result.defects.length} lỗi cần kiểm tra`,
+        });
+      } else {
+        toast({
+          title: "Sản phẩm đạt chuẩn",
+          description: `Điểm chất lượng: ${result.qualityScore}/100`,
+        });
+      }
+    },
+    onError: (error) => {
+      toast({
+        title: "Lỗi phân tích",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const analyzeBatchMutation = trpc.vision.analyzeWithAIBatch.useMutation({
+    onSuccess: (data) => {
+      const newResults: AnalysisResult[] = data.results.map((r, index) => ({
+        id: `AN-${Date.now()}-${index}`,
+        imageUrl: batchUrls[index] || '',
+        status: r.overallResult as "pass" | "fail" | "warning",
+        confidence: r.defects.length > 0 ? r.defects.reduce((sum, d) => sum + d.confidence, 0) / r.defects.length : 0.95,
+        qualityScore: r.qualityScore,
+        defects: r.defects.map(d => ({
+          type: d.type,
+          severity: d.severity as "low" | "medium" | "high" | "critical",
+          location: d.location,
+          confidence: d.confidence,
+          description: d.description,
+        })),
+        summary: r.summary,
+        recommendations: r.recommendations,
+        processingTime: r.processingTime,
+        timestamp: new Date(),
+        serialNumber: `SN${Date.now()}-${index}`,
+      }));
+      
+      setResults(prev => [...newResults, ...prev].slice(0, 50));
+      if (newResults.length > 0) {
+        setSelectedResult(newResults[0]);
+      }
+      
+      toast({
+        title: "Phân tích batch hoàn tất",
+        description: `Đã phân tích ${newResults.length} hình ảnh`,
+      });
+      
+      setBatchUrls([]);
+    },
+    onError: (error) => {
+      toast({
+        title: "Lỗi phân tích batch",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const compareMutation = trpc.vision.compareWithAI.useMutation({
+    onSuccess: (data) => {
+      setCompareResult({
+        similarity: data.similarity,
+        differences: data.differences.map(d => ({
+          type: d.type,
+          description: d.description,
+          severity: d.severity as "low" | "medium" | "high" | "critical",
+          location: d.location,
+        })),
+        overallResult: data.overallResult as "match" | "mismatch" | "partial_match",
+        summary: data.summary,
+        recommendations: data.recommendations,
+      });
+      
+      toast({
+        title: "So sánh hoàn tất",
+        description: `Độ tương đồng: ${data.similarity}%`,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Lỗi so sánh",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const isLoading = analyzeMutation.isPending || analyzeBatchMutation.isPending || compareMutation.isPending;
 
   const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (event) => {
-      const imageUrl = event.target?.result as string;
-      setSelectedImage(imageUrl);
+      const dataUrl = event.target?.result as string;
+      setSelectedImage(dataUrl);
       if (autoAnalyze) {
-        analyzeImage(imageUrl);
+        // For data URLs, we need to upload first - for now show message
+        toast({
+          title: "Tải lên hình ảnh",
+          description: "Vui lòng sử dụng URL hình ảnh để phân tích với AI",
+        });
       }
     };
     reader.readAsDataURL(file);
-  }, [autoAnalyze]);
-
-  const analyzeImage = useCallback(async (imageUrl: string) => {
-    setAnalyzing(true);
-    setProgress(0);
-    const interval = setInterval(() => {
-      setProgress(p => Math.min(p + Math.random() * 20, 95));
-    }, 100);
-    
-    await new Promise(resolve => setTimeout(resolve, 1500 + Math.random() * 1000));
-    
-    clearInterval(interval);
-    setProgress(100);
-    
-    const result = generateMockResult(imageUrl);
-    setResults(prev => [result, ...prev].slice(0, 50));
-    setSelectedResult(result);
-    setAnalyzing(false);
-    
-    if (result.status === "fail") {
-      toast.error("Phat hien loi nghiem trong!", { description: `${result.defects.length} loi duoc phat hien` });
-    } else if (result.status === "warning") {
-      toast.warning("Phat hien loi nhe", { description: `${result.defects.length} loi can kiem tra` });
-    } else {
-      toast.success("San pham dat chuan", { description: `Do tin cay: ${(result.confidence * 100).toFixed(1)}%` });
-    }
-  }, []);
+  }, [autoAnalyze, toast]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -111,23 +243,84 @@ export default function AiVisionAnalysis() {
     if (file && file.type.startsWith("image/")) {
       const reader = new FileReader();
       reader.onload = (event) => {
-        const imageUrl = event.target?.result as string;
-        setSelectedImage(imageUrl);
-        if (autoAnalyze) {
-          analyzeImage(imageUrl);
-        }
+        const dataUrl = event.target?.result as string;
+        setSelectedImage(dataUrl);
       };
       reader.readAsDataURL(file);
     }
-  }, [autoAnalyze, analyzeImage]);
+  }, []);
 
-  const stats = {
+  const analyzeImage = useCallback((url: string) => {
+    if (!url) {
+      toast({
+        title: "Thiếu URL hình ảnh",
+        description: "Vui lòng nhập URL hình ảnh cần phân tích",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    analyzeMutation.mutate({
+      imageUrl: url,
+      productType,
+      inspectionStandard,
+      confidenceThreshold: confidenceThreshold / 100,
+      language,
+      saveToDatabase,
+    });
+  }, [productType, inspectionStandard, confidenceThreshold, language, saveToDatabase, analyzeMutation, toast]);
+
+  const handleAnalyzeBatch = useCallback(() => {
+    if (batchUrls.length === 0) {
+      toast({
+        title: "Thiếu URL hình ảnh",
+        description: "Vui lòng thêm ít nhất một URL hình ảnh",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    analyzeBatchMutation.mutate({
+      imageUrls: batchUrls,
+      productType,
+      inspectionStandard,
+      confidenceThreshold: confidenceThreshold / 100,
+      language,
+    });
+  }, [batchUrls, productType, inspectionStandard, confidenceThreshold, language, analyzeBatchMutation, toast]);
+
+  const handleCompare = useCallback(() => {
+    if (!referenceImageUrl || !inspectionImageUrl) {
+      toast({
+        title: "Thiếu URL hình ảnh",
+        description: "Vui lòng nhập cả URL hình ảnh tham chiếu và hình ảnh kiểm tra",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    compareMutation.mutate({
+      referenceImageUrl,
+      inspectionImageUrl,
+      productType,
+      language,
+    });
+  }, [referenceImageUrl, inspectionImageUrl, productType, language, compareMutation, toast]);
+
+  const addBatchUrl = useCallback(() => {
+    if (newBatchUrl && batchUrls.length < 10) {
+      setBatchUrls([...batchUrls, newBatchUrl]);
+      setNewBatchUrl("");
+    }
+  }, [newBatchUrl, batchUrls]);
+
+  const stats = useMemo(() => ({
     total: results.length,
     pass: results.filter(r => r.status === "pass").length,
     fail: results.filter(r => r.status === "fail").length,
     warning: results.filter(r => r.status === "warning").length,
     avgTime: results.length > 0 ? results.reduce((sum, r) => sum + r.processingTime, 0) / results.length : 0,
-  };
+  }), [results]);
 
   return (
     <DashboardLayout>
@@ -135,151 +328,407 @@ export default function AiVisionAnalysis() {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-              <Eye className="h-8 w-8 text-primary" />
+              <Brain className="h-8 w-8 text-primary" />
               AI Vision Analysis
             </h1>
-            <p className="text-muted-foreground mt-1">Phan tich hinh anh tu dong bang AI</p>
+            <p className="text-muted-foreground mt-1">Phân tích hình ảnh tự động bằng AI LLM Vision</p>
           </div>
           <div className="flex items-center gap-4">
+            <Badge variant="outline" className="text-primary border-primary">
+              <Sparkles className="h-3 w-3 mr-1" />
+              Powered by LLM Vision
+            </Badge>
             <div className="flex items-center gap-2">
-              <Switch checked={autoAnalyze} onCheckedChange={setAutoAnalyze} id="auto-analyze" />
-              <Label htmlFor="auto-analyze">Tu dong phan tich</Label>
+              <Switch checked={compareMode} onCheckedChange={setCompareMode} id="compare-mode" />
+              <Label htmlFor="compare-mode">Chế độ so sánh</Label>
             </div>
-            <Select value={selectedModel} onValueChange={setSelectedModel}>
-              <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="default">Model Mac dinh</SelectItem>
-                <SelectItem value="high-precision">Do chinh xac cao</SelectItem>
-                <SelectItem value="fast">Xu ly nhanh</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          <Card><CardContent className="pt-4"><p className="text-sm text-muted-foreground">Tong phan tich</p><p className="text-2xl font-bold">{stats.total}</p></CardContent></Card>
-          <Card className="border-green-500/50"><CardContent className="pt-4"><p className="text-sm text-muted-foreground">Dat</p><p className="text-2xl font-bold text-green-500">{stats.pass}</p></CardContent></Card>
-          <Card className="border-red-500/50"><CardContent className="pt-4"><p className="text-sm text-muted-foreground">Loi</p><p className="text-2xl font-bold text-red-500">{stats.fail}</p></CardContent></Card>
-          <Card className="border-yellow-500/50"><CardContent className="pt-4"><p className="text-sm text-muted-foreground">Canh bao</p><p className="text-2xl font-bold text-yellow-500">{stats.warning}</p></CardContent></Card>
-          <Card><CardContent className="pt-4"><p className="text-sm text-muted-foreground">TB xu ly</p><p className="text-2xl font-bold">{stats.avgTime.toFixed(0)}ms</p></CardContent></Card>
+          <Card><CardContent className="pt-4"><p className="text-sm text-muted-foreground">Tổng phân tích</p><p className="text-2xl font-bold">{stats.total}</p></CardContent></Card>
+          <Card className="border-green-500/50"><CardContent className="pt-4"><p className="text-sm text-muted-foreground">Đạt</p><p className="text-2xl font-bold text-green-500">{stats.pass}</p></CardContent></Card>
+          <Card className="border-red-500/50"><CardContent className="pt-4"><p className="text-sm text-muted-foreground">Lỗi</p><p className="text-2xl font-bold text-red-500">{stats.fail}</p></CardContent></Card>
+          <Card className="border-yellow-500/50"><CardContent className="pt-4"><p className="text-sm text-muted-foreground">Cảnh báo</p><p className="text-2xl font-bold text-yellow-500">{stats.warning}</p></CardContent></Card>
+          <Card><CardContent className="pt-4"><p className="text-sm text-muted-foreground">TB xử lý</p><p className="text-2xl font-bold">{stats.avgTime.toFixed(0)}ms</p></CardContent></Card>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Card className="lg:col-span-2">
-            <CardHeader><CardTitle className="flex items-center gap-2"><Camera className="h-5 w-5" />Phan tich hinh anh</CardTitle></CardHeader>
-            <CardContent>
-              <Tabs defaultValue="upload">
-                <TabsList className="mb-4">
-                  <TabsTrigger value="upload">Tai len</TabsTrigger>
-                  <TabsTrigger value="camera">Camera</TabsTrigger>
-                  <TabsTrigger value="url">URL</TabsTrigger>
-                </TabsList>
-                <TabsContent value="upload">
-                  <div
-                    className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${analyzing ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-primary/50"}`}
-                    onDrop={handleDrop}
-                    onDragOver={(e) => e.preventDefault()}
-                  >
-                    {analyzing ? (
-                      <div className="space-y-4">
-                        <Loader2 className="h-12 w-12 mx-auto animate-spin text-primary" />
-                        <p className="text-lg font-medium">Dang phan tich...</p>
-                        <Progress value={progress} className="w-64 mx-auto" />
-                        <p className="text-sm text-muted-foreground">{progress.toFixed(0)}%</p>
-                      </div>
-                    ) : selectedImage ? (
-                      <div className="space-y-4">
-                        <div className="relative inline-block">
-                          <img src={selectedImage} alt="Selected" className="max-h-64 rounded-lg mx-auto" />
-                          {selectedResult && selectedResult.defects.map((defect, i) => (
-                            <div
-                              key={i}
-                              className={`absolute border-2 ${defect.severity === "critical" ? "border-red-500" : defect.severity === "high" ? "border-orange-500" : defect.severity === "medium" ? "border-yellow-500" : "border-blue-500"}`}
-                              style={{ left: `${defect.location.x}%`, top: `${defect.location.y}%`, width: `${defect.location.width}%`, height: `${defect.location.height}%` }}
-                            />
-                          ))}
-                        </div>
-                        <div className="flex justify-center gap-2">
-                          <Button variant="outline" onClick={() => { setSelectedImage(null); setSelectedResult(null); }}>Xoa</Button>
-                          <Button onClick={() => analyzeImage(selectedImage)} disabled={analyzing}><Zap className="h-4 w-4 mr-2" />Phan tich lai</Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        <Upload className="h-12 w-12 mx-auto text-muted-foreground" />
-                        <div>
-                          <p className="text-lg font-medium">Keo tha hinh anh vao day</p>
-                          <p className="text-sm text-muted-foreground">hoac click de chon file</p>
-                        </div>
-                        <Input type="file" accept="image/*" onChange={handleImageUpload} className="max-w-xs mx-auto" />
+        {compareMode ? (
+          /* Compare Mode UI */
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <GitCompare className="h-5 w-5" />
+                  So sánh hình ảnh
+                </CardTitle>
+                <CardDescription>So sánh hình ảnh kiểm tra với hình ảnh tham chiếu</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Hình ảnh tham chiếu (chuẩn)</Label>
+                    <Input
+                      placeholder="https://example.com/reference.jpg"
+                      value={referenceImageUrl}
+                      onChange={(e) => setReferenceImageUrl(e.target.value)}
+                    />
+                    {referenceImageUrl && (
+                      <div className="border rounded-lg p-2">
+                        <img
+                          src={referenceImageUrl}
+                          alt="Reference"
+                          className="max-h-40 rounded object-contain mx-auto"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = "https://via.placeholder.com/200x150?text=Invalid+URL";
+                          }}
+                        />
                       </div>
                     )}
                   </div>
-                </TabsContent>
-                <TabsContent value="camera">
-                  <div className="border-2 border-dashed rounded-lg p-8 text-center">
-                    <Camera className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                    <p className="text-muted-foreground">Tinh nang camera se duoc ho tro trong phien ban tiep theo</p>
-                  </div>
-                </TabsContent>
-                <TabsContent value="url">
-                  <div className="space-y-4">
-                    <div className="flex gap-2">
-                      <Input placeholder="Nhap URL hinh anh..." className="flex-1" />
-                      <Button>Tai va phan tich</Button>
-                    </div>
-                  </div>
-                </TabsContent>
-              </Tabs>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader><CardTitle className="flex items-center gap-2"><Target className="h-5 w-5" />Ket qua</CardTitle></CardHeader>
-            <CardContent>
-              {selectedResult ? (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <Badge className={selectedResult.status === "pass" ? "bg-green-500" : selectedResult.status === "fail" ? "bg-red-500" : "bg-yellow-500"}>
-                      {selectedResult.status === "pass" ? <CheckCircle2 className="h-3 w-3 mr-1" /> : selectedResult.status === "fail" ? <XCircle className="h-3 w-3 mr-1" /> : <AlertTriangle className="h-3 w-3 mr-1" />}
-                      {selectedResult.status === "pass" ? "Dat" : selectedResult.status === "fail" ? "Loi" : "Canh bao"}
-                    </Badge>
-                    <span className="text-sm text-muted-foreground">{selectedResult.processingTime.toFixed(0)}ms</span>
-                  </div>
                   <div className="space-y-2">
-                    <div className="flex justify-between"><span className="text-muted-foreground">Do tin cay</span><span className="font-medium">{(selectedResult.confidence * 100).toFixed(1)}%</span></div>
-                    <div className="flex justify-between"><span className="text-muted-foreground">So loi</span><span className="font-medium">{selectedResult.defects.length}</span></div>
-                    <div className="flex justify-between"><span className="text-muted-foreground">Serial</span><span className="font-mono text-sm">{selectedResult.serialNumber}</span></div>
+                    <Label>Hình ảnh kiểm tra</Label>
+                    <Input
+                      placeholder="https://example.com/inspection.jpg"
+                      value={inspectionImageUrl}
+                      onChange={(e) => setInspectionImageUrl(e.target.value)}
+                    />
+                    {inspectionImageUrl && (
+                      <div className="border rounded-lg p-2">
+                        <img
+                          src={inspectionImageUrl}
+                          alt="Inspection"
+                          className="max-h-40 rounded object-contain mx-auto"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = "https://via.placeholder.com/200x150?text=Invalid+URL";
+                          }}
+                        />
+                      </div>
+                    )}
                   </div>
-                  {selectedResult.defects.length > 0 && (
-                    <div className="space-y-2">
-                      <h4 className="font-medium">Chi tiet loi:</h4>
-                      <ScrollArea className="h-32">
-                        {selectedResult.defects.map((defect, i) => (
-                          <div key={i} className="flex items-center justify-between p-2 rounded bg-muted/50 mb-2">
-                            <div>
-                              <p className="text-sm font-medium">{defect.type}</p>
-                              <p className="text-xs text-muted-foreground">{(defect.confidence * 100).toFixed(0)}% tin cay</p>
-                            </div>
-                            <Badge variant="outline" className={defect.severity === "critical" ? "border-red-500 text-red-500" : defect.severity === "high" ? "border-orange-500 text-orange-500" : defect.severity === "medium" ? "border-yellow-500 text-yellow-500" : "border-blue-500 text-blue-500"}>
-                              {defect.severity}
-                            </Badge>
-                          </div>
-                        ))}
-                      </ScrollArea>
-                    </div>
-                  )}
                 </div>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">Chua co ket qua phan tich</div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+
+                <Button
+                  onClick={handleCompare}
+                  disabled={isLoading || !referenceImageUrl || !inspectionImageUrl}
+                  className="w-full"
+                >
+                  {compareMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <GitCompare className="h-4 w-4 mr-2" />
+                  )}
+                  So sánh hình ảnh
+                </Button>
+
+                {compareResult && (
+                  <div className="space-y-4 pt-4">
+                    <Separator />
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-semibold">Kết quả so sánh</h3>
+                      <Badge
+                        className={
+                          compareResult.overallResult === "match"
+                            ? "bg-green-500"
+                            : compareResult.overallResult === "mismatch"
+                            ? "bg-red-500"
+                            : "bg-yellow-500"
+                        }
+                      >
+                        {compareResult.overallResult === "match"
+                          ? "Khớp"
+                          : compareResult.overallResult === "mismatch"
+                          ? "Không khớp"
+                          : "Khớp một phần"}
+                      </Badge>
+                    </div>
+
+                    <div className="p-4 bg-muted rounded-lg">
+                      <p className="text-sm text-muted-foreground">Độ tương đồng</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <p className="text-2xl font-bold">{compareResult.similarity}%</p>
+                      </div>
+                      <Progress value={compareResult.similarity} className="mt-2" />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Tóm tắt</Label>
+                      <p className="text-sm text-muted-foreground bg-muted p-3 rounded-lg">
+                        {compareResult.summary}
+                      </p>
+                    </div>
+
+                    {compareResult.differences.length > 0 && (
+                      <div className="space-y-2">
+                        <Label>Điểm khác biệt ({compareResult.differences.length})</Label>
+                        <ScrollArea className="h-32">
+                          <div className="space-y-2">
+                            {compareResult.differences.map((diff, index) => (
+                              <div key={index} className="p-3 border rounded-lg">
+                                <div className="flex items-center justify-between">
+                                  <span className="font-medium">{diff.type}</span>
+                                  <Badge variant="outline" className={severityColors[diff.severity]}>
+                                    {severityLabels[diff.severity]}
+                                  </Badge>
+                                </div>
+                                <p className="text-sm text-muted-foreground mt-1">{diff.description}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </ScrollArea>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader><CardTitle className="flex items-center gap-2"><Settings className="h-5 w-5" />Cấu hình</CardTitle></CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Loại sản phẩm</Label>
+                  <Select value={productType} onValueChange={setProductType}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="general">Chung</SelectItem>
+                      <SelectItem value="pcb">PCB/Mạch điện tử</SelectItem>
+                      <SelectItem value="metal">Kim loại</SelectItem>
+                      <SelectItem value="plastic">Nhựa</SelectItem>
+                      <SelectItem value="glass">Kính/Thủy tinh</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Ngôn ngữ kết quả</Label>
+                  <Select value={language} onValueChange={(v) => setLanguage(v as "vi" | "en")}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="vi">Tiếng Việt</SelectItem>
+                      <SelectItem value="en">English</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        ) : (
+          /* Normal Analysis Mode UI */
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <Card className="lg:col-span-2">
+              <CardHeader><CardTitle className="flex items-center gap-2"><Camera className="h-5 w-5" />Phân tích hình ảnh</CardTitle></CardHeader>
+              <CardContent>
+                <Tabs value={activeTab} onValueChange={setActiveTab}>
+                  <TabsList className="mb-4">
+                    <TabsTrigger value="upload">Tải lên</TabsTrigger>
+                    <TabsTrigger value="url">URL</TabsTrigger>
+                    <TabsTrigger value="batch">Batch</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="upload">
+                    <div
+                      className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${isLoading ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-primary/50"}`}
+                      onDrop={handleDrop}
+                      onDragOver={(e) => e.preventDefault()}
+                    >
+                      {isLoading ? (
+                        <div className="space-y-4">
+                          <Loader2 className="h-12 w-12 mx-auto animate-spin text-primary" />
+                          <p className="text-lg font-medium">Đang phân tích...</p>
+                        </div>
+                      ) : selectedImage ? (
+                        <div className="space-y-4">
+                          <div className="relative inline-block">
+                            <img src={selectedImage} alt="Selected" className="max-h-64 rounded-lg mx-auto" />
+                            {selectedResult && selectedResult.defects.map((defect, i) => (
+                              defect.location && (
+                                <div
+                                  key={i}
+                                  className={`absolute border-2 ${defect.severity === "critical" ? "border-red-500" : defect.severity === "high" ? "border-orange-500" : defect.severity === "medium" ? "border-yellow-500" : "border-blue-500"}`}
+                                  style={{ left: `${defect.location.x}%`, top: `${defect.location.y}%`, width: `${defect.location.width}%`, height: `${defect.location.height}%` }}
+                                />
+                              )
+                            ))}
+                          </div>
+                          <div className="flex justify-center gap-2">
+                            <Button variant="outline" onClick={() => { setSelectedImage(null); setSelectedResult(null); }}>Xóa</Button>
+                          </div>
+                          <div className="p-3 bg-muted rounded-lg">
+                            <div className="flex items-start gap-2">
+                              <Info className="h-4 w-4 text-muted-foreground mt-0.5" />
+                              <p className="text-xs text-muted-foreground">
+                                Để phân tích với AI, vui lòng sử dụng tab URL và nhập đường dẫn hình ảnh trực tiếp.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          <Upload className="h-12 w-12 mx-auto text-muted-foreground" />
+                          <div>
+                            <p className="text-lg font-medium">Kéo thả hình ảnh vào đây</p>
+                            <p className="text-sm text-muted-foreground">hoặc click để chọn file</p>
+                          </div>
+                          <Input type="file" accept="image/*" onChange={handleImageUpload} className="max-w-xs mx-auto" />
+                        </div>
+                      )}
+                    </div>
+                  </TabsContent>
+                  <TabsContent value="url">
+                    <div className="space-y-4">
+                      <div className="flex gap-2">
+                        <Input 
+                          placeholder="Nhập URL hình ảnh..." 
+                          className="flex-1" 
+                          value={imageUrl}
+                          onChange={(e) => setImageUrl(e.target.value)}
+                        />
+                        <Button onClick={() => analyzeImage(imageUrl)} disabled={isLoading || !imageUrl}>
+                          {analyzeMutation.isPending ? (
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          ) : (
+                            <Brain className="h-4 w-4 mr-2" />
+                          )}
+                          Phân tích
+                        </Button>
+                      </div>
+                      {imageUrl && (
+                        <div className="border rounded-lg p-4">
+                          <Label className="text-sm text-muted-foreground mb-2 block">Xem trước</Label>
+                          <img
+                            src={imageUrl}
+                            alt="Preview"
+                            className="max-h-48 rounded-lg object-contain mx-auto"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = "https://via.placeholder.com/400x300?text=Invalid+URL";
+                            }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </TabsContent>
+                  <TabsContent value="batch">
+                    <div className="space-y-4">
+                      <div className="flex gap-2">
+                        <Input 
+                          placeholder="Nhập URL hình ảnh..." 
+                          className="flex-1" 
+                          value={newBatchUrl}
+                          onChange={(e) => setNewBatchUrl(e.target.value)}
+                          onKeyDown={(e) => e.key === "Enter" && addBatchUrl()}
+                        />
+                        <Button onClick={addBatchUrl} disabled={batchUrls.length >= 10}>
+                          <Upload className="h-4 w-4 mr-2" />
+                          Thêm
+                        </Button>
+                      </div>
+                      
+                      {batchUrls.length > 0 && (
+                        <div className="space-y-2">
+                          <Label>Danh sách hình ảnh ({batchUrls.length}/10)</Label>
+                          <ScrollArea className="h-32">
+                            <div className="space-y-2">
+                              {batchUrls.map((url, index) => (
+                                <div key={index} className="flex items-center justify-between p-2 bg-muted rounded-lg">
+                                  <span className="text-sm truncate flex-1 mr-2">{url}</span>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => setBatchUrls(batchUrls.filter((_, i) => i !== index))}
+                                  >
+                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          </ScrollArea>
+                        </div>
+                      )}
+
+                      <Button
+                        onClick={handleAnalyzeBatch}
+                        disabled={isLoading || batchUrls.length === 0}
+                        className="w-full"
+                      >
+                        {analyzeBatchMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        ) : (
+                          <Brain className="h-4 w-4 mr-2" />
+                        )}
+                        Phân tích {batchUrls.length} hình ảnh
+                      </Button>
+                    </div>
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader><CardTitle className="flex items-center gap-2"><Target className="h-5 w-5" />Kết quả</CardTitle></CardHeader>
+              <CardContent>
+                {selectedResult ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <Badge className={selectedResult.status === "pass" ? "bg-green-500" : selectedResult.status === "fail" ? "bg-red-500" : "bg-yellow-500"}>
+                        {selectedResult.status === "pass" ? <CheckCircle2 className="h-3 w-3 mr-1" /> : selectedResult.status === "fail" ? <XCircle className="h-3 w-3 mr-1" /> : <AlertTriangle className="h-3 w-3 mr-1" />}
+                        {selectedResult.status === "pass" ? "Đạt" : selectedResult.status === "fail" ? "Lỗi" : "Cảnh báo"}
+                      </Badge>
+                      <span className="text-sm text-muted-foreground">{selectedResult.processingTime.toFixed(0)}ms</span>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between"><span className="text-muted-foreground">Điểm chất lượng</span><span className="font-medium">{selectedResult.qualityScore}/100</span></div>
+                      <Progress value={selectedResult.qualityScore} className="h-2" />
+                      <div className="flex justify-between"><span className="text-muted-foreground">Số lỗi</span><span className="font-medium">{selectedResult.defects.length}</span></div>
+                      <div className="flex justify-between"><span className="text-muted-foreground">Serial</span><span className="font-mono text-sm">{selectedResult.serialNumber}</span></div>
+                    </div>
+                    
+                    {selectedResult.summary && (
+                      <div className="space-y-1">
+                        <Label className="text-sm">Tóm tắt</Label>
+                        <p className="text-xs text-muted-foreground bg-muted p-2 rounded">{selectedResult.summary}</p>
+                      </div>
+                    )}
+                    
+                    {selectedResult.defects.length > 0 && (
+                      <div className="space-y-2">
+                        <h4 className="font-medium">Chi tiết lỗi:</h4>
+                        <ScrollArea className="h-32">
+                          {selectedResult.defects.map((defect, i) => (
+                            <div key={i} className="flex items-center justify-between p-2 rounded bg-muted/50 mb-2">
+                              <div>
+                                <p className="text-sm font-medium">{defect.type}</p>
+                                <p className="text-xs text-muted-foreground">{(defect.confidence * 100).toFixed(0)}% tin cậy</p>
+                              </div>
+                              <Badge variant="outline" className={severityColors[defect.severity]}>
+                                {severityLabels[defect.severity]}
+                              </Badge>
+                            </div>
+                          ))}
+                        </ScrollArea>
+                      </div>
+                    )}
+
+                    {selectedResult.recommendations.length > 0 && (
+                      <div className="space-y-1">
+                        <Label className="text-sm">Khuyến nghị</Label>
+                        <ul className="text-xs text-muted-foreground list-disc list-inside">
+                          {selectedResult.recommendations.slice(0, 3).map((rec, i) => (
+                            <li key={i}>{rec}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">Chưa có kết quả phân tích</div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card>
-            <CardHeader><CardTitle className="flex items-center gap-2"><History className="h-5 w-5" />Lich su phan tich</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="flex items-center gap-2"><History className="h-5 w-5" />Lịch sử phân tích</CardTitle></CardHeader>
             <CardContent>
               <ScrollArea className="h-[300px]">
                 {results.length > 0 ? (
@@ -298,49 +747,59 @@ export default function AiVisionAnalysis() {
                           </div>
                         </div>
                         <div className="text-right">
-                          <Badge variant="outline" className="text-xs">{result.defects.length} loi</Badge>
+                          <Badge variant="outline" className="text-xs">{result.defects.length} lỗi</Badge>
                           <p className="text-xs text-muted-foreground mt-1">{result.processingTime.toFixed(0)}ms</p>
                         </div>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-8 text-muted-foreground">Chua co lich su phan tich</div>
+                  <div className="text-center py-8 text-muted-foreground">Chưa có lịch sử phân tích</div>
                 )}
               </ScrollArea>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader><CardTitle className="flex items-center gap-2"><Settings className="h-5 w-5" />Cau hinh</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="flex items-center gap-2"><Settings className="h-5 w-5" />Cấu hình</CardTitle></CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-2">
-                <Label>Nguong do tin cay (%)</Label>
+                <Label>Ngưỡng độ tin cậy (%)</Label>
                 <Slider value={[confidenceThreshold]} onValueChange={([v]) => setConfidenceThreshold(v)} min={50} max={99} step={1} />
                 <p className="text-sm text-muted-foreground">{confidenceThreshold}%</p>
               </div>
               <div className="space-y-2">
-                <Label>Model AI</Label>
-                <Select value={selectedModel} onValueChange={setSelectedModel}>
+                <Label>Loại sản phẩm</Label>
+                <Select value={productType} onValueChange={setProductType}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="default">Model Mac dinh</SelectItem>
-                    <SelectItem value="high-precision">Do chinh xac cao</SelectItem>
-                    <SelectItem value="fast">Xu ly nhanh</SelectItem>
+                    <SelectItem value="general">Chung</SelectItem>
+                    <SelectItem value="pcb">PCB/Mạch điện tử</SelectItem>
+                    <SelectItem value="metal">Kim loại</SelectItem>
+                    <SelectItem value="plastic">Nhựa</SelectItem>
+                    <SelectItem value="glass">Kính/Thủy tinh</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Tiêu chuẩn kiểm tra</Label>
+                <Select value={inspectionStandard} onValueChange={setInspectionStandard}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="IPC-A-610">IPC-A-610</SelectItem>
+                    <SelectItem value="ISO-9001">ISO 9001</SelectItem>
+                    <SelectItem value="IATF-16949">IATF 16949</SelectItem>
+                    <SelectItem value="custom">Tùy chỉnh</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="flex items-center justify-between">
-                <Label>Tu dong phan tich khi tai hinh</Label>
+                <Label>Tự động phân tích khi tải hình</Label>
                 <Switch checked={autoAnalyze} onCheckedChange={setAutoAnalyze} />
               </div>
               <div className="flex items-center justify-between">
-                <Label>Luu ket qua vao database</Label>
-                <Switch defaultChecked />
-              </div>
-              <div className="flex items-center justify-between">
-                <Label>Gui canh bao khi phat hien loi</Label>
-                <Switch defaultChecked />
+                <Label>Lưu kết quả vào database</Label>
+                <Switch checked={saveToDatabase} onCheckedChange={setSaveToDatabase} />
               </div>
             </CardContent>
           </Card>
