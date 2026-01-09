@@ -17,6 +17,7 @@ import {
   analyzeImagesBatch,
   compareImages,
 } from '../services/aiVisionService';
+import { sendAiVisionNotifications } from '../services/aiVisionNotificationService';
 import { storagePut } from '../storage';
 import { getDb } from '../db';
 import { eq, desc, and, gte, lte, sql, count } from 'drizzle-orm';
@@ -232,6 +233,33 @@ export const visionRouter = router({
           }
         } catch (error) {
           console.error('[AI Vision] Error saving to history:', error);
+        }
+      }
+      
+      // Send notifications for critical defects
+      if (result.status === 'fail' || result.defects.some(d => d.severity === 'critical' || d.severity === 'high')) {
+        try {
+          await sendAiVisionNotifications({
+            analysisId: result.id,
+            imageUrl: input.imageUrl,
+            status: result.status as 'pass' | 'fail' | 'warning',
+            qualityScore: result.analysis.qualityScore,
+            defectCount: result.defects.length,
+            defects: result.defects.map(d => ({
+              type: d.type,
+              severity: d.severity,
+              description: d.description,
+              confidence: d.confidence,
+            })),
+            summary: result.analysis.summary,
+            recommendations: result.analysis.recommendations,
+            productType: input.productType,
+            inspectionStandard: input.inspectionStandard,
+            serialNumber: input.serialNumber,
+            analyzedAt: new Date(),
+          });
+        } catch (error) {
+          console.error('[AI Vision] Error sending notifications:', error);
         }
       }
       
@@ -505,6 +533,187 @@ export const visionRouter = router({
           avgQualityScore: 0,
           trendData: [],
         };
+      }
+    }),
+
+  // Get AI Vision analysis trend data
+  getAnalysisTrend: protectedProcedure
+    .input(z.object({
+      days: z.number().min(1).max(365).optional().default(30),
+      groupBy: z.enum(['day', 'week', 'month']).optional().default('day'),
+      machineId: z.number().optional(),
+      productId: z.number().optional(),
+      productionLineId: z.number().optional(),
+    }))
+    .query(async ({ input }) => {
+      try {
+        const db = await getDb();
+        if (!db) {
+          return { trendData: [], summary: { totalAnalyses: 0, avgPassRate: 0, avgQualityScore: 0 } };
+        }
+        
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - input.days);
+        
+        // Build WHERE conditions
+        let whereConditions = `analyzed_at >= '${startDate.toISOString()}'`;
+        if (input.machineId) whereConditions += ` AND machine_id = ${input.machineId}`;
+        if (input.productId) whereConditions += ` AND product_id = ${input.productId}`;
+        if (input.productionLineId) whereConditions += ` AND production_line_id = ${input.productionLineId}`;
+        
+        // Group by clause based on input
+        let groupByClause = 'DATE(analyzed_at)';
+        let dateFormat = 'DATE(analyzed_at)';
+        if (input.groupBy === 'week') {
+          groupByClause = "DATE_FORMAT(analyzed_at, '%Y-%u')";
+          dateFormat = "DATE_FORMAT(analyzed_at, '%Y-W%u')";
+        } else if (input.groupBy === 'month') {
+          groupByClause = "DATE_FORMAT(analyzed_at, '%Y-%m')";
+          dateFormat = "DATE_FORMAT(analyzed_at, '%Y-%m')";
+        }
+        
+        // Get trend data
+        const trendResult = await db.execute(sql.raw(`
+          SELECT 
+            ${dateFormat} as period,
+            COUNT(*) as total,
+            SUM(CASE WHEN status = 'pass' THEN 1 ELSE 0 END) as pass_count,
+            SUM(CASE WHEN status = 'fail' THEN 1 ELSE 0 END) as fail_count,
+            SUM(CASE WHEN status = 'warning' THEN 1 ELSE 0 END) as warning_count,
+            AVG(quality_score) as avg_quality_score,
+            AVG(confidence) as avg_confidence,
+            SUM(defect_count) as total_defects
+          FROM ai_vision_history
+          WHERE ${whereConditions}
+          GROUP BY ${groupByClause}
+          ORDER BY period ASC
+        `));
+        
+        const trendData = ((trendResult as any)[0] || []).map((row: any) => {
+          const total = Number(row.total) || 0;
+          const passCount = Number(row.pass_count) || 0;
+          const failCount = Number(row.fail_count) || 0;
+          const warningCount = Number(row.warning_count) || 0;
+          return {
+            period: row.period,
+            total,
+            passCount,
+            failCount,
+            warningCount,
+            passRate: total > 0 ? (passCount / total) * 100 : 0,
+            failRate: total > 0 ? (failCount / total) * 100 : 0,
+            avgQualityScore: Number(row.avg_quality_score) || 0,
+            avgConfidence: Number(row.avg_confidence) || 0,
+            totalDefects: Number(row.total_defects) || 0,
+          };
+        });
+        
+        // Calculate summary
+        const totalAnalyses = trendData.reduce((sum: number, d: any) => sum + d.total, 0);
+        const totalPass = trendData.reduce((sum: number, d: any) => sum + d.passCount, 0);
+        const avgPassRate = totalAnalyses > 0 ? (totalPass / totalAnalyses) * 100 : 0;
+        const avgQualityScore = trendData.length > 0 
+          ? trendData.reduce((sum: number, d: any) => sum + d.avgQualityScore, 0) / trendData.length 
+          : 0;
+        
+        return {
+          trendData,
+          summary: {
+            totalAnalyses,
+            avgPassRate,
+            avgQualityScore,
+            totalDefects: trendData.reduce((sum: number, d: any) => sum + d.totalDefects, 0),
+          },
+        };
+      } catch (error) {
+        console.error('[AI Vision] Error getting trend:', error);
+        return { trendData: [], summary: { totalAnalyses: 0, avgPassRate: 0, avgQualityScore: 0 } };
+      }
+    }),
+
+  // Export AI Vision analysis report
+  exportReport: protectedProcedure
+    .input(z.object({
+      format: z.enum(['pdf', 'excel']),
+      days: z.number().min(1).max(365).optional().default(30),
+      status: z.enum(['pass', 'fail', 'warning']).optional(),
+      machineId: z.number().optional(),
+      productId: z.number().optional(),
+      productionLineId: z.number().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      try {
+        const db = await getDb();
+        if (!db) {
+          return { success: false, error: 'Database not available' };
+        }
+        
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - input.days);
+        
+        // Build WHERE conditions
+        let whereConditions = `analyzed_at >= '${startDate.toISOString()}'`;
+        if (input.status) whereConditions += ` AND status = '${input.status}'`;
+        if (input.machineId) whereConditions += ` AND machine_id = ${input.machineId}`;
+        if (input.productId) whereConditions += ` AND product_id = ${input.productId}`;
+        if (input.productionLineId) whereConditions += ` AND production_line_id = ${input.productionLineId}`;
+        
+        // Get data
+        const dataResult = await db.execute(sql.raw(`
+          SELECT * FROM ai_vision_history 
+          WHERE ${whereConditions}
+          ORDER BY analyzed_at DESC
+          LIMIT 1000
+        `));
+        
+        const items = ((dataResult as any)[0] || []).map((item: any) => ({
+          id: item.id,
+          analysisId: item.analysis_id,
+          imageUrl: item.image_url,
+          status: item.status,
+          confidence: item.confidence,
+          qualityScore: item.quality_score,
+          defectCount: item.defect_count,
+          summary: item.summary,
+          productType: item.product_type,
+          inspectionStandard: item.inspection_standard,
+          serialNumber: item.serial_number,
+          analyzedAt: item.analyzed_at,
+        }));
+        
+        // Get stats
+        const statsResult = await db.execute(sql.raw(`
+          SELECT 
+            COUNT(*) as total,
+            SUM(CASE WHEN status = 'pass' THEN 1 ELSE 0 END) as pass_count,
+            SUM(CASE WHEN status = 'fail' THEN 1 ELSE 0 END) as fail_count,
+            SUM(CASE WHEN status = 'warning' THEN 1 ELSE 0 END) as warning_count,
+            AVG(quality_score) as avg_quality_score
+          FROM ai_vision_history
+          WHERE ${whereConditions}
+        `));
+        
+        const stats = (statsResult as any)[0]?.[0] || {};
+        
+        return {
+          success: true,
+          data: {
+            items,
+            stats: {
+              total: Number(stats.total) || 0,
+              passCount: Number(stats.pass_count) || 0,
+              failCount: Number(stats.fail_count) || 0,
+              warningCount: Number(stats.warning_count) || 0,
+              avgQualityScore: Number(stats.avg_quality_score) || 0,
+            },
+            exportedAt: new Date().toISOString(),
+            format: input.format,
+            days: input.days,
+          },
+        };
+      } catch (error) {
+        console.error('[AI Vision] Error exporting report:', error);
+        return { success: false, error: 'Export failed' };
       }
     }),
 

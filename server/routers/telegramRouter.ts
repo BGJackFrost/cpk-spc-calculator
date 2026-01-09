@@ -150,6 +150,7 @@ export const telegramRouter = router({
         'system_error',
         'oee_drop',
         'defect_rate',
+        'ai_vision_critical',
       ]),
       data: z.record(z.any()),
     }))
@@ -177,6 +178,7 @@ export const telegramRouter = router({
       { value: 'system_error', label: 'Lỗi hệ thống', description: 'Cảnh báo lỗi hệ thống' },
       { value: 'oee_drop', label: 'OEE giảm', description: 'Cảnh báo khi OEE giảm đột ngột' },
       { value: 'defect_rate', label: 'Tỷ lệ lỗi', description: 'Cảnh báo tỷ lệ lỗi cao' },
+      { value: 'ai_vision_critical', label: 'AI Vision Lỗi nghiêm trọng', description: 'Cảnh báo khi AI Vision phát hiện lỗi nghiêm trọng' },
     ];
   }),
 });

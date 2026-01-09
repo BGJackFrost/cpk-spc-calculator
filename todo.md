@@ -9043,3 +9043,28 @@
 
 ### Unit Tests
 - [x] Viết unit tests cho visionRouter (19 tests pass)
+
+
+## Phase 16.1 - AI Vision Trend Charts, Notifications, Export Reports
+
+### Biểu đồ Trend cho AI Vision
+- [x] Tạo component TrendChart hiển thị xu hướng pass/fail theo thời gian
+- [x] Thêm API endpoint getAnalysisTrend lấy dữ liệu trend từ database
+- [x] Tích hợp biểu đồ trend vào History tab của AI Vision
+- [x] Hỗ trợ lọc theo khoảng thời gian (7/14/30/90 ngày)
+- [x] Hiển thị tỷ lệ pass/fail theo ngày/tuần/tháng
+
+### Tích hợp Notifications cho AI Vision
+- [x] Tạo service aiVisionNotificationService gửi email và Telegram
+- [x] Thêm alert type ai_vision_critical vào telegramService
+- [x] Tích hợp gửi email khi phát hiện lỗi nghiêm trọng (status=fail hoặc severity=critical/high)
+- [x] Tích hợp gửi Telegram khi phát hiện lỗi nghiêm trọng
+- [x] Tự động gửi notifications sau khi phân tích AI Vision
+- [ ] Tạo trang cấu hình notifications trong Settings (sử dụng cấu hình SMTP/Telegram hiện có)
+
+### Export báo cáo AI Vision
+- [x] Tạo API endpoint exportReport (PDF/Excel)
+- [x] Export lịch sử phân tích ra PDF (HTML format)
+- [x] Export lịch sử phân tích ra Excel (CSV format)
+- [x] Thêm nút Export vào History tab
+- [x] Hỗ trợ lọc dữ liệu trước khi export

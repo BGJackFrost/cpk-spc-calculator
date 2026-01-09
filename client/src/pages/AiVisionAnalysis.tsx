@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo } from "react";
+import AiVisionTrendChart from "@/components/AiVisionTrendChart";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,7 +16,7 @@ import { Separator } from "@/components/ui/separator";
 import { 
   Eye, Upload, Camera, Zap, AlertTriangle, CheckCircle2, XCircle, Settings, History, 
   Image as ImageIcon, Loader2, Cpu, Target, Layers, Brain, GitCompare, Sparkles,
-  Trash2, Info
+  Trash2, Info, FileDown, TrendingUp, Download
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useToast } from "@/hooks/use-toast";
@@ -96,6 +97,11 @@ export default function AiVisionAnalysis() {
   // Batch mode state
   const [batchUrls, setBatchUrls] = useState<string[]>([]);
   const [newBatchUrl, setNewBatchUrl] = useState("");
+
+  // Trend chart state
+  const [trendDays, setTrendDays] = useState(30);
+  const [trendGroupBy, setTrendGroupBy] = useState<"day" | "week" | "month">("day");
+  const [showTrendChart, setShowTrendChart] = useState(false);
 
   // API mutations
   const analyzeMutation = trpc.vision.analyzeWithAI.useMutation({
@@ -262,43 +268,111 @@ export default function AiVisionAnalysis() {
     enabled: showDatabaseHistory,
   });
 
-  const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const dataUrl = event.target?.result as string;
-      setSelectedImage(dataUrl);
-      
-      // Upload to S3
-      uploadMutation.mutate({
-        base64Data: dataUrl,
-        fileName: file.name,
-        mimeType: file.type || 'image/jpeg',
-      });
-    };
-    reader.readAsDataURL(file);
-  }, [uploadMutation, autoAnalyze, analyzeImage]);
+  // Query trend data
+  const trendQuery = trpc.vision.getAnalysisTrend.useQuery({
+    days: trendDays,
+    groupBy: trendGroupBy,
+  }, {
+    enabled: showTrendChart,
+  });
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    const file = e.dataTransfer.files[0];
-    if (file && file.type.startsWith("image/")) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const dataUrl = event.target?.result as string;
-        setSelectedImage(dataUrl);
-        
-        // Upload to S3
-        uploadMutation.mutate({
-          base64Data: dataUrl,
-          fileName: file.name,
-          mimeType: file.type || 'image/jpeg',
+  // Export report mutation
+  const exportMutation = trpc.vision.exportReport.useMutation({
+    onSuccess: (data) => {
+      if (data.success && data.data) {
+        // Generate and download file
+        const format = data.data.format;
+        if (format === 'excel') {
+          // Generate CSV for Excel
+          const headers = ['ID', 'Serial Number', 'Status', 'Quality Score', 'Defect Count', 'Analyzed At'];
+          const rows = data.data.items.map((item: any) => [
+            item.analysisId,
+            item.serialNumber || '',
+            item.status,
+            item.qualityScore,
+            item.defectCount,
+            new Date(item.analyzedAt).toLocaleString('vi-VN'),
+          ]);
+          const csv = [headers.join(','), ...rows.map((r: any) => r.join(','))].join('\n');
+          const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `ai-vision-report-${new Date().toISOString().split('T')[0]}.csv`;
+          link.click();
+          URL.revokeObjectURL(url);
+        } else {
+          // Generate HTML for PDF
+          const html = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <title>AI Vision Report</title>
+              <style>
+                body { font-family: Arial, sans-serif; padding: 20px; }
+                h1 { color: #333; }
+                .stats { display: flex; gap: 20px; margin-bottom: 20px; }
+                .stat { background: #f5f5f5; padding: 15px; border-radius: 8px; }
+                table { width: 100%; border-collapse: collapse; }
+                th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                th { background: #f0f0f0; }
+                .pass { color: green; }
+                .fail { color: red; }
+                .warning { color: orange; }
+              </style>
+            </head>
+            <body>
+              <h1>Báo cáo AI Vision Analysis</h1>
+              <p>Xuất ngày: ${new Date().toLocaleString('vi-VN')}</p>
+              <p>Khoảng thời gian: ${data.data.days} ngày gần nhất</p>
+              <div class="stats">
+                <div class="stat"><strong>Tổng phân tích:</strong> ${data.data.stats.total}</div>
+                <div class="stat"><strong>Đạt:</strong> ${data.data.stats.passCount}</div>
+                <div class="stat"><strong>Lỗi:</strong> ${data.data.stats.failCount}</div>
+                <div class="stat"><strong>Điểm TB:</strong> ${data.data.stats.avgQualityScore.toFixed(1)}</div>
+              </div>
+              <table>
+                <thead>
+                  <tr><th>ID</th><th>Serial</th><th>Trạng thái</th><th>Điểm</th><th>Lỗi</th><th>Thời gian</th></tr>
+                </thead>
+                <tbody>
+                  ${data.data.items.map((item: any) => `
+                    <tr>
+                      <td>${item.analysisId}</td>
+                      <td>${item.serialNumber || '-'}</td>
+                      <td class="${item.status}">${item.status === 'pass' ? 'Đạt' : item.status === 'fail' ? 'Lỗi' : 'Cảnh báo'}</td>
+                      <td>${item.qualityScore}</td>
+                      <td>${item.defectCount}</td>
+                      <td>${new Date(item.analyzedAt).toLocaleString('vi-VN')}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </body>
+            </html>
+          `;
+          const blob = new Blob([html], { type: 'text/html;charset=utf-8;' });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `ai-vision-report-${new Date().toISOString().split('T')[0]}.html`;
+          link.click();
+          URL.revokeObjectURL(url);
+        }
+        toast({
+          title: "Xuất báo cáo thành công",
+          description: `Đã xuất ${data.data.items.length} bản ghi`,
         });
-      };
-      reader.readAsDataURL(file);
-    }
-  }, [uploadMutation]);
+      }
+    },
+    onError: (error) => {
+      toast({
+        title: "Lỗi xuất báo cáo",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
 
   const analyzeImage = useCallback((url: string) => {
     if (!url) {
@@ -319,6 +393,44 @@ export default function AiVisionAnalysis() {
       saveToHistory: saveToDatabase,
     });
   }, [productType, inspectionStandard, confidenceThreshold, language, saveToDatabase, analyzeMutation, toast]);
+
+  const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      setSelectedImage(dataUrl);
+      
+      // Upload to S3
+      uploadMutation.mutate({
+        base64Data: dataUrl,
+        fileName: file.name,
+        mimeType: file.type || 'image/jpeg',
+      });
+    };
+    reader.readAsDataURL(file);
+  }, [uploadMutation]);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith("image/")) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const dataUrl = event.target?.result as string;
+        setSelectedImage(dataUrl);
+        
+        // Upload to S3
+        uploadMutation.mutate({
+          base64Data: dataUrl,
+          fileName: file.name,
+          mimeType: file.type || 'image/jpeg',
+        });
+      };
+      reader.readAsDataURL(file);
+    }
+  }, [uploadMutation]);
 
   const handleAnalyzeBatch = useCallback(() => {
     if (batchUrls.length === 0) {
@@ -788,7 +900,7 @@ export default function AiVisionAnalysis() {
                 </div>
               </div>
               {showDatabaseHistory && (
-                <div className="flex gap-2 mt-2">
+                <div className="flex flex-wrap gap-2 mt-2">
                   <Select value={historyStatus || 'all'} onValueChange={(v) => setHistoryStatus(v === 'all' ? undefined : v as any)}>
                     <SelectTrigger className="w-32"><SelectValue placeholder="Trạng thái" /></SelectTrigger>
                     <SelectContent>
@@ -798,6 +910,35 @@ export default function AiVisionAnalysis() {
                       <SelectItem value="warning">Cảnh báo</SelectItem>
                     </SelectContent>
                   </Select>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowTrendChart(!showTrendChart)}
+                    className="gap-1"
+                  >
+                    <TrendingUp className="h-4 w-4" />
+                    {showTrendChart ? "Ẩn biểu đồ" : "Xem xu hướng"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => exportMutation.mutate({ format: 'excel', days: 30, status: historyStatus })}
+                    disabled={exportMutation.isPending}
+                    className="gap-1"
+                  >
+                    <FileDown className="h-4 w-4" />
+                    Excel
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => exportMutation.mutate({ format: 'pdf', days: 30, status: historyStatus })}
+                    disabled={exportMutation.isPending}
+                    className="gap-1"
+                  >
+                    <Download className="h-4 w-4" />
+                    PDF
+                  </Button>
                 </div>
               )}
             </CardHeader>
@@ -942,6 +1083,21 @@ export default function AiVisionAnalysis() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Trend Chart Section */}
+        {showTrendChart && showDatabaseHistory && (
+          <div className="mt-6">
+            <AiVisionTrendChart
+              trendData={trendQuery.data?.trendData || []}
+              summary={trendQuery.data?.summary || { totalAnalyses: 0, avgPassRate: 0, avgQualityScore: 0 }}
+              isLoading={trendQuery.isLoading}
+              days={trendDays}
+              groupBy={trendGroupBy}
+              onDaysChange={setTrendDays}
+              onGroupByChange={setTrendGroupBy}
+            />
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );

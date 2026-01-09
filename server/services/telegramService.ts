@@ -33,7 +33,8 @@ export type AlertType =
   | 'maintenance'
   | 'system_error'
   | 'oee_drop'
-  | 'defect_rate';
+  | 'defect_rate'
+  | 'ai_vision_critical';
 
 // Message templates for different alert types
 const messageTemplates: Record<AlertType, (data: any) => string> = {
@@ -112,6 +113,22 @@ ${data.stackTrace ? '```\n' + data.stackTrace.slice(0, 500) + '\n```' : ''}
 📦 *Sản phẩm:* ${data.productName || 'N/A'}
 📊 *Tỷ lệ lỗi:* ${data.defectRate?.toFixed(2) || 'N/A'}%
 🎯 *Ngưỡng:* ${data.threshold || 'N/A'}%
+⏰ *Thời gian:* ${new Date().toLocaleString('vi-VN')}
+`,
+
+  ai_vision_critical: (data) => `
+🔴 *Cảnh báo AI Vision - Lỗi Nghiêm trọng*
+
+📷 *Phân tích ID:* ${data.analysisId || 'N/A'}
+📦 *Sản phẩm:* ${data.productType || 'Chung'}
+🏢 *Máy:* ${data.machineName || 'N/A'}
+📊 *Điểm chất lượng:* ${data.qualityScore || 0}/100
+⚠️ *Số lỗi:* ${data.defectCount || 0}
+
+*Chi tiết lỗi:*
+${(data.defects || []).map((d: any) => `• ${d.type} (${d.severity}): ${d.description || ''}`).join('\n')}
+
+📝 *Tóm tắt:* ${data.summary || 'Không có'}
 ⏰ *Thời gian:* ${new Date().toLocaleString('vi-VN')}
 `,
 };
