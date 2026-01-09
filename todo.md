@@ -9090,7 +9090,7 @@
 
 ### So sánh giữa các dây chuyền sản xuất
 - [ ] Tạo trang so sánh dây chuyền
-- [ ] Cho phép chọn nhiều dây chuyền để so sánh
+- [x] Cho phép chọn nhiều dây chuyền để so sánh
 - [ ] Biểu đồ so sánh CPK giữa các dây chuyền
 - [ ] Biểu đồ so sánh tỷ lệ NG giữa các dây chuyền
 - [ ] Bảng so sánh chi tiết các chỉ số
@@ -9137,3 +9137,26 @@
 - [x] /ai-vision-dashboard - Dashboard tổng hợp AI Vision
 - [x] /line-comparison - So sánh dây chuyền sản xuất
 - [x] /spc-scheduled-reports - Quản lý báo cáo SPC tự động
+
+## Phase 10 - Export PDF, Notification Realtime, Biểu đồ Radar
+
+### Export PDF cho báo cáo tự động
+- [x] Tạo service xuất PDF cho báo cáo SPC
+- [x] Thêm nút Export PDF vào trang Báo cáo SPC
+- [x] Tích hợp xuất PDF vào báo cáo tự động (scheduled reports)
+- [x] Lưu trữ file PDF để người nhận có thể tải offline
+
+### Notification Realtime
+- [x] Tạo bảng notifications trong database
+- [x] Tạo API endpoint cho notifications (CRUD)
+- [x] Tạo component NotificationBell hiển thị số thông báo chưa đọc
+- [x] Gửi notification khi có báo cáo mới được gửi
+- [x] Gửi notification khi phát hiện bất thường (vi phạm SPC/CPK rules)
+- [x] Tích hợp SSE để cập nhật notification realtime
+
+### Biểu đồ Radar cho so sánh dây chuyền
+- [x] Tạo trang So sánh Dây chuyền (LineComparison.tsx) - đã có sẵn
+- [x] Tích hợp biểu đồ Radar để so sánh đa chiều các chỉ số
+- [x] Cho phép chọn nhiều dây chuyền để so sánh
+- [x] Hiển thị các chỉ số: CPK, Độ ổn định, Chất lượng, Tuân thủ
+- [x] Thêm route và menu navigation cho trang so sánh

@@ -592,3 +592,41 @@ export function notifyAviAoiStatsUpdate(data: {
     timestamp: new Date(),
   });
 }
+
+
+// ============ User Notification Events ============
+
+// Send user notification event (for realtime notification updates)
+export function notifyUserNotification(data: {
+  userId: number;
+  notificationId: number;
+  type: 'report_sent' | 'spc_violation' | 'cpk_alert' | 'system' | 'anomaly_detected';
+  severity: 'info' | 'warning' | 'critical';
+  title: string;
+  message: string;
+  referenceType?: string;
+  referenceId?: number;
+  metadata?: Record<string, any>;
+  createdAt: Date;
+}) {
+  broadcastEvent({
+    type: "user_notification" as SseEventType,
+    data,
+    timestamp: new Date(),
+  });
+}
+
+// Send scheduled report PDF ready event
+export function notifyScheduledReportPdfReady(data: {
+  userId: number;
+  reportId: number;
+  reportName: string;
+  pdfUrl: string;
+  generatedAt: Date;
+}) {
+  broadcastEvent({
+    type: "scheduled_report_pdf_ready" as SseEventType,
+    data,
+    timestamp: new Date(),
+  });
+}

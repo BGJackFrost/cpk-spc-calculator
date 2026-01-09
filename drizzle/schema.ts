@@ -6628,3 +6628,57 @@ export const aiVisionDashboardConfigs = mysqlTable("ai_vision_dashboard_configs"
 
 export type AiVisionDashboardConfig = typeof aiVisionDashboardConfigs.$inferSelect;
 export type InsertAiVisionDashboardConfig = typeof aiVisionDashboardConfigs.$inferInsert;
+
+
+// User Notifications - Thông báo cho người dùng (realtime)
+export const userNotifications = mysqlTable("user_notifications", {
+	id: int().autoincrement().notNull().primaryKey(),
+	userId: int("user_id").notNull(),
+	// Notification type
+	type: mysqlEnum("type", ['report_sent', 'spc_violation', 'cpk_alert', 'system', 'anomaly_detected']).notNull(),
+	severity: mysqlEnum("severity", ['info', 'warning', 'critical']).default('info').notNull(),
+	// Content
+	title: varchar("title", { length: 255 }).notNull(),
+	message: text("message").notNull(),
+	// Reference data
+	referenceType: varchar("reference_type", { length: 50 }), // 'report', 'spc_plan', 'analysis', etc.
+	referenceId: int("reference_id"),
+	// Metadata
+	metadata: json("metadata"), // Additional data like report URL, CPK value, etc.
+	// Status
+	isRead: tinyint("is_read").default(0).notNull(),
+	readAt: timestamp("read_at", { mode: 'string' }),
+	// Timestamps
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+	index("idx_user_notifications_user").on(table.userId),
+	index("idx_user_notifications_type").on(table.type),
+	index("idx_user_notifications_read").on(table.isRead),
+	index("idx_user_notifications_created").on(table.createdAt),
+]);
+export type UserNotification = typeof userNotifications.$inferSelect;
+export type InsertUserNotification = typeof userNotifications.$inferInsert;
+
+// Scheduled Report PDF History - Lịch sử PDF báo cáo đã xuất
+export const scheduledReportPdfHistory = mysqlTable("scheduled_report_pdf_history", {
+	id: int().autoincrement().notNull().primaryKey(),
+	reportId: int("report_id").notNull(),
+	// PDF file info
+	pdfUrl: varchar("pdf_url", { length: 500 }).notNull(),
+	fileSize: int("file_size"), // bytes
+	// Generation info
+	generatedAt: timestamp("generated_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	generationTimeMs: int("generation_time_ms"),
+	// Status
+	status: mysqlEnum("status", ['success', 'failed']).default('success').notNull(),
+	errorMessage: text("error_message"),
+	// Metadata
+	reportData: json("report_data"), // Snapshot of report data at generation time
+},
+(table) => [
+	index("idx_pdf_history_report").on(table.reportId),
+	index("idx_pdf_history_generated").on(table.generatedAt),
+]);
+export type ScheduledReportPdfHistory = typeof scheduledReportPdfHistory.$inferSelect;
+export type InsertScheduledReportPdfHistory = typeof scheduledReportPdfHistory.$inferInsert;

@@ -25,7 +25,8 @@ import {
   Trash2, 
   TrendingDown, 
   TrendingUp, 
-  XCircle 
+  XCircle,
+  Radar as RadarIcon
 } from "lucide-react";
 import {
   BarChart,
@@ -474,6 +475,10 @@ export default function LineComparison() {
                       <ArrowDownUp className="h-4 w-4 mr-2" />
                       Bảng chi tiết
                     </TabsTrigger>
+                    <TabsTrigger value="radar">
+                      <RadarIcon className="h-4 w-4 mr-2" />
+                      Biểu đồ Radar
+                    </TabsTrigger>
                   </TabsList>
                   
                   <TabsContent value="bar">
@@ -588,6 +593,158 @@ export default function LineComparison() {
                               ))}
                             </tbody>
                           </table>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+                  
+                  <TabsContent value="radar">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>So sánh đa chiều các dây chuyền</CardTitle>
+                        <CardDescription>
+                          Biểu đồ Radar so sánh 4 chỉ số chính: CPK, Độ ổn định, Chất lượng, Tuân thủ
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                          {/* Radar Chart */}
+                          <div className="h-[450px]">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <RadarChart cx="50%" cy="50%" outerRadius="80%" data={[
+                                { metric: 'CPK', fullMark: 100 },
+                                { metric: 'Độ ổn định', fullMark: 100 },
+                                { metric: 'Chất lượng', fullMark: 100 },
+                                { metric: 'Tuân thủ', fullMark: 100 },
+                              ].map((item, idx) => {
+                                const dataPoint: any = { metric: item.metric, fullMark: item.fullMark };
+                                comparisonData?.lines.forEach((line, lineIdx) => {
+                                  const values = [
+                                    Math.min(line.metrics.cpk.avg * 50, 100),
+                                    Math.max(100 - line.metrics.cpk.std * 100, 0),
+                                    Math.max(100 - line.metrics.ngRate, 0),
+                                    Math.max(100 - (line.metrics.violationCount / Math.max(line.totalAnalyses, 1)) * 100, 0),
+                                  ];
+                                  dataPoint[line.lineName] = values[idx];
+                                });
+                                return dataPoint;
+                              })}>
+                                <PolarGrid stroke="hsl(var(--border))" />
+                                <PolarAngleAxis 
+                                  dataKey="metric" 
+                                  tick={{ fill: 'hsl(var(--foreground))', fontSize: 12 }}
+                                />
+                                <PolarRadiusAxis 
+                                  angle={30} 
+                                  domain={[0, 100]} 
+                                  tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                                />
+                                {comparisonData?.lines.map((line, index) => (
+                                  <Radar
+                                    key={line.lineId}
+                                    name={line.lineName}
+                                    dataKey={line.lineName}
+                                    stroke={COLORS[index % COLORS.length]}
+                                    fill={COLORS[index % COLORS.length]}
+                                    fillOpacity={0.2}
+                                    strokeWidth={2}
+                                  />
+                                ))}
+                                <Legend />
+                                <Tooltip 
+                                  contentStyle={{ 
+                                    backgroundColor: 'hsl(var(--card))', 
+                                    border: '1px solid hsl(var(--border))',
+                                    borderRadius: '8px'
+                                  }}
+                                  formatter={(value: number) => [`${value.toFixed(1)}%`, '']}
+                                />
+                              </RadarChart>
+                            </ResponsiveContainer>
+                          </div>
+                          
+                          {/* Metrics Legend */}
+                          <div className="space-y-4">
+                            <h4 className="font-semibold text-sm">Giải thích các chỉ số</h4>
+                            <div className="space-y-3">
+                              <div className="p-3 rounded-lg bg-muted/50">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                                  <span className="font-medium text-sm">CPK (Năng lực quy trình)</span>
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                  Chỉ số CPK trung bình, quy đổi về thang 0-100. CPK = 2.0 tương đương 100%.
+                                </p>
+                              </div>
+                              <div className="p-3 rounded-lg bg-muted/50">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                                  <span className="font-medium text-sm">Độ ổn định</span>
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                  Đánh giá dựa trên độ lệch chuẩn của CPK. Độ lệch thấp = ổn định cao.
+                                </p>
+                              </div>
+                              <div className="p-3 rounded-lg bg-muted/50">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+                                  <span className="font-medium text-sm">Chất lượng</span>
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                  Tính từ tỷ lệ NG. Tỷ lệ NG thấp = chất lượng cao.
+                                </p>
+                              </div>
+                              <div className="p-3 rounded-lg bg-muted/50">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <div className="w-3 h-3 rounded-full bg-purple-500"></div>
+                                  <span className="font-medium text-sm">Tuân thủ</span>
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                  Tỷ lệ không vi phạm quy tắc SPC. Ít vi phạm = tuân thủ cao.
+                                </p>
+                              </div>
+                            </div>
+                            
+                            {/* Quick Stats */}
+                            <div className="mt-4 pt-4 border-t">
+                              <h4 className="font-semibold text-sm mb-3">Tổng quan nhanh</h4>
+                              <div className="space-y-2">
+                                {comparisonData?.lines.map((line, index) => {
+                                  const avgScore = (
+                                    Math.min(line.metrics.cpk.avg * 50, 100) +
+                                    Math.max(100 - line.metrics.cpk.std * 100, 0) +
+                                    Math.max(100 - line.metrics.ngRate, 0) +
+                                    Math.max(100 - (line.metrics.violationCount / Math.max(line.totalAnalyses, 1)) * 100, 0)
+                                  ) / 4;
+                                  return (
+                                    <div key={line.lineId} className="flex items-center justify-between">
+                                      <div className="flex items-center gap-2">
+                                        <div 
+                                          className="w-3 h-3 rounded-full" 
+                                          style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                                        ></div>
+                                        <span className="text-sm">{line.lineName}</span>
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
+                                          <div 
+                                            className="h-full rounded-full transition-all"
+                                            style={{ 
+                                              width: `${avgScore}%`,
+                                              backgroundColor: COLORS[index % COLORS.length]
+                                            }}
+                                          ></div>
+                                        </div>
+                                        <span className="text-sm font-medium w-12 text-right">
+                                          {avgScore.toFixed(0)}%
+                                        </span>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       </CardContent>
                     </Card>

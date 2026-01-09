@@ -47,6 +47,8 @@ export const scheduledReportRouter = router({
       includeInactive: z.boolean().optional().default(false),
     }).optional())
     .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
       const conditions = [eq(scheduledReports.userId, ctx.user.id)];
       if (!input?.includeInactive) {
         conditions.push(eq(scheduledReports.isActive, 1));
@@ -68,6 +70,8 @@ export const scheduledReportRouter = router({
         throw new TRPCError({ code: 'FORBIDDEN', message: 'Chỉ admin mới có quyền xem tất cả báo cáo' });
       }
       
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
       const reports = await db
         .select()
         .from(scheduledReports)
@@ -80,6 +84,8 @@ export const scheduledReportRouter = router({
   getById: protectedProcedure
     .input(z.object({ id: z.number() }))
     .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
       const [report] = await db
         .select()
         .from(scheduledReports)
@@ -122,7 +128,9 @@ export const scheduledReportRouter = router({
         input.scheduleDayOfMonth
       );
       
-      const [result] = const db = await getDb(); if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" }); await db.insert(scheduledReports).values({
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      const [result] = await db.insert(scheduledReports).values({
         name: input.name,
         description: input.description || null,
         userId: ctx.user.id,
@@ -167,6 +175,8 @@ export const scheduledReportRouter = router({
       const { id, ...updateData } = input;
       
       // Check ownership
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
       const [existing] = await db
         .select()
         .from(scheduledReports)
@@ -214,7 +224,7 @@ export const scheduledReportRouter = router({
         updates.nextRunAt = nextRunAt.toISOString().slice(0, 19).replace('T', ' ');
       }
       
-      const db = await getDb(); if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" }); await db.update(scheduledReports)
+      await db.update(scheduledReports)
         .set(updates)
         .where(eq(scheduledReports.id, id));
       
@@ -225,6 +235,8 @@ export const scheduledReportRouter = router({
   delete: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
       const [existing] = await db
         .select()
         .from(scheduledReports)
@@ -239,11 +251,11 @@ export const scheduledReportRouter = router({
       }
       
       // Delete logs first
-      const db = await getDb(); if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" }); await db.delete(scheduledReportLogs)
+      await db.delete(scheduledReportLogs)
         .where(eq(scheduledReportLogs.reportId, input.id));
       
       // Delete report
-      const db = await getDb(); if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" }); await db.delete(scheduledReports)
+      await db.delete(scheduledReports)
         .where(eq(scheduledReports.id, input.id));
       
       return { success: true };
@@ -257,6 +269,8 @@ export const scheduledReportRouter = router({
     }))
     .query(async ({ ctx, input }) => {
       // Check ownership
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
       const [report] = await db
         .select()
         .from(scheduledReports)
@@ -284,6 +298,8 @@ export const scheduledReportRouter = router({
   sendNow: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
       const [report] = await db
         .select()
         .from(scheduledReports)
@@ -298,7 +314,7 @@ export const scheduledReportRouter = router({
       }
       
       // Create log entry
-      const [logResult] = const db = await getDb(); if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" }); await db.insert(scheduledReportLogs).values({
+      const [logResult] = await db.insert(scheduledReportLogs).values({
         reportId: input.id,
         status: 'running',
         recipientCount: JSON.parse(report.recipients as string || '[]').length,
@@ -311,7 +327,7 @@ export const scheduledReportRouter = router({
         const result = await generateAndSendReport(report);
         
         // Update log
-        const db = await getDb(); if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" }); await db.update(scheduledReportLogs)
+        await db.update(scheduledReportLogs)
           .set({
             status: result.success ? 'success' : 'failed',
             completedAt: new Date().toISOString().slice(0, 19).replace('T', ' '),
@@ -322,7 +338,7 @@ export const scheduledReportRouter = router({
           .where(eq(scheduledReportLogs.id, logId));
         
         // Update report status
-        const db = await getDb(); if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" }); await db.update(scheduledReports)
+        await db.update(scheduledReports)
           .set({
             lastRunAt: new Date().toISOString().slice(0, 19).replace('T', ' '),
             lastRunStatus: result.success ? 'success' : 'failed',
@@ -337,7 +353,7 @@ export const scheduledReportRouter = router({
         return { success: true, emailsSent: result.emailsSent };
       } catch (error: any) {
         // Update log on error
-        const db = await getDb(); if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" }); await db.update(scheduledReportLogs)
+        await db.update(scheduledReportLogs)
           .set({
             status: 'failed',
             completedAt: new Date().toISOString().slice(0, 19).replace('T', ' '),
@@ -353,6 +369,8 @@ export const scheduledReportRouter = router({
   toggleActive: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
       const [existing] = await db
         .select()
         .from(scheduledReports)
@@ -380,7 +398,7 @@ export const scheduledReportRouter = router({
         nextRunAt = next.toISOString().slice(0, 19).replace('T', ' ');
       }
       
-      const db = await getDb(); if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" }); await db.update(scheduledReports)
+      await db.update(scheduledReports)
         .set({ 
           isActive: newStatus,
           nextRunAt,

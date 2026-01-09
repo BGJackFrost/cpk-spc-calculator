@@ -83,6 +83,7 @@ import { qualityTrendRouter } from "./routers/qualityTrendRouter";
 import { webhookTemplateRouter } from "./routers/webhookTemplateRouter";
 import { scheduledReportRouter } from "./routers/scheduledReportRouter";
 import { aiVisionDashboardRouter, lineComparisonRouter } from "./routers/aiVisionDashboardRouter";
+import { userNotificationRouter } from "./routers/userNotificationRouter";
 import { realtimeRouter } from "./routers/realtimeRouter";
 import { maintenanceWorkOrderRouter } from "./maintenanceWorkOrderRouter";
 import { mobileRouter } from "./mobileRouter";
@@ -3912,6 +3913,7 @@ export const appRouter = router({
   userGuide: userGuideRouter,
   aiAdvanced: aiAdvancedRouter,
   realtime: realtimeRouter,
+  userNotification: userNotificationRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {

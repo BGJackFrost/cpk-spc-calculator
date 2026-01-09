@@ -18,6 +18,8 @@ export const aiVisionDashboardRouter = router({
   // Get or create dashboard config for current user
   getConfig: protectedProcedure
     .query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
       const [config] = await db
         .select()
         .from(aiVisionDashboardConfigs)
@@ -25,7 +27,7 @@ export const aiVisionDashboardRouter = router({
       
       if (!config) {
         // Create default config
-        const [result] = const db = await getDb(); if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" }); await db.insert(aiVisionDashboardConfigs).values({
+        const [result] = await db.insert(aiVisionDashboardConfigs).values({
           userId: ctx.user.id,
           layoutConfig: JSON.stringify({ columns: 3 }),
           widgets: JSON.stringify([
@@ -87,11 +89,11 @@ export const aiVisionDashboardRouter = router({
       if (input.ngRateCriticalThreshold !== undefined) updates.ngRateCriticalThreshold = input.ngRateCriticalThreshold.toString();
       
       if (existing) {
-        const db = await getDb(); if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" }); await db.update(aiVisionDashboardConfigs)
+        await db.update(aiVisionDashboardConfigs)
           .set(updates)
           .where(eq(aiVisionDashboardConfigs.userId, ctx.user.id));
       } else {
-        const db = await getDb(); if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" }); await db.insert(aiVisionDashboardConfigs).values({
+        await db.insert(aiVisionDashboardConfigs).values({
           userId: ctx.user.id,
           ...updates,
         });
@@ -124,7 +126,7 @@ export const aiVisionDashboardRouter = router({
       const dateFromStr = dateFrom.toISOString().slice(0, 19).replace('T', ' ');
       
       // Get all production lines
-      const allLines = const db = await getDb(); if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" }); await db.select().from(productionLines);
+      const allLines = await db.select().from(productionLines);
       
       // Get SPC analysis data
       const analyses = await db
@@ -386,7 +388,9 @@ export const lineComparisonRouter = router({
       compareMetrics: z.array(z.string()).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const [result] = const db = await getDb(); if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" }); await db.insert(lineComparisonSessions).values({
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      const [result] = await db.insert(lineComparisonSessions).values({
         name: input.name,
         description: input.description || null,
         userId: ctx.user.id,
@@ -417,7 +421,7 @@ export const lineComparisonRouter = router({
         throw new TRPCError({ code: 'FORBIDDEN', message: 'Không có quyền xóa' });
       }
       
-      const db = await getDb(); if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" }); await db.delete(lineComparisonSessions)
+      await db.delete(lineComparisonSessions)
         .where(eq(lineComparisonSessions.id, input.id));
       
       return { success: true };

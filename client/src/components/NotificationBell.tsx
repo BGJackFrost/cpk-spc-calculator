@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Bell, AlertTriangle, CheckCircle2, TrendingDown, X, Trash2 } from "lucide-react";
+import { Bell, AlertTriangle, CheckCircle2, TrendingDown, X, Trash2, FileText, Activity, Info, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -9,6 +9,9 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { trpc } from "@/lib/trpc";
+import { formatDistanceToNow } from 'date-fns';
+import { vi } from 'date-fns/locale';
 
 export interface Notification {
   id: string;
@@ -84,12 +87,70 @@ export function useNotifications() {
 }
 
 export function NotificationBell() {
-  const { notifications, unreadCount, markAsRead, markAllAsRead, clearAllNotifications } = useNotifications();
+  const { notifications: localNotifications, unreadCount: localUnreadCount, markAsRead: localMarkAsRead, markAllAsRead: localMarkAllAsRead, clearAllNotifications } = useNotifications();
   const [open, setOpen] = useState(false);
+  const utils = trpc.useUtils();
 
-  const getIcon = (type: Notification["type"]) => {
+  // Fetch notifications from API
+  const { data: apiNotifications = [] } = trpc.userNotification.list.useQuery(
+    { limit: 20 },
+    { enabled: open, refetchInterval: 30000 }
+  );
+
+  // Fetch unread count from API
+  const { data: unreadData } = trpc.userNotification.getUnreadCount.useQuery(undefined, {
+    refetchInterval: 15000,
+  });
+
+  // Mutations
+  const markAsReadMutation = trpc.userNotification.markAsRead.useMutation({
+    onSuccess: () => {
+      utils.userNotification.list.invalidate();
+      utils.userNotification.getUnreadCount.invalidate();
+    },
+  });
+
+  const markAllAsReadMutation = trpc.userNotification.markAllAsRead.useMutation({
+    onSuccess: () => {
+      utils.userNotification.list.invalidate();
+      utils.userNotification.getUnreadCount.invalidate();
+    },
+  });
+
+  // Combine local and API notifications
+  const combinedNotifications = [
+    ...localNotifications,
+    ...apiNotifications.map((n: any) => ({
+      id: `api-${n.id}`,
+      type: n.type as Notification['type'],
+      title: n.title,
+      message: n.message,
+      timestamp: new Date(n.createdAt),
+      read: n.isRead === 1,
+      data: n.metadata ? JSON.parse(n.metadata) : undefined,
+      apiId: n.id,
+    }))
+  ].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()).slice(0, 50);
+
+  const totalUnreadCount = localUnreadCount + (unreadData?.count || 0);
+
+  const handleMarkAsRead = (notification: any) => {
+    if (notification.apiId) {
+      markAsReadMutation.mutate({ notificationId: notification.apiId });
+    } else {
+      localMarkAsRead(notification.id);
+    }
+  };
+
+  const handleMarkAllAsRead = () => {
+    localMarkAllAsRead();
+    markAllAsReadMutation.mutate();
+  };
+
+  const getIcon = (type: Notification["type"] | string) => {
     switch (type) {
       case "cpk_critical":
+      case "cpk_alert":
         return <AlertTriangle className="h-4 w-4 text-red-500" />;
       case "cpk_warning":
         return <TrendingDown className="h-4 w-4 text-yellow-500" />;
@@ -97,6 +158,12 @@ export function NotificationBell() {
         return <AlertTriangle className="h-4 w-4 text-orange-500" />;
       case "plan_status":
         return <CheckCircle2 className="h-4 w-4 text-blue-500" />;
+      case "report_sent":
+        return <FileText className="h-4 w-4 text-blue-500" />;
+      case "anomaly_detected":
+        return <AlertCircle className="h-4 w-4 text-orange-500" />;
+      case "system":
+        return <Info className="h-4 w-4 text-gray-500" />;
       default:
         return <Bell className="h-4 w-4 text-gray-500" />;
     }
@@ -134,12 +201,12 @@ export function NotificationBell() {
       <PopoverTrigger asChild>
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="h-5 w-5" />
-          {unreadCount > 0 && (
+          {totalUnreadCount > 0 && (
             <Badge 
               variant="destructive" 
               className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs animate-pulse"
             >
-              {unreadCount > 9 ? "9+" : unreadCount}
+              {totalUnreadCount > 9 ? "9+" : totalUnreadCount}
             </Badge>
           )}
         </Button>
@@ -148,12 +215,12 @@ export function NotificationBell() {
         <div className="flex items-center justify-between px-4 py-3 border-b">
           <h4 className="font-semibold">Thông báo</h4>
           <div className="flex items-center gap-2">
-            {unreadCount > 0 && (
-              <Button variant="ghost" size="sm" onClick={markAllAsRead}>
+            {totalUnreadCount > 0 && (
+              <Button variant="ghost" size="sm" onClick={handleMarkAllAsRead}>
                 Đánh dấu đã đọc
               </Button>
             )}
-            {notifications.length > 0 && (
+            {combinedNotifications.length > 0 && (
               <Button variant="ghost" size="icon" onClick={clearAllNotifications}>
                 <Trash2 className="h-4 w-4" />
               </Button>
@@ -161,21 +228,21 @@ export function NotificationBell() {
           </div>
         </div>
         <ScrollArea className="h-[400px]">
-          {notifications.length === 0 ? (
+          {combinedNotifications.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
               <Bell className="h-12 w-12 mb-4 opacity-20" />
               <p>Không có thông báo</p>
             </div>
           ) : (
             <div className="divide-y">
-              {notifications.map((notification) => (
+              {combinedNotifications.map((notification) => (
                 <div
                   key={notification.id}
                   className={cn(
                     "px-4 py-3 cursor-pointer hover:bg-muted/50 transition-colors",
                     getBgColor(notification.type, notification.read)
                   )}
-                  onClick={() => markAsRead(notification.id)}
+                  onClick={() => handleMarkAsRead(notification)}
                 >
                   <div className="flex items-start gap-3">
                     <div className="mt-0.5">
