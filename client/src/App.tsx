@@ -1,57 +1,45 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
-import Home from "./pages/Home";
-import LandingPage from "./pages/LandingPage";
-import Dashboard from "./pages/Dashboard";
-import Analyze from "./pages/Analyze";
+// import RolePermissionManagement from "./pages/RolePermissionManagement"; // Merged into ModulePermissionManagement
+import SseNotificationProvider from "./components/SseNotificationProvider";
+import { GlobalKeyboardShortcuts } from "./components/GlobalKeyboardShortcuts";
+
+
+// Direct page imports (not in lazyRoutes)
 import History from "./pages/History";
 import Mappings from "./pages/Mappings";
 import Settings from "./pages/Settings";
-import ProductionLinesDashboard from "./pages/ProductionLinesDashboard";
 import UserManagement from "./pages/UserManagement";
 import ProductManagement from "./pages/ProductManagement";
 import SpecificationManagement from "./pages/SpecificationManagement";
-import ProductionLineManagement from "./pages/ProductionLineManagement";
 import SamplingMethodManagement from "./pages/SamplingMethodManagement";
 import SpcPlanManagement from "./pages/SpcPlanManagement";
 import EmailNotificationSettings from "./pages/EmailNotificationSettings";
-// import RolePermissionManagement from "./pages/RolePermissionManagement"; // Merged into ModulePermissionManagement
 import SmtpSettings from "./pages/SmtpSettings";
 import SeedDataPage from "./pages/SeedDataPage";
-import WorkstationManagement from "./pages/WorkstationManagement";
-import MachineManagement from "./pages/MachineManagement";
-import ProcessManagement from "./pages/ProcessManagement";
 import AuditLogs from "./pages/AuditLogs";
-import SpcReport from "./pages/SpcReport";
 import DefectManagement from "./pages/DefectManagement";
 import DefectStatistics from "./pages/DefectStatistics";
 import MachineTypeManagement from "./pages/MachineTypeManagement";
 import FixtureManagement from "./pages/FixtureManagement";
 import JigManagement from "./pages/JigManagement";
-import MultiAnalysis from "./pages/MultiAnalysis";
-import ProductionLineComparison from "./pages/ProductionLineComparison";
 import About from "./pages/About";
 import ApiDocumentation from "@/pages/ApiDocumentation";
 import Profile from "./pages/Profile";
 import RulesManagement from "./pages/RulesManagement";
 import SpcPlanVisualization from "./pages/SpcPlanVisualization";
 import SpcVisualizationDetail from "./pages/SpcVisualizationDetail";
-import SseNotificationProvider from "./components/SseNotificationProvider";
 import WebhookManagement from "./pages/WebhookManagement";
 import ReportTemplateManagement from "./pages/ReportTemplateManagement";
-import ExportHistory from "./pages/ExportHistory";
-import LocalLogin from "./pages/LocalLogin";
 import LocalUserManagement from "./pages/LocalUserManagement";
 import ChangePassword from "./pages/ChangePassword";
 import LicenseActivation from "./pages/LicenseActivation";
 import LicenseAdmin from "./pages/LicenseAdmin";
 import LoginHistoryPage from "./pages/LoginHistoryPage";
 import SystemSetup from "./pages/SystemSetup";
-import DatabaseSettings from "./pages/DatabaseSettings";
 import CompanyInfo from "./pages/CompanyInfo";
 import BackupHistory from "./pages/BackupHistory";
 import ConnectionManager from "./pages/ConnectionManager";
@@ -59,33 +47,13 @@ import MeasurementStandards from "./pages/MeasurementStandards";
 import MeasurementStandardsDashboard from "./pages/MeasurementStandardsDashboard";
 import QuickSpcPlan from "./pages/QuickSpcPlan";
 import ValidationRulesManagement from "./pages/ValidationRulesManagement";
-import CpkComparisonDashboard from "./pages/CpkComparisonDashboard";
-import ShiftCpkComparison from "./pages/ShiftCpkComparison";
-import ShiftManagerDashboard from "./pages/ShiftManagerDashboard";
-import SpcSummaryReport from "./pages/SpcSummaryReport";
-import CpkForecastPage from "./pages/CpkForecastPage";
-import LicenseManagement from "./pages/LicenseManagement";
 import LicenseNotificationReport from "./pages/LicenseNotificationReport";
-import LicenseDashboard from "./pages/LicenseDashboard";
-import LicenseCustomers from "./pages/LicenseCustomers";
-import LicenseRevenue from "./pages/LicenseRevenue";
 import LicenseServerSettings from "./pages/LicenseServerSettings";
-import LicenseServerDashboard from "./pages/LicenseServerDashboard";
-import RealtimeLineDashboard from "./pages/RealtimeLineDashboard";
 import RealtimeMachineConfig from "./pages/RealtimeMachineConfig";
 import RealtimeHistory from "./pages/RealtimeHistory";
 import AlarmThresholdConfig from "./pages/AlarmThresholdConfig";
-import MachineOverviewDashboard from "./pages/MachineOverviewDashboard";
-import MachineDetailLive from "./pages/MachineDetailLive";
 import MachineAreaManagement from "./pages/MachineAreaManagement";
-import MachineStatusReport from "./pages/MachineStatusReport";
-import OEEDashboard from "./pages/OEEDashboard";
-import OEEAnalysisDashboard from "./pages/OEEAnalysisDashboard";
-import OEEComparisonDashboard from "./pages/OEEComparisonDashboard";
-import MaintenanceDashboard from "./pages/MaintenanceDashboard";
-import MachineDetail from "./pages/MachineDetail";
 import ExportRealtimeData from "./pages/ExportRealtimeData";
-import SparePartsManagement from "./pages/SparePartsManagement";
 import OrganizationManagement from "./pages/OrganizationManagement";
 import ApprovalWorkflowManagement from "./pages/ApprovalWorkflowManagement";
 import ModulePermissionManagement from "./pages/ModulePermissionManagement";
@@ -96,87 +64,28 @@ import SparePartsCostReport from "./pages/SparePartsCostReport";
 import StockMovements from "./pages/StockMovements";
 import InventoryCheck from "./pages/InventoryCheck";
 import StockReport from "./pages/StockReport";
-import PredictiveMaintenance from "./pages/PredictiveMaintenance";
 import MMSDataInit from "./pages/MMSDataInit";
-import MaintenanceSchedule from "./pages/MaintenanceSchedule";
 import AlertThresholdConfig from "./pages/AlertThresholdConfig";
 import EquipmentQRLookup from "./pages/EquipmentQRLookup";
-import PlantKPIDashboard from "./pages/PlantKPIDashboard";
-import PlantKPIDashboardEnhanced from "./pages/PlantKPIDashboardEnhanced";
 import MMSDashboard from "./pages/MMSDashboard";
-import IoTGatewayConfig from "./pages/IoTGatewayConfig";
-import ReportsExport from "./pages/ReportsExport";
-import ReportsExportEnhanced from "./pages/ReportsExportEnhanced";
-import AlertConfiguration from "./pages/AlertConfiguration";
-import AlertConfigurationEnhanced from "./pages/AlertConfigurationEnhanced";
 import ScheduledReports from "./pages/ScheduledReports";
-import SupervisorDashboard from "./pages/SupervisorDashboard";
 import ShiftReportHistory from "./pages/ShiftReportHistory";
-import MachineComparison from "./pages/MachineComparison";
-import NotificationCenter from "./pages/NotificationCenter";
 import ScheduledJobsManagement from "./pages/ScheduledJobsManagement";
-import AdvancedAnalytics from "./pages/AdvancedAnalytics";
-import ExportReports from "./pages/ExportReports";
 import WebSocketEventLog from "./pages/WebSocketEventLog";
 import SseEventLog from "./pages/SseEventLog";
-import CustomReportBuilder from "./pages/CustomReportBuilder";
-import { GlobalKeyboardShortcuts } from "./components/GlobalKeyboardShortcuts";
-import RateLimitDashboard from "./pages/RateLimitDashboard";
 import NtfAlertConfig from "./pages/NtfAlertConfig";
-import NtfComparison from "./pages/NtfComparison";
-import NtfDashboard from "./pages/NtfDashboard";
 import NotificationSettings from "./pages/NotificationSettings";
 import NtfLineDetail from "./pages/NtfLineDetail";
-import NtfShiftAnalysis from "./pages/NtfShiftAnalysis";
-import NtfProductAnalysis from "./pages/NtfProductAnalysis";
-import NtfDepartmentDashboard from "./pages/NtfDepartmentDashboard";
-import NtfSupplierAnalysis from "./pages/NtfSupplierAnalysis";
-import NtfEnvironmentCorrelation from "./pages/NtfEnvironmentCorrelation";
 import EnvironmentAlertConfig from "./pages/EnvironmentAlertConfig";
-import NtfCeoDashboard from "./pages/NtfCeoDashboard";
-import UnifiedDashboard from "./pages/UnifiedDashboard";
 import OeeAlertThresholdSettings from "./pages/OeeAlertThresholdSettings";
 import ScheduledReportManagement from "./pages/ScheduledReportManagement";
-import MachineIntegrationDashboard from "./pages/MachineIntegrationDashboard";
-import OeeWidget from "./pages/OeeWidget";
-import OeeWidgetConfig from "./pages/OeeWidgetConfig";
-import DatabaseHealthDashboard from "./pages/DatabaseHealthDashboard";
-import DatabaseConnectionsSettings from "./pages/DatabaseConnectionsSettings";
-import DatabaseConnectionWizard from "./pages/DatabaseConnectionWizard";
-import DataMigrationTool from "./pages/DataMigrationTool";
-import DataMigrationToolEnhanced from "./pages/DataMigrationToolEnhanced";
-import SchemaComparison from "./pages/SchemaComparison";
-import DatabaseUnified from "./pages/DatabaseUnified";
-import BackupRestore from "./pages/BackupRestore";
-import AnomalyDetection from "./pages/AnomalyDetection";
 import AppSettings from "./pages/AppSettings";
 import QuickAccessManagement from "./pages/QuickAccessManagement";
-import AdminMonitoring from "./pages/AdminMonitoring";
-import PerformanceTrendsDashboard from "./pages/PerformanceTrendsDashboard";
-import SystemHealthDashboard from "./pages/SystemHealthDashboard";
-import SecurityDashboard from "./pages/SecurityDashboard";
-import IoTDashboard from "./pages/IoTDashboard";
-import IotOverviewDashboard from "./pages/IotOverviewDashboard";
 import ScheduledOeeReports from "./pages/ScheduledOeeReports";
-import IotRealtimeDashboard from "./pages/IotRealtimeDashboard";
-import AiMlDashboard from "./pages/ai/AiMlDashboard";
-import AiDashboard from "./pages/ai/AiDashboard";
-import AiSpcAnalysis from "./pages/AiSpcAnalysis";
-import AiRootCause from "./pages/ai/AiRootCause";
-import AiNaturalLanguage from "./pages/AiNaturalLanguage";
-import AiPredictive from "./pages/ai/AiPredictive";
-import AiModelTraining from "./pages/AiModelTraining";
-import AiAnalyticsDashboard from "./pages/ai/AiAnalyticsDashboard";
 import ABTestingManagement from "./pages/ai/ABTestingManagement";
 import ModelVersioningPage from "./pages/ai/ModelVersioningPage";
 import DataDriftMonitoring from "./pages/ai/DataDriftMonitoring";
 import AiMlHealth from "./pages/ai/AiMlHealth";
-import AiCorrelationAnalysis from "./pages/ai/AiCorrelationAnalysis";
-import AiTrendAnalysis from "./pages/ai/AiTrendAnalysis";
-import AiOeeForecast from "./pages/ai/AiOeeForecast";
-import AiDefectPrediction from "./pages/ai/AiDefectPrediction";
-import AiVisionDefectDetection from "./pages/ai/AiVisionDefectDetection";
-import AiYieldOptimization from "./pages/ai/AiYieldOptimization";
 import AiReports from "./pages/ai/AiReports";
 import AiInsights from "./pages/ai/AiInsights";
 import AiTrainingJobs from "./pages/ai/AiTrainingJobs";
@@ -199,50 +108,29 @@ import CpkForecastingPage from "./pages/ai/CpkForecastingPage";
 import DefectDetectionPage from "./pages/ai/DefectDetectionPage";
 import FirebasePushSettingsPage from "./pages/ai/FirebasePushSettingsPage";
 import CpkComparisonPage from "./pages/ai/CpkComparisonPage";
-import AdvancedAnalyticsDashboard from "./pages/AdvancedAnalyticsDashboard";
 import NotificationPreferences from "./pages/NotificationPreferences";
 import KpiAlertThresholds from "./pages/KpiAlertThresholds";
-import WeeklyKpiTrend from "./pages/WeeklyKpiTrend";
 import ScheduledKpiReports from "./pages/ScheduledKpiReports";
 import KpiThresholdSettings from "./pages/KpiThresholdSettings";
 import ScheduledKpiReportsPage from "./pages/ScheduledKpiReportsPage";
-import KpiAlertStats from "./pages/KpiAlertStats";
 import AlertHistory from "./pages/AlertHistory";
-import AlertDashboard from "./pages/AlertDashboard";
 import AlertNotificationConfig from "./pages/AlertNotificationConfig";
-import MqttConnectionManagement from "./pages/MqttConnectionManagement";
-import OpcuaConnectionManagement from "./pages/OpcuaConnectionManagement";
-import SensorDashboard from "./pages/SensorDashboard";
 import TwilioSettings from "./pages/TwilioSettings";
 import SmsConfigSettings from "./pages/SmsConfigSettings";
 import PerformanceDropAlertConfig from "./pages/PerformanceDropAlertConfig";
 import WebhookSettings from "./pages/WebhookSettings";
-import AlertAnalytics from "./pages/AlertAnalytics";
-import UnifiedAlertKpiDashboard from "./pages/UnifiedAlertKpiDashboard";
 import WebhookHistoryManagement from "./pages/WebhookHistoryManagement";
 import UserGuide from "./pages/UserGuide";
 import VideoManagement from "./pages/VideoManagement";
 import IotMonitoringRealtime from "./pages/iot/IotMonitoringRealtime";
 import AiModelPerformance from "./pages/ai/AiModelPerformance";
-import CacheMonitoringDashboard from "./pages/CacheMonitoringDashboard";
 import TelegramSettings from "./pages/TelegramSettings";
 import WebhookTemplates from "./pages/WebhookTemplates";
-import IoTFloorPlan from "./pages/IoTFloorPlan";
-import FloorPlanDesignerPage from "./pages/FloorPlanDesignerPage";
 import AlertWebhookSettings from "./pages/AlertWebhookSettings";
-import IoTUnifiedDashboard from "./pages/IoTUnifiedDashboard";
-import IoTEnhancedDashboard from "./pages/IoTEnhancedDashboard";
-import IoTDeviceManagement from "./pages/IoTDeviceManagement";
-import IoTProtocolManagement from "./pages/IoTProtocolManagement";
 import IoTAlertEscalation from "./pages/IoTAlertEscalation";
-import IoTAnalytics from "./pages/IoTAnalytics";
 import IoTFirmwareOTA from "./pages/IoTFirmwareOTA";
 import IoTFloorPlanIntegration from "./pages/IoTFloorPlanIntegration";
-import IoTPredictiveMaintenance from "./pages/IoTPredictiveMaintenance";
 import IoTScheduledOTA from "./pages/IoTScheduledOTA";
-import IoT3DFloorPlan from "./pages/IoT3DFloorPlan";
-import IoTWorkOrders from "./pages/IoTWorkOrders";
-import IotWorkOrderManagement from "./pages/IotWorkOrderManagement";
 import IotOeeAlertConfig from "./pages/IotOeeAlertConfig";
 import OeeThresholdsByLine from "./pages/OeeThresholdsByLine";
 import OeeAlertIntegrations from "./pages/OeeAlertIntegrations";
@@ -250,55 +138,199 @@ import WebhookEscalationPage from "./pages/WebhookEscalationPage";
 import LatencyMonitoringPage from "./pages/LatencyMonitoringPage";
 import EscalationConfigPage from "./pages/EscalationConfigPage";
 import SmsSettings from "./pages/SmsSettings";
-import EscalationDashboard from "./pages/EscalationDashboard";
 import AutoResolveSettings from "./pages/AutoResolveSettings";
 import EscalationWebhookSettings from "./pages/EscalationWebhookSettings";
 import EscalationTemplates from "./pages/EscalationTemplates";
 import EscalationReports from "./pages/EscalationReports";
 import WidgetConfigScreen from "./pages/WidgetConfigScreen";
-import SyncDashboard from "./pages/SyncDashboard";
 import WidgetPreview from "./pages/WidgetPreview";
 import FCMTestPage from "./pages/FCMTestPage";
 import ConflictResolutionScreen from "./pages/ConflictResolutionScreen";
 import PushNotificationSettings from "./pages/PushNotificationSettings";
-import Model3DManagement from "./pages/Model3DManagement";
 import WorkOrderNotificationConfig from "./pages/WorkOrderNotificationConfig";
-import MttrMtbfReport from "./pages/MttrMtbfReport";
 import ScheduledMttrMtbfReports from "./pages/ScheduledMttrMtbfReports";
-import MttrMtbfComparison from "./pages/MttrMtbfComparison";
 import MttrMtbfThresholds from "./pages/MttrMtbfThresholds";
-import MttrMtbfPrediction from "./pages/MttrMtbfPrediction";
-import IotDeviceCrud from "./pages/IotDeviceCrud";
-import IotAlarmCrud from "./pages/IotAlarmCrud";
 import NotificationPreferencesPage from "./pages/NotificationPreferencesPage";
-import IoTUserGuide from "./pages/IoTUserGuide";
-import EdgeGatewayDashboard from "./pages/EdgeGatewayDashboard";
-import TimeseriesDashboard from "./pages/TimeseriesDashboard";
-import AnomalyDetectionDashboard from "./pages/AnomalyDetectionDashboard";
 import AlertConfigManagement from "./pages/AlertConfigManagement";
-import EdgeSimulatorDashboard from "./pages/EdgeSimulatorDashboard";
 import ModelRetrainingDashboard from "./pages/ModelRetrainingDashboard";
 import CpkAlertManagement from "./pages/CpkAlertManagement";
 import ScheduledCpkJobs from "./pages/ScheduledCpkJobs";
-import ImageComparison from "./pages/ImageComparison";
-import CameraCapture from "./pages/CameraCapture";
 import AlertEmailConfig from "./pages/AlertEmailConfig";
-import AutoCapture from "./pages/AutoCapture";
 import UnifiedWebhooks from "./pages/UnifiedWebhooks";
-import QualityTrendReport from "./pages/QualityTrendReport";
-import AviAoiDashboard from "./pages/AviAoiDashboard";
 import AdvancedHistory from "./pages/AdvancedHistory";
-import FloorPlanLive from "./pages/FloorPlanLive";
 import MachineApiDocumentation from "./pages/MachineApiDocumentation";
-import AiVisionAnalysis from "./pages/AiVisionAnalysis";
-import UnifiedRealtimeDashboard from "./pages/UnifiedRealtimeDashboard";
-import AiVisionDashboard from "./pages/AiVisionDashboard";
-import LineComparison from "./pages/LineComparison";
 import SpcScheduledReports from "./pages/SpcScheduledReports";
-import CpkHistoryComparison from "./pages/CpkHistoryComparison";
 import ScheduledEmailReports from "./pages/ScheduledEmailReports";
 
+// ============================================
+// Lazy loaded pages from lazyRoutes
+// ============================================
+import {
+  AdminMonitoring,
+  AdvancedAnalytics,
+  AdvancedAnalyticsDashboard,
+  AiAnalyticsDashboard,
+  AiCorrelationAnalysis,
+  AiDashboard,
+  AiDefectPrediction,
+  AiMlDashboard,
+  AiModelTraining,
+  AiNaturalLanguage,
+  AiOeeForecast,
+  AiPredictive,
+  AiRootCause,
+  AiSpcAnalysis,
+  AiTrendAnalysis,
+  AiVisionAnalysis,
+  AiVisionDashboard,
+  AiVisionDefectDetection,
+  AiYieldOptimization,
+  AlertAnalytics,
+  AlertConfiguration,
+  AlertConfigurationEnhanced,
+  AlertDashboard,
+  Analyze,
+  AnomalyDetection,
+  AnomalyDetectionDashboard,
+  AutoCapture,
+  AviAoiDashboard,
+  BackupRestore,
+  CacheMonitoringDashboard,
+  CameraCapture,
+  CpkComparisonDashboard,
+  CpkForecastPage,
+  CpkHistoryComparison,
+  CustomReportBuilder,
+  Dashboard,
+  DataMigrationTool,
+  DataMigrationToolEnhanced,
+  DatabaseConnectionWizard,
+  DatabaseConnectionsSettings,
+  DatabaseHealthDashboard,
+  DatabaseSettings,
+  DatabaseUnified,
+  EdgeGatewayDashboard,
+  EdgeSimulatorDashboard,
+  EscalationDashboard,
+  ExportHistory,
+  ExportReports,
+  FloorPlanDesignerPage,
+  FloorPlanLive,
+  Home,
+  ImageComparison,
+  IoT3DFloorPlan,
+  IoTAnalytics,
+  IoTDashboard,
+  IoTDeviceManagement,
+  IoTEnhancedDashboard,
+  IoTFloorPlan,
+  IoTGatewayConfig,
+  IoTPredictiveMaintenance,
+  IoTProtocolManagement,
+  IoTUnifiedDashboard,
+  IoTUserGuide,
+  IoTWorkOrders,
+  IotAlarmCrud,
+  IotDeviceCrud,
+  IotOverviewDashboard,
+  IotRealtimeDashboard,
+  IotWorkOrderManagement,
+  KpiAlertStats,
+  LandingPage,
+  LicenseCustomers,
+  LicenseDashboard,
+  LicenseManagement,
+  LicenseRevenue,
+  LicenseServerDashboard,
+  LineComparison,
+  LocalLogin,
+  MachineComparison,
+  MachineDetail,
+  MachineDetailLive,
+  MachineIntegrationDashboard,
+  MachineManagement,
+  MachineOverviewDashboard,
+  MachineStatusReport,
+  MaintenanceDashboard,
+  MaintenanceSchedule,
+  Model3DManagement,
+  MqttConnectionManagement,
+  MttrMtbfComparison,
+  MttrMtbfPrediction,
+  MttrMtbfReport,
+  MultiAnalysis,
+  NotFound,
+  NotificationCenter,
+  NtfCeoDashboard,
+  NtfComparison,
+  NtfDashboard,
+  NtfDepartmentDashboard,
+  NtfEnvironmentCorrelation,
+  NtfProductAnalysis,
+  NtfShiftAnalysis,
+  NtfSupplierAnalysis,
+  OEEAnalysisDashboard,
+  OEEComparisonDashboard,
+  OEEDashboard,
+  OeeWidget,
+  OeeWidgetConfig,
+  OpcuaConnectionManagement,
+  PerformanceTrendsDashboard,
+  PlantKPIDashboard,
+  PlantKPIDashboardEnhanced,
+  PredictiveMaintenance,
+  ProcessManagement,
+  ProductionLineComparison,
+  ProductionLineManagement,
+  ProductionLinesDashboard,
+  QualityTrendReport,
+  RateLimitDashboard,
+  RealtimeLineDashboard,
+  ReportsExport,
+  ReportsExportEnhanced,
+  SchemaComparison,
+  SecurityDashboard,
+  SensorDashboard,
+  ShiftCpkComparison,
+  ShiftManagerDashboard,
+  SparePartsManagement,
+  SpcReport,
+  SpcSummaryReport,
+  SupervisorDashboard,
+  SyncDashboard,
+  SystemHealthDashboard,
+  TimeseriesDashboard,
+  UnifiedAlertKpiDashboard,
+  UnifiedDashboard,
+  UnifiedRealtimeDashboard,
+  WeeklyKpiTrend,
+  WorkstationManagement
+} from "./routes/lazyRoutes";
+
+// Preload utilities
+import { preloadCriticalRoutes, preloadRelatedRoutes } from "./routes/preloadRoutes";
+import { useEffect } from "react";
+import { useLocation } from "wouter";
+
+
+// Route preloading hook
+function useRoutePreloading() {
+  const [location] = useLocation();
+  
+  useEffect(() => {
+    // Preload critical routes sau khi app mount
+    preloadCriticalRoutes();
+  }, []);
+  
+  useEffect(() => {
+    // Preload related routes khi user navigate
+    preloadRelatedRoutes(location);
+  }, [location]);
+}
+
 function Router() {
+  useRoutePreloading();
+  
   return (
     <Switch>
       <Route path="/" component={LandingPage} />

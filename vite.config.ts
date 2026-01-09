@@ -5,9 +5,23 @@ import fs from "node:fs";
 import path from "path";
 import { defineConfig } from "vite";
 import { vitePluginManusRuntime } from "vite-plugin-manus-runtime";
+import { visualizer } from "rollup-plugin-visualizer";
 
 
-const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime()];
+const plugins = [
+  react(), 
+  tailwindcss(), 
+  jsxLocPlugin(), 
+  vitePluginManusRuntime(),
+  // Bundle analyzer - chỉ chạy khi có flag ANALYZE=true
+  process.env.ANALYZE === 'true' && visualizer({
+    open: false,
+    filename: 'bundle-stats.html',
+    gzipSize: true,
+    brotliSize: true,
+    template: 'treemap',
+  }),
+].filter(Boolean);
 
 export default defineConfig({
   plugins,

@@ -9289,3 +9289,22 @@
 - [x] Sửa lỗi query.where is not a function trong predictiveMaintenanceService.ts
 - [x] Thêm code splitting cho Three.js bằng dynamic imports
 - [x] Thêm code splitting cho Chart.js bằng dynamic imports (recharts)
+
+
+## Phase 10.5 - Lazy Loading và Code Splitting
+
+### Lazy Routes Integration
+- [x] Tích hợp lazy routes vào App.tsx (139 components)
+- [x] Giữ lại direct imports cho 152 pages không có trong lazyRoutes
+- [x] Thêm preloading cho routes quan trọng (Dashboard, Analyze, Home)
+
+### Route Preloading
+- [x] Tạo file preloadRoutes.ts với các utilities
+- [x] Thêm preloadCriticalRoutes() cho các routes quan trọng
+- [x] Thêm preloadRelatedRoutes() để preload routes liên quan khi navigate
+- [x] Tạo useRoutePreloading hook trong App.tsx
+
+### Bundle Analyzer
+- [x] Cài đặt rollup-plugin-visualizer
+- [x] Cấu hình vite.config.ts với ANALYZE=true flag
+- [ ] Chạy bundle analyzer và phân tích kết quả (timeout do project lớn)
