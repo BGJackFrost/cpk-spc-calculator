@@ -23,7 +23,14 @@ export type SseEventType =
   | "iot_alarm_update"
   | "iot_alarm_ack"
   | "iot_alarm_resolved"
-  | "iot_batch_metrics";
+  | "iot_batch_metrics"
+  // Floor Plan Live events
+  | "floor_plan_machine_update"
+  | "floor_plan_stats_update"
+  // AVI/AOI Dashboard events
+  | "avi_aoi_inspection_result"
+  | "avi_aoi_defect_detected"
+  | "avi_aoi_stats_update";
 
 export interface SseEvent {
   type: SseEventType;
@@ -483,6 +490,104 @@ export function notifyIotAlarmResolved(data: {
 }) {
   broadcastEvent({
     type: "iot_alarm_resolved",
+    data,
+    timestamp: new Date(),
+  });
+}
+
+
+// ============ Floor Plan Live Events ============
+
+// Send floor plan machine update event
+export function notifyFloorPlanMachineUpdate(data: {
+  machineId: number;
+  machineName: string;
+  status: string;
+  oee: number;
+  cycleTime: number;
+  defectRate: number;
+  x?: number;
+  y?: number;
+  productionLineId?: number;
+}) {
+  broadcastEvent({
+    type: "floor_plan_machine_update",
+    data,
+    timestamp: new Date(),
+  });
+}
+
+// Send floor plan stats update event
+export function notifyFloorPlanStatsUpdate(data: {
+  floorPlanId?: number;
+  total: number;
+  running: number;
+  idle: number;
+  error: number;
+  maintenance: number;
+  offline: number;
+  avgOee: number;
+}) {
+  broadcastEvent({
+    type: "floor_plan_stats_update",
+    data,
+    timestamp: new Date(),
+  });
+}
+
+// ============ AVI/AOI Dashboard Events ============
+
+// Send AVI/AOI inspection result event
+export function notifyAviAoiInspectionResult(data: {
+  inspectionId: string;
+  serialNumber: string;
+  machineId: number;
+  machineName: string;
+  productId?: number;
+  productName?: string;
+  result: 'pass' | 'fail' | 'warning';
+  defectCount: number;
+  cycleTime: number;
+  confidence: number;
+  imageUrl?: string;
+}) {
+  broadcastEvent({
+    type: "avi_aoi_inspection_result",
+    data,
+    timestamp: new Date(),
+  });
+}
+
+// Send AVI/AOI defect detected event
+export function notifyAviAoiDefectDetected(data: {
+  inspectionId: string;
+  machineId: number;
+  machineName: string;
+  defectType: string;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  confidence: number;
+  location?: { x: number; y: number; width: number; height: number };
+  imageUrl?: string;
+}) {
+  broadcastEvent({
+    type: "avi_aoi_defect_detected",
+    data,
+    timestamp: new Date(),
+  });
+}
+
+// Send AVI/AOI stats update event
+export function notifyAviAoiStatsUpdate(data: {
+  total: number;
+  pass: number;
+  fail: number;
+  warning: number;
+  passRate: string;
+  failRate: string;
+  timeRange: string;
+}) {
+  broadcastEvent({
+    type: "avi_aoi_stats_update",
     data,
     timestamp: new Date(),
   });

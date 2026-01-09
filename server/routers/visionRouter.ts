@@ -12,6 +12,11 @@ import {
   getDefaultVisionConfig,
   getDefectStatistics,
 } from '../services/computerVisionService';
+import {
+  analyzeImageWithLLM,
+  analyzeImagesBatch,
+  compareImages,
+} from '../services/aiVisionService';
 
 export const visionRouter = router({
   // Detect defects in a single image
@@ -109,6 +114,67 @@ export const visionRouter = router({
           };
         }),
       };
+    }),
+
+  // AI Vision Analysis - Analyze single image with LLM
+  analyzeWithAI: protectedProcedure
+    .input(z.object({
+      imageUrl: z.string().url(),
+      productType: z.string().optional().default('general'),
+      inspectionStandard: z.string().optional().default('IPC-A-610'),
+      confidenceThreshold: z.number().min(0).max(1).optional().default(0.7),
+      language: z.enum(['vi', 'en']).optional().default('vi'),
+      saveToDatabase: z.boolean().optional().default(false),
+      machineId: z.number().optional(),
+      productId: z.number().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      return await analyzeImageWithLLM(input.imageUrl, {
+        productType: input.productType,
+        inspectionStandard: input.inspectionStandard,
+        confidenceThreshold: input.confidenceThreshold,
+        language: input.language,
+        saveToDatabase: input.saveToDatabase,
+        machineId: input.machineId,
+        productId: input.productId,
+      });
+    }),
+
+  // AI Vision Analysis - Batch analyze multiple images
+  analyzeWithAIBatch: protectedProcedure
+    .input(z.object({
+      imageUrls: z.array(z.string().url()).max(10),
+      productType: z.string().optional().default('general'),
+      inspectionStandard: z.string().optional().default('IPC-A-610'),
+      confidenceThreshold: z.number().min(0).max(1).optional().default(0.7),
+      language: z.enum(['vi', 'en']).optional().default('vi'),
+    }))
+    .mutation(async ({ input }) => {
+      return await analyzeImagesBatch(input.imageUrls, {
+        productType: input.productType,
+        inspectionStandard: input.inspectionStandard,
+        confidenceThreshold: input.confidenceThreshold,
+        language: input.language,
+      });
+    }),
+
+  // AI Vision Analysis - Compare reference and inspection images
+  compareWithAI: protectedProcedure
+    .input(z.object({
+      referenceImageUrl: z.string().url(),
+      inspectionImageUrl: z.string().url(),
+      productType: z.string().optional().default('general'),
+      language: z.enum(['vi', 'en']).optional().default('vi'),
+    }))
+    .mutation(async ({ input }) => {
+      return await compareImages(
+        input.referenceImageUrl,
+        input.inspectionImageUrl,
+        {
+          productType: input.productType,
+          language: input.language,
+        }
+      );
     }),
 });
 

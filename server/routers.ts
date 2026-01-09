@@ -81,6 +81,7 @@ import { autoCaptureRouter } from "./routers/autoCaptureRouter";
 import { unifiedWebhookRouter } from "./routers/unifiedWebhookRouter";
 import { qualityTrendRouter } from "./routers/qualityTrendRouter";
 import { webhookTemplateRouter } from "./routers/webhookTemplateRouter";
+import { realtimeRouter } from "./routers/realtimeRouter";
 import { maintenanceWorkOrderRouter } from "./maintenanceWorkOrderRouter";
 import { mobileRouter } from "./mobileRouter";
 import { triggerLicenseExpiryCheck } from "./scheduledJobs";
@@ -3908,6 +3909,7 @@ export const appRouter = router({
   videoTutorial: videoTutorialRouter,
   userGuide: userGuideRouter,
   aiAdvanced: aiAdvancedRouter,
+  realtime: realtimeRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {

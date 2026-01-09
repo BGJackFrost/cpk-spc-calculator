@@ -8944,3 +8944,34 @@
 - [x] Thêm routes vào App.tsx
 - [x] Thêm menu items vào systemMenu.ts (IOT_MENU)
 - [x] Thêm translations vào vi.json và en.json
+
+
+## Phase 15 - Tích hợp dữ liệu thực, Realtime SSE, AI Vision Analysis
+
+### Tích hợp dữ liệu thực từ database
+- [x] Tạo realtimeRouter với API endpoints cho dữ liệu máy móc realtime
+- [x] API getMachinesWithStatus - lấy trạng thái máy móc từ IoT devices
+- [x] API getMachineRealtimeData - lấy chi tiết máy với metrics realtime
+- [x] API getInspectionData - lấy dữ liệu kiểm tra AVI/AOI
+- [x] API getFloorPlanStats - thống kê Floor Plan
+
+### WebSocket/SSE Realtime cho Floor Plan và AVI/AOI
+- [x] Thêm SSE event types cho Floor Plan (floor_plan_machine_update, floor_plan_stats_update)
+- [x] Thêm SSE event types cho AVI/AOI (avi_aoi_inspection_result, avi_aoi_defect_detected, avi_aoi_stats_update)
+- [x] Tạo các hàm broadcast SSE (notifyFloorPlanMachineUpdate, notifyFloorPlanStatsUpdate, etc.)
+- [x] Tạo hook useRealtimeSSE cho frontend
+- [x] Tạo specialized hooks: useFloorPlanSSE, useAviAoiSSE
+
+### AI Vision Analysis với LLM
+- [x] Tạo aiVisionService với LLM Vision để phân tích hình ảnh sản phẩm
+- [x] Hỗ trợ phân tích đơn lẻ (analyzeImageWithLLM)
+- [x] Hỗ trợ phân tích batch (analyzeImagesBatch)
+- [x] Hỗ trợ so sánh hình ảnh (compareImages)
+- [x] Mapping loại lỗi sang tiếng Việt
+- [x] Tính điểm chất lượng (quality score) dựa trên severity
+- [x] Thêm AI Vision endpoints vào visionRouter (analyzeWithAI, analyzeWithAIBatch, compareWithAI)
+
+### Unit Tests
+- [x] Viết unit tests cho realtime SSE events (12 tests)
+- [x] Viết unit tests cho AI Vision Service (13 tests)
+- [x] Tất cả tests pass
