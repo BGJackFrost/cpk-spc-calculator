@@ -444,6 +444,84 @@ export const qualityTrendRouter = router({
       };
     }),
 
+  // Export report to PDF
+  exportPdf: protectedProcedure
+    .input(z.object({
+      configId: z.number(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      
+      // Get config
+      const [config] = await db
+        .select()
+        .from(qualityTrendReportConfigs)
+        .where(eq(qualityTrendReportConfigs.id, input.configId));
+      
+      if (!config) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Không tìm thấy cấu hình báo cáo" });
+      }
+      
+      if (config.userId !== ctx.user.id && ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Không có quyền truy cập" });
+      }
+      
+      const periodType = config.periodType || "weekly";
+      const comparisonPeriods = config.comparisonPeriods || 4;
+      
+      // Collect period data
+      const periodData: Array<{
+        period: string;
+        avgCpk: number;
+        avgPpk: number;
+        totalSamples: number;
+        totalViolations: number;
+        defectRate: number;
+      }> = [];
+      
+      for (let i = comparisonPeriods - 1; i >= 0; i--) {
+        const { start, end } = getPeriodDates(periodType, i);
+        
+        const [stats] = await db
+          .select({
+            avgCpk: sql<number>`AVG(${spcAnalysisHistory.cpk})`,
+            avgPpk: sql<number>`AVG(${spcAnalysisHistory.ppk})`,
+            totalSamples: sql<number>`SUM(${spcAnalysisHistory.sampleSize})`,
+            totalViolations: sql<number>`SUM(${spcAnalysisHistory.violationCount})`,
+          })
+          .from(spcAnalysisHistory)
+          .where(and(
+            gte(spcAnalysisHistory.analyzedAt, start),
+            lte(spcAnalysisHistory.analyzedAt, end)
+          ));
+        
+        periodData.push({
+          period: formatPeriodLabel(periodType, end),
+          avgCpk: Number(stats?.avgCpk || 0),
+          avgPpk: Number(stats?.avgPpk || 0),
+          totalSamples: Number(stats?.totalSamples || 0),
+          totalViolations: Number(stats?.totalViolations || 0),
+          defectRate: stats?.totalSamples ? (Number(stats.totalViolations) / Number(stats.totalSamples)) * 100 : 0,
+        });
+      }
+      
+      // Generate HTML content for PDF
+      const htmlContent = generateQualityTrendPdfContent({
+        config,
+        periodType,
+        comparisonPeriods,
+        periodData,
+        generatedAt: new Date().toISOString(),
+        generatedBy: ctx.user.name || ctx.user.email || "Unknown",
+      });
+      
+      return {
+        success: true,
+        htmlContent,
+        filename: `quality-trend-report-${config.name.replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.html`,
+      };
+    }),
+
   // Get report history
   getHistory: protectedProcedure
     .input(z.object({
@@ -506,4 +584,201 @@ function getWeekNumber(date: Date): number {
   const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
   const pastDaysOfYear = (date.getTime() - firstDayOfYear.getTime()) / 86400000;
   return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
+}
+
+// Generate HTML content for PDF export
+function generateQualityTrendPdfContent(data: {
+  config: any;
+  periodType: string;
+  comparisonPeriods: number;
+  periodData: Array<{
+    period: string;
+    avgCpk: number;
+    avgPpk: number;
+    totalSamples: number;
+    totalViolations: number;
+    defectRate: number;
+  }>;
+  generatedAt: string;
+  generatedBy: string;
+}): string {
+  const { config, periodType, comparisonPeriods, periodData, generatedAt, generatedBy } = data;
+  
+  const periodTypeLabels: Record<string, string> = {
+    daily: "Ngày",
+    weekly: "Tuần",
+    monthly: "Tháng",
+    quarterly: "Quý",
+    yearly: "Năm",
+  };
+  
+  // Calculate trends
+  const latestPeriod = periodData[periodData.length - 1];
+  const previousPeriod = periodData[periodData.length - 2];
+  const cpkChange = previousPeriod && latestPeriod 
+    ? ((latestPeriod.avgCpk - previousPeriod.avgCpk) / (previousPeriod.avgCpk || 1)) * 100 
+    : 0;
+  const defectRateChange = previousPeriod && latestPeriod
+    ? latestPeriod.defectRate - previousPeriod.defectRate
+    : 0;
+  
+  const getCpkStatus = (cpk: number) => {
+    if (cpk >= 1.67) return { text: "Xuất sắc", color: "#22c55e" };
+    if (cpk >= 1.33) return { text: "Tốt", color: "#3b82f6" };
+    if (cpk >= 1.0) return { text: "Đạt", color: "#f59e0b" };
+    return { text: "Cần cải thiện", color: "#ef4444" };
+  };
+  
+  const cpkStatus = getCpkStatus(latestPeriod?.avgCpk || 0);
+  
+  return `
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Báo cáo Xu hướng Chất lượng - ${config.name}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+      line-height: 1.6; 
+      color: #1f2937;
+      background: #f9fafb;
+      padding: 20px;
+    }
+    .container { max-width: 900px; margin: 0 auto; background: white; padding: 40px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .header { text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #e5e7eb; }
+    .header h1 { font-size: 24px; color: #111827; margin-bottom: 8px; }
+    .header .subtitle { color: #6b7280; font-size: 14px; }
+    .meta { display: flex; justify-content: space-between; margin-bottom: 30px; padding: 15px; background: #f3f4f6; border-radius: 6px; }
+    .meta-item { text-align: center; }
+    .meta-item .label { font-size: 12px; color: #6b7280; text-transform: uppercase; }
+    .meta-item .value { font-size: 16px; font-weight: 600; color: #111827; }
+    .summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 30px; }
+    .summary-card { padding: 20px; border-radius: 8px; text-align: center; }
+    .summary-card .value { font-size: 28px; font-weight: 700; }
+    .summary-card .label { font-size: 12px; color: #6b7280; margin-top: 5px; }
+    .summary-card .change { font-size: 12px; margin-top: 5px; }
+    .summary-card.cpk { background: linear-gradient(135deg, #dbeafe, #bfdbfe); }
+    .summary-card.ppk { background: linear-gradient(135deg, #dcfce7, #bbf7d0); }
+    .summary-card.samples { background: linear-gradient(135deg, #fef3c7, #fde68a); }
+    .summary-card.defect { background: linear-gradient(135deg, #fee2e2, #fecaca); }
+    .section { margin-bottom: 30px; }
+    .section h2 { font-size: 18px; color: #111827; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #e5e7eb; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #e5e7eb; }
+    th { background: #f9fafb; font-weight: 600; color: #374151; font-size: 13px; }
+    td { font-size: 14px; }
+    .trend-up { color: #22c55e; }
+    .trend-down { color: #ef4444; }
+    .status-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+    .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb; text-align: center; color: #9ca3af; font-size: 12px; }
+    @media print {
+      body { background: white; padding: 0; }
+      .container { box-shadow: none; padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>📊 Báo cáo Xu hướng Chất lượng</h1>
+      <div class="subtitle">${config.name}${config.description ? ` - ${config.description}` : ''}</div>
+    </div>
+    
+    <div class="meta">
+      <div class="meta-item">
+        <div class="label">Chu kỳ</div>
+        <div class="value">${periodTypeLabels[periodType] || periodType}</div>
+      </div>
+      <div class="meta-item">
+        <div class="label">Số kỳ so sánh</div>
+        <div class="value">${comparisonPeriods}</div>
+      </div>
+      <div class="meta-item">
+        <div class="label">Ngày tạo</div>
+        <div class="value">${new Date(generatedAt).toLocaleDateString('vi-VN')}</div>
+      </div>
+      <div class="meta-item">
+        <div class="label">Người tạo</div>
+        <div class="value">${generatedBy}</div>
+      </div>
+    </div>
+    
+    <div class="summary">
+      <div class="summary-card cpk">
+        <div class="value" style="color: ${cpkStatus.color}">${(latestPeriod?.avgCpk || 0).toFixed(2)}</div>
+        <div class="label">CPK Trung bình</div>
+        <div class="change ${cpkChange >= 0 ? 'trend-up' : 'trend-down'}">
+          ${cpkChange >= 0 ? '↑' : '↓'} ${Math.abs(cpkChange).toFixed(1)}%
+        </div>
+      </div>
+      <div class="summary-card ppk">
+        <div class="value">${(latestPeriod?.avgPpk || 0).toFixed(2)}</div>
+        <div class="label">PPK Trung bình</div>
+      </div>
+      <div class="summary-card samples">
+        <div class="value">${(latestPeriod?.totalSamples || 0).toLocaleString('vi-VN')}</div>
+        <div class="label">Tổng mẫu</div>
+      </div>
+      <div class="summary-card defect">
+        <div class="value">${(latestPeriod?.defectRate || 0).toFixed(2)}%</div>
+        <div class="label">Tỷ lệ lỗi</div>
+        <div class="change ${defectRateChange <= 0 ? 'trend-up' : 'trend-down'}">
+          ${defectRateChange <= 0 ? '↓' : '↑'} ${Math.abs(defectRateChange).toFixed(2)}%
+        </div>
+      </div>
+    </div>
+    
+    <div class="section">
+      <h2>📈 Dữ liệu theo ${periodTypeLabels[periodType] || 'Kỳ'}</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Kỳ</th>
+            <th>CPK TB</th>
+            <th>PPK TB</th>
+            <th>Số mẫu</th>
+            <th>Vi phạm</th>
+            <th>Tỷ lệ lỗi</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${periodData.map(p => `
+            <tr>
+              <td><strong>${p.period}</strong></td>
+              <td style="color: ${getCpkStatus(p.avgCpk).color}">${p.avgCpk.toFixed(2)}</td>
+              <td>${p.avgPpk.toFixed(2)}</td>
+              <td>${p.totalSamples.toLocaleString('vi-VN')}</td>
+              <td>${p.totalViolations.toLocaleString('vi-VN')}</td>
+              <td>${p.defectRate.toFixed(2)}%</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+    
+    <div class="section">
+      <h2>📋 Đánh giá</h2>
+      <p style="padding: 15px; background: #f3f4f6; border-radius: 6px; border-left: 4px solid ${cpkStatus.color};">
+        <strong>Trạng thái hiện tại:</strong> 
+        <span class="status-badge" style="background: ${cpkStatus.color}; color: white;">${cpkStatus.text}</span>
+        <br><br>
+        CPK trung bình kỳ hiện tại là <strong>${(latestPeriod?.avgCpk || 0).toFixed(2)}</strong>, 
+        ${cpkChange >= 0 ? 'tăng' : 'giảm'} <strong>${Math.abs(cpkChange).toFixed(1)}%</strong> so với kỳ trước.
+        ${latestPeriod?.avgCpk >= 1.33 
+          ? 'Quy trình đang hoạt động ổn định và đáp ứng yêu cầu chất lượng.' 
+          : 'Cần xem xét và cải thiện quy trình để nâng cao chỉ số CPK.'}
+      </p>
+    </div>
+    
+    <div class="footer">
+      <p>Báo cáo được tạo tự động bởi Hệ thống CPK/SPC Calculator</p>
+      <p>© ${new Date().getFullYear()} - Tất cả quyền được bảo lưu</p>
+    </div>
+  </div>
+</body>
+</html>
+  `.trim();
 }

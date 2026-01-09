@@ -26,7 +26,9 @@ import {
   FileText,
   Calendar,
   ArrowUpRight,
-  ArrowDownRight
+  ArrowDownRight,
+  FileDown,
+  Loader2
 } from "lucide-react";
 import {
   Chart as ChartJS,
@@ -100,6 +102,44 @@ export default function QualityTrendReport() {
       toast({ title: "Lỗi", description: error.message, variant: "destructive" });
     },
   });
+
+  const [isExporting, setIsExporting] = useState(false);
+
+  const exportPdfMutation = trpc.qualityTrend.exportPdf.useMutation({
+    onSuccess: (result) => {
+      // Open HTML in new window for printing/saving as PDF
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(result.htmlContent);
+        printWindow.document.close();
+        toast({ title: "Thành công", description: "Báo cáo đã được tạo. Nhấn Ctrl+P để in hoặc lưu PDF." });
+      } else {
+        // Fallback: download as HTML file
+        const blob = new Blob([result.htmlContent], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = result.filename;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast({ title: "Thành công", description: "Báo cáo đã được tải xuống." });
+      }
+      setIsExporting(false);
+    },
+    onError: (error) => {
+      toast({ title: "Lỗi", description: error.message, variant: "destructive" });
+      setIsExporting(false);
+    },
+  });
+
+  const handleExportPdf = () => {
+    if (!selectedConfig) {
+      toast({ title: "Lỗi", description: "Vui lòng chọn cấu hình báo cáo", variant: "destructive" });
+      return;
+    }
+    setIsExporting(true);
+    exportPdfMutation.mutate({ configId: selectedConfig });
+  };
 
   const deleteMutation = trpc.qualityTrend.deleteConfig.useMutation({
     onSuccess: () => {
@@ -262,6 +302,18 @@ export default function QualityTrendReport() {
             </p>
           </div>
           <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={handleExportPdf}
+              disabled={isExporting || !selectedConfig}
+            >
+              {isExporting ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <FileDown className="w-4 h-4 mr-2" />
+              )}
+              Export PDF
+            </Button>
             <Button
               variant="outline"
               onClick={() => refetchReport()}

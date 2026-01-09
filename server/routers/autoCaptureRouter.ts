@@ -374,4 +374,144 @@ export const autoCaptureRouter = router({
         message: "Đã kích hoạt chụp ảnh. Kết quả sẽ được cập nhật sau khi phân tích hoàn tất.",
       };
     }),
+
+  // Test camera connection
+  testCameraConnection: protectedProcedure
+    .input(z.object({
+      cameraUrl: z.string().min(1, "URL camera không được để trống"),
+      cameraType: z.enum(["ip_camera", "usb_camera", "rtsp", "http_snapshot"]),
+      username: z.string().optional(),
+      password: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const startTime = Date.now();
+      
+      try {
+        let testUrl = input.cameraUrl;
+        
+        // For HTTP-based cameras, try to fetch a snapshot or check connectivity
+        if (input.cameraType === "http_snapshot" || input.cameraType === "ip_camera") {
+          const headers: Record<string, string> = {};
+          
+          if (input.username && input.password) {
+            const auth = Buffer.from(`${input.username}:${input.password}`).toString('base64');
+            headers['Authorization'] = `Basic ${auth}`;
+          }
+          
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 10000);
+          
+          try {
+            const response = await fetch(testUrl, {
+              method: 'GET',
+              headers,
+              signal: controller.signal,
+            });
+            
+            clearTimeout(timeoutId);
+            const responseTime = Date.now() - startTime;
+            
+            if (response.ok) {
+              const contentType = response.headers.get('content-type') || '';
+              const isImage = contentType.includes('image');
+              const isVideo = contentType.includes('video') || contentType.includes('multipart');
+              
+              return {
+                success: true,
+                message: `Kết nối thành công! ${isImage ? 'Phát hiện hình ảnh' : isVideo ? 'Phát hiện video stream' : 'Server phản hồi OK'}`,
+                responseTime,
+                contentType,
+                statusCode: response.status,
+              };
+            } else {
+              return {
+                success: false,
+                message: `Server trả về lỗi: HTTP ${response.status} ${response.statusText}`,
+                responseTime,
+                statusCode: response.status,
+              };
+            }
+          } catch (fetchError) {
+            clearTimeout(timeoutId);
+            throw fetchError;
+          }
+        }
+        
+        // For RTSP streams, validate URL format
+        if (input.cameraType === "rtsp") {
+          const rtspRegex = /^rtsp:\/\/([^:]+:[^@]+@)?[\w.-]+(:\d+)?(\/.*)?$/i;
+          
+          if (!rtspRegex.test(testUrl)) {
+            return {
+              success: false,
+              message: "URL RTSP không hợp lệ. Định dạng: rtsp://[user:pass@]host[:port]/path",
+              responseTime: Date.now() - startTime,
+            };
+          }
+          
+          const urlMatch = testUrl.match(/rtsp:\/\/(?:[^:]+:[^@]+@)?([\w.-]+)(?::(\d+))?/);
+          if (urlMatch) {
+            const host = urlMatch[1];
+            const port = urlMatch[2] || '554';
+            
+            return {
+              success: true,
+              message: `URL RTSP hợp lệ. Host: ${host}, Port: ${port}. Lưu ý: Kiểm tra kết nối RTSP thực tế cần thực hiện từ client.`,
+              responseTime: Date.now() - startTime,
+              host,
+              port: parseInt(port),
+            };
+          }
+        }
+        
+        // For USB cameras
+        if (input.cameraType === "usb_camera") {
+          return {
+            success: true,
+            message: "USB Camera sẽ được truy cập qua trình duyệt. Vui lòng cấp quyền camera khi được yêu cầu.",
+            responseTime: Date.now() - startTime,
+          };
+        }
+        
+        return {
+          success: false,
+          message: "Loại camera không được hỗ trợ",
+          responseTime: Date.now() - startTime,
+        };
+        
+      } catch (error) {
+        const responseTime = Date.now() - startTime;
+        const errorMessage = error instanceof Error ? error.message : "Lỗi không xác định";
+        
+        if (errorMessage.includes('abort')) {
+          return {
+            success: false,
+            message: "Kết nối quá thời gian (timeout 10s). Kiểm tra lại URL và kết nối mạng.",
+            responseTime,
+          };
+        }
+        
+        if (errorMessage.includes('ECONNREFUSED')) {
+          return {
+            success: false,
+            message: "Không thể kết nối. Kiểm tra camera đã bật và địa chỉ IP/Port đúng.",
+            responseTime,
+          };
+        }
+        
+        if (errorMessage.includes('ENOTFOUND')) {
+          return {
+            success: false,
+            message: "Không tìm thấy host. Kiểm tra lại địa chỉ IP hoặc tên miền.",
+            responseTime,
+          };
+        }
+        
+        return {
+          success: false,
+          message: `Lỗi kết nối: ${errorMessage}`,
+          responseTime,
+        };
+      }
+    }),
 });

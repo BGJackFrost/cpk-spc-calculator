@@ -28,7 +28,10 @@ import {
   RefreshCw,
   BarChart3,
   Settings,
-  History
+  History,
+  Wifi,
+  WifiOff,
+  Loader2
 } from "lucide-react";
 
 export default function AutoCapture() {
@@ -95,6 +98,39 @@ export default function AutoCapture() {
       toast({ title: "Lỗi", description: error.message, variant: "destructive" });
     },
   });
+
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string; responseTime?: number } | null>(null);
+  const [isTesting, setIsTesting] = useState(false);
+
+  const testCameraMutation = trpc.autoCapture.testCameraConnection.useMutation({
+    onSuccess: (result) => {
+      setTestResult(result);
+      if (result.success) {
+        toast({ title: "Kết nối thành công", description: result.message });
+      } else {
+        toast({ title: "Kết nối thất bại", description: result.message, variant: "destructive" });
+      }
+      setIsTesting(false);
+    },
+    onError: (error) => {
+      setTestResult({ success: false, message: error.message });
+      toast({ title: "Lỗi", description: error.message, variant: "destructive" });
+      setIsTesting(false);
+    },
+  });
+
+  const handleTestCamera = () => {
+    if (!formData.cameraUrl) {
+      toast({ title: "Lỗi", description: "Vui lòng nhập URL camera", variant: "destructive" });
+      return;
+    }
+    setIsTesting(true);
+    setTestResult(null);
+    testCameraMutation.mutate({
+      cameraUrl: formData.cameraUrl,
+      cameraType: formData.cameraType,
+    });
+  };
 
   const triggerMutation = trpc.autoCapture.triggerCapture.useMutation({
     onSuccess: () => {
@@ -230,12 +266,35 @@ export default function AutoCapture() {
 
                 <div className="space-y-2">
                   <Label htmlFor="cameraUrl">URL Camera</Label>
-                  <Input
-                    id="cameraUrl"
-                    value={formData.cameraUrl}
-                    onChange={(e) => setFormData({ ...formData, cameraUrl: e.target.value })}
-                    placeholder="rtsp://192.168.1.100:554/stream"
-                  />
+                  <div className="flex gap-2">
+                    <Input
+                      id="cameraUrl"
+                      value={formData.cameraUrl}
+                      onChange={(e) => setFormData({ ...formData, cameraUrl: e.target.value })}
+                      placeholder="rtsp://192.168.1.100:554/stream"
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleTestCamera}
+                      disabled={isTesting || !formData.cameraUrl}
+                    >
+                      {isTesting ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Wifi className="w-4 h-4" />
+                      )}
+                      <span className="ml-2">Test</span>
+                    </Button>
+                  </div>
+                  {testResult && (
+                    <div className={`flex items-center gap-2 text-sm mt-2 p-2 rounded ${testResult.success ? 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400' : 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400'}`}>
+                      {testResult.success ? <CheckCircle className="w-4 h-4" /> : <WifiOff className="w-4 h-4" />}
+                      <span>{testResult.message}</span>
+                      {testResult.responseTime && <span className="text-xs opacity-70">({testResult.responseTime}ms)</span>}
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-2">

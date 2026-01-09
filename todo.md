@@ -8792,3 +8792,23 @@
 - [x] Bảng thống kê tổng hợp theo tuần/tháng/quý
 - [x] Tính toán xu hướng cải thiện/suy giảm
 - [ ] Xuất báo cáo xu hướng PDF/Excel
+
+## Phase 10.1 - Camera RTSP Test, Webhook Slack/Teams, Export PDF
+
+### Tích hợp Camera thực tế
+- [x] Thêm endpoint testCameraConnection để kiểm tra kết nối camera IP/RTSP
+- [x] Hỗ trợ kiểm tra URL RTSP format
+- [x] Hỗ trợ kiểm tra HTTP camera snapshot với timeout 10s
+- [x] Thêm nút Test Camera trong form tạo lịch chụp
+- [x] Hiển thị kết quả test (thành công/thất bại, response time)
+
+### Cấu hình Webhook Slack/Teams
+- [x] Đã có sẵn trang UnifiedWebhooks hỗ trợ Slack, Teams, Discord, Custom
+- [x] Đã có sẵn endpoint test webhook
+- [x] Đã có sẵn lịch sử webhook logs
+
+### Export Báo cáo PDF
+- [x] Thêm endpoint exportPdf trong qualityTrendRouter
+- [x] Tạo hàm generateQualityTrendPdfContent sinh HTML cho PDF
+- [x] Thêm nút Export PDF trong trang QualityTrendReport
+- [x] Hỗ trợ in/save as PDF từ trình duyệt
