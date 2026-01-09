@@ -1,29 +1,141 @@
 /**
  * User Notification Router
  * API endpoints cho quản lý thông báo realtime của người dùng
+ * Bao gồm: lọc theo loại, thời gian, tìm kiếm theo nội dung
  */
 
 import { z } from 'zod';
 import { router, protectedProcedure } from '../_core/trpc';
 import { getDb } from '../db';
 import { userNotifications } from '../../drizzle/schema';
-import { eq, and, desc, sql } from 'drizzle-orm';
+import { eq, and, desc, sql, gte, lte, like, or } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
 import { sendSseEvent } from '../sse';
 
 export const userNotificationRouter = router({
-  // Lấy danh sách thông báo của user hiện tại
+  // Lấy danh sách thông báo với bộ lọc nâng cao
   list: protectedProcedure
     .input(z.object({
       limit: z.number().min(1).max(100).optional().default(50),
+      offset: z.number().min(0).optional().default(0),
       unreadOnly: z.boolean().optional().default(false),
+      // Lọc theo loại thông báo
       type: z.enum(['report_sent', 'spc_violation', 'cpk_alert', 'system', 'anomaly_detected']).optional(),
+      types: z.array(z.enum(['report_sent', 'spc_violation', 'cpk_alert', 'system', 'anomaly_detected'])).optional(),
+      // Lọc theo mức độ nghiêm trọng
+      severity: z.enum(['info', 'warning', 'critical']).optional(),
+      severities: z.array(z.enum(['info', 'warning', 'critical'])).optional(),
+      // Lọc theo thời gian
+      timeRange: z.enum(['today', '7days', '30days', 'custom']).optional(),
+      startDate: z.string().optional(), // ISO date string
+      endDate: z.string().optional(), // ISO date string
+      // Tìm kiếm theo nội dung
+      search: z.string().optional(),
     }).optional())
     .query(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
-      const conditions = [eq(userNotifications.userId, ctx.user.id)];
+      const conditions: any[] = [eq(userNotifications.userId, ctx.user.id)];
+      
+      // Lọc theo trạng thái đọc
+      if (input?.unreadOnly) {
+        conditions.push(eq(userNotifications.isRead, 0));
+      }
+      
+      // Lọc theo loại thông báo (single)
+      if (input?.type) {
+        conditions.push(eq(userNotifications.type, input.type));
+      }
+      
+      // Lọc theo nhiều loại thông báo
+      if (input?.types && input.types.length > 0) {
+        const typeConditions = input.types.map(t => eq(userNotifications.type, t));
+        conditions.push(or(...typeConditions));
+      }
+      
+      // Lọc theo mức độ nghiêm trọng (single)
+      if (input?.severity) {
+        conditions.push(eq(userNotifications.severity, input.severity));
+      }
+      
+      // Lọc theo nhiều mức độ nghiêm trọng
+      if (input?.severities && input.severities.length > 0) {
+        const severityConditions = input.severities.map(s => eq(userNotifications.severity, s));
+        conditions.push(or(...severityConditions));
+      }
+      
+      // Lọc theo thời gian
+      if (input?.timeRange) {
+        const now = new Date();
+        let startDate: Date | null = null;
+        
+        switch (input.timeRange) {
+          case 'today':
+            startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            break;
+          case '7days':
+            startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            break;
+          case '30days':
+            startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+            break;
+          case 'custom':
+            if (input.startDate) {
+              startDate = new Date(input.startDate);
+            }
+            break;
+        }
+        
+        if (startDate) {
+          conditions.push(gte(userNotifications.createdAt, startDate.toISOString().slice(0, 19).replace('T', ' ')));
+        }
+        
+        if (input.timeRange === 'custom' && input.endDate) {
+          const endDate = new Date(input.endDate);
+          endDate.setHours(23, 59, 59, 999);
+          conditions.push(lte(userNotifications.createdAt, endDate.toISOString().slice(0, 19).replace('T', ' ')));
+        }
+      }
+      
+      // Tìm kiếm theo nội dung
+      if (input?.search && input.search.trim()) {
+        const searchTerm = `%${input.search.trim()}%`;
+        conditions.push(or(
+          like(userNotifications.title, searchTerm),
+          like(userNotifications.message, searchTerm)
+        ));
+      }
+
+      const notifications = await db
+        .select()
+        .from(userNotifications)
+        .where(and(...conditions))
+        .orderBy(desc(userNotifications.createdAt))
+        .limit(input?.limit || 50)
+        .offset(input?.offset || 0);
+
+      return notifications;
+    }),
+
+  // Đếm số thông báo theo bộ lọc
+  getCount: protectedProcedure
+    .input(z.object({
+      unreadOnly: z.boolean().optional().default(false),
+      type: z.enum(['report_sent', 'spc_violation', 'cpk_alert', 'system', 'anomaly_detected']).optional(),
+      types: z.array(z.enum(['report_sent', 'spc_violation', 'cpk_alert', 'system', 'anomaly_detected'])).optional(),
+      severity: z.enum(['info', 'warning', 'critical']).optional(),
+      severities: z.array(z.enum(['info', 'warning', 'critical'])).optional(),
+      timeRange: z.enum(['today', '7days', '30days', 'custom']).optional(),
+      startDate: z.string().optional(),
+      endDate: z.string().optional(),
+      search: z.string().optional(),
+    }).optional())
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+      const conditions: any[] = [eq(userNotifications.userId, ctx.user.id)];
       
       if (input?.unreadOnly) {
         conditions.push(eq(userNotifications.isRead, 0));
@@ -32,15 +144,67 @@ export const userNotificationRouter = router({
       if (input?.type) {
         conditions.push(eq(userNotifications.type, input.type));
       }
+      
+      if (input?.types && input.types.length > 0) {
+        const typeConditions = input.types.map(t => eq(userNotifications.type, t));
+        conditions.push(or(...typeConditions));
+      }
+      
+      if (input?.severity) {
+        conditions.push(eq(userNotifications.severity, input.severity));
+      }
+      
+      if (input?.severities && input.severities.length > 0) {
+        const severityConditions = input.severities.map(s => eq(userNotifications.severity, s));
+        conditions.push(or(...severityConditions));
+      }
+      
+      if (input?.timeRange) {
+        const now = new Date();
+        let startDate: Date | null = null;
+        
+        switch (input.timeRange) {
+          case 'today':
+            startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            break;
+          case '7days':
+            startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            break;
+          case '30days':
+            startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+            break;
+          case 'custom':
+            if (input.startDate) {
+              startDate = new Date(input.startDate);
+            }
+            break;
+        }
+        
+        if (startDate) {
+          conditions.push(gte(userNotifications.createdAt, startDate.toISOString().slice(0, 19).replace('T', ' ')));
+        }
+        
+        if (input.timeRange === 'custom' && input.endDate) {
+          const endDate = new Date(input.endDate);
+          endDate.setHours(23, 59, 59, 999);
+          conditions.push(lte(userNotifications.createdAt, endDate.toISOString().slice(0, 19).replace('T', ' ')));
+        }
+      }
+      
+      if (input?.search && input.search.trim()) {
+        const searchTerm = `%${input.search.trim()}%`;
+        conditions.push(or(
+          like(userNotifications.title, searchTerm),
+          like(userNotifications.message, searchTerm)
+        ));
+      }
 
-      const notifications = await db
-        .select()
+      const result = await db
+        .select({ count: sql<number>`COUNT(*)` })
         .from(userNotifications)
-        .where(and(...conditions))
-        .orderBy(desc(userNotifications.createdAt))
-        .limit(input?.limit || 50);
+        .where(and(...conditions));
 
-      return notifications;
+      return { count: result[0]?.count || 0 };
     }),
 
   // Đếm số thông báo chưa đọc
@@ -58,6 +222,87 @@ export const userNotificationRouter = router({
         ));
 
       return { count: result[0]?.count || 0 };
+    }),
+
+  // Lấy thống kê thông báo theo loại và mức độ
+  getStats: protectedProcedure
+    .input(z.object({
+      timeRange: z.enum(['today', '7days', '30days', 'all']).optional().default('all'),
+    }).optional())
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+      const conditions: any[] = [eq(userNotifications.userId, ctx.user.id)];
+      
+      if (input?.timeRange && input.timeRange !== 'all') {
+        const now = new Date();
+        let startDate: Date | null = null;
+        
+        switch (input.timeRange) {
+          case 'today':
+            startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            break;
+          case '7days':
+            startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            break;
+          case '30days':
+            startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+            break;
+        }
+        
+        if (startDate) {
+          conditions.push(gte(userNotifications.createdAt, startDate.toISOString().slice(0, 19).replace('T', ' ')));
+        }
+      }
+
+      // Đếm theo loại
+      const byType = await db
+        .select({
+          type: userNotifications.type,
+          count: sql<number>`COUNT(*)`,
+        })
+        .from(userNotifications)
+        .where(and(...conditions))
+        .groupBy(userNotifications.type);
+
+      // Đếm theo mức độ nghiêm trọng
+      const bySeverity = await db
+        .select({
+          severity: userNotifications.severity,
+          count: sql<number>`COUNT(*)`,
+        })
+        .from(userNotifications)
+        .where(and(...conditions))
+        .groupBy(userNotifications.severity);
+
+      // Đếm chưa đọc
+      const unreadResult = await db
+        .select({ count: sql<number>`COUNT(*)` })
+        .from(userNotifications)
+        .where(and(
+          ...conditions,
+          eq(userNotifications.isRead, 0)
+        ));
+
+      // Tổng số
+      const totalResult = await db
+        .select({ count: sql<number>`COUNT(*)` })
+        .from(userNotifications)
+        .where(and(...conditions));
+
+      return {
+        total: totalResult[0]?.count || 0,
+        unread: unreadResult[0]?.count || 0,
+        byType: byType.reduce((acc, item) => {
+          acc[item.type] = item.count;
+          return acc;
+        }, {} as Record<string, number>),
+        bySeverity: bySeverity.reduce((acc, item) => {
+          acc[item.severity] = item.count;
+          return acc;
+        }, {} as Record<string, number>),
+      };
     }),
 
   // Đánh dấu thông báo đã đọc
@@ -114,6 +359,62 @@ export const userNotificationRouter = router({
       return { success: true };
     }),
 
+  // Đánh dấu nhiều thông báo đã đọc theo bộ lọc
+  markFilteredAsRead: protectedProcedure
+    .input(z.object({
+      type: z.enum(['report_sent', 'spc_violation', 'cpk_alert', 'system', 'anomaly_detected']).optional(),
+      severity: z.enum(['info', 'warning', 'critical']).optional(),
+      timeRange: z.enum(['today', '7days', '30days']).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+      const conditions: any[] = [
+        eq(userNotifications.userId, ctx.user.id),
+        eq(userNotifications.isRead, 0)
+      ];
+      
+      if (input.type) {
+        conditions.push(eq(userNotifications.type, input.type));
+      }
+      
+      if (input.severity) {
+        conditions.push(eq(userNotifications.severity, input.severity));
+      }
+      
+      if (input.timeRange) {
+        const now = new Date();
+        let startDate: Date | null = null;
+        
+        switch (input.timeRange) {
+          case 'today':
+            startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            break;
+          case '7days':
+            startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            break;
+          case '30days':
+            startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+            break;
+        }
+        
+        if (startDate) {
+          conditions.push(gte(userNotifications.createdAt, startDate.toISOString().slice(0, 19).replace('T', ' ')));
+        }
+      }
+
+      const result = await db
+        .update(userNotifications)
+        .set({
+          isRead: 1,
+          readAt: new Date().toISOString().slice(0, 19).replace('T', ' '),
+        })
+        .where(and(...conditions));
+
+      return { success: true, count: result[0]?.affectedRows || 0 };
+    }),
+
   // Xóa thông báo
   delete: protectedProcedure
     .input(z.object({
@@ -158,6 +459,44 @@ export const userNotificationRouter = router({
         ));
 
       return { success: true };
+    }),
+
+  // Xóa thông báo theo bộ lọc
+  deleteFiltered: protectedProcedure
+    .input(z.object({
+      type: z.enum(['report_sent', 'spc_violation', 'cpk_alert', 'system', 'anomaly_detected']).optional(),
+      severity: z.enum(['info', 'warning', 'critical']).optional(),
+      readOnly: z.boolean().optional().default(true), // Mặc định chỉ xóa đã đọc
+      olderThan: z.number().optional(), // Số ngày
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+      const conditions: any[] = [eq(userNotifications.userId, ctx.user.id)];
+      
+      if (input.readOnly) {
+        conditions.push(eq(userNotifications.isRead, 1));
+      }
+      
+      if (input.type) {
+        conditions.push(eq(userNotifications.type, input.type));
+      }
+      
+      if (input.severity) {
+        conditions.push(eq(userNotifications.severity, input.severity));
+      }
+      
+      if (input.olderThan) {
+        const cutoffDate = new Date(Date.now() - input.olderThan * 24 * 60 * 60 * 1000);
+        conditions.push(lte(userNotifications.createdAt, cutoffDate.toISOString().slice(0, 19).replace('T', ' ')));
+      }
+
+      const result = await db
+        .delete(userNotifications)
+        .where(and(...conditions));
+
+      return { success: true, count: result[0]?.affectedRows || 0 };
     }),
 });
 

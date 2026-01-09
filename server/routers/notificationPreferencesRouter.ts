@@ -8,6 +8,14 @@ import { router, protectedProcedure } from '../_core/trpc';
 import * as notificationPreferencesService from '../services/notificationPreferencesService';
 
 export const notificationPreferencesRouter = router({
+  // Alias for getMyPreferences (used by NotificationChannelsSettings page)
+  get: protectedProcedure
+    .query(async ({ ctx }) => {
+      const userId = ctx.user.id;
+      const prefs = await notificationPreferencesService.getOrCreatePreferences(userId);
+      return prefs;
+    }),
+
   // Get current user's notification preferences
   getMyPreferences: protectedProcedure
     .query(async ({ ctx }) => {
@@ -49,6 +57,41 @@ export const notificationPreferencesRouter = router({
       });
 
       return updated;
+    }),
+
+  // Update notification preferences (alias for updatePreferences)
+  update: protectedProcedure
+    .input(z.object({
+      emailEnabled: z.number().min(0).max(1).optional(),
+      emailAddress: z.string().optional().nullable(),
+      telegramEnabled: z.number().min(0).max(1).optional(),
+      telegramChatId: z.string().optional().nullable(),
+      pushEnabled: z.number().min(0).max(1).optional(),
+      severityFilter: z.enum(['all', 'warning_up', 'critical_only']).optional(),
+      quietHoursEnabled: z.number().min(0).max(1).optional(),
+      quietHoursStart: z.string().optional(),
+      quietHoursEnd: z.string().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.user.id;
+      
+      // Ensure preferences exist
+      await notificationPreferencesService.getOrCreatePreferences(userId);
+      
+      // Update preferences
+      await notificationPreferencesService.updatePreferences(userId, {
+        emailEnabled: input.emailEnabled === 1 ? true : input.emailEnabled === 0 ? false : undefined,
+        emailAddress: input.emailAddress ?? undefined,
+        telegramEnabled: input.telegramEnabled === 1 ? true : input.telegramEnabled === 0 ? false : undefined,
+        telegramChatId: input.telegramChatId ?? undefined,
+        pushEnabled: input.pushEnabled === 1 ? true : input.pushEnabled === 0 ? false : undefined,
+        severityFilter: input.severityFilter,
+        quietHoursEnabled: input.quietHoursEnabled === 1 ? true : input.quietHoursEnabled === 0 ? false : undefined,
+        quietHoursStart: input.quietHoursStart,
+        quietHoursEnd: input.quietHoursEnd,
+      });
+
+      return { success: true };
     }),
 
   // Reset to default preferences

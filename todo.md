@@ -9160,3 +9160,62 @@
 - [x] Cho phép chọn nhiều dây chuyền để so sánh
 - [x] Hiển thị các chỉ số: CPK, Độ ổn định, Chất lượng, Tuân thủ
 - [x] Thêm route và menu navigation cho trang so sánh
+
+
+## Phase 11 - Lọc thông báo, Notification Email/Telegram, So sánh lịch sử Radar
+
+### Lọc/Tìm kiếm thông báo
+- [ ] Thêm bộ lọc theo loại thông báo (alert, info, warning, success)
+- [ ] Thêm bộ lọc theo khoảng thời gian (hôm nay, 7 ngày, 30 ngày, tùy chỉnh)
+- [ ] Thêm chức năng tìm kiếm theo nội dung thông báo
+- [ ] Cập nhật UI NotificationBell với các bộ lọc
+
+### Notification qua Email/Telegram khi có cảnh báo nghiêm trọng
+- [ ] Tạo bảng notification_channels để lưu cấu hình email/Telegram
+- [ ] Tạo trang cấu hình kênh thông báo (email, Telegram)
+- [ ] Tích hợp gửi email khi có cảnh báo nghiêm trọng (CPK < 1.0)
+- [ ] Tích hợp gửi Telegram khi có cảnh báo nghiêm trọng
+- [ ] Cho phép user tùy chỉnh ngưỡng cảnh báo
+
+### So sánh lịch sử Radar Chart theo thời gian
+- [ ] Tạo API endpoint lấy lịch sử Radar Chart data
+- [ ] Tạo UI so sánh Radar Chart theo thời gian
+- [ ] Cho phép chọn 2+ thời điểm để so sánh
+- [ ] Hiển thị xu hướng cải tiến/suy giảm giữa các thời điểm
+- [ ] Xuất báo cáo so sánh lịch sử
+
+
+
+## Phase 11 New - Lọc thông báo, Notification Channels, Radar Chart History
+
+### Sửa lỗi Database
+- [x] Sửa lỗi database scheduled_reports (thiếu cột description, created_at, updated_at)
+
+### Lọc/Tìm kiếm Thông báo
+- [x] Cập nhật userNotificationRouter với chức năng lọc nâng cao
+- [x] Thêm filter theo loại thông báo (type)
+- [x] Thêm filter theo mức độ nghiêm trọng (severity)
+- [x] Thêm filter theo thời gian (startDate, endDate)
+- [x] Thêm tìm kiếm theo nội dung (search)
+- [x] Cập nhật NotificationBell component với bộ lọc
+
+### Tích hợp Notification Email/Telegram
+- [x] Tạo criticalAlertService cho gửi cảnh báo đa kênh
+- [x] Tích hợp gửi email khi có cảnh báo nghiêm trọng
+- [x] Tích hợp gửi Telegram khi có cảnh báo nghiêm trọng
+- [x] Tạo notificationPreferencesRouter cho cấu hình người dùng
+- [x] Tạo NotificationChannelsSettings page
+
+### So sánh Lịch sử Radar Chart
+- [x] Tạo cpkHistoryRouter cho lấy dữ liệu lịch sử CPK
+- [x] Tạo RadarChartHistoryComparison component
+- [x] Hỗ trợ so sánh overlay và side-by-side
+- [x] Timeline animation slider
+- [x] Biểu đồ xu hướng CPK theo thời gian
+- [x] Bảng chi tiết so sánh các thời điểm
+
+### Unit Tests
+- [x] Viết tests cho userNotificationRouter
+- [x] Viết tests cho notificationPreferencesRouter
+- [x] Viết tests cho criticalAlertService
+- [x] Viết tests cho cpkHistoryRouter

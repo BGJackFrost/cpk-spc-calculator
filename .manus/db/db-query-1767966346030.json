@@ -1,0 +1,190 @@
+{
+  "query": "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'scheduled_reports' ORDER BY ORDINAL_POSITION;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'scheduled_reports' ORDER BY ORDINAL_POSITION;",
+  "rows": [
+    {
+      "COLUMN_NAME": "id"
+    },
+    {
+      "COLUMN_NAME": "id"
+    },
+    {
+      "COLUMN_NAME": "id"
+    },
+    {
+      "COLUMN_NAME": "name"
+    },
+    {
+      "COLUMN_NAME": "name"
+    },
+    {
+      "COLUMN_NAME": "name"
+    },
+    {
+      "COLUMN_NAME": "reportType"
+    },
+    {
+      "COLUMN_NAME": "description"
+    },
+    {
+      "COLUMN_NAME": "description"
+    },
+    {
+      "COLUMN_NAME": "reportType"
+    },
+    {
+      "COLUMN_NAME": "user_id"
+    },
+    {
+      "COLUMN_NAME": "dayOfWeek"
+    },
+    {
+      "COLUMN_NAME": "dayOfMonth"
+    },
+    {
+      "COLUMN_NAME": "report_type"
+    },
+    {
+      "COLUMN_NAME": "schedule"
+    },
+    {
+      "COLUMN_NAME": "dayOfWeek"
+    },
+    {
+      "COLUMN_NAME": "sendHour"
+    },
+    {
+      "COLUMN_NAME": "schedule_type"
+    },
+    {
+      "COLUMN_NAME": "dayOfMonth"
+    },
+    {
+      "COLUMN_NAME": "timezone"
+    },
+    {
+      "COLUMN_NAME": "reportType"
+    },
+    {
+      "COLUMN_NAME": "timeOfDay"
+    },
+    {
+      "COLUMN_NAME": "recipients"
+    },
+    {
+      "COLUMN_NAME": "frequency"
+    },
+    {
+      "COLUMN_NAME": "includeMetrics"
+    },
+    {
+      "COLUMN_NAME": "dayOfWeek"
+    },
+    {
+      "COLUMN_NAME": "recipients"
+    },
+    {
+      "COLUMN_NAME": "includePeriodComparison"
+    },
+    {
+      "COLUMN_NAME": "dayOfMonth"
+    },
+    {
+      "COLUMN_NAME": "isActive"
+    },
+    {
+      "COLUMN_NAME": "timeOfDay"
+    },
+    {
+      "COLUMN_NAME": "lastRunAt"
+    },
+    {
+      "COLUMN_NAME": "includeCharts"
+    },
+    {
+      "COLUMN_NAME": "recipients"
+    },
+    {
+      "COLUMN_NAME": "nextRunAt"
+    },
+    {
+      "COLUMN_NAME": "isEnabled"
+    },
+    {
+      "COLUMN_NAME": "machineIds"
+    },
+    {
+      "COLUMN_NAME": "createdBy"
+    },
+    {
+      "COLUMN_NAME": "lastSentAt"
+    },
+    {
+      "COLUMN_NAME": "productionLineIds"
+    },
+    {
+      "COLUMN_NAME": "createdAt"
+    },
+    {
+      "COLUMN_NAME": "nextSendAt"
+    },
+    {
+      "COLUMN_NAME": "updatedAt"
+    },
+    {
+      "COLUMN_NAME": "createdBy"
+    },
+    {
+      "COLUMN_NAME": "includeCharts"
+    },
+    {
+      "COLUMN_NAME": "createdAt"
+    },
+    {
+      "COLUMN_NAME": "includeTrends"
+    },
+    {
+      "COLUMN_NAME": "includeAlerts"
+    },
+    {
+      "COLUMN_NAME": "updatedAt"
+    },
+    {
+      "COLUMN_NAME": "format"
+    },
+    {
+      "COLUMN_NAME": "lastSentAt"
+    },
+    {
+      "COLUMN_NAME": "lastSentStatus"
+    },
+    {
+      "COLUMN_NAME": "lastSentError"
+    },
+    {
+      "COLUMN_NAME": "isActive"
+    },
+    {
+      "COLUMN_NAME": "createdBy"
+    },
+    {
+      "COLUMN_NAME": "createdAt"
+    },
+    {
+      "COLUMN_NAME": "updatedAt"
+    },
+    {
+      "COLUMN_NAME": "is_active"
+    },
+    {
+      "COLUMN_NAME": "schedule_time"
+    },
+    {
+      "COLUMN_NAME": "schedule_day_of_week"
+    }
+  ],
+  "messages": [],
+  "stdout": "COLUMN_NAME\nid\nid\nid\nname\nname\nname\nreportType\ndescription\ndescription\nreportType\nuser_id\ndayOfWeek\ndayOfMonth\nreport_type\nschedule\ndayOfWeek\nsendHour\nschedule_type\ndayOfMonth\ntimezone\nreportType\ntimeOfDay\nrecipients\nfrequency\nincludeMetrics\ndayOfWeek\nrecipients\nincludePeriodComparison\ndayOfMonth\nisActive\ntimeOfDay\nlastRunAt\nincludeCharts\nrecipients\nnextRunAt\nisEnabled\nmachineIds\ncreatedBy\nlastSentAt\nproductionLineIds\ncreatedAt\nnextSendAt\nupdatedAt\ncreatedBy\nincludeCharts\ncreatedAt\nincludeTrends\nincludeAlerts\nupdatedAt\nformat\nlastSentAt\nlastSentStatus\nlastSentError\nisActive\ncreatedBy\ncreatedAt\nupdatedAt\nis_active\nschedule_time\nschedule_day_of_week\n",
+  "stderr": "",
+  "execution_time_ms": 1547
+}
