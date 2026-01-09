@@ -9247,3 +9247,19 @@
 - [x] Bao gồm biểu đồ Radar Chart so sánh xu hướng cải tiến
 - [x] Cho phép chọn người nhận báo cáo
 
+
+
+## Bug Fixes - Build/Deployment (Jan 10, 2026)
+
+### Lỗi Build bị Kill (exit code 137 - Out of Memory)
+- [x] Tối ưu vite.config.ts với aggressive chunk splitting để giảm memory usage
+- [x] Tách vendors thành nhiều chunks nhỏ hơn (three, jspdf, xlsx, recharts, chartjs, etc.)
+- [x] Giảm max-old-space-size từ 4096 xuống 3584 phù hợp với môi trường
+- [x] Disable minification để giảm memory usage khi build
+- [x] Tạo swap file 4GB để tăng virtual memory
+
+### Lỗi Import trong scheduledReportService.ts
+- [x] Sửa import db từ "../_core/context" sang getDb từ "../db"
+- [x] Sửa import sendEmail từ "./emailService" sang "../emailService"
+- [x] Thay thế tất cả db. thành (await getDb()). trong file
+

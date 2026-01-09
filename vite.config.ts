@@ -24,27 +24,87 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
-    // Code splitting configuration
+    // Optimize for lower memory usage
+    target: 'es2020',
+    cssCodeSplit: true,
+    // Code splitting configuration - aggressive splitting to reduce chunk size
     rollupOptions: {
       output: {
         manualChunks(id) {
-          // Vendor chunks based on module path
           if (id.includes('node_modules')) {
-            if (id.includes('react') || id.includes('wouter')) {
-              return 'vendor-react';
+            // Three.js ecosystem - very large
+            if (id.includes('three') || id.includes('@react-three')) {
+              return 'v-three';
             }
+            // PDF export
+            if (id.includes('jspdf')) {
+              return 'v-jspdf';
+            }
+            // HTML to canvas
+            if (id.includes('html2canvas')) {
+              return 'v-html2canvas';
+            }
+            // Excel
+            if (id.includes('xlsx')) {
+              return 'v-xlsx';
+            }
+            // Recharts
+            if (id.includes('recharts')) {
+              return 'v-recharts';
+            }
+            // Chart.js
+            if (id.includes('chart.js') || id.includes('react-chartjs')) {
+              return 'v-chartjs';
+            }
+            // D3
+            if (id.includes('d3')) {
+              return 'v-d3';
+            }
+            // React
+            if (id.includes('react-dom')) {
+              return 'v-react-dom';
+            }
+            if (id.includes('react')) {
+              return 'v-react';
+            }
+            // Radix UI - split by component
             if (id.includes('@radix-ui')) {
-              return 'vendor-ui';
+              const match = id.match(/@radix-ui\/react-([^/]+)/);
+              if (match) {
+                return `v-radix-${match[1]}`;
+              }
+              return 'v-radix';
             }
-            if (id.includes('recharts') || id.includes('d3')) {
-              return 'vendor-charts';
+            // Lucide icons
+            if (id.includes('lucide')) {
+              return 'v-icons';
             }
-            if (id.includes('@trpc') || id.includes('@tanstack')) {
-              return 'vendor-trpc';
+            // tRPC
+            if (id.includes('@trpc')) {
+              return 'v-trpc';
             }
-            if (id.includes('date-fns') || id.includes('lodash') || id.includes('zod')) {
-              return 'vendor-utils';
+            // TanStack
+            if (id.includes('@tanstack')) {
+              return 'v-tanstack';
             }
+            // Date-fns
+            if (id.includes('date-fns')) {
+              return 'v-date';
+            }
+            // Zod
+            if (id.includes('zod')) {
+              return 'v-zod';
+            }
+            // Form
+            if (id.includes('react-hook-form') || id.includes('@hookform')) {
+              return 'v-form';
+            }
+            // DnD
+            if (id.includes('@dnd-kit')) {
+              return 'v-dnd';
+            }
+            // Other vendors
+            return 'v-misc';
           }
         },
         // Chunk naming
@@ -52,11 +112,23 @@ export default defineConfig({
         entryFileNames: 'assets/[name]-[hash].js',
         assetFileNames: 'assets/[name]-[hash].[ext]',
       },
+      // Reduce memory by limiting parallel processing
+      maxParallelFileOps: 1,
     },
     // Performance optimizations
-    chunkSizeWarningLimit: 1000,
+    chunkSizeWarningLimit: 10000,
     sourcemap: false,
-    minify: 'esbuild',
+    // Disable minification to reduce memory during build
+    minify: false,
+    // Reduce memory usage
+    reportCompressedSize: false,
+    // Disable inline assets
+    assetsInlineLimit: 0,
+  },
+  // Optimize deps
+  optimizeDeps: {
+    include: ['react', 'react-dom'],
+    exclude: ['@react-three/fiber', '@react-three/drei', 'three'],
   },
   server: {
     host: true,

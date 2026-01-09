@@ -1,7 +1,7 @@
-import { db } from "../_core/context";
+import { getDb } from "../db";
 import { scheduledReports, scheduledReportLogs, productionLines, products, spcAnalysisHistory } from "../../drizzle/schema";
 import { eq, and, desc, lte, gte, inArray } from "drizzle-orm";
-import { sendEmail } from "./emailService";
+import { sendEmail } from "../emailService";
 import { storagePut } from "../storage";
 
 interface ReportResult {
@@ -27,7 +27,7 @@ async function generateReportContent(report: any): Promise<{
   if (report.productionLineIds) {
     const lineIds = JSON.parse(report.productionLineIds);
     if (lineIds.length > 0) {
-      const lines = await db
+      const lines = await (await getDb())
         .select({ name: productionLines.name })
         .from(productionLines)
         .where(inArray(productionLines.id, lineIds));
@@ -40,7 +40,7 @@ async function generateReportContent(report: any): Promise<{
   if (report.productIds) {
     const prodIds = JSON.parse(report.productIds);
     if (prodIds.length > 0) {
-      const prods = await db
+      const prods = await (await getDb())
         .select({ name: products.name })
         .from(products)
         .where(inArray(products.id, prodIds));
@@ -54,7 +54,7 @@ async function generateReportContent(report: any): Promise<{
   
   const dateFrom = report.scheduleType === 'daily' ? yesterday : lastWeek;
   
-  const analyses = await db
+  const analyses = await (await getDb())
     .select()
     .from(spcAnalysisHistory)
     .where(gte(spcAnalysisHistory.analyzedAt, dateFrom.toISOString().slice(0, 19).replace('T', ' ')))
@@ -373,7 +373,7 @@ export async function processDueReports(): Promise<void> {
   const nowStr = now.toISOString().slice(0, 19).replace('T', ' ');
   
   // Get reports that are due
-  const dueReports = await db
+  const dueReports = await (await getDb())
     .select()
     .from(scheduledReports)
     .where(and(
@@ -383,7 +383,7 @@ export async function processDueReports(): Promise<void> {
   
   for (const report of dueReports) {
     // Create log entry
-    const [logResult] = await db.insert(scheduledReportLogs).values({
+    const [logResult] = await (await getDb()).insert(scheduledReportLogs).values({
       reportId: report.id,
       status: 'running',
       recipientCount: JSON.parse(report.recipients as string || '[]').length,
@@ -394,7 +394,7 @@ export async function processDueReports(): Promise<void> {
       const result = await generateAndSendReport(report);
       
       // Update log
-      await db.update(scheduledReportLogs)
+      await (await getDb()).update(scheduledReportLogs)
         .set({
           status: result.success ? 'success' : 'failed',
           completedAt: new Date().toISOString().slice(0, 19).replace('T', ' '),
@@ -412,7 +412,7 @@ export async function processDueReports(): Promise<void> {
       );
       
       // Update report
-      await db.update(scheduledReports)
+      await (await getDb()).update(scheduledReports)
         .set({
           lastRunAt: nowStr,
           lastRunStatus: result.success ? 'success' : 'failed',
@@ -422,7 +422,7 @@ export async function processDueReports(): Promise<void> {
         .where(eq(scheduledReports.id, report.id));
         
     } catch (error: any) {
-      await db.update(scheduledReportLogs)
+      await (await getDb()).update(scheduledReportLogs)
         .set({
           status: 'failed',
           completedAt: new Date().toISOString().slice(0, 19).replace('T', ' '),
@@ -430,7 +430,7 @@ export async function processDueReports(): Promise<void> {
         })
         .where(eq(scheduledReportLogs.id, logId));
       
-      await db.update(scheduledReports)
+      await (await getDb()).update(scheduledReports)
         .set({
           lastRunAt: nowStr,
           lastRunStatus: 'failed',
