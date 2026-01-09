@@ -47,6 +47,7 @@ import CpkRealtimeAlertWidget from "@/components/CpkRealtimeAlertWidget";
 import AiPredictedCpkDashboardWidget from "@/components/AiPredictedCpkDashboardWidget";
 import AiDefectAlertsDashboardWidget from "@/components/AiDefectAlertsDashboardWidget";
 import { AiOverviewDashboard } from "@/components/ai/AiOverviewWidgets";
+import RadarChartHistoryWidget from "@/components/RadarChartHistoryWidget";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -244,6 +245,12 @@ export default function Dashboard() {
                 >
                   Connection Pool Monitor
                 </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem
+                  checked={isWidgetVisible("radar_chart_history")}
+                  onCheckedChange={() => handleToggleWidget("radar_chart_history")}
+                >
+                  Xu hướng CPK (Radar Chart)
+                </DropdownMenuCheckboxItem>
               </DropdownMenuContent>
             </DropdownMenu>
             {isCompleted && (
@@ -344,6 +351,9 @@ export default function Dashboard() {
             
             {/* Connection Pool Monitoring Widget */}
             {user?.role === 'admin' && isWidgetVisible("connection_pool") && <ConnectionPoolWidget />}
+            
+            {/* Radar Chart History Widget - Xu hướng CPK */}
+            {isWidgetVisible("radar_chart_history") && <RadarChartHistoryWidget />}
           </div>
         </div>
         

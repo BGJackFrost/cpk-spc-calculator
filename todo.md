@@ -9219,3 +9219,31 @@
 - [x] Viết tests cho notificationPreferencesRouter
 - [x] Viết tests cho criticalAlertService
 - [x] Viết tests cho cpkHistoryRouter
+
+
+## Phase 12 - Dashboard Integration, Webhook Notifications, và Báo cáo Email tự động
+
+### Tích hợp RadarChartHistoryComparison vào Dashboard chính
+- [x] Thêm widget RadarChartHistoryComparison vào Dashboard
+- [x] Tạo card hiển thị xu hướng CPK theo thời gian
+- [x] Cho phép người dùng tùy chỉnh hiển thị widget
+- [x] Quick access từ Dashboard đến trang so sánh chi tiết
+
+### Webhook Notification cho hệ thống bên ngoài
+- [x] Tạo bảng webhook_configs để lưu cấu hình webhook
+- [x] Tạo trang quản lý Webhook (CRUD)
+- [x] Tích hợp gửi webhook đến Slack
+- [x] Tích hợp gửi webhook đến Microsoft Teams
+- [x] Hỗ trợ custom webhook URL
+- [x] Retry mechanism khi gửi webhook thất bại
+- [x] Log lịch sử gửi webhook
+
+### Báo cáo tự động gửi email định kỳ
+- [x] Tạo bảng scheduled_email_reports để lưu cấu hình báo cáo
+- [x] Tạo trang quản lý Báo cáo định kỳ
+- [x] Tạo service tạo báo cáo PDF với Radar Chart
+- [x] Tích hợp gửi email với attachment PDF
+- [x] Hỗ trợ lịch trình: hàng ngày, hàng tuần, hàng tháng
+- [x] Bao gồm biểu đồ Radar Chart so sánh xu hướng cải tiến
+- [x] Cho phép chọn người nhận báo cáo
+

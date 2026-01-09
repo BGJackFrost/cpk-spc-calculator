@@ -555,6 +555,58 @@ export const unifiedWebhookRouter = router({
         successRate: stats?.total ? Math.round((stats.sent / stats.total) * 100) : 0,
       };
     }),
+
+  // Send CPK alert webhook
+  sendCpkAlert: protectedProcedure
+    .input(z.object({
+      productCode: z.string(),
+      productionLineName: z.string(),
+      currentCpk: z.number(),
+      cpkThreshold: z.number().default(1.33),
+      actionUrl: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const { sendCpkAlert } = await import("../cpkWebhookNotificationService");
+      return sendCpkAlert(
+        input.productCode,
+        input.productionLineName,
+        input.currentCpk,
+        input.cpkThreshold,
+        input.actionUrl
+      );
+    }),
+
+  // Send Radar Chart comparison notification
+  sendRadarChartComparison: protectedProcedure
+    .input(z.object({
+      productCode: z.string(),
+      productionLineName: z.string(),
+      radarChartData: z.array(z.object({
+        metric: z.string(),
+        current: z.number(),
+        previous: z.number(),
+      })),
+      reportPeriod: z.string(),
+      actionUrl: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const { sendRadarChartComparisonNotification } = await import("../cpkWebhookNotificationService");
+      return sendRadarChartComparisonNotification(
+        input.productCode,
+        input.productionLineName,
+        input.radarChartData,
+        input.reportPeriod,
+        input.actionUrl
+      );
+    }),
+
+  // Test CPK webhook
+  testCpkWebhook: protectedProcedure
+    .input(z.object({ configId: z.number() }))
+    .mutation(async ({ input }) => {
+      const { testCpkWebhook } = await import("../cpkWebhookNotificationService");
+      return testCpkWebhook(input.configId);
+    }),
 });
 
 // Export helper function for use in other services

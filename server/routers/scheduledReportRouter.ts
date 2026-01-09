@@ -108,7 +108,7 @@ export const scheduledReportRouter = router({
     .input(z.object({
       name: z.string().min(1, 'Tên báo cáo không được để trống'),
       description: z.string().optional(),
-      reportType: z.enum(['spc_summary', 'cpk_analysis', 'violation_report', 'production_line_status', 'ai_vision_dashboard']),
+      reportType: z.enum(['spc_summary', 'cpk_analysis', 'violation_report', 'production_line_status', 'ai_vision_dashboard', 'radar_chart_comparison']),
       scheduleType: z.enum(['daily', 'weekly', 'monthly']),
       scheduleTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Định dạng thời gian không hợp lệ'),
       scheduleDayOfWeek: z.number().min(0).max(6).optional().nullable(),
@@ -158,7 +158,7 @@ export const scheduledReportRouter = router({
       id: z.number(),
       name: z.string().min(1).optional(),
       description: z.string().optional().nullable(),
-      reportType: z.enum(['spc_summary', 'cpk_analysis', 'violation_report', 'production_line_status', 'ai_vision_dashboard']).optional(),
+      reportType: z.enum(['spc_summary', 'cpk_analysis', 'violation_report', 'production_line_status', 'ai_vision_dashboard', 'radar_chart_comparison']).optional(),
       scheduleType: z.enum(['daily', 'weekly', 'monthly']).optional(),
       scheduleTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).optional(),
       scheduleDayOfWeek: z.number().min(0).max(6).optional().nullable(),

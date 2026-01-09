@@ -295,6 +295,8 @@ import UnifiedRealtimeDashboard from "./pages/UnifiedRealtimeDashboard";
 import AiVisionDashboard from "./pages/AiVisionDashboard";
 import LineComparison from "./pages/LineComparison";
 import SpcScheduledReports from "./pages/SpcScheduledReports";
+import CpkHistoryComparison from "./pages/CpkHistoryComparison";
+import ScheduledEmailReports from "./pages/ScheduledEmailReports";
 
 function Router() {
   return (
@@ -597,6 +599,9 @@ function Router() {
       <Route path="/ai-vision-dashboard" component={AiVisionDashboard} />
       <Route path="/line-comparison" component={LineComparison} />
       <Route path="/spc-scheduled-reports" component={SpcScheduledReports} />
+      {/* Phase 12 - CPK History Comparison, Webhook Notifications */}
+      <Route path="/cpk-history-comparison" component={CpkHistoryComparison} />
+      <Route path="/scheduled-email-reports" component={ScheduledEmailReports} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
