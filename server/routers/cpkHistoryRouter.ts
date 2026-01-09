@@ -54,10 +54,11 @@ export const cpkHistoryRouter = router({
           conditions.push(eq(shiftReports.productionLineId, input.productionLineId));
         }
 
-        // Get CPK data grouped by date
+        // Get CPK data grouped by date - use raw SQL to avoid GROUP BY issues
+        const dateExpr = sql`DATE(${shiftReports.shiftDate})`;
         const results = await db
           .select({
-            date: sql<string>`DATE(${shiftReports.shiftDate})`.as("date"),
+            date: dateExpr.as("date"),
             avgCpk: sql<number>`AVG(${shiftReports.cpk})`.as("avgCpk"),
             avgOee: sql<number>`AVG(${shiftReports.oee})`.as("avgOee"),
             avgQuality: sql<number>`AVG(${shiftReports.quality})`.as("avgQuality"),
@@ -67,8 +68,8 @@ export const cpkHistoryRouter = router({
           })
           .from(shiftReports)
           .where(and(...conditions))
-          .groupBy(sql`DATE(${shiftReports.shiftDate})`)
-          .orderBy(sql`DATE(${shiftReports.shiftDate})`);
+          .groupBy(dateExpr)
+          .orderBy(dateExpr);
 
         return results.map(r => ({
           date: r.date,

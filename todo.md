@@ -9325,3 +9325,24 @@
 - [x] Thêm dashboard.getStats public procedure cho landing page
 - [x] Thêm import publicProcedure, products, spcAnalysisHistory, sql vào routers-extended.ts
 - [x] Viết test cho dashboard.getStats
+
+
+## Bug Fixes - Jan 10, 2026 (Trang trắng)
+
+- [ ] Fix TypeError: Cannot set properties of undefined (setting 'unstable_now')
+- [ ] Fix CORS errors blocking manifest.json and API requests
+- [ ] Fix 503 errors on API endpoints
+- [ ] Add better loading states for landing page
+- [ ] Review and optimize other pages for similar issues
+- [ ] Create new checkpoint and republish
+
+
+## Bug Fixes - Jan 10, 2026 (Trang trắng và lỗi console)
+
+- [x] Sửa lỗi NaN trong polyline charts (UnifiedSummaryWidget.tsx)
+- [x] Sửa lỗi NaN trong DualAxisChart (UnifiedSummaryWidget.tsx)
+- [x] Sửa lỗi NaN trong ComparisonChart (AiPredictionHistory.tsx)
+- [x] Sửa manifest.json - loại bỏ screenshots không tồn tại
+- [x] Cập nhật index.html - sửa meta tag deprecated (mobile-web-app-capable)
+- [x] Loại bỏ analytics script gây lỗi CSP
+- [x] Sửa lỗi GROUP BY trong cpkHistoryRouter.ts (only_full_group_by)

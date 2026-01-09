@@ -55,9 +55,29 @@ function ComparisonChart({ data }: { data: Array<{ date: string; predicted: numb
     );
   }
 
-  const maxValue = Math.max(...data.map(d => Math.max(d.predicted, d.actual || 0)));
+  // Filter out NaN values and ensure valid numbers
+  const safeData = data.filter(d => 
+    typeof d.predicted === 'number' && !isNaN(d.predicted) && isFinite(d.predicted)
+  );
+  
+  if (safeData.length === 0) {
+    return (
+      <div className="h-48 flex items-center justify-center text-muted-foreground">
+        Dữ liệu không hợp lệ
+      </div>
+    );
+  }
+
+  const maxValue = Math.max(...safeData.map(d => Math.max(d.predicted, d.actual || 0)));
   const minValue = Math.min(...validData.map(d => Math.min(d.predicted, d.actual || Infinity)));
   const range = maxValue - minValue || 1;
+
+  // Safe point calculation helper
+  const safePoint = (x: number, y: number) => {
+    const safeX = isNaN(x) || !isFinite(x) ? 10 : x;
+    const safeY = isNaN(y) || !isFinite(y) ? 75 : y;
+    return `${safeX},${safeY}`;
+  };
 
   return (
     <div className="h-48 relative">
@@ -66,38 +86,44 @@ function ComparisonChart({ data }: { data: Array<{ date: string; predicted: numb
           <line key={i} x1="0" y1={30 * i + 15} x2="400" y2={30 * i + 15} stroke="currentColor" strokeOpacity="0.1" strokeDasharray="4" />
         ))}
         
-        <polyline
-          fill="none"
-          stroke="#3b82f6"
-          strokeWidth="2"
-          points={data.map((d, i) => {
-            const x = (i / (data.length - 1)) * 380 + 10;
-            const y = 135 - ((d.predicted - minValue) / range) * 120;
-            return `${x},${y}`;
-          }).join(" ")}
-        />
+        {safeData.length > 1 && (
+          <polyline
+            fill="none"
+            stroke="#3b82f6"
+            strokeWidth="2"
+            points={safeData.map((d, i) => {
+              const x = (i / (safeData.length - 1)) * 380 + 10;
+              const y = 135 - ((d.predicted - minValue) / range) * 120;
+              return safePoint(x, y);
+            }).join(" ")}
+          />
+        )}
         
-        <polyline
-          fill="none"
-          stroke="#22c55e"
-          strokeWidth="2"
-          strokeDasharray="4"
-          points={validData.map((d) => {
-            const origIndex = data.findIndex(od => od === d);
-            const x = (origIndex / (data.length - 1)) * 380 + 10;
-            const y = 135 - (((d.actual || 0) - minValue) / range) * 120;
-            return `${x},${y}`;
-          }).join(" ")}
-        />
+        {validData.length > 1 && (
+          <polyline
+            fill="none"
+            stroke="#22c55e"
+            strokeWidth="2"
+            strokeDasharray="4"
+            points={validData.map((d, i) => {
+              const x = (i / (validData.length - 1)) * 380 + 10;
+              const y = 135 - (((d.actual || 0) - minValue) / range) * 120;
+              return safePoint(x, y);
+            }).join(" ")}
+          />
+        )}
         
-        {data.map((d, i) => {
-          const x = (i / (data.length - 1)) * 380 + 10;
+        {safeData.map((d, i) => {
+          const x = (i / (safeData.length - 1 || 1)) * 380 + 10;
           const yPred = 135 - ((d.predicted - minValue) / range) * 120;
           const yActual = d.actual !== null ? 135 - ((d.actual - minValue) / range) * 120 : null;
+          const safeX = isNaN(x) || !isFinite(x) ? 10 : x;
+          const safeYPred = isNaN(yPred) || !isFinite(yPred) ? 75 : yPred;
+          const safeYActual = yActual !== null && !isNaN(yActual) && isFinite(yActual) ? yActual : null;
           return (
             <g key={i}>
-              <circle cx={x} cy={yPred} r="3" fill="#3b82f6" />
-              {yActual !== null && <circle cx={x} cy={yActual} r="3" fill="#22c55e" />}
+              <circle cx={safeX} cy={safeYPred} r="3" fill="#3b82f6" />
+              {safeYActual !== null && <circle cx={safeX} cy={safeYActual} r="3" fill="#22c55e" />}
             </g>
           );
         })}

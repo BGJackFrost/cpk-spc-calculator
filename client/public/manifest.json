@@ -67,20 +67,6 @@
       "icons": [{ "src": "/favicon-48x48.png", "sizes": "48x48" }]
     }
   ],
-  "screenshots": [
-    {
-      "src": "/screenshot-wide.png",
-      "sizes": "1280x720",
-      "type": "image/png",
-      "form_factor": "wide"
-    },
-    {
-      "src": "/screenshot-narrow.png",
-      "sizes": "750x1334",
-      "type": "image/png",
-      "form_factor": "narrow"
-    }
-  ],
   "related_applications": [],
   "prefer_related_applications": false,
   "categories": ["business", "productivity", "utilities"],

@@ -22,16 +22,38 @@ interface MiniChartProps {
 }
 
 function MiniLineChart({ data, color, height = 40 }: MiniChartProps) {
-  if (!data || data.length === 0) return null;
+  // Filter out NaN, null, undefined values and ensure we have valid data
+  const validData = data?.filter((v) => typeof v === 'number' && !isNaN(v) && isFinite(v)) || [];
   
-  const max = Math.max(...data);
-  const min = Math.min(...data);
+  if (validData.length === 0) {
+    return (
+      <svg width="100%" height={height} className="overflow-visible">
+        <line x1="0" y1={height/2} x2="100%" y2={height/2} stroke="#e5e7eb" strokeWidth="1" strokeDasharray="4" />
+      </svg>
+    );
+  }
+  
+  if (validData.length === 1) {
+    // Single point - show as a horizontal line
+    return (
+      <svg width="100%" height={height} className="overflow-visible">
+        <line x1="0" y1={height/2} x2="100%" y2={height/2} stroke={color} strokeWidth="2" />
+        <circle cx="50%" cy={height/2} r="3" fill={color} />
+      </svg>
+    );
+  }
+  
+  const max = Math.max(...validData);
+  const min = Math.min(...validData);
   const range = max - min || 1;
   
-  const points = data.map((value, index) => {
-    const x = (index / (data.length - 1)) * 100;
+  const points = validData.map((value, index) => {
+    const x = (index / (validData.length - 1)) * 100;
     const y = height - ((value - min) / range) * height;
-    return `${x},${y}`;
+    // Ensure x and y are valid numbers
+    const safeX = isNaN(x) || !isFinite(x) ? 0 : x;
+    const safeY = isNaN(y) || !isFinite(y) ? height / 2 : y;
+    return `${safeX},${safeY}`;
   }).join(" ");
 
   return (
@@ -45,7 +67,11 @@ function MiniLineChart({ data, color, height = 40 }: MiniChartProps) {
       {/* Last point indicator */}
       <circle
         cx={100}
-        cy={height - ((data[data.length - 1] - min) / range) * height}
+        cy={(() => {
+          const lastValue = validData[validData.length - 1];
+          const y = height - ((lastValue - min) / range) * height;
+          return isNaN(y) || !isFinite(y) ? height / 2 : y;
+        })()}
         r="3"
         fill={color}
       />
@@ -292,30 +318,38 @@ function DualAxisChart({ oeeData, cpkData }: DualAxisChartProps) {
   const width = 100; // percentage
   const padding = { top: 10, right: 40, bottom: 20, left: 40 };
 
-  // Calculate scales
-  const oeeMin = Math.min(...oeeData, 0);
-  const oeeMax = Math.max(...oeeData, 100);
-  const cpkMin = Math.min(...cpkData, 0);
-  const cpkMax = Math.max(...cpkData, 2);
+  // Filter valid data
+  const validOeeData = oeeData?.filter((v) => typeof v === 'number' && !isNaN(v) && isFinite(v)) || [];
+  const validCpkData = cpkData?.filter((v) => typeof v === 'number' && !isNaN(v) && isFinite(v)) || [];
+
+  // Calculate scales with safe defaults
+  const oeeMin = validOeeData.length > 0 ? Math.min(...validOeeData, 0) : 0;
+  const oeeMax = validOeeData.length > 0 ? Math.max(...validOeeData, 100) : 100;
+  const cpkMin = validCpkData.length > 0 ? Math.min(...validCpkData, 0) : 0;
+  const cpkMax = validCpkData.length > 0 ? Math.max(...validCpkData, 2) : 2;
 
   const oeeRange = oeeMax - oeeMin || 1;
   const cpkRange = cpkMax - cpkMin || 1;
 
   const chartHeight = height - padding.top - padding.bottom;
-  const maxPoints = Math.max(oeeData.length, cpkData.length);
+  const maxPoints = Math.max(validOeeData.length, validCpkData.length, 1);
 
-  // Generate OEE points
-  const oeePoints = oeeData.map((value, index) => {
+  // Generate OEE points with NaN protection
+  const oeePoints = validOeeData.map((value, index) => {
     const x = padding.left + (index / (maxPoints - 1 || 1)) * (width - padding.left - padding.right);
     const y = padding.top + chartHeight - ((value - oeeMin) / oeeRange) * chartHeight;
-    return `${x}%,${y}`;
+    const safeX = isNaN(x) || !isFinite(x) ? padding.left : x;
+    const safeY = isNaN(y) || !isFinite(y) ? padding.top + chartHeight / 2 : y;
+    return `${safeX}%,${safeY}`;
   }).join(" ");
 
-  // Generate CPK points (scaled to same visual range)
-  const cpkPoints = cpkData.map((value, index) => {
+  // Generate CPK points (scaled to same visual range) with NaN protection
+  const cpkPoints = validCpkData.map((value, index) => {
     const x = padding.left + (index / (maxPoints - 1 || 1)) * (width - padding.left - padding.right);
     const y = padding.top + chartHeight - ((value - cpkMin) / cpkRange) * chartHeight;
-    return `${x}%,${y}`;
+    const safeX = isNaN(x) || !isFinite(x) ? padding.left : x;
+    const safeY = isNaN(y) || !isFinite(y) ? padding.top + chartHeight / 2 : y;
+    return `${safeX}%,${safeY}`;
   }).join(" ");
 
   // Y-axis labels
@@ -339,7 +373,7 @@ function DualAxisChart({ oeeData, cpkData }: DualAxisChartProps) {
         ))}
 
         {/* OEE line */}
-        {oeeData.length > 0 && (
+        {validOeeData.length > 0 && oeePoints && (
           <polyline
             fill="none"
             stroke="#3b82f6"
@@ -349,7 +383,7 @@ function DualAxisChart({ oeeData, cpkData }: DualAxisChartProps) {
         )}
 
         {/* CPK line */}
-        {cpkData.length > 0 && (
+        {validCpkData.length > 0 && cpkPoints && (
           <polyline
             fill="none"
             stroke="#8b5cf6"
@@ -359,24 +393,28 @@ function DualAxisChart({ oeeData, cpkData }: DualAxisChartProps) {
         )}
 
         {/* OEE points */}
-        {oeeData.map((value, index) => {
+        {validOeeData.map((value, index) => {
           const x = padding.left + (index / (maxPoints - 1 || 1)) * (width - padding.left - padding.right);
           const y = padding.top + chartHeight - ((value - oeeMin) / oeeRange) * chartHeight;
+          const safeX = isNaN(x) || !isFinite(x) ? padding.left : x;
+          const safeY = isNaN(y) || !isFinite(y) ? padding.top + chartHeight / 2 : y;
           return (
             <g key={`oee-${index}`}>
-              <circle cx={`${x}%`} cy={y} r="4" fill="#3b82f6" />
+              <circle cx={`${safeX}%`} cy={safeY} r="4" fill="#3b82f6" />
               <title>OEE: {value.toFixed(1)}%</title>
             </g>
           );
         })}
 
         {/* CPK points */}
-        {cpkData.map((value, index) => {
+        {validCpkData.map((value, index) => {
           const x = padding.left + (index / (maxPoints - 1 || 1)) * (width - padding.left - padding.right);
           const y = padding.top + chartHeight - ((value - cpkMin) / cpkRange) * chartHeight;
+          const safeX = isNaN(x) || !isFinite(x) ? padding.left : x;
+          const safeY = isNaN(y) || !isFinite(y) ? padding.top + chartHeight / 2 : y;
           return (
             <g key={`cpk-${index}`}>
-              <circle cx={`${x}%`} cy={y} r="4" fill="#8b5cf6" />
+              <circle cx={`${safeX}%`} cy={safeY} r="4" fill="#8b5cf6" />
               <title>CPK: {value.toFixed(2)}</title>
             </g>
           );
