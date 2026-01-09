@@ -9280,3 +9280,12 @@
 - [x] Sửa lỗi query.getSQL is not a function trong ScheduledMttrMtbf service (sử dụng sql template literal thay vì object)
 - [x] Tối ưu bundle size với minification (enable esbuild minification trong vite.config.ts)
 - [x] Thêm lazy loading cho các trang ít sử dụng (tạo LazyRoutes.tsx với 125+ lazy loaded pages)
+
+
+## Phase 10.x - Performance Optimization
+
+### Lazy Loading và Code Splitting
+- [x] Tích hợp lazy routes vào App.tsx để kích hoạt lazy loading thực sự
+- [x] Sửa lỗi query.where is not a function trong predictiveMaintenanceService.ts
+- [x] Thêm code splitting cho Three.js bằng dynamic imports
+- [x] Thêm code splitting cho Chart.js bằng dynamic imports (recharts)

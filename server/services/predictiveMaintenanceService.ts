@@ -262,23 +262,21 @@ export async function getDeviceHealthHistory(
   const db = await getDb();
   if (!db) return [];
 
+  // Build conditions array
+  const conditions = [eq(iotDeviceHealthHistory.deviceId, deviceId)];
+  
+  if (options?.startDate) {
+    conditions.push(gte(iotDeviceHealthHistory.recordedAt, options.startDate.toISOString()));
+  }
+  if (options?.endDate) {
+    conditions.push(lte(iotDeviceHealthHistory.recordedAt, options.endDate.toISOString()));
+  }
+
   let query = db
     .select()
     .from(iotDeviceHealthHistory)
-    .where(eq(iotDeviceHealthHistory.deviceId, deviceId));
-
-  if (options?.startDate) {
-    query = query.where(
-      gte(iotDeviceHealthHistory.recordedAt, options.startDate.toISOString())
-    ) as any;
-  }
-  if (options?.endDate) {
-    query = query.where(
-      lte(iotDeviceHealthHistory.recordedAt, options.endDate.toISOString())
-    ) as any;
-  }
-
-  query = query.orderBy(desc(iotDeviceHealthHistory.recordedAt)) as any;
+    .where(and(...conditions))
+    .orderBy(desc(iotDeviceHealthHistory.recordedAt));
 
   if (options?.limit) {
     query = query.limit(options.limit) as any;
