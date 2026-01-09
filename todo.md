@@ -9263,3 +9263,20 @@
 - [x] Sửa import sendEmail từ "./emailService" sang "../emailService"
 - [x] Thay thế tất cả db. thành (await getDb()). trong file
 
+
+
+## Bug Fixes - Performance Optimization (Jan 10, 2026)
+
+### Sửa lỗi query.getSQL is not a function
+- [ ] Sửa lỗi query.getSQL is not a function trong ScheduledMttrMtbf service
+
+### Tối ưu Bundle Size
+- [ ] Enable minification sau khi deploy thành công
+- [ ] Thêm lazy loading cho các trang ít sử dụng
+
+
+## Bug Fixes - Performance Optimization (Jan 10, 2026)
+
+- [x] Sửa lỗi query.getSQL is not a function trong ScheduledMttrMtbf service (sử dụng sql template literal thay vì object)
+- [x] Tối ưu bundle size với minification (enable esbuild minification trong vite.config.ts)
+- [x] Thêm lazy loading cho các trang ít sử dụng (tạo LazyRoutes.tsx với 125+ lazy loaded pages)

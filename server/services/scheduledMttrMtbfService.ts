@@ -8,6 +8,7 @@ import { getDb } from '../db';
 import { sendEmail, getSmtpConfig } from '../emailService';
 import { mttrMtbfExportService } from '../mttrMtbfExportService';
 import telegramService from './telegramService';
+import { sql } from 'drizzle-orm';
 
 // Types
 export interface ScheduledMttrMtbfConfig {
@@ -39,12 +40,15 @@ export async function getScheduledMttrMtbfConfigs(userId?: number): Promise<Sche
   if (!db) return [];
 
   try {
-    const result = await db.execute({
-      sql: `SELECT * FROM scheduled_mttr_mtbf_reports ${userId ? 'WHERE created_by = ?' : ''} ORDER BY created_at DESC`,
-      args: userId ? [userId] : [],
-    } as any);
+    // Use sql template literal for drizzle-orm mysql2 driver
+    const query = userId 
+      ? sql`SELECT * FROM scheduled_mttr_mtbf_reports WHERE created_by = ${userId} ORDER BY created_at DESC`
+      : sql`SELECT * FROM scheduled_mttr_mtbf_reports ORDER BY created_at DESC`;
+    const result = await db.execute(query);
 
-    return ((result as any).rows || []).map((row: any) => ({
+    // Result is [rows, fields] for mysql2
+    const rows = Array.isArray(result) ? result[0] : (result as any).rows || [];
+    return (rows as any[]).map((row: any) => ({
       id: row.id,
       name: row.name,
       targetType: row.target_type,
@@ -78,30 +82,31 @@ export async function createScheduledMttrMtbfConfig(config: ScheduledMttrMtbfCon
   if (!db) return null;
 
   try {
-    const result = await db.execute({
-      sql: `INSERT INTO scheduled_mttr_mtbf_reports 
-            (name, target_type, target_id, target_name, frequency, day_of_week, day_of_month, 
-             time_of_day, recipients, format, notification_channel, telegram_config_id, is_active, created_by)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      args: [
-        config.name,
-        config.targetType,
-        config.targetId,
-        config.targetName,
-        config.frequency,
-        config.dayOfWeek || null,
-        config.dayOfMonth || null,
-        config.timeOfDay,
-        JSON.stringify(config.recipients),
-        config.format,
-        config.notificationChannel || 'email',
-        config.telegramConfigId || null,
-        config.isActive ? 1 : 0,
-        config.createdBy || null,
-      ],
-    } as any);
+    const result = await db.execute(sql`
+      INSERT INTO scheduled_mttr_mtbf_reports 
+      (name, target_type, target_id, target_name, frequency, day_of_week, day_of_month, 
+       time_of_day, recipients, format, notification_channel, telegram_config_id, is_active, created_by)
+      VALUES (
+        ${config.name},
+        ${config.targetType},
+        ${config.targetId},
+        ${config.targetName},
+        ${config.frequency},
+        ${config.dayOfWeek || null},
+        ${config.dayOfMonth || null},
+        ${config.timeOfDay},
+        ${JSON.stringify(config.recipients)},
+        ${config.format},
+        ${config.notificationChannel || 'email'},
+        ${config.telegramConfigId || null},
+        ${config.isActive ? 1 : 0},
+        ${config.createdBy || null}
+      )
+    `);
 
-    return Number((result as any).insertId);
+    // Result is [ResultSetHeader, ...] for mysql2 INSERT
+    const resultHeader = Array.isArray(result) ? result[0] : result;
+    return Number((resultHeader as any).insertId);
   } catch (error) {
     console.error('[ScheduledMttrMtbf] Error creating config:', error);
     return null;
@@ -186,11 +191,9 @@ export async function updateScheduledMttrMtbfConfig(id: number, config: Partial<
 
     if (updates.length === 0) return true;
 
-    args.push(id);
-    await db.execute({
-      sql: `UPDATE scheduled_mttr_mtbf_reports SET ${updates.join(', ')} WHERE id = ?`,
-      args,
-    } as any);
+    // Use sql.raw for dynamic UPDATE query
+    const setClause = updates.map((u, i) => u.replace('?', `$${i + 1}`)).join(', ');
+    await db.execute(sql.raw(`UPDATE scheduled_mttr_mtbf_reports SET ${updates.join(', ')} WHERE id = ?`, [...args, id]));
 
     return true;
   } catch (error) {
@@ -207,10 +210,7 @@ export async function deleteScheduledMttrMtbfConfig(id: number): Promise<boolean
   if (!db) return false;
 
   try {
-    await db.execute({
-      sql: 'DELETE FROM scheduled_mttr_mtbf_reports WHERE id = ?',
-      args: [id],
-    } as any);
+    await db.execute(sql`DELETE FROM scheduled_mttr_mtbf_reports WHERE id = ${id}`);
     return true;
   } catch (error) {
     console.error('[ScheduledMttrMtbf] Error deleting config:', error);

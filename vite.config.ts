@@ -118,8 +118,8 @@ export default defineConfig({
     // Performance optimizations
     chunkSizeWarningLimit: 10000,
     sourcemap: false,
-    // Disable minification to reduce memory during build
-    minify: false,
+    // Enable esbuild minification for production builds (faster than terser)
+    minify: 'esbuild',
     // Reduce memory usage
     reportCompressedSize: false,
     // Disable inline assets
