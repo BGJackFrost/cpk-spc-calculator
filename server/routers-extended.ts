@@ -1,7 +1,7 @@
-import { protectedProcedure, adminProcedure, router } from "./_core/trpc";
+import { protectedProcedure, adminProcedure, publicProcedure, router } from "./_core/trpc";
 import { z } from "zod";
-import { userDashboardConfigs, productionLines } from "../drizzle/schema";
-import { eq, and, asc } from "drizzle-orm";
+import { userDashboardConfigs, productionLines, products, spcAnalysisHistory } from "../drizzle/schema";
+import { eq, and, asc, sql } from "drizzle-orm";
 import { getDb } from "./db";
 import {
   createProductionLine,
@@ -728,6 +728,37 @@ export const samplingRouter = router({
 
 // Dashboard Router
 export const dashboardRouter = router({
+  // Public stats for landing page (no auth required)
+  getStats: publicProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) {
+      return {
+        totalProductionLines: 0,
+        totalProducts: 0,
+        totalAnalyses: 0,
+      };
+    }
+    try {
+      const [linesResult, productsResult, analysesResult] = await Promise.all([
+        db.select({ count: sql<number>`count(*)` }).from(productionLines),
+        db.select({ count: sql<number>`count(*)` }).from(products),
+        db.select({ count: sql<number>`count(*)` }).from(spcAnalysisHistory),
+      ]);
+      return {
+        totalProductionLines: Number(linesResult[0]?.count || 0),
+        totalProducts: Number(productsResult[0]?.count || 0),
+        totalAnalyses: Number(analysesResult[0]?.count || 0),
+      };
+    } catch (error) {
+      console.error('Error getting dashboard stats:', error);
+      return {
+        totalProductionLines: 0,
+        totalProducts: 0,
+        totalAnalyses: 0,
+      };
+    }
+  }),
+
   getConfig: protectedProcedure.query(async ({ ctx }) => {
     return await getDashboardConfig(ctx.user?.id || 0);
   }),

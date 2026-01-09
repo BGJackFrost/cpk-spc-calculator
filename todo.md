@@ -9308,3 +9308,20 @@
 - [x] Cài đặt rollup-plugin-visualizer
 - [x] Cấu hình vite.config.ts với ANALYZE=true flag
 - [ ] Chạy bundle analyzer và phân tích kết quả (timeout do project lớn)
+
+
+## Bug Fixes - Phase 10
+
+### Sửa lỗi trang trắng khi xuất bản
+- [ ] Kiểm tra và sửa lỗi loading vô hạn khi truy cập website đã xuất bản
+- [ ] Tối ưu và sửa các lỗi hệ thống hiện tại
+- [ ] Lưu checkpoint và báo cáo
+
+
+## Bug Fixes - Phase 10.1
+
+### Sửa lỗi trang trắng khi xuất bản
+- [x] Sửa lỗi trang trắng khi xuất bản - thiếu dashboard.getStats procedure
+- [x] Thêm dashboard.getStats public procedure cho landing page
+- [x] Thêm import publicProcedure, products, spcAnalysisHistory, sql vào routers-extended.ts
+- [x] Viết test cho dashboard.getStats
