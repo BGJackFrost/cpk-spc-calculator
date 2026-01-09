@@ -282,6 +282,9 @@ import ScheduledCpkJobs from "./pages/ScheduledCpkJobs";
 import ImageComparison from "./pages/ImageComparison";
 import CameraCapture from "./pages/CameraCapture";
 import AlertEmailConfig from "./pages/AlertEmailConfig";
+import AutoCapture from "./pages/AutoCapture";
+import UnifiedWebhooks from "./pages/UnifiedWebhooks";
+import QualityTrendReport from "./pages/QualityTrendReport";
 
 function Router() {
   return (
@@ -569,6 +572,9 @@ function Router() {
       <Route path="/image-comparison" component={ImageComparison} />
       <Route path="/camera-capture" component={CameraCapture} />
       <Route path="/alert-email-config" component={AlertEmailConfig} />
+      <Route path="/auto-capture" component={AutoCapture} />
+      <Route path="/unified-webhooks" component={UnifiedWebhooks} />
+      <Route path="/quality-trend-report" component={QualityTrendReport} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

@@ -176,6 +176,7 @@ export const SPC_MENU: SystemMenuConfig = {
         { id: "cpk-comparison", icon: BarChart3, labelKey: "nav.cpkBenchmark", path: "/cpk-comparison" },
         { id: "shift-cpk-comparison", icon: Clock, labelKey: "nav.shiftAnalysis", path: "/shift-cpk-comparison" },
         { id: "cpk-forecast", icon: TrendingUp, labelKey: "nav.cpkForecast", path: "/cpk-forecast" },
+        { id: "quality-trend-report", icon: TrendingUp, labelKey: "nav.qualityTrendReport", path: "/quality-trend-report" },
         { id: "shift-manager", icon: Users, labelKey: "nav.shiftManager", path: "/shift-manager" },
         { id: "kpi-alert-thresholds", icon: AlertTriangle, labelKey: "nav.kpiAlertThresholds", path: "/kpi-alert-thresholds", adminOnly: true },
         { id: "kpi-alert-stats", icon: BarChart3, labelKey: "nav.kpiAlertStats", path: "/kpi-alert-stats" },
@@ -372,6 +373,7 @@ export const SYSTEM_MENU: SystemMenuConfig = {
         { id: "performance-drop-alert", icon: TrendingUp, labelKey: "nav.performanceDropAlert", path: "/performance-drop-alert", adminOnly: true },
         { id: "webhook-settings", icon: Webhook, labelKey: "nav.webhookSettings", path: "/webhook-settings", adminOnly: true },
         { id: "webhooks", icon: Webhook, labelKey: "nav.webhookManagement", path: "/webhooks", adminOnly: true },
+        { id: "unified-webhooks", icon: Webhook, labelKey: "nav.unifiedWebhooks", path: "/unified-webhooks", adminOnly: true },
         { id: "notification-center", icon: Bell, labelKey: "nav.notificationCenter", path: "/notification-center" },
         { id: "alert-analytics", icon: BarChart3, labelKey: "nav.alertAnalytics", path: "/alert-analytics", adminOnly: true },
         { id: "unified-alert-kpi", icon: BarChart3, labelKey: "nav.unifiedAlertKpi", path: "/unified-alert-kpi", adminOnly: true },
@@ -526,6 +528,7 @@ export const AI_MENU: SystemMenuConfig = {
         { id: "image-comparison", icon: ArrowLeftRight, labelKey: "nav.imageComparison", path: "/image-comparison", licenseFeature: "ai_vision" },
         { id: "camera-capture", icon: Camera, labelKey: "nav.cameraCapture", path: "/camera-capture", licenseFeature: "ai_vision" },
         { id: "alert-email-config", icon: Mail, labelKey: "nav.alertEmailConfig", path: "/alert-email-config", licenseFeature: "ai_vision" },
+        { id: "auto-capture", icon: Camera, labelKey: "nav.autoCapture", path: "/auto-capture", licenseFeature: "ai_vision" },
       ],
     },
     {

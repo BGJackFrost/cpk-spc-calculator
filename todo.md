@@ -8761,3 +8761,34 @@
 ### Unit Tests
 - [x] Tạo qualityImage.test.ts
 - [x] Tạo alertEmail.test.ts
+
+
+## Phase 10 - Auto-capture, Webhook Notification và Báo cáo Xu hướng
+
+### Auto-capture theo lịch
+- [x] Tạo bảng AutoCaptureSchedule trong database (interval, cameraId, status)
+- [x] Tạo trang quản lý lịch auto-capture
+- [x] Tạo service chạy auto-capture theo interval định sẵn
+- [x] Tích hợp với camera để tự động chụp ảnh
+- [x] Tự động phân tích ảnh sau khi chụp
+- [x] Lưu kết quả phân tích vào database
+- [x] Hiển thị lịch sử auto-capture trên dashboard
+
+### Webhook Notification (Slack/Teams)
+- [x] Tạo bảng WebhookConfig trong database (url, type, events, enabled)
+- [x] Tạo trang quản lý cấu hình webhook
+- [x] Tạo service gửi webhook notification
+- [x] Hỗ trợ Slack webhook format
+- [x] Hỗ trợ Microsoft Teams webhook format
+- [x] Gửi webhook khi vi phạm SPC/CPK rules
+- [x] Gửi webhook khi auto-capture hoàn thành
+- [x] Test webhook với sample payload
+
+### Báo cáo Xu hướng Chất lượng
+- [x] Tạo trang báo cáo xu hướng chất lượng (TrendReport.tsx)
+- [x] Biểu đồ so sánh CPK theo thời gian (line chart)
+- [x] Biểu đồ so sánh giữa các dây chuyền (bar chart)
+- [x] Biểu đồ phân bố vi phạm theo loại rule (pie chart)
+- [x] Bảng thống kê tổng hợp theo tuần/tháng/quý
+- [x] Tính toán xu hướng cải thiện/suy giảm
+- [ ] Xuất báo cáo xu hướng PDF/Excel

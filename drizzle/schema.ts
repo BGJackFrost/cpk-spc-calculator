@@ -6138,3 +6138,268 @@ export const alertEmailHistory = mysqlTable("alert_email_history", {
 	index("idx_alert_history_created").on(table.createdAt),
 	index("idx_alert_history_severity").on(table.severity),
 ]);
+
+
+// ============================================
+// Phase 10 - Auto-capture, Webhook Notification, Quality Trend Report
+// ============================================
+
+// Auto-capture Schedule - Lịch chụp ảnh tự động
+export const autoCaptureSchedules = mysqlTable("auto_capture_schedules", {
+	id: int().autoincrement().notNull().primaryKey(),
+	userId: int("user_id").notNull(),
+	name: varchar({ length: 255 }).notNull(),
+	description: text(),
+	// Target configuration
+	productionLineId: int("production_line_id"),
+	workstationId: int("workstation_id"),
+	productCode: varchar("product_code", { length: 100 }),
+	// Camera configuration
+	cameraId: varchar("camera_id", { length: 100 }),
+	cameraUrl: varchar("camera_url", { length: 500 }),
+	cameraType: mysqlEnum("camera_type", ['ip_camera', 'usb_camera', 'rtsp', 'http_snapshot']).default('ip_camera'),
+	// Schedule configuration
+	intervalSeconds: int("interval_seconds").default(60).notNull(), // Capture interval in seconds
+	scheduleType: mysqlEnum("schedule_type", ['continuous', 'time_range', 'cron']).default('continuous'),
+	startTime: varchar("start_time", { length: 5 }), // HH:mm format
+	endTime: varchar("end_time", { length: 5 }), // HH:mm format
+	daysOfWeek: json("days_of_week"), // [0-6], 0=Sunday
+	cronExpression: varchar("cron_expression", { length: 100 }),
+	timezone: varchar({ length: 50 }).default('Asia/Ho_Chi_Minh'),
+	// Analysis settings
+	enableAiAnalysis: int("enable_ai_analysis").default(1).notNull(),
+	analysisType: mysqlEnum("analysis_type", ['quality_check', 'defect_detection', 'measurement', 'all']).default('quality_check'),
+	qualityThreshold: decimal("quality_threshold", { precision: 5, scale: 2 }).default('80.00'),
+	// Alert settings
+	alertOnDefect: int("alert_on_defect").default(1).notNull(),
+	alertSeverityThreshold: mysqlEnum("alert_severity_threshold", ['minor', 'major', 'critical']).default('major'),
+	webhookConfigIds: json("webhook_config_ids"), // IDs of webhook configs to notify
+	emailRecipients: json("email_recipients"),
+	// Status
+	status: mysqlEnum(['active', 'paused', 'stopped']).default('paused').notNull(),
+	lastCaptureAt: timestamp("last_capture_at", { mode: 'string' }),
+	lastAnalysisResult: json("last_analysis_result"),
+	totalCaptures: int("total_captures").default(0).notNull(),
+	totalDefectsFound: int("total_defects_found").default(0).notNull(),
+	// Metadata
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("idx_auto_capture_user").on(table.userId),
+	index("idx_auto_capture_status").on(table.status),
+	index("idx_auto_capture_line").on(table.productionLineId),
+	index("idx_auto_capture_workstation").on(table.workstationId),
+]);
+
+export type AutoCaptureSchedule = typeof autoCaptureSchedules.$inferSelect;
+export type InsertAutoCaptureSchedule = typeof autoCaptureSchedules.$inferInsert;
+
+// Auto-capture History - Lịch sử chụp ảnh tự động
+export const autoCaptureHistory = mysqlTable("auto_capture_history", {
+	id: int().autoincrement().notNull().primaryKey(),
+	scheduleId: int("schedule_id").notNull(),
+	qualityImageId: int("quality_image_id"), // Reference to quality_images table
+	// Capture details
+	capturedAt: timestamp("captured_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	imageUrl: varchar("image_url", { length: 500 }),
+	imageKey: varchar("image_key", { length: 255 }),
+	// Analysis results
+	analysisStatus: mysqlEnum("analysis_status", ['pending', 'analyzing', 'completed', 'failed']).default('pending'),
+	qualityScore: decimal("quality_score", { precision: 5, scale: 2 }),
+	defectsFound: int("defects_found").default(0),
+	severity: mysqlEnum(['none', 'minor', 'major', 'critical']).default('none'),
+	aiAnalysis: json("ai_analysis"),
+	// Alert status
+	alertSent: int("alert_sent").default(0).notNull(),
+	alertChannels: json("alert_channels"), // Which channels were notified
+	// Error handling
+	errorMessage: text("error_message"),
+	retryCount: int("retry_count").default(0).notNull(),
+	// Metadata
+	processingTimeMs: int("processing_time_ms"),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+	index("idx_auto_capture_hist_schedule").on(table.scheduleId),
+	index("idx_auto_capture_hist_captured").on(table.capturedAt),
+	index("idx_auto_capture_hist_status").on(table.analysisStatus),
+	index("idx_auto_capture_hist_severity").on(table.severity),
+]);
+
+export type AutoCaptureHistory = typeof autoCaptureHistory.$inferSelect;
+export type InsertAutoCaptureHistory = typeof autoCaptureHistory.$inferInsert;
+
+// Unified Webhook Notification Config - Cấu hình webhook thống nhất cho Slack/Teams
+export const unifiedWebhookConfigs = mysqlTable("unified_webhook_configs", {
+	id: int().autoincrement().notNull().primaryKey(),
+	userId: int("user_id").notNull(),
+	name: varchar({ length: 255 }).notNull(),
+	description: text(),
+	// Channel type
+	channelType: mysqlEnum("channel_type", ['slack', 'teams', 'discord', 'custom']).notNull(),
+	// Webhook URL
+	webhookUrl: varchar("webhook_url", { length: 500 }).notNull(),
+	// Slack specific
+	slackChannel: varchar("slack_channel", { length: 100 }),
+	slackUsername: varchar("slack_username", { length: 100 }),
+	slackIconEmoji: varchar("slack_icon_emoji", { length: 50 }),
+	// Teams specific
+	teamsTitle: varchar("teams_title", { length: 200 }),
+	teamsThemeColor: varchar("teams_theme_color", { length: 10 }),
+	// Custom webhook
+	customHeaders: json("custom_headers"),
+	customBodyTemplate: text("custom_body_template"),
+	// Event subscriptions
+	events: json("events"), // ['spc_violation', 'cpk_alert', 'auto_capture_defect', 'quality_alert']
+	// Filters
+	productionLineIds: json("production_line_ids"),
+	workstationIds: json("workstation_ids"),
+	productCodes: json("product_codes"),
+	minSeverity: mysqlEnum("min_severity", ['info', 'minor', 'major', 'critical']).default('major'),
+	// Rate limiting
+	rateLimitMinutes: int("rate_limit_minutes").default(5),
+	lastNotifiedAt: timestamp("last_notified_at", { mode: 'string' }),
+	// Status
+	isActive: int("is_active").default(1).notNull(),
+	// Stats
+	totalNotificationsSent: int("total_notifications_sent").default(0).notNull(),
+	lastSuccessAt: timestamp("last_success_at", { mode: 'string' }),
+	lastErrorAt: timestamp("last_error_at", { mode: 'string' }),
+	lastErrorMessage: text("last_error_message"),
+	// Metadata
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("idx_unified_webhook_user").on(table.userId),
+	index("idx_unified_webhook_type").on(table.channelType),
+	index("idx_unified_webhook_active").on(table.isActive),
+]);
+
+export type UnifiedWebhookConfig = typeof unifiedWebhookConfigs.$inferSelect;
+export type InsertUnifiedWebhookConfig = typeof unifiedWebhookConfigs.$inferInsert;
+
+// Webhook Notification Logs - Lịch sử gửi webhook
+export const unifiedWebhookLogs = mysqlTable("unified_webhook_logs", {
+	id: int().autoincrement().notNull().primaryKey(),
+	webhookConfigId: int("webhook_config_id").notNull(),
+	// Event details
+	eventType: varchar("event_type", { length: 100 }).notNull(),
+	eventTitle: varchar("event_title", { length: 255 }).notNull(),
+	eventMessage: text("event_message"),
+	eventData: json("event_data"),
+	severity: mysqlEnum(['info', 'minor', 'major', 'critical']).default('info'),
+	// Source reference
+	sourceType: varchar("source_type", { length: 50 }), // 'auto_capture', 'spc_analysis', 'quality_check'
+	sourceId: int("source_id"),
+	// Request/Response
+	requestPayload: text("request_payload"),
+	responseStatus: int("response_status"),
+	responseBody: text("response_body"),
+	// Status
+	status: mysqlEnum(['pending', 'sent', 'failed']).default('pending').notNull(),
+	sentAt: timestamp("sent_at", { mode: 'string' }),
+	errorMessage: text("error_message"),
+	retryCount: int("retry_count").default(0).notNull(),
+	// Metadata
+	processingTimeMs: int("processing_time_ms"),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+	index("idx_unified_webhook_log_config").on(table.webhookConfigId),
+	index("idx_unified_webhook_log_event").on(table.eventType),
+	index("idx_unified_webhook_log_status").on(table.status),
+	index("idx_unified_webhook_log_created").on(table.createdAt),
+]);
+
+export type UnifiedWebhookLog = typeof unifiedWebhookLogs.$inferSelect;
+export type InsertUnifiedWebhookLog = typeof unifiedWebhookLogs.$inferInsert;
+
+// Quality Trend Report Config - Cấu hình báo cáo xu hướng chất lượng
+export const qualityTrendReportConfigs = mysqlTable("quality_trend_report_configs", {
+	id: int().autoincrement().notNull().primaryKey(),
+	userId: int("user_id").notNull(),
+	name: varchar({ length: 255 }).notNull(),
+	description: text(),
+	// Report scope
+	productionLineIds: json("production_line_ids"),
+	workstationIds: json("workstation_ids"),
+	productCodes: json("product_codes"),
+	// Time range
+	periodType: mysqlEnum("period_type", ['daily', 'weekly', 'monthly', 'quarterly', 'yearly']).default('weekly'),
+	comparisonPeriods: int("comparison_periods").default(4), // Number of periods to compare
+	// Metrics to include
+	includeCpk: int("include_cpk").default(1).notNull(),
+	includePpk: int("include_ppk").default(1).notNull(),
+	includeDefectRate: int("include_defect_rate").default(1).notNull(),
+	includeViolationCount: int("include_violation_count").default(1).notNull(),
+	includeQualityScore: int("include_quality_score").default(1).notNull(),
+	// Chart types
+	enableLineChart: int("enable_line_chart").default(1).notNull(),
+	enableBarChart: int("enable_bar_chart").default(1).notNull(),
+	enablePieChart: int("enable_pie_chart").default(1).notNull(),
+	enableHeatmap: int("enable_heatmap").default(0).notNull(),
+	// Schedule (optional)
+	scheduleEnabled: int("schedule_enabled").default(0).notNull(),
+	scheduleFrequency: mysqlEnum("schedule_frequency", ['daily', 'weekly', 'monthly']),
+	scheduleTime: varchar("schedule_time", { length: 5 }), // HH:mm
+	scheduleDayOfWeek: int("schedule_day_of_week"), // 0-6
+	scheduleDayOfMonth: int("schedule_day_of_month"), // 1-31
+	// Delivery
+	emailRecipients: json("email_recipients"),
+	webhookConfigIds: json("webhook_config_ids"),
+	// Status
+	isActive: int("is_active").default(1).notNull(),
+	lastGeneratedAt: timestamp("last_generated_at", { mode: 'string' }),
+	// Metadata
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("idx_trend_report_user").on(table.userId),
+	index("idx_trend_report_active").on(table.isActive),
+]);
+
+export type QualityTrendReportConfig = typeof qualityTrendReportConfigs.$inferSelect;
+export type InsertQualityTrendReportConfig = typeof qualityTrendReportConfigs.$inferInsert;
+
+// Quality Trend Report History - Lịch sử báo cáo xu hướng
+export const qualityTrendReportHistory = mysqlTable("quality_trend_report_history", {
+	id: int().autoincrement().notNull().primaryKey(),
+	configId: int("config_id").notNull(),
+	reportName: varchar("report_name", { length: 255 }).notNull(),
+	// Report period
+	periodStart: timestamp("period_start", { mode: 'string' }).notNull(),
+	periodEnd: timestamp("period_end", { mode: 'string' }).notNull(),
+	periodType: varchar("period_type", { length: 20 }).notNull(),
+	// Report data
+	reportData: json("report_data"), // Full report data including all metrics and charts
+	// Summary metrics
+	avgCpk: decimal("avg_cpk", { precision: 10, scale: 4 }),
+	avgPpk: decimal("avg_ppk", { precision: 10, scale: 4 }),
+	avgDefectRate: decimal("avg_defect_rate", { precision: 10, scale: 4 }),
+	totalViolations: int("total_violations").default(0),
+	avgQualityScore: decimal("avg_quality_score", { precision: 5, scale: 2 }),
+	// Trend analysis
+	cpkTrend: mysqlEnum("cpk_trend", ['improving', 'stable', 'declining']),
+	cpkTrendPercent: decimal("cpk_trend_percent", { precision: 10, scale: 2 }),
+	defectTrend: mysqlEnum("defect_trend", ['improving', 'stable', 'declining']),
+	defectTrendPercent: decimal("defect_trend_percent", { precision: 10, scale: 2 }),
+	// Delivery status
+	emailSent: int("email_sent").default(0).notNull(),
+	webhookSent: int("webhook_sent").default(0).notNull(),
+	deliveryStatus: mysqlEnum("delivery_status", ['pending', 'sent', 'partial', 'failed']).default('pending'),
+	deliveryError: text("delivery_error"),
+	// Metadata
+	generatedAt: timestamp("generated_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+	index("idx_trend_history_config").on(table.configId),
+	index("idx_trend_history_period").on(table.periodStart, table.periodEnd),
+	index("idx_trend_history_generated").on(table.generatedAt),
+]);
+
+export type QualityTrendReportHistory = typeof qualityTrendReportHistory.$inferSelect;
+export type InsertQualityTrendReportHistory = typeof qualityTrendReportHistory.$inferInsert;

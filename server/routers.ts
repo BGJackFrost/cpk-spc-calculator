@@ -76,6 +76,10 @@ import { scheduledCpkCheckRouter } from "./routers/scheduledCpkCheckRouter";
 // Phase 10 - Quality Images & Alert Email
 import { qualityImageRouter } from "./routers/qualityImageRouter";
 import { alertEmailRouter } from "./routers/alertEmailRouter";
+// Phase 10 - Auto-capture, Webhook Notification, Quality Trend Reports
+import { autoCaptureRouter } from "./routers/autoCaptureRouter";
+import { unifiedWebhookRouter } from "./routers/unifiedWebhookRouter";
+import { qualityTrendRouter } from "./routers/qualityTrendRouter";
 import { maintenanceWorkOrderRouter } from "./maintenanceWorkOrderRouter";
 import { mobileRouter } from "./mobileRouter";
 import { triggerLicenseExpiryCheck } from "./scheduledJobs";
@@ -12387,6 +12391,11 @@ Hãy trả về JSON với format:
   // Phase 10 - Quality Images & Alert Email
   qualityImage: qualityImageRouter,
   alertEmail: alertEmailRouter,
+
+  // Phase 10 - Auto-capture, Webhook Notification, Quality Trend Reports
+  autoCapture: autoCaptureRouter,
+  unifiedWebhook: unifiedWebhookRouter,
+  qualityTrend: qualityTrendRouter,
 });
 
 export type AppRouter = typeof appRouter;
