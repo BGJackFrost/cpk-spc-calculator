@@ -292,6 +292,9 @@ import FloorPlanLive from "./pages/FloorPlanLive";
 import MachineApiDocumentation from "./pages/MachineApiDocumentation";
 import AiVisionAnalysis from "./pages/AiVisionAnalysis";
 import UnifiedRealtimeDashboard from "./pages/UnifiedRealtimeDashboard";
+import AiVisionDashboard from "./pages/AiVisionDashboard";
+import LineComparison from "./pages/LineComparison";
+import SpcScheduledReports from "./pages/SpcScheduledReports";
 
 function Router() {
   return (
@@ -590,6 +593,10 @@ function Router() {
       <Route path="/machine-api-documentation" component={MachineApiDocumentation} />
       <Route path="/ai-vision-analysis" component={AiVisionAnalysis} />
       <Route path="/unified-realtime-dashboard" component={UnifiedRealtimeDashboard} />
+      {/* Phase 10 - AI Vision Dashboard, Line Comparison, SPC Scheduled Reports */}
+      <Route path="/ai-vision-dashboard" component={AiVisionDashboard} />
+      <Route path="/line-comparison" component={LineComparison} />
+      <Route path="/spc-scheduled-reports" component={SpcScheduledReports} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

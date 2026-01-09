@@ -9068,3 +9068,72 @@
 - [x] Export lịch sử phân tích ra Excel (CSV format)
 - [x] Thêm nút Export vào History tab
 - [x] Hỗ trợ lọc dữ liệu trước khi export
+
+
+## Phase 10 - Báo cáo tự động, Dashboard AI Vision, So sánh dây chuyền
+
+### Gửi báo cáo tự động theo lịch (daily/weekly) qua email
+- [ ] Tạo bảng scheduled_reports trong database
+- [ ] Tạo API CRUD cho scheduled reports
+- [ ] Tạo trang cấu hình báo cáo tự động
+- [ ] Tạo service gửi báo cáo theo lịch (cron job)
+- [ ] Hỗ trợ lịch gửi daily và weekly
+- [ ] Tích hợp với SMTP để gửi email báo cáo
+
+### Dashboard tổng hợp AI Vision
+- [ ] Tạo trang Dashboard AI Vision tổng hợp
+- [ ] Hiển thị tất cả các chỉ số SPC/CPK trên một trang
+- [ ] Biểu đồ tổng quan tình trạng tất cả dây chuyền
+- [ ] Thống kê vi phạm theo thời gian
+- [ ] Cảnh báo realtime cho các chỉ số bất thường
+- [ ] Phân tích xu hướng với AI/LLM
+
+### So sánh giữa các dây chuyền sản xuất
+- [ ] Tạo trang so sánh dây chuyền
+- [ ] Cho phép chọn nhiều dây chuyền để so sánh
+- [ ] Biểu đồ so sánh CPK giữa các dây chuyền
+- [ ] Biểu đồ so sánh tỷ lệ NG giữa các dây chuyền
+- [ ] Bảng so sánh chi tiết các chỉ số
+- [ ] Xuất báo cáo so sánh PDF/Excel
+
+
+## Phase 10 - Báo cáo tự động, AI Vision Dashboard, So sánh dây chuyền
+
+### Báo cáo tự động theo lịch (Scheduled Reports)
+- [x] Tạo bảng scheduled_reports trong database
+- [x] Tạo bảng scheduled_report_logs để lưu lịch sử gửi
+- [x] Xây dựng API CRUD cho scheduled reports (scheduledReportRouter)
+- [x] Tích hợp email service để gửi báo cáo
+- [x] Tạo UI quản lý báo cáo tự động (SpcScheduledReports.tsx)
+- [x] Hỗ trợ các loại báo cáo: SPC Summary, CPK Analysis, Violation Report, Production Line Status, AI Vision Dashboard
+- [x] Hỗ trợ tần suất: Daily, Weekly, Monthly
+- [x] Chức năng gửi báo cáo ngay lập tức (Send Now)
+- [x] Chức năng tạm dừng/kích hoạt báo cáo
+
+### Dashboard tổng hợp AI Vision
+- [x] Tạo bảng ai_vision_dashboard_configs
+- [x] Xây dựng API tổng hợp dữ liệu từ tất cả các nguồn (aiVisionDashboardRouter)
+- [x] Tạo UI Dashboard tổng hợp (AiVisionDashboard.tsx)
+- [x] Hiển thị các chỉ số: Total Analyses, Avg CPK, Violation Count, NG Rate
+- [x] Biểu đồ xu hướng CPK và NG Rate theo thời gian (Area Chart)
+- [x] Phân bổ CPK theo mức độ chất lượng (Pie chart)
+- [x] Trạng thái dây chuyền sản xuất
+- [x] Tích hợp AI insights (phân tích bằng LLM)
+- [x] Bộ lọc thời gian: 1h, 6h, 24h, 7d, 30d
+- [x] Auto-refresh data
+
+### So sánh dây chuyền sản xuất
+- [x] Tạo bảng line_comparison_sessions
+- [x] Xây dựng API so sánh dây chuyền (lineComparisonRouter)
+- [x] Tạo UI so sánh dây chuyền (LineComparison.tsx)
+- [x] Lưu và tải lại các phiên so sánh
+- [x] Xếp hạng dây chuyền theo CPK, NG Rate, Violations
+- [x] Biểu đồ so sánh (Bar chart, Line chart)
+- [x] Bảng chi tiết so sánh
+- [x] Xu hướng CPK theo thời gian cho từng dây chuyền
+- [x] Bộ lọc theo khoảng thời gian
+
+### Routes mới
+- [x] /ai-vision-dashboard - Dashboard tổng hợp AI Vision
+- [x] /line-comparison - So sánh dây chuyền sản xuất
+- [x] /spc-scheduled-reports - Quản lý báo cáo SPC tự động

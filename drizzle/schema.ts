@@ -3294,7 +3294,8 @@ export const scheduledKpiReports = mysqlTable("scheduled_kpi_reports", {
 	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
 });
 
-export const scheduledReportLogs = mysqlTable("scheduled_report_logs", {
+// Legacy MMS scheduled report logs - kept for backward compatibility
+export const mmsScheduledReportLogs = mysqlTable("mms_scheduled_report_logs", {
 	id: int().autoincrement().notNull(),
 	reportId: int().notNull(),
 	sentAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
@@ -3310,7 +3311,8 @@ export const scheduledReportLogs = mysqlTable("scheduled_report_logs", {
 	generationTimeMs: int().default(0),
 });
 
-export const scheduledReports = mysqlTable("scheduled_reports", {
+// Legacy MMS scheduled reports - kept for backward compatibility
+export const mmsScheduledReports = mysqlTable("mms_scheduled_reports", {
 	id: int().autoincrement().notNull(),
 	name: varchar({ length: 200 }).notNull(),
 	reportType: mysqlEnum(['oee','cpk','oee_cpk_combined','production_summary']).notNull(),
@@ -6496,3 +6498,133 @@ export const webhookTemplateLogs = mysqlTable("webhook_template_logs", {
 
 export type WebhookTemplateLog = typeof webhookTemplateLogs.$inferSelect;
 export type InsertWebhookTemplateLog = typeof webhookTemplateLogs.$inferInsert;
+
+
+// ============================================================
+// PHASE 10 - Scheduled Reports, AI Vision Dashboard, Line Comparison
+// ============================================================
+
+// Scheduled Reports - Báo cáo tự động theo lịch
+export const scheduledReports = mysqlTable("scheduled_reports", {
+	id: int().autoincrement().notNull().primaryKey(),
+	name: varchar({ length: 255 }).notNull(),
+	description: text(),
+	// User who created the report
+	userId: int("user_id").notNull(),
+	// Report type
+	reportType: mysqlEnum("report_type", ['spc_summary', 'cpk_analysis', 'violation_report', 'production_line_status', 'ai_vision_dashboard']).default('spc_summary').notNull(),
+	// Schedule configuration
+	scheduleType: mysqlEnum("schedule_type", ['daily', 'weekly', 'monthly']).default('daily').notNull(),
+	scheduleTime: varchar("schedule_time", { length: 10 }).default('08:00').notNull(), // HH:mm format
+	scheduleDayOfWeek: int("schedule_day_of_week"), // 0-6 for weekly (0 = Sunday)
+	scheduleDayOfMonth: int("schedule_day_of_month"), // 1-31 for monthly
+	// Filter configuration
+	productionLineIds: json("production_line_ids"), // Array of production line IDs to include
+	productIds: json("product_ids"), // Array of product IDs to include
+	includeCharts: tinyint("include_charts").default(1).notNull(),
+	includeRawData: tinyint("include_raw_data").default(0).notNull(),
+	// Email recipients
+	recipients: json("recipients").notNull(), // Array of email addresses
+	ccRecipients: json("cc_recipients"), // Array of CC email addresses
+	// Status
+	isActive: tinyint("is_active").default(1).notNull(),
+	lastRunAt: timestamp("last_run_at", { mode: 'string' }),
+	lastRunStatus: mysqlEnum("last_run_status", ['success', 'failed', 'pending']),
+	lastRunError: text("last_run_error"),
+	nextRunAt: timestamp("next_run_at", { mode: 'string' }),
+	// Metadata
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("idx_scheduled_report_user").on(table.userId),
+	index("idx_scheduled_report_active").on(table.isActive),
+	index("idx_scheduled_report_next_run").on(table.nextRunAt),
+]);
+
+export type ScheduledReport = typeof scheduledReports.$inferSelect;
+export type InsertScheduledReport = typeof scheduledReports.$inferInsert;
+
+// Scheduled Report Logs - Lịch sử chạy báo cáo
+export const scheduledReportLogs = mysqlTable("scheduled_report_logs", {
+	id: int().autoincrement().notNull().primaryKey(),
+	reportId: int("report_id").notNull(),
+	// Execution details
+	startedAt: timestamp("started_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	completedAt: timestamp("completed_at", { mode: 'string' }),
+	status: mysqlEnum(['running', 'success', 'failed']).default('running').notNull(),
+	errorMessage: text("error_message"),
+	// Report details
+	recipientCount: int("recipient_count").default(0).notNull(),
+	emailsSent: int("emails_sent").default(0).notNull(),
+	reportSize: int("report_size"), // in bytes
+	// Generated report file
+	reportFileUrl: text("report_file_url"),
+	reportFileName: varchar("report_file_name", { length: 255 }),
+},
+(table) => [
+	index("idx_scheduled_report_log_report").on(table.reportId),
+	index("idx_scheduled_report_log_status").on(table.status),
+	index("idx_scheduled_report_log_started").on(table.startedAt),
+]);
+
+export type ScheduledReportLog = typeof scheduledReportLogs.$inferSelect;
+export type InsertScheduledReportLog = typeof scheduledReportLogs.$inferInsert;
+
+// Line Comparison Sessions - Phiên so sánh dây chuyền
+export const lineComparisonSessions = mysqlTable("line_comparison_sessions", {
+	id: int().autoincrement().notNull().primaryKey(),
+	name: varchar({ length: 255 }).notNull(),
+	description: text(),
+	userId: int("user_id").notNull(),
+	// Comparison configuration
+	productionLineIds: json("production_line_ids").notNull(), // Array of production line IDs to compare
+	productId: int("product_id"), // Optional: filter by product
+	dateFrom: timestamp("date_from", { mode: 'string' }).notNull(),
+	dateTo: timestamp("date_to", { mode: 'string' }).notNull(),
+	// Metrics to compare
+	compareMetrics: json("compare_metrics"), // Array of metrics: ['cpk', 'ppk', 'ng_rate', 'oee', etc.]
+	// Results cache
+	comparisonResults: json("comparison_results"),
+	// Metadata
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("idx_line_comparison_user").on(table.userId),
+	index("idx_line_comparison_created").on(table.createdAt),
+]);
+
+export type LineComparisonSession = typeof lineComparisonSessions.$inferSelect;
+export type InsertLineComparisonSession = typeof lineComparisonSessions.$inferInsert;
+
+// AI Vision Dashboard Configs - Cấu hình dashboard AI Vision cho từng user
+export const aiVisionDashboardConfigs = mysqlTable("ai_vision_dashboard_configs", {
+	id: int().autoincrement().notNull().primaryKey(),
+	userId: int("user_id").notNull(),
+	// Dashboard layout
+	layoutConfig: json("layout_config"), // Grid layout configuration
+	// Widgets configuration
+	widgets: json("widgets"), // Array of widget configs
+	// Filters
+	defaultProductionLineIds: json("default_production_line_ids"),
+	defaultProductIds: json("default_product_ids"),
+	defaultTimeRange: varchar("default_time_range", { length: 50 }).default('24h'), // 1h, 6h, 24h, 7d, 30d
+	// Refresh settings
+	autoRefresh: tinyint("auto_refresh").default(1).notNull(),
+	refreshInterval: int("refresh_interval").default(60).notNull(), // seconds
+	// Alert thresholds
+	cpkWarningThreshold: decimal("cpk_warning_threshold", { precision: 5, scale: 2 }).default('1.33'),
+	cpkCriticalThreshold: decimal("cpk_critical_threshold", { precision: 5, scale: 2 }).default('1.00'),
+	ngRateWarningThreshold: decimal("ng_rate_warning_threshold", { precision: 5, scale: 2 }).default('5.00'), // percent
+	ngRateCriticalThreshold: decimal("ng_rate_critical_threshold", { precision: 5, scale: 2 }).default('10.00'), // percent
+	// Metadata
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("idx_ai_vision_dashboard_user").on(table.userId),
+]);
+
+export type AiVisionDashboardConfig = typeof aiVisionDashboardConfigs.$inferSelect;
+export type InsertAiVisionDashboardConfig = typeof aiVisionDashboardConfigs.$inferInsert;

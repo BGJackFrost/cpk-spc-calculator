@@ -81,6 +81,8 @@ import { autoCaptureRouter } from "./routers/autoCaptureRouter";
 import { unifiedWebhookRouter } from "./routers/unifiedWebhookRouter";
 import { qualityTrendRouter } from "./routers/qualityTrendRouter";
 import { webhookTemplateRouter } from "./routers/webhookTemplateRouter";
+import { scheduledReportRouter } from "./routers/scheduledReportRouter";
+import { aiVisionDashboardRouter, lineComparisonRouter } from "./routers/aiVisionDashboardRouter";
 import { realtimeRouter } from "./routers/realtimeRouter";
 import { maintenanceWorkOrderRouter } from "./maintenanceWorkOrderRouter";
 import { mobileRouter } from "./mobileRouter";
@@ -12400,6 +12402,11 @@ Hãy trả về JSON với format:
   unifiedWebhook: unifiedWebhookRouter,
   qualityTrend: qualityTrendRouter,
   webhookTemplate: webhookTemplateRouter,
+
+  // Phase 10 - Scheduled Reports, AI Vision Dashboard, Line Comparison
+  scheduledReport: scheduledReportRouter,
+  aiVisionDashboard: aiVisionDashboardRouter,
+  lineComparison: lineComparisonRouter,
 });
 
 export type AppRouter = typeof appRouter;
