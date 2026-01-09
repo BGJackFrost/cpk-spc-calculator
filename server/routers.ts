@@ -80,6 +80,7 @@ import { alertEmailRouter } from "./routers/alertEmailRouter";
 import { autoCaptureRouter } from "./routers/autoCaptureRouter";
 import { unifiedWebhookRouter } from "./routers/unifiedWebhookRouter";
 import { qualityTrendRouter } from "./routers/qualityTrendRouter";
+import { webhookTemplateRouter } from "./routers/webhookTemplateRouter";
 import { maintenanceWorkOrderRouter } from "./maintenanceWorkOrderRouter";
 import { mobileRouter } from "./mobileRouter";
 import { triggerLicenseExpiryCheck } from "./scheduledJobs";
@@ -12396,6 +12397,7 @@ Hãy trả về JSON với format:
   autoCapture: autoCaptureRouter,
   unifiedWebhook: unifiedWebhookRouter,
   qualityTrend: qualityTrendRouter,
+  webhookTemplate: webhookTemplateRouter,
 });
 
 export type AppRouter = typeof appRouter;

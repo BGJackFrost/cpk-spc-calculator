@@ -8812,3 +8812,31 @@
 - [x] Tạo hàm generateQualityTrendPdfContent sinh HTML cho PDF
 - [x] Thêm nút Export PDF trong trang QualityTrendReport
 - [x] Hỗ trợ in/save as PDF từ trình duyệt
+
+
+## Phase 182 - Camera Preview, Export Excel, Webhook Templates
+
+### Preview Stream Camera trong Form Tạo Lịch Chụp
+- [x] Tích hợp CameraStream component vào SpcPlanManagement
+- [x] Thêm preview camera trực tiếp khi tạo/chỉnh sửa kế hoạch SPC
+- [x] Cho phép chọn camera từ danh sách thiết bị
+- [x] Hiển thị stream preview trong dialog tạo kế hoạch
+
+### Export Báo cáo Excel bên cạnh PDF
+- [x] Kiểm tra và đánh giá tính năng export Excel hiện có
+- [x] Đảm bảo export Excel hoạt động song song với PDF
+- [x] Thêm nút export Excel vào các trang báo cáo chính (đã có sẵn)
+
+### Template Webhook tùy chỉnh cho Telegram và Zalo
+- [x] Tạo bảng webhook_templates trong database
+- [x] Tạo bảng webhook_template_logs cho lịch sử gửi
+- [x] Tạo webhookTemplateRouter với CRUD operations
+- [x] Tạo trang quản lý webhook templates (WebhookTemplates.tsx)
+- [x] Hỗ trợ Telegram template tùy chỉnh
+- [x] Hỗ trợ Zalo OA integration
+- [x] Hỗ trợ Slack, Teams, Discord webhooks
+- [x] Hỗ trợ Custom webhook với auth options
+- [x] Thêm mẫu template có sẵn cho các kênh
+- [x] Thêm tính năng test template
+- [x] Thêm lịch sử gửi thông báo
+- [x] Thêm placeholders cho template ({{cpk}}, {{product}}, etc.)

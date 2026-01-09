@@ -6403,3 +6403,96 @@ export const qualityTrendReportHistory = mysqlTable("quality_trend_report_histor
 
 export type QualityTrendReportHistory = typeof qualityTrendReportHistory.$inferSelect;
 export type InsertQualityTrendReportHistory = typeof qualityTrendReportHistory.$inferInsert;
+
+
+// Webhook Templates - Template tùy chỉnh cho các hệ thống thông báo (Telegram, Zalo, etc.)
+export const webhookTemplates = mysqlTable("webhook_templates", {
+	id: int().autoincrement().notNull().primaryKey(),
+	userId: int("user_id").notNull(),
+	name: varchar({ length: 255 }).notNull(),
+	description: text(),
+	// Channel type: telegram, zalo, slack, teams, discord, custom
+	channelType: mysqlEnum("channel_type", ['telegram', 'zalo', 'slack', 'teams', 'discord', 'custom']).notNull(),
+	// Template content
+	templateTitle: varchar("template_title", { length: 500 }),
+	templateBody: text("template_body").notNull(), // Supports placeholders like {{cpk}}, {{product}}, etc.
+	templateFormat: mysqlEnum("template_format", ['text', 'markdown', 'html', 'json']).default('text').notNull(),
+	// Zalo specific
+	zaloOaId: varchar("zalo_oa_id", { length: 100 }),
+	zaloAccessToken: varchar("zalo_access_token", { length: 500 }),
+	zaloTemplateId: varchar("zalo_template_id", { length: 100 }),
+	// Telegram specific
+	telegramBotToken: varchar("telegram_bot_token", { length: 255 }),
+	telegramChatId: varchar("telegram_chat_id", { length: 100 }),
+	telegramParseMode: mysqlEnum("telegram_parse_mode", ['HTML', 'Markdown', 'MarkdownV2']).default('HTML'),
+	// Custom webhook
+	webhookUrl: varchar("webhook_url", { length: 500 }),
+	webhookMethod: mysqlEnum("webhook_method", ['GET', 'POST', 'PUT']).default('POST'),
+	webhookHeaders: json("webhook_headers"), // Custom headers as JSON
+	webhookAuthType: mysqlEnum("webhook_auth_type", ['none', 'bearer', 'basic', 'api_key']),
+	webhookAuthValue: varchar("webhook_auth_value", { length: 500 }),
+	// Event subscriptions
+	events: json("events"), // ['spc_violation', 'cpk_alert', 'quality_issue', 'maintenance', 'system']
+	// Filters
+	productionLineIds: json("production_line_ids"),
+	workstationIds: json("workstation_ids"),
+	productCodes: json("product_codes"),
+	minSeverity: mysqlEnum("min_severity", ['info', 'warning', 'critical']).default('warning'),
+	// Rate limiting
+	rateLimitMinutes: int("rate_limit_minutes").default(5),
+	lastSentAt: timestamp("last_sent_at", { mode: 'string' }),
+	// Status
+	isActive: int("is_active").default(1).notNull(),
+	isDefault: int("is_default").default(0).notNull(),
+	// Stats
+	totalSent: int("total_sent").default(0).notNull(),
+	totalFailed: int("total_failed").default(0).notNull(),
+	lastError: text("last_error"),
+	// Metadata
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("idx_webhook_template_user").on(table.userId),
+	index("idx_webhook_template_channel").on(table.channelType),
+	index("idx_webhook_template_active").on(table.isActive),
+]);
+
+export type WebhookTemplate = typeof webhookTemplates.$inferSelect;
+export type InsertWebhookTemplate = typeof webhookTemplates.$inferInsert;
+
+// Webhook Template Logs - Lịch sử gửi thông báo qua template
+export const webhookTemplateLogs = mysqlTable("webhook_template_logs", {
+	id: int().autoincrement().notNull().primaryKey(),
+	templateId: int("template_id").notNull(),
+	// Event details
+	eventType: varchar("event_type", { length: 100 }).notNull(),
+	eventTitle: varchar("event_title", { length: 255 }).notNull(),
+	eventMessage: text("event_message"),
+	eventData: json("event_data"),
+	severity: mysqlEnum(['info', 'warning', 'critical']).default('info'),
+	// Rendered content
+	renderedTitle: varchar("rendered_title", { length: 500 }),
+	renderedBody: text("rendered_body"),
+	// Request/Response
+	requestPayload: text("request_payload"),
+	responseStatus: int("response_status"),
+	responseBody: text("response_body"),
+	// Status
+	status: mysqlEnum(['pending', 'sent', 'failed', 'rate_limited']).default('pending').notNull(),
+	errorMessage: text("error_message"),
+	retryCount: int("retry_count").default(0).notNull(),
+	nextRetryAt: timestamp("next_retry_at", { mode: 'string' }),
+	// Timing
+	sentAt: timestamp("sent_at", { mode: 'string' }),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+	index("idx_webhook_template_log_template").on(table.templateId),
+	index("idx_webhook_template_log_event").on(table.eventType),
+	index("idx_webhook_template_log_status").on(table.status),
+	index("idx_webhook_template_log_created").on(table.createdAt),
+]);
+
+export type WebhookTemplateLog = typeof webhookTemplateLogs.$inferSelect;
+export type InsertWebhookTemplateLog = typeof webhookTemplateLogs.$inferInsert;

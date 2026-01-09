@@ -226,6 +226,7 @@ import IotMonitoringRealtime from "./pages/iot/IotMonitoringRealtime";
 import AiModelPerformance from "./pages/ai/AiModelPerformance";
 import CacheMonitoringDashboard from "./pages/CacheMonitoringDashboard";
 import TelegramSettings from "./pages/TelegramSettings";
+import WebhookTemplates from "./pages/WebhookTemplates";
 import IoTFloorPlan from "./pages/IoTFloorPlan";
 import FloorPlanDesignerPage from "./pages/FloorPlanDesignerPage";
 import AlertWebhookSettings from "./pages/AlertWebhookSettings";
@@ -510,6 +511,7 @@ function Router() {
       <Route path="/video-management" component={VideoManagement} />
       <Route path="/iot-monitoring-realtime" component={IotMonitoringRealtime} />
       <Route path="/telegram-settings" component={TelegramSettings} />
+      <Route path="/webhook-templates" component={WebhookTemplates} />
       <Route path="/iot-floor-plan" component={IoTFloorPlan} />
       <Route path="/floor-plan-designer" component={FloorPlanDesignerPage} />
       <Route path="/alert-webhook-settings" component={AlertWebhookSettings} />

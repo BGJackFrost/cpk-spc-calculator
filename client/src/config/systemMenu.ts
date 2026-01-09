@@ -602,6 +602,7 @@ export const IOT_MENU: SystemMenuConfig = {
         { id: "iot-realtime-machine-config", icon: Cpu, labelKey: "nav.realtimeMachineConfig", path: "/realtime-machine-config", adminOnly: true },
         { id: "iot-realtime-history", icon: History, labelKey: "nav.realtimeHistory", path: "/realtime-history" },
         { id: "telegram-settings", icon: MessageSquare, labelKey: "nav.telegramSettings", path: "/telegram-settings", adminOnly: true },
+        { id: "webhook-templates", icon: Zap, labelKey: "nav.webhookTemplates", path: "/webhook-templates", adminOnly: true },
         { id: "alert-webhook-settings", icon: Webhook, labelKey: "nav.alertWebhookSettings", path: "/alert-webhook-settings", adminOnly: true },
         { id: "webhook-escalation", icon: Bell, labelKey: "nav.webhookEscalation", path: "/webhook-escalation", adminOnly: true },
         { id: "sms-notification-settings", icon: MessageSquare, labelKey: "nav.smsNotificationSettings", path: "/sms-settings", adminOnly: true },

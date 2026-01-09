@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
+import { CameraStream } from "@/components/CameraStream";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -30,7 +31,9 @@ import {
   Zap,
   Target,
   Sparkles,
-  FileText
+  FileText,
+  Camera,
+  Video
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -91,6 +94,8 @@ export default function SpcPlanManagement() {
   const [isModeSelectDialogOpen, setIsModeSelectDialogOpen] = useState(false);
   const [editingPlan, setEditingPlan] = useState<SpcPlan | null>(null);
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
+  const [showCameraPreview, setShowCameraPreview] = useState(false);
+  const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -910,6 +915,62 @@ export default function SpcPlanManagement() {
                         />
                         <p className="text-xs text-muted-foreground">Cảnh báo khi CPK &gt; giá trị này (để trống = không giới hạn)</p>
                       </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Camera Preview Section */}
+                <div className="border rounded-lg p-4 space-y-4 border-blue-200 bg-blue-50/30">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Camera className="h-5 w-5 text-blue-600" />
+                      <Label className="text-base font-medium">Preview Camera</Label>
+                    </div>
+                    <Button
+                      type="button"
+                      variant={showCameraPreview ? "destructive" : "outline"}
+                      size="sm"
+                      onClick={() => setShowCameraPreview(!showCameraPreview)}
+                    >
+                      <Video className="h-4 w-4 mr-2" />
+                      {showCameraPreview ? "Tắt Camera" : "Bật Camera"}
+                    </Button>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Xem trước stream camera để kiểm tra vị trí và góc chụp trước khi tạo kế hoạch
+                  </p>
+                  {showCameraPreview && (
+                    <div className="space-y-4">
+                      <CameraStream
+                        showControls={true}
+                        showDeviceSelector={true}
+                        onCapture={(imageData) => {
+                          setCapturedImage(imageData);
+                          toast.success("Đã chụp ảnh test thành công!");
+                        }}
+                        className="max-h-[300px]"
+                      />
+                      {capturedImage && (
+                        <div className="space-y-2">
+                          <Label className="text-sm">Ảnh đã chụp:</Label>
+                          <div className="relative rounded-lg overflow-hidden border">
+                            <img 
+                              src={capturedImage} 
+                              alt="Captured preview" 
+                              className="w-full max-h-[200px] object-contain bg-black"
+                            />
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="sm"
+                              className="absolute top-2 right-2"
+                              onClick={() => setCapturedImage(null)}
+                            >
+                              Xóa
+                            </Button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
