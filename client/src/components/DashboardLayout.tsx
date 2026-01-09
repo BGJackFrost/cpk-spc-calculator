@@ -262,6 +262,10 @@ const fallbackLabelsVi: Record<string, string> = {
   "nav.imageComparison": "So sánh Hình ảnh",
   "nav.cameraCapture": "Camera Realtime",
   "nav.alertEmailConfig": "Cấu hình Email Cảnh báo",
+  "nav.unifiedRealtimeDashboard": "Dashboard Tổng hợp Realtime",
+  "nav.aiVisionAnalysis": "Phân tích AI Vision",
+  "nav.floorPlanLive": "Floor Plan Live",
+  "nav.aviAoiDashboard": "AVI/AOI Dashboard",
 };
 
 const fallbackLabelsEn: Record<string, string> = {
@@ -474,6 +478,10 @@ const fallbackLabelsEn: Record<string, string> = {
   "nav.imageComparison": "Image Comparison",
   "nav.cameraCapture": "Camera Realtime",
   "nav.alertEmailConfig": "Alert Email Config",
+  "nav.unifiedRealtimeDashboard": "Unified Realtime Dashboard",
+  "nav.aiVisionAnalysis": "AI Vision Analysis",
+  "nav.floorPlanLive": "Floor Plan Live",
+  "nav.aviAoiDashboard": "AVI/AOI Dashboard",
 };
 
 const MIN_WIDTH = 200;

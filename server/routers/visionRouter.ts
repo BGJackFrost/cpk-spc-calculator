@@ -1,6 +1,6 @@
 /**
  * Vision Router
- * API endpoints cho Computer Vision Defect Detection
+ * API endpoints cho Computer Vision Defect Detection và AI Vision Analysis
  */
 
 import { z } from 'zod';
@@ -17,6 +17,9 @@ import {
   analyzeImagesBatch,
   compareImages,
 } from '../services/aiVisionService';
+import { storagePut } from '../storage';
+import { getDb } from '../db';
+import { eq, desc, and, gte, lte, sql, count } from 'drizzle-orm';
 
 export const visionRouter = router({
   // Detect defects in a single image
@@ -116,6 +119,71 @@ export const visionRouter = router({
       };
     }),
 
+  // Upload image to S3 for AI Vision analysis
+  uploadImage: protectedProcedure
+    .input(z.object({
+      base64Data: z.string(),
+      fileName: z.string(),
+      mimeType: z.string().default('image/jpeg'),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const userId = ctx.user?.id || 'anonymous';
+      const timestamp = Date.now();
+      const randomSuffix = Math.random().toString(36).substring(2, 10);
+      const extension = input.fileName.split('.').pop() || 'jpg';
+      const fileKey = `ai-vision/${userId}/${timestamp}-${randomSuffix}.${extension}`;
+      
+      // Strip data URL prefix if present
+      const base64Only = input.base64Data.replace(/^data:image\/\w+;base64,/, '');
+      const buffer = Buffer.from(base64Only, 'base64');
+      
+      const result = await storagePut(fileKey, buffer, input.mimeType);
+      
+      return {
+        key: result.key,
+        url: result.url,
+        fileName: input.fileName,
+        size: buffer.length,
+        mimeType: input.mimeType,
+      };
+    }),
+
+  // Upload multiple images to S3
+  uploadImages: protectedProcedure
+    .input(z.object({
+      images: z.array(z.object({
+        base64Data: z.string(),
+        fileName: z.string(),
+        mimeType: z.string().default('image/jpeg'),
+      })).max(10),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const userId = ctx.user?.id || 'anonymous';
+      const results = [];
+      
+      for (const image of input.images) {
+        const timestamp = Date.now();
+        const randomSuffix = Math.random().toString(36).substring(2, 10);
+        const extension = image.fileName.split('.').pop() || 'jpg';
+        const fileKey = `ai-vision/${userId}/${timestamp}-${randomSuffix}.${extension}`;
+        
+        const base64Only = image.base64Data.replace(/^data:image\/\w+;base64,/, '');
+        const buffer = Buffer.from(base64Only, 'base64');
+        
+        const result = await storagePut(fileKey, buffer, image.mimeType);
+        
+        results.push({
+          key: result.key,
+          url: result.url,
+          fileName: image.fileName,
+          size: buffer.length,
+          mimeType: image.mimeType,
+        });
+      }
+      
+      return results;
+    }),
+
   // AI Vision Analysis - Analyze single image with LLM
   analyzeWithAI: protectedProcedure
     .input(z.object({
@@ -124,20 +192,50 @@ export const visionRouter = router({
       inspectionStandard: z.string().optional().default('IPC-A-610'),
       confidenceThreshold: z.number().min(0).max(1).optional().default(0.7),
       language: z.enum(['vi', 'en']).optional().default('vi'),
-      saveToDatabase: z.boolean().optional().default(false),
+      saveToHistory: z.boolean().optional().default(true),
       machineId: z.number().optional(),
       productId: z.number().optional(),
+      productionLineId: z.number().optional(),
+      batchId: z.string().optional(),
+      serialNumber: z.string().optional(),
     }))
-    .mutation(async ({ input }) => {
-      return await analyzeImageWithLLM(input.imageUrl, {
+    .mutation(async ({ input, ctx }) => {
+      const result = await analyzeImageWithLLM(input.imageUrl, {
         productType: input.productType,
         inspectionStandard: input.inspectionStandard,
         confidenceThreshold: input.confidenceThreshold,
         language: input.language,
-        saveToDatabase: input.saveToDatabase,
-        machineId: input.machineId,
-        productId: input.productId,
       });
+      
+      // Save to history if requested
+      if (input.saveToHistory) {
+        try {
+          const db = await getDb();
+          if (db) {
+            await db.execute(sql`
+              INSERT INTO ai_vision_history (
+                analysis_id, user_id, image_url, status, confidence, quality_score,
+                defect_count, defects, summary, recommendations, processing_time_ms,
+                product_type, inspection_standard, machine_id, product_id,
+                production_line_id, batch_id, serial_number, raw_llm_response, analyzed_at
+              ) VALUES (
+                \${result.id}, \${ctx.user?.id || null}, \${input.imageUrl}, \${result.status},
+                \${result.confidence}, \${result.analysis.qualityScore}, \${result.defects.length},
+                \${JSON.stringify(result.defects)}, \${result.analysis.summary},
+                \${JSON.stringify(result.analysis.recommendations)}, \${result.processingTime},
+                \${input.productType}, \${input.inspectionStandard}, \${input.machineId || null},
+                \${input.productId || null}, \${input.productionLineId || null},
+                \${input.batchId || null}, \${input.serialNumber || null},
+                \${result.rawLlmResponse || null}, NOW()
+              )
+            `);
+          }
+        } catch (error) {
+          console.error('[AI Vision] Error saving to history:', error);
+        }
+      }
+      
+      return result;
     }),
 
   // AI Vision Analysis - Batch analyze multiple images
@@ -148,14 +246,43 @@ export const visionRouter = router({
       inspectionStandard: z.string().optional().default('IPC-A-610'),
       confidenceThreshold: z.number().min(0).max(1).optional().default(0.7),
       language: z.enum(['vi', 'en']).optional().default('vi'),
+      saveToHistory: z.boolean().optional().default(true),
     }))
-    .mutation(async ({ input }) => {
-      return await analyzeImagesBatch(input.imageUrls, {
+    .mutation(async ({ input, ctx }) => {
+      const results = await analyzeImagesBatch(input.imageUrls, {
         productType: input.productType,
         inspectionStandard: input.inspectionStandard,
         confidenceThreshold: input.confidenceThreshold,
         language: input.language,
       });
+      
+      // Save to history if requested
+      if (input.saveToHistory) {
+        try {
+          const db = await getDb();
+          if (db) {
+            for (const result of results.results) {
+              await db.execute(sql`
+                INSERT INTO ai_vision_history (
+                  analysis_id, user_id, image_url, status, confidence, quality_score,
+                  defect_count, defects, summary, recommendations, processing_time_ms,
+                  product_type, inspection_standard, analyzed_at
+                ) VALUES (
+                  \${result.id}, \${ctx.user?.id || null}, \${result.imageUrl}, \${result.status},
+                  \${result.confidence}, \${result.analysis.qualityScore}, \${result.defects.length},
+                  \${JSON.stringify(result.defects)}, \${result.analysis.summary},
+                  \${JSON.stringify(result.analysis.recommendations)}, \${result.processingTime},
+                  \${input.productType}, \${input.inspectionStandard}, NOW()
+                )
+              `);
+            }
+          }
+        } catch (error) {
+          console.error('[AI Vision] Error saving batch to history:', error);
+        }
+      }
+      
+      return results;
     }),
 
   // AI Vision Analysis - Compare reference and inspection images
@@ -175,6 +302,226 @@ export const visionRouter = router({
           language: input.language,
         }
       );
+    }),
+
+  // Get AI Vision analysis history
+  getAnalysisHistory: protectedProcedure
+    .input(z.object({
+      page: z.number().min(1).optional().default(1),
+      pageSize: z.number().min(1).max(100).optional().default(20),
+      status: z.enum(['pass', 'fail', 'warning']).optional(),
+      startDate: z.string().optional(),
+      endDate: z.string().optional(),
+      machineId: z.number().optional(),
+      productId: z.number().optional(),
+      productionLineId: z.number().optional(),
+    }))
+    .query(async ({ input }) => {
+      try {
+        const db = await getDb();
+        if (!db) {
+          return { items: [], total: 0, page: input.page, pageSize: input.pageSize, totalPages: 0 };
+        }
+        
+        const offset = (input.page - 1) * input.pageSize;
+        
+        // Build WHERE conditions
+        let whereConditions = '1=1';
+        const params: any[] = [];
+        
+        if (input.status) {
+          whereConditions += ' AND status = ?';
+          params.push(input.status);
+        }
+        if (input.startDate) {
+          whereConditions += ' AND analyzed_at >= ?';
+          params.push(input.startDate);
+        }
+        if (input.endDate) {
+          whereConditions += ' AND analyzed_at <= ?';
+          params.push(input.endDate);
+        }
+        if (input.machineId) {
+          whereConditions += ' AND machine_id = ?';
+          params.push(input.machineId);
+        }
+        if (input.productId) {
+          whereConditions += ' AND product_id = ?';
+          params.push(input.productId);
+        }
+        if (input.productionLineId) {
+          whereConditions += ' AND production_line_id = ?';
+          params.push(input.productionLineId);
+        }
+        
+        // Get total count
+        const countResult = await db.execute(sql.raw(`
+          SELECT COUNT(*) as total FROM ai_vision_history WHERE ${whereConditions}
+        `));
+        const total = (countResult as any)[0]?.[0]?.total || 0;
+        
+        // Get items
+        const itemsResult = await db.execute(sql.raw(`
+          SELECT * FROM ai_vision_history 
+          WHERE ${whereConditions}
+          ORDER BY analyzed_at DESC
+          LIMIT ${input.pageSize} OFFSET ${offset}
+        `));
+        
+        const items = (itemsResult as any)[0] || [];
+        
+        return {
+          items: items.map((item: any) => ({
+            id: item.id,
+            analysisId: item.analysis_id,
+            imageUrl: item.image_url,
+            status: item.status,
+            confidence: item.confidence,
+            qualityScore: item.quality_score,
+            defectCount: item.defect_count,
+            defects: typeof item.defects === 'string' ? JSON.parse(item.defects) : item.defects,
+            summary: item.summary,
+            recommendations: typeof item.recommendations === 'string' ? JSON.parse(item.recommendations) : item.recommendations,
+            processingTimeMs: item.processing_time_ms,
+            productType: item.product_type,
+            inspectionStandard: item.inspection_standard,
+            machineId: item.machine_id,
+            productId: item.product_id,
+            productionLineId: item.production_line_id,
+            batchId: item.batch_id,
+            serialNumber: item.serial_number,
+            analyzedAt: item.analyzed_at,
+            createdAt: item.created_at,
+          })),
+          total,
+          page: input.page,
+          pageSize: input.pageSize,
+          totalPages: Math.ceil(total / input.pageSize),
+        };
+      } catch (error) {
+        console.error('[AI Vision] Error getting history:', error);
+        return { items: [], total: 0, page: input.page, pageSize: input.pageSize, totalPages: 0 };
+      }
+    }),
+
+  // Get AI Vision analysis statistics
+  getAnalysisStats: protectedProcedure
+    .input(z.object({
+      days: z.number().min(1).max(365).optional().default(30),
+      machineId: z.number().optional(),
+      productId: z.number().optional(),
+      productionLineId: z.number().optional(),
+    }))
+    .query(async ({ input }) => {
+      try {
+        const db = await getDb();
+        if (!db) {
+          return {
+            totalAnalyses: 0,
+            passCount: 0,
+            failCount: 0,
+            warningCount: 0,
+            passRate: 0,
+            avgConfidence: 0,
+            avgProcessingTime: 0,
+            avgQualityScore: 0,
+            trendData: [],
+          };
+        }
+        
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - input.days);
+        
+        // Build WHERE conditions
+        let whereConditions = `analyzed_at >= '${startDate.toISOString()}'`;
+        if (input.machineId) whereConditions += ` AND machine_id = ${input.machineId}`;
+        if (input.productId) whereConditions += ` AND product_id = ${input.productId}`;
+        if (input.productionLineId) whereConditions += ` AND production_line_id = ${input.productionLineId}`;
+        
+        // Get overall stats
+        const statsResult = await db.execute(sql.raw(`
+          SELECT 
+            COUNT(*) as total,
+            SUM(CASE WHEN status = 'pass' THEN 1 ELSE 0 END) as pass_count,
+            SUM(CASE WHEN status = 'fail' THEN 1 ELSE 0 END) as fail_count,
+            SUM(CASE WHEN status = 'warning' THEN 1 ELSE 0 END) as warning_count,
+            AVG(confidence) as avg_confidence,
+            AVG(processing_time_ms) as avg_processing_time,
+            AVG(quality_score) as avg_quality_score
+          FROM ai_vision_history
+          WHERE ${whereConditions}
+        `));
+        
+        const stats = (statsResult as any)[0]?.[0] || {};
+        const total = Number(stats.total) || 0;
+        const passCount = Number(stats.pass_count) || 0;
+        const failCount = Number(stats.fail_count) || 0;
+        const warningCount = Number(stats.warning_count) || 0;
+        
+        // Get trend data (daily)
+        const trendResult = await db.execute(sql.raw(`
+          SELECT 
+            DATE(analyzed_at) as date,
+            COUNT(*) as total,
+            SUM(CASE WHEN status = 'pass' THEN 1 ELSE 0 END) as pass_count,
+            SUM(CASE WHEN status = 'fail' THEN 1 ELSE 0 END) as fail_count,
+            AVG(quality_score) as avg_quality_score
+          FROM ai_vision_history
+          WHERE ${whereConditions}
+          GROUP BY DATE(analyzed_at)
+          ORDER BY date DESC
+          LIMIT 30
+        `));
+        
+        const trendData = ((trendResult as any)[0] || []).map((row: any) => ({
+          date: row.date,
+          total: Number(row.total) || 0,
+          passCount: Number(row.pass_count) || 0,
+          failCount: Number(row.fail_count) || 0,
+          avgQualityScore: Number(row.avg_quality_score) || 0,
+        })).reverse();
+        
+        return {
+          totalAnalyses: total,
+          passCount,
+          failCount,
+          warningCount,
+          passRate: total > 0 ? (passCount / total) * 100 : 0,
+          avgConfidence: Number(stats.avg_confidence) || 0,
+          avgProcessingTime: Number(stats.avg_processing_time) || 0,
+          avgQualityScore: Number(stats.avg_quality_score) || 0,
+          trendData,
+        };
+      } catch (error) {
+        console.error('[AI Vision] Error getting stats:', error);
+        return {
+          totalAnalyses: 0,
+          passCount: 0,
+          failCount: 0,
+          warningCount: 0,
+          passRate: 0,
+          avgConfidence: 0,
+          avgProcessingTime: 0,
+          avgQualityScore: 0,
+          trendData: [],
+        };
+      }
+    }),
+
+  // Delete analysis record
+  deleteAnalysis: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      try {
+        const db = await getDb();
+        if (!db) return { success: false };
+        
+        await db.execute(sql`DELETE FROM ai_vision_history WHERE id = \${input.id}`);
+        return { success: true };
+      } catch (error) {
+        console.error('[AI Vision] Error deleting analysis:', error);
+        return { success: false };
+      }
     }),
 });
 

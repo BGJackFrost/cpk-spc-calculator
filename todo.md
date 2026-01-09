@@ -9013,3 +9013,33 @@
 - [x] Hiển thị kết quả phân tích từ LLM
 - [x] Chức năng so sánh 2 hình ảnh
 - [x] Tích hợp trpc.vision.analyzeWithAI, analyzeWithAIBatch, compareWithAI
+
+
+## Phase 16 - Upload S3 cho AI Vision, Dashboard tổng hợp, Lịch sử AI Vision
+
+### Upload hình ảnh S3 cho AI Vision
+- [x] Tạo API endpoint upload hình ảnh lên S3 (visionRouter.uploadImage)
+- [x] Cập nhật AiVisionAnalysis.tsx hỗ trợ upload file trực tiếp
+- [x] Xử lý multiple file upload (visionRouter.uploadImages)
+- [x] Hiển thị preview hình ảnh trước khi phân tích
+- [x] Tự động upload lên S3 khi chọn file
+
+### Lịch sử phân tích AI Vision (Database)
+- [x] Tạo bảng ai_vision_history trong database (SQL)
+- [x] Tạo API endpoint lưu lịch sử phân tích (visionRouter.analyzeWithAI với saveToHistory)
+- [x] Tạo API endpoint lấy lịch sử phân tích (visionRouter.getAnalysisHistory)
+- [x] Tạo API endpoint thống kê phân tích (visionRouter.getAnalysisStats)
+- [x] Cập nhật AiVisionAnalysis.tsx hiển thị lịch sử phân tích từ database
+- [x] Thêm bộ lọc theo thời gian, trạng thái, máy, sản phẩm
+
+### Dashboard tổng hợp Realtime
+- [x] Tạo trang UnifiedRealtimeDashboard.tsx
+- [x] Hiển thị Floor Plan status tổng hợp
+- [x] Hiển thị AVI/AOI inspection results tổng hợp
+- [x] Hiển thị AI Vision analysis results tổng hợp
+- [x] Thống kê realtime (tỷ lệ pass/fail, defect trends)
+- [x] Cấu hình layout dashboard (tabs: Overview, Floor Plan, AVI/AOI, AI Vision)
+- [x] Thêm route và menu cho trang mới
+
+### Unit Tests
+- [x] Viết unit tests cho visionRouter (19 tests pass)

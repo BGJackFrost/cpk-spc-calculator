@@ -291,6 +291,7 @@ import AdvancedHistory from "./pages/AdvancedHistory";
 import FloorPlanLive from "./pages/FloorPlanLive";
 import MachineApiDocumentation from "./pages/MachineApiDocumentation";
 import AiVisionAnalysis from "./pages/AiVisionAnalysis";
+import UnifiedRealtimeDashboard from "./pages/UnifiedRealtimeDashboard";
 
 function Router() {
   return (
@@ -588,6 +589,7 @@ function Router() {
       <Route path="/floor-plan-live" component={FloorPlanLive} />
       <Route path="/machine-api-documentation" component={MachineApiDocumentation} />
       <Route path="/ai-vision-analysis" component={AiVisionAnalysis} />
+      <Route path="/unified-realtime-dashboard" component={UnifiedRealtimeDashboard} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

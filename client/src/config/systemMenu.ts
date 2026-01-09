@@ -571,6 +571,7 @@ export const IOT_MENU: SystemMenuConfig = {
         { id: "floor-plan-live", icon: Map, labelKey: "nav.floorPlanLive", path: "/floor-plan-live" },
         { id: "avi-aoi-dashboard", icon: Eye, labelKey: "nav.aviAoiDashboard", path: "/avi-aoi-dashboard" },
         { id: "ai-vision-analysis", icon: Camera, labelKey: "nav.aiVisionAnalysis", path: "/ai-vision-analysis" },
+        { id: "unified-realtime-dashboard", icon: Layers, labelKey: "nav.unifiedRealtimeDashboard", path: "/unified-realtime-dashboard" },
         { id: "advanced-history", icon: History, labelKey: "nav.advancedHistory", path: "/advanced-history" },
         { id: "machine-api-documentation", icon: FileText, labelKey: "nav.machineApiDocumentation", path: "/machine-api-documentation" },
       ],

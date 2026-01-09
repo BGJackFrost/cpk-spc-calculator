@@ -80,10 +80,15 @@ export default function AiVisionAnalysis() {
   const [productType, setProductType] = useState("general");
   const [inspectionStandard, setInspectionStandard] = useState("IPC-A-610");
   const [language, setLanguage] = useState<"vi" | "en">("vi");
-  const [saveToDatabase, setSaveToDatabase] = useState(false);
+  const [saveToDatabase, setSaveToDatabase] = useState(true);
   
   // Compare mode state
   const [compareMode, setCompareMode] = useState(false);
+  
+  // History filter state
+  const [historyPage, setHistoryPage] = useState(1);
+  const [historyStatus, setHistoryStatus] = useState<'pass' | 'fail' | 'warning' | undefined>(undefined);
+  const [showDatabaseHistory, setShowDatabaseHistory] = useState(false);
   const [referenceImageUrl, setReferenceImageUrl] = useState("");
   const [inspectionImageUrl, setInspectionImageUrl] = useState("");
   const [compareResult, setCompareResult] = useState<CompareResult | null>(null);
@@ -217,7 +222,45 @@ export default function AiVisionAnalysis() {
     },
   });
 
-  const isLoading = analyzeMutation.isPending || analyzeBatchMutation.isPending || compareMutation.isPending;
+  // Upload image mutation
+  const uploadMutation = trpc.vision.uploadImage.useMutation({
+    onSuccess: (data) => {
+      setImageUrl(data.url);
+      setSelectedImage(data.url);
+      toast({
+        title: "Upload thành công",
+        description: `Hình ảnh đã được tải lên: ${data.fileName}`,
+      });
+      if (autoAnalyze && data.url) {
+        // Will analyze after upload completes
+      }
+    },
+    onError: (error) => {
+      toast({
+        title: "Lỗi upload",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const isLoading = analyzeMutation.isPending || analyzeBatchMutation.isPending || compareMutation.isPending || uploadMutation.isPending;
+
+  // Query history from database
+  const historyQuery = trpc.vision.getAnalysisHistory.useQuery({
+    page: historyPage,
+    pageSize: 20,
+    status: historyStatus,
+  }, {
+    enabled: showDatabaseHistory,
+  });
+
+  // Query stats from database
+  const statsQuery = trpc.vision.getAnalysisStats.useQuery({
+    days: 30,
+  }, {
+    enabled: showDatabaseHistory,
+  });
 
   const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -226,16 +269,16 @@ export default function AiVisionAnalysis() {
     reader.onload = (event) => {
       const dataUrl = event.target?.result as string;
       setSelectedImage(dataUrl);
-      if (autoAnalyze) {
-        // For data URLs, we need to upload first - for now show message
-        toast({
-          title: "Tải lên hình ảnh",
-          description: "Vui lòng sử dụng URL hình ảnh để phân tích với AI",
-        });
-      }
+      
+      // Upload to S3
+      uploadMutation.mutate({
+        base64Data: dataUrl,
+        fileName: file.name,
+        mimeType: file.type || 'image/jpeg',
+      });
     };
     reader.readAsDataURL(file);
-  }, [autoAnalyze, toast]);
+  }, [uploadMutation, autoAnalyze, analyzeImage]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -245,10 +288,17 @@ export default function AiVisionAnalysis() {
       reader.onload = (event) => {
         const dataUrl = event.target?.result as string;
         setSelectedImage(dataUrl);
+        
+        // Upload to S3
+        uploadMutation.mutate({
+          base64Data: dataUrl,
+          fileName: file.name,
+          mimeType: file.type || 'image/jpeg',
+        });
       };
       reader.readAsDataURL(file);
     }
-  }, []);
+  }, [uploadMutation]);
 
   const analyzeImage = useCallback((url: string) => {
     if (!url) {
@@ -266,7 +316,7 @@ export default function AiVisionAnalysis() {
       inspectionStandard,
       confidenceThreshold: confidenceThreshold / 100,
       language,
-      saveToDatabase,
+      saveToHistory: saveToDatabase,
     });
   }, [productType, inspectionStandard, confidenceThreshold, language, saveToDatabase, analyzeMutation, toast]);
 
@@ -286,6 +336,7 @@ export default function AiVisionAnalysis() {
       inspectionStandard,
       confidenceThreshold: confidenceThreshold / 100,
       language,
+      saveToHistory: saveToDatabase,
     });
   }, [batchUrls, productType, inspectionStandard, confidenceThreshold, language, analyzeBatchMutation, toast]);
 
@@ -728,10 +779,97 @@ export default function AiVisionAnalysis() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card>
-            <CardHeader><CardTitle className="flex items-center gap-2"><History className="h-5 w-5" />Lịch sử phân tích</CardTitle></CardHeader>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2"><History className="h-5 w-5" />Lịch sử phân tích</CardTitle>
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm">Từ Database</Label>
+                  <Switch checked={showDatabaseHistory} onCheckedChange={setShowDatabaseHistory} />
+                </div>
+              </div>
+              {showDatabaseHistory && (
+                <div className="flex gap-2 mt-2">
+                  <Select value={historyStatus || 'all'} onValueChange={(v) => setHistoryStatus(v === 'all' ? undefined : v as any)}>
+                    <SelectTrigger className="w-32"><SelectValue placeholder="Trạng thái" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tất cả</SelectItem>
+                      <SelectItem value="pass">Đạt</SelectItem>
+                      <SelectItem value="fail">Lỗi</SelectItem>
+                      <SelectItem value="warning">Cảnh báo</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </CardHeader>
             <CardContent>
               <ScrollArea className="h-[300px]">
-                {results.length > 0 ? (
+                {showDatabaseHistory ? (
+                  historyQuery.isLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin" />
+                    </div>
+                  ) : historyQuery.data?.items && historyQuery.data.items.length > 0 ? (
+                    <div className="space-y-2">
+                      {historyQuery.data.items.map((item) => (
+                        <div
+                          key={item.id}
+                          className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted cursor-pointer"
+                          onClick={() => {
+                            setSelectedResult({
+                              id: item.analysisId,
+                              imageUrl: item.imageUrl,
+                              status: item.status,
+                              confidence: item.confidence,
+                              qualityScore: item.qualityScore,
+                              defects: item.defects || [],
+                              summary: item.summary || '',
+                              recommendations: item.recommendations || [],
+                              processingTime: item.processingTimeMs,
+                              timestamp: new Date(item.analyzedAt),
+                              serialNumber: item.serialNumber,
+                            });
+                            setSelectedImage(item.imageUrl);
+                          }}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className={`w-2 h-2 rounded-full ${item.status === "pass" ? "bg-green-500" : item.status === "fail" ? "bg-red-500" : "bg-yellow-500"}`} />
+                            <div>
+                              <p className="text-sm font-medium">{item.serialNumber || item.analysisId}</p>
+                              <p className="text-xs text-muted-foreground">{new Date(item.analyzedAt).toLocaleString("vi-VN")}</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <Badge variant="outline" className="text-xs">{item.defectCount} lỗi</Badge>
+                            <p className="text-xs text-muted-foreground mt-1">Q: {item.qualityScore}</p>
+                          </div>
+                        </div>
+                      ))}
+                      {historyQuery.data.totalPages > 1 && (
+                        <div className="flex justify-center gap-2 pt-4">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={historyPage <= 1}
+                            onClick={() => setHistoryPage(p => p - 1)}
+                          >
+                            Trước
+                          </Button>
+                          <span className="text-sm py-1">{historyPage}/{historyQuery.data.totalPages}</span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={historyPage >= historyQuery.data.totalPages}
+                            onClick={() => setHistoryPage(p => p + 1)}
+                          >
+                            Sau
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">Chưa có lịch sử trong database</div>
+                  )
+                ) : results.length > 0 ? (
                   <div className="space-y-2">
                     {results.map((result) => (
                       <div
