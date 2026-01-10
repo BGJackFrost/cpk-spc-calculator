@@ -9346,3 +9346,31 @@
 - [x] Cập nhật index.html - sửa meta tag deprecated (mobile-web-app-capable)
 - [x] Loại bỏ analytics script gây lỗi CSP
 - [x] Sửa lỗi GROUP BY trong cpkHistoryRouter.ts (only_full_group_by)
+
+## Phase 10 - UX Improvements: Loading, Error Handling, Retry
+
+### Loading Skeletons
+- [x] Tạo WidgetSkeleton component cho dashboard widgets
+- [x] Tạo TableSkeleton component cho bảng dữ liệu
+- [x] Tạo ChartSkeleton component cho biểu đồ
+- [x] Tạo StatsCardSkeleton, FormSkeleton, ListSkeleton components
+- [x] Tạo RealtimeCardSkeleton, AnalysisResultSkeleton components
+- [x] Tạo DashboardGridSkeleton, PageHeaderSkeleton components
+
+### Error Boundary cải tiến
+- [x] Tạo ErrorBoundary component với UI thân thiện
+- [x] Hiển thị thông báo lỗi dễ hiểu cho người dùng (friendlyMessages)
+- [x] Thêm nút "Thử lại", "Tải lại trang", "Về trang chủ" trong error boundary
+- [x] Log lỗi chi tiết cho debugging (ErrorDetails component)
+- [x] Thêm WidgetErrorFallback và ApiErrorFallback components
+- [x] Thêm withErrorBoundary HOC cho functional components
+
+### Retry Mechanism
+- [x] Tạo custom hook useRetryQuery với exponential backoff
+- [x] Cấu hình retry trong QueryClient (main.tsx)
+- [x] Tạo useRetryState hook để quản lý retry state
+- [x] Tạo useMutationWithRetry hook cho mutations
+- [x] Tạo withRetry utility function
+- [x] Tạo QueryErrorHandler component hiển thị trạng thái retry
+- [x] Tạo RetryIndicator component nhỏ gọn
+- [x] Thêm toast notification khi retry thành công/thất bại

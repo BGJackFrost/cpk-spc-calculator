@@ -12,7 +12,44 @@ import { LicenseAccessProvider } from "./contexts/LicenseAccessContext";
 import { PushNotificationProvider } from "./components/PushNotificationProvider";
 import "./index.css";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // Retry configuration với exponential backoff
+      retry: (failureCount, error) => {
+        // Không retry nếu là lỗi authentication
+        if (error instanceof TRPCClientError) {
+          if (error.message === UNAUTHED_ERR_MSG) return false;
+          // Không retry nếu là lỗi 4xx (client error)
+          const httpStatus = error.data?.httpStatus;
+          if (httpStatus && httpStatus >= 400 && httpStatus < 500) return false;
+        }
+        // Retry tối đa 3 lần
+        return failureCount < 3;
+      },
+      retryDelay: (attemptIndex) => {
+        // Exponential backoff: 1s, 2s, 4s
+        return Math.min(1000 * Math.pow(2, attemptIndex), 8000);
+      },
+      // Stale time 30 giây
+      staleTime: 30 * 1000,
+      // Refetch khi window focus
+      refetchOnWindowFocus: true,
+    },
+    mutations: {
+      // Retry mutations 1 lần cho network errors
+      retry: (failureCount, error) => {
+        if (error instanceof TRPCClientError) {
+          // Chỉ retry nếu là network error
+          if (error.message.includes('fetch') || error.message.includes('network')) {
+            return failureCount < 1;
+          }
+        }
+        return false;
+      },
+    },
+  },
+});
 
 const redirectToLoginIfUnauthorized = (error: unknown) => {
   if (!(error instanceof TRPCClientError)) return;
