@@ -1,9 +1,10 @@
-import { useEffect, useCallback } from "react";
+import { useState, useCallback, useMemo, memo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { useSSE } from "@/hooks/useSSE";
 import { Wifi, WifiOff } from "lucide-react";
+import { RealtimeCardSkeleton } from "@/components/DashboardSkeletons";
 import { 
   AlertTriangle, 
   CheckCircle2, 
@@ -93,17 +94,24 @@ export default function RealtimePlanCard({ plan, lineName, samplingName }: Realt
     }
   };
 
-  // Determine status based on CPK
+  // Memoize computed values to prevent unnecessary re-renders
   const cpk = realtimeData?.cpk;
-  const status = cpk === null || cpk === undefined 
-    ? "unknown" 
-    : cpk >= 1.33 ? "good" : cpk >= 1.0 ? "warning" : "critical";
+  
+  const status = useMemo(() => {
+    if (cpk === null || cpk === undefined) return "unknown";
+    return cpk >= 1.33 ? "good" : cpk >= 1.0 ? "warning" : "critical";
+  }, [cpk]);
 
-  // Chart data
-  const chartData = realtimeData?.data || [];
-  const mean = realtimeData?.mean || 0;
-  const ucl = realtimeData?.ucl || 0;
-  const lcl = realtimeData?.lcl || 0;
+  // Memoize chart data
+  const chartData = useMemo(() => realtimeData?.data || [], [realtimeData?.data]);
+  const mean = useMemo(() => realtimeData?.mean || 0, [realtimeData?.mean]);
+  const ucl = useMemo(() => realtimeData?.ucl || 0, [realtimeData?.ucl]);
+  const lcl = useMemo(() => realtimeData?.lcl || 0, [realtimeData?.lcl]);
+
+  // Show skeleton while loading initial data
+  if (isLoading) {
+    return <RealtimeCardSkeleton />;
+  }
 
   return (
     <Card className="bg-card rounded-xl border border-border/50 shadow-md hover:shadow-lg transition-shadow">

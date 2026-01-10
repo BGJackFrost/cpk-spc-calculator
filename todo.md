@@ -9374,3 +9374,34 @@
 - [x] Tạo QueryErrorHandler component hiển thị trạng thái retry
 - [x] Tạo RetryIndicator component nhỏ gọn
 - [x] Thêm toast notification khi retry thành công/thất bại
+
+## Phase 10.x - UX Improvements
+
+### Skeleton Loading Components
+- [ ] Tạo skeleton components cho Dashboard
+- [ ] Tạo skeleton components cho trang Phân tích SPC
+- [ ] Tích hợp skeleton vào các components loading
+
+### Offline Indicator
+- [ ] Tạo OfflineIndicator component với banner thông báo
+- [ ] Thêm auto-retry mechanism khi online lại
+- [ ] Tích hợp vào App layout
+
+### Performance Optimization
+- [ ] Thêm React.memo cho các components nặng
+- [ ] Thêm useMemo cho các tính toán phức tạp
+- [ ] Tối ưu render cho charts và tables
+
+
+## Phase 10.x - UX Improvements (Skeleton Loading, Offline Indicator, Performance)
+
+- [x] Tạo DashboardSkeletons.tsx với các skeleton components chuyên dụng
+- [x] Tích hợp skeleton loading vào Dashboard (Stats Grid, Quick Actions, Recent Analysis)
+- [x] Tích hợp skeleton loading vào trang Phân tích SPC (Form, Results)
+- [x] Tạo OfflineIndicator component với banner thông báo mất kết nối
+- [x] Thêm auto-retry mechanism với exponential backoff khi online lại
+- [x] Tích hợp OfflineIndicator vào App.tsx (global level)
+- [x] Thêm React.memo cho AdvancedCharts component
+- [x] Thêm useMemo cho computed values trong Dashboard (stats, quickActions, activeValidationRules)
+- [x] Thêm useMemo cho RealtimePlanCard (status, chartData, mean, ucl, lcl)
+- [x] Thêm isLoading states cho các queries trong Dashboard và Analyze

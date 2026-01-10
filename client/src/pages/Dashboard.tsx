@@ -1,4 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
+import { useMemo, memo } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import GuidedTour from "@/components/GuidedTour";
 import { useGuidedTour, dashboardTourSteps } from "@/hooks/useGuidedTour";
@@ -6,6 +7,12 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
+import { 
+  DashboardStatsGridSkeleton, 
+  QuickActionsSkeleton, 
+  WidgetGridSkeleton,
+  RecentAnalysisListSkeleton 
+} from "@/components/DashboardSkeletons";
 import { 
   BarChart3, 
   Database, 
@@ -52,11 +59,14 @@ import RadarChartHistoryWidget from "@/components/RadarChartHistoryWidget";
 export default function Dashboard() {
   const { user } = useAuth();
   const { t } = useLanguage();
-  const { data: mappings } = trpc.mapping.list.useQuery();
-  const { data: history } = trpc.spc.history.useQuery({ limit: 10 });
-  const { data: dashboardConfig, refetch: refetchConfig } = trpc.dashboardConfig.get.useQuery();
+  const { data: mappings, isLoading: isLoadingMappings } = trpc.mapping.list.useQuery();
+  const { data: history, isLoading: isLoadingHistory } = trpc.spc.history.useQuery({ limit: 10 });
+  const { data: dashboardConfig, refetch: refetchConfig, isLoading: isLoadingConfig } = trpc.dashboardConfig.get.useQuery();
   const { data: defaultTemplate } = trpc.reportTemplate.getDefault.useQuery();
-  const { data: validationRules } = trpc.validationRule.list.useQuery();
+  const { data: validationRules, isLoading: isLoadingRules } = trpc.validationRule.list.useQuery();
+  
+  // Combined loading state
+  const isInitialLoading = isLoadingMappings || isLoadingHistory || isLoadingConfig;
   
   // NTF Statistics for widget
   const { data: ntfStats } = trpc.defect.getNtfStatistics.useQuery({
@@ -90,9 +100,13 @@ export default function Dashboard() {
   const totalAnalyses = history?.length || 0;
   
   // Validation Rules stats
-  const activeValidationRules = validationRules?.filter(r => r.isActive === 1) || [];
+  const activeValidationRules = useMemo(() => 
+    validationRules?.filter(r => r.isActive === 1) || [],
+    [validationRules]
+  );
 
-  const stats = [
+  // Memoize stats to prevent unnecessary re-renders
+  const stats = useMemo(() => [
     {
       title: t.dashboard.mappingConfig,
       value: mappings?.length || 0,
@@ -121,9 +135,10 @@ export default function Dashboard() {
       description: t.dashboard.productionSystem,
       color: recentAlerts.length === 0 ? "text-chart-3" : "text-warning",
     },
-  ];
+  ], [t, mappings?.length, totalAnalyses, recentAlerts.length]);
 
-  const quickActions = [
+  // Memoize quick actions
+  const quickActions = useMemo(() => [
     {
       title: t.dashboard.analyzeSpcCpk,
       description: t.dashboard.selectProductStation,
@@ -149,7 +164,7 @@ export default function Dashboard() {
       icon: Settings,
       href: "/settings",
     },
-  ];
+  ], [t]);
 
   return (
     <DashboardLayout>
@@ -262,6 +277,9 @@ export default function Dashboard() {
         </div>
 
         {/* Stats Grid */}
+        {isInitialLoading ? (
+          <DashboardStatsGridSkeleton />
+        ) : (
         <div data-tour="dashboard-stats" className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {stats.map((stat, index) => {
             const widgetKeys = ["mapping_count", "recent_analysis", "cpk_alerts", "system_status"];
@@ -293,9 +311,13 @@ export default function Dashboard() {
             );
           })}
         </div>
+        )}
 
         {/* Quick Actions - Full Width */}
         {isWidgetVisible("quick_actions") && (
+          isInitialLoading ? (
+            <QuickActionsSkeleton />
+          ) : (
           <div data-tour="quick-actions">
             <h2 className="text-xl font-semibold mb-4">{t.dashboard.quickActions}</h2>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -320,6 +342,7 @@ export default function Dashboard() {
               })}
             </div>
           </div>
+          )
         )}
 
         {/* System Status - License, Webhook & Validation Rules */}
@@ -367,7 +390,9 @@ export default function Dashboard() {
         </div>
 
         {/* Recent Analyses */}
-        {history && history.length > 0 && (
+        {isLoadingHistory ? (
+          <RecentAnalysisListSkeleton />
+        ) : history && history.length > 0 && (
           <div>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold">{t.dashboard.recentAnalysis}</h2>

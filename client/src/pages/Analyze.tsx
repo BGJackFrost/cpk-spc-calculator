@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, memo } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
+import { SpcAnalysisFormSkeleton, SpcResultsSkeleton } from "@/components/DashboardSkeletons";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import { 
@@ -122,19 +123,22 @@ export default function Analyze() {
   const [lastExportType, setLastExportType] = useState<"pdf" | "excel">("pdf");
 
   // Lấy danh sách products từ bảng products
-  const { data: products } = trpc.product.list.useQuery();
+  const { data: products, isLoading: isLoadingProducts } = trpc.product.list.useQuery();
   
   // Lấy danh sách workstations
-  const { data: workstations } = trpc.workstation.listAll.useQuery();
+  const { data: workstations, isLoading: isLoadingWorkstations } = trpc.workstation.listAll.useQuery();
   
   // Lấy danh sách mappings
-  const { data: allMappings } = trpc.mapping.list.useQuery();
+  const { data: allMappings, isLoading: isLoadingMappings } = trpc.mapping.list.useQuery();
   
   // Lấy danh sách SPC Plans
-  const { data: spcPlans } = trpc.spcPlan.list.useQuery();
+  const { data: spcPlans, isLoading: isLoadingSpcPlans } = trpc.spcPlan.list.useQuery();
   
   // Lấy danh sách máy
-  const { data: machines } = trpc.machine.listAll.useQuery();
+  const { data: machines, isLoading: isLoadingMachines } = trpc.machine.listAll.useQuery();
+  
+  // Combined loading state for initial data
+  const isInitialLoading = isLoadingProducts || isLoadingWorkstations || isLoadingMappings || isLoadingSpcPlans;
   
   // Lấy danh sách fixtures theo máy đã chọn
   const { data: fixtures } = trpc.fixture.list.useQuery(
@@ -552,7 +556,11 @@ export default function Analyze() {
           </p>
         </div>
 
-        {/* Input Form */}
+        {/* Show skeleton while loading initial data */}
+        {isInitialLoading ? (
+          <SpcAnalysisFormSkeleton />
+        ) : (
+        /* Input Form */
         <Card className="bg-card rounded-xl border border-border/50 shadow-md hover:shadow-lg transition-all duration-300">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -1102,9 +1110,12 @@ export default function Analyze() {
             </Tabs>
           </CardContent>
         </Card>
+        )}
 
         {/* Results */}
-        {result && (
+        {analyzeMutation.isPending ? (
+          <SpcResultsSkeleton />
+        ) : result && (
           <>
             {/* Statistics Cards */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

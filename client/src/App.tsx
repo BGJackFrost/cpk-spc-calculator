@@ -640,6 +640,9 @@ function Router() {
   );
 }
 
+// Import OfflineIndicator
+import { OfflineIndicator } from "./components/OfflineIndicator";
+
 function App() {
   return (
     <ErrorBoundary>
@@ -647,6 +650,7 @@ function App() {
         <TooltipProvider>
           <GlobalKeyboardShortcuts>
             <SseNotificationProvider>
+              <OfflineIndicator />
               <Toaster />
               <Router />
             </SseNotificationProvider>

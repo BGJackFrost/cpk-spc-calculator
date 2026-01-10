@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import React, { useMemo } from "react";
+import React, { useMemo, memo, useState } from "react";
 import {
   LineChart,
   Line,
@@ -716,9 +715,9 @@ function ViolationsSummary({ violations }: { violations: SpcViolation[] }) {
 }
 
 /**
- * Main AdvancedCharts component
+ * Main AdvancedCharts component - Memoized for performance
  */
-export default function AdvancedCharts({
+const AdvancedCharts = memo(function AdvancedCharts({
   xBarData,
   rangeData,
   rawData,
@@ -767,4 +766,6 @@ export default function AdvancedCharts({
       <SampleDataTable rawData={rawData} usl={usl} lsl={lsl} />
     </div>
   );
-}
+});
+
+export default AdvancedCharts;
