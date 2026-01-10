@@ -9405,3 +9405,9 @@
 - [x] Thêm useMemo cho computed values trong Dashboard (stats, quickActions, activeValidationRules)
 - [x] Thêm useMemo cho RealtimePlanCard (status, chartData, mean, ucl, lcl)
 - [x] Thêm isLoading states cho các queries trong Dashboard và Analyze
+
+
+## Bug Fix - Production Server 503
+
+- [ ] Khắc phục lỗi 503 server không phản hồi trên production (cpkspccal-rpnsldn3.manus.space)
+- [ ] Khắc phục lỗi CORS policy khi truy cập OAuth
