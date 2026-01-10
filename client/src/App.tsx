@@ -36,6 +36,10 @@ import WebhookManagement from "./pages/WebhookManagement";
 import ReportTemplateManagement from "./pages/ReportTemplateManagement";
 import LocalUserManagement from "./pages/LocalUserManagement";
 import ChangePassword from "./pages/ChangePassword";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
+import TwoFactorSetup from "./pages/TwoFactorSetup";
+import LoginCustomization from "./pages/LoginCustomization";
 import LicenseActivation from "./pages/LicenseActivation";
 import LicenseAdmin from "./pages/LicenseAdmin";
 import LoginHistoryPage from "./pages/LoginHistoryPage";
@@ -349,6 +353,10 @@ function Router() {
       <Route path="/company-info" component={CompanyInfo} />
       <Route path="/local-login" component={LocalLogin} />
       <Route path="/change-password" component={ChangePassword} />
+      <Route path="/forgot-password" component={ForgotPassword} />
+      <Route path="/reset-password" component={ResetPassword} />
+      <Route path="/2fa-setup" component={TwoFactorSetup} />
+      <Route path="/login-customization" component={LoginCustomization} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/anomaly-detection" component={AnomalyDetection} />
       <Route path="/production-lines" component={ProductionLinesDashboard} />

@@ -103,7 +103,18 @@ import {
   changeLocalPassword,
   adminResetPassword,
   type LocalAuthUser,
+  requestPasswordReset,
+  verifyPasswordResetToken,
+  resetPasswordWithToken,
 } from "./localAuthService";
+import {
+  generateTOTPSecret,
+  enable2FA,
+  disable2FA,
+  has2FAEnabled,
+  verify2FALogin,
+  generateBackupCodes,
+} from "./twoFactorService";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { 
   getRateLimitStats, 
@@ -321,6 +332,8 @@ import {
   updateCustomValidationRule,
   deleteCustomValidationRule,
   toggleCustomValidationRule,
+  getLoginCustomization,
+  updateLoginCustomization,
 } from "./db";
 
 // Admin procedure - only admins can access
@@ -3960,12 +3973,32 @@ export const appRouter = router({
       .input(z.object({
         username: z.string(),
         password: z.string(),
+        twoFactorCode: z.string().optional(),
+        isBackupCode: z.boolean().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
-        const result = await loginLocalUser(input);
+        const result = await loginLocalUser({ username: input.username, password: input.password });
         if (!result.success) {
           throw new TRPCError({ code: 'UNAUTHORIZED', message: result.error });
         }
+        
+        // Check if 2FA is enabled
+        const has2FA = await has2FAEnabled(result.user!.id);
+        if (has2FA) {
+          if (!input.twoFactorCode) {
+            return {
+              success: false,
+              requires2FA: true,
+              userId: result.user!.id,
+            };
+          }
+          
+          const verified = await verify2FALogin(result.user!.id, input.twoFactorCode, input.isBackupCode || false);
+          if (!verified) {
+            throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Mã xác thực 2FA không đúng' });
+          }
+        }
+        
         // Set cookie with token
         if (result.token) {
           const cookieOptions = getSessionCookieOptions(ctx.req);
@@ -3997,6 +4030,112 @@ export const appRouter = router({
           throw new TRPCError({ code: 'BAD_REQUEST', message: result.error });
         }
         return { success: true, message: 'Password changed successfully' };
+      }),
+
+    // Request password reset (public)
+    requestPasswordReset: publicProcedure
+      .input(z.object({
+        email: z.string().email(),
+      }))
+      .mutation(async ({ input }) => {
+        return await requestPasswordReset(input.email);
+      }),
+
+    // Verify password reset token (public)
+    verifyResetToken: publicProcedure
+      .input(z.object({
+        token: z.string(),
+      }))
+      .query(async ({ input }) => {
+        return await verifyPasswordResetToken(input.token);
+      }),
+
+    // Reset password with token (public)
+    resetPasswordWithToken: publicProcedure
+      .input(z.object({
+        token: z.string(),
+        newPassword: z.string().min(6),
+      }))
+      .mutation(async ({ input }) => {
+        return await resetPasswordWithToken(input.token, input.newPassword);
+      }),
+
+    // Generate 2FA secret
+    generate2FASecret: protectedProcedure
+      .mutation(async ({ ctx }) => {
+        return await generateTOTPSecret(ctx.user.id, ctx.user.name || ctx.user.openId);
+      }),
+
+    // Enable 2FA
+    enable2FA: protectedProcedure
+      .input(z.object({
+        token: z.string().length(6),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        return await enable2FA(ctx.user.id, input.token);
+      }),
+
+    // Disable 2FA
+    disable2FA: protectedProcedure
+      .input(z.object({
+        token: z.string().length(6),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        return await disable2FA(ctx.user.id, input.token);
+      }),
+
+    // Check 2FA status
+    get2FAStatus: protectedProcedure
+      .query(async ({ ctx }) => {
+        const enabled = await has2FAEnabled(ctx.user.id);
+        return { enabled };
+      }),
+
+    // Regenerate backup codes
+    regenerateBackupCodes: protectedProcedure
+      .input(z.object({
+        token: z.string().length(6),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const enabled = await has2FAEnabled(ctx.user.id);
+        if (!enabled) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: '2FA chưa được kích hoạt' });
+        }
+        // Verify token first
+        const verified = await verify2FALogin(ctx.user.id, input.token, false);
+        if (!verified) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: 'Mã xác thực không đúng' });
+        }
+        const codes = await generateBackupCodes(ctx.user.id);
+        return { success: true, backupCodes: codes };
+      }),
+
+    // Get login customization (public)
+    getLoginCustomization: publicProcedure
+      .query(async () => {
+        return await getLoginCustomization();
+      }),
+
+    // Update login customization (admin only)
+    updateLoginCustomization: protectedProcedure
+      .input(z.object({
+        logoUrl: z.string().nullable().optional(),
+        logoAlt: z.string().optional(),
+        welcomeTitle: z.string().optional(),
+        welcomeSubtitle: z.string().optional(),
+        primaryColor: z.string().optional(),
+        secondaryColor: z.string().optional(),
+        backgroundGradient: z.string().nullable().optional(),
+        footerText: z.string().nullable().optional(),
+        showOauth: z.boolean().optional(),
+        showRegister: z.boolean().optional(),
+        customCss: z.string().nullable().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin access required' });
+        }
+        return await updateLoginCustomization({ ...input, updatedBy: ctx.user.id });
       }),
 
     // Update profile (for logged in user)

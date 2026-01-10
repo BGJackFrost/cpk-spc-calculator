@@ -5893,3 +5893,92 @@ export async function getWorkOrderCountsByType(targetType: string, targetId: num
     };
   }
 }
+
+
+// ===== LOGIN CUSTOMIZATION FUNCTIONS =====
+
+export async function getLoginCustomization(): Promise<{
+  id: number;
+  logoUrl: string | null;
+  logoAlt: string;
+  welcomeTitle: string;
+  welcomeSubtitle: string;
+  primaryColor: string;
+  secondaryColor: string;
+  backgroundGradient: string | null;
+  footerText: string | null;
+  showOauth: boolean;
+  showRegister: boolean;
+  customCss: string | null;
+} | null> {
+  const db = await getDb();
+  if (!db) return null;
+  
+  const [rows] = await db.execute(
+    `SELECT id, logo_url as logoUrl, logo_alt as logoAlt, welcome_title as welcomeTitle, 
+     welcome_subtitle as welcomeSubtitle, primary_color as primaryColor, 
+     secondary_color as secondaryColor, background_gradient as backgroundGradient,
+     footer_text as footerText, show_oauth as showOauth, show_register as showRegister,
+     custom_css as customCss
+     FROM login_customization WHERE id = 1`
+  );
+  
+  const result = rows as any[];
+  if (!result.length) {
+    return {
+      id: 1,
+      logoUrl: null,
+      logoAlt: "Logo",
+      welcomeTitle: "Chào mừng",
+      welcomeSubtitle: "Đăng nhập để tiếp tục",
+      primaryColor: "#3b82f6",
+      secondaryColor: "#1e40af",
+      backgroundGradient: null,
+      footerText: null,
+      showOauth: true,
+      showRegister: true,
+      customCss: null,
+    };
+  }
+  
+  return result[0];
+}
+
+export async function updateLoginCustomization(data: {
+  logoUrl?: string | null;
+  logoAlt?: string;
+  welcomeTitle?: string;
+  welcomeSubtitle?: string;
+  primaryColor?: string;
+  secondaryColor?: string;
+  backgroundGradient?: string | null;
+  footerText?: string | null;
+  showOauth?: boolean;
+  showRegister?: boolean;
+  customCss?: string | null;
+  updatedBy: number;
+}): Promise<{ success: boolean }> {
+  const db = await getDb();
+  if (!db) return { success: false };
+  
+  const updates: string[] = [];
+  
+  if (data.logoUrl !== undefined) updates.push(`logo_url = ${data.logoUrl ? `'${data.logoUrl}'` : 'NULL'}`);
+  if (data.logoAlt !== undefined) updates.push(`logo_alt = '${data.logoAlt}'`);
+  if (data.welcomeTitle !== undefined) updates.push(`welcome_title = '${data.welcomeTitle}'`);
+  if (data.welcomeSubtitle !== undefined) updates.push(`welcome_subtitle = '${data.welcomeSubtitle}'`);
+  if (data.primaryColor !== undefined) updates.push(`primary_color = '${data.primaryColor}'`);
+  if (data.secondaryColor !== undefined) updates.push(`secondary_color = '${data.secondaryColor}'`);
+  if (data.backgroundGradient !== undefined) updates.push(`background_gradient = ${data.backgroundGradient ? `'${data.backgroundGradient}'` : 'NULL'}`);
+  if (data.footerText !== undefined) updates.push(`footer_text = ${data.footerText ? `'${data.footerText}'` : 'NULL'}`);
+  if (data.showOauth !== undefined) updates.push(`show_oauth = ${data.showOauth}`);
+  if (data.showRegister !== undefined) updates.push(`show_register = ${data.showRegister}`);
+  if (data.customCss !== undefined) updates.push(`custom_css = ${data.customCss ? `'${data.customCss}'` : 'NULL'}`);
+  
+  updates.push(`updated_at = ${Date.now()}`);
+  updates.push(`updated_by = ${data.updatedBy}`);
+  
+  await db.execute(`UPDATE login_customization SET ${updates.join(", ")} WHERE id = 1`);
+  
+  return { success: true };
+}

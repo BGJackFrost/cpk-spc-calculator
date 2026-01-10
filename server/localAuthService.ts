@@ -391,3 +391,107 @@ export async function ensureDefaultAdmin(): Promise<void> {
     console.error("[LocalAuth] Error ensuring default admin:", error);
   }
 }
+
+
+// ===== PASSWORD RESET FUNCTIONS =====
+
+import crypto from "crypto";
+import { sendPasswordResetEmail } from "./emailService";
+
+/**
+ * Request password reset - generates token and sends email
+ */
+export async function requestPasswordReset(email: string): Promise<{ success: boolean; message: string }> {
+  const db = await getDb();
+  
+  // Find user by email
+  const [rows] = await db.execute(
+    `SELECT id, username, email FROM local_users WHERE email = '${email}' AND is_active = TRUE`
+  );
+  
+  const users = rows as any[];
+  
+  // Always return success to prevent email enumeration
+  if (!users.length) {
+    return { success: true, message: "Nếu email tồn tại trong hệ thống, bạn sẽ nhận được link đặt lại mật khẩu." };
+  }
+  
+  const user = users[0];
+  
+  // Generate reset token
+  const token = crypto.randomBytes(32).toString("hex");
+  const expiresAt = Date.now() + 3600000; // 1 hour
+  
+  // Save token to database
+  await db.execute(
+    `INSERT INTO password_reset_tokens (user_id, token, expires_at, created_at)
+     VALUES (${user.id}, '${token}', ${expiresAt}, ${Date.now()})
+     ON DUPLICATE KEY UPDATE token = '${token}', expires_at = ${expiresAt}, used = FALSE`
+  );
+  
+  // Send email
+  try {
+    await sendPasswordResetEmail(user.email, user.username, token);
+  } catch (error) {
+    console.error("Failed to send password reset email:", error);
+  }
+  
+  return { success: true, message: "Nếu email tồn tại trong hệ thống, bạn sẽ nhận được link đặt lại mật khẩu." };
+}
+
+/**
+ * Verify password reset token
+ */
+export async function verifyPasswordResetToken(token: string): Promise<{ valid: boolean; userId?: number; error?: string }> {
+  const db = await getDb();
+  
+  const [rows] = await db.execute(
+    `SELECT user_id, expires_at, used FROM password_reset_tokens WHERE token = '${token}'`
+  );
+  
+  const tokens = rows as any[];
+  
+  if (!tokens.length) {
+    return { valid: false, error: "Token không hợp lệ" };
+  }
+  
+  const tokenData = tokens[0];
+  
+  if (tokenData.used) {
+    return { valid: false, error: "Token đã được sử dụng" };
+  }
+  
+  if (tokenData.expires_at < Date.now()) {
+    return { valid: false, error: "Token đã hết hạn" };
+  }
+  
+  return { valid: true, userId: tokenData.user_id };
+}
+
+/**
+ * Reset password with token
+ */
+export async function resetPasswordWithToken(token: string, newPassword: string): Promise<{ success: boolean; error?: string }> {
+  const verification = await verifyPasswordResetToken(token);
+  
+  if (!verification.valid) {
+    return { success: false, error: verification.error };
+  }
+  
+  const db = await getDb();
+  
+  // Hash new password
+  const hashedPassword = await hashPassword(newPassword);
+  
+  // Update password
+  await db.execute(
+    `UPDATE local_users SET password_hash = '${hashedPassword}', must_change_password = FALSE, updated_at = ${Date.now()} WHERE id = ${verification.userId}`
+  );
+  
+  // Mark token as used
+  await db.execute(
+    `UPDATE password_reset_tokens SET used = TRUE WHERE token = '${token}'`
+  );
+  
+  return { success: true };
+}

@@ -9424,3 +9424,11 @@
 - [x] Tạo API đăng nhập bằng Username/Password (đã có sẵn)
 - [x] Tạo form đăng ký tài khoản mới (đã có sẵn)
 
+
+
+## Phase 200 - Authentication Enhancement
+
+- [x] Chức năng Quên mật khẩu (reset qua email)
+- [x] Xác thực 2 yếu tố (2FA) với TOTP
+- [x] Tùy chỉnh giao diện đăng nhập (logo, màu sắc, thông điệp)
+- [x] Unit tests cho authentication features

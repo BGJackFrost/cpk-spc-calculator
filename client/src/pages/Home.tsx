@@ -26,9 +26,10 @@ import {
   Globe,
   KeyRound
 } from "lucide-react";
-import { useLocation } from "wouter";
-import { useEffect } from "react";
+import { useLocation, Link } from "wouter";
+import { useState, useEffect } from "react";
 import { getLoginUrl } from "@/const";
+import TwoFactorVerify from "./TwoFactorVerify";
 
 export default function Home() {
   const { user, loading, isAuthenticated } = useAuth();
@@ -39,6 +40,7 @@ export default function Home() {
   // Login form state
   const [loginUsername, setLoginUsername] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
+  const [requires2FA, setRequires2FA] = useState(false);
   
   // Register form state
   const [regUsername, setRegUsername] = useState("");
@@ -55,6 +57,10 @@ export default function Home() {
 
   const loginMutation = trpc.localAuth.login.useMutation({
     onSuccess: (data) => {
+      if (data.requires2FA) {
+        setRequires2FA(true);
+        return;
+      }
       toast.success("Đăng nhập thành công!");
       if (data.mustChangePassword) {
         setLocation("/change-password");
@@ -215,6 +221,21 @@ export default function Home() {
 
             {/* Right: Login Form */}
             <div>
+              {requires2FA ? (
+                <TwoFactorVerify
+                  username={loginUsername}
+                  password={loginPassword}
+                  onSuccess={() => {
+                    toast.success("Đăng nhập thành công!");
+                    setLocation("/dashboard");
+                    window.location.reload();
+                  }}
+                  onCancel={() => {
+                    setRequires2FA(false);
+                    setLoginPassword("");
+                  }}
+                />
+              ) : (
               <Card className="w-full max-w-md mx-auto bg-card/95 backdrop-blur border-border/50 shadow-2xl">
                 <CardHeader className="text-center space-y-2">
                   <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-2">
@@ -328,6 +349,12 @@ export default function Home() {
                                 autoComplete="current-password"
                               />
                             </div>
+                          </div>
+                          
+                          <div className="flex justify-end">
+                            <Link href="/forgot-password" className="text-sm text-primary hover:underline">
+                              Quên mật khẩu?
+                            </Link>
                           </div>
                           
                           <Button 
@@ -484,6 +511,7 @@ export default function Home() {
                   )}
                 </CardFooter>
               </Card>
+              )}
             </div>
           </div>
         </div>

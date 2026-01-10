@@ -342,6 +342,8 @@ export const SYSTEM_MENU: SystemMenuConfig = {
         { id: "users", icon: Users, labelKey: "nav.userManagement", path: "/users" },
         { id: "local-users", icon: UserCog, labelKey: "nav.localUserManagement", path: "/local-users", adminOnly: true },
         { id: "login-history", icon: History, labelKey: "nav.loginHistory", path: "/login-history", adminOnly: true },
+        { id: "2fa-setup", icon: Shield, labelKey: "nav.twoFactorSetup", path: "/2fa-setup" },
+        { id: "login-customization", icon: Eye, labelKey: "nav.loginCustomization", path: "/login-customization", adminOnly: true },
         { id: "organization", icon: Building2, labelKey: "nav.organization", path: "/organization", adminOnly: true },
         { id: "approval-workflow", icon: GitBranch, labelKey: "nav.approvalWorkflow", path: "/approval-workflow", adminOnly: true },
         { id: "module-permissions", icon: Shield, labelKey: "nav.modulePermissions", path: "/module-permissions", adminOnly: true },
