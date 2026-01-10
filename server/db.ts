@@ -6278,3 +6278,212 @@ export async function getAuthAuditStats(days: number = 30) {
 }
 
 export { MAX_LOGIN_ATTEMPTS, LOCKOUT_DURATION_MINUTES };
+
+
+// ============================================
+// Auth Audit Dashboard Functions
+// ============================================
+
+export async function getRecentFailedLoginsForDashboard(hours: number = 24) {
+  const db = await getDb();
+  if (!db) return { count: 0, recentAttempts: [] };
+
+  try {
+    // Get count of failed logins in the last X hours
+    const [countRows] = await db.execute(
+      `SELECT COUNT(*) as count FROM auth_audit_logs 
+       WHERE event_type = 'login_failed' 
+       AND created_at > DATE_SUB(NOW(), INTERVAL ${hours} HOUR)`
+    );
+    const count = (countRows as any[])[0]?.count || 0;
+
+    // Get recent failed login attempts with details
+    const [recentRows] = await db.execute(
+      `SELECT id, user_id, username, ip_address, user_agent, details, created_at 
+       FROM auth_audit_logs 
+       WHERE event_type = 'login_failed' 
+       AND created_at > DATE_SUB(NOW(), INTERVAL ${hours} HOUR)
+       ORDER BY created_at DESC 
+       LIMIT 10`
+    );
+
+    return {
+      count: Number(count),
+      recentAttempts: recentRows as any[],
+    };
+  } catch (error) {
+    console.error("[AuthAudit] Failed to get recent failed logins:", error);
+    return { count: 0, recentAttempts: [] };
+  }
+}
+
+export async function getLockedAccountsForDashboard() {
+  const db = await getDb();
+  if (!db) return { count: 0, lockedAccounts: [] };
+
+  try {
+    // Get currently locked accounts (locked_until > NOW and not unlocked)
+    const [rows] = await db.execute(
+      `SELECT id, user_id, username, locked_at, locked_until, reason, failed_attempts 
+       FROM account_lockouts 
+       WHERE locked_until > NOW() 
+       AND unlocked_at IS NULL
+       ORDER BY locked_at DESC`
+    );
+
+    return {
+      count: (rows as any[]).length,
+      lockedAccounts: rows as any[],
+    };
+  } catch (error) {
+    console.error("[AuthAudit] Failed to get locked accounts:", error);
+    return { count: 0, lockedAccounts: [] };
+  }
+}
+
+export async function getFailedLoginsTrend(days: number = 7) {
+  const db = await getDb();
+  if (!db) return [];
+
+  try {
+    const [rows] = await db.execute(
+      `SELECT DATE(created_at) as date, COUNT(*) as count 
+       FROM auth_audit_logs 
+       WHERE event_type = 'login_failed' 
+       AND created_at > DATE_SUB(NOW(), INTERVAL ${days} DAY)
+       GROUP BY DATE(created_at)
+       ORDER BY date ASC`
+    );
+
+    return rows as { date: string; count: number }[];
+  } catch (error) {
+    console.error("[AuthAudit] Failed to get failed logins trend:", error);
+    return [];
+  }
+}
+
+export async function getSecurityOverviewStats() {
+  const db = await getDb();
+  if (!db) return null;
+
+  try {
+    // Get stats for the last 24 hours and 7 days
+    const [stats24h] = await db.execute(
+      `SELECT 
+        SUM(CASE WHEN event_type = 'login_failed' THEN 1 ELSE 0 END) as failed_logins_24h,
+        SUM(CASE WHEN event_type = 'login_success' THEN 1 ELSE 0 END) as success_logins_24h,
+        SUM(CASE WHEN event_type = 'account_locked' THEN 1 ELSE 0 END) as accounts_locked_24h
+       FROM auth_audit_logs 
+       WHERE created_at > DATE_SUB(NOW(), INTERVAL 24 HOUR)`
+    );
+
+    const [stats7d] = await db.execute(
+      `SELECT 
+        SUM(CASE WHEN event_type = 'login_failed' THEN 1 ELSE 0 END) as failed_logins_7d,
+        SUM(CASE WHEN event_type = 'login_success' THEN 1 ELSE 0 END) as success_logins_7d,
+        SUM(CASE WHEN event_type = 'account_locked' THEN 1 ELSE 0 END) as accounts_locked_7d
+       FROM auth_audit_logs 
+       WHERE created_at > DATE_SUB(NOW(), INTERVAL 7 DAY)`
+    );
+
+    // Get currently locked accounts count
+    const [lockedCount] = await db.execute(
+      `SELECT COUNT(*) as count FROM account_lockouts 
+       WHERE locked_until > NOW() AND unlocked_at IS NULL`
+    );
+
+    // Get critical events in last 24h
+    const [criticalEvents] = await db.execute(
+      `SELECT COUNT(*) as count FROM auth_audit_logs 
+       WHERE severity = 'critical' 
+       AND created_at > DATE_SUB(NOW(), INTERVAL 24 HOUR)`
+    );
+
+    const s24h = (stats24h as any[])[0] || {};
+    const s7d = (stats7d as any[])[0] || {};
+
+    return {
+      failedLogins24h: Number(s24h.failed_logins_24h || 0),
+      successLogins24h: Number(s24h.success_logins_24h || 0),
+      accountsLocked24h: Number(s24h.accounts_locked_24h || 0),
+      failedLogins7d: Number(s7d.failed_logins_7d || 0),
+      successLogins7d: Number(s7d.success_logins_7d || 0),
+      accountsLocked7d: Number(s7d.accounts_locked_7d || 0),
+      currentlyLockedAccounts: Number((lockedCount as any[])[0]?.count || 0),
+      criticalEvents24h: Number((criticalEvents as any[])[0]?.count || 0),
+    };
+  } catch (error) {
+    console.error("[AuthAudit] Failed to get security overview stats:", error);
+    return null;
+  }
+}
+
+export async function getAuthAuditLogsWithUserInfo(params: {
+  userId?: number;
+  username?: string;
+  eventType?: AuthAuditEventType;
+  severity?: 'info' | 'warning' | 'critical';
+  startDate?: Date;
+  endDate?: Date;
+  page: number;
+  pageSize: number;
+}) {
+  const db = await getDb();
+  if (!db) return { logs: [], total: 0, totalPages: 0 };
+
+  const { userId, username, eventType, severity, startDate, endDate, page, pageSize } = params;
+  const offset = (page - 1) * pageSize;
+
+  try {
+    const conditions: string[] = [];
+    if (userId) conditions.push(`a.user_id = ${userId}`);
+    if (username) conditions.push(`a.username LIKE '%${username}%'`);
+    if (eventType) conditions.push(`a.event_type = '${eventType}'`);
+    if (severity) conditions.push(`a.severity = '${severity}'`);
+    if (startDate) conditions.push(`a.created_at >= '${startDate.toISOString().slice(0, 19).replace('T', ' ')}'`);
+    if (endDate) conditions.push(`a.created_at <= '${endDate.toISOString().slice(0, 19).replace('T', ' ')}'`);
+
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    const [rows] = await db.execute(
+      `SELECT a.*, u.name as user_name, u.email as user_email, u.avatar as user_avatar
+       FROM auth_audit_logs a
+       LEFT JOIN users u ON a.user_id = u.id
+       ${whereClause} 
+       ORDER BY a.created_at DESC 
+       LIMIT ${pageSize} OFFSET ${offset}`
+    );
+
+    const [countRows] = await db.execute(
+      `SELECT COUNT(*) as count FROM auth_audit_logs a ${whereClause}`
+    );
+    const total = (countRows as any[])[0]?.count || 0;
+
+    return {
+      logs: rows as any[],
+      total: Number(total),
+      totalPages: Math.ceil(Number(total) / pageSize),
+    };
+  } catch (error) {
+    console.error("[AuthAudit] Failed to get logs with user info:", error);
+    return { logs: [], total: 0, totalPages: 0 };
+  }
+}
+
+// Get all users for filter dropdown
+export async function getAllUsersForFilter() {
+  const db = await getDb();
+  if (!db) return [];
+
+  try {
+    const [rows] = await db.execute(
+      `SELECT DISTINCT u.id, u.name, u.email, u.openId 
+       FROM users u 
+       ORDER BY u.name ASC`
+    );
+    return rows as { id: number; name: string | null; email: string | null; openId: string }[];
+  } catch (error) {
+    console.error("[AuthAudit] Failed to get users for filter:", error);
+    return [];
+  }
+}

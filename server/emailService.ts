@@ -857,3 +857,274 @@ export async function sendPasswordResetEmail(
   
   return await sendEmail(to, subject, html);
 }
+
+
+// ============================================
+// Security Alert Email Functions
+// ============================================
+
+export interface AccountLockedEmailData {
+  username: string;
+  lockedAt: Date;
+  lockedUntil: Date;
+  failedAttempts: number;
+  ipAddress?: string;
+  reason?: string;
+}
+
+export interface SecurityAlertEmailData {
+  alertType: 'account_locked' | 'suspicious_activity' | 'multiple_failed_logins' | 'brute_force_detected';
+  username?: string;
+  ipAddress?: string;
+  details: string;
+  timestamp: Date;
+  severity: 'warning' | 'critical';
+}
+
+/**
+ * Generate account locked email HTML
+ */
+function generateAccountLockedEmail(data: AccountLockedEmailData): { subject: string; html: string } {
+  const subject = `🔒 [CRITICAL] Tài khoản bị khóa: ${data.username}`;
+  
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #fff;">
+      <div style="background-color: #dc2626; color: white; padding: 20px; text-align: center;">
+        <h1 style="margin: 0; font-size: 24px;">⚠️ CẢNH BÁO BẢO MẬT</h1>
+        <p style="margin: 10px 0 0 0; opacity: 0.9;">Tài khoản đã bị khóa</p>
+      </div>
+      
+      <div style="padding: 30px; background-color: #fef2f2; border-left: 4px solid #dc2626;">
+        <h2 style="color: #dc2626; margin-top: 0;">Thông tin chi tiết</h2>
+        
+        <table style="width: 100%; border-collapse: collapse;">
+          <tr>
+            <td style="padding: 10px 0; border-bottom: 1px solid #fecaca; font-weight: bold; width: 40%;">Tên đăng nhập:</td>
+            <td style="padding: 10px 0; border-bottom: 1px solid #fecaca;">${data.username}</td>
+          </tr>
+          <tr>
+            <td style="padding: 10px 0; border-bottom: 1px solid #fecaca; font-weight: bold;">Thời gian khóa:</td>
+            <td style="padding: 10px 0; border-bottom: 1px solid #fecaca;">${data.lockedAt.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}</td>
+          </tr>
+          <tr>
+            <td style="padding: 10px 0; border-bottom: 1px solid #fecaca; font-weight: bold;">Mở khóa lúc:</td>
+            <td style="padding: 10px 0; border-bottom: 1px solid #fecaca;">${data.lockedUntil.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}</td>
+          </tr>
+          <tr>
+            <td style="padding: 10px 0; border-bottom: 1px solid #fecaca; font-weight: bold;">Số lần thất bại:</td>
+            <td style="padding: 10px 0; border-bottom: 1px solid #fecaca; color: #dc2626; font-weight: bold;">${data.failedAttempts}</td>
+          </tr>
+          ${data.ipAddress ? `
+          <tr>
+            <td style="padding: 10px 0; border-bottom: 1px solid #fecaca; font-weight: bold;">Địa chỉ IP:</td>
+            <td style="padding: 10px 0; border-bottom: 1px solid #fecaca;">${data.ipAddress}</td>
+          </tr>
+          ` : ''}
+          ${data.reason ? `
+          <tr>
+            <td style="padding: 10px 0; font-weight: bold;">Lý do:</td>
+            <td style="padding: 10px 0;">${data.reason}</td>
+          </tr>
+          ` : ''}
+        </table>
+      </div>
+      
+      <div style="padding: 20px; background-color: #fff;">
+        <h3 style="color: #374151; margin-top: 0;">Hành động đề xuất:</h3>
+        <ul style="color: #6b7280; line-height: 1.8;">
+          <li>Kiểm tra xem đây có phải là hoạt động hợp lệ từ người dùng</li>
+          <li>Nếu nghi ngờ tấn công, hãy kiểm tra IP address và block nếu cần</li>
+          <li>Liên hệ người dùng để xác nhận nếu cần thiết</li>
+          <li>Xem xét mở khóa tài khoản nếu đây là sự cố hợp lệ</li>
+        </ul>
+        
+        <div style="text-align: center; margin-top: 20px;">
+          <a href="${process.env.VITE_APP_URL || 'http://localhost:3000'}/auth-audit-logs" 
+             style="background-color: #3b82f6; color: white; padding: 12px 24px; 
+                    text-decoration: none; border-radius: 6px; display: inline-block;">
+            Xem Auth Audit Logs
+          </a>
+        </div>
+      </div>
+      
+      <div style="padding: 15px; background-color: #f3f4f6; text-align: center; font-size: 12px; color: #6b7280;">
+        <p style="margin: 0;">Email này được gửi tự động từ Hệ thống CPK/SPC Calculator</p>
+        <p style="margin: 5px 0 0 0;">Thời gian: ${new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}</p>
+      </div>
+    </div>
+  `;
+  
+  return { subject, html };
+}
+
+/**
+ * Generate security alert email HTML
+ */
+function generateSecurityAlertEmail(data: SecurityAlertEmailData): { subject: string; html: string } {
+  const alertTypeLabels: Record<string, string> = {
+    'account_locked': 'Tài khoản bị khóa',
+    'suspicious_activity': 'Hoạt động đáng ngờ',
+    'multiple_failed_logins': 'Nhiều lần đăng nhập thất bại',
+    'brute_force_detected': 'Phát hiện tấn công Brute Force',
+  };
+  
+  const severityColors = {
+    warning: { bg: '#fef3c7', border: '#f59e0b', text: '#92400e' },
+    critical: { bg: '#fef2f2', border: '#dc2626', text: '#991b1b' },
+  };
+  
+  const colors = severityColors[data.severity];
+  const icon = data.severity === 'critical' ? '🚨' : '⚠️';
+  
+  const subject = `${icon} [${data.severity.toUpperCase()}] ${alertTypeLabels[data.alertType] || data.alertType}${data.username ? `: ${data.username}` : ''}`;
+  
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #fff;">
+      <div style="background-color: ${colors.border}; color: white; padding: 20px; text-align: center;">
+        <h1 style="margin: 0; font-size: 24px;">${icon} CẢNH BÁO BẢO MẬT</h1>
+        <p style="margin: 10px 0 0 0; opacity: 0.9;">${alertTypeLabels[data.alertType] || data.alertType}</p>
+      </div>
+      
+      <div style="padding: 30px; background-color: ${colors.bg}; border-left: 4px solid ${colors.border};">
+        <h2 style="color: ${colors.text}; margin-top: 0;">Chi tiết cảnh báo</h2>
+        
+        <table style="width: 100%; border-collapse: collapse;">
+          <tr>
+            <td style="padding: 10px 0; border-bottom: 1px solid ${colors.border}40; font-weight: bold; width: 40%;">Loại cảnh báo:</td>
+            <td style="padding: 10px 0; border-bottom: 1px solid ${colors.border}40;">${alertTypeLabels[data.alertType] || data.alertType}</td>
+          </tr>
+          <tr>
+            <td style="padding: 10px 0; border-bottom: 1px solid ${colors.border}40; font-weight: bold;">Mức độ:</td>
+            <td style="padding: 10px 0; border-bottom: 1px solid ${colors.border}40;">
+              <span style="background-color: ${colors.border}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px;">
+                ${data.severity.toUpperCase()}
+              </span>
+            </td>
+          </tr>
+          ${data.username ? `
+          <tr>
+            <td style="padding: 10px 0; border-bottom: 1px solid ${colors.border}40; font-weight: bold;">Tên đăng nhập:</td>
+            <td style="padding: 10px 0; border-bottom: 1px solid ${colors.border}40;">${data.username}</td>
+          </tr>
+          ` : ''}
+          ${data.ipAddress ? `
+          <tr>
+            <td style="padding: 10px 0; border-bottom: 1px solid ${colors.border}40; font-weight: bold;">Địa chỉ IP:</td>
+            <td style="padding: 10px 0; border-bottom: 1px solid ${colors.border}40;">${data.ipAddress}</td>
+          </tr>
+          ` : ''}
+          <tr>
+            <td style="padding: 10px 0; border-bottom: 1px solid ${colors.border}40; font-weight: bold;">Thời gian:</td>
+            <td style="padding: 10px 0; border-bottom: 1px solid ${colors.border}40;">${data.timestamp.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}</td>
+          </tr>
+          <tr>
+            <td style="padding: 10px 0; font-weight: bold; vertical-align: top;">Chi tiết:</td>
+            <td style="padding: 10px 0;">${data.details}</td>
+          </tr>
+        </table>
+      </div>
+      
+      <div style="padding: 20px; background-color: #fff; text-align: center;">
+        <a href="${process.env.VITE_APP_URL || 'http://localhost:3000'}/auth-audit-logs" 
+           style="background-color: #3b82f6; color: white; padding: 12px 24px; 
+                  text-decoration: none; border-radius: 6px; display: inline-block;">
+          Xem Auth Audit Logs
+        </a>
+      </div>
+      
+      <div style="padding: 15px; background-color: #f3f4f6; text-align: center; font-size: 12px; color: #6b7280;">
+        <p style="margin: 0;">Email này được gửi tự động từ Hệ thống CPK/SPC Calculator</p>
+      </div>
+    </div>
+  `;
+  
+  return { subject, html };
+}
+
+/**
+ * Send account locked notification to admins
+ */
+export async function sendAccountLockedNotification(
+  data: AccountLockedEmailData
+): Promise<{ success: boolean; error?: string; sentCount?: number }> {
+  const db = await getDb();
+  if (!db) return { success: false, error: "Database not available" };
+  
+  try {
+    // Get admin users' emails
+    const [adminUsers] = await db.execute(
+      `SELECT email FROM users WHERE role = 'admin' AND email IS NOT NULL AND email != ''`
+    );
+    
+    const adminEmails = (adminUsers as any[]).map(u => u.email).filter(Boolean);
+    
+    if (adminEmails.length === 0) {
+      console.warn("[SecurityAlert] No admin emails found to send notification");
+      return { success: false, error: "No admin emails configured" };
+    }
+    
+    const { subject, html } = generateAccountLockedEmail(data);
+    const result = await sendEmail(adminEmails, subject, html);
+    
+    console.log(`[SecurityAlert] Sent account locked notification to ${result.sentCount || 0} admins`);
+    return result;
+  } catch (error: any) {
+    console.error("[SecurityAlert] Failed to send account locked notification:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Send security alert notification to admins
+ */
+export async function sendSecurityAlertNotification(
+  data: SecurityAlertEmailData
+): Promise<{ success: boolean; error?: string; sentCount?: number }> {
+  const db = await getDb();
+  if (!db) return { success: false, error: "Database not available" };
+  
+  try {
+    // Get admin users' emails
+    const [adminUsers] = await db.execute(
+      `SELECT email FROM users WHERE role = 'admin' AND email IS NOT NULL AND email != ''`
+    );
+    
+    const adminEmails = (adminUsers as any[]).map(u => u.email).filter(Boolean);
+    
+    if (adminEmails.length === 0) {
+      console.warn("[SecurityAlert] No admin emails found to send notification");
+      return { success: false, error: "No admin emails configured" };
+    }
+    
+    const { subject, html } = generateSecurityAlertEmail(data);
+    const result = await sendEmail(adminEmails, subject, html);
+    
+    console.log(`[SecurityAlert] Sent security alert notification to ${result.sentCount || 0} admins`);
+    return result;
+  } catch (error: any) {
+    console.error("[SecurityAlert] Failed to send security alert notification:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Send critical alert to specific email addresses
+ */
+export async function sendCriticalAlertEmail(
+  to: string | string[],
+  alertType: string,
+  details: string,
+  additionalData?: Record<string, any>
+): Promise<{ success: boolean; error?: string; sentCount?: number }> {
+  const data: SecurityAlertEmailData = {
+    alertType: alertType as any,
+    details,
+    timestamp: new Date(),
+    severity: 'critical',
+    username: additionalData?.username,
+    ipAddress: additionalData?.ipAddress,
+  };
+  
+  const { subject, html } = generateSecurityAlertEmail(data);
+  return await sendEmail(to, subject, html);
+}

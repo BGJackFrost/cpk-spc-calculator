@@ -9457,3 +9457,27 @@
 - [x] Ghi log thay đổi mật khẩu
 - [x] Ghi log unlock tài khoản
 - [x] API xem audit logs cho admin (getAuthAuditLogs, getAuthAuditStats)
+
+
+## Phase 10 - Auth Audit Logs và Critical Alert System
+
+### Trang UI Admin Audit Logs
+- [x] Tạo database schema cho Auth Audit Logs (event_type, severity, user_id, ip_address, timestamp)
+- [x] Tạo backend API để lưu và truy vấn Auth Audit Logs
+- [x] Tạo trang UI Admin xem Auth Audit Logs với bảng dữ liệu
+- [x] Thêm bộ lọc theo user (dropdown chọn user)
+- [x] Thêm bộ lọc theo event type (login_success, login_failed, logout, account_locked, etc.)
+- [x] Thêm bộ lọc theo severity (info, warning, critical)
+- [x] Thêm phân trang và sắp xếp theo thời gian
+
+### Dashboard Widget - Security Overview
+- [x] Tạo widget hiển thị số lần đăng nhập thất bại gần đây (24h, 7 ngày)
+- [x] Tạo widget hiển thị danh sách tài khoản bị khóa
+- [x] Thêm biểu đồ mini trend đăng nhập thất bại
+- [x] Thêm quick actions (unlock account, view details)
+
+### Email Notification cho Critical Alerts
+- [x] Tạo service gửi email thông báo cho admin
+- [x] Tích hợp gửi email khi có tài khoản bị khóa (critical alert)
+- [x] Cấu hình danh sách admin nhận thông báo
+- [x] Thêm template email cho critical alerts

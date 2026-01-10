@@ -43,6 +43,7 @@ import LoginCustomization from "./pages/LoginCustomization";
 import LicenseActivation from "./pages/LicenseActivation";
 import LicenseAdmin from "./pages/LicenseAdmin";
 import LoginHistoryPage from "./pages/LoginHistoryPage";
+import AuthAuditLogs from "./pages/AuthAuditLogs";
 import SystemSetup from "./pages/SystemSetup";
 import CompanyInfo from "./pages/CompanyInfo";
 import BackupHistory from "./pages/BackupHistory";
@@ -490,6 +491,7 @@ function Router() {
       <Route path="/license-server-settings" component={LicenseServerSettings} />
       <Route path="/license-server-dashboard" component={LicenseServerDashboard} />
       <Route path="/login-history" component={LoginHistoryPage} />
+      <Route path="/auth-audit-logs" component={AuthAuditLogs} />
       <Route path="/backup-history" component={BackupHistory} />
       <Route path="/backup-restore" component={BackupRestore} />
       <Route path="/measurement-standards" component={MeasurementStandards} />

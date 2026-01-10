@@ -4,6 +4,7 @@
  */
 
 import { getDb, logLoginEvent, recordLoginAttempt, getRecentFailedAttempts, isAccountLocked, lockAccount, logAuthAuditEvent, MAX_LOGIN_ATTEMPTS } from "./db";
+import { sendAccountLockedNotification } from "./emailService";
 import { localUsers } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
@@ -267,6 +268,22 @@ export async function loginLocalUser(input: LoginInput, context?: { ipAddress?: 
           userAgent: context?.userAgent,
           severity: 'critical',
         });
+        
+        // Send email notification to admins about account lockout
+        try {
+          await sendAccountLockedNotification({
+            username: user.username,
+            lockedAt: new Date(),
+            lockedUntil: lockResult.lockedUntil,
+            failedAttempts,
+            ipAddress: context?.ipAddress,
+            reason: `${failedAttempts} lần đăng nhập thất bại liên tiếp`,
+          });
+          console.log(`[LocalAuth] Sent account locked notification for user: ${user.username}`);
+        } catch (emailError) {
+          console.error('[LocalAuth] Failed to send account locked notification:', emailError);
+          // Don't fail the login response if email fails
+        }
         
         return { 
           success: false, 

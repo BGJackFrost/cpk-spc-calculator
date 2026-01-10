@@ -340,6 +340,12 @@ import {
   logAuthAuditEvent,
   getAuthAuditLogs,
   getAuthAuditStats,
+  getRecentFailedLoginsForDashboard,
+  getLockedAccountsForDashboard,
+  getFailedLoginsTrend,
+  getSecurityOverviewStats,
+  getAuthAuditLogsWithUserInfo,
+  getAllUsersForFilter,
 } from "./db";
 
 // Admin procedure - only admins can access
@@ -4521,6 +4527,80 @@ export const appRouter = router({
           throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin access required' });
         }
         return getAuthAuditStats(input.days);
+      }),
+
+    // Get auth audit logs with user info (enhanced)
+    getAuthAuditLogsWithUserInfo: protectedProcedure
+      .input(z.object({
+        userId: z.number().optional(),
+        username: z.string().optional(),
+        eventType: z.enum(['login_success', 'login_failed', 'logout', 'password_change', 'password_reset', '2fa_enabled', '2fa_disabled', '2fa_verified', 'account_locked', 'account_unlocked', 'session_expired', 'token_refresh']).optional(),
+        severity: z.enum(['info', 'warning', 'critical']).optional(),
+        startDate: z.string().optional(),
+        endDate: z.string().optional(),
+        page: z.number().default(1),
+        pageSize: z.number().default(20),
+      }))
+      .query(async ({ input, ctx }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin access required' });
+        }
+        return getAuthAuditLogsWithUserInfo({
+          ...input,
+          startDate: input.startDate ? new Date(input.startDate) : undefined,
+          endDate: input.endDate ? new Date(input.endDate) : undefined,
+        });
+      }),
+
+    // Get users for filter dropdown
+    getUsersForFilter: protectedProcedure
+      .query(async ({ ctx }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin access required' });
+        }
+        return getAllUsersForFilter();
+      }),
+
+    // Dashboard widget: Recent failed logins
+    getRecentFailedLogins: protectedProcedure
+      .input(z.object({
+        hours: z.number().default(24),
+      }))
+      .query(async ({ input, ctx }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin access required' });
+        }
+        return getRecentFailedLoginsForDashboard(input.hours);
+      }),
+
+    // Dashboard widget: Locked accounts
+    getLockedAccounts: protectedProcedure
+      .query(async ({ ctx }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin access required' });
+        }
+        return getLockedAccountsForDashboard();
+      }),
+
+    // Dashboard widget: Failed logins trend
+    getFailedLoginsTrend: protectedProcedure
+      .input(z.object({
+        days: z.number().default(7),
+      }))
+      .query(async ({ input, ctx }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin access required' });
+        }
+        return getFailedLoginsTrend(input.days);
+      }),
+
+    // Dashboard widget: Security overview stats
+    getSecurityOverview: protectedProcedure
+      .query(async ({ ctx }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin access required' });
+        }
+        return getSecurityOverviewStats();
       }),
   }),
 
