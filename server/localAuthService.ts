@@ -3,7 +3,7 @@
  * Provides offline authentication without requiring Manus OAuth
  */
 
-import { getDb, logLoginEvent } from "./db";
+import { getDb, logLoginEvent, recordLoginAttempt, getRecentFailedAttempts, isAccountLocked, lockAccount, logAuthAuditEvent, MAX_LOGIN_ATTEMPTS } from "./db";
 import { localUsers } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
@@ -135,16 +135,60 @@ export async function registerLocalUser(input: RegisterInput): Promise<{ success
 /**
  * Login with local credentials
  */
-export async function loginLocalUser(input: LoginInput): Promise<{ success: boolean; token?: string; user?: LocalAuthUser; error?: string; mustChangePassword?: boolean }> {
+export async function loginLocalUser(input: LoginInput, context?: { ipAddress?: string; userAgent?: string }): Promise<{ success: boolean; token?: string; user?: LocalAuthUser; error?: string; mustChangePassword?: boolean; accountLocked?: boolean; lockedUntil?: Date }> {
   const db = await getDb();
   if (!db) {
     return { success: false, error: "Database not available" };
   }
 
   try {
+    // Check if account is locked
+    const lockStatus = await isAccountLocked(input.username);
+    if (lockStatus.locked) {
+      await recordLoginAttempt({
+        username: input.username,
+        success: false,
+        failureReason: 'account_locked',
+        ipAddress: context?.ipAddress,
+        userAgent: context?.userAgent,
+      });
+      await logAuthAuditEvent({
+        username: input.username,
+        eventType: 'login_failed',
+        authMethod: 'local',
+        details: { reason: 'account_locked', lockedUntil: lockStatus.lockedUntil },
+        ipAddress: context?.ipAddress,
+        userAgent: context?.userAgent,
+        severity: 'warning',
+      });
+      return { 
+        success: false, 
+        error: `Tài khoản đã bị khóa. Vui lòng thử lại sau ${lockStatus.lockedUntil?.toLocaleString('vi-VN')}.`,
+        accountLocked: true,
+        lockedUntil: lockStatus.lockedUntil,
+      };
+    }
+
     // Find user by username
     const users = await db.select().from(localUsers).where(eq(localUsers.username, input.username)).limit(1);
     if (users.length === 0) {
+      // Record failed attempt for non-existent user
+      await recordLoginAttempt({
+        username: input.username,
+        success: false,
+        failureReason: 'user_not_found',
+        ipAddress: context?.ipAddress,
+        userAgent: context?.userAgent,
+      });
+      await logAuthAuditEvent({
+        username: input.username,
+        eventType: 'login_failed',
+        authMethod: 'local',
+        details: { reason: 'user_not_found' },
+        ipAddress: context?.ipAddress,
+        userAgent: context?.userAgent,
+        severity: 'warning',
+      });
       return { success: false, error: "Invalid username or password" };
     }
 
@@ -152,12 +196,38 @@ export async function loginLocalUser(input: LoginInput): Promise<{ success: bool
 
     // Check if user is active
     if (user.isActive !== 1) {
+      await recordLoginAttempt({
+        username: input.username,
+        success: false,
+        failureReason: 'account_disabled',
+        ipAddress: context?.ipAddress,
+        userAgent: context?.userAgent,
+      });
+      await logAuthAuditEvent({
+        userId: user.id,
+        username: user.username,
+        eventType: 'login_failed',
+        authMethod: 'local',
+        details: { reason: 'account_disabled' },
+        ipAddress: context?.ipAddress,
+        userAgent: context?.userAgent,
+        severity: 'warning',
+      });
       return { success: false, error: "Account is disabled" };
     }
 
     // Verify password
     const isValid = await verifyPassword(input.password, user.passwordHash);
     if (!isValid) {
+      // Record failed attempt
+      await recordLoginAttempt({
+        username: input.username,
+        success: false,
+        failureReason: 'invalid_password',
+        ipAddress: context?.ipAddress,
+        userAgent: context?.userAgent,
+      });
+      
       // Log failed login attempt
       await logLoginEvent({
         userId: user.id,
@@ -165,8 +235,57 @@ export async function loginLocalUser(input: LoginInput): Promise<{ success: bool
         authType: "local",
         eventType: "login_failed",
       });
-      return { success: false, error: "Invalid username or password" };
+      
+      await logAuthAuditEvent({
+        userId: user.id,
+        username: user.username,
+        eventType: 'login_failed',
+        authMethod: 'local',
+        details: { reason: 'invalid_password' },
+        ipAddress: context?.ipAddress,
+        userAgent: context?.userAgent,
+        severity: 'warning',
+      });
+      
+      // Check if should lock account
+      const failedAttempts = await getRecentFailedAttempts(input.username);
+      if (failedAttempts >= MAX_LOGIN_ATTEMPTS) {
+        const lockResult = await lockAccount({
+          userId: user.id,
+          username: user.username,
+          reason: `${failedAttempts} lần đăng nhập thất bại liên tiếp`,
+          failedAttempts,
+        });
+        
+        await logAuthAuditEvent({
+          userId: user.id,
+          username: user.username,
+          eventType: 'account_locked',
+          authMethod: 'local',
+          details: { reason: 'max_attempts_exceeded', failedAttempts, lockedUntil: lockResult.lockedUntil },
+          ipAddress: context?.ipAddress,
+          userAgent: context?.userAgent,
+          severity: 'critical',
+        });
+        
+        return { 
+          success: false, 
+          error: `Tài khoản đã bị khóa do ${failedAttempts} lần đăng nhập thất bại. Vui lòng thử lại sau ${lockResult.lockedUntil.toLocaleString('vi-VN')}.`,
+          accountLocked: true,
+          lockedUntil: lockResult.lockedUntil,
+        };
+      }
+      
+      return { success: false, error: `Sai mật khẩu. Còn ${MAX_LOGIN_ATTEMPTS - failedAttempts} lần thử.` };
     }
+
+    // Record successful login
+    await recordLoginAttempt({
+      username: input.username,
+      success: true,
+      ipAddress: context?.ipAddress,
+      userAgent: context?.userAgent,
+    });
 
     // Update last signed in
     await db.update(localUsers).set({ lastSignedIn: new Date() }).where(eq(localUsers.id, user.id));
@@ -177,6 +296,16 @@ export async function loginLocalUser(input: LoginInput): Promise<{ success: bool
       username: user.username,
       authType: "local",
       eventType: "login",
+    });
+    
+    await logAuthAuditEvent({
+      userId: user.id,
+      username: user.username,
+      eventType: 'login_success',
+      authMethod: 'local',
+      ipAddress: context?.ipAddress,
+      userAgent: context?.userAgent,
+      severity: 'info',
     });
 
     const authUser: LocalAuthUser = {
@@ -331,6 +460,16 @@ export async function changeLocalPassword(
       mustChangePassword: 0,
     }).where(eq(localUsers.id, userId));
 
+    // Log password change
+    await logAuthAuditEvent({
+      userId: user.id,
+      username: user.username,
+      eventType: 'password_change',
+      authMethod: 'local',
+      details: { changedBy: 'user' },
+      severity: 'info',
+    });
+
     return { success: true };
   } catch (error) {
     console.error("[LocalAuth] Change password error:", error);
@@ -351,11 +490,27 @@ export async function adminResetPassword(
   }
 
   try {
+    // Get user info for audit log
+    const users = await db.select().from(localUsers).where(eq(localUsers.id, userId)).limit(1);
+    const user = users[0];
+    
     const newPasswordHash = await hashPassword(newPassword);
     await db.update(localUsers).set({
       passwordHash: newPasswordHash,
       mustChangePassword: 1, // Force user to change on next login
     }).where(eq(localUsers.id, userId));
+
+    // Log password reset
+    if (user) {
+      await logAuthAuditEvent({
+        userId: user.id,
+        username: user.username,
+        eventType: 'password_reset',
+        authMethod: 'local',
+        details: { resetBy: 'admin' },
+        severity: 'warning',
+      });
+    }
 
     return { success: true };
   } catch (error) {

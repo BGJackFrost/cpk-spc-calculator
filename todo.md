@@ -9432,3 +9432,28 @@
 - [x] Xác thực 2 yếu tố (2FA) với TOTP
 - [x] Tùy chỉnh giao diện đăng nhập (logo, màu sắc, thông điệp)
 - [x] Unit tests cho authentication features
+
+
+## Phase 201 - Advanced Authentication Security
+
+### Email xác nhận khi bật 2FA (DONE)
+- [x] Gửi email xác nhận khi người dùng bật 2FA
+- [x] Gửi email cảnh báo khi 2FA bị tắt
+- [x] Template email thông báo 2FA
+
+### Khóa tài khoản sau đăng nhập thất bại (DONE)
+- [x] Tạo bảng login_attempts trong database
+- [x] Theo dõi số lần đăng nhập thất bại
+- [x] Khóa tài khoản sau 5 lần thất bại liên tiếp
+- [x] Thời gian khóa tăng dần (lockout escalation)
+- [x] Gửi email thông báo khi tài khoản bị khóa
+- [x] API unlock tài khoản cho admin
+
+### Audit Log cho Authentication (DONE)
+- [x] Tạo bảng auth_audit_logs trong database
+- [x] Ghi log đăng nhập thành công/thất bại
+- [x] Ghi log reset password
+- [x] Ghi log bật/tắt 2FA
+- [x] Ghi log thay đổi mật khẩu
+- [x] Ghi log unlock tài khoản
+- [x] API xem audit logs cho admin (getAuthAuditLogs, getAuthAuditStats)

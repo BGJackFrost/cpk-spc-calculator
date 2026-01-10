@@ -5982,3 +5982,299 @@ export async function updateLoginCustomization(data: {
   
   return { success: true };
 }
+
+
+// ============================================
+// Login Attempts & Account Lockout Functions
+// ============================================
+
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOCKOUT_DURATION_MINUTES = 15;
+const LOCKOUT_ESCALATION_MULTIPLIER = 2; // Double lockout time for each subsequent lockout
+
+export async function recordLoginAttempt(data: {
+  username: string;
+  success: boolean;
+  failureReason?: string;
+  ipAddress?: string;
+  userAgent?: string;
+}) {
+  const db = await getDb();
+  if (!db) return;
+
+  try {
+    await db.execute(
+      `INSERT INTO login_attempts (username, ip_address, user_agent, success, failure_reason, attempted_at)
+       VALUES ('${data.username}', ${data.ipAddress ? `'${data.ipAddress}'` : 'NULL'}, ${data.userAgent ? `'${data.userAgent.substring(0, 500)}'` : 'NULL'}, ${data.success ? 1 : 0}, ${data.failureReason ? `'${data.failureReason}'` : 'NULL'}, NOW())`
+    );
+  } catch (error) {
+    console.error("[LoginAttempts] Failed to record attempt:", error);
+  }
+}
+
+export async function getRecentFailedAttempts(username: string, minutes: number = 30): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+
+  try {
+    const [rows] = await db.execute(
+      `SELECT COUNT(*) as count FROM login_attempts 
+       WHERE username = '${username}' 
+       AND success = 0 
+       AND attempted_at > DATE_SUB(NOW(), INTERVAL ${minutes} MINUTE)`
+    );
+    return (rows as any[])[0]?.count || 0;
+  } catch (error) {
+    console.error("[LoginAttempts] Failed to get recent attempts:", error);
+    return 0;
+  }
+}
+
+export async function isAccountLocked(username: string): Promise<{ locked: boolean; lockedUntil?: Date; reason?: string }> {
+  const db = await getDb();
+  if (!db) return { locked: false };
+
+  try {
+    const [rows] = await db.execute(
+      `SELECT * FROM account_lockouts 
+       WHERE username = '${username}' 
+       AND locked_until > NOW() 
+       AND unlocked_at IS NULL
+       ORDER BY locked_at DESC LIMIT 1`
+    );
+    
+    const result = rows as any[];
+    if (result.length > 0) {
+      return {
+        locked: true,
+        lockedUntil: new Date(result[0].locked_until),
+        reason: result[0].reason,
+      };
+    }
+    return { locked: false };
+  } catch (error) {
+    console.error("[AccountLockout] Failed to check lock status:", error);
+    return { locked: false };
+  }
+}
+
+export async function lockAccount(data: {
+  userId: number;
+  username: string;
+  reason: string;
+  failedAttempts: number;
+}): Promise<{ success: boolean; lockedUntil: Date }> {
+  const db = await getDb();
+  if (!db) return { success: false, lockedUntil: new Date() };
+
+  try {
+    // Check previous lockouts to calculate escalation
+    const [prevLockouts] = await db.execute(
+      `SELECT COUNT(*) as count FROM account_lockouts WHERE username = '${data.username}'`
+    );
+    const lockoutCount = (prevLockouts as any[])[0]?.count || 0;
+    
+    // Calculate lockout duration with escalation
+    const baseDuration = LOCKOUT_DURATION_MINUTES;
+    const escalatedDuration = baseDuration * Math.pow(LOCKOUT_ESCALATION_MULTIPLIER, Math.min(lockoutCount, 5));
+    
+    const lockedUntil = new Date(Date.now() + escalatedDuration * 60 * 1000);
+    
+    await db.execute(
+      `INSERT INTO account_lockouts (user_id, username, locked_at, locked_until, reason, failed_attempts)
+       VALUES (${data.userId}, '${data.username}', NOW(), '${lockedUntil.toISOString().slice(0, 19).replace('T', ' ')}', '${data.reason}', ${data.failedAttempts})`
+    );
+    
+    return { success: true, lockedUntil };
+  } catch (error) {
+    console.error("[AccountLockout] Failed to lock account:", error);
+    return { success: false, lockedUntil: new Date() };
+  }
+}
+
+export async function unlockAccount(username: string, unlockedBy: number): Promise<{ success: boolean }> {
+  const db = await getDb();
+  if (!db) return { success: false };
+
+  try {
+    await db.execute(
+      `UPDATE account_lockouts 
+       SET unlocked_at = NOW(), unlocked_by = ${unlockedBy} 
+       WHERE username = '${username}' AND unlocked_at IS NULL`
+    );
+    return { success: true };
+  } catch (error) {
+    console.error("[AccountLockout] Failed to unlock account:", error);
+    return { success: false };
+  }
+}
+
+export async function getAccountLockoutHistory(params: {
+  username?: string;
+  page: number;
+  pageSize: number;
+}) {
+  const db = await getDb();
+  if (!db) return { lockouts: [], total: 0, totalPages: 0 };
+
+  const { username, page, pageSize } = params;
+  const offset = (page - 1) * pageSize;
+
+  try {
+    let whereClause = "";
+    if (username) {
+      whereClause = `WHERE username = '${username}'`;
+    }
+
+    const [rows] = await db.execute(
+      `SELECT * FROM account_lockouts ${whereClause} ORDER BY locked_at DESC LIMIT ${pageSize} OFFSET ${offset}`
+    );
+
+    const [countRows] = await db.execute(
+      `SELECT COUNT(*) as count FROM account_lockouts ${whereClause}`
+    );
+    const total = (countRows as any[])[0]?.count || 0;
+
+    return {
+      lockouts: rows as any[],
+      total,
+      totalPages: Math.ceil(total / pageSize),
+    };
+  } catch (error) {
+    console.error("[AccountLockout] Failed to get history:", error);
+    return { lockouts: [], total: 0, totalPages: 0 };
+  }
+}
+
+// ============================================
+// Auth Audit Log Functions
+// ============================================
+
+export type AuthAuditEventType = 
+  | 'login_success' | 'login_failed' | 'logout'
+  | 'password_change' | 'password_reset'
+  | '2fa_enabled' | '2fa_disabled' | '2fa_verified'
+  | 'account_locked' | 'account_unlocked'
+  | 'session_expired' | 'token_refresh';
+
+export async function logAuthAuditEvent(data: {
+  userId?: number;
+  username?: string;
+  eventType: AuthAuditEventType;
+  authMethod?: 'local' | 'oauth' | '2fa';
+  details?: Record<string, any>;
+  ipAddress?: string;
+  userAgent?: string;
+  severity?: 'info' | 'warning' | 'critical';
+}) {
+  const db = await getDb();
+  if (!db) return;
+
+  try {
+    const detailsJson = data.details ? JSON.stringify(data.details) : null;
+    const severity = data.severity || getSeverityForEvent(data.eventType);
+    
+    await db.execute(
+      `INSERT INTO auth_audit_logs (user_id, username, event_type, auth_method, details, ip_address, user_agent, severity, created_at)
+       VALUES (${data.userId || 'NULL'}, ${data.username ? `'${data.username}'` : 'NULL'}, '${data.eventType}', '${data.authMethod || 'local'}', ${detailsJson ? `'${detailsJson.replace(/'/g, "''")}'` : 'NULL'}, ${data.ipAddress ? `'${data.ipAddress}'` : 'NULL'}, ${data.userAgent ? `'${data.userAgent.substring(0, 500).replace(/'/g, "''")}'` : 'NULL'}, '${severity}', NOW())`
+    );
+  } catch (error) {
+    console.error("[AuthAudit] Failed to log event:", error);
+  }
+}
+
+function getSeverityForEvent(eventType: AuthAuditEventType): 'info' | 'warning' | 'critical' {
+  switch (eventType) {
+    case 'login_failed':
+    case 'password_reset':
+      return 'warning';
+    case 'account_locked':
+    case '2fa_disabled':
+      return 'critical';
+    default:
+      return 'info';
+  }
+}
+
+export async function getAuthAuditLogs(params: {
+  userId?: number;
+  username?: string;
+  eventType?: AuthAuditEventType;
+  severity?: 'info' | 'warning' | 'critical';
+  startDate?: Date;
+  endDate?: Date;
+  page: number;
+  pageSize: number;
+}) {
+  const db = await getDb();
+  if (!db) return { logs: [], total: 0, totalPages: 0 };
+
+  const { userId, username, eventType, severity, startDate, endDate, page, pageSize } = params;
+  const offset = (page - 1) * pageSize;
+
+  try {
+    const conditions: string[] = [];
+    if (userId) conditions.push(`user_id = ${userId}`);
+    if (username) conditions.push(`username = '${username}'`);
+    if (eventType) conditions.push(`event_type = '${eventType}'`);
+    if (severity) conditions.push(`severity = '${severity}'`);
+    if (startDate) conditions.push(`created_at >= '${startDate.toISOString().slice(0, 19).replace('T', ' ')}'`);
+    if (endDate) conditions.push(`created_at <= '${endDate.toISOString().slice(0, 19).replace('T', ' ')}'`);
+
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    const [rows] = await db.execute(
+      `SELECT * FROM auth_audit_logs ${whereClause} ORDER BY created_at DESC LIMIT ${pageSize} OFFSET ${offset}`
+    );
+
+    const [countRows] = await db.execute(
+      `SELECT COUNT(*) as count FROM auth_audit_logs ${whereClause}`
+    );
+    const total = (countRows as any[])[0]?.count || 0;
+
+    return {
+      logs: rows as any[],
+      total,
+      totalPages: Math.ceil(total / pageSize),
+    };
+  } catch (error) {
+    console.error("[AuthAudit] Failed to get logs:", error);
+    return { logs: [], total: 0, totalPages: 0 };
+  }
+}
+
+export async function getAuthAuditStats(days: number = 30) {
+  const db = await getDb();
+  if (!db) return null;
+
+  try {
+    const [rows] = await db.execute(
+      `SELECT 
+        event_type,
+        COUNT(*) as count,
+        MAX(created_at) as last_occurrence
+       FROM auth_audit_logs 
+       WHERE created_at > DATE_SUB(NOW(), INTERVAL ${days} DAY)
+       GROUP BY event_type`
+    );
+
+    const stats = rows as any[];
+    return {
+      totalEvents: stats.reduce((sum, s) => sum + Number(s.count), 0),
+      loginSuccess: Number(stats.find(s => s.event_type === 'login_success')?.count || 0),
+      loginFailed: Number(stats.find(s => s.event_type === 'login_failed')?.count || 0),
+      passwordChanges: Number(stats.find(s => s.event_type === 'password_change')?.count || 0),
+      passwordResets: Number(stats.find(s => s.event_type === 'password_reset')?.count || 0),
+      twoFactorEnabled: Number(stats.find(s => s.event_type === '2fa_enabled')?.count || 0),
+      twoFactorDisabled: Number(stats.find(s => s.event_type === '2fa_disabled')?.count || 0),
+      accountLocked: Number(stats.find(s => s.event_type === 'account_locked')?.count || 0),
+      accountUnlocked: Number(stats.find(s => s.event_type === 'account_unlocked')?.count || 0),
+      byEventType: stats,
+    };
+  } catch (error) {
+    console.error("[AuthAudit] Failed to get stats:", error);
+    return null;
+  }
+}
+
+export { MAX_LOGIN_ATTEMPTS, LOCKOUT_DURATION_MINUTES };

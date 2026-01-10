@@ -334,6 +334,12 @@ import {
   toggleCustomValidationRule,
   getLoginCustomization,
   updateLoginCustomization,
+  getAccountLockoutHistory,
+  unlockAccount,
+  isAccountLocked,
+  logAuthAuditEvent,
+  getAuthAuditLogs,
+  getAuthAuditStats,
 } from "./db";
 
 // Admin procedure - only admins can access
@@ -4428,6 +4434,94 @@ export const appRouter = router({
       await ensureDefaultAdmin();
       return { success: true, message: 'Default admin initialized' };
     }),
+
+    // ============================================
+    // Account Lockout Management (Admin only)
+    // ============================================
+
+    // Get account lockout history
+    getAccountLockouts: protectedProcedure
+      .input(z.object({
+        username: z.string().optional(),
+        page: z.number().default(1),
+        pageSize: z.number().default(20),
+      }))
+      .query(async ({ input, ctx }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin access required' });
+        }
+        return getAccountLockoutHistory(input);
+      }),
+
+    // Unlock account (admin only)
+    unlockAccount: protectedProcedure
+      .input(z.object({
+        username: z.string(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin access required' });
+        }
+        const result = await unlockAccount(input.username, ctx.user.id);
+        if (result.success) {
+          await logAuthAuditEvent({
+            username: input.username,
+            eventType: 'account_unlocked',
+            authMethod: 'local',
+            details: { unlockedBy: ctx.user.name || ctx.user.openId },
+            severity: 'info',
+          });
+        }
+        return result;
+      }),
+
+    // Check if account is locked
+    checkAccountLock: publicProcedure
+      .input(z.object({
+        username: z.string(),
+      }))
+      .query(async ({ input }) => {
+        return isAccountLocked(input.username);
+      }),
+
+    // ============================================
+    // Auth Audit Logs (Admin only)
+    // ============================================
+
+    // Get auth audit logs
+    getAuthAuditLogs: protectedProcedure
+      .input(z.object({
+        userId: z.number().optional(),
+        username: z.string().optional(),
+        eventType: z.enum(['login_success', 'login_failed', 'logout', 'password_change', 'password_reset', '2fa_enabled', '2fa_disabled', '2fa_verified', 'account_locked', 'account_unlocked', 'session_expired', 'token_refresh']).optional(),
+        severity: z.enum(['info', 'warning', 'critical']).optional(),
+        startDate: z.string().optional(),
+        endDate: z.string().optional(),
+        page: z.number().default(1),
+        pageSize: z.number().default(20),
+      }))
+      .query(async ({ input, ctx }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin access required' });
+        }
+        return getAuthAuditLogs({
+          ...input,
+          startDate: input.startDate ? new Date(input.startDate) : undefined,
+          endDate: input.endDate ? new Date(input.endDate) : undefined,
+        });
+      }),
+
+    // Get auth audit stats
+    getAuthAuditStats: protectedProcedure
+      .input(z.object({
+        days: z.number().default(30),
+      }))
+      .query(async ({ input, ctx }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin access required' });
+        }
+        return getAuthAuditStats(input.days);
+      }),
   }),
 
   user: userRouter,

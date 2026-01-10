@@ -6682,3 +6682,59 @@ export const scheduledReportPdfHistory = mysqlTable("scheduled_report_pdf_histor
 ]);
 export type ScheduledReportPdfHistory = typeof scheduledReportPdfHistory.$inferSelect;
 export type InsertScheduledReportPdfHistory = typeof scheduledReportPdfHistory.$inferInsert;
+
+
+// Login Attempts - Theo dõi số lần đăng nhập thất bại
+export const loginAttempts = mysqlTable("login_attempts", {
+	id: int().autoincrement().notNull().primaryKey(),
+	username: varchar("username", { length: 100 }).notNull(),
+	ipAddress: varchar("ip_address", { length: 45 }),
+	userAgent: text("user_agent"),
+	success: tinyint("success").default(0).notNull(),
+	failureReason: varchar("failure_reason", { length: 255 }),
+	attemptedAt: timestamp("attempted_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+	index("idx_login_attempts_username").on(table.username),
+	index("idx_login_attempts_ip").on(table.ipAddress),
+	index("idx_login_attempts_time").on(table.attemptedAt),
+]);
+export type LoginAttempt = typeof loginAttempts.$inferSelect;
+export type InsertLoginAttempt = typeof loginAttempts.$inferInsert;
+
+// Auth Audit Logs - Ghi log chi tiết cho các hoạt động authentication
+export const authAuditLogs = mysqlTable("auth_audit_logs", {
+	id: int().autoincrement().notNull().primaryKey(),
+	userId: int("user_id"),
+	username: varchar("username", { length: 100 }),
+	// Event type: login_success, login_failed, logout, password_change, password_reset, 2fa_enabled, 2fa_disabled, account_locked, account_unlocked
+	eventType: mysqlEnum("event_type", [
+		'login_success', 'login_failed', 'logout', 
+		'password_change', 'password_reset', 
+		'2fa_enabled', '2fa_disabled', '2fa_verified',
+		'account_locked', 'account_unlocked',
+		'session_expired', 'token_refresh'
+	]).notNull(),
+	// Auth method: local, oauth, 2fa
+	authMethod: mysqlEnum("auth_method", ['local', 'oauth', '2fa']).default('local'),
+	// Details
+	details: text("details"), // JSON string with additional info
+	ipAddress: varchar("ip_address", { length: 45 }),
+	userAgent: text("user_agent"),
+	// Location info (optional)
+	country: varchar("country", { length: 100 }),
+	city: varchar("city", { length: 100 }),
+	// Status
+	severity: mysqlEnum("severity", ['info', 'warning', 'critical']).default('info').notNull(),
+	// Timestamps
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+	index("idx_auth_audit_user").on(table.userId),
+	index("idx_auth_audit_username").on(table.username),
+	index("idx_auth_audit_event").on(table.eventType),
+	index("idx_auth_audit_time").on(table.createdAt),
+	index("idx_auth_audit_severity").on(table.severity),
+]);
+export type AuthAuditLog = typeof authAuditLogs.$inferSelect;
+export type InsertAuthAuditLog = typeof authAuditLogs.$inferInsert;
