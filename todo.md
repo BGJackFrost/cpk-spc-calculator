@@ -9481,3 +9481,12 @@
 - [x] Tích hợp gửi email khi có tài khoản bị khóa (critical alert)
 - [x] Cấu hình danh sách admin nhận thông báo
 - [x] Thêm template email cho critical alerts
+
+
+## Bug Report - 2026-01-10
+
+### Trang trắng khi truy cập website published
+- [x] Trang https://cpkspccal-rpnsldn3.manus.space hiển thị trắng, không render nội dung
+- [x] React không được khởi tạo (Root innerHTML = 0)
+- [x] Lỗi CORS khi load manifest.json - không ảnh hưởng đến render
+- [x] Nguyên nhân: Import trùng lặp useState trong Home.tsx - đã sửa
