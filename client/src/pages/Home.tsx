@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Separator } from "@/components/ui/separator";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { 
@@ -21,15 +22,19 @@ import {
   User,
   Mail,
   UserPlus,
-  Loader2
+  Loader2,
+  Globe,
+  KeyRound
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { useEffect } from "react";
+import { getLoginUrl } from "@/const";
 
 export default function Home() {
   const { user, loading, isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState<"login" | "register">("login");
+  const [loginMethod, setLoginMethod] = useState<"local" | "oauth">("local");
   
   // Login form state
   const [loginUsername, setLoginUsername] = useState("");
@@ -111,6 +116,10 @@ export default function Home() {
     });
   };
 
+  const handleOAuthLogin = () => {
+    window.location.href = getLoginUrl();
+  };
+
   const features = [
     {
       icon: TrendingUp,
@@ -171,7 +180,7 @@ export default function Home() {
             <span className="font-semibold text-lg">SPC/CPK Calculator</span>
           </div>
           <div className="text-sm text-muted-foreground">
-            Chế độ Offline - Đăng nhập Local
+            Chọn phương thức đăng nhập phù hợp
           </div>
         </div>
       </header>
@@ -213,175 +222,266 @@ export default function Home() {
                   </div>
                   <CardTitle className="text-2xl font-bold">Đăng nhập</CardTitle>
                   <CardDescription>
-                    Đăng nhập để sử dụng hệ thống
+                    Chọn phương thức đăng nhập phù hợp
                   </CardDescription>
                 </CardHeader>
                 
                 <CardContent>
-                  <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "login" | "register")}>
-                    <TabsList className="grid w-full grid-cols-2 mb-6">
-                      <TabsTrigger value="login">Đăng nhập</TabsTrigger>
-                      <TabsTrigger value="register">Đăng ký</TabsTrigger>
-                    </TabsList>
-                    
-                    <TabsContent value="login">
-                      <form onSubmit={handleLogin} className="space-y-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="login-username">Tên đăng nhập</Label>
-                          <div className="relative">
-                            <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input
-                              id="login-username"
-                              type="text"
-                              placeholder="Nhập tên đăng nhập"
-                              value={loginUsername}
-                              onChange={(e) => setLoginUsername(e.target.value)}
-                              className="pl-10"
-                              autoComplete="username"
-                            />
-                          </div>
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <Label htmlFor="login-password">Mật khẩu</Label>
-                          <div className="relative">
-                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input
-                              id="login-password"
-                              type="password"
-                              placeholder="Nhập mật khẩu"
-                              value={loginPassword}
-                              onChange={(e) => setLoginPassword(e.target.value)}
-                              className="pl-10"
-                              autoComplete="current-password"
-                            />
-                          </div>
-                        </div>
-                        
+                  {/* Login Method Selector */}
+                  <div className="flex gap-2 mb-6">
+                    <Button
+                      variant={loginMethod === "local" ? "default" : "outline"}
+                      className="flex-1"
+                      onClick={() => setLoginMethod("local")}
+                    >
+                      <KeyRound className="mr-2 h-4 w-4" />
+                      Username/Password
+                    </Button>
+                    <Button
+                      variant={loginMethod === "oauth" ? "default" : "outline"}
+                      className="flex-1"
+                      onClick={() => setLoginMethod("oauth")}
+                    >
+                      <Globe className="mr-2 h-4 w-4" />
+                      Manus OAuth
+                    </Button>
+                  </div>
+
+                  {loginMethod === "oauth" ? (
+                    /* OAuth Login Section */
+                    <div className="space-y-4">
+                      <div className="text-center p-6 bg-muted/50 rounded-lg">
+                        <Globe className="h-12 w-12 mx-auto text-primary mb-4" />
+                        <h3 className="font-semibold mb-2">Đăng nhập với Manus OAuth</h3>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          Sử dụng tài khoản Manus để đăng nhập nhanh chóng và an toàn.
+                          Không cần tạo tài khoản mới.
+                        </p>
                         <Button 
-                          type="submit" 
+                          onClick={handleOAuthLogin}
                           className="w-full"
-                          disabled={loginMutation.isPending}
+                          size="lg"
                         >
-                          {loginMutation.isPending ? (
-                            <>
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              Đang đăng nhập...
-                            </>
-                          ) : (
-                            <>
-                              Đăng nhập
-                              <ArrowRight className="ml-2 h-4 w-4" />
-                            </>
-                          )}
+                          <Globe className="mr-2 h-5 w-5" />
+                          Đăng nhập với Manus
+                          <ArrowRight className="ml-2 h-4 w-4" />
                         </Button>
-                      </form>
-                    </TabsContent>
-                    
-                    <TabsContent value="register">
-                      <form onSubmit={handleRegister} className="space-y-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="reg-username">Tên đăng nhập *</Label>
-                          <div className="relative">
-                            <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input
-                              id="reg-username"
-                              type="text"
-                              placeholder="Nhập tên đăng nhập"
-                              value={regUsername}
-                              onChange={(e) => setRegUsername(e.target.value)}
-                              className="pl-10"
-                              autoComplete="username"
-                            />
-                          </div>
+                      </div>
+                      
+                      <div className="relative">
+                        <div className="absolute inset-0 flex items-center">
+                          <Separator className="w-full" />
                         </div>
-                        
-                        <div className="space-y-2">
-                          <Label htmlFor="reg-name">Họ và tên</Label>
-                          <div className="relative">
-                            <UserPlus className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input
-                              id="reg-name"
-                              type="text"
-                              placeholder="Nhập họ và tên"
-                              value={regName}
-                              onChange={(e) => setRegName(e.target.value)}
-                              className="pl-10"
-                            />
-                          </div>
+                        <div className="relative flex justify-center text-xs uppercase">
+                          <span className="bg-card px-2 text-muted-foreground">
+                            Hoặc sử dụng tài khoản local
+                          </span>
                         </div>
-                        
-                        <div className="space-y-2">
-                          <Label htmlFor="reg-email">Email</Label>
-                          <div className="relative">
-                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input
-                              id="reg-email"
-                              type="email"
-                              placeholder="Nhập email"
-                              value={regEmail}
-                              onChange={(e) => setRegEmail(e.target.value)}
-                              className="pl-10"
-                            />
+                      </div>
+                      
+                      <Button 
+                        variant="outline" 
+                        className="w-full"
+                        onClick={() => setLoginMethod("local")}
+                      >
+                        <KeyRound className="mr-2 h-4 w-4" />
+                        Đăng nhập bằng Username/Password
+                      </Button>
+                    </div>
+                  ) : (
+                    /* Local Login Section */
+                    <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "login" | "register")}>
+                      <TabsList className="grid w-full grid-cols-2 mb-6">
+                        <TabsTrigger value="login">Đăng nhập</TabsTrigger>
+                        <TabsTrigger value="register">Đăng ký</TabsTrigger>
+                      </TabsList>
+                      
+                      <TabsContent value="login">
+                        <form onSubmit={handleLogin} className="space-y-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="login-username">Tên đăng nhập</Label>
+                            <div className="relative">
+                              <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                              <Input
+                                id="login-username"
+                                type="text"
+                                placeholder="Nhập tên đăng nhập"
+                                value={loginUsername}
+                                onChange={(e) => setLoginUsername(e.target.value)}
+                                className="pl-10"
+                                autoComplete="username"
+                              />
+                            </div>
                           </div>
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <Label htmlFor="reg-password">Mật khẩu *</Label>
-                          <div className="relative">
-                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input
-                              id="reg-password"
-                              type="password"
-                              placeholder="Nhập mật khẩu (ít nhất 6 ký tự)"
-                              value={regPassword}
-                              onChange={(e) => setRegPassword(e.target.value)}
-                              className="pl-10"
-                              autoComplete="new-password"
-                            />
+                          
+                          <div className="space-y-2">
+                            <Label htmlFor="login-password">Mật khẩu</Label>
+                            <div className="relative">
+                              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                              <Input
+                                id="login-password"
+                                type="password"
+                                placeholder="Nhập mật khẩu"
+                                value={loginPassword}
+                                onChange={(e) => setLoginPassword(e.target.value)}
+                                className="pl-10"
+                                autoComplete="current-password"
+                              />
+                            </div>
                           </div>
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <Label htmlFor="reg-confirm-password">Xác nhận mật khẩu *</Label>
-                          <div className="relative">
-                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input
-                              id="reg-confirm-password"
-                              type="password"
-                              placeholder="Nhập lại mật khẩu"
-                              value={regConfirmPassword}
-                              onChange={(e) => setRegConfirmPassword(e.target.value)}
-                              className="pl-10"
-                              autoComplete="new-password"
-                            />
+                          
+                          <Button 
+                            type="submit" 
+                            className="w-full"
+                            disabled={loginMutation.isPending}
+                          >
+                            {loginMutation.isPending ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Đang đăng nhập...
+                              </>
+                            ) : (
+                              <>
+                                Đăng nhập
+                                <ArrowRight className="ml-2 h-4 w-4" />
+                              </>
+                            )}
+                          </Button>
+                          
+                          <div className="relative my-4">
+                            <div className="absolute inset-0 flex items-center">
+                              <Separator className="w-full" />
+                            </div>
+                            <div className="relative flex justify-center text-xs uppercase">
+                              <span className="bg-card px-2 text-muted-foreground">
+                                Hoặc
+                              </span>
+                            </div>
                           </div>
-                        </div>
-                        
-                        <Button 
-                          type="submit" 
-                          className="w-full"
-                          disabled={registerMutation.isPending}
-                        >
-                          {registerMutation.isPending ? (
-                            <>
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              Đang đăng ký...
-                            </>
-                          ) : (
-                            "Đăng ký"
-                          )}
-                        </Button>
-                      </form>
-                    </TabsContent>
-                  </Tabs>
+                          
+                          <Button 
+                            type="button"
+                            variant="outline" 
+                            className="w-full"
+                            onClick={handleOAuthLogin}
+                          >
+                            <Globe className="mr-2 h-4 w-4" />
+                            Đăng nhập với Manus OAuth
+                          </Button>
+                        </form>
+                      </TabsContent>
+                      
+                      <TabsContent value="register">
+                        <form onSubmit={handleRegister} className="space-y-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="reg-username">Tên đăng nhập *</Label>
+                            <div className="relative">
+                              <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                              <Input
+                                id="reg-username"
+                                type="text"
+                                placeholder="Nhập tên đăng nhập"
+                                value={regUsername}
+                                onChange={(e) => setRegUsername(e.target.value)}
+                                className="pl-10"
+                                autoComplete="username"
+                              />
+                            </div>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <Label htmlFor="reg-name">Họ và tên</Label>
+                            <div className="relative">
+                              <UserPlus className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                              <Input
+                                id="reg-name"
+                                type="text"
+                                placeholder="Nhập họ và tên"
+                                value={regName}
+                                onChange={(e) => setRegName(e.target.value)}
+                                className="pl-10"
+                              />
+                            </div>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <Label htmlFor="reg-email">Email</Label>
+                            <div className="relative">
+                              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                              <Input
+                                id="reg-email"
+                                type="email"
+                                placeholder="Nhập email"
+                                value={regEmail}
+                                onChange={(e) => setRegEmail(e.target.value)}
+                                className="pl-10"
+                              />
+                            </div>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <Label htmlFor="reg-password">Mật khẩu *</Label>
+                            <div className="relative">
+                              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                              <Input
+                                id="reg-password"
+                                type="password"
+                                placeholder="Nhập mật khẩu (ít nhất 6 ký tự)"
+                                value={regPassword}
+                                onChange={(e) => setRegPassword(e.target.value)}
+                                className="pl-10"
+                                autoComplete="new-password"
+                              />
+                            </div>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <Label htmlFor="reg-confirm-password">Xác nhận mật khẩu *</Label>
+                            <div className="relative">
+                              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                              <Input
+                                id="reg-confirm-password"
+                                type="password"
+                                placeholder="Nhập lại mật khẩu"
+                                value={regConfirmPassword}
+                                onChange={(e) => setRegConfirmPassword(e.target.value)}
+                                className="pl-10"
+                                autoComplete="new-password"
+                              />
+                            </div>
+                          </div>
+                          
+                          <Button 
+                            type="submit" 
+                            className="w-full"
+                            disabled={registerMutation.isPending}
+                          >
+                            {registerMutation.isPending ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Đang đăng ký...
+                              </>
+                            ) : (
+                              "Đăng ký"
+                            )}
+                          </Button>
+                        </form>
+                      </TabsContent>
+                    </Tabs>
+                  )}
                 </CardContent>
                 
                 <CardFooter className="flex flex-col space-y-2 text-center text-sm text-muted-foreground">
-                  <p>Chế độ đăng nhập Local - Không cần Internet</p>
-                  <p className="text-xs">
-                    Tài khoản mặc định: <code className="bg-muted px-1 rounded">admin</code> / <code className="bg-muted px-1 rounded">admin123</code>
-                  </p>
+                  {loginMethod === "local" ? (
+                    <>
+                      <p>Chế độ đăng nhập Local - Không cần Internet</p>
+                      <p className="text-xs">
+                        Tài khoản mặc định: <code className="bg-muted px-1 rounded">admin</code> / <code className="bg-muted px-1 rounded">admin123</code>
+                      </p>
+                    </>
+                  ) : (
+                    <p>Đăng nhập với tài khoản Manus - Cần kết nối Internet</p>
+                  )}
                 </CardFooter>
               </Card>
             </div>

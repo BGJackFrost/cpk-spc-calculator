@@ -40,6 +40,8 @@ import {
   Play
 } from "lucide-react";
 import { useLocation } from "wouter";
+import { getLoginUrl } from "@/const";
+import { Separator } from "@/components/ui/separator";
 
 export default function LandingPage() {
   const { user, loading, isAuthenticated } = useAuth();
@@ -130,6 +132,10 @@ export default function LandingPage() {
       name: regName || undefined,
       email: regEmail || undefined,
     });
+  };
+
+  const handleOAuthLogin = () => {
+    window.location.href = getLoginUrl();
   };
 
   // Main features
@@ -361,6 +367,27 @@ export default function LandingPage() {
                               <ArrowRight className="ml-2 h-4 w-4" />
                             </>
                           )}
+                        </Button>
+                        
+                        <div className="relative my-4">
+                          <div className="absolute inset-0 flex items-center">
+                            <Separator className="w-full" />
+                          </div>
+                          <div className="relative flex justify-center text-xs uppercase">
+                            <span className="bg-card px-2 text-muted-foreground">
+                              Hoặc
+                            </span>
+                          </div>
+                        </div>
+                        
+                        <Button 
+                          type="button"
+                          variant="outline" 
+                          className="w-full h-11"
+                          onClick={handleOAuthLogin}
+                        >
+                          <Globe className="mr-2 h-4 w-4" />
+                          Đăng nhập với Manus OAuth
                         </Button>
                       </form>
                     </TabsContent>

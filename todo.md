@@ -9411,3 +9411,16 @@
 
 - [ ] Khắc phục lỗi 503 server không phản hồi trên production (cpkspccal-rpnsldn3.manus.space)
 - [ ] Khắc phục lỗi CORS policy khi truy cập OAuth
+
+
+## Phase 10.y - Sửa lỗi Menu General và Thêm Phương thức Đăng nhập
+
+### Sửa lỗi Menu General
+- [x] Kiểm tra và sửa lỗi menu General không hiển thị trong Settings (đã xác nhận menu hoạt động bình thường)
+
+### Thêm chức năng chọn phương thức đăng nhập
+- [x] Thêm trang đăng nhập Username/Password (đã có sẵn)
+- [x] Thêm option chọn giữa Username/Password và OAuth login
+- [x] Tạo API đăng nhập bằng Username/Password (đã có sẵn)
+- [x] Tạo form đăng ký tài khoản mới (đã có sẵn)
+
