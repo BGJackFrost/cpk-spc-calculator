@@ -13,6 +13,10 @@
 - [x] Gửi thông báo cho owner/quản lý khi chỉ số CPK vượt ngưỡng cảnh báo (CPK < 1.33)
 - [x] Sử dụng LLM để phân tích xu hướng dữ liệu SPC và đưa ra khuyến nghị cải tiến
 
+## Bug Fixes
+
+- [x] Fix: Build script không tương thích với Windows (NODE_OPTIONS syntax)
+
 ## UI/UX
 
 - [x] Thiết kế giao diện elegant and perfect style
