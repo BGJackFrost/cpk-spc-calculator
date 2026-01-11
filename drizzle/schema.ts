@@ -6864,3 +6864,21 @@ export const inspectionRemarks = mysqlTable("inspection_remarks", {
 export type InspectionRemark = typeof inspectionRemarks.$inferSelect;
 export type InsertInspectionRemark = typeof inspectionRemarks.$inferInsert;
 
+
+// Workshop Production Lines - Quan hệ nhiều-nhiều giữa Workshop và Production Line
+export const workshopProductionLines = mysqlTable("workshop_production_lines", {
+  id: int().autoincrement().primaryKey(),
+  workshopId: int("workshop_id").notNull(),
+  productionLineId: int("production_line_id").notNull(),
+  assignedAt: timestamp("assigned_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+  assignedBy: int("assigned_by"),
+  notes: text(),
+  isActive: int("is_active").default(1).notNull(),
+},
+(table) => [
+  index("idx_workshop_production_lines_workshop").on(table.workshopId),
+  index("idx_workshop_production_lines_line").on(table.productionLineId),
+  index("idx_workshop_production_lines_unique").on(table.workshopId, table.productionLineId),
+]);
+export type WorkshopProductionLine = typeof workshopProductionLines.$inferSelect;
+export type InsertWorkshopProductionLine = typeof workshopProductionLines.$inferInsert;

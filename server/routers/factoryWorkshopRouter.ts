@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { router, publicProcedure, protectedProcedure } from "../_core/trpc";
 import { getDb } from "../db";
-import { factories, workshops, productionLines } from "../../drizzle/schema";
+import { factories, workshops, productionLines, workshopProductionLines } from "../../drizzle/schema";
 import { eq, desc, and, like, sql, or } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
@@ -687,6 +687,221 @@ export const factoryWorkshopRouter = router({
         message: `Đã tạo ${createdFactories.length} nhà máy và ${workshopsCreated} xưởng mẫu`,
         factoriesCreated: createdFactories.length,
         workshopsCreated,
+      };
+    }),
+
+  // ============ WORKSHOP PRODUCTION LINE ASSIGNMENT ============
+  
+  // Get production lines assigned to a workshop
+  getWorkshopProductionLines: protectedProcedure
+    .input(z.object({ workshopId: z.number() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return [];
+      
+      const assignments = await db.select({
+        assignment: workshopProductionLines,
+        productionLine: productionLines,
+      })
+        .from(workshopProductionLines)
+        .leftJoin(productionLines, eq(workshopProductionLines.productionLineId, productionLines.id))
+        .where(and(
+          eq(workshopProductionLines.workshopId, input.workshopId),
+          eq(workshopProductionLines.isActive, 1)
+        ))
+        .orderBy(productionLines.name);
+      
+      return assignments.map(a => ({
+        ...a.assignment,
+        productionLine: a.productionLine,
+      }));
+    }),
+
+  // Get all production lines (for selection dropdown)
+  getAllProductionLines: protectedProcedure
+    .input(z.object({
+      factoryId: z.number().optional(),
+      excludeWorkshopId: z.number().optional(),
+    }).optional())
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return [];
+      
+      const conditions = [eq(productionLines.isActive, 1)];
+      if (input?.factoryId) {
+        conditions.push(eq(productionLines.factoryId, input.factoryId));
+      }
+      
+      const lines = await db.select()
+        .from(productionLines)
+        .where(and(...conditions))
+        .orderBy(productionLines.name);
+      
+      return lines;
+    }),
+
+  // Assign production lines to workshop
+  assignProductionLines: protectedProcedure
+    .input(z.object({
+      workshopId: z.number(),
+      productionLineIds: z.array(z.number()),
+      notes: z.string().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+      
+      // Verify workshop exists
+      const [workshop] = await db.select()
+        .from(workshops)
+        .where(eq(workshops.id, input.workshopId))
+        .limit(1);
+      
+      if (!workshop) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Workshop not found' });
+      }
+      
+      // Get current assignments
+      const currentAssignments = await db.select()
+        .from(workshopProductionLines)
+        .where(eq(workshopProductionLines.workshopId, input.workshopId));
+      
+      const currentLineIds = currentAssignments.map(a => a.productionLineId);
+      
+      // Lines to add
+      const linesToAdd = input.productionLineIds.filter(id => !currentLineIds.includes(id));
+      
+      // Lines to remove (deactivate)
+      const linesToRemove = currentLineIds.filter(id => !input.productionLineIds.includes(id));
+      
+      // Add new assignments
+      for (const lineId of linesToAdd) {
+        // Check if there's an inactive assignment to reactivate
+        const [existing] = await db.select()
+          .from(workshopProductionLines)
+          .where(and(
+            eq(workshopProductionLines.workshopId, input.workshopId),
+            eq(workshopProductionLines.productionLineId, lineId)
+          ))
+          .limit(1);
+        
+        if (existing) {
+          await db.update(workshopProductionLines)
+            .set({ isActive: 1, notes: input.notes || null })
+            .where(eq(workshopProductionLines.id, existing.id));
+        } else {
+          await db.insert(workshopProductionLines).values({
+            workshopId: input.workshopId,
+            productionLineId: lineId,
+            assignedBy: ctx.user?.id || null,
+            notes: input.notes || null,
+          });
+        }
+      }
+      
+      // Deactivate removed assignments
+      for (const lineId of linesToRemove) {
+        await db.update(workshopProductionLines)
+          .set({ isActive: 0 })
+          .where(and(
+            eq(workshopProductionLines.workshopId, input.workshopId),
+            eq(workshopProductionLines.productionLineId, lineId)
+          ));
+      }
+      
+      return {
+        success: true,
+        message: `Đã cập nhật ${linesToAdd.length} dây chuyền mới, bỏ gán ${linesToRemove.length} dây chuyền`,
+        added: linesToAdd.length,
+        removed: linesToRemove.length,
+      };
+    }),
+
+  // Remove a single production line from workshop
+  removeProductionLineFromWorkshop: protectedProcedure
+    .input(z.object({
+      workshopId: z.number(),
+      productionLineId: z.number(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+      
+      await db.update(workshopProductionLines)
+        .set({ isActive: 0 })
+        .where(and(
+          eq(workshopProductionLines.workshopId, input.workshopId),
+          eq(workshopProductionLines.productionLineId, input.productionLineId)
+        ));
+      
+      return { success: true, message: 'Đã bỏ gán dây chuyền khỏi xưởng' };
+    }),
+
+  // Get workshop capacity statistics (for dashboard)
+  getCapacityStats: protectedProcedure
+    .input(z.object({
+      factoryId: z.number().optional(),
+    }).optional())
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return { factories: [], workshops: [], totalCapacity: 0 };
+      
+      // Get factory stats
+      const factoryConditions = [eq(factories.isActive, 1)];
+      if (input?.factoryId) {
+        factoryConditions.push(eq(factories.id, input.factoryId));
+      }
+      
+      const factoryList = await db.select({
+        id: factories.id,
+        name: factories.name,
+        code: factories.code,
+        capacity: factories.capacity,
+      })
+        .from(factories)
+        .where(and(...factoryConditions))
+        .orderBy(factories.name);
+      
+      // Get workshop stats with production line counts
+      const workshopConditions = [eq(workshops.isActive, 1)];
+      if (input?.factoryId) {
+        workshopConditions.push(eq(workshops.factoryId, input.factoryId));
+      }
+      
+      const workshopList = await db.select({
+        id: workshops.id,
+        name: workshops.name,
+        code: workshops.code,
+        factoryId: workshops.factoryId,
+        capacity: workshops.capacity,
+        status: workshops.status,
+      })
+        .from(workshops)
+        .where(and(...workshopConditions))
+        .orderBy(workshops.name);
+      
+      // Get production line counts per workshop
+      const lineCounts = await db.select({
+        workshopId: workshopProductionLines.workshopId,
+        count: sql<number>`count(*)`,
+      })
+        .from(workshopProductionLines)
+        .where(eq(workshopProductionLines.isActive, 1))
+        .groupBy(workshopProductionLines.workshopId);
+      
+      const lineCountMap = new Map(lineCounts.map(l => [l.workshopId, l.count]));
+      
+      const workshopsWithCounts = workshopList.map(w => ({
+        ...w,
+        productionLineCount: lineCountMap.get(w.id) || 0,
+      }));
+      
+      const totalCapacity = workshopList.reduce((sum, w) => sum + (w.capacity || 0), 0);
+      
+      return {
+        factories: factoryList,
+        workshops: workshopsWithCounts,
+        totalCapacity,
       };
     }),
 });

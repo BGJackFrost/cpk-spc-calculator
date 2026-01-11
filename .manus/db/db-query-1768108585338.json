@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS workshop_production_lines (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  workshop_id INT NOT NULL,\n  production_line_id INT NOT NULL,\n  assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,\n  assigned_by INT,\n  notes TEXT,\n  is_active INT DEFAULT 1 NOT NULL,\n  INDEX idx_workshop_production_lines_workshop (workshop_id),\n  INDEX idx_workshop_production_lines_line (production_line_id),\n  UNIQUE INDEX idx_workshop_production_lines_unique (workshop_id, production_line_id)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute CREATE TABLE IF NOT EXISTS workshop_production_lines (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  workshop_id INT NOT NULL,\n  production_line_id INT NOT NULL,\n  assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,\n  assigned_by INT,\n  notes TEXT,\n  is_active INT DEFAULT 1 NOT NULL,\n  INDEX idx_workshop_production_lines_workshop (workshop_id),\n  INDEX idx_workshop_production_lines_line (production_line_id),\n  UNIQUE INDEX idx_workshop_production_lines_unique (workshop_id, production_line_id)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1731
+}

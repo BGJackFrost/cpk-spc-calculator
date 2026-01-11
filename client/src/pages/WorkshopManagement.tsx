@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,9 +9,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { Loader2, Plus, Pencil, Trash2, Factory, Search, Building2, User } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, Factory, Search, Building2, User, Link2, Unlink } from "lucide-react";
 
 type WorkshopFormData = {
   factoryId: number;
@@ -26,6 +28,7 @@ type WorkshopFormData = {
   supervisorPhone: string;
   supervisorEmail: string;
   status: "active" | "inactive" | "maintenance";
+  productionLineIds: number[];
 };
 
 const defaultFormData: WorkshopFormData = {
@@ -41,6 +44,7 @@ const defaultFormData: WorkshopFormData = {
   supervisorPhone: "",
   supervisorEmail: "",
   status: "active",
+  productionLineIds: [],
 };
 
 export default function WorkshopManagement() {
@@ -63,9 +67,37 @@ export default function WorkshopManagement() {
   });
 
   const { data: factoriesData } = trpc.factoryWorkshop.listFactories.useQuery({ pageSize: 100 });
+  
+  // Get all production lines for assignment
+  const { data: allProductionLines } = trpc.factoryWorkshop.getAllProductionLines.useQuery({
+    factoryId: formData.factoryId > 0 ? formData.factoryId : undefined,
+  });
+  
+  // Get assigned production lines for editing workshop
+  const { data: assignedLines, refetch: refetchAssignedLines } = trpc.factoryWorkshop.getWorkshopProductionLines.useQuery(
+    { workshopId: editingId || 0 },
+    { enabled: editingId !== null && editingId > 0 }
+  );
+
+  // Update form when assigned lines are loaded
+  useEffect(() => {
+    if (assignedLines && editingId) {
+      setFormData(prev => ({
+        ...prev,
+        productionLineIds: assignedLines.map(a => a.productionLineId),
+      }));
+    }
+  }, [assignedLines, editingId]);
 
   const createMutation = trpc.factoryWorkshop.createWorkshop.useMutation({
-    onSuccess: () => {
+    onSuccess: async (result) => {
+      // Assign production lines if any selected
+      if (formData.productionLineIds.length > 0 && result.id) {
+        await assignLinesMutation.mutateAsync({
+          workshopId: result.id,
+          productionLineIds: formData.productionLineIds,
+        });
+      }
       toast.success("Đã tạo xưởng mới");
       utils.factoryWorkshop.listWorkshops.invalidate();
       setIsDialogOpen(false);
@@ -75,7 +107,14 @@ export default function WorkshopManagement() {
   });
 
   const updateMutation = trpc.factoryWorkshop.updateWorkshop.useMutation({
-    onSuccess: () => {
+    onSuccess: async () => {
+      // Update production line assignments
+      if (editingId) {
+        await assignLinesMutation.mutateAsync({
+          workshopId: editingId,
+          productionLineIds: formData.productionLineIds,
+        });
+      }
       toast.success("Đã cập nhật xưởng");
       utils.factoryWorkshop.listWorkshops.invalidate();
       setIsDialogOpen(false);
@@ -90,6 +129,10 @@ export default function WorkshopManagement() {
       utils.factoryWorkshop.listWorkshops.invalidate();
     },
     onError: (error) => toast.error(`Lỗi: ${error.message}`),
+  });
+
+  const assignLinesMutation = trpc.factoryWorkshop.assignProductionLines.useMutation({
+    onError: (error) => toast.error(`Lỗi gán dây chuyền: ${error.message}`),
   });
 
   const resetForm = () => {
@@ -112,6 +155,7 @@ export default function WorkshopManagement() {
       supervisorPhone: workshop.supervisorPhone || "",
       supervisorEmail: workshop.supervisorEmail || "",
       status: workshop.status || "active",
+      productionLineIds: [], // Will be loaded via useEffect
     });
     setIsDialogOpen(true);
   };
@@ -121,10 +165,11 @@ export default function WorkshopManagement() {
       toast.error("Vui lòng nhập mã, tên xưởng và chọn nhà máy");
       return;
     }
+    const { productionLineIds, ...workshopData } = formData;
     if (editingId) {
-      updateMutation.mutate({ id: editingId, ...formData });
+      updateMutation.mutate({ id: editingId, ...workshopData });
     } else {
-      createMutation.mutate(formData);
+      createMutation.mutate(workshopData);
     }
   };
 
@@ -132,6 +177,18 @@ export default function WorkshopManagement() {
     if (confirm("Bạn có chắc muốn xóa xưởng này?")) {
       deleteMutation.mutate({ id });
     }
+  };
+
+  const toggleProductionLine = (lineId: number) => {
+    setFormData(prev => {
+      const isSelected = prev.productionLineIds.includes(lineId);
+      return {
+        ...prev,
+        productionLineIds: isSelected
+          ? prev.productionLineIds.filter(id => id !== lineId)
+          : [...prev.productionLineIds, lineId],
+      };
+    });
   };
 
   const getStatusBadge = (status: string) => {
@@ -157,21 +214,21 @@ export default function WorkshopManagement() {
               <Factory className="h-8 w-8" />
               Quản lý Xưởng sản xuất
             </h1>
-            <p className="text-muted-foreground mt-1">Quản lý thông tin các xưởng trong hệ thống</p>
+            <p className="text-muted-foreground mt-1">Quản lý thông tin các xưởng và gán dây chuyền sản xuất</p>
           </div>
           <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) resetForm(); }}>
             <DialogTrigger asChild>
               <Button><Plus className="mr-2 h-4 w-4" />Thêm xưởng</Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>{editingId ? "Sửa xưởng" : "Thêm xưởng mới"}</DialogTitle>
-                <DialogDescription>Nhập thông tin chi tiết của xưởng sản xuất</DialogDescription>
+                <DialogDescription>Nhập thông tin chi tiết của xưởng sản xuất và gán dây chuyền</DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="space-y-2">
                   <Label htmlFor="factoryId">Nhà máy *</Label>
-                  <Select value={formData.factoryId.toString()} onValueChange={(v) => setFormData({ ...formData, factoryId: parseInt(v) })}>
+                  <Select value={formData.factoryId.toString()} onValueChange={(v) => setFormData({ ...formData, factoryId: parseInt(v), productionLineIds: [] })}>
                     <SelectTrigger><SelectValue placeholder="Chọn nhà máy" /></SelectTrigger>
                     <SelectContent>
                       {factoriesData?.data.map((factory) => (
@@ -239,11 +296,64 @@ export default function WorkshopManagement() {
                     </SelectContent>
                   </Select>
                 </div>
+                
+                {/* Production Line Assignment Section */}
+                <div className="space-y-2 border-t pt-4">
+                  <Label className="flex items-center gap-2">
+                    <Link2 className="h-4 w-4" />
+                    Gán dây chuyền sản xuất
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Chọn các dây chuyền sản xuất sẽ hoạt động trong xưởng này
+                  </p>
+                  {formData.factoryId === 0 ? (
+                    <div className="text-sm text-muted-foreground italic p-4 border rounded-lg bg-muted/50">
+                      Vui lòng chọn nhà máy trước để xem danh sách dây chuyền
+                    </div>
+                  ) : (
+                    <ScrollArea className="h-[200px] border rounded-lg p-2">
+                      {allProductionLines && allProductionLines.length > 0 ? (
+                        <div className="space-y-2">
+                          {allProductionLines.map((line) => (
+                            <div
+                              key={line.id}
+                              className={`flex items-center space-x-3 p-2 rounded-lg hover:bg-muted/50 cursor-pointer ${
+                                formData.productionLineIds.includes(line.id) ? 'bg-primary/10 border border-primary/30' : ''
+                              }`}
+                              onClick={() => toggleProductionLine(line.id)}
+                            >
+                              <Checkbox
+                                checked={formData.productionLineIds.includes(line.id)}
+                                onCheckedChange={() => toggleProductionLine(line.id)}
+                              />
+                              <div className="flex-1">
+                                <p className="font-medium">{line.name}</p>
+                                <p className="text-xs text-muted-foreground">Mã: {line.code}</p>
+                              </div>
+                              {formData.productionLineIds.includes(line.id) && (
+                                <Badge variant="secondary" className="text-xs">Đã chọn</Badge>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-sm text-muted-foreground italic p-4 text-center">
+                          Không có dây chuyền nào trong nhà máy này
+                        </div>
+                      )}
+                    </ScrollArea>
+                  )}
+                  {formData.productionLineIds.length > 0 && (
+                    <p className="text-sm text-primary">
+                      Đã chọn {formData.productionLineIds.length} dây chuyền
+                    </p>
+                  )}
+                </div>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => { setIsDialogOpen(false); resetForm(); }}>Hủy</Button>
-                <Button onClick={handleSubmit} disabled={createMutation.isPending || updateMutation.isPending}>
-                  {(createMutation.isPending || updateMutation.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                <Button onClick={handleSubmit} disabled={createMutation.isPending || updateMutation.isPending || assignLinesMutation.isPending}>
+                  {(createMutation.isPending || updateMutation.isPending || assignLinesMutation.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   {editingId ? "Cập nhật" : "Tạo mới"}
                 </Button>
               </DialogFooter>

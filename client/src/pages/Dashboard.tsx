@@ -55,6 +55,7 @@ import AiPredictedCpkDashboardWidget from "@/components/AiPredictedCpkDashboardW
 import AiDefectAlertsDashboardWidget from "@/components/AiDefectAlertsDashboardWidget";
 import { AiOverviewDashboard } from "@/components/ai/AiOverviewWidgets";
 import RadarChartHistoryWidget from "@/components/RadarChartHistoryWidget";
+import CapacityStatsWidget from "@/components/CapacityStatsWidget";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -266,6 +267,12 @@ export default function Dashboard() {
                 >
                   Xu hướng CPK (Radar Chart)
                 </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem
+                  checked={isWidgetVisible("capacity_stats")}
+                  onCheckedChange={() => handleToggleWidget("capacity_stats")}
+                >
+                  Công suất Factory/Workshop
+                </DropdownMenuCheckboxItem>
               </DropdownMenuContent>
             </DropdownMenu>
             {isCompleted && (
@@ -380,6 +387,13 @@ export default function Dashboard() {
           </div>
         </div>
         
+        {/* Capacity Stats Widget - Factory/Workshop */}
+        {isWidgetVisible("capacity_stats") && (
+          <div className="mt-2">
+            <CapacityStatsWidget />
+          </div>
+        )}
+
         {/* AI Overview Dashboard Widgets */}
         <div className="mt-2">
           <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">

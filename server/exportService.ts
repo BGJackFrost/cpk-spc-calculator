@@ -43,6 +43,287 @@ function getCpkStatus(cpk: number | null): { color: string; label: string; bgCol
   return { color: "#ef4444", label: "Kém", bgColor: "#fee2e2" };
 }
 
+// Generate SVG charts for PDF export
+function generateSpcChartsSvg(data: ExportData): string {
+  const xBarData = data.spcResult.xBarData || [];
+  const rangeData = data.spcResult.rangeData || [];
+  const rawData = data.spcResult.rawData || [];
+  
+  // If no chart data, return empty string
+  if (xBarData.length === 0 && rangeData.length === 0 && rawData.length === 0) {
+    return '';
+  }
+  
+  const chartWidth = 700;
+  const chartHeight = 200;
+  const padding = { top: 30, right: 50, bottom: 40, left: 70 };
+  const innerWidth = chartWidth - padding.left - padding.right;
+  const innerHeight = chartHeight - padding.top - padding.bottom;
+  
+  // Generate X-Bar Chart SVG
+  function generateXBarChart(): string {
+    if (xBarData.length === 0) return '';
+    
+    const values = xBarData.map(d => d.value);
+    const minVal = Math.min(...values, data.spcResult.lcl);
+    const maxVal = Math.max(...values, data.spcResult.ucl);
+    const range = maxVal - minVal || 1;
+    const yScale = (v: number) => innerHeight - ((v - minVal) / range) * innerHeight;
+    const xScale = (i: number) => (i / (xBarData.length - 1 || 1)) * innerWidth;
+    
+    // Generate path for data line
+    const pathD = xBarData.map((d, i) => 
+      `${i === 0 ? 'M' : 'L'} ${padding.left + xScale(i)} ${padding.top + yScale(d.value)}`
+    ).join(' ');
+    
+    // Generate points
+    const points = xBarData.map((d, i) => {
+      const x = padding.left + xScale(i);
+      const y = padding.top + yScale(d.value);
+      const isOutOfControl = d.value > data.spcResult.ucl || d.value < data.spcResult.lcl;
+      return `<circle cx="${x}" cy="${y}" r="4" fill="${isOutOfControl ? '#ef4444' : '#3b82f6'}" />`;
+    }).join('');
+    
+    // Control limits
+    const uclY = padding.top + yScale(data.spcResult.ucl);
+    const clY = padding.top + yScale(data.spcResult.mean);
+    const lclY = padding.top + yScale(data.spcResult.lcl);
+    
+    return `
+    <div class="section" style="page-break-inside: avoid;">
+      <h2>Biểu đồ X-Bar (Control Chart)</h2>
+      <svg width="${chartWidth}" height="${chartHeight}" style="background: #fafafa; border-radius: 8px;">
+        <!-- Grid lines -->
+        ${[0, 0.25, 0.5, 0.75, 1].map(p => `
+          <line x1="${padding.left}" y1="${padding.top + innerHeight * p}" x2="${chartWidth - padding.right}" y2="${padding.top + innerHeight * p}" stroke="#e5e7eb" stroke-dasharray="4,4" />
+        `).join('')}
+        
+        <!-- UCL line -->
+        <line x1="${padding.left}" y1="${uclY}" x2="${chartWidth - padding.right}" y2="${uclY}" stroke="#ef4444" stroke-width="2" stroke-dasharray="8,4" />
+        <text x="${chartWidth - padding.right + 5}" y="${uclY + 4}" font-size="10" fill="#ef4444">UCL</text>
+        
+        <!-- CL line -->
+        <line x1="${padding.left}" y1="${clY}" x2="${chartWidth - padding.right}" y2="${clY}" stroke="#10b981" stroke-width="2" />
+        <text x="${chartWidth - padding.right + 5}" y="${clY + 4}" font-size="10" fill="#10b981">CL</text>
+        
+        <!-- LCL line -->
+        <line x1="${padding.left}" y1="${lclY}" x2="${chartWidth - padding.right}" y2="${lclY}" stroke="#ef4444" stroke-width="2" stroke-dasharray="8,4" />
+        <text x="${chartWidth - padding.right + 5}" y="${lclY + 4}" font-size="10" fill="#ef4444">LCL</text>
+        
+        <!-- Data line -->
+        <path d="${pathD}" fill="none" stroke="#3b82f6" stroke-width="2" />
+        
+        <!-- Data points -->
+        ${points}
+        
+        <!-- X axis -->
+        <line x1="${padding.left}" y1="${chartHeight - padding.bottom}" x2="${chartWidth - padding.right}" y2="${chartHeight - padding.bottom}" stroke="#374151" />
+        <text x="${chartWidth / 2}" y="${chartHeight - 5}" font-size="11" fill="#374151" text-anchor="middle">Mẫu (Sample)</text>
+        
+        <!-- Y axis -->
+        <line x1="${padding.left}" y1="${padding.top}" x2="${padding.left}" y2="${chartHeight - padding.bottom}" stroke="#374151" />
+        <text x="15" y="${chartHeight / 2}" font-size="11" fill="#374151" text-anchor="middle" transform="rotate(-90, 15, ${chartHeight / 2})">Giá trị</text>
+        
+        <!-- Y axis labels -->
+        <text x="${padding.left - 5}" y="${uclY + 4}" font-size="9" fill="#6b7280" text-anchor="end">${data.spcResult.ucl.toFixed(3)}</text>
+        <text x="${padding.left - 5}" y="${clY + 4}" font-size="9" fill="#6b7280" text-anchor="end">${data.spcResult.mean.toFixed(3)}</text>
+        <text x="${padding.left - 5}" y="${lclY + 4}" font-size="9" fill="#6b7280" text-anchor="end">${data.spcResult.lcl.toFixed(3)}</text>
+        
+        <!-- Title -->
+        <text x="${chartWidth / 2}" y="18" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">X-Bar Chart - ${data.productCode}</text>
+      </svg>
+    </div>`;
+  }
+  
+  // Generate R Chart SVG
+  function generateRChart(): string {
+    if (rangeData.length === 0) return '';
+    
+    const values = rangeData.map(d => d.value);
+    const minVal = Math.min(...values, data.spcResult.lclR, 0);
+    const maxVal = Math.max(...values, data.spcResult.uclR);
+    const range = maxVal - minVal || 1;
+    const yScale = (v: number) => innerHeight - ((v - minVal) / range) * innerHeight;
+    const xScale = (i: number) => (i / (rangeData.length - 1 || 1)) * innerWidth;
+    
+    // Generate path for data line
+    const pathD = rangeData.map((d, i) => 
+      `${i === 0 ? 'M' : 'L'} ${padding.left + xScale(i)} ${padding.top + yScale(d.value)}`
+    ).join(' ');
+    
+    // Generate points
+    const points = rangeData.map((d, i) => {
+      const x = padding.left + xScale(i);
+      const y = padding.top + yScale(d.value);
+      const isOutOfControl = d.value > data.spcResult.uclR || d.value < data.spcResult.lclR;
+      return `<circle cx="${x}" cy="${y}" r="4" fill="${isOutOfControl ? '#ef4444' : '#f59e0b'}" />`;
+    }).join('');
+    
+    // Control limits
+    const uclRY = padding.top + yScale(data.spcResult.uclR);
+    const rBarY = padding.top + yScale(data.spcResult.range);
+    const lclRY = padding.top + yScale(Math.max(data.spcResult.lclR, 0));
+    
+    return `
+    <div class="section" style="page-break-inside: avoid;">
+      <h2>Biểu đồ R (Range Chart)</h2>
+      <svg width="${chartWidth}" height="${chartHeight}" style="background: #fafafa; border-radius: 8px;">
+        <!-- Grid lines -->
+        ${[0, 0.25, 0.5, 0.75, 1].map(p => `
+          <line x1="${padding.left}" y1="${padding.top + innerHeight * p}" x2="${chartWidth - padding.right}" y2="${padding.top + innerHeight * p}" stroke="#e5e7eb" stroke-dasharray="4,4" />
+        `).join('')}
+        
+        <!-- UCL line -->
+        <line x1="${padding.left}" y1="${uclRY}" x2="${chartWidth - padding.right}" y2="${uclRY}" stroke="#ef4444" stroke-width="2" stroke-dasharray="8,4" />
+        <text x="${chartWidth - padding.right + 5}" y="${uclRY + 4}" font-size="10" fill="#ef4444">UCL</text>
+        
+        <!-- R-bar line -->
+        <line x1="${padding.left}" y1="${rBarY}" x2="${chartWidth - padding.right}" y2="${rBarY}" stroke="#f59e0b" stroke-width="2" />
+        <text x="${chartWidth - padding.right + 5}" y="${rBarY + 4}" font-size="10" fill="#f59e0b">R̄</text>
+        
+        <!-- LCL line -->
+        <line x1="${padding.left}" y1="${lclRY}" x2="${chartWidth - padding.right}" y2="${lclRY}" stroke="#ef4444" stroke-width="2" stroke-dasharray="8,4" />
+        <text x="${chartWidth - padding.right + 5}" y="${lclRY + 4}" font-size="10" fill="#ef4444">LCL</text>
+        
+        <!-- Data line -->
+        <path d="${pathD}" fill="none" stroke="#f59e0b" stroke-width="2" />
+        
+        <!-- Data points -->
+        ${points}
+        
+        <!-- X axis -->
+        <line x1="${padding.left}" y1="${chartHeight - padding.bottom}" x2="${chartWidth - padding.right}" y2="${chartHeight - padding.bottom}" stroke="#374151" />
+        <text x="${chartWidth / 2}" y="${chartHeight - 5}" font-size="11" fill="#374151" text-anchor="middle">Mẫu (Sample)</text>
+        
+        <!-- Y axis -->
+        <line x1="${padding.left}" y1="${padding.top}" x2="${padding.left}" y2="${chartHeight - padding.bottom}" stroke="#374151" />
+        <text x="15" y="${chartHeight / 2}" font-size="11" fill="#374151" text-anchor="middle" transform="rotate(-90, 15, ${chartHeight / 2})">Range</text>
+        
+        <!-- Y axis labels -->
+        <text x="${padding.left - 5}" y="${uclRY + 4}" font-size="9" fill="#6b7280" text-anchor="end">${data.spcResult.uclR.toFixed(3)}</text>
+        <text x="${padding.left - 5}" y="${rBarY + 4}" font-size="9" fill="#6b7280" text-anchor="end">${data.spcResult.range.toFixed(3)}</text>
+        
+        <!-- Title -->
+        <text x="${chartWidth / 2}" y="18" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">R Chart - ${data.productCode}</text>
+      </svg>
+    </div>`;
+  }
+  
+  // Generate Histogram SVG
+  function generateHistogram(): string {
+    if (rawData.length === 0) return '';
+    
+    const values = rawData.map(d => d.value);
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const binCount = Math.min(15, Math.ceil(Math.sqrt(values.length)));
+    const binWidth = (max - min) / binCount || 1;
+    
+    // Create bins
+    const bins: number[] = new Array(binCount).fill(0);
+    values.forEach(v => {
+      const binIndex = Math.min(Math.floor((v - min) / binWidth), binCount - 1);
+      bins[binIndex]++;
+    });
+    
+    const maxBinCount = Math.max(...bins);
+    const barWidth = innerWidth / binCount - 2;
+    
+    // Generate bars
+    const bars = bins.map((count, i) => {
+      const x = padding.left + i * (innerWidth / binCount) + 1;
+      const barHeight = (count / maxBinCount) * innerHeight;
+      const y = padding.top + innerHeight - barHeight;
+      const binStart = min + i * binWidth;
+      const binEnd = binStart + binWidth;
+      
+      // Color based on whether bin is within spec limits
+      let fillColor = '#3b82f6';
+      if (data.usl !== null && data.usl !== undefined && binEnd > data.usl) fillColor = '#ef4444';
+      if (data.lsl !== null && data.lsl !== undefined && binStart < data.lsl) fillColor = '#ef4444';
+      
+      return `<rect x="${x}" y="${y}" width="${barWidth}" height="${barHeight}" fill="${fillColor}" opacity="0.8" rx="2" />`;
+    }).join('');
+    
+    // Generate normal curve if we have spec limits
+    let normalCurve = '';
+    if (values.length > 5) {
+      const mean = data.spcResult.mean;
+      const stdDev = data.spcResult.stdDev;
+      const curvePoints: string[] = [];
+      
+      for (let i = 0; i <= 50; i++) {
+        const x = min + (i / 50) * (max - min);
+        const z = (x - mean) / stdDev;
+        const y = Math.exp(-0.5 * z * z) / (stdDev * Math.sqrt(2 * Math.PI));
+        const scaledY = (y * binWidth * values.length / maxBinCount) * innerHeight;
+        const px = padding.left + ((x - min) / (max - min)) * innerWidth;
+        const py = padding.top + innerHeight - scaledY;
+        curvePoints.push(`${i === 0 ? 'M' : 'L'} ${px} ${py}`);
+      }
+      normalCurve = `<path d="${curvePoints.join(' ')}" fill="none" stroke="#10b981" stroke-width="2" />`;
+    }
+    
+    // Spec limit lines
+    let specLines = '';
+    if (data.usl !== null && data.usl !== undefined) {
+      const uslX = padding.left + ((data.usl - min) / (max - min)) * innerWidth;
+      specLines += `<line x1="${uslX}" y1="${padding.top}" x2="${uslX}" y2="${chartHeight - padding.bottom}" stroke="#ef4444" stroke-width="2" stroke-dasharray="5,5" />
+        <text x="${uslX}" y="${padding.top - 5}" font-size="10" fill="#ef4444" text-anchor="middle">USL</text>`;
+    }
+    if (data.lsl !== null && data.lsl !== undefined) {
+      const lslX = padding.left + ((data.lsl - min) / (max - min)) * innerWidth;
+      specLines += `<line x1="${lslX}" y1="${padding.top}" x2="${lslX}" y2="${chartHeight - padding.bottom}" stroke="#2563eb" stroke-width="2" stroke-dasharray="5,5" />
+        <text x="${lslX}" y="${padding.top - 5}" font-size="10" fill="#2563eb" text-anchor="middle">LSL</text>`;
+    }
+    
+    return `
+    <div class="section" style="page-break-inside: avoid;">
+      <h2>Biểu đồ Histogram (Phân bố dữ liệu)</h2>
+      <svg width="${chartWidth}" height="${chartHeight + 20}" style="background: #fafafa; border-radius: 8px;">
+        <!-- Grid lines -->
+        ${[0, 0.25, 0.5, 0.75, 1].map(p => `
+          <line x1="${padding.left}" y1="${padding.top + innerHeight * p}" x2="${chartWidth - padding.right}" y2="${padding.top + innerHeight * p}" stroke="#e5e7eb" stroke-dasharray="4,4" />
+        `).join('')}
+        
+        <!-- Bars -->
+        ${bars}
+        
+        <!-- Normal curve -->
+        ${normalCurve}
+        
+        <!-- Spec limit lines -->
+        ${specLines}
+        
+        <!-- X axis -->
+        <line x1="${padding.left}" y1="${chartHeight - padding.bottom}" x2="${chartWidth - padding.right}" y2="${chartHeight - padding.bottom}" stroke="#374151" />
+        <text x="${chartWidth / 2}" y="${chartHeight + 10}" font-size="11" fill="#374151" text-anchor="middle">Giá trị đo</text>
+        
+        <!-- X axis labels -->
+        <text x="${padding.left}" y="${chartHeight - padding.bottom + 15}" font-size="9" fill="#6b7280" text-anchor="middle">${min.toFixed(2)}</text>
+        <text x="${chartWidth - padding.right}" y="${chartHeight - padding.bottom + 15}" font-size="9" fill="#6b7280" text-anchor="middle">${max.toFixed(2)}</text>
+        
+        <!-- Y axis -->
+        <line x1="${padding.left}" y1="${padding.top}" x2="${padding.left}" y2="${chartHeight - padding.bottom}" stroke="#374151" />
+        <text x="15" y="${chartHeight / 2}" font-size="11" fill="#374151" text-anchor="middle" transform="rotate(-90, 15, ${chartHeight / 2})">Tần suất</text>
+        
+        <!-- Title -->
+        <text x="${chartWidth / 2}" y="18" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">Histogram - ${data.productCode}</text>
+        
+        <!-- Legend -->
+        <rect x="${chartWidth - 150}" y="${padding.top}" width="12" height="12" fill="#3b82f6" opacity="0.8" rx="2" />
+        <text x="${chartWidth - 135}" y="${padding.top + 10}" font-size="10" fill="#374151">Trong spec</text>
+        <rect x="${chartWidth - 150}" y="${padding.top + 18}" width="12" height="12" fill="#ef4444" opacity="0.8" rx="2" />
+        <text x="${chartWidth - 135}" y="${padding.top + 28}" font-size="10" fill="#374151">Ngoài spec</text>
+        <line x1="${chartWidth - 150}" y1="${padding.top + 42}" x2="${chartWidth - 138}" y2="${padding.top + 42}" stroke="#10b981" stroke-width="2" />
+        <text x="${chartWidth - 135}" y="${padding.top + 46}" font-size="10" fill="#374151">Đường chuẩn</text>
+      </svg>
+    </div>`;
+  }
+  
+  return generateXBarChart() + generateRChart() + generateHistogram();
+}
+
 // Generate professional PDF-ready HTML report with template support
 export function generatePdfHtml(data: ExportData): string {
   const cpkStatus = getCpkStatus(data.spcResult.cpk);
@@ -431,6 +712,8 @@ export function generatePdfHtml(data: ExportData): string {
         </tbody>
       </table>
     </div>
+
+    ${generateSpcChartsSvg(data)}
 
     <div class="footer">
       <p class="logo">${companyName || 'SPC/CPK Calculator System'}</p>

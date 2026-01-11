@@ -9590,3 +9590,24 @@
 - [x] Tạo 3 nhà máy mẫu (Hà Nội, HCM, Đà Nẵng)
 - [x] Tạo 12 xưởng sản xuất mẫu (SMT, Lắp ráp, QC, Đóng gói...)
 - [x] Cập nhật SeedDataPage.tsx với nút tạo Factory/Workshop
+
+
+## Phase 72 (COMPLETED): Gán dây chuyền vào Workshop, Biểu đồ công suất, Export PDF với biểu đồ
+
+### Gán Dây chuyền sản xuất vào Workshop
+- [x] Thêm trường productionLineIds vào bảng Workstation (quan hệ nhiều-nhiều)
+- [x] Tạo bảng WorkstationProductionLine để lưu quan hệ
+- [x] Cập nhật form tạo/sửa Workshop để chọn dây chuyền
+- [x] Hiển thị danh sách dây chuyền được gán trong chi tiết Workshop
+
+### Biểu đồ thống kê công suất Factory/Workshop trên Dashboard
+- [x] Tạo component CapacityChart hiển thị công suất theo Factory
+- [x] Tạo component WorkshopCapacityChart hiển thị công suất theo Workshop
+- [x] Tích hợp biểu đồ vào Dashboard chính
+- [x] Thêm filter theo thời gian (ngày/tuần/tháng)
+
+### Export PDF với biểu đồ SPC
+- [x] Tích hợp thư viện html2canvas để capture biểu đồ
+- [x] Cập nhật logic export PDF để bao gồm biểu đồ XBar và R Chart
+- [x] Thêm biểu đồ Histogram vào PDF
+- [x] Định dạng layout PDF chuyên nghiệp với biểu đồ và bảng dữ liệu
