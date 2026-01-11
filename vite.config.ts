@@ -40,91 +40,11 @@ export default defineConfig({
     emptyOutDir: true,
     // Optimize for lower memory usage
     target: 'es2020',
-    cssCodeSplit: true,
-    // Code splitting configuration - aggressive splitting to reduce chunk size
+    cssCodeSplit: false,
+    // Minimal rollup options to reduce memory
     rollupOptions: {
       output: {
-        manualChunks(id) {
-          if (id.includes('node_modules')) {
-            // Three.js ecosystem - very large
-            if (id.includes('three') || id.includes('@react-three')) {
-              return 'v-three';
-            }
-            // PDF export
-            if (id.includes('jspdf')) {
-              return 'v-jspdf';
-            }
-            // HTML to canvas
-            if (id.includes('html2canvas')) {
-              return 'v-html2canvas';
-            }
-            // Excel
-            if (id.includes('xlsx')) {
-              return 'v-xlsx';
-            }
-            // Recharts
-            if (id.includes('recharts')) {
-              return 'v-recharts';
-            }
-            // Chart.js
-            if (id.includes('chart.js') || id.includes('react-chartjs')) {
-              return 'v-chartjs';
-            }
-            // D3
-            if (id.includes('d3')) {
-              return 'v-d3';
-            }
-            // React ecosystem - bundle together to avoid version conflicts
-            if (id.includes('scheduler')) {
-              return 'v-react';
-            }
-            if (id.includes('react-dom')) {
-              return 'v-react';
-            }
-            if (id.includes('react')) {
-              return 'v-react';
-            }
-            // Radix UI - split by component
-            if (id.includes('@radix-ui')) {
-              const match = id.match(/@radix-ui\/react-([^/]+)/);
-              if (match) {
-                return `v-radix-${match[1]}`;
-              }
-              return 'v-radix';
-            }
-            // Lucide icons
-            if (id.includes('lucide')) {
-              return 'v-icons';
-            }
-            // tRPC
-            if (id.includes('@trpc')) {
-              return 'v-trpc';
-            }
-            // TanStack
-            if (id.includes('@tanstack')) {
-              return 'v-tanstack';
-            }
-            // Date-fns
-            if (id.includes('date-fns')) {
-              return 'v-date';
-            }
-            // Zod
-            if (id.includes('zod')) {
-              return 'v-zod';
-            }
-            // Form
-            if (id.includes('react-hook-form') || id.includes('@hookform')) {
-              return 'v-form';
-            }
-            // DnD
-            if (id.includes('@dnd-kit')) {
-              return 'v-dnd';
-            }
-            // Other vendors
-            return 'v-misc';
-          }
-        },
-        // Chunk naming
+        // No manual chunks - let Vite handle it automatically
         chunkFileNames: 'assets/[name]-[hash].js',
         entryFileNames: 'assets/[name]-[hash].js',
         assetFileNames: 'assets/[name]-[hash].[ext]',
@@ -133,16 +53,13 @@ export default defineConfig({
       maxParallelFileOps: 1,
     },
     // Performance optimizations
-    chunkSizeWarningLimit: 10000,
+    chunkSizeWarningLimit: 200000,
     sourcemap: false,
-    // Disable minification to reduce memory
     minify: false,
-    // Reduce memory usage
     reportCompressedSize: false,
-    // Disable inline assets
     assetsInlineLimit: 0,
-    // Reduce memory during build
     cssMinify: false,
+    modulePreload: false,
   },
   // Optimize deps - fix React unstable_now error
   optimizeDeps: {

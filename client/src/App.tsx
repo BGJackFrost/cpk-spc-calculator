@@ -69,6 +69,8 @@ import AlertThresholdConfig from "./pages/AlertThresholdConfig";
 import AlarmThresholdConfig from "./pages/AlarmThresholdConfig";
 import NotificationSettings from "./pages/NotificationSettings";
 import NotificationPreferences from "./pages/NotificationPreferences";
+import AlertUnified from "./pages/AlertUnified";
+import NotificationUnified from "./pages/NotificationUnified";
 import EnvironmentAlertConfig from "./pages/EnvironmentAlertConfig";
 import PerformanceDropAlertConfig from "./pages/PerformanceDropAlertConfig";
 import PushNotificationSettings from "./pages/PushNotificationSettings";
@@ -85,8 +87,11 @@ import TelegramSettings from "./pages/TelegramSettings";
 // Webhook & Integration
 import WebhookManagement from "./pages/WebhookManagement";
 import WebhookSettings from "./pages/WebhookSettings";
+import WebhookUnified from "./pages/WebhookUnified";
 
-// Reports & Export
+// Reports & Export - Master Dashboards
+import ReportsMasterDashboard from "./pages/ReportsMasterDashboard";
+import ScheduledMasterDashboard from "./pages/ScheduledMasterDashboard";
 import ReportTemplateManagement from "./pages/ReportTemplateManagement";
 import ReportsExport from "./pages/ReportsExport";
 import ScheduledReports from "./pages/ScheduledReports";
@@ -101,7 +106,8 @@ import SpcPlanVisualization from "./pages/SpcPlanVisualization";
 import SpcVisualizationDetail from "./pages/SpcVisualizationDetail";
 import CpkComparisonDashboard from "./pages/CpkComparisonDashboard";
 
-// OEE
+// OEE - Master Dashboard
+import OeeMasterDashboard from "./pages/OeeMasterDashboard";
 import OEEDashboard from "./pages/OEEDashboard";
 import OeeAlertThresholdSettings from "./pages/OeeAlertThresholdSettings";
 import OeeThresholdsByLine from "./pages/OeeThresholdsByLine";
@@ -119,7 +125,8 @@ import NtfComparison from "./pages/NtfComparison";
 import NtfDashboard from "./pages/NtfDashboard";
 import NtfLineDetail from "./pages/NtfLineDetail";
 
-// Maintenance & Spare Parts
+// Maintenance & Spare Parts - Master Dashboard
+import MaintenanceMasterDashboard from "./pages/MaintenanceMasterDashboard";
 import MaintenanceDashboard from "./pages/MaintenanceDashboard";
 import MaintenanceSchedule from "./pages/MaintenanceSchedule";
 import PredictiveMaintenance from "./pages/PredictiveMaintenance";
@@ -139,6 +146,7 @@ import LicenseManagement from "./pages/LicenseManagement";
 import LicenseDashboard from "./pages/LicenseDashboard";
 import LicenseNotificationReport from "./pages/LicenseNotificationReport";
 import LicenseServerSettings from "./pages/LicenseServerSettings";
+import LicenseUnified from "./pages/LicenseUnified";
 
 // Database & System
 import DatabaseSettings from "./pages/DatabaseSettings";
@@ -163,25 +171,24 @@ import PendingApprovals from "./pages/PendingApprovals";
 import ApprovalReport from "./pages/ApprovalReport";
 import RulesManagement from "./pages/RulesManagement";
 
-// IoT
+// IoT - Master Dashboard
+import IoTMasterDashboard from "./pages/IoTMasterDashboard";
 import IoTDashboard from "./pages/IoTDashboard";
-import IoT3DFloorPlan from "./pages/IoT3DFloorPlan";
 import IoTDeviceManagement from "./pages/IoTDeviceManagement";
 import IoTProtocolManagement from "./pages/IoTProtocolManagement";
 import IoTAnalytics from "./pages/IoTAnalytics";
 import IoTGatewayConfig from "./pages/IoTGatewayConfig";
 import IoTPredictiveMaintenance from "./pages/IoTPredictiveMaintenance";
 import IoTWorkOrders from "./pages/IoTWorkOrders";
-import IoTUserGuide from "./pages/IoTUserGuide";
 import IoTAlertEscalation from "./pages/IoTAlertEscalation";
 import IoTFirmwareOTA from "./pages/IoTFirmwareOTA";
 import IoTScheduledOTA from "./pages/IoTScheduledOTA";
-import IoTUnifiedDashboard from "./pages/IoTUnifiedDashboard";
 import IotMonitoringRealtime from "./pages/iot/IotMonitoringRealtime";
 import MqttConnectionManagement from "./pages/MqttConnectionManagement";
 import OpcuaConnectionManagement from "./pages/OpcuaConnectionManagement";
 
-// AI/ML
+// AI/ML - Master Dashboard
+import AiMasterDashboard from "./pages/AiMasterDashboard";
 import AiDashboard from "./pages/AiDashboard";
 import AiRootCause from "./pages/AiRootCause";
 import AiPredictive from "./pages/AiPredictive";
@@ -314,6 +321,8 @@ function Router() {
       <Route path="/alarm-threshold-config" component={AlarmThresholdConfig} />
       <Route path="/notification-settings" component={NotificationSettings} />
       <Route path="/notification-preferences" component={NotificationPreferences} />
+      <Route path="/alert-unified" component={AlertUnified} />
+      <Route path="/notification-unified" component={NotificationUnified} />
       <Route path="/environment-alerts" component={EnvironmentAlertConfig} />
       <Route path="/performance-drop-alert" component={PerformanceDropAlertConfig} />
       <Route path="/push-notification-settings" component={PushNotificationSettings} />
@@ -330,8 +339,11 @@ function Router() {
       {/* Webhook */}
       <Route path="/webhooks" component={WebhookManagement} />
       <Route path="/webhook-settings" component={WebhookSettings} />
+      <Route path="/webhook-unified" component={WebhookUnified} />
 
-      {/* Reports */}
+      {/* Reports - Master Dashboards */}
+      <Route path="/reports-master" component={ReportsMasterDashboard} />
+      <Route path="/scheduled-master" component={ScheduledMasterDashboard} />
       <Route path="/report-templates" component={ReportTemplateManagement} />
       <Route path="/reports-export" component={ReportsExport} />
       <Route path="/scheduled-reports" component={ScheduledReports} />
@@ -346,7 +358,8 @@ function Router() {
       <Route path="/spc-visualization/:type/:id" component={SpcVisualizationDetail} />
       <Route path="/cpk-comparison" component={CpkComparisonDashboard} />
 
-      {/* OEE */}
+      {/* OEE - Master Dashboard */}
+      <Route path="/oee-master" component={OeeMasterDashboard} />
       <Route path="/oee-dashboard" component={OEEDashboard} />
       <Route path="/oee-alert-thresholds" component={OeeAlertThresholdSettings} />
       <Route path="/oee-thresholds-by-line" component={OeeThresholdsByLine} />
@@ -364,7 +377,8 @@ function Router() {
       <Route path="/ntf-dashboard" component={NtfDashboard} />
       <Route path="/ntf-line/:id" component={NtfLineDetail} />
 
-      {/* Maintenance */}
+      {/* Maintenance - Master Dashboard */}
+      <Route path="/maintenance-master" component={MaintenanceMasterDashboard} />
       <Route path="/maintenance-dashboard" component={MaintenanceDashboard} />
       <Route path="/maintenance-schedule" component={MaintenanceSchedule} />
       <Route path="/predictive-maintenance" component={PredictiveMaintenance} />
@@ -384,6 +398,7 @@ function Router() {
       <Route path="/license-dashboard" component={LicenseDashboard} />
       <Route path="/license-notification-report" component={LicenseNotificationReport} />
       <Route path="/license-server-settings" component={LicenseServerSettings} />
+      <Route path="/license-unified" component={LicenseUnified} />
 
       {/* Database & System */}
       <Route path="/database-settings" component={DatabaseSettings} />
@@ -406,25 +421,24 @@ function Router() {
       <Route path="/approval-report" component={ApprovalReport} />
       <Route path="/rules" component={RulesManagement} />
 
-      {/* IoT */}
+      {/* IoT - Master Dashboard */}
+      <Route path="/iot-master" component={IoTMasterDashboard} />
       <Route path="/iot-dashboard" component={IoTDashboard} />
-      <Route path="/iot-3d-floor-plan" component={IoT3DFloorPlan} />
       <Route path="/iot-device-management" component={IoTDeviceManagement} />
       <Route path="/iot-protocol-management" component={IoTProtocolManagement} />
       <Route path="/iot-analytics" component={IoTAnalytics} />
       <Route path="/iot-gateway" component={IoTGatewayConfig} />
       <Route path="/iot-predictive-maintenance" component={IoTPredictiveMaintenance} />
       <Route path="/iot-work-orders" component={IoTWorkOrders} />
-      <Route path="/iot-user-guide" component={IoTUserGuide} />
       <Route path="/iot-alert-escalation" component={IoTAlertEscalation} />
       <Route path="/iot-firmware-ota" component={IoTFirmwareOTA} />
       <Route path="/iot-scheduled-ota" component={IoTScheduledOTA} />
-      <Route path="/iot-unified-dashboard" component={IoTUnifiedDashboard} />
       <Route path="/iot-monitoring-realtime" component={IotMonitoringRealtime} />
       <Route path="/mqtt-connections" component={MqttConnectionManagement} />
       <Route path="/opcua-connections" component={OpcuaConnectionManagement} />
 
-      {/* AI/ML */}
+      {/* AI/ML - Master Dashboard */}
+      <Route path="/ai-master" component={AiMasterDashboard} />
       <Route path="/ai-dashboard" component={AiDashboard} />
       <Route path="/ai-root-cause" component={AiRootCause} />
       <Route path="/ai-predictive" component={AiPredictive} />

@@ -9689,7 +9689,72 @@
 - [ ] Gộp các trang Notification (NotificationCenter, NotificationChannelsSettings, NotificationPreferences, NotificationPreferencesPage, NotificationSettings) → NotificationSettings
 - [ ] Gộp các trang Scheduled Reports (ScheduledCpkJobs, ScheduledEmailReports, ScheduledJobsManagement, ScheduledKpiReports, ScheduledKpiReportsPage, ScheduledMttrMtbfReports, ScheduledOeeReports, ScheduledReportManagement, ScheduledReports) → ScheduledReports
 - [ ] Gộp các trang Webhook (WebhookEscalationPage, WebhookHistoryManagement, WebhookManagement, WebhookSettings, WebhookTemplates, UnifiedWebhooks) → WebhookManagement
-- [ ] Xóa các trang duplicate/không sử dụng
-- [ ] Tối ưu lazy loading trong App.tsx
-- [ ] Cấu hình Vite để giảm memory usage
+- [x] Xóa các trang duplicate/không sử dụng (giảm từ 277 xuống 197 trang)
+- [x] Tối ưu lazy loading trong App.tsx (đã viết lại hoàn toàn)
+- [x] Cấu hình Vite để giảm memory usage (tắt minify, cssMinify)
 
+
+
+## Phase 162 - Gộp Modules và Tạo Dữ liệu Test AVI/AOI
+
+### Gộp các trang tương tự để giảm modules
+- [ ] Gộp các trang Alert (AlertConfiguration, AlertDashboard, AlertHistory, AlertNotificationConfig, AlertThresholdConfig) → AlertUnified
+- [ ] Gộp các trang License (LicenseActivation, LicenseAdmin, LicenseDashboard, LicenseManagement, LicenseNotificationReport, LicenseServerSettings) → LicenseUnified
+- [ ] Gộp các trang Notification (NotificationPreferences, NotificationSettings) → NotificationUnified
+- [ ] Gộp các trang Webhook (WebhookManagement, WebhookSettings) → WebhookUnified
+
+### Tạo dữ liệu test cho AVI/AOI
+- [ ] Tạo script seed dữ liệu inspection cho AVI/AOI
+- [ ] Seed dữ liệu reference images
+- [ ] Seed dữ liệu inspection history
+- [ ] Seed dữ liệu defect samples
+
+### Kiểm tra các trang mới
+- [ ] Test trang InspectionHistory
+- [ ] Test trang ReferenceImageManagement
+
+
+## Phase 162.1 - Gộp Modules và Tạo Dữ liệu Test AVI/AOI (Hoàn thành)
+
+### Gộp các trang tương tự
+- [x] Tạo AlertUnified gộp Dashboard, Cấu hình, Lịch sử, Ngưỡng, Thông báo
+- [x] Tạo LicenseUnified gộp Dashboard, Kích hoạt, Quản lý, Báo cáo, Server
+- [x] Tạo NotificationUnified gộp Tùy chỉnh, Kênh, Lịch sử, Cài đặt
+- [x] Tạo WebhookUnified gộp Webhooks, Lịch sử, Thống kê
+- [x] Thêm routes cho các trang Unified mới vào App.tsx
+
+### Tạo dữ liệu test AVI/AOI
+- [x] Tạo script seed-avi-aoi-data.mjs
+- [x] Seed machine_inspection_data (500 records)
+- [x] Seed quality_images (100 records)
+- [x] Seed spc_defect_records (200 records)
+- [x] Seed machine_realtime_events (300 records)
+- [x] Seed inspection_remarks (100 records)
+
+### Kiểm tra các trang mới
+- [x] Routes InspectionHistory đã được cấu hình
+- [x] Routes ReferenceImageManagement đã được cấu hình
+- [x] Dữ liệu test AVI/AOI đã được seed thành công
+
+
+## Phase 163 - Tối ưu hóa Dashboard và Thống kê để Build Thành công
+
+### Phân tích và gộp các trang Dashboard
+- [x] Tạo IoTMasterDashboard gộp tất cả chức năng IoT
+- [x] Tạo OeeMasterDashboard gộp tất cả chức năng OEE
+- [x] Tạo AiMasterDashboard gộp tất cả chức năng AI
+- [x] Tạo MaintenanceMasterDashboard gộp tất cả chức năng Maintenance
+
+### Gộp các trang thống kê và báo cáo
+- [x] Tạo ScheduledMasterDashboard gộp tất cả Scheduled Reports
+- [x] Tạo ReportsMasterDashboard gộp tất cả Reports
+
+### Cập nhật routes
+- [x] Thêm routes cho các Master Dashboard mới
+- [x] Cập nhật imports trong App.tsx
+
+### Tối ưu build
+- [x] Tối ưu cấu hình Vite (simplified manualChunks)
+- [x] Giảm modules từ 9078 xuống 8524
+- [x] Build thành công (1m 6s)
+- [x] Lưu checkpoint và xuất bản (build manual trên local)
