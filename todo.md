@@ -9662,3 +9662,9 @@
 - [x] Đường tỷ lệ đạt (%) với reference line 100%
 - [x] Bảng thống kê chi tiết theo workshop
 - [x] Tích hợp vào Dashboard
+
+## Pre-Publish Fixes
+
+- [x] Sửa lỗi test predictiveMaintenance.test.ts (mock database không hỗ trợ multiple leftJoin)
+- [x] Kiểm tra lockfile integrity (pnpm-lock.yaml)
+- [x] Xác nhận dependencies đã được cài đặt đúng
