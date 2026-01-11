@@ -3,6 +3,7 @@ import express from "express";
 import { createServer } from "http";
 import helmet from "helmet";
 import net from "net";
+import path from "path";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
@@ -77,6 +78,16 @@ async function startServer() {
   // Rate limiting for API endpoints
   app.use("/api/trpc", apiRateLimiter);
   app.use("/api/oauth", authRateLimiter);
+  
+  // Serve manifest.json directly without auth (fix CORS issue)
+  app.get('/manifest.json', (req, res) => {
+    const manifestPath = process.env.NODE_ENV === 'development'
+      ? path.resolve(import.meta.dirname, '../../client/public/manifest.json')
+      : path.resolve(import.meta.dirname, 'public/manifest.json');
+    res.setHeader('Content-Type', 'application/manifest+json');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.sendFile(manifestPath);
+  });
   
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);

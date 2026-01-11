@@ -162,7 +162,10 @@
       "wouter@3.7.1": "patches/wouter@3.7.1.patch"
     },
     "overrides": {
-      "tailwindcss>nanoid": "3.3.7"
+      "tailwindcss>nanoid": "3.3.7",
+      "react": "^19.2.1",
+      "react-dom": "^19.2.1",
+      "scheduler": "^0.26.0"
     }
   }
 }

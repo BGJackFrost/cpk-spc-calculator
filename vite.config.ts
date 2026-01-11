@@ -74,9 +74,12 @@ export default defineConfig({
             if (id.includes('d3')) {
               return 'v-d3';
             }
-            // React
+            // React ecosystem - bundle together to avoid version conflicts
+            if (id.includes('scheduler')) {
+              return 'v-react';
+            }
             if (id.includes('react-dom')) {
-              return 'v-react-dom';
+              return 'v-react';
             }
             if (id.includes('react')) {
               return 'v-react';
@@ -139,10 +142,22 @@ export default defineConfig({
     // Disable inline assets
     assetsInlineLimit: 0,
   },
-  // Optimize deps
+  // Optimize deps - fix React unstable_now error
   optimizeDeps: {
-    include: ['react', 'react-dom'],
+    include: [
+      'react', 
+      'react-dom', 
+      'scheduler',
+      '@tanstack/react-query',
+      '@trpc/client',
+      '@trpc/react-query',
+    ],
     exclude: ['@react-three/fiber', '@react-three/drei', 'three'],
+    force: false,
+  },
+  // Ensure consistent React resolution
+  ssr: {
+    noExternal: ['react', 'react-dom', 'scheduler'],
   },
   server: {
     host: true,
