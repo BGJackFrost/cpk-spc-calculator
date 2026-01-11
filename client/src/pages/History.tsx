@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
 import { format } from "date-fns";
+import { toast } from "sonner";
 import { vi } from "date-fns/locale";
 import { 
   History as HistoryIcon, 
@@ -95,6 +96,50 @@ export default function History() {
     setPage(1);
   };
 
+  // Export mutations
+  const exportExcelMutation = trpc.spc.exportHistoryExcel.useMutation({
+    onSuccess: (result) => {
+      const blob = new Blob([Uint8Array.from(atob(result.base64), c => c.charCodeAt(0))], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = result.filename;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Đã xuất file Excel thành công");
+    },
+    onError: (error) => toast.error(`Lỗi xuất Excel: ${error.message}`),
+  });
+
+  const exportPdfMutation = trpc.spc.exportHistoryPdf.useMutation({
+    onSuccess: (result) => {
+      const blob = new Blob([result.html], { type: "text/html" });
+      const url = URL.createObjectURL(blob);
+      const newWindow = window.open(url, "_blank");
+      if (newWindow) {
+        newWindow.onload = () => {
+          newWindow.print();
+        };
+      }
+      toast.success("Đã tạo báo cáo PDF");
+    },
+    onError: (error) => toast.error(`Lỗi xuất PDF: ${error.message}`),
+  });
+
+  const handleExportExcel = () => {
+    exportExcelMutation.mutate({
+      productCode: appliedFilters.productCode,
+      stationName: appliedFilters.stationName,
+    });
+  };
+
+  const handleExportPdf = () => {
+    exportPdfMutation.mutate({
+      productCode: appliedFilters.productCode,
+      stationName: appliedFilters.stationName,
+    });
+  };
+
   const getCpkBadge = (cpk: number | null) => {
     if (cpk === null) return <Badge variant="secondary">N/A</Badge>;
     const cpkValue = cpk / 1000;
@@ -132,13 +177,13 @@ export default function History() {
             </p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={handleExportExcel} disabled={exportExcelMutation.isPending}>
               <FileSpreadsheet className="h-4 w-4 mr-2" />
-              Xuất Excel
+              {exportExcelMutation.isPending ? "Đang xuất..." : "Xuất Excel"}
             </Button>
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={handleExportPdf} disabled={exportPdfMutation.isPending}>
               <Download className="h-4 w-4 mr-2" />
-              Tải báo cáo
+              {exportPdfMutation.isPending ? "Đang tạo..." : "Tải PDF"}
             </Button>
           </div>
         </div>

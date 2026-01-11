@@ -38,6 +38,7 @@ import { iotAnalyticsRouter } from "./routers/iotAnalyticsRouter";
 import { iotProtocolRouter } from "./routers/iotProtocolRouter";
 import { iotCrudRouter } from "./routers/iotCrudRouter";
 import { iotOeeAlertRouter } from "./routers/iotOeeAlertRouter";
+import { generateHistoryExcelBuffer, generateHistoryPdfHtml } from "./historyExportService";
 import { telegramRouter } from "./routers/telegramRouter";
 import { floorPlanRouter } from "./routers/floorPlanRouter";
 import { notificationRouter } from "./routers/notificationRouter";
@@ -1375,6 +1376,49 @@ const spcRouter = router({
           endDate: input.endDate,
         }
       );
+    }),
+
+  // Export lịch sử ra Excel
+  exportHistoryExcel: protectedProcedure
+    .input(z.object({
+      productCode: z.string().optional(),
+      stationName: z.string().optional(),
+      startDate: z.date().optional(),
+      endDate: z.date().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const data = await getSpcAnalysisHistoryPaginated(1, 10000, {
+        productCode: input.productCode,
+        stationName: input.stationName,
+        startDate: input.startDate,
+        endDate: input.endDate,
+      });
+      const buffer = await generateHistoryExcelBuffer(data.data);
+      return { base64: buffer.toString("base64"), filename: `spc-history-${Date.now()}.xlsx` };
+    }),
+
+  // Export lịch sử ra PDF HTML
+  exportHistoryPdf: protectedProcedure
+    .input(z.object({
+      productCode: z.string().optional(),
+      stationName: z.string().optional(),
+      startDate: z.date().optional(),
+      endDate: z.date().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const data = await getSpcAnalysisHistoryPaginated(1, 10000, {
+        productCode: input.productCode,
+        stationName: input.stationName,
+        startDate: input.startDate,
+        endDate: input.endDate,
+      });
+      const html = generateHistoryPdfHtml(data.data, {
+        productCode: input.productCode,
+        stationName: input.stationName,
+        dateFrom: input.startDate?.toISOString().split("T")[0],
+        dateTo: input.endDate?.toISOString().split("T")[0],
+      });
+      return { html, filename: `spc-history-${Date.now()}.html` };
     }),
 
   // Lấy dữ liệu realtime theo plan

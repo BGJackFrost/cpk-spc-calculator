@@ -284,9 +284,11 @@ import {
   PlantKPIDashboard,
   PlantKPIDashboardEnhanced,
   PredictiveMaintenance,
+  FactoryManagement,
   ProcessManagement,
   ProductionLineComparison,
   ProductionLineManagement,
+  WorkshopManagement,
   ProductionLinesDashboard,
   QualityTrendReport,
   RateLimitDashboard,
@@ -372,6 +374,8 @@ function Router() {
       <Route path="/products" component={ProductManagement} />
       <Route path="/specifications" component={SpecificationManagement} />
       <Route path="/production-line-management" component={ProductionLineManagement} />
+      <Route path="/factories" component={FactoryManagement} />
+      <Route path="/workshops" component={WorkshopManagement} />
       <Route path="/sampling-methods" component={SamplingMethodManagement} />
       <Route path="/spc-plans" component={SpcPlanManagement} />
       <Route path="/quick-spc-plan" component={QuickSpcPlan} />

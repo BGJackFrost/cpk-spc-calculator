@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { Loader2, Database, Shield, Play, CheckCircle, AlertCircle } from "lucide-react";
+import { Loader2, Database, Shield, Play, CheckCircle, AlertCircle, Building2 } from "lucide-react";
 
 export default function SeedDataPage() {
   const [results, setResults] = useState<{
@@ -62,6 +62,15 @@ export default function SeedDataPage() {
   const seedAiDataMutation = trpc.seed.seedAiData.useMutation({
     onSuccess: () => {
       toast.success("Đã khởi tạo dữ liệu AI Training thành công");
+    },
+    onError: (error) => {
+      toast.error(`Lỗi: ${error.message}`);
+    },
+  });
+
+  const seedFactoryWorkshopMutation = trpc.factoryWorkshop.seedSampleData.useMutation({
+    onSuccess: (data) => {
+      toast.success(data.message);
     },
     onError: (error) => {
       toast.error(`Lỗi: ${error.message}`);
@@ -245,6 +254,44 @@ export default function SeedDataPage() {
                 <p>• 5 Training Jobs (completed/running/failed/pending)</p>
                 <p>• 290 Training History records</p>
                 <p>• 5 Trained Models (các modelType khác nhau)</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Seed Factory/Workshop */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Building2 className="h-5 w-5 text-purple-500" />
+                Nhà máy & Xưởng
+              </CardTitle>
+              <CardDescription>
+                Tạo 3 nhà máy mẫu và 12 xưởng sản xuất
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Button
+                onClick={() => seedFactoryWorkshopMutation.mutate()}
+                disabled={seedFactoryWorkshopMutation.isPending}
+                className="w-full"
+                variant="outline"
+              >
+                {seedFactoryWorkshopMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Đang khởi tạo...
+                  </>
+                ) : (
+                  <>
+                    <Play className="mr-2 h-4 w-4" />
+                    Tạo Factory/Workshop
+                  </>
+                )}
+              </Button>
+              <div className="text-sm text-muted-foreground">
+                <p>• 3 Nhà máy (Hà Nội, HCM, Đà Nẵng)</p>
+                <p>• 12 Xưởng (SMT, Lắp ráp, QC, Đóng gói...)</p>
+                <p>• Thông tin quản lý, công suất, vị trí</p>
               </div>
             </CardContent>
           </Card>

@@ -128,6 +128,8 @@ const fallbackLabelsVi: Record<string, string> = {
   "nav.ntfConfig": "Cấu hình NTF",
   "nav.ntfDashboard": "Dashboard NTF",
   "nav.productionLine": "Dây chuyền Sản xuất",
+  "nav.factories": "Nhà máy",
+  "nav.workshops": "Xưởng sản xuất",
   "nav.workstation": "Công trạm",
   "nav.machine": "Máy móc",
   "nav.machineType": "Loại Máy",

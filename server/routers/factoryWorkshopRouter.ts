@@ -634,6 +634,61 @@ export const factoryWorkshopRouter = router({
         },
       };
     }),
+
+  // Seed sample data for factories and workshops
+  seedSampleData: protectedProcedure
+    .mutation(async () => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      const sampleFactories = [
+        { code: "HN-F01", name: "Nhà máy Hà Nội", description: "Nhà máy sản xuất chính tại Hà Nội", address: "KCN Thăng Long", city: "Hà Nội", country: "Việt Nam", phone: "024-3333-4444", email: "hanoi@company.vn", managerName: "Nguyễn Văn A", managerPhone: "0912-345-678", managerEmail: "manager.hn@company.vn", capacity: 50000, status: "active" as const },
+        { code: "HCM-F02", name: "Nhà máy Hồ Chí Minh", description: "Nhà máy sản xuất tại TP.HCM", address: "KCN Tân Bình", city: "TP.HCM", country: "Việt Nam", phone: "028-5555-6666", email: "hcm@company.vn", managerName: "Trần Văn B", managerPhone: "0923-456-789", managerEmail: "manager.hcm@company.vn", capacity: 40000, status: "active" as const },
+        { code: "DN-F03", name: "Nhà máy Đà Nẵng", description: "Nhà máy sản xuất tại Đà Nẵng", address: "KCN Hòa Khánh", city: "Đà Nẵng", country: "Việt Nam", phone: "0236-7777-8888", email: "danang@company.vn", managerName: "Lê Văn C", managerPhone: "0934-567-890", managerEmail: "manager.dn@company.vn", capacity: 30000, status: "active" as const },
+      ];
+
+      const createdFactories = [];
+      for (const factory of sampleFactories) {
+        const existing = await db.select().from(factories).where(eq(factories.code, factory.code)).limit(1);
+        if (existing.length === 0) {
+          const [created] = await db.insert(factories).values(factory).$returningId();
+          createdFactories.push({ ...factory, id: created.id });
+        } else {
+          createdFactories.push({ ...factory, id: existing[0].id });
+        }
+      }
+
+      const sampleWorkshops = [
+        { factoryId: createdFactories[0].id, code: "HN-SMT", name: "Xưởng SMT", description: "Xưởng gắn linh kiện bề mặt", building: "Tòa A", floor: "Tầng 1", area: 500, capacity: 20000, supervisorName: "Phạm Văn D", status: "active" as const },
+        { factoryId: createdFactories[0].id, code: "HN-ASM", name: "Xưởng Lắp ráp", description: "Xưởng lắp ráp sản phẩm", building: "Tòa A", floor: "Tầng 2", area: 600, capacity: 15000, supervisorName: "Hoàng Văn E", status: "active" as const },
+        { factoryId: createdFactories[0].id, code: "HN-QC", name: "Xưởng Kiểm tra", description: "Xưởng kiểm tra chất lượng", building: "Tòa B", floor: "Tầng 1", area: 300, capacity: 10000, supervisorName: "Vũ Văn F", status: "active" as const },
+        { factoryId: createdFactories[0].id, code: "HN-PKG", name: "Xưởng Đóng gói", description: "Xưởng đóng gói sản phẩm", building: "Tòa B", floor: "Tầng 2", area: 400, capacity: 25000, supervisorName: "Đặng Văn G", status: "active" as const },
+        { factoryId: createdFactories[1].id, code: "HCM-SMT", name: "Xưởng SMT", description: "Xưởng SMT tại HCM", building: "Nhà xưởng 1", floor: "Tầng trệt", area: 700, capacity: 18000, supervisorName: "Nguyễn Thị H", status: "active" as const },
+        { factoryId: createdFactories[1].id, code: "HCM-ASM", name: "Xưởng Lắp ráp", description: "Xưởng lắp ráp tại HCM", building: "Nhà xưởng 1", floor: "Tầng 1", area: 550, capacity: 12000, supervisorName: "Trần Thị I", status: "active" as const },
+        { factoryId: createdFactories[1].id, code: "HCM-TEST", name: "Xưởng Test", description: "Xưởng kiểm tra chức năng", building: "Nhà xưởng 2", floor: "Tầng trệt", area: 350, capacity: 8000, supervisorName: "Lê Thị K", status: "active" as const },
+        { factoryId: createdFactories[1].id, code: "HCM-WH", name: "Kho thành phẩm", description: "Kho lưu trữ thành phẩm", building: "Nhà xưởng 3", floor: "Tầng trệt", area: 800, capacity: 30000, supervisorName: "Phạm Thị L", status: "active" as const },
+        { factoryId: createdFactories[2].id, code: "DN-SMT", name: "Xưởng SMT", description: "Xưởng SMT tại Đà Nẵng", building: "Khu A", floor: "Tầng 1", area: 450, capacity: 12000, supervisorName: "Hoàng Thị M", status: "active" as const },
+        { factoryId: createdFactories[2].id, code: "DN-ASM", name: "Xưởng Lắp ráp", description: "Xưởng lắp ráp tại Đà Nẵng", building: "Khu A", floor: "Tầng 2", area: 400, capacity: 10000, supervisorName: "Vũ Thị N", status: "active" as const },
+        { factoryId: createdFactories[2].id, code: "DN-QC", name: "Xưởng QC", description: "Xưởng kiểm tra chất lượng", building: "Khu B", floor: "Tầng 1", area: 250, capacity: 8000, supervisorName: "Đặng Thị O", status: "active" as const },
+        { factoryId: createdFactories[2].id, code: "DN-PKG", name: "Xưởng Đóng gói", description: "Xưởng đóng gói tại Đà Nẵng", building: "Khu B", floor: "Tầng 2", area: 300, capacity: 15000, supervisorName: "Bùi Văn P", status: "active" as const },
+      ];
+
+      let workshopsCreated = 0;
+      for (const workshop of sampleWorkshops) {
+        const existing = await db.select().from(workshops).where(eq(workshops.code, workshop.code)).limit(1);
+        if (existing.length === 0) {
+          await db.insert(workshops).values(workshop);
+          workshopsCreated++;
+        }
+      }
+
+      return {
+        success: true,
+        message: `Đã tạo ${createdFactories.length} nhà máy và ${workshopsCreated} xưởng mẫu`,
+        factoriesCreated: createdFactories.length,
+        workshopsCreated,
+      };
+    }),
 });
 
 export type FactoryWorkshopRouter = typeof factoryWorkshopRouter;

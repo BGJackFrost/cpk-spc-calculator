@@ -266,7 +266,9 @@ export const PRODUCTION_MENU: SystemMenuConfig = {
       icon: Factory,
       defaultOpen: true,
       items: [
-        { id: "production-line-management", icon: Factory, labelKey: "nav.productionLine", path: "/production-line-management", adminOnly: true },
+        { id: "factories", icon: Building2, labelKey: "nav.factories", path: "/factories", adminOnly: true },
+        { id: "workshops", icon: Factory, labelKey: "nav.workshops", path: "/workshops", adminOnly: true },
+        { id: "production-line-management", icon: GitBranch, labelKey: "nav.productionLine", path: "/production-line-management", adminOnly: true },
         { id: "production-lines", icon: Activity, labelKey: "nav.productionLineStatus", path: "/production-lines" },
         { id: "workstations", icon: Wrench, labelKey: "nav.workstation", path: "/workstations", adminOnly: true },
         { id: "machines", icon: Cog, labelKey: "nav.machine", path: "/machines", adminOnly: true },

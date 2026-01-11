@@ -9568,3 +9568,25 @@
 - [x] Cập nhật MachineApiDocumentation với cấu trúc mới
 - [x] Thêm ví dụ API với factory/workshop fields
 - [x] Thêm section về remark/notes trong API
+
+
+## Phase 16 - Trang quản lý Factory/Workshop & Export
+
+### Trang quản lý Factory/Workshop
+- [x] Tạo trang FactoryManagement.tsx với CRUD UI
+- [x] Tạo trang WorkshopManagement.tsx với CRUD UI
+- [x] Thêm routes /factories và /workshops vào App.tsx
+- [x] Thêm menu Factory/Workshop vào systemMenu.ts
+- [x] Thêm fallback labels tiếng Việt trong DashboardLayout
+
+### Tích hợp Export thực tế
+- [x] Tạo historyExportService.ts với generateHistoryExcelBuffer và generateHistoryPdfHtml
+- [x] Thêm exportHistoryExcel và exportHistoryPdf endpoints vào spc router
+- [x] Cập nhật History.tsx với nút export Excel/PDF thực tế
+- [x] Viết unit tests cho historyExportService (6 tests passed)
+
+### Seed Data Factory/Workshop
+- [x] Thêm seedSampleData endpoint vào factoryWorkshopRouter
+- [x] Tạo 3 nhà máy mẫu (Hà Nội, HCM, Đà Nẵng)
+- [x] Tạo 12 xưởng sản xuất mẫu (SMT, Lắp ráp, QC, Đóng gói...)
+- [x] Cập nhật SeedDataPage.tsx với nút tạo Factory/Workshop

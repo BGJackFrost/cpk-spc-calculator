@@ -96,6 +96,8 @@ export const CpkHistoryComparison = withSuspense(lazyWithRetry(() => import('@/p
 export const ProductionLinesDashboard = withSuspense(lazyWithRetry(() => import('@/pages/ProductionLinesDashboard')));
 export const ProductionLineManagement = withSuspense(lazyWithRetry(() => import('@/pages/ProductionLineManagement')));
 export const ProductionLineComparison = withSuspense(lazyWithRetry(() => import('@/pages/ProductionLineComparison')));
+export const FactoryManagement = withSuspense(lazyWithRetry(() => import('@/pages/FactoryManagement')));
+export const WorkshopManagement = withSuspense(lazyWithRetry(() => import('@/pages/WorkshopManagement')));
 export const LineComparison = withSuspense(lazyWithRetry(() => import('@/pages/LineComparison')));
 export const WorkstationManagement = withSuspense(lazyWithRetry(() => import('@/pages/WorkstationManagement')));
 export const MachineManagement = withSuspense(lazyWithRetry(() => import('@/pages/MachineManagement')));
