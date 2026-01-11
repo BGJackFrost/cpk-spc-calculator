@@ -9611,3 +9611,54 @@
 - [x] Cập nhật logic export PDF để bao gồm biểu đồ XBar và R Chart
 - [x] Thêm biểu đồ Histogram vào PDF
 - [x] Định dạng layout PDF chuyên nghiệp với biểu đồ và bảng dữ liệu
+
+
+## Phase 10 - In PDF, Trend CPK và So sánh Công suất
+
+### In PDF trực tiếp từ trình duyệt
+- [ ] Tạo component PrintableReport với layout tối ưu cho A4
+- [ ] Thêm CSS print styles cho các trang báo cáo
+- [ ] Tích hợp nút in PDF vào trang Phân tích SPC
+- [ ] Tích hợp nút in PDF vào trang Báo cáo tổng hợp
+- [ ] Hỗ trợ in nhiều trang với page breaks
+
+### Biểu đồ Trend CPK theo thời gian
+- [ ] Tạo component CpkTrendChart với Recharts
+- [ ] Tích hợp biểu đồ vào Dashboard công suất
+- [ ] Hiển thị trend CPK theo ngày/tuần/tháng
+- [ ] Thêm đường ngưỡng CPK (1.0, 1.33, 1.67)
+- [ ] Thêm annotations cho các điểm vi phạm
+
+### So sánh công suất thực tế vs kế hoạch
+- [ ] Tạo bảng CapacityPlan trong database (kế hoạch công suất)
+- [ ] Tạo trang quản lý Kế hoạch công suất (CRUD)
+- [ ] Tạo component CapacityComparisonChart
+- [ ] Hiển thị so sánh cho từng Workshop
+- [ ] Tính toán % đạt kế hoạch và hiển thị trên Dashboard
+
+
+## Phase 10.1 - In PDF, Trend CPK, So sánh công suất
+
+### In PDF trực tiếp từ trình duyệt
+- [x] Tạo component PrintableReport với layout tối ưu cho A4
+- [x] Thêm print styles vào index.css (@media print)
+- [x] Thêm nút "In PDF (A4)" vào trang Phân tích SPC
+- [x] Print Preview Dialog với xem trước báo cáo
+- [x] Tích hợp window.print() để in trực tiếp
+
+### Biểu đồ Trend CPK theo thời gian
+- [x] Tạo component CpkTrendChart với Recharts
+- [x] Thêm API getCpkTrend vào reportRouter
+- [x] Tích hợp vào Dashboard công suất (tab mới)
+- [x] Hiển thị xu hướng CPK theo ngày/tuần/tháng
+- [x] Reference lines cho ngưỡng CPK (1.0, 1.33, 1.67)
+
+### So sánh công suất thực tế vs kế hoạch
+- [x] Tạo bảng capacity_plans trong database
+- [x] Tạo bảng capacity_plan_history cho lịch sử
+- [x] Tạo API CRUD cho capacity plans
+- [x] Tạo component CapacityComparisonChart
+- [x] Biểu đồ bar chart so sánh kế hoạch vs thực tế
+- [x] Đường tỷ lệ đạt (%) với reference line 100%
+- [x] Bảng thống kê chi tiết theo workshop
+- [x] Tích hợp vào Dashboard

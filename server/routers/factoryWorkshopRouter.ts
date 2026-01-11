@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { router, publicProcedure, protectedProcedure } from "../_core/trpc";
-import { getDb } from "../db";
+import { getDb, getCapacityPlans, createCapacityPlan, updateCapacityPlan, deleteCapacityPlan, getCapacityComparison, getCapacitySummaryByWorkshop } from "../db";
 import { factories, workshops, productionLines, workshopProductionLines } from "../../drizzle/schema";
 import { eq, desc, and, like, sql, or } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
@@ -903,6 +903,101 @@ export const factoryWorkshopRouter = router({
         workshops: workshopsWithCounts,
         totalCapacity,
       };
+    }),
+
+  // ============ CAPACITY PLANS ============
+  
+  // List capacity plans
+  listCapacityPlans: protectedProcedure
+    .input(z.object({
+      workshopId: z.number().optional(),
+      productId: z.number().optional(),
+      startDate: z.date().optional(),
+      endDate: z.date().optional(),
+      status: z.string().optional(),
+    }).optional())
+    .query(async ({ input }) => {
+      return await getCapacityPlans(input);
+    }),
+
+  // Create capacity plan
+  createCapacityPlan: protectedProcedure
+    .input(z.object({
+      workshopId: z.number(),
+      productId: z.number().optional(),
+      planDate: z.string(),
+      plannedCapacity: z.number().min(0),
+      targetEfficiency: z.number().min(0).max(100).optional(),
+      shiftType: z.enum(['morning', 'afternoon', 'night', 'full_day']).optional(),
+      notes: z.string().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const id = await createCapacityPlan({
+        ...input,
+        createdBy: ctx.user?.id,
+      });
+      if (!id) {
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Failed to create capacity plan' });
+      }
+      return { id, message: 'Capacity plan created successfully' };
+    }),
+
+  // Update capacity plan
+  updateCapacityPlan: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      plannedCapacity: z.number().min(0).optional(),
+      actualCapacity: z.number().min(0).optional(),
+      targetEfficiency: z.number().min(0).max(100).optional(),
+      actualEfficiency: z.number().min(0).max(100).optional(),
+      shiftType: z.enum(['morning', 'afternoon', 'night', 'full_day']).optional(),
+      notes: z.string().optional(),
+      status: z.enum(['draft', 'approved', 'in_progress', 'completed', 'cancelled']).optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const { id, ...data } = input;
+      const success = await updateCapacityPlan(id, {
+        ...data,
+        approvedBy: data.status === 'approved' ? ctx.user?.id : undefined,
+      });
+      if (!success) {
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Failed to update capacity plan' });
+      }
+      return { success: true, message: 'Capacity plan updated successfully' };
+    }),
+
+  // Delete capacity plan
+  deleteCapacityPlan: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      const success = await deleteCapacityPlan(input.id);
+      if (!success) {
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Failed to delete capacity plan' });
+      }
+      return { success: true, message: 'Capacity plan deleted successfully' };
+    }),
+
+  // Get capacity comparison data
+  getCapacityComparison: protectedProcedure
+    .input(z.object({
+      factoryId: z.number().optional(),
+      workshopId: z.number().optional(),
+      startDate: z.date().optional(),
+      endDate: z.date().optional(),
+    }).optional())
+    .query(async ({ input }) => {
+      return await getCapacityComparison(input);
+    }),
+
+  // Get capacity summary by workshop
+  getCapacitySummary: protectedProcedure
+    .input(z.object({
+      factoryId: z.number().optional(),
+      startDate: z.date().optional(),
+      endDate: z.date().optional(),
+    }).optional())
+    .query(async ({ input }) => {
+      return await getCapacitySummaryByWorkshop(input);
     }),
 });
 

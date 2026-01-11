@@ -4,7 +4,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
-import { Loader2, Factory, Building2, TrendingUp, BarChart3 } from "lucide-react";
+import { Loader2, Factory, Building2, TrendingUp, BarChart3, LineChart as LineChartIcon } from "lucide-react";
+import CpkTrendChart from "@/components/CpkTrendChart";
 import {
   BarChart,
   Bar,
@@ -138,6 +139,10 @@ export default function CapacityStatsWidget() {
               <Building2 className="h-4 w-4" />
               Theo Workshop
             </TabsTrigger>
+            <TabsTrigger value="cpk-trend" className="flex items-center gap-2">
+              <LineChartIcon className="h-4 w-4" />
+              Trend CPK
+            </TabsTrigger>
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <TrendingUp className="h-4 w-4" />
               Tổng quan
@@ -224,6 +229,14 @@ export default function CapacityStatsWidget() {
                 <span className="text-sm">Ngừng</span>
               </div>
             </div>
+          </TabsContent>
+
+          <TabsContent value="cpk-trend" className="space-y-4">
+            <CpkTrendChart 
+              workshopId={selectedFactoryId !== "all" ? undefined : undefined}
+              showControls={true}
+              height={350}
+            />
           </TabsContent>
 
           <TabsContent value="overview" className="space-y-4">

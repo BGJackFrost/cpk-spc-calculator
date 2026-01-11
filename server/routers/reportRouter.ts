@@ -226,4 +226,57 @@ export const reportRouter = router({
         generatedAt: new Date().toISOString(),
       };
     }),
+
+  // Get CPK Trend Data over time
+  getCpkTrend: protectedProcedure
+    .input(z.object({
+      days: z.number().min(1).max(365).default(30),
+      productionLineId: z.number().optional(),
+      workshopId: z.number().optional(),
+    }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return { data: [] };
+
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - input.days);
+
+      try {
+        // Query CPK data from spc_analysis_history grouped by date
+        let query = `
+          SELECT 
+            DATE(created_at) as date,
+            AVG(cpk) as avgCpk,
+            MIN(cpk) as minCpk,
+            MAX(cpk) as maxCpk,
+            COUNT(*) as count
+          FROM spc_analysis_history
+          WHERE created_at >= ?
+            AND cpk IS NOT NULL
+        `;
+        const params: any[] = [startDate.toISOString().split('T')[0]];
+
+        if (input.productionLineId) {
+          query += ` AND production_line_id = ?`;
+          params.push(input.productionLineId);
+        }
+
+        query += ` GROUP BY DATE(created_at) ORDER BY date ASC`;
+
+        const [rows] = await db.execute(query, params);
+        
+        const data = (rows as any[]).map(row => ({
+          date: row.date,
+          avgCpk: parseFloat(row.avgCpk) || 0,
+          minCpk: parseFloat(row.minCpk) || 0,
+          maxCpk: parseFloat(row.maxCpk) || 0,
+          count: parseInt(row.count) || 0,
+        }));
+
+        return { data };
+      } catch (error) {
+        console.error("[Report] Failed to get CPK trend:", error);
+        return { data: [] };
+      }
+    }),
 });

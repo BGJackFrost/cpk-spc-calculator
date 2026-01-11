@@ -28,7 +28,8 @@ import {
   FileText,
   Database,
   Eye,
-  Mail
+  Mail,
+  Printer
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -47,6 +48,7 @@ import AdvancedCharts from "@/components/AdvancedCharts";
 import SpcChartSelector from "@/components/SpcChartSelector";
 import { useKeyboardShortcuts, createCommonShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { KeyboardShortcutsHelp } from "@/components/KeyboardShortcutsHelp";
+import PrintableReport, { PrintSection, PrintTable, PrintStats, PrintChart, usePrintReport } from "@/components/PrintableReport";
 
 const downloadFile = (content: string, filename: string, mimeType: string) => {
   const blob = new Blob([content], { type: mimeType });
@@ -121,6 +123,8 @@ export default function Analyze() {
   const [emailRecipient, setEmailRecipient] = useState<string>("");
   const [lastExportedFileUrl, setLastExportedFileUrl] = useState<string | null>(null);
   const [lastExportType, setLastExportType] = useState<"pdf" | "excel">("pdf");
+  const [showPrintPreview, setShowPrintPreview] = useState(false);
+  const { handlePrint } = usePrintReport();
 
   // Lấy danh sách products từ bảng products
   const { data: products, isLoading: isLoadingProducts } = trpc.product.list.useQuery();
@@ -840,6 +844,15 @@ export default function Analyze() {
                     <Mail className="mr-2 h-4 w-4" />
                     {language === 'vi' ? 'Gửi Email' : 'Send Email'}
                   </Button>
+
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setShowPrintPreview(true)}
+                    disabled={!result}
+                  >
+                    <Printer className="mr-2 h-4 w-4" />
+                    {language === 'vi' ? 'In PDF (A4)' : 'Print PDF (A4)'}
+                  </Button>
                 </>
               )}
             </div>
@@ -1495,6 +1508,117 @@ export default function Analyze() {
               ) : (
                 language === 'vi' ? 'Gửi Email' : 'Send Email'
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Print Preview Dialog - In PDF trực tiếp từ trình duyệt */}
+      <Dialog open={showPrintPreview} onOpenChange={setShowPrintPreview}>
+        <DialogContent className="max-w-[900px] max-h-[95vh] overflow-auto print:max-w-none print:max-h-none print:overflow-visible">
+          <DialogHeader className="no-print">
+            <DialogTitle>
+              {language === 'vi' ? 'Xem trước báo cáo - In PDF (A4)' : 'Print Preview - PDF (A4)'}
+            </DialogTitle>
+            <DialogDescription>
+              {language === 'vi' 
+                ? 'Xem trước báo cáo với layout tối ưu cho khổ A4. Bấm "In PDF" để mở hộp thoại in của trình duyệt.'
+                : 'Preview report optimized for A4 paper. Click "Print PDF" to open browser print dialog.'}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {result && (
+            <PrintableReport
+              title={language === 'vi' ? 'BÁO CÁO PHÂN TÍCH SPC/CPK' : 'SPC/CPK ANALYSIS REPORT'}
+              subtitle={`${selectedProduct || 'Manual'} - ${workstations?.find((w: { id: number; name: string }) => w.id.toString() === selectedStation)?.name || 'Manual'}`}
+              companyName="MSoftware AI"
+            >
+              {/* Thống kê tổng hợp */}
+              <PrintSection title={language === 'vi' ? 'Thống kê tổng hợp' : 'Summary Statistics'}>
+                <PrintStats
+                  columns={4}
+                  stats={[
+                    { label: language === 'vi' ? 'Số mẫu' : 'Samples', value: result.sampleCount },
+                    { label: 'Mean', value: result.mean.toFixed(4) },
+                    { label: 'Std Dev', value: result.stdDev.toFixed(4) },
+                    { label: 'CPK', value: result.cpk?.toFixed(3) || 'N/A', highlight: true },
+                  ]}
+                />
+              </PrintSection>
+
+              {/* Chỉ số năng lực quy trình */}
+              <PrintSection title={language === 'vi' ? 'Chỉ số năng lực quy trình' : 'Process Capability Indices'}>
+                <PrintStats
+                  columns={4}
+                  stats={[
+                    { label: 'Cp', value: result.cp?.toFixed(3) || 'N/A' },
+                    { label: 'Cpk', value: result.cpk?.toFixed(3) || 'N/A', highlight: result.cpk !== null && result.cpk < 1.33 },
+                    { label: 'CPU', value: result.cpu?.toFixed(3) || 'N/A' },
+                    { label: 'CPL', value: result.cpl?.toFixed(3) || 'N/A' },
+                  ]}
+                />
+              </PrintSection>
+
+              {/* Giới hạn kiểm soát */}
+              <PrintSection title={language === 'vi' ? 'Giới hạn kiểm soát' : 'Control Limits'}>
+                <PrintTable
+                  headers={[
+                    language === 'vi' ? 'Thông số' : 'Parameter',
+                    language === 'vi' ? 'Giá trị' : 'Value',
+                    language === 'vi' ? 'Mô tả' : 'Description'
+                  ]}
+                  rows={[
+                    ['UCL (X-bar)', result.ucl.toFixed(4), language === 'vi' ? 'Giới hạn kiểm soát trên' : 'Upper Control Limit'],
+                    ['LCL (X-bar)', result.lcl.toFixed(4), language === 'vi' ? 'Giới hạn kiểm soát dưới' : 'Lower Control Limit'],
+                    ['UCL (R)', result.uclR.toFixed(4), language === 'vi' ? 'Giới hạn R trên' : 'Upper Range Limit'],
+                    ['LCL (R)', result.lclR.toFixed(4), language === 'vi' ? 'Giới hạn R dưới' : 'Lower Range Limit'],
+                    ['USL', result.usl?.toFixed(4) || 'N/A', language === 'vi' ? 'Giới hạn kỹ thuật trên' : 'Upper Spec Limit'],
+                    ['LSL', result.lsl?.toFixed(4) || 'N/A', language === 'vi' ? 'Giới hạn kỹ thuật dưới' : 'Lower Spec Limit'],
+                    ['Target', result.target?.toFixed(4) || 'N/A', language === 'vi' ? 'Giá trị mục tiêu' : 'Target Value'],
+                  ]}
+                />
+              </PrintSection>
+
+              {/* Dữ liệu thống kê */}
+              <PrintSection title={language === 'vi' ? 'Dữ liệu thống kê' : 'Statistical Data'}>
+                <PrintStats
+                  columns={3}
+                  stats={[
+                    { label: 'Min', value: result.min.toFixed(4) },
+                    { label: 'Max', value: result.max.toFixed(4) },
+                    { label: 'Range', value: result.range.toFixed(4) },
+                  ]}
+                />
+              </PrintSection>
+
+              {/* Trạng thái */}
+              <PrintSection title={language === 'vi' ? 'Kết luận' : 'Conclusion'}>
+                <div className={`p-4 rounded-lg border ${result.alertTriggered ? 'bg-red-50 border-red-300' : 'bg-green-50 border-green-300'}`}>
+                  <p className={`font-semibold ${result.alertTriggered ? 'text-red-600' : 'text-green-600'}`}>
+                    {result.alertTriggered 
+                      ? (language === 'vi' ? '⚠️ CẢNH BÁO: CPK dưới ngưỡng cho phép (< 1.33). Cần xem xét cải tiến quy trình.' : '⚠️ WARNING: CPK below threshold (< 1.33). Process improvement needed.')
+                      : (language === 'vi' ? '✅ QUY TRÌNH ỔN ĐỊNH: CPK đạt yêu cầu (≥ 1.33).' : '✅ PROCESS STABLE: CPK meets requirements (≥ 1.33).')
+                    }
+                  </p>
+                </div>
+              </PrintSection>
+
+              {/* Thông tin thời gian */}
+              <PrintSection>
+                <div className="text-sm text-gray-500 mt-4">
+                  <p>{language === 'vi' ? 'Thời gian phân tích' : 'Analysis Period'}: {startDate ? format(startDate, 'dd/MM/yyyy', { locale: vi }) : 'N/A'} - {endDate ? format(endDate, 'dd/MM/yyyy', { locale: vi }) : 'N/A'}</p>
+                </div>
+              </PrintSection>
+            </PrintableReport>
+          )}
+
+          <DialogFooter className="no-print">
+            <Button variant="outline" onClick={() => setShowPrintPreview(false)}>
+              {language === 'vi' ? 'Đóng' : 'Close'}
+            </Button>
+            <Button onClick={handlePrint}>
+              <Printer className="mr-2 h-4 w-4" />
+              {language === 'vi' ? 'In PDF' : 'Print PDF'}
             </Button>
           </DialogFooter>
         </DialogContent>

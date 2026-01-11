@@ -56,6 +56,7 @@ import AiDefectAlertsDashboardWidget from "@/components/AiDefectAlertsDashboardW
 import { AiOverviewDashboard } from "@/components/ai/AiOverviewWidgets";
 import RadarChartHistoryWidget from "@/components/RadarChartHistoryWidget";
 import CapacityStatsWidget from "@/components/CapacityStatsWidget";
+import CapacityComparisonChart from "@/components/CapacityComparisonChart";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -391,6 +392,13 @@ export default function Dashboard() {
         {isWidgetVisible("capacity_stats") && (
           <div className="mt-2">
             <CapacityStatsWidget />
+          </div>
+        )}
+
+        {/* Capacity Comparison Chart - So sánh công suất thực tế vs kế hoạch */}
+        {isWidgetVisible("capacity_stats") && (
+          <div className="mt-6">
+            <CapacityComparisonChart />
           </div>
         )}
 

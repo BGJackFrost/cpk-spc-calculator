@@ -304,3 +304,233 @@
     }
   }
 }
+
+/* ===== PRINT STYLES - Tối ưu cho in PDF A4 ===== */
+@media print {
+  /* Reset page margins and size */
+  @page {
+    size: A4;
+    margin: 15mm 10mm;
+  }
+  
+  @page :first {
+    margin-top: 10mm;
+  }
+  
+  /* Landscape orientation */
+  .print-landscape {
+    @page {
+      size: A4 landscape;
+    }
+  }
+  
+  /* Hide non-printable elements */
+  body * {
+    visibility: hidden;
+  }
+  
+  .printable-report,
+  .printable-report * {
+    visibility: visible;
+  }
+  
+  .printable-report {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    background: white !important;
+    color: black !important;
+    font-size: 11pt;
+    line-height: 1.4;
+  }
+  
+  /* Hide sidebar, header, footer */
+  nav,
+  aside,
+  header:not(.print-header),
+  footer:not(.print-footer),
+  .no-print,
+  button,
+  [role="dialog"],
+  [data-radix-popper-content-wrapper] {
+    display: none !important;
+  }
+  
+  /* Page breaks */
+  .print-page-break-before {
+    page-break-before: always;
+  }
+  
+  .print-page-break-after {
+    page-break-after: always;
+  }
+  
+  .print-avoid-break {
+    page-break-inside: avoid;
+  }
+  
+  /* Header styling */
+  .print-header {
+    position: running(header);
+    border-bottom: 2px solid #333 !important;
+    padding-bottom: 10pt;
+    margin-bottom: 15pt;
+  }
+  
+  .print-logo {
+    max-height: 50pt;
+    width: auto;
+  }
+  
+  /* Footer styling */
+  .print-footer {
+    position: running(footer);
+    border-top: 1px solid #ccc !important;
+    padding-top: 8pt;
+    margin-top: 15pt;
+    font-size: 9pt;
+    color: #666 !important;
+  }
+  
+  /* Table styling for print */
+  .print-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 10pt;
+    page-break-inside: auto;
+  }
+  
+  .print-table thead {
+    display: table-header-group;
+  }
+  
+  .print-table tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+  
+  .print-table th,
+  .print-table td {
+    border: 1px solid #333 !important;
+    padding: 6pt 8pt;
+    text-align: left;
+  }
+  
+  .print-table th {
+    background-color: #f0f0f0 !important;
+    font-weight: bold;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  
+  .print-table tbody tr:nth-child(even) {
+    background-color: #f9f9f9 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  
+  /* Stats grid for print */
+  .print-stats {
+    display: grid;
+    gap: 10pt;
+    page-break-inside: avoid;
+  }
+  
+  .print-stats > div {
+    border: 1px solid #ccc !important;
+    padding: 8pt;
+    text-align: center;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  
+  /* Chart container for print */
+  .print-chart {
+    page-break-inside: avoid;
+    margin: 15pt 0;
+  }
+  
+  .print-chart canvas,
+  .print-chart svg {
+    max-width: 100%;
+    height: auto !important;
+  }
+  
+  /* Section styling */
+  .print-section {
+    page-break-inside: avoid;
+    margin-bottom: 15pt;
+  }
+  
+  .print-section h2 {
+    font-size: 13pt;
+    font-weight: bold;
+    border-bottom: 1px solid #333;
+    padding-bottom: 5pt;
+    margin-bottom: 10pt;
+  }
+  
+  /* Links - show URL */
+  a[href]:after {
+    content: none;
+  }
+  
+  /* Ensure colors print correctly */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  
+  /* Badge/status colors for print */
+  .bg-green-100,
+  .bg-green-50 {
+    background-color: #dcfce7 !important;
+  }
+  
+  .bg-red-100,
+  .bg-red-50 {
+    background-color: #fee2e2 !important;
+  }
+  
+  .bg-yellow-100,
+  .bg-yellow-50 {
+    background-color: #fef9c3 !important;
+  }
+  
+  .bg-blue-100,
+  .bg-blue-50 {
+    background-color: #dbeafe !important;
+  }
+  
+  .text-green-600 {
+    color: #16a34a !important;
+  }
+  
+  .text-red-600 {
+    color: #dc2626 !important;
+  }
+  
+  .text-yellow-600 {
+    color: #ca8a04 !important;
+  }
+  
+  .text-blue-600 {
+    color: #2563eb !important;
+  }
+}
+
+/* Screen-only print preview styles */
+@media screen {
+  .printable-report {
+    max-width: 210mm;
+    margin: 0 auto;
+    padding: 20mm 15mm;
+    background: white;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  }
+  
+  .print-preview-mode .printable-report {
+    border: 1px dashed #ccc;
+  }
+}

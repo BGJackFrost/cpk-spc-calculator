@@ -6487,3 +6487,313 @@ export async function getAllUsersForFilter() {
     return [];
   }
 }
+
+
+// ============= CAPACITY PLANS =============
+
+// Get all capacity plans with filters
+export async function getCapacityPlans(filters?: {
+  workshopId?: number;
+  productId?: number;
+  startDate?: Date;
+  endDate?: Date;
+  status?: string;
+}) {
+  const db = await getDb();
+  if (!db) return [];
+
+  try {
+    let query = `
+      SELECT 
+        cp.*,
+        w.name as workshop_name,
+        w.code as workshop_code,
+        f.name as factory_name,
+        p.name as product_name,
+        p.code as product_code
+      FROM capacity_plans cp
+      LEFT JOIN workshops w ON cp.workshop_id = w.id
+      LEFT JOIN factories f ON w.factory_id = f.id
+      LEFT JOIN products p ON cp.product_id = p.id
+      WHERE 1=1
+    `;
+    const params: any[] = [];
+
+    if (filters?.workshopId) {
+      query += ` AND cp.workshop_id = ?`;
+      params.push(filters.workshopId);
+    }
+    if (filters?.productId) {
+      query += ` AND cp.product_id = ?`;
+      params.push(filters.productId);
+    }
+    if (filters?.startDate) {
+      query += ` AND cp.plan_date >= ?`;
+      params.push(filters.startDate.toISOString().split('T')[0]);
+    }
+    if (filters?.endDate) {
+      query += ` AND cp.plan_date <= ?`;
+      params.push(filters.endDate.toISOString().split('T')[0]);
+    }
+    if (filters?.status) {
+      query += ` AND cp.status = ?`;
+      params.push(filters.status);
+    }
+
+    query += ` ORDER BY cp.plan_date DESC, cp.workshop_id ASC`;
+
+    const [rows] = await db.execute(query, params);
+    return rows as any[];
+  } catch (error) {
+    console.error("[CapacityPlans] Failed to get capacity plans:", error);
+    return [];
+  }
+}
+
+// Create capacity plan
+export async function createCapacityPlan(data: {
+  workshopId: number;
+  productId?: number;
+  planDate: string;
+  plannedCapacity: number;
+  targetEfficiency?: number;
+  shiftType?: string;
+  notes?: string;
+  createdBy?: number;
+}) {
+  const db = await getDb();
+  if (!db) return null;
+
+  try {
+    const [result] = await db.execute(
+      `INSERT INTO capacity_plans 
+        (workshop_id, product_id, plan_date, planned_capacity, target_efficiency, shift_type, notes, created_by, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'draft')`,
+      [
+        data.workshopId,
+        data.productId || null,
+        data.planDate,
+        data.plannedCapacity,
+        data.targetEfficiency || 85.00,
+        data.shiftType || 'full_day',
+        data.notes || null,
+        data.createdBy || null
+      ]
+    );
+    return (result as any).insertId;
+  } catch (error) {
+    console.error("[CapacityPlans] Failed to create capacity plan:", error);
+    return null;
+  }
+}
+
+// Update capacity plan
+export async function updateCapacityPlan(id: number, data: {
+  plannedCapacity?: number;
+  actualCapacity?: number;
+  targetEfficiency?: number;
+  actualEfficiency?: number;
+  shiftType?: string;
+  notes?: string;
+  status?: string;
+  approvedBy?: number;
+}) {
+  const db = await getDb();
+  if (!db) return false;
+
+  try {
+    const updates: string[] = [];
+    const params: any[] = [];
+
+    if (data.plannedCapacity !== undefined) {
+      updates.push('planned_capacity = ?');
+      params.push(data.plannedCapacity);
+    }
+    if (data.actualCapacity !== undefined) {
+      updates.push('actual_capacity = ?');
+      params.push(data.actualCapacity);
+      // Calculate actual efficiency
+      const [rows] = await db.execute(
+        `SELECT planned_capacity FROM capacity_plans WHERE id = ?`,
+        [id]
+      );
+      const plan = (rows as any[])[0];
+      if (plan && plan.planned_capacity > 0) {
+        const efficiency = (data.actualCapacity / plan.planned_capacity) * 100;
+        updates.push('actual_efficiency = ?');
+        params.push(efficiency.toFixed(2));
+      }
+    }
+    if (data.targetEfficiency !== undefined) {
+      updates.push('target_efficiency = ?');
+      params.push(data.targetEfficiency);
+    }
+    if (data.actualEfficiency !== undefined) {
+      updates.push('actual_efficiency = ?');
+      params.push(data.actualEfficiency);
+    }
+    if (data.shiftType !== undefined) {
+      updates.push('shift_type = ?');
+      params.push(data.shiftType);
+    }
+    if (data.notes !== undefined) {
+      updates.push('notes = ?');
+      params.push(data.notes);
+    }
+    if (data.status !== undefined) {
+      updates.push('status = ?');
+      params.push(data.status);
+      if (data.status === 'approved' && data.approvedBy) {
+        updates.push('approved_by = ?');
+        params.push(data.approvedBy);
+        updates.push('approved_at = NOW()');
+      }
+    }
+
+    if (updates.length === 0) return false;
+
+    params.push(id);
+    await db.execute(
+      `UPDATE capacity_plans SET ${updates.join(', ')} WHERE id = ?`,
+      params
+    );
+    return true;
+  } catch (error) {
+    console.error("[CapacityPlans] Failed to update capacity plan:", error);
+    return false;
+  }
+}
+
+// Delete capacity plan
+export async function deleteCapacityPlan(id: number) {
+  const db = await getDb();
+  if (!db) return false;
+
+  try {
+    await db.execute(`DELETE FROM capacity_plan_history WHERE capacity_plan_id = ?`, [id]);
+    await db.execute(`DELETE FROM capacity_plans WHERE id = ?`, [id]);
+    return true;
+  } catch (error) {
+    console.error("[CapacityPlans] Failed to delete capacity plan:", error);
+    return false;
+  }
+}
+
+// Get capacity comparison data for workshops
+export async function getCapacityComparison(filters?: {
+  factoryId?: number;
+  workshopId?: number;
+  startDate?: Date;
+  endDate?: Date;
+}) {
+  const db = await getDb();
+  if (!db) return [];
+
+  try {
+    let query = `
+      SELECT 
+        w.id as workshop_id,
+        w.name as workshop_name,
+        w.code as workshop_code,
+        f.name as factory_name,
+        cp.plan_date,
+        SUM(cp.planned_capacity) as total_planned,
+        SUM(cp.actual_capacity) as total_actual,
+        AVG(cp.target_efficiency) as avg_target_efficiency,
+        AVG(cp.actual_efficiency) as avg_actual_efficiency,
+        COUNT(cp.id) as plan_count
+      FROM workshops w
+      LEFT JOIN factories f ON w.factory_id = f.id
+      LEFT JOIN capacity_plans cp ON w.id = cp.workshop_id
+      WHERE w.is_active = 1
+    `;
+    const params: any[] = [];
+
+    if (filters?.factoryId) {
+      query += ` AND w.factory_id = ?`;
+      params.push(filters.factoryId);
+    }
+    if (filters?.workshopId) {
+      query += ` AND w.id = ?`;
+      params.push(filters.workshopId);
+    }
+    if (filters?.startDate) {
+      query += ` AND cp.plan_date >= ?`;
+      params.push(filters.startDate.toISOString().split('T')[0]);
+    }
+    if (filters?.endDate) {
+      query += ` AND cp.plan_date <= ?`;
+      params.push(filters.endDate.toISOString().split('T')[0]);
+    }
+
+    query += ` GROUP BY w.id, w.name, w.code, f.name, cp.plan_date`;
+    query += ` ORDER BY w.name ASC, cp.plan_date DESC`;
+
+    const [rows] = await db.execute(query, params);
+    return rows as any[];
+  } catch (error) {
+    console.error("[CapacityPlans] Failed to get capacity comparison:", error);
+    return [];
+  }
+}
+
+// Get capacity summary by workshop
+export async function getCapacitySummaryByWorkshop(filters?: {
+  factoryId?: number;
+  startDate?: Date;
+  endDate?: Date;
+}) {
+  const db = await getDb();
+  if (!db) return [];
+
+  try {
+    let query = `
+      SELECT 
+        w.id as workshop_id,
+        w.name as workshop_name,
+        w.code as workshop_code,
+        w.capacity as max_capacity,
+        f.name as factory_name,
+        COALESCE(SUM(cp.planned_capacity), 0) as total_planned,
+        COALESCE(SUM(cp.actual_capacity), 0) as total_actual,
+        COALESCE(AVG(cp.actual_efficiency), 0) as avg_efficiency,
+        COUNT(cp.id) as plan_count,
+        SUM(CASE WHEN cp.actual_capacity >= cp.planned_capacity THEN 1 ELSE 0 END) as achieved_count
+      FROM workshops w
+      LEFT JOIN factories f ON w.factory_id = f.id
+      LEFT JOIN capacity_plans cp ON w.id = cp.workshop_id
+    `;
+    const params: any[] = [];
+    const conditions: string[] = ['w.is_active = 1'];
+
+    if (filters?.factoryId) {
+      conditions.push(`w.factory_id = ?`);
+      params.push(filters.factoryId);
+    }
+    if (filters?.startDate) {
+      conditions.push(`(cp.plan_date IS NULL OR cp.plan_date >= ?)`);
+      params.push(filters.startDate.toISOString().split('T')[0]);
+    }
+    if (filters?.endDate) {
+      conditions.push(`(cp.plan_date IS NULL OR cp.plan_date <= ?)`);
+      params.push(filters.endDate.toISOString().split('T')[0]);
+    }
+
+    if (conditions.length > 0) {
+      query += ` WHERE ${conditions.join(' AND ')}`;
+    }
+
+    query += ` GROUP BY w.id, w.name, w.code, w.capacity, f.name`;
+    query += ` ORDER BY f.name ASC, w.name ASC`;
+
+    const [rows] = await db.execute(query, params);
+    return (rows as any[]).map(row => ({
+      ...row,
+      achievementRate: row.plan_count > 0 ? (row.achieved_count / row.plan_count * 100).toFixed(1) : 0,
+      utilizationRate: row.total_planned > 0 ? (row.total_actual / row.total_planned * 100).toFixed(1) : 0
+    }));
+  } catch (error) {
+    console.error("[CapacityPlans] Failed to get capacity summary:", error);
+    return [];
+  }
+}
