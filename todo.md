@@ -9490,3 +9490,81 @@
 - [x] React không được khởi tạo (Root innerHTML = 0)
 - [x] Lỗi CORS khi load manifest.json - không ảnh hưởng đến render
 - [x] Nguyên nhân: Import trùng lặp useState trong Home.tsx - đã sửa
+
+## Phase 15 - Hoàn thiện 100% yêu cầu theo Báo cáo Đánh giá
+
+### Bổ sung Database Schema - Cấu trúc phân cấp nhà máy
+- [x] Tạo bảng factories (nhà máy) với mã nhà máy
+- [x] Tạo bảng workshops (nhà xưởng) với mã nhà xưởng
+- [x] Thêm field factoryId, workshopId vào productionLines
+- [x] Thêm field factoryId, workshopId vào machineInspectionData
+- [x] Thêm field factoryId, workshopId vào machineMeasurementData
+- [x] Thêm field remark/notes vào machineMeasurementData
+- [x] Tạo bảng measurementRemarks cho nhiều ghi chú
+
+### Cập nhật API và Router
+- [x] Thêm CRUD endpoints cho factories
+- [x] Thêm CRUD endpoints cho workshops
+- [ ] Cập nhật machineIntegrationRouter với cấu trúc phân cấp mới
+- [ ] Thêm validation cho cấu trúc phân cấp Factory → Workshop → Line → Workstation → Machine
+
+### Dashboard AVI/AOI Chuyên biệt
+- [ ] Cập nhật AviAoiDashboard với realtime status từng máy
+- [ ] Tích hợp AI Vision analysis panel vào dashboard
+- [ ] Hiển thị layout 2D/3D với vị trí máy trong xưởng
+- [ ] Thêm filter theo factory/workshop
+
+### Cải thiện History Page
+- [ ] Thêm filter theo factory
+- [ ] Thêm filter theo workshop
+- [ ] Tích hợp search với AI
+- [ ] Hiển thị cấu trúc phân cấp đầy đủ trong kết quả
+
+### Cập nhật API Documentation
+- [ ] Cập nhật với cấu trúc data mới (factory, workshop)
+- [ ] Thêm examples cho AVI/AOI machines
+- [ ] Thêm Swagger/OpenAPI spec
+
+### Trang quản lý Factory/Workshop
+- [ ] Tạo trang quản lý Nhà máy (Factory CRUD)
+- [ ] Tạo trang quản lý Nhà xưởng (Workshop CRUD)
+- [ ] Cập nhật navigation với menu mới
+
+
+
+## Phase 15 - Hoàn thiện 100% yêu cầu theo Báo cáo Đánh giá
+
+### Bổ sung Database Schema - Cấu trúc phân cấp nhà máy
+- [x] Tạo bảng factories (nhà máy) với mã nhà máy
+- [x] Tạo bảng workshops (nhà xưởng) với mã nhà xưởng
+- [x] Thêm field factoryId, workshopId vào productionLines
+- [x] Thêm field factoryId, workshopId vào machineInspectionData
+- [x] Thêm field factoryId, workshopId vào machineMeasurementData
+- [x] Thêm field remark/notes vào machineMeasurementData
+- [x] Tạo bảng measurementRemarks cho nhiều ghi chú
+- [x] Tạo bảng inspectionRemarks cho ghi chú kiểm tra
+
+### Cập nhật API và Router
+- [x] Thêm CRUD endpoints cho factories (factoryWorkshopRouter)
+- [x] Thêm CRUD endpoints cho workshops (factoryWorkshopRouter)
+- [x] Thêm CRUD endpoints cho measurement remarks (measurementRemarkRouter)
+- [x] Thêm getDropdownOptions cho factory/workshop selection
+- [x] Thêm getHierarchy cho cấu trúc phân cấp
+- [x] Thêm getStatistics cho dashboard
+
+### Dashboard AVI/AOI Chuyên biệt
+- [x] Thêm filter theo factory/workshop
+- [x] Thêm tabs cho Overview, Machines, AI Vision, Floor Plan
+- [x] Hiển thị realtime status của từng máy AVI/AOI
+- [x] Tích hợp AI Vision panel với thống kê
+
+### History Page
+- [x] Thêm filter theo factory
+- [x] Thêm filter theo workshop
+- [x] Hiển thị cột factory/workshop trong bảng
+- [x] Thêm nút export Excel/PDF
+
+### API Documentation
+- [x] Cập nhật MachineApiDocumentation với cấu trúc mới
+- [x] Thêm ví dụ API với factory/workshop fields
+- [x] Thêm section về remark/notes trong API

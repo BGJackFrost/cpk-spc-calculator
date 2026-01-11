@@ -4,9 +4,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { FileText, Code, Copy, Check, Key, Send, AlertCircle, CheckCircle2, Webhook, Terminal, Braces } from "lucide-react";
+import { 
+  FileText, Code, Copy, Check, Key, Send, AlertCircle, CheckCircle2, 
+  Webhook, Factory, Building2, MessageSquare, Database 
+} from "lucide-react";
 import { toast } from "sonner";
 
 const CodeBlock = ({ code, language }: { code: string; language: string }) => {
@@ -14,7 +16,7 @@ const CodeBlock = ({ code, language }: { code: string; language: string }) => {
   const copyToClipboard = () => {
     navigator.clipboard.writeText(code);
     setCopied(true);
-    toast.success("Da copy vao clipboard");
+    toast.success("Đã copy vào clipboard");
     setTimeout(() => setCopied(false), 2000);
   };
   return (
@@ -43,21 +45,32 @@ headers = {
     "Content-Type": "application/json"
 }
 
-# Post inspection result
+# Post inspection result với factory/workshop
 inspection_data = {
     "serialNumber": "SN123456789",
     "machineId": "AVI-01",
     "workstationId": "WS-001",
     "productionLineId": "LINE-A",
     "productCode": "PROD-001",
-    "status": "pass",  # pass, fail, warning
+    "factoryId": 1,              # ID nhà máy (tùy chọn)
+    "factoryCode": "FAC-HN",     # Mã nhà máy (tùy chọn)
+    "workshopId": 1,             # ID nhà xưởng (tùy chọn)
+    "workshopCode": "WS-A1",     # Mã nhà xưởng (tùy chọn)
+    "status": "pass",
     "measurements": [
-        {"name": "dimension_x", "value": 10.05, "unit": "mm", "usl": 10.1, "lsl": 9.9},
-        {"name": "dimension_y", "value": 5.02, "unit": "mm", "usl": 5.1, "lsl": 4.9}
+        {
+            "name": "dimension_x", 
+            "value": 10.05, 
+            "unit": "mm", 
+            "usl": 10.1, 
+            "lsl": 9.9,
+            "remark": "Đo lần 1, điều kiện chuẩn"  # Ghi chú cho phép đo
+        }
     ],
     "defects": [],
     "cycleTime": 250,
-    "timestamp": "2024-01-09T10:30:00Z"
+    "timestamp": "2024-01-09T10:30:00Z",
+    "remark": "Kiểm tra ca sáng, máy hoạt động ổn định"  # Ghi chú tổng thể
 }
 
 response = requests.post(
@@ -102,11 +115,26 @@ public class InspectionData
     public string WorkstationId { get; set; }
     public string ProductionLineId { get; set; }
     public string ProductCode { get; set; }
+    public int? FactoryId { get; set; }        // ID nhà máy
+    public string FactoryCode { get; set; }    // Mã nhà máy
+    public int? WorkshopId { get; set; }       // ID nhà xưởng
+    public string WorkshopCode { get; set; }   // Mã nhà xưởng
     public string Status { get; set; }
     public List<Measurement> Measurements { get; set; }
     public List<Defect> Defects { get; set; }
     public int CycleTime { get; set; }
     public DateTime Timestamp { get; set; }
+    public string Remark { get; set; }         // Ghi chú
+}
+
+public class Measurement
+{
+    public string Name { get; set; }
+    public double Value { get; set; }
+    public string Unit { get; set; }
+    public double Usl { get; set; }
+    public double Lsl { get; set; }
+    public string Remark { get; set; }         // Ghi chú cho phép đo
 }`;
 
   const javascriptExample = `const API_KEY = "your-api-key-here";
@@ -125,20 +153,32 @@ async function postInspection(data) {
   return await response.json();
 }
 
-// Example usage
+// Example usage với factory/workshop
 const inspectionData = {
   serialNumber: "SN123456789",
   machineId: "AVI-01",
   workstationId: "WS-001",
   productionLineId: "LINE-A",
   productCode: "PROD-001",
+  factoryId: 1,              // ID nhà máy
+  factoryCode: "FAC-HN",     // Mã nhà máy
+  workshopId: 1,             // ID nhà xưởng
+  workshopCode: "WS-A1",     // Mã nhà xưởng
   status: "pass",
   measurements: [
-    { name: "dimension_x", value: 10.05, unit: "mm", usl: 10.1, lsl: 9.9 }
+    { 
+      name: "dimension_x", 
+      value: 10.05, 
+      unit: "mm", 
+      usl: 10.1, 
+      lsl: 9.9,
+      remark: "Đo lần 1"     // Ghi chú cho phép đo
+    }
   ],
   defects: [],
   cycleTime: 250,
-  timestamp: new Date().toISOString()
+  timestamp: new Date().toISOString(),
+  remark: "Kiểm tra ca sáng"  // Ghi chú tổng thể
 };
 
 postInspection(inspectionData)
@@ -154,13 +194,25 @@ postInspection(inspectionData)
     "workstationId": "WS-001",
     "productionLineId": "LINE-A",
     "productCode": "PROD-001",
+    "factoryId": 1,
+    "factoryCode": "FAC-HN",
+    "workshopId": 1,
+    "workshopCode": "WS-A1",
     "status": "pass",
     "measurements": [
-      {"name": "dimension_x", "value": 10.05, "unit": "mm", "usl": 10.1, "lsl": 9.9}
+      {
+        "name": "dimension_x", 
+        "value": 10.05, 
+        "unit": "mm", 
+        "usl": 10.1, 
+        "lsl": 9.9,
+        "remark": "Đo lần 1"
+      }
     ],
     "defects": [],
     "cycleTime": 250,
-    "timestamp": "2024-01-09T10:30:00Z"
+    "timestamp": "2024-01-09T10:30:00Z",
+    "remark": "Kiểm tra ca sáng"
   }'`;
 
   return (
@@ -172,21 +224,43 @@ postInspection(inspectionData)
               <FileText className="h-8 w-8 text-primary" />
               Machine API Documentation
             </h1>
-            <p className="text-muted-foreground mt-1">Huong dan tich hop API cho may san xuat</p>
+            <p className="text-muted-foreground mt-1">Hướng dẫn tích hợp API cho máy sản xuất</p>
           </div>
+          <Badge variant="outline" className="text-sm">
+            API Version 2.0
+          </Badge>
         </div>
+
+        {/* New Features Banner */}
+        <Card className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 border-blue-500/30">
+          <CardContent className="py-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-full bg-blue-500/20">
+                <CheckCircle2 className="h-5 w-5 text-blue-500" />
+              </div>
+              <div>
+                <p className="font-medium">Tính năng mới trong API v2.0</p>
+                <p className="text-sm text-muted-foreground">
+                  Hỗ trợ cấu trúc phân cấp Factory → Workshop → ProductionLine và trường ghi chú (remark) cho mỗi điểm đo
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           <Card className="lg:col-span-1">
-            <CardHeader><CardTitle className="text-sm">Muc luc</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-sm">Mục lục</CardTitle></CardHeader>
             <CardContent>
               <nav className="space-y-2 text-sm">
                 <a href="#authentication" className="block text-muted-foreground hover:text-foreground">Authentication</a>
+                <a href="#hierarchy" className="block text-muted-foreground hover:text-foreground">Cấu trúc phân cấp</a>
                 <a href="#endpoints" className="block text-muted-foreground hover:text-foreground">Endpoints</a>
                 <a href="#inspection" className="block text-muted-foreground hover:text-foreground pl-4">- Inspection</a>
                 <a href="#measurement" className="block text-muted-foreground hover:text-foreground pl-4">- Measurement</a>
                 <a href="#oee" className="block text-muted-foreground hover:text-foreground pl-4">- OEE Data</a>
                 <a href="#batch" className="block text-muted-foreground hover:text-foreground pl-4">- Batch Upload</a>
+                <a href="#remarks" className="block text-muted-foreground hover:text-foreground">Ghi chú (Remarks)</a>
                 <a href="#examples" className="block text-muted-foreground hover:text-foreground">Code Examples</a>
                 <a href="#errors" className="block text-muted-foreground hover:text-foreground">Error Handling</a>
                 <a href="#webhooks" className="block text-muted-foreground hover:text-foreground">Webhooks</a>
@@ -198,29 +272,82 @@ postInspection(inspectionData)
             <Card id="authentication">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2"><Key className="h-5 w-5" />Authentication</CardTitle>
-                <CardDescription>Xac thuc API bang API Key</CardDescription>
+                <CardDescription>Xác thực API bằng API Key</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <p>Tat ca cac request den API deu can co API Key trong header:</p>
+                <p>Tất cả các request đến API đều cần có API Key trong header:</p>
                 <CodeBlock code={`Authorization: Bearer your-api-key-here`} language="text" />
                 <div className="bg-yellow-500/10 border border-yellow-500/50 rounded-lg p-4">
                   <div className="flex items-start gap-2">
                     <AlertCircle className="h-5 w-5 text-yellow-500 mt-0.5" />
                     <div>
-                      <p className="font-medium text-yellow-500">Luu y bao mat</p>
-                      <p className="text-sm text-muted-foreground">Khong chia se API Key. Luu tru an toan trong bien moi truong hoac file cau hinh bao mat.</p>
+                      <p className="font-medium text-yellow-500">Lưu ý bảo mật</p>
+                      <p className="text-sm text-muted-foreground">Không chia sẻ API Key. Lưu trữ an toàn trong biến môi trường hoặc file cấu hình bảo mật.</p>
                     </div>
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <h4 className="font-medium">Tao API Key</h4>
+                  <h4 className="font-medium">Tạo API Key</h4>
                   <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground">
-                    <li>Dang nhap vao he thong voi quyen Admin</li>
-                    <li>Vao menu Cai dat &gt; API Keys</li>
-                    <li>Click "Tao API Key moi"</li>
-                    <li>Dat ten va chon quyen cho API Key</li>
-                    <li>Copy va luu tru API Key an toan</li>
+                    <li>Đăng nhập vào hệ thống với quyền Admin</li>
+                    <li>Vào menu Cài đặt → API Keys</li>
+                    <li>Click "Tạo API Key mới"</li>
+                    <li>Đặt tên và chọn quyền cho API Key</li>
+                    <li>Copy và lưu trữ API Key an toàn</li>
                   </ol>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* New: Hierarchy Structure */}
+            <Card id="hierarchy">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><Database className="h-5 w-5" />Cấu trúc phân cấp</CardTitle>
+                <CardDescription>Factory → Workshop → ProductionLine → Workstation → Machine</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p>Hệ thống hỗ trợ cấu trúc phân cấp đầy đủ cho việc quản lý và theo dõi dữ liệu sản xuất:</p>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="rounded-lg border p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Factory className="h-5 w-5 text-blue-500" />
+                      <span className="font-medium">Factory (Nhà máy)</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Cấp cao nhất trong hệ thống. Mỗi nhà máy có mã riêng (factoryCode) và có thể chứa nhiều nhà xưởng.
+                    </p>
+                  </div>
+                  
+                  <div className="rounded-lg border p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Building2 className="h-5 w-5 text-green-500" />
+                      <span className="font-medium">Workshop (Nhà xưởng)</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Thuộc một nhà máy. Mỗi xưởng có mã riêng (workshopCode) và chứa các dây chuyền sản xuất.
+                    </p>
+                  </div>
+                </div>
+
+                <h4 className="font-medium mt-4">Các trường mới trong API:</h4>
+                <CodeBlock code={`{
+  "factoryId": number,        // ID nhà máy (tùy chọn)
+  "factoryCode": "string",    // Mã nhà máy, ví dụ: "FAC-HN", "FAC-HCM"
+  "workshopId": number,       // ID nhà xưởng (tùy chọn)
+  "workshopCode": "string"    // Mã nhà xưởng, ví dụ: "WS-A1", "WS-B2"
+}`} language="json" />
+
+                <div className="bg-blue-500/10 border border-blue-500/50 rounded-lg p-4">
+                  <div className="flex items-start gap-2">
+                    <CheckCircle2 className="h-5 w-5 text-blue-500 mt-0.5" />
+                    <div>
+                      <p className="font-medium text-blue-500">Tương thích ngược</p>
+                      <p className="text-sm text-muted-foreground">
+                        Các trường factory/workshop là tùy chọn. API vẫn hoạt động bình thường nếu không truyền các trường này.
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -228,7 +355,7 @@ postInspection(inspectionData)
             <Card id="endpoints">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2"><Send className="h-5 w-5" />Endpoints</CardTitle>
-                <CardDescription>Danh sach cac endpoint API</CardDescription>
+                <CardDescription>Danh sách các endpoint API</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -237,25 +364,30 @@ postInspection(inspectionData)
                       <Badge className="bg-green-500">POST</Badge>
                       <code className="text-sm">/api/machine/inspection</code>
                     </div>
-                    <p className="text-sm text-muted-foreground mb-4">Gui ket qua kiem tra tu may</p>
+                    <p className="text-sm text-muted-foreground mb-4">Gửi kết quả kiểm tra từ máy</p>
                     <h5 className="font-medium mb-2">Request Body:</h5>
                     <CodeBlock code={`{
-  "serialNumber": "string",      // Ma serial san pham (bat buoc)
-  "machineId": "string",         // Ma may (bat buoc)
-  "workstationId": "string",     // Ma cong tram (bat buoc)
-  "productionLineId": "string",  // Ma day chuyen (bat buoc)
-  "productCode": "string",       // Ma san pham (bat buoc)
-  "status": "pass|fail|warning", // Ket qua kiem tra (bat buoc)
-  "measurements": [              // Danh sach do luong (tuy chon)
+  "serialNumber": "string",      // Mã serial sản phẩm (bắt buộc)
+  "machineId": "string",         // Mã máy (bắt buộc)
+  "workstationId": "string",     // Mã công trạm (bắt buộc)
+  "productionLineId": "string",  // Mã dây chuyền (bắt buộc)
+  "productCode": "string",       // Mã sản phẩm (bắt buộc)
+  "factoryId": number,           // ID nhà máy (tùy chọn)
+  "factoryCode": "string",       // Mã nhà máy (tùy chọn)
+  "workshopId": number,          // ID nhà xưởng (tùy chọn)
+  "workshopCode": "string",      // Mã nhà xưởng (tùy chọn)
+  "status": "pass|fail|warning", // Kết quả kiểm tra (bắt buộc)
+  "measurements": [              // Danh sách đo lường (tùy chọn)
     {
       "name": "string",
       "value": number,
       "unit": "string",
       "usl": number,
-      "lsl": number
+      "lsl": number,
+      "remark": "string"         // Ghi chú cho phép đo
     }
   ],
-  "defects": [                   // Danh sach loi (tuy chon)
+  "defects": [                   // Danh sách lỗi (tùy chọn)
     {
       "type": "string",
       "severity": "low|medium|high|critical",
@@ -263,8 +395,9 @@ postInspection(inspectionData)
       "description": "string"
     }
   ],
-  "cycleTime": number,           // Thoi gian chu ky (ms)
-  "timestamp": "ISO8601"         // Thoi diem kiem tra
+  "cycleTime": number,           // Thời gian chu kỳ (ms)
+  "timestamp": "ISO8601",        // Thời điểm kiểm tra
+  "remark": "string"             // Ghi chú tổng thể (tùy chọn)
 }`} language="json" />
                   </div>
 
@@ -273,7 +406,7 @@ postInspection(inspectionData)
                       <Badge className="bg-green-500">POST</Badge>
                       <code className="text-sm">/api/machine/measurement</code>
                     </div>
-                    <p className="text-sm text-muted-foreground mb-4">Gui du lieu do luong don le</p>
+                    <p className="text-sm text-muted-foreground mb-4">Gửi dữ liệu đo lường đơn lẻ</p>
                     <CodeBlock code={`{
   "serialNumber": "string",
   "machineId": "string",
@@ -282,7 +415,10 @@ postInspection(inspectionData)
   "unit": "string",
   "usl": number,
   "lsl": number,
-  "timestamp": "ISO8601"
+  "factoryId": number,           // ID nhà máy (tùy chọn)
+  "workshopId": number,          // ID nhà xưởng (tùy chọn)
+  "timestamp": "ISO8601",
+  "remark": "string"             // Ghi chú (tùy chọn)
 }`} language="json" />
                   </div>
 
@@ -291,18 +427,21 @@ postInspection(inspectionData)
                       <Badge className="bg-green-500">POST</Badge>
                       <code className="text-sm">/api/machine/oee</code>
                     </div>
-                    <p className="text-sm text-muted-foreground mb-4">Gui du lieu OEE tu may</p>
+                    <p className="text-sm text-muted-foreground mb-4">Gửi dữ liệu OEE từ máy</p>
                     <CodeBlock code={`{
   "machineId": "string",
-  "availability": number,    // 0-100
-  "performance": number,     // 0-100
-  "quality": number,         // 0-100
-  "oee": number,            // 0-100 (hoac tinh tu 3 chi so tren)
+  "factoryId": number,           // ID nhà máy (tùy chọn)
+  "workshopId": number,          // ID nhà xưởng (tùy chọn)
+  "availability": number,        // 0-100
+  "performance": number,         // 0-100
+  "quality": number,             // 0-100
+  "oee": number,                 // 0-100 (hoặc tính từ 3 chỉ số trên)
   "plannedProductionTime": number,
   "actualRunTime": number,
   "totalCount": number,
   "goodCount": number,
-  "timestamp": "ISO8601"
+  "timestamp": "ISO8601",
+  "remark": "string"             // Ghi chú (tùy chọn)
 }`} language="json" />
                   </div>
 
@@ -311,10 +450,10 @@ postInspection(inspectionData)
                       <Badge className="bg-green-500">POST</Badge>
                       <code className="text-sm">/api/machine/batch</code>
                     </div>
-                    <p className="text-sm text-muted-foreground mb-4">Gui nhieu ket qua kiem tra cung luc (toi da 100)</p>
+                    <p className="text-sm text-muted-foreground mb-4">Gửi nhiều kết quả kiểm tra cùng lúc (tối đa 100)</p>
                     <CodeBlock code={`{
   "inspections": [
-    { /* inspection object */ },
+    { /* inspection object với factory/workshop fields */ },
     { /* inspection object */ }
   ]
 }`} language="json" />
@@ -323,10 +462,64 @@ postInspection(inspectionData)
               </CardContent>
             </Card>
 
+            {/* New: Remarks Section */}
+            <Card id="remarks">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><MessageSquare className="h-5 w-5" />Ghi chú (Remarks)</CardTitle>
+                <CardDescription>Thêm ghi chú cho các điểm đo và kết quả kiểm tra</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p>Hệ thống hỗ trợ thêm ghi chú ở nhiều cấp độ khác nhau:</p>
+                
+                <div className="space-y-3">
+                  <div className="rounded-lg border p-4">
+                    <h5 className="font-medium mb-2">1. Ghi chú cấp Inspection</h5>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Ghi chú tổng thể cho một lần kiểm tra. Ví dụ: điều kiện môi trường, ca làm việc, người thực hiện.
+                    </p>
+                    <CodeBlock code={`{
+  "remark": "Kiểm tra ca sáng, nhiệt độ 25°C, độ ẩm 60%"
+}`} language="json" />
+                  </div>
+                  
+                  <div className="rounded-lg border p-4">
+                    <h5 className="font-medium mb-2">2. Ghi chú cấp Measurement</h5>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Ghi chú cho từng phép đo riêng lẻ. Ví dụ: lý do giá trị bất thường, điều kiện đo đặc biệt.
+                    </p>
+                    <CodeBlock code={`{
+  "measurements": [
+    {
+      "name": "dimension_x",
+      "value": 10.05,
+      "remark": "Đo lại lần 2 do giá trị lần 1 bất thường"
+    }
+  ]
+}`} language="json" />
+                  </div>
+                </div>
+
+                <div className="bg-green-500/10 border border-green-500/50 rounded-lg p-4">
+                  <div className="flex items-start gap-2">
+                    <CheckCircle2 className="h-5 w-5 text-green-500 mt-0.5" />
+                    <div>
+                      <p className="font-medium text-green-500">Lợi ích của ghi chú</p>
+                      <ul className="text-sm text-muted-foreground mt-1 space-y-1">
+                        <li>• Truy xuất nguồn gốc dữ liệu dễ dàng</li>
+                        <li>• Phân tích nguyên nhân khi có vấn đề</li>
+                        <li>• Tài liệu hóa quy trình kiểm tra</li>
+                        <li>• Hỗ trợ audit và compliance</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             <Card id="examples">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2"><Code className="h-5 w-5" />Code Examples</CardTitle>
-                <CardDescription>Vi du code cho cac ngon ngu pho bien</CardDescription>
+                <CardDescription>Ví dụ code cho các ngôn ngữ phổ biến</CardDescription>
               </CardHeader>
               <CardContent>
                 <Tabs defaultValue="python">
@@ -347,20 +540,20 @@ postInspection(inspectionData)
             <Card id="errors">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2"><AlertCircle className="h-5 w-5" />Error Handling</CardTitle>
-                <CardDescription>Xu ly loi va ma trang thai</CardDescription>
+                <CardDescription>Xử lý lỗi và mã trạng thái</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   <div className="rounded-lg border">
                     <table className="w-full text-sm">
-                      <thead><tr className="border-b"><th className="p-3 text-left">Status Code</th><th className="p-3 text-left">Mo ta</th></tr></thead>
+                      <thead><tr className="border-b"><th className="p-3 text-left">Status Code</th><th className="p-3 text-left">Mô tả</th></tr></thead>
                       <tbody>
-                        <tr className="border-b"><td className="p-3"><Badge className="bg-green-500">200</Badge></td><td className="p-3">Thanh cong</td></tr>
-                        <tr className="border-b"><td className="p-3"><Badge className="bg-yellow-500">400</Badge></td><td className="p-3">Du lieu khong hop le</td></tr>
-                        <tr className="border-b"><td className="p-3"><Badge className="bg-red-500">401</Badge></td><td className="p-3">Chua xac thuc hoac API Key khong hop le</td></tr>
-                        <tr className="border-b"><td className="p-3"><Badge className="bg-red-500">403</Badge></td><td className="p-3">Khong co quyen truy cap</td></tr>
-                        <tr className="border-b"><td className="p-3"><Badge className="bg-red-500">429</Badge></td><td className="p-3">Vuot qua gioi han request</td></tr>
-                        <tr><td className="p-3"><Badge className="bg-red-500">500</Badge></td><td className="p-3">Loi server</td></tr>
+                        <tr className="border-b"><td className="p-3"><Badge className="bg-green-500">200</Badge></td><td className="p-3">Thành công</td></tr>
+                        <tr className="border-b"><td className="p-3"><Badge className="bg-yellow-500">400</Badge></td><td className="p-3">Dữ liệu không hợp lệ</td></tr>
+                        <tr className="border-b"><td className="p-3"><Badge className="bg-red-500">401</Badge></td><td className="p-3">Chưa xác thực hoặc API Key không hợp lệ</td></tr>
+                        <tr className="border-b"><td className="p-3"><Badge className="bg-red-500">403</Badge></td><td className="p-3">Không có quyền truy cập</td></tr>
+                        <tr className="border-b"><td className="p-3"><Badge className="bg-red-500">429</Badge></td><td className="p-3">Vượt quá giới hạn request</td></tr>
+                        <tr><td className="p-3"><Badge className="bg-red-500">500</Badge></td><td className="p-3">Lỗi server</td></tr>
                       </tbody>
                     </table>
                   </div>
@@ -381,15 +574,15 @@ postInspection(inspectionData)
             <Card id="webhooks">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2"><Webhook className="h-5 w-5" />Webhooks</CardTitle>
-                <CardDescription>Nhan thong bao tu dong khi co su kien</CardDescription>
+                <CardDescription>Nhận thông báo tự động khi có sự kiện</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <p>He thong co the gui thong bao den URL cua ban khi co cac su kien sau:</p>
+                <p>Hệ thống có thể gửi thông báo đến URL của bạn khi có các sự kiện sau:</p>
                 <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
-                  <li>Phat hien loi san pham (defect detected)</li>
-                  <li>CPK duoi nguong canh bao</li>
-                  <li>OEE giam dot ngot</li>
-                  <li>May gap su co</li>
+                  <li>Phát hiện lỗi sản phẩm (defect detected)</li>
+                  <li>CPK dưới ngưỡng cảnh báo</li>
+                  <li>OEE giảm đột ngột</li>
+                  <li>Máy gặp sự cố</li>
                 </ul>
                 <h4 className="font-medium">Webhook Payload:</h4>
                 <CodeBlock code={`{
@@ -398,16 +591,19 @@ postInspection(inspectionData)
   "data": {
     "serialNumber": "SN123456789",
     "machineId": "AVI-01",
+    "factoryCode": "FAC-HN",
+    "workshopCode": "WS-A1",
     "status": "fail",
-    "defects": [...]
+    "defects": [...],
+    "remark": "Kiểm tra ca sáng"
   }
 }`} language="json" />
                 <div className="bg-blue-500/10 border border-blue-500/50 rounded-lg p-4">
                   <div className="flex items-start gap-2">
                     <CheckCircle2 className="h-5 w-5 text-blue-500 mt-0.5" />
                     <div>
-                      <p className="font-medium text-blue-500">Cau hinh Webhook</p>
-                      <p className="text-sm text-muted-foreground">Vao menu Cai dat &gt; Webhooks de cau hinh URL nhan thong bao va chon cac su kien can theo doi.</p>
+                      <p className="font-medium text-blue-500">Cấu hình Webhook</p>
+                      <p className="text-sm text-muted-foreground">Vào menu Cài đặt → Webhooks để cấu hình URL nhận thông báo và chọn các sự kiện cần theo dõi.</p>
                     </div>
                   </div>
                 </div>

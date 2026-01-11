@@ -86,6 +86,8 @@ import { aiVisionDashboardRouter, lineComparisonRouter } from "./routers/aiVisio
 import { userNotificationRouter } from "./routers/userNotificationRouter";
 import { cpkHistoryRouter } from "./routers/cpkHistoryRouter";
 import { realtimeRouter } from "./routers/realtimeRouter";
+import { factoryWorkshopRouter } from "./routers/factoryWorkshopRouter";
+import { measurementRemarkRouter } from "./routers/measurementRemarkRouter";
 import { maintenanceWorkOrderRouter } from "./maintenanceWorkOrderRouter";
 import { mobileRouter } from "./mobileRouter";
 import { triggerLicenseExpiryCheck } from "./scheduledJobs";
@@ -3941,6 +3943,8 @@ export const appRouter = router({
   realtime: realtimeRouter,
   userNotification: userNotificationRouter,
   cpkHistory: cpkHistoryRouter,
+  factoryWorkshop: factoryWorkshopRouter,
+  measurementRemark: measurementRemarkRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {

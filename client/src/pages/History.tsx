@@ -1,14 +1,25 @@
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
-import { History as HistoryIcon, AlertTriangle, CheckCircle2, Search, X } from "lucide-react";
+import { 
+  History as HistoryIcon, 
+  AlertTriangle, 
+  CheckCircle2, 
+  Search, 
+  X, 
+  Factory, 
+  Building2,
+  Download,
+  FileSpreadsheet
+} from "lucide-react";
 import {
   Table,
   TableBody,
@@ -25,10 +36,29 @@ export default function History() {
   const [pageSize, setPageSize] = useState(20);
   const [productCodeFilter, setProductCodeFilter] = useState("");
   const [stationNameFilter, setStationNameFilter] = useState("");
+  const [selectedFactory, setSelectedFactory] = useState("all");
+  const [selectedWorkshop, setSelectedWorkshop] = useState("all");
   const [appliedFilters, setAppliedFilters] = useState<{
     productCode?: string;
     stationName?: string;
+    factoryId?: number;
+    workshopId?: number;
   }>({});
+
+  // Fetch factory/workshop dropdown options
+  const { data: hierarchyOptions } = trpc.factoryWorkshop.getDropdownOptions.useQuery();
+
+  // Filter workshops based on selected factory
+  const filteredWorkshops = useMemo(() => {
+    if (!hierarchyOptions?.workshops) return [];
+    if (selectedFactory === "all") return hierarchyOptions.workshops;
+    return hierarchyOptions.workshops.filter(w => w.factoryId === parseInt(selectedFactory));
+  }, [hierarchyOptions?.workshops, selectedFactory]);
+
+  // Reset workshop when factory changes
+  useEffect(() => {
+    setSelectedWorkshop("all");
+  }, [selectedFactory]);
 
   const { data, isLoading } = trpc.spc.historyPaginated.useQuery({
     page,
@@ -41,6 +71,8 @@ export default function History() {
     setAppliedFilters({
       productCode: productCodeFilter || undefined,
       stationName: stationNameFilter || undefined,
+      factoryId: selectedFactory !== "all" ? parseInt(selectedFactory) : undefined,
+      workshopId: selectedWorkshop !== "all" ? parseInt(selectedWorkshop) : undefined,
     });
     setPage(1);
   };
@@ -48,6 +80,8 @@ export default function History() {
   const handleClearFilters = () => {
     setProductCodeFilter("");
     setStationNameFilter("");
+    setSelectedFactory("all");
+    setSelectedWorkshop("all");
     setAppliedFilters({});
     setPage(1);
   };
@@ -70,30 +104,95 @@ export default function History() {
     return <Badge variant="destructive">{t.analyze?.cpkStatus?.poor || "Không đạt"} ({cpkValue.toFixed(3)})</Badge>;
   };
 
-  const hasFilters = appliedFilters.productCode || appliedFilters.stationName;
+  const hasFilters = appliedFilters.productCode || appliedFilters.stationName || appliedFilters.factoryId || appliedFilters.workshopId;
+
+  // Get factory/workshop names for display
+  const getFactoryName = (factoryId: number | undefined) => {
+    if (!factoryId || !hierarchyOptions?.factories) return null;
+    return hierarchyOptions.factories.find(f => f.id === factoryId)?.name;
+  };
+
+  const getWorkshopName = (workshopId: number | undefined) => {
+    if (!workshopId || !hierarchyOptions?.workshops) return null;
+    return hierarchyOptions.workshops.find(w => w.id === workshopId)?.name;
+  };
 
   return (
     <DashboardLayout>
       <div className="space-y-6 animate-fade-in">
         {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-            <HistoryIcon className="h-8 w-8 text-primary" />
-            Lịch sử phân tích
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Xem lại các phân tích SPC/CPK đã thực hiện
-          </p>
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
+              <HistoryIcon className="h-8 w-8 text-primary" />
+              Lịch sử phân tích
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              Xem lại các phân tích SPC/CPK đã thực hiện
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm">
+              <FileSpreadsheet className="h-4 w-4 mr-2" />
+              Xuất Excel
+            </Button>
+            <Button variant="outline" size="sm">
+              <Download className="h-4 w-4 mr-2" />
+              Tải báo cáo
+            </Button>
+          </div>
         </div>
 
         {/* Filters */}
         <Card className="bg-card rounded-xl border border-border/50 shadow-md">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg">Bộ lọc</CardTitle>
+            <CardDescription>
+              Lọc theo nhà máy, xưởng, sản phẩm hoặc trạm
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-wrap gap-4 items-end">
-              <div className="flex-1 min-w-[200px]">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+              {/* Factory Filter */}
+              <div>
+                <label className="text-sm font-medium mb-1 block">Nhà máy</label>
+                <Select value={selectedFactory} onValueChange={setSelectedFactory}>
+                  <SelectTrigger>
+                    <Factory className="h-4 w-4 mr-2 text-muted-foreground" />
+                    <SelectValue placeholder="Chọn nhà máy" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tất cả nhà máy</SelectItem>
+                    {hierarchyOptions?.factories?.map((f) => (
+                      <SelectItem key={f.id} value={f.id.toString()}>
+                        {f.code} - {f.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Workshop Filter */}
+              <div>
+                <label className="text-sm font-medium mb-1 block">Nhà xưởng</label>
+                <Select value={selectedWorkshop} onValueChange={setSelectedWorkshop}>
+                  <SelectTrigger>
+                    <Building2 className="h-4 w-4 mr-2 text-muted-foreground" />
+                    <SelectValue placeholder="Chọn nhà xưởng" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tất cả xưởng</SelectItem>
+                    {filteredWorkshops.map((w) => (
+                      <SelectItem key={w.id} value={w.id.toString()}>
+                        {w.code} - {w.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Product Code Filter */}
+              <div>
                 <label className="text-sm font-medium mb-1 block">Mã sản phẩm</label>
                 <Input
                   placeholder="Nhập mã sản phẩm..."
@@ -101,7 +200,9 @@ export default function History() {
                   onChange={(e) => setProductCodeFilter(e.target.value)}
                 />
               </div>
-              <div className="flex-1 min-w-[200px]">
+
+              {/* Station Name Filter */}
+              <div>
                 <label className="text-sm font-medium mb-1 block">Tên trạm</label>
                 <Input
                   placeholder="Nhập tên trạm..."
@@ -109,19 +210,48 @@ export default function History() {
                   onChange={(e) => setStationNameFilter(e.target.value)}
                 />
               </div>
-              <div className="flex gap-2">
-                <Button onClick={handleApplyFilters}>
-                  <Search className="h-4 w-4 mr-2" />
-                  Tìm kiếm
+            </div>
+
+            <div className="flex gap-2">
+              <Button onClick={handleApplyFilters}>
+                <Search className="h-4 w-4 mr-2" />
+                Tìm kiếm
+              </Button>
+              {hasFilters && (
+                <Button variant="outline" onClick={handleClearFilters}>
+                  <X className="h-4 w-4 mr-2" />
+                  Xóa lọc
                 </Button>
-                {hasFilters && (
-                  <Button variant="outline" onClick={handleClearFilters}>
-                    <X className="h-4 w-4 mr-2" />
-                    Xóa lọc
-                  </Button>
+              )}
+            </div>
+
+            {/* Active Filters Display */}
+            {hasFilters && (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {appliedFilters.factoryId && (
+                  <Badge variant="secondary" className="flex items-center gap-1">
+                    <Factory className="h-3 w-3" />
+                    {getFactoryName(appliedFilters.factoryId)}
+                  </Badge>
+                )}
+                {appliedFilters.workshopId && (
+                  <Badge variant="secondary" className="flex items-center gap-1">
+                    <Building2 className="h-3 w-3" />
+                    {getWorkshopName(appliedFilters.workshopId)}
+                  </Badge>
+                )}
+                {appliedFilters.productCode && (
+                  <Badge variant="secondary">
+                    Sản phẩm: {appliedFilters.productCode}
+                  </Badge>
+                )}
+                {appliedFilters.stationName && (
+                  <Badge variant="secondary">
+                    Trạm: {appliedFilters.stationName}
+                  </Badge>
                 )}
               </div>
-            </div>
+            )}
           </CardContent>
         </Card>
 
@@ -141,11 +271,13 @@ export default function History() {
               </div>
             ) : data && data.data.length > 0 ? (
               <>
-                <div className="rounded-lg border">
+                <div className="rounded-lg border overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
                         <TableHead>Thời gian</TableHead>
+                        <TableHead>Nhà máy</TableHead>
+                        <TableHead>Xưởng</TableHead>
                         <TableHead>Mã sản phẩm</TableHead>
                         <TableHead>Trạm</TableHead>
                         <TableHead>Khoảng thời gian</TableHead>
@@ -158,9 +290,15 @@ export default function History() {
                     </TableHeader>
                     <TableBody>
                       {data.data.map((item) => (
-                        <TableRow key={item.id}>
+                        <TableRow key={item.id} className="hover:bg-muted/50">
                           <TableCell className="font-medium">
                             {format(new Date(item.createdAt), "dd/MM/yyyy HH:mm", { locale: vi })}
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-muted-foreground text-sm">-</span>
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-muted-foreground text-sm">-</span>
                           </TableCell>
                           <TableCell>{item.productCode}</TableCell>
                           <TableCell>{item.stationName}</TableCell>

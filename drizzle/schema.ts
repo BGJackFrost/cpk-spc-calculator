@@ -2166,6 +2166,9 @@ export const machineInspectionData = mysqlTable("machine_inspection_data", {
 	apiKeyId: int().notNull(),
 	machineId: int(),
 	productionLineId: int(),
+	factoryId: int("factory_id"),
+	workshopId: int("workshop_id"),
+	workstationId: int("workstation_id"),
 	batchId: varchar({ length: 100 }),
 	productCode: varchar({ length: 100 }),
 	serialNumber: varchar({ length: 100 }),
@@ -2180,6 +2183,7 @@ export const machineInspectionData = mysqlTable("machine_inspection_data", {
 	operatorId: varchar({ length: 50 }),
 	shiftId: varchar({ length: 50 }),
 	rawData: text(),
+	remark: text(),
 	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
 });
 
@@ -2199,6 +2203,9 @@ export const machineMeasurementData = mysqlTable("machine_measurement_data", {
 	apiKeyId: int().notNull(),
 	machineId: int(),
 	productionLineId: int(),
+	factoryId: int("factory_id"),
+	workshopId: int("workshop_id"),
+	workstationId: int("workstation_id"),
 	batchId: varchar({ length: 100 }),
 	productCode: varchar({ length: 100 }),
 	serialNumber: varchar({ length: 100 }),
@@ -2214,6 +2221,7 @@ export const machineMeasurementData = mysqlTable("machine_measurement_data", {
 	operatorId: varchar({ length: 50 }),
 	shiftId: varchar({ length: 50 }),
 	rawData: text(),
+	remark: text(),
 	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
 });
 
@@ -2994,6 +3002,8 @@ export const productionLines = mysqlTable("production_lines", {
 	processTemplateId: int(),
 	supervisorId: int(),
 	imageUrl: varchar({ length: 500 }),
+	factoryId: int("factory_id"),
+	workshopId: int("workshop_id"),
 },
 (table) => [
 	index("production_lines_code_unique").on(table.code),
@@ -6738,3 +6748,119 @@ export const authAuditLogs = mysqlTable("auth_audit_logs", {
 ]);
 export type AuthAuditLog = typeof authAuditLogs.$inferSelect;
 export type InsertAuthAuditLog = typeof authAuditLogs.$inferInsert;
+
+
+// ============================================
+// Phase 15: Factory/Workshop Hierarchy - Hoàn thiện 100% yêu cầu
+// ============================================
+
+// Factories - Quản lý nhà máy
+export const factories = mysqlTable("factories", {
+  id: int().autoincrement().primaryKey(),
+  code: varchar({ length: 50 }).notNull(),
+  name: varchar({ length: 255 }).notNull(),
+  description: text(),
+  address: text(),
+  city: varchar({ length: 100 }),
+  country: varchar({ length: 100 }),
+  timezone: varchar({ length: 50 }).default('Asia/Ho_Chi_Minh'),
+  contactPerson: varchar("contact_person", { length: 255 }),
+  contactPhone: varchar("contact_phone", { length: 50 }),
+  contactEmail: varchar("contact_email", { length: 255 }),
+  logoUrl: varchar("logo_url", { length: 500 }),
+  imageUrl: varchar("image_url", { length: 500 }),
+  latitude: decimal({ precision: 10, scale: 7 }),
+  longitude: decimal({ precision: 10, scale: 7 }),
+  capacity: int(),
+  status: mysqlEnum(['active','inactive','maintenance']).default('active').notNull(),
+  isActive: int("is_active").default(1).notNull(),
+  createdBy: int("created_by"),
+  createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+  index("idx_factories_code").on(table.code),
+  index("idx_factories_status").on(table.status),
+  index("idx_factories_active").on(table.isActive),
+]);
+export type Factory = typeof factories.$inferSelect;
+export type InsertFactory = typeof factories.$inferInsert;
+
+// Workshops - Quản lý nhà xưởng (thuộc nhà máy)
+export const workshops = mysqlTable("workshops", {
+  id: int().autoincrement().primaryKey(),
+  factoryId: int("factory_id").notNull(),
+  code: varchar({ length: 50 }).notNull(),
+  name: varchar({ length: 255 }).notNull(),
+  description: text(),
+  floor: varchar({ length: 50 }),
+  building: varchar({ length: 100 }),
+  area: decimal({ precision: 10, scale: 2 }),
+  areaUnit: varchar("area_unit", { length: 20 }).default('m2'),
+  capacity: int(),
+  managerName: varchar("manager_name", { length: 255 }),
+  managerPhone: varchar("manager_phone", { length: 50 }),
+  managerEmail: varchar("manager_email", { length: 255 }),
+  imageUrl: varchar("image_url", { length: 500 }),
+  floorPlanUrl: varchar("floor_plan_url", { length: 500 }),
+  status: mysqlEnum(['active','inactive','maintenance']).default('active').notNull(),
+  isActive: int("is_active").default(1).notNull(),
+  createdBy: int("created_by"),
+  createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+  index("idx_workshops_factory").on(table.factoryId),
+  index("idx_workshops_code").on(table.code),
+  index("idx_workshops_status").on(table.status),
+  index("idx_workshops_active").on(table.isActive),
+]);
+export type Workshop = typeof workshops.$inferSelect;
+export type InsertWorkshop = typeof workshops.$inferInsert;
+
+// Measurement Remarks - Ghi chú cho điểm đo
+export const measurementRemarks = mysqlTable("measurement_remarks", {
+  id: int().autoincrement().primaryKey(),
+  measurementId: int("measurement_id").notNull(),
+  measurementType: mysqlEnum("measurement_type", ['machine_measurement','spc_analysis','inspection']).notNull(),
+  remark: text().notNull(),
+  remarkType: mysqlEnum("remark_type", ['note','issue','correction','observation','action']).default('note'),
+  severity: mysqlEnum(['info','warning','critical']).default('info'),
+  imageUrls: json("image_urls"),
+  attachmentUrls: json("attachment_urls"),
+  createdBy: int("created_by"),
+  createdByName: varchar("created_by_name", { length: 255 }),
+  createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+  index("idx_measurement_remarks_measurement").on(table.measurementId),
+  index("idx_measurement_remarks_type").on(table.measurementType),
+  index("idx_measurement_remarks_created_by").on(table.createdBy),
+]);
+export type MeasurementRemark = typeof measurementRemarks.$inferSelect;
+export type InsertMeasurementRemark = typeof measurementRemarks.$inferInsert;
+
+// Inspection Remarks - Ghi chú cho kết quả kiểm tra
+export const inspectionRemarks = mysqlTable("inspection_remarks", {
+  id: int().autoincrement().primaryKey(),
+  inspectionId: int("inspection_id").notNull(),
+  remark: text().notNull(),
+  remarkType: mysqlEnum("remark_type", ['note','defect_detail','root_cause','corrective_action','observation']).default('note'),
+  severity: mysqlEnum(['info','warning','critical']).default('info'),
+  defectCategory: varchar("defect_category", { length: 100 }),
+  imageUrls: json("image_urls"),
+  attachmentUrls: json("attachment_urls"),
+  createdBy: int("created_by"),
+  createdByName: varchar("created_by_name", { length: 255 }),
+  createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+  index("idx_inspection_remarks_inspection").on(table.inspectionId),
+  index("idx_inspection_remarks_type").on(table.remarkType),
+  index("idx_inspection_remarks_created_by").on(table.createdBy),
+]);
+export type InspectionRemark = typeof inspectionRemarks.$inferSelect;
+export type InsertInspectionRemark = typeof inspectionRemarks.$inferInsert;
+
