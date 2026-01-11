@@ -242,6 +242,8 @@ import AdvancedAnalytics from "./pages/AdvancedAnalytics";
 // Vision & AVI/AOI
 import ImageComparison from "./pages/ImageComparison";
 import AviAoiDashboard from "./pages/AviAoiDashboard";
+import DashboardCustomization from "./pages/DashboardCustomization";
+import BatchImageAnalysis from "./pages/BatchImageAnalysis";
 import MachineApiDocumentation from "./pages/MachineApiDocumentation";
 
 // MMS
@@ -490,6 +492,8 @@ function Router() {
       {/* Vision & AVI/AOI */}
       <Route path="/image-comparison" component={ImageComparison} />
       <Route path="/avi-aoi-dashboard" component={AviAoiDashboard} />
+      <Route path="/dashboard-customization" component={DashboardCustomization} />
+      <Route path="/batch-image-analysis" component={BatchImageAnalysis} />
       <Route path="/machine-api-documentation" component={MachineApiDocumentation} />
 
       {/* MMS */}

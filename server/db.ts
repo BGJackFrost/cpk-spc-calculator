@@ -6797,3 +6797,581 @@ export async function getCapacitySummaryByWorkshop(filters?: {
     return [];
   }
 }
+
+
+// ============================================================
+// PHASE 12 - Dashboard Customization & Batch Image Analysis
+// ============================================================
+
+// Widget Templates
+export async function getWidgetTemplates(filters?: { category?: string; isActive?: boolean }) {
+  try {
+    const db = await getDbConnection();
+    let query = `SELECT * FROM widget_templates WHERE 1=1`;
+    const params: any[] = [];
+    
+    if (filters?.category) {
+      query += ` AND category = ?`;
+      params.push(filters.category);
+    }
+    if (filters?.isActive !== undefined) {
+      query += ` AND is_active = ?`;
+      params.push(filters.isActive ? 1 : 0);
+    }
+    
+    query += ` ORDER BY display_order ASC, name ASC`;
+    const [rows] = await db.execute(query, params);
+    return rows as any[];
+  } catch (error) {
+    console.error("[WidgetTemplates] Failed to get templates:", error);
+    return [];
+  }
+}
+
+export async function getWidgetTemplateByKey(key: string) {
+  try {
+    const db = await getDbConnection();
+    const [rows] = await db.execute(
+      `SELECT * FROM widget_templates WHERE \`key\` = ? LIMIT 1`,
+      [key]
+    );
+    return (rows as any[])[0] || null;
+  } catch (error) {
+    console.error("[WidgetTemplates] Failed to get template by key:", error);
+    return null;
+  }
+}
+
+// Dashboard Widget Configs
+export async function getUserDashboardWidgets(userId: number, dashboardId?: number) {
+  try {
+    const db = await getDbConnection();
+    let query = `
+      SELECT dwc.*, wt.key as widget_key, wt.name as widget_name, wt.category, 
+             wt.component_name, wt.default_config, wt.min_width, wt.min_height,
+             wt.max_width, wt.max_height
+      FROM dashboard_widget_configs dwc
+      JOIN widget_templates wt ON dwc.widget_template_id = wt.id
+      WHERE dwc.user_id = ? AND dwc.is_visible = 1
+    `;
+    const params: any[] = [userId];
+    
+    if (dashboardId) {
+      query += ` AND dwc.dashboard_id = ?`;
+      params.push(dashboardId);
+    } else {
+      query += ` AND (dwc.dashboard_id IS NULL OR dwc.dashboard_id = 0)`;
+    }
+    
+    query += ` ORDER BY dwc.grid_y ASC, dwc.grid_x ASC`;
+    const [rows] = await db.execute(query, params);
+    return rows as any[];
+  } catch (error) {
+    console.error("[DashboardWidgets] Failed to get user widgets:", error);
+    return [];
+  }
+}
+
+export async function saveUserDashboardWidget(data: {
+  userId: number;
+  widgetTemplateId: number;
+  gridX: number;
+  gridY: number;
+  gridWidth: number;
+  gridHeight: number;
+  config?: any;
+  dashboardId?: number;
+}) {
+  try {
+    const db = await getDbConnection();
+    const [result] = await db.execute(
+      `INSERT INTO dashboard_widget_configs 
+       (user_id, widget_template_id, grid_x, grid_y, grid_width, grid_height, config, dashboard_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        data.userId,
+        data.widgetTemplateId,
+        data.gridX,
+        data.gridY,
+        data.gridWidth,
+        data.gridHeight,
+        data.config ? JSON.stringify(data.config) : null,
+        data.dashboardId || null
+      ]
+    );
+    return (result as any).insertId;
+  } catch (error) {
+    console.error("[DashboardWidgets] Failed to save widget:", error);
+    throw error;
+  }
+}
+
+export async function updateUserDashboardWidget(id: number, userId: number, data: {
+  gridX?: number;
+  gridY?: number;
+  gridWidth?: number;
+  gridHeight?: number;
+  config?: any;
+  isVisible?: boolean;
+}) {
+  try {
+    const db = await getDbConnection();
+    const updates: string[] = [];
+    const params: any[] = [];
+    
+    if (data.gridX !== undefined) {
+      updates.push('grid_x = ?');
+      params.push(data.gridX);
+    }
+    if (data.gridY !== undefined) {
+      updates.push('grid_y = ?');
+      params.push(data.gridY);
+    }
+    if (data.gridWidth !== undefined) {
+      updates.push('grid_width = ?');
+      params.push(data.gridWidth);
+    }
+    if (data.gridHeight !== undefined) {
+      updates.push('grid_height = ?');
+      params.push(data.gridHeight);
+    }
+    if (data.config !== undefined) {
+      updates.push('config = ?');
+      params.push(JSON.stringify(data.config));
+    }
+    if (data.isVisible !== undefined) {
+      updates.push('is_visible = ?');
+      params.push(data.isVisible ? 1 : 0);
+    }
+    
+    if (updates.length === 0) return false;
+    
+    params.push(id, userId);
+    await db.execute(
+      `UPDATE dashboard_widget_configs SET ${updates.join(', ')} WHERE id = ? AND user_id = ?`,
+      params
+    );
+    return true;
+  } catch (error) {
+    console.error("[DashboardWidgets] Failed to update widget:", error);
+    return false;
+  }
+}
+
+export async function deleteUserDashboardWidget(id: number, userId: number) {
+  try {
+    const db = await getDbConnection();
+    await db.execute(
+      `DELETE FROM dashboard_widget_configs WHERE id = ? AND user_id = ?`,
+      [id, userId]
+    );
+    return true;
+  } catch (error) {
+    console.error("[DashboardWidgets] Failed to delete widget:", error);
+    return false;
+  }
+}
+
+export async function initializeDefaultWidgets(userId: number) {
+  try {
+    const db = await getDbConnection();
+    
+    // Check if user already has widgets
+    const [existing] = await db.execute(
+      `SELECT COUNT(*) as count FROM dashboard_widget_configs WHERE user_id = ?`,
+      [userId]
+    );
+    if ((existing as any[])[0]?.count > 0) {
+      return false; // Already initialized
+    }
+    
+    // Get default widget templates
+    const [templates] = await db.execute(
+      `SELECT * FROM widget_templates WHERE is_default = 1 AND is_active = 1 ORDER BY display_order ASC`
+    );
+    
+    // Calculate grid positions (4 columns layout)
+    let gridX = 0;
+    let gridY = 0;
+    const gridCols = 12;
+    
+    for (const template of templates as any[]) {
+      const width = template.default_width;
+      const height = template.default_height;
+      
+      // Move to next row if doesn't fit
+      if (gridX + width > gridCols) {
+        gridX = 0;
+        gridY += 2; // Assume max height of 2 for row
+      }
+      
+      await db.execute(
+        `INSERT INTO dashboard_widget_configs 
+         (user_id, widget_template_id, grid_x, grid_y, grid_width, grid_height, config)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [userId, template.id, gridX, gridY, width, height, template.default_config]
+      );
+      
+      gridX += width;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error("[DashboardWidgets] Failed to initialize default widgets:", error);
+    return false;
+  }
+}
+
+// Batch Image Analysis Jobs
+export async function createBatchImageJob(data: {
+  userId: number;
+  name: string;
+  description?: string;
+  analysisType: string;
+  productCode?: string;
+  productionLineId?: number;
+  workstationId?: number;
+  totalImages: number;
+}) {
+  try {
+    const db = await getDbConnection();
+    const [result] = await db.execute(
+      `INSERT INTO batch_image_analysis_jobs 
+       (user_id, name, description, analysis_type, product_code, production_line_id, workstation_id, total_images, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
+      [
+        data.userId,
+        data.name,
+        data.description || null,
+        data.analysisType,
+        data.productCode || null,
+        data.productionLineId || null,
+        data.workstationId || null,
+        data.totalImages
+      ]
+    );
+    return (result as any).insertId;
+  } catch (error) {
+    console.error("[BatchImageAnalysis] Failed to create job:", error);
+    throw error;
+  }
+}
+
+export async function getBatchImageJobs(userId: number, filters?: { status?: string; limit?: number }) {
+  try {
+    const db = await getDbConnection();
+    let query = `SELECT * FROM batch_image_analysis_jobs WHERE user_id = ?`;
+    const params: any[] = [userId];
+    
+    if (filters?.status) {
+      query += ` AND status = ?`;
+      params.push(filters.status);
+    }
+    
+    query += ` ORDER BY created_at DESC`;
+    
+    if (filters?.limit) {
+      query += ` LIMIT ?`;
+      params.push(filters.limit);
+    }
+    
+    const [rows] = await db.execute(query, params);
+    return rows as any[];
+  } catch (error) {
+    console.error("[BatchImageAnalysis] Failed to get jobs:", error);
+    return [];
+  }
+}
+
+export async function getBatchImageJobById(jobId: number) {
+  try {
+    const db = await getDbConnection();
+    const [rows] = await db.execute(
+      `SELECT * FROM batch_image_analysis_jobs WHERE id = ?`,
+      [jobId]
+    );
+    return (rows as any[])[0] || null;
+  } catch (error) {
+    console.error("[BatchImageAnalysis] Failed to get job:", error);
+    return null;
+  }
+}
+
+export async function updateBatchImageJob(jobId: number, data: {
+  status?: string;
+  processedImages?: number;
+  successImages?: number;
+  failedImages?: number;
+  okCount?: number;
+  ngCount?: number;
+  warningCount?: number;
+  avgQualityScore?: number;
+  defectsSummary?: any;
+  startedAt?: Date;
+  completedAt?: Date;
+  processingTimeMs?: number;
+  errorMessage?: string;
+}) {
+  try {
+    const db = await getDbConnection();
+    const updates: string[] = [];
+    const params: any[] = [];
+    
+    if (data.status) {
+      updates.push('status = ?');
+      params.push(data.status);
+    }
+    if (data.processedImages !== undefined) {
+      updates.push('processed_images = ?');
+      params.push(data.processedImages);
+    }
+    if (data.successImages !== undefined) {
+      updates.push('success_images = ?');
+      params.push(data.successImages);
+    }
+    if (data.failedImages !== undefined) {
+      updates.push('failed_images = ?');
+      params.push(data.failedImages);
+    }
+    if (data.okCount !== undefined) {
+      updates.push('ok_count = ?');
+      params.push(data.okCount);
+    }
+    if (data.ngCount !== undefined) {
+      updates.push('ng_count = ?');
+      params.push(data.ngCount);
+    }
+    if (data.warningCount !== undefined) {
+      updates.push('warning_count = ?');
+      params.push(data.warningCount);
+    }
+    if (data.avgQualityScore !== undefined) {
+      updates.push('avg_quality_score = ?');
+      params.push(data.avgQualityScore);
+    }
+    if (data.defectsSummary !== undefined) {
+      updates.push('defects_summary = ?');
+      params.push(JSON.stringify(data.defectsSummary));
+    }
+    if (data.startedAt) {
+      updates.push('started_at = ?');
+      params.push(data.startedAt);
+    }
+    if (data.completedAt) {
+      updates.push('completed_at = ?');
+      params.push(data.completedAt);
+    }
+    if (data.processingTimeMs !== undefined) {
+      updates.push('processing_time_ms = ?');
+      params.push(data.processingTimeMs);
+    }
+    if (data.errorMessage !== undefined) {
+      updates.push('error_message = ?');
+      params.push(data.errorMessage);
+    }
+    
+    if (updates.length === 0) return false;
+    
+    params.push(jobId);
+    await db.execute(
+      `UPDATE batch_image_analysis_jobs SET ${updates.join(', ')} WHERE id = ?`,
+      params
+    );
+    return true;
+  } catch (error) {
+    console.error("[BatchImageAnalysis] Failed to update job:", error);
+    return false;
+  }
+}
+
+// Batch Image Items
+export async function addBatchImageItem(data: {
+  jobId: number;
+  fileName: string;
+  fileSize?: number;
+  imageUrl: string;
+  imageKey?: string;
+  thumbnailUrl?: string;
+  processOrder?: number;
+}) {
+  try {
+    const db = await getDbConnection();
+    const [result] = await db.execute(
+      `INSERT INTO batch_image_items 
+       (job_id, file_name, file_size, image_url, image_key, thumbnail_url, process_order, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')`,
+      [
+        data.jobId,
+        data.fileName,
+        data.fileSize || null,
+        data.imageUrl,
+        data.imageKey || null,
+        data.thumbnailUrl || null,
+        data.processOrder || 0
+      ]
+    );
+    return (result as any).insertId;
+  } catch (error) {
+    console.error("[BatchImageItems] Failed to add item:", error);
+    throw error;
+  }
+}
+
+export async function getBatchImageItems(jobId: number, filters?: { status?: string; limit?: number; offset?: number }) {
+  try {
+    const db = await getDbConnection();
+    let query = `SELECT * FROM batch_image_items WHERE job_id = ?`;
+    const params: any[] = [jobId];
+    
+    if (filters?.status) {
+      query += ` AND status = ?`;
+      params.push(filters.status);
+    }
+    
+    query += ` ORDER BY process_order ASC, id ASC`;
+    
+    if (filters?.limit) {
+      query += ` LIMIT ?`;
+      params.push(filters.limit);
+      if (filters?.offset) {
+        query += ` OFFSET ?`;
+        params.push(filters.offset);
+      }
+    }
+    
+    const [rows] = await db.execute(query, params);
+    return rows as any[];
+  } catch (error) {
+    console.error("[BatchImageItems] Failed to get items:", error);
+    return [];
+  }
+}
+
+export async function updateBatchImageItem(itemId: number, data: {
+  status?: string;
+  result?: string;
+  qualityScore?: number;
+  confidence?: number;
+  defectsFound?: number;
+  defectTypes?: any;
+  defectLocations?: any;
+  aiAnalysis?: any;
+  aiModelUsed?: string;
+  processingTimeMs?: number;
+  analyzedAt?: Date;
+  errorMessage?: string;
+  retryCount?: number;
+}) {
+  try {
+    const db = await getDbConnection();
+    const updates: string[] = [];
+    const params: any[] = [];
+    
+    if (data.status) {
+      updates.push('status = ?');
+      params.push(data.status);
+    }
+    if (data.result) {
+      updates.push('result = ?');
+      params.push(data.result);
+    }
+    if (data.qualityScore !== undefined) {
+      updates.push('quality_score = ?');
+      params.push(data.qualityScore);
+    }
+    if (data.confidence !== undefined) {
+      updates.push('confidence = ?');
+      params.push(data.confidence);
+    }
+    if (data.defectsFound !== undefined) {
+      updates.push('defects_found = ?');
+      params.push(data.defectsFound);
+    }
+    if (data.defectTypes !== undefined) {
+      updates.push('defect_types = ?');
+      params.push(JSON.stringify(data.defectTypes));
+    }
+    if (data.defectLocations !== undefined) {
+      updates.push('defect_locations = ?');
+      params.push(JSON.stringify(data.defectLocations));
+    }
+    if (data.aiAnalysis !== undefined) {
+      updates.push('ai_analysis = ?');
+      params.push(JSON.stringify(data.aiAnalysis));
+    }
+    if (data.aiModelUsed) {
+      updates.push('ai_model_used = ?');
+      params.push(data.aiModelUsed);
+    }
+    if (data.processingTimeMs !== undefined) {
+      updates.push('processing_time_ms = ?');
+      params.push(data.processingTimeMs);
+    }
+    if (data.analyzedAt) {
+      updates.push('analyzed_at = ?');
+      params.push(data.analyzedAt);
+    }
+    if (data.errorMessage !== undefined) {
+      updates.push('error_message = ?');
+      params.push(data.errorMessage);
+    }
+    if (data.retryCount !== undefined) {
+      updates.push('retry_count = ?');
+      params.push(data.retryCount);
+    }
+    
+    if (updates.length === 0) return false;
+    
+    params.push(itemId);
+    await db.execute(
+      `UPDATE batch_image_items SET ${updates.join(', ')} WHERE id = ?`,
+      params
+    );
+    return true;
+  } catch (error) {
+    console.error("[BatchImageItems] Failed to update item:", error);
+    return false;
+  }
+}
+
+export async function getNextPendingBatchItem(jobId: number) {
+  try {
+    const db = await getDbConnection();
+    const [rows] = await db.execute(
+      `SELECT * FROM batch_image_items 
+       WHERE job_id = ? AND status = 'pending' 
+       ORDER BY process_order ASC, id ASC 
+       LIMIT 1`,
+      [jobId]
+    );
+    return (rows as any[])[0] || null;
+  } catch (error) {
+    console.error("[BatchImageItems] Failed to get next pending item:", error);
+    return null;
+  }
+}
+
+export async function getBatchImageStats(jobId: number) {
+  try {
+    const db = await getDbConnection();
+    const [rows] = await db.execute(
+      `SELECT 
+        COUNT(*) as total,
+        SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
+        SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed,
+        SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
+        SUM(CASE WHEN status = 'processing' THEN 1 ELSE 0 END) as processing,
+        SUM(CASE WHEN result = 'ok' THEN 1 ELSE 0 END) as ok_count,
+        SUM(CASE WHEN result = 'ng' THEN 1 ELSE 0 END) as ng_count,
+        SUM(CASE WHEN result = 'warning' THEN 1 ELSE 0 END) as warning_count,
+        AVG(quality_score) as avg_quality_score,
+        SUM(defects_found) as total_defects
+       FROM batch_image_items WHERE job_id = ?`,
+      [jobId]
+    );
+    return (rows as any[])[0] || null;
+  } catch (error) {
+    console.error("[BatchImageItems] Failed to get stats:", error);
+    return null;
+  }
+}

@@ -9758,3 +9758,27 @@
 - [x] Giảm modules từ 9078 xuống 8524
 - [x] Build thành công (1m 6s)
 - [x] Lưu checkpoint và xuất bản (build manual trên local)
+
+## Phase 12 - Dashboard Customization và Batch Image Analysis
+
+### Dashboard Customization (AVI/AOI)
+- [x] Tạo bảng dashboard_widget_config để lưu cấu hình widget của user
+- [x] Tạo bảng widget_templates để định nghĩa các loại widget có sẵn
+- [x] Tạo API endpoint CRUD cho dashboard widget configuration
+- [x] Tạo trang Dashboard Customization với drag-and-drop widget
+- [x] Cho phép thêm/xóa/sắp xếp widget trên dashboard
+- [x] Cho phép resize widget (small/medium/large)
+- [x] Lưu layout dashboard theo user
+- [x] Tạo các widget templates: CPK Chart, SPC Chart, Alert Summary, Production Status
+
+### Batch Image Analysis với AI
+- [x] Tạo bảng batch_image_analysis để lưu batch jobs
+- [x] Tạo bảng batch_image_items để lưu từng hình ảnh trong batch
+- [x] Tạo API endpoint upload batch images
+- [x] Tạo API endpoint start batch analysis với AI
+- [x] Tạo trang Batch Image Analysis với upload interface
+- [x] Hiển thị progress bar khi phân tích batch
+- [x] Hiển thị kết quả phân tích từng hình ảnh
+- [x] Tổng hợp kết quả phân tích batch (OK/NG count, defect types)
+- [ ] Xuất kết quả phân tích batch ra CSV/Excel
+

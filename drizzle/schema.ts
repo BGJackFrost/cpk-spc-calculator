@@ -6930,3 +6930,186 @@ export const capacityPlanHistory = mysqlTable("capacity_plan_history", {
 ]);
 export type CapacityPlanHistory = typeof capacityPlanHistory.$inferSelect;
 export type InsertCapacityPlanHistory = typeof capacityPlanHistory.$inferInsert;
+
+
+// ============================================================
+// PHASE 12 - Dashboard Customization & Batch Image Analysis
+// ============================================================
+
+// Widget Templates - Định nghĩa các loại widget có sẵn
+export const widgetTemplates = mysqlTable("widget_templates", {
+	id: int().autoincrement().notNull().primaryKey(),
+	key: varchar({ length: 100 }).notNull(), // Unique identifier: 'cpk_chart', 'spc_chart', 'alert_summary', etc.
+	name: varchar({ length: 255 }).notNull(),
+	description: text(),
+	category: mysqlEnum(['chart', 'stats', 'table', 'alert', 'ai', 'custom']).default('chart').notNull(),
+	// Widget configuration schema
+	defaultConfig: json("default_config"), // Default settings for this widget type
+	// Size constraints
+	minWidth: int("min_width").default(1).notNull(), // Grid units
+	minHeight: int("min_height").default(1).notNull(),
+	maxWidth: int("max_width").default(4).notNull(),
+	maxHeight: int("max_height").default(4).notNull(),
+	defaultWidth: int("default_width").default(2).notNull(),
+	defaultHeight: int("default_height").default(2).notNull(),
+	// Component reference
+	componentName: varchar("component_name", { length: 100 }).notNull(), // React component name
+	// Permissions
+	requiredRole: mysqlEnum("required_role", ['user', 'manager', 'admin']).default('user'),
+	// Status
+	isActive: int("is_active").default(1).notNull(),
+	isDefault: int("is_default").default(0).notNull(), // Show by default for new users
+	displayOrder: int("display_order").default(0).notNull(),
+	// Metadata
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("widget_templates_key_unique").on(table.key),
+	index("idx_widget_template_category").on(table.category),
+	index("idx_widget_template_active").on(table.isActive),
+]);
+
+export type WidgetTemplate = typeof widgetTemplates.$inferSelect;
+export type InsertWidgetTemplate = typeof widgetTemplates.$inferInsert;
+
+// Dashboard Widget Config - Cấu hình widget của từng user
+export const dashboardWidgetConfigs = mysqlTable("dashboard_widget_configs", {
+	id: int().autoincrement().notNull().primaryKey(),
+	userId: int("user_id").notNull(),
+	widgetTemplateId: int("widget_template_id").notNull(),
+	// Layout position (grid-based)
+	gridX: int("grid_x").default(0).notNull(), // Column position
+	gridY: int("grid_y").default(0).notNull(), // Row position
+	gridWidth: int("grid_width").default(2).notNull(), // Width in grid units
+	gridHeight: int("grid_height").default(2).notNull(), // Height in grid units
+	// Widget-specific configuration
+	config: json("config"), // Custom settings for this widget instance
+	// Visibility
+	isVisible: int("is_visible").default(1).notNull(),
+	// Dashboard assignment (for multiple dashboards per user)
+	dashboardId: int("dashboard_id"), // Optional: for multiple dashboards
+	// Metadata
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("idx_dashboard_widget_user").on(table.userId),
+	index("idx_dashboard_widget_template").on(table.widgetTemplateId),
+	index("idx_dashboard_widget_dashboard").on(table.dashboardId),
+]);
+
+export type DashboardWidgetConfig = typeof dashboardWidgetConfigs.$inferSelect;
+export type InsertDashboardWidgetConfig = typeof dashboardWidgetConfigs.$inferInsert;
+
+// User Dashboard Layouts - Lưu layout dashboard của user
+export const userDashboardLayouts = mysqlTable("user_dashboard_layouts", {
+	id: int().autoincrement().notNull().primaryKey(),
+	userId: int("user_id").notNull(),
+	name: varchar({ length: 255 }).default('Default Dashboard').notNull(),
+	description: text(),
+	// Layout settings
+	gridColumns: int("grid_columns").default(12).notNull(), // Number of columns in grid
+	rowHeight: int("row_height").default(100).notNull(), // Height of each row in pixels
+	// Theme
+	theme: mysqlEnum(['light', 'dark', 'auto']).default('auto'),
+	// Status
+	isDefault: int("is_default").default(0).notNull(),
+	isActive: int("is_active").default(1).notNull(),
+	// Metadata
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("idx_user_dashboard_layout_user").on(table.userId),
+	index("idx_user_dashboard_layout_default").on(table.isDefault),
+]);
+
+export type UserDashboardLayout = typeof userDashboardLayouts.$inferSelect;
+export type InsertUserDashboardLayout = typeof userDashboardLayouts.$inferInsert;
+
+// Batch Image Analysis Jobs - Batch job phân tích hình ảnh
+export const batchImageAnalysisJobs = mysqlTable("batch_image_analysis_jobs", {
+	id: int().autoincrement().notNull().primaryKey(),
+	userId: int("user_id").notNull(),
+	name: varchar({ length: 255 }).notNull(),
+	description: text(),
+	// Job configuration
+	analysisType: mysqlEnum("analysis_type", ['defect_detection', 'quality_inspection', 'comparison', 'ocr', 'custom']).default('defect_detection').notNull(),
+	// Filter context
+	productCode: varchar("product_code", { length: 100 }),
+	productionLineId: int("production_line_id"),
+	workstationId: int("workstation_id"),
+	// Progress tracking
+	status: mysqlEnum(['pending', 'processing', 'completed', 'failed', 'cancelled']).default('pending').notNull(),
+	totalImages: int("total_images").default(0).notNull(),
+	processedImages: int("processed_images").default(0).notNull(),
+	successImages: int("success_images").default(0).notNull(),
+	failedImages: int("failed_images").default(0).notNull(),
+	// Results summary
+	okCount: int("ok_count").default(0).notNull(),
+	ngCount: int("ng_count").default(0).notNull(),
+	warningCount: int("warning_count").default(0).notNull(),
+	avgQualityScore: decimal("avg_quality_score", { precision: 5, scale: 2 }),
+	defectsSummary: json("defects_summary"), // Summary of defect types found
+	// Timing
+	startedAt: timestamp("started_at", { mode: 'string' }),
+	completedAt: timestamp("completed_at", { mode: 'string' }),
+	processingTimeMs: int("processing_time_ms"),
+	// Error handling
+	errorMessage: text("error_message"),
+	// Metadata
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("idx_batch_image_job_user").on(table.userId),
+	index("idx_batch_image_job_status").on(table.status),
+	index("idx_batch_image_job_created").on(table.createdAt),
+]);
+
+export type BatchImageAnalysisJob = typeof batchImageAnalysisJobs.$inferSelect;
+export type InsertBatchImageAnalysisJob = typeof batchImageAnalysisJobs.$inferInsert;
+
+// Batch Image Items - Từng hình ảnh trong batch
+export const batchImageItems = mysqlTable("batch_image_items", {
+	id: int().autoincrement().notNull().primaryKey(),
+	jobId: int("job_id").notNull(),
+	// Image info
+	fileName: varchar("file_name", { length: 255 }).notNull(),
+	fileSize: int("file_size"), // in bytes
+	imageUrl: varchar("image_url", { length: 500 }).notNull(),
+	imageKey: varchar("image_key", { length: 255 }),
+	thumbnailUrl: varchar("thumbnail_url", { length: 500 }),
+	// Processing status
+	status: mysqlEnum(['pending', 'processing', 'completed', 'failed']).default('pending').notNull(),
+	processOrder: int("process_order").default(0).notNull(),
+	// Analysis results
+	result: mysqlEnum(['ok', 'ng', 'warning', 'unknown']).default('unknown'),
+	qualityScore: decimal("quality_score", { precision: 5, scale: 2 }),
+	confidence: decimal("confidence", { precision: 5, scale: 4 }),
+	// Defect details
+	defectsFound: int("defects_found").default(0),
+	defectTypes: json("defect_types"), // Array of defect types found
+	defectLocations: json("defect_locations"), // Bounding boxes for defects
+	// AI analysis
+	aiAnalysis: json("ai_analysis"), // Full AI response
+	aiModelUsed: varchar("ai_model_used", { length: 100 }),
+	// Timing
+	processingTimeMs: int("processing_time_ms"),
+	analyzedAt: timestamp("analyzed_at", { mode: 'string' }),
+	// Error handling
+	errorMessage: text("error_message"),
+	retryCount: int("retry_count").default(0).notNull(),
+	// Metadata
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("idx_batch_image_item_job").on(table.jobId),
+	index("idx_batch_image_item_status").on(table.status),
+	index("idx_batch_image_item_result").on(table.result),
+]);
+
+export type BatchImageItem = typeof batchImageItems.$inferSelect;
+export type InsertBatchImageItem = typeof batchImageItems.$inferInsert;

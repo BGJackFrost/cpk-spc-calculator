@@ -18,6 +18,7 @@ import {
   GitMerge,
   LayoutGrid,
   Eye,
+  Images,
   type LucideIcon
 } from "lucide-react";
 
@@ -574,6 +575,8 @@ export const IOT_MENU: SystemMenuConfig = {
         { id: "model-3d-management", icon: Box, labelKey: "nav.model3DManagement", path: "/model-3d-management", adminOnly: true },
         { id: "floor-plan-live", icon: Map, labelKey: "nav.floorPlanLive", path: "/floor-plan-live" },
         { id: "avi-aoi-dashboard", icon: Eye, labelKey: "nav.aviAoiDashboard", path: "/avi-aoi-dashboard" },
+        { id: "dashboard-customization", icon: LayoutGrid, labelKey: "nav.dashboardCustomization", path: "/dashboard-customization" },
+        { id: "batch-image-analysis", icon: Images, labelKey: "nav.batchImageAnalysis", path: "/batch-image-analysis" },
         { id: "ai-vision-analysis", icon: Camera, labelKey: "nav.aiVisionAnalysis", path: "/ai-vision-analysis" },
         { id: "unified-realtime-dashboard", icon: Layers, labelKey: "nav.unifiedRealtimeDashboard", path: "/unified-realtime-dashboard" },
         { id: "advanced-history", icon: History, labelKey: "nav.advancedHistory", path: "/advanced-history" },

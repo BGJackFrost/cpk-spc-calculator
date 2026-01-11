@@ -483,7 +483,9 @@ const fallbackLabelsEn: Record<string, string> = {
   "nav.unifiedRealtimeDashboard": "Unified Realtime Dashboard",
   "nav.aiVisionAnalysis": "AI Vision Analysis",
   "nav.floorPlanLive": "Floor Plan Live",
-  "nav.aviAoiDashboard": "AVI/AOI Dashboard",
+  "nav.aviAoiDashboard": "Dashboard AVI/AOI",
+  "nav.dashboardCustomization": "Tùy chỉnh Dashboard",
+  "nav.batchImageAnalysis": "Phân tích Hình ảnh Hàng loạt",
 };
 
 const MIN_WIDTH = 200;
