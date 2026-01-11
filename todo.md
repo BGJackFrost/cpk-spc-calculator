@@ -9672,3 +9672,24 @@
 - [x] Sửa lỗi test predictiveMaintenance.test.ts (mock database không hỗ trợ multiple leftJoin)
 - [x] Kiểm tra lockfile integrity (pnpm-lock.yaml)
 - [x] Xác nhận dependencies đã được cài đặt đúng
+
+
+## Phase 161 - Tối ưu hóa Cấu trúc Dự án để Build Thành công
+
+### Phân tích hiện trạng
+- Tổng số trang: 277 pages
+- Tổng số components: 131 components
+- Tổng số modules khi build: 9221 modules
+- Vấn đề: Build bị kill do thiếu memory
+
+### Các nhóm trang cần gộp/xóa
+- [ ] Gộp các trang Alert (AlertConfiguration, AlertConfigurationEnhanced, AlertConfigManagement, AlertDashboard, AlertHistory, AlertNotificationConfig, AlertThresholdConfig, AlertEmailConfig, AlertWebhookSettings) → AlertManagement
+- [ ] Gộp các trang IoT (IoTDashboard, IotDashboard, IoTEnhancedDashboard, IoTUnifiedDashboard, IotOverviewDashboard, IotRealtimeDashboard) → IoTDashboard
+- [ ] Gộp các trang License (LicenseActivation, LicenseAdmin, LicenseCustomers, LicenseDashboard, LicenseManagement, LicenseNotificationReport, LicenseRevenue, LicenseServerDashboard, LicenseServerPortal, LicenseServerSettings) → LicenseManagement
+- [ ] Gộp các trang Notification (NotificationCenter, NotificationChannelsSettings, NotificationPreferences, NotificationPreferencesPage, NotificationSettings) → NotificationSettings
+- [ ] Gộp các trang Scheduled Reports (ScheduledCpkJobs, ScheduledEmailReports, ScheduledJobsManagement, ScheduledKpiReports, ScheduledKpiReportsPage, ScheduledMttrMtbfReports, ScheduledOeeReports, ScheduledReportManagement, ScheduledReports) → ScheduledReports
+- [ ] Gộp các trang Webhook (WebhookEscalationPage, WebhookHistoryManagement, WebhookManagement, WebhookSettings, WebhookTemplates, UnifiedWebhooks) → WebhookManagement
+- [ ] Xóa các trang duplicate/không sử dụng
+- [ ] Tối ưu lazy loading trong App.tsx
+- [ ] Cấu hình Vite để giảm memory usage
+

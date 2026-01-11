@@ -317,13 +317,6 @@
     margin-top: 10mm;
   }
   
-  /* Landscape orientation */
-  .print-landscape {
-    @page {
-      size: A4 landscape;
-    }
-  }
-  
   /* Hide non-printable elements */
   body * {
     visibility: hidden;

@@ -135,12 +135,14 @@ export default defineConfig({
     // Performance optimizations
     chunkSizeWarningLimit: 10000,
     sourcemap: false,
-    // Enable esbuild minification for production builds (faster than terser)
-    minify: 'esbuild',
+    // Disable minification to reduce memory
+    minify: false,
     // Reduce memory usage
     reportCompressedSize: false,
     // Disable inline assets
     assetsInlineLimit: 0,
+    // Reduce memory during build
+    cssMinify: false,
   },
   // Optimize deps - fix React unstable_now error
   optimizeDeps: {

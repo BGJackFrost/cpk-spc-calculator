@@ -91,7 +91,7 @@ export default function LocalLogin() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4">
-      <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10" />
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:40px_40px] opacity-10" />
       
       <Card className="w-full max-w-md relative z-10 bg-card/95 backdrop-blur border-border/50 shadow-2xl">
         <CardHeader className="text-center space-y-2">
