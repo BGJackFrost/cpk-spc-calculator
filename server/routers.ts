@@ -94,6 +94,9 @@ import { batchImageAnalysisRouter } from "./routers/batchImageAnalysisRouter";
 import { customWidgetRouter } from "./routers/customWidgetRouter";
 import { cameraConfigRouter } from "./routers/cameraConfigRouter";
 import { snImageRouter } from "./routers/snImageRouter";
+import { cameraSessionRouter } from "./routers/cameraSessionRouter";
+import { imageAnnotationRouter } from "./routers/imageAnnotationRouter";
+import { aiImageComparisonRouter } from "./routers/aiImageComparisonRouter";
 import { maintenanceWorkOrderRouter } from "./maintenanceWorkOrderRouter";
 import { mobileRouter } from "./mobileRouter";
 import { triggerLicenseExpiryCheck } from "./scheduledJobs";
@@ -12784,6 +12787,9 @@ Hãy trả về JSON với format:
   customWidget: customWidgetRouter,
   cameraConfig: cameraConfigRouter,
   snImage: snImageRouter,
+  cameraSession: cameraSessionRouter,
+  imageAnnotation: imageAnnotationRouter,
+  aiImageComparison: aiImageComparisonRouter,
 });
 
 export type AppRouter = typeof appRouter;
