@@ -3723,3 +3723,33 @@ export async function triggerWorkOrderNotificationCheck(): Promise<{
     };
   }
 }
+
+
+/**
+ * Camera Auto-Capture Job
+ * Runs every minute to check and execute camera capture schedules
+ */
+import { runCameraCaptureJob } from './cameraCaptureService';
+
+cron.schedule('0 * * * * *', async () => {
+  try {
+    await runCameraCaptureJob();
+  } catch (error) {
+    console.error('[ScheduledJob] Error running camera capture job:', error);
+  }
+}, {
+  timezone: 'Asia/Ho_Chi_Minh'
+});
+
+console.log('[ScheduledJob] Scheduled: Camera capture job every minute (Asia/Ho_Chi_Minh)');
+
+/**
+ * Manually trigger camera capture job (for testing)
+ */
+export async function triggerCameraCaptureJob(): Promise<void> {
+  try {
+    await runCameraCaptureJob();
+  } catch (error) {
+    console.error('[ScheduledJob] Error triggering camera capture job:', error);
+  }
+}

@@ -540,6 +540,9 @@ export const AI_MENU: SystemMenuConfig = {
         { id: "camera-capture", icon: Camera, labelKey: "nav.cameraCapture", path: "/camera-capture", licenseFeature: "ai_vision" },
         { id: "alert-email-config", icon: Mail, labelKey: "nav.alertEmailConfig", path: "/alert-email-config", licenseFeature: "ai_vision" },
         { id: "auto-capture", icon: Camera, labelKey: "nav.autoCapture", path: "/auto-capture", licenseFeature: "ai_vision" },
+        { id: "image-history", icon: Calendar, labelKey: "nav.imageHistory", path: "/image-history", licenseFeature: "ai_vision" },
+        { id: "camera-capture-schedule", icon: Clock, labelKey: "nav.cameraCaptureSchedule", path: "/camera-capture-schedule", licenseFeature: "ai_vision" },
+        { id: "quality-statistics-report", icon: BarChart3, labelKey: "nav.qualityStatisticsReport", path: "/quality-statistics-report", licenseFeature: "ai_vision" },
       ],
     },
     {

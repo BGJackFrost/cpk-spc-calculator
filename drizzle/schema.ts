@@ -7430,3 +7430,137 @@ export const cameraConfigurations = mysqlTable("camera_configurations", {
 
 export type CameraConfiguration = typeof cameraConfigurations.$inferSelect;
 export type InsertCameraConfiguration = typeof cameraConfigurations.$inferInsert;
+
+
+// Camera Auto-Capture Schedules
+export const cameraCaptureSchedules = mysqlTable("camera_capture_schedules", {
+	id: int().autoincrement().notNull().primaryKey(),
+	name: varchar({ length: 255 }).notNull(),
+	description: text(),
+	// Camera reference
+	cameraId: int("camera_id").notNull(),
+	// Schedule settings
+	isEnabled: boolean("is_enabled").default(true).notNull(),
+	captureIntervalSeconds: int("capture_interval_seconds").default(60).notNull(), // Interval between captures
+	captureIntervalUnit: mysqlEnum("capture_interval_unit", ['seconds', 'minutes', 'hours']).default('minutes').notNull(),
+	// Time window
+	startTime: varchar("start_time", { length: 10 }), // HH:mm format, null = 00:00
+	endTime: varchar("end_time", { length: 10 }), // HH:mm format, null = 23:59
+	// Days of week (JSON array of 0-6, 0=Sunday)
+	activeDays: json("active_days"), // e.g., [1,2,3,4,5] for weekdays
+	// Production context
+	productionLineId: int("production_line_id"),
+	workstationId: int("workstation_id"),
+	productId: int("product_id"),
+	// Auto-analysis settings
+	autoAnalyze: boolean("auto_analyze").default(true).notNull(),
+	analysisType: mysqlEnum("analysis_type", ['defect_detection', 'quality_inspection', 'measurement', 'ocr', 'custom']).default('quality_inspection'),
+	// Notification settings
+	notifyOnNg: boolean("notify_on_ng").default(true).notNull(),
+	notifyOnWarning: boolean("notify_on_warning").default(false).notNull(),
+	notificationEmails: json("notification_emails"), // Array of email addresses
+	webhookUrl: varchar("webhook_url", { length: 500 }),
+	// Statistics
+	totalCaptures: int("total_captures").default(0).notNull(),
+	successCaptures: int("success_captures").default(0).notNull(),
+	failedCaptures: int("failed_captures").default(0).notNull(),
+	lastCaptureAt: timestamp("last_capture_at", { mode: 'string' }),
+	lastCaptureStatus: mysqlEnum("last_capture_status", ['success', 'failed', 'pending']).default('pending'),
+	lastCaptureError: text("last_capture_error"),
+	// Metadata
+	createdBy: int("created_by"),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("idx_capture_schedule_camera").on(table.cameraId),
+	index("idx_capture_schedule_enabled").on(table.isEnabled),
+	index("idx_capture_schedule_line").on(table.productionLineId),
+]);
+
+export type CameraCaptureSchedule = typeof cameraCaptureSchedules.$inferSelect;
+export type InsertCameraCaptureSchedule = typeof cameraCaptureSchedules.$inferInsert;
+
+// Camera Capture Logs
+export const cameraCaptureLog = mysqlTable("camera_capture_log", {
+	id: int().autoincrement().notNull().primaryKey(),
+	scheduleId: int("schedule_id").notNull(),
+	cameraId: int("camera_id").notNull(),
+	// Capture result
+	status: mysqlEnum(['success', 'failed', 'timeout', 'error']).default('success').notNull(),
+	errorMessage: text("error_message"),
+	// Image info
+	imageId: int("image_id"), // Reference to sn_images
+	imageUrl: varchar("image_url", { length: 1000 }),
+	imageKey: varchar("image_key", { length: 255 }),
+	// Analysis result
+	analysisResult: mysqlEnum("analysis_result", ['ok', 'ng', 'warning', 'pending', 'skipped']).default('pending'),
+	qualityScore: decimal("quality_score", { precision: 5, scale: 2 }),
+	defectsFound: int("defects_found").default(0),
+	// Timing
+	captureStartedAt: timestamp("capture_started_at", { mode: 'string' }),
+	captureCompletedAt: timestamp("capture_completed_at", { mode: 'string' }),
+	analysisDurationMs: int("analysis_duration_ms"),
+	// Metadata
+	serialNumber: varchar("serial_number", { length: 100 }),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+	index("idx_capture_log_schedule").on(table.scheduleId),
+	index("idx_capture_log_camera").on(table.cameraId),
+	index("idx_capture_log_status").on(table.status),
+	index("idx_capture_log_created").on(table.createdAt),
+]);
+
+export type CameraCaptureLog = typeof cameraCaptureLog.$inferSelect;
+export type InsertCameraCaptureLog = typeof cameraCaptureLog.$inferInsert;
+
+// Quality Statistics Report
+export const qualityStatisticsReports = mysqlTable("quality_statistics_reports", {
+	id: int().autoincrement().notNull().primaryKey(),
+	// Report period
+	reportDate: date("report_date").notNull(),
+	periodType: mysqlEnum("period_type", ['daily', 'weekly', 'monthly', 'quarterly', 'yearly']).default('daily').notNull(),
+	// Scope
+	productionLineId: int("production_line_id"),
+	workstationId: int("workstation_id"),
+	productId: int("product_id"),
+	// Statistics
+	totalSamples: int("total_samples").default(0).notNull(),
+	okCount: int("ok_count").default(0).notNull(),
+	ngCount: int("ng_count").default(0).notNull(),
+	warningCount: int("warning_count").default(0).notNull(),
+	okRate: decimal("ok_rate", { precision: 5, scale: 2 }), // Percentage
+	ngRate: decimal("ng_rate", { precision: 5, scale: 2 }),
+	// Quality metrics
+	avgQualityScore: decimal("avg_quality_score", { precision: 5, scale: 2 }),
+	minQualityScore: decimal("min_quality_score", { precision: 5, scale: 2 }),
+	maxQualityScore: decimal("max_quality_score", { precision: 5, scale: 2 }),
+	stdDevQualityScore: decimal("std_dev_quality_score", { precision: 5, scale: 2 }),
+	// CPK/SPC metrics
+	avgCpk: decimal("avg_cpk", { precision: 5, scale: 3 }),
+	minCpk: decimal("min_cpk", { precision: 5, scale: 3 }),
+	maxCpk: decimal("max_cpk", { precision: 5, scale: 3 }),
+	// Defect analysis
+	totalDefects: int("total_defects").default(0).notNull(),
+	defectsByType: json("defects_by_type"), // { type: count }
+	topDefectTypes: json("top_defect_types"), // Array of top defect types
+	// Trend data
+	trendData: json("trend_data"), // Array of { date, okRate, ngRate, avgScore }
+	// Comparison with previous period
+	prevPeriodOkRate: decimal("prev_period_ok_rate", { precision: 5, scale: 2 }),
+	okRateChange: decimal("ok_rate_change", { precision: 5, scale: 2 }), // Percentage change
+	trendDirection: mysqlEnum("trend_direction", ['improving', 'stable', 'declining']).default('stable'),
+	// Metadata
+	generatedAt: timestamp("generated_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	generatedBy: int("generated_by"),
+},
+(table) => [
+	index("idx_quality_stats_date").on(table.reportDate),
+	index("idx_quality_stats_period").on(table.periodType),
+	index("idx_quality_stats_line").on(table.productionLineId),
+	index("idx_quality_stats_product").on(table.productId),
+]);
+
+export type QualityStatisticsReport = typeof qualityStatisticsReports.$inferSelect;
+export type InsertQualityStatisticsReport = typeof qualityStatisticsReports.$inferInsert;

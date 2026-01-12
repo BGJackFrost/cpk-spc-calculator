@@ -9904,3 +9904,41 @@
 - [ ] Tạo workflow cho auto-deploy (nếu cần)
 - [ ] Thêm badge CI status vào README
 
+
+
+## Phase 73: Timeline/Calendar View, Auto-capture Camera IP, Báo cáo Thống kê
+
+### Timeline/Calendar View cho Ảnh
+- [x] Tạo component ImageTimeline hiển thị ảnh theo timeline
+- [x] Tạo component ImageCalendar hiển thị ảnh theo calendar view
+- [x] Tạo trang ImageHistory với tabs Timeline/Calendar
+- [x] Lọc ảnh theo ngày/tuần/tháng
+- [x] Lọc ảnh theo sản phẩm/dây chuyền/công trạm
+- [x] Click vào ảnh để xem chi tiết và kết quả phân tích
+- [x] Hiển thị số lượng ảnh OK/NG theo ngày trên calendar
+- [x] Zoom in/out timeline để xem chi tiết hơn
+
+### Auto-capture từ Camera IP
+- [x] Tạo bảng camera_capture_schedules để lưu lịch chụp tự động
+- [x] Tạo component CameraCaptureConfig để cấu hình auto-capture
+- [x] Cấu hình URL camera IP (RTSP/HTTP/MJPEG)
+- [x] Cấu hình tần suất chụp (mỗi n giây/phút/giờ)
+- [x] Cấu hình thời gian bắt đầu/kết thúc auto-capture
+- [x] Tạo service auto-capture chạy background
+- [x] Tự động upload ảnh đã chụp lên S3
+- [x] Tự động chạy AI phân tích sau khi chụp
+- [x] Gửi thông báo khi phát hiện NG
+- [x] Trang quản lý lịch auto-capture
+
+### Báo cáo Thống kê Chất lượng
+- [x] Tạo trang QualityStatisticsReport với biểu đồ trend
+- [x] Biểu đồ trend chất lượng theo thời gian (Line Chart)
+- [x] Biểu đồ so sánh chất lượng giữa các sản phẩm (Bar Chart)
+- [x] Biểu đồ so sánh chất lượng giữa các dây chuyền (Bar Chart)
+- [x] Biểu đồ phân bố lỗi theo loại (Pie Chart)
+- [x] Bảng thống kê tổng hợp (tổng số mẫu, OK rate, NG rate)
+- [x] Lọc báo cáo theo thời gian (ngày/tuần/tháng/quý/năm)
+- [ ] Lọc báo cáo theo sản phẩm/dây chuyền
+- [ ] Xuất báo cáo PDF/Excel
+- [ ] So sánh trend giữa các kỳ (tuần này vs tuần trước)
+

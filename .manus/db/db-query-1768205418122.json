@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE sn_images \nADD COLUMN IF NOT EXISTS camera_id INT,\nADD COLUMN IF NOT EXISTS batch_job_id INT,\nADD COLUMN IF NOT EXISTS source VARCHAR(50),\nADD COLUMN IF NOT EXISTS thumbnail_url TEXT;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute ALTER TABLE sn_images \nADD COLUMN IF NOT EXISTS camera_id INT,\nADD COLUMN IF NOT EXISTS batch_job_id INT,\nADD COLUMN IF NOT EXISTS source VARCHAR(50),\nADD COLUMN IF NOT EXISTS thumbnail_url TEXT;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 2377
+}

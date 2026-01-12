@@ -248,6 +248,9 @@ import MachineApiDocumentation from "./pages/MachineApiDocumentation";
 import CustomWidgets from "./pages/CustomWidgets";
 import CameraManagement from "./pages/CameraManagement";
 import SNImageHistory from "./pages/SNImageHistory";
+import ImageHistory from "./pages/ImageHistory";
+import CameraCaptureSchedule from "./pages/CameraCaptureSchedule";
+import QualityStatisticsReport from "./pages/QualityStatisticsReport";
 import SNImageCompare from "./pages/SNImageCompare";
 import SnImages from "./pages/SnImages";
 
@@ -503,6 +506,9 @@ function Router() {
       <Route path="/custom-widgets" component={CustomWidgets} />
       <Route path="/camera-management" component={CameraManagement} />
       <Route path="/sn-image-history" component={SNImageHistory} />
+      <Route path="/image-history" component={ImageHistory} />
+      <Route path="/camera-capture-schedule" component={CameraCaptureSchedule} />
+      <Route path="/quality-statistics-report" component={QualityStatisticsReport} />
       <Route path="/sn-image-compare" component={SNImageCompare} />
       <Route path="/sn-images" component={SnImages} />
 
