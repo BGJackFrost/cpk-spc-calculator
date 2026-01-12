@@ -9966,3 +9966,32 @@
 - [x] Hiển thị biểu đồ cột (tần suất) và đường (% tích lũy) (% tích lũy)
 - [x] Hỗ trợ phân tích 80/20 (80% lỗi từ 20% nguyên nhân)
 - [x] Tích hợp vào Dashboard chính
+
+
+## Phase 83: Export Báo cáo, Realtime NTF Notification và Bộ lọc Widgets
+
+### Export Báo cáo Pareto và Heat Map ra PDF/Excel
+- [x] Tạo service export PDF cho Pareto Chart
+- [x] Tạo service export Excel cho Pareto Chart
+- [x] Tạo service export PDF cho Heat Map
+- [x] Tạo service export Excel cho Heat Map
+- [x] Thêm nút Export vào component DefectParetoChart
+- [x] Thêm nút Export vào component FloorPlanHeatMap
+- [x] Tạo API endpoints cho export
+
+### Thông báo Realtime khi phát hiện NTF Pattern mới
+- [x] Tạo SSE event cho NTF pattern detection
+- [x] Cập nhật NotificationBell hiển thị thông báo NTF realtime
+- [x] Gửi notification khi AI phát hiện NTF pattern mới
+- [ ] Lưu notification vào database
+- [ ] Hiển thị badge số lượng thông báo chưa đọc
+- [ ] Trang xem lịch sử thông báo
+
+### Bộ lọc thời gian và Production Line cho Widgets
+- [x] Thêm bộ lọc thời gian (ngày/tuần/tháng) cho Pareto Chart
+- [x] Thêm bộ lọc production line cho Pareto Chart
+- [x] Thêm bộ lọc thời gian cho Heat Map
+- [x] Thêm bộ lọc production line cho Heat Map
+- [x] Thêm bộ lọc thời gian cho Auto-NTF Suggestions
+- [x] Thêm bộ lọc production line cho Auto-NTF Suggestions
+- [x] Tạo component WidgetFilterBar tái sử dụng cho các widgets

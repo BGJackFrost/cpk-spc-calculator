@@ -13,6 +13,7 @@ import {
   workstations,
 } from '../../drizzle/schema';
 import { eq, desc, and, gte, lte, sql, inArray } from 'drizzle-orm';
+import { notifyNtfPatternDetected, notifyNtfSuggestionNew } from '../sse';
 
 // NTF = No Trouble Found (Không tìm thấy lỗi)
 const NTF_PATTERN_TYPES = {
@@ -65,6 +66,37 @@ export const autoNtfRouter = router({
 
         const patterns = analyzeDefectPatterns(defects, input.minOccurrences);
         const suggestions = generateNtfSuggestions(patterns, defects);
+
+        // Send SSE notifications for new patterns
+        if (patterns.length > 0) {
+          patterns.forEach((pattern, index) => {
+            notifyNtfPatternDetected({
+              patternId: `pattern-${Date.now()}-${index}`,
+              patternType: pattern.type,
+              confidence: pattern.confidence,
+              affectedDefects: pattern.count,
+              productionLineId: input.productionLineId,
+              description: pattern.description,
+              detectedAt: new Date(),
+            });
+          });
+        }
+
+        // Send SSE notifications for new suggestions
+        if (suggestions.length > 0) {
+          suggestions.slice(0, 5).forEach((suggestion, index) => {
+            notifyNtfSuggestionNew({
+              suggestionId: `suggestion-${Date.now()}-${index}`,
+              defectIds: suggestion.defectIds,
+              defectCount: suggestion.count,
+              patternType: suggestion.patternType,
+              confidence: suggestion.confidence,
+              productionLineId: input.productionLineId,
+              reasoning: suggestion.description,
+              createdAt: new Date(),
+            });
+          });
+        }
 
         return {
           suggestions,

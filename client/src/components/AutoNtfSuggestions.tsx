@@ -1,42 +1,100 @@
 /**
  * AutoNtfSuggestions - Component hiển thị đề xuất NTF tự động từ AI
+ * Với bộ lọc thời gian, production line và SSE notifications
  */
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { trpc } from '@/lib/trpc';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Loader2, Brain, CheckCircle2, XCircle, AlertTriangle, Sparkles, Clock, TrendingDown } from 'lucide-react';
+import { Loader2, Brain, CheckCircle2, XCircle, AlertTriangle, Sparkles, Clock, TrendingDown, Bell, BellRing } from 'lucide-react';
 import { toast } from 'sonner';
+import { WidgetFilterBar, type WidgetFilters } from './WidgetFilterBar';
 
 interface AutoNtfSuggestionsProps {
   productionLineId?: number;
   compact?: boolean;
+  showControls?: boolean;
 }
 
-export function AutoNtfSuggestions({ productionLineId, compact = false }: AutoNtfSuggestionsProps) {
+export function AutoNtfSuggestions({ 
+  productionLineId: initialLineId, 
+  compact = false,
+  showControls = true 
+}: AutoNtfSuggestionsProps) {
   const [selectedSuggestion, setSelectedSuggestion] = useState<any>(null);
   const [notes, setNotes] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [filters, setFilters] = useState<WidgetFilters>({
+    periodDays: 30,
+    productionLineId: initialLineId,
+  });
+  const [newPatternCount, setNewPatternCount] = useState(0);
+  const [hasNewNotification, setHasNewNotification] = useState(false);
 
   const utils = trpc.useUtils();
 
   const { data: pendingSuggestions, isLoading: loadingPending } = trpc.autoNtf.getPendingSuggestions.useQuery({
-    productionLineId,
+    productionLineId: filters.productionLineId,
     limit: 20,
   });
 
   const { data: statistics } = trpc.autoNtf.getStatistics.useQuery({
-    days: 30,
-    productionLineId,
+    days: filters.periodDays,
+    productionLineId: filters.productionLineId,
   });
+
+  // SSE listener for realtime NTF pattern notifications
+  useEffect(() => {
+    const eventSource = new EventSource('/api/sse');
+
+    const handleNtfPattern = (event: MessageEvent) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === 'ntf_pattern_detected' || data.type === 'ntf_suggestion_new') {
+          setNewPatternCount(prev => prev + 1);
+          setHasNewNotification(true);
+          
+          // Show toast notification
+          toast.info(
+            data.type === 'ntf_pattern_detected' 
+              ? `Phát hiện NTF pattern mới: ${data.data.patternType}` 
+              : `Đề xuất NTF mới: ${data.data.defectCount} lỗi`,
+            {
+              action: {
+                label: 'Xem',
+                onClick: () => {
+                  utils.autoNtf.getPendingSuggestions.invalidate();
+                  setHasNewNotification(false);
+                },
+              },
+            }
+          );
+          
+          // Auto-refresh suggestions
+          utils.autoNtf.getPendingSuggestions.invalidate();
+        }
+      } catch (e) {
+        // Ignore parse errors
+      }
+    };
+
+    eventSource.addEventListener('message', handleNtfPattern);
+    eventSource.addEventListener('ntf_pattern_detected', handleNtfPattern);
+    eventSource.addEventListener('ntf_suggestion_new', handleNtfPattern);
+
+    return () => {
+      eventSource.close();
+    };
+  }, [utils]);
 
   const analyzeMutation = trpc.autoNtf.analyzePatterns.useMutation({
     onSuccess: (data) => {
       toast.success(`Phân tích hoàn tất: ${data.suggestions?.length || 0} đề xuất NTF`);
       utils.autoNtf.getPendingSuggestions.invalidate();
+      setNewPatternCount(0);
     },
     onError: () => {
       toast.error('Lỗi khi phân tích pattern');
@@ -80,8 +138,8 @@ export function AutoNtfSuggestions({ productionLineId, compact = false }: AutoNt
 
   const handleAnalyze = () => {
     analyzeMutation.mutate({
-      productionLineId,
-      days: 30,
+      productionLineId: filters.productionLineId,
+      days: filters.periodDays,
       minOccurrences: 3,
     });
   };
@@ -91,6 +149,12 @@ export function AutoNtfSuggestions({ productionLineId, compact = false }: AutoNt
       defectIds: suggestion.defectIds,
       includeHistory: true,
     });
+  };
+
+  const handleClearNotification = () => {
+    setNewPatternCount(0);
+    setHasNewNotification(false);
+    utils.autoNtf.getPendingSuggestions.invalidate();
   };
 
   if (loadingPending) {
@@ -113,27 +177,57 @@ export function AutoNtfSuggestions({ productionLineId, compact = false }: AutoNt
             <CardTitle className="flex items-center gap-2">
               <Brain className="h-5 w-5" />
               Auto-NTF Detection
+              {hasNewNotification && (
+                <Badge variant="destructive" className="animate-pulse">
+                  {newPatternCount} mới
+                </Badge>
+              )}
             </CardTitle>
             <CardDescription>
               AI tự động đề xuất NTF dựa trên pattern lịch sử
             </CardDescription>
           </div>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={handleAnalyze}
-            disabled={analyzeMutation.isPending}
-          >
-            {analyzeMutation.isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            ) : (
-              <Sparkles className="h-4 w-4 mr-2" />
+          <div className="flex items-center gap-2">
+            {hasNewNotification && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleClearNotification}
+                className="relative"
+              >
+                <BellRing className="h-4 w-4 text-orange-500 animate-bounce" />
+              </Button>
             )}
-            Phân tích
-          </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleAnalyze}
+              disabled={analyzeMutation.isPending}
+            >
+              {analyzeMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Sparkles className="h-4 w-4 mr-2" />
+              )}
+              Phân tích
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
+        {/* Filter Bar */}
+        {showControls && (
+          <div className="mb-4">
+            <WidgetFilterBar
+              filters={filters}
+              onFiltersChange={setFilters}
+              showProductionLine={true}
+              showExport={false}
+              compact={compact}
+            />
+          </div>
+        )}
+
         {statistics && (
           <div className="grid grid-cols-4 gap-4 mb-4">
             <div className="text-center p-2 bg-muted rounded-lg">

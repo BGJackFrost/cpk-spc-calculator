@@ -30,7 +30,10 @@ export type SseEventType =
   // AVI/AOI Dashboard events
   | "avi_aoi_inspection_result"
   | "avi_aoi_defect_detected"
-  | "avi_aoi_stats_update";
+  | "avi_aoi_stats_update"
+  // NTF Pattern Detection events
+  | "ntf_pattern_detected"
+  | "ntf_suggestion_new";
 
 export interface SseEvent {
   type: SseEventType;
@@ -626,6 +629,49 @@ export function notifyScheduledReportPdfReady(data: {
 }) {
   broadcastEvent({
     type: "scheduled_report_pdf_ready" as SseEventType,
+    data,
+    timestamp: new Date(),
+  });
+}
+
+
+// ============ NTF Pattern Detection Events ============
+
+// Send NTF pattern detected event (when AI detects a new pattern)
+export function notifyNtfPatternDetected(data: {
+  patternId: string;
+  patternType: string;
+  confidence: number;
+  affectedDefects: number;
+  productionLineId?: number;
+  productionLineName?: string;
+  workstationId?: number;
+  workstationName?: string;
+  description: string;
+  suggestedAction?: string;
+  detectedAt: Date;
+}) {
+  broadcastEvent({
+    type: "ntf_pattern_detected",
+    data,
+    timestamp: new Date(),
+  });
+}
+
+// Send new NTF suggestion event
+export function notifyNtfSuggestionNew(data: {
+  suggestionId: string;
+  defectIds: number[];
+  defectCount: number;
+  patternType: string;
+  confidence: number;
+  productionLineId?: number;
+  productionLineName?: string;
+  reasoning: string;
+  createdAt: Date;
+}) {
+  broadcastEvent({
+    type: "ntf_suggestion_new",
     data,
     timestamp: new Date(),
   });

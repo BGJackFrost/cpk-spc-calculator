@@ -32,7 +32,7 @@ import {
 
 export interface Notification {
   id: string;
-  type: "cpk_warning" | "cpk_critical" | "spc_violation" | "plan_status" | "info" | "oee_alert" | "machine_status" | "spc_rule_violation" | "report_sent" | "cpk_alert" | "system" | "anomaly_detected";
+  type: "cpk_warning" | "cpk_critical" | "spc_violation" | "plan_status" | "info" | "oee_alert" | "machine_status" | "spc_rule_violation" | "report_sent" | "cpk_alert" | "system" | "anomaly_detected" | "ntf_pattern_detected" | "ntf_suggestion_new";
   title: string;
   message: string;
   timestamp: Date;
@@ -111,6 +111,8 @@ const typeOptions = [
   { value: 'cpk_alert', label: 'Cảnh báo CPK', icon: TrendingDown },
   { value: 'system', label: 'Hệ thống', icon: Info },
   { value: 'anomaly_detected', label: 'Bất thường', icon: AlertCircle },
+  { value: 'ntf_pattern_detected', label: 'NTF Pattern', icon: Activity },
+  { value: 'ntf_suggestion_new', label: 'NTF Đề xuất', icon: CheckCircle2 },
 ] as const;
 
 // Time filter options
@@ -289,6 +291,10 @@ export function NotificationBell() {
         return <AlertCircle className="h-4 w-4 text-orange-500" />;
       case "system":
         return <Info className="h-4 w-4 text-gray-500" />;
+      case "ntf_pattern_detected":
+        return <Activity className="h-4 w-4 text-purple-500" />;
+      case "ntf_suggestion_new":
+        return <CheckCircle2 className="h-4 w-4 text-green-500" />;
       default:
         return <Bell className="h-4 w-4 text-gray-500" />;
     }
@@ -305,6 +311,10 @@ export function NotificationBell() {
         return "bg-yellow-50 dark:bg-yellow-950/30";
       case "spc_violation":
         return "bg-orange-50 dark:bg-orange-950/30";
+      case "ntf_pattern_detected":
+        return "bg-purple-50 dark:bg-purple-950/30";
+      case "ntf_suggestion_new":
+        return "bg-green-50 dark:bg-green-950/30";
       default:
         return "bg-blue-50 dark:bg-blue-950/30";
     }

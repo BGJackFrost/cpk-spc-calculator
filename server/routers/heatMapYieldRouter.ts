@@ -11,6 +11,11 @@ import {
   spcAnalysisHistory,
 } from '../../drizzle/schema';
 import { eq, desc, and, gte, lte, sql } from 'drizzle-orm';
+import { 
+  generateHeatMapPdfHtml, 
+  generateHeatMapExcelBuffer,
+  type HeatMapExportData 
+} from '../services/widgetExportService';
 
 // Yield rate color thresholds
 const YIELD_COLORS = {
@@ -21,6 +26,125 @@ const YIELD_COLORS = {
   critical: { min: 0, color: '#ef4444', label: 'Nghiêm trọng' },
 };
 
+// Helper functions
+function getYieldColor(yieldRate: number): string {
+  if (yieldRate >= 98) return YIELD_COLORS.excellent.color;
+  if (yieldRate >= 95) return YIELD_COLORS.good.color;
+  if (yieldRate >= 90) return YIELD_COLORS.warning.color;
+  if (yieldRate >= 85) return YIELD_COLORS.concern.color;
+  return YIELD_COLORS.critical.color;
+}
+
+function getYieldStatus(yieldRate: number): string {
+  if (yieldRate >= 98) return YIELD_COLORS.excellent.label;
+  if (yieldRate >= 95) return YIELD_COLORS.good.label;
+  if (yieldRate >= 90) return YIELD_COLORS.warning.label;
+  if (yieldRate >= 85) return YIELD_COLORS.concern.label;
+  return YIELD_COLORS.critical.label;
+}
+
+// Helper function to get heat map data
+async function getHeatMapData(input: { days: number; productionLineId?: number }) {
+  const db = await getDb();
+  if (!db) return { zones: [], summary: null, productionLineName: undefined };
+
+  try {
+    const endDate = new Date();
+    const startDate = new Date(Date.now() - input.days * 24 * 60 * 60 * 1000);
+
+    // Get production lines
+    let linesQuery = db.select({
+      id: productionLines.id,
+      name: productionLines.name,
+      location: productionLines.location,
+      status: productionLines.status,
+    }).from(productionLines);
+
+    let productionLineName: string | undefined;
+    if (input.productionLineId) {
+      linesQuery = linesQuery.where(eq(productionLines.id, input.productionLineId)) as any;
+    }
+
+    const lines = await linesQuery;
+    
+    if (input.productionLineId && lines.length > 0) {
+      productionLineName = lines[0].name;
+    }
+
+    // Get yield data for each line
+    const zonesData = await Promise.all(lines.map(async (line) => {
+      // Get workstations for this line
+      const lineWorkstations = await db.select()
+        .from(workstations)
+        .where(eq(workstations.productionLineId, line.id));
+
+      // Get SPC analysis data for yield calculation
+      const analysisData = await db.select({
+        totalSamples: sql<number>`COUNT(*)`,
+        avgCpk: sql<number>`AVG(${spcAnalysisHistory.cpk})`,
+        passCount: sql<number>`SUM(CASE WHEN ${spcAnalysisHistory.cpk} >= 1.33 THEN 1 ELSE 0 END)`,
+      })
+      .from(spcAnalysisHistory)
+      .where(
+        and(
+          eq(spcAnalysisHistory.productionLineId, line.id),
+          gte(spcAnalysisHistory.createdAt, startDate.toISOString()),
+          lte(spcAnalysisHistory.createdAt, endDate.toISOString()),
+        )
+      );
+
+      const stats = analysisData[0];
+      const totalSamples = Number(stats?.totalSamples) || 0;
+      const passCount = Number(stats?.passCount) || 0;
+      const yieldRate = totalSamples > 0 ? (passCount / totalSamples) * 100 : 0;
+      const avgCpk = Number(stats?.avgCpk) || 0;
+
+      return {
+        id: line.id,
+        name: line.name,
+        location: line.location || `Zone ${line.id}`,
+        status: line.status,
+        workstationCount: lineWorkstations.length,
+        yieldRate: Math.round(yieldRate * 100) / 100,
+        avgCpk: Math.round(avgCpk * 1000) / 1000,
+        totalSamples,
+        passCount,
+        color: getYieldColor(yieldRate),
+        statusLabel: getYieldStatus(yieldRate),
+        position: {
+          x: (line.id % 4) * 25 + 5,
+          y: Math.floor(line.id / 4) * 30 + 10,
+          width: 20,
+          height: 25,
+        },
+      };
+    }));
+
+    // Calculate summary
+    const totalYield = zonesData.length > 0 
+      ? zonesData.reduce((sum, z) => sum + z.yieldRate, 0) / zonesData.length 
+      : 0;
+    const problemZones = zonesData.filter(z => z.yieldRate < 90);
+    const excellentZones = zonesData.filter(z => z.yieldRate >= 98);
+
+    return {
+      zones: zonesData,
+      summary: {
+        totalZones: zonesData.length,
+        averageYield: Math.round(totalYield * 100) / 100,
+        problemZones: problemZones.length,
+        excellentZones: excellentZones.length,
+        periodDays: input.days,
+        lastUpdated: new Date().toISOString(),
+      },
+      productionLineName,
+    };
+  } catch (error) {
+    console.error('Error fetching floor plan yield data:', error);
+    return { zones: [], summary: null, productionLineName: undefined };
+  }
+}
+
 export const heatMapYieldRouter = router({
   // Get yield data for floor plan heat map
   getFloorPlanYield: protectedProcedure
@@ -29,98 +153,11 @@ export const heatMapYieldRouter = router({
       productionLineId: z.number().optional(),
     }))
     .query(async ({ input }) => {
-      const db = await getDb();
-      if (!db) return { zones: [], summary: null };
-
-      try {
-        const endDate = new Date();
-        const startDate = new Date(Date.now() - input.days * 24 * 60 * 60 * 1000);
-
-        // Get production lines
-        let linesQuery = db.select({
-          id: productionLines.id,
-          name: productionLines.name,
-          location: productionLines.location,
-          status: productionLines.status,
-        }).from(productionLines);
-
-        if (input.productionLineId) {
-          linesQuery = linesQuery.where(eq(productionLines.id, input.productionLineId)) as any;
-        }
-
-        const lines = await linesQuery;
-
-        // Get yield data for each line
-        const zonesData = await Promise.all(lines.map(async (line) => {
-          // Get workstations for this line
-          const lineWorkstations = await db.select()
-            .from(workstations)
-            .where(eq(workstations.productionLineId, line.id));
-
-          // Get SPC analysis data for yield calculation
-          const analysisData = await db.select({
-            totalSamples: sql<number>`COUNT(*)`,
-            avgCpk: sql<number>`AVG(${spcAnalysisHistory.cpk})`,
-            passCount: sql<number>`SUM(CASE WHEN ${spcAnalysisHistory.cpk} >= 1.33 THEN 1 ELSE 0 END)`,
-          })
-          .from(spcAnalysisHistory)
-          .where(
-            and(
-              eq(spcAnalysisHistory.productionLineId, line.id),
-              gte(spcAnalysisHistory.createdAt, startDate.toISOString()),
-              lte(spcAnalysisHistory.createdAt, endDate.toISOString()),
-            )
-          );
-
-          const stats = analysisData[0];
-          const totalSamples = Number(stats?.totalSamples) || 0;
-          const passCount = Number(stats?.passCount) || 0;
-          const yieldRate = totalSamples > 0 ? (passCount / totalSamples) * 100 : 0;
-          const avgCpk = Number(stats?.avgCpk) || 0;
-
-          return {
-            id: line.id,
-            name: line.name,
-            location: line.location || `Zone ${line.id}`,
-            status: line.status,
-            workstationCount: lineWorkstations.length,
-            yieldRate: Math.round(yieldRate * 100) / 100,
-            avgCpk: Math.round(avgCpk * 1000) / 1000,
-            totalSamples,
-            passCount,
-            color: getYieldColor(yieldRate),
-            statusLabel: getYieldStatus(yieldRate),
-            position: {
-              x: (line.id % 4) * 25 + 5,
-              y: Math.floor(line.id / 4) * 30 + 10,
-              width: 20,
-              height: 25,
-            },
-          };
-        }));
-
-        // Calculate summary
-        const totalYield = zonesData.length > 0 
-          ? zonesData.reduce((sum, z) => sum + z.yieldRate, 0) / zonesData.length 
-          : 0;
-        const problemZones = zonesData.filter(z => z.yieldRate < 90);
-        const excellentZones = zonesData.filter(z => z.yieldRate >= 98);
-
-        return {
-          zones: zonesData,
-          summary: {
-            totalZones: zonesData.length,
-            averageYield: Math.round(totalYield * 100) / 100,
-            problemZones: problemZones.length,
-            excellentZones: excellentZones.length,
-            periodDays: input.days,
-            lastUpdated: new Date().toISOString(),
-          },
-        };
-      } catch (error) {
-        console.error('Error fetching floor plan yield data:', error);
-        return { zones: [], summary: null };
-      }
+      const result = await getHeatMapData(input);
+      return {
+        zones: result.zones,
+        summary: result.summary,
+      };
     }),
 
   // Get top problem zones
@@ -184,7 +221,7 @@ export const heatMapYieldRouter = router({
         const endDate = new Date();
         const startDate = new Date(Date.now() - input.days * 24 * 60 * 60 * 1000);
 
-        const conditions = [
+        const conditions: any[] = [
           gte(spcAnalysisHistory.createdAt, startDate.toISOString()),
           lte(spcAnalysisHistory.createdAt, endDate.toISOString()),
         ];
@@ -215,21 +252,53 @@ export const heatMapYieldRouter = router({
         return [];
       }
     }),
+
+  // Export Heat Map to PDF (returns HTML for client-side PDF generation)
+  exportPdf: protectedProcedure
+    .input(z.object({
+      days: z.number().default(7),
+      productionLineId: z.number().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const result = await getHeatMapData(input);
+      
+      const exportData: HeatMapExportData = {
+        zones: result.zones,
+        summary: result.summary,
+        filters: {
+          productionLineId: input.productionLineId,
+          productionLineName: result.productionLineName,
+        },
+      };
+
+      const html = generateHeatMapPdfHtml(exportData);
+      return { html, filename: `heat-map-yield-${new Date().toISOString().split('T')[0]}.pdf` };
+    }),
+
+  // Export Heat Map to Excel
+  exportExcel: protectedProcedure
+    .input(z.object({
+      days: z.number().default(7),
+      productionLineId: z.number().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const result = await getHeatMapData(input);
+      
+      const exportData: HeatMapExportData = {
+        zones: result.zones,
+        summary: result.summary,
+        filters: {
+          productionLineId: input.productionLineId,
+          productionLineName: result.productionLineName,
+        },
+      };
+
+      const buffer = await generateHeatMapExcelBuffer(exportData);
+      const base64 = buffer.toString('base64');
+      return { 
+        base64, 
+        filename: `heat-map-yield-${new Date().toISOString().split('T')[0]}.xlsx`,
+        mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      };
+    }),
 });
-
-// Helper functions
-function getYieldColor(yieldRate: number): string {
-  if (yieldRate >= 98) return YIELD_COLORS.excellent.color;
-  if (yieldRate >= 95) return YIELD_COLORS.good.color;
-  if (yieldRate >= 90) return YIELD_COLORS.warning.color;
-  if (yieldRate >= 85) return YIELD_COLORS.concern.color;
-  return YIELD_COLORS.critical.color;
-}
-
-function getYieldStatus(yieldRate: number): string {
-  if (yieldRate >= 98) return YIELD_COLORS.excellent.label;
-  if (yieldRate >= 95) return YIELD_COLORS.good.label;
-  if (yieldRate >= 90) return YIELD_COLORS.warning.label;
-  if (yieldRate >= 85) return YIELD_COLORS.concern.label;
-  return YIELD_COLORS.critical.label;
-}

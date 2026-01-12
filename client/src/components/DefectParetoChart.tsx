@@ -1,13 +1,15 @@
 /**
  * DefectParetoChart - Component hiển thị biểu đồ Pareto cho defects
  * Hỗ trợ phân tích 80/20 (80% lỗi từ 20% nguyên nhân)
+ * Với bộ lọc thời gian, production line và export PDF/Excel
  */
 import { useState } from 'react';
 import { trpc } from '@/lib/trpc';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, BarChart3, TrendingUp, AlertCircle } from 'lucide-react';
+import { Loader2, BarChart3, AlertCircle } from 'lucide-react';
+import { WidgetFilterBar, type WidgetFilters } from './WidgetFilterBar';
+import { useToast } from '@/hooks/use-toast';
 import {
   ComposedChart,
   Bar,
@@ -25,20 +27,110 @@ interface DefectParetoChartProps {
   showControls?: boolean;
   compact?: boolean;
   productionLineId?: number;
+  showExport?: boolean;
 }
 
-export function DefectParetoChart({ showControls = true, compact = false, productionLineId }: DefectParetoChartProps) {
-  const [periodDays, setPeriodDays] = useState(30);
+export function DefectParetoChart({ 
+  showControls = true, 
+  compact = false, 
+  productionLineId: initialLineId,
+  showExport = true 
+}: DefectParetoChartProps) {
+  const { toast } = useToast();
+  const [filters, setFilters] = useState<WidgetFilters>({
+    periodDays: 30,
+    productionLineId: initialLineId,
+  });
+  const [isExporting, setIsExporting] = useState(false);
 
   const { data, isLoading } = trpc.paretoChart.getDefectPareto.useQuery({
-    days: periodDays,
-    productionLineId,
+    days: filters.periodDays,
+    productionLineId: filters.productionLineId,
     limit: 10,
   });
 
   const { data: dashboardSummary } = trpc.paretoChart.getDashboardSummary.useQuery({
-    days: periodDays,
+    days: filters.periodDays,
   });
+
+  const exportPdfMutation = trpc.paretoChart.exportPdf.useMutation();
+  const exportExcelMutation = trpc.paretoChart.exportExcel.useMutation();
+
+  const handleExportPdf = async () => {
+    setIsExporting(true);
+    try {
+      const result = await exportPdfMutation.mutateAsync({
+        days: filters.periodDays,
+        productionLineId: filters.productionLineId,
+        limit: 10,
+      });
+      
+      // Open HTML in new window for printing
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(result.html);
+        printWindow.document.close();
+        printWindow.onload = () => {
+          printWindow.print();
+        };
+      }
+      
+      toast({
+        title: "Xuất PDF thành công",
+        description: "Cửa sổ in đã được mở. Chọn 'Save as PDF' để lưu file.",
+      });
+    } catch (error) {
+      toast({
+        title: "Lỗi xuất PDF",
+        description: "Không thể xuất báo cáo PDF. Vui lòng thử lại.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleExportExcel = async () => {
+    setIsExporting(true);
+    try {
+      const result = await exportExcelMutation.mutateAsync({
+        days: filters.periodDays,
+        productionLineId: filters.productionLineId,
+        limit: 10,
+      });
+      
+      // Download Excel file
+      const byteCharacters = atob(result.base64);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: result.mimeType });
+      
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = result.filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      toast({
+        title: "Xuất Excel thành công",
+        description: `File ${result.filename} đã được tải xuống.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Lỗi xuất Excel",
+        description: "Không thể xuất báo cáo Excel. Vui lòng thử lại.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -66,22 +158,25 @@ export function DefectParetoChart({ showControls = true, compact = false, produc
               Phân tích 80/20: {summary?.itemsIn80Percent || 0} loại lỗi chiếm 80% tổng số
             </CardDescription>
           </div>
-          {showControls && (
-            <Select value={periodDays.toString()} onValueChange={(v) => setPeriodDays(Number(v))}>
-              <SelectTrigger className="w-[120px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="7">7 ngày</SelectItem>
-                <SelectItem value="14">14 ngày</SelectItem>
-                <SelectItem value="30">30 ngày</SelectItem>
-                <SelectItem value="90">90 ngày</SelectItem>
-              </SelectContent>
-            </Select>
-          )}
         </div>
       </CardHeader>
       <CardContent>
+        {/* Filter Bar */}
+        {showControls && (
+          <div className="mb-4">
+            <WidgetFilterBar
+              filters={filters}
+              onFiltersChange={setFilters}
+              showProductionLine={true}
+              showExport={showExport}
+              onExportPdf={handleExportPdf}
+              onExportExcel={handleExportExcel}
+              isExporting={isExporting}
+              compact={compact}
+            />
+          </div>
+        )}
+
         {/* Summary Stats */}
         {summary && (
           <div className="grid grid-cols-4 gap-4 mb-4">
