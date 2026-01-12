@@ -265,12 +265,25 @@ const fallbackLabelsVi: Record<string, string> = {
   "menuGroup.aiVision": "AI Vision",
   "nav.aiVisionDetection": "Phát hiện Lỗi AI",
   "nav.imageComparison": "So sánh Hình ảnh",
+  "nav.snImages": "Hình ảnh SN",
+  "nav.snImageCompare": "So sánh SN",
+  "nav.snImageHistory": "Lịch sử SN",
   "nav.cameraCapture": "Camera Realtime",
   "nav.alertEmailConfig": "Cấu hình Email Cảnh báo",
   "nav.unifiedRealtimeDashboard": "Dashboard Tổng hợp Realtime",
   "nav.aiVisionAnalysis": "Phân tích AI Vision",
   "nav.floorPlanLive": "Floor Plan Live",
   "nav.aviAoiDashboard": "AVI/AOI Dashboard",
+  // AOI/AVI System labels
+  "menuGroup.aoiAviOverview": "Tổng quan AOI/AVI",
+  "menuGroup.aoiAviInspection": "Kiểm tra",
+  "menuGroup.aoiAviCamera": "Camera",
+  "menuGroup.aoiAviReports": "Báo cáo",
+  "menuGroup.aoiAviConfig": "Cấu hình",
+  "nav.defectDetection": "Phát hiện Lỗi",
+  "nav.autoCapture": "Chụp Tự động",
+  "nav.defectStatistics": "Thống kê Lỗi",
+  "nav.notificationHistory": "Lịch sử Thông báo",
 };
 
 const fallbackLabelsEn: Record<string, string> = {
@@ -487,8 +500,21 @@ const fallbackLabelsEn: Record<string, string> = {
   "nav.aiVisionAnalysis": "AI Vision Analysis",
   "nav.floorPlanLive": "Floor Plan Live",
   "nav.aviAoiDashboard": "Dashboard AVI/AOI",
-  "nav.dashboardCustomization": "Tùy chỉnh Dashboard",
-  "nav.batchImageAnalysis": "Phân tích Hình ảnh Hàng loạt",
+  "nav.dashboardCustomization": "Dashboard Customization",
+  "nav.batchImageAnalysis": "Batch Image Analysis",
+  // AOI/AVI System labels
+  "menuGroup.aoiAviOverview": "AOI/AVI Overview",
+  "menuGroup.aoiAviInspection": "Inspection",
+  "menuGroup.aoiAviCamera": "Camera",
+  "menuGroup.aoiAviReports": "Reports",
+  "menuGroup.aoiAviConfig": "Configuration",
+  "nav.defectDetection": "Defect Detection",
+  "nav.autoCapture": "Auto Capture",
+  "nav.defectStatistics": "Defect Statistics",
+  "nav.snImages": "SN Images",
+  "nav.snImageCompare": "SN Compare",
+  "nav.snImageHistory": "SN History",
+  "nav.notificationHistory": "Notification History",
 };
 
 const MIN_WIDTH = 200;

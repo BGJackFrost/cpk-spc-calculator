@@ -20,6 +20,7 @@ import {
   Eye,
   Images,
   Columns,
+  ScanEye,
   type LucideIcon
 } from "lucide-react";
 
@@ -132,6 +133,15 @@ export const SYSTEMS: Record<string, SystemConfig> = {
     color: "cyan",
     description: "IoT Gateway, Sensors & Realtime Data Collection",
     licenseKey: "iot_system",
+  },
+  AOI_AVI: {
+    id: "aoi_avi",
+    name: "AOI/AVI System",
+    shortName: "AOI/AVI",
+    icon: ScanEye,
+    color: "rose",
+    description: "Automated Optical/Visual Inspection",
+    licenseKey: "aoi_avi_system",
   },
 };
 
@@ -582,10 +592,6 @@ export const IOT_MENU: SystemMenuConfig = {
         { id: "iot-3d-floor-plan", icon: Box, labelKey: "nav.iot3DFloorPlan", path: "/iot-3d-floor-plan" },
         { id: "model-3d-management", icon: Box, labelKey: "nav.model3DManagement", path: "/model-3d-management", adminOnly: true },
         { id: "floor-plan-live", icon: Map, labelKey: "nav.floorPlanLive", path: "/floor-plan-live" },
-        { id: "avi-aoi-dashboard", icon: Eye, labelKey: "nav.aviAoiDashboard", path: "/avi-aoi-dashboard" },
-        { id: "dashboard-customization", icon: LayoutGrid, labelKey: "nav.dashboardCustomization", path: "/dashboard-customization" },
-        { id: "batch-image-analysis", icon: Images, labelKey: "nav.batchImageAnalysis", path: "/batch-image-analysis" },
-        { id: "ai-vision-analysis", icon: Camera, labelKey: "nav.aiVisionAnalysis", path: "/ai-vision-analysis" },
         { id: "unified-realtime-dashboard", icon: Layers, labelKey: "nav.unifiedRealtimeDashboard", path: "/unified-realtime-dashboard" },
         { id: "advanced-history", icon: History, labelKey: "nav.advancedHistory", path: "/advanced-history" },
         { id: "machine-api-documentation", icon: FileText, labelKey: "nav.machineApiDocumentation", path: "/machine-api-documentation" },
@@ -632,7 +638,69 @@ export const IOT_MENU: SystemMenuConfig = {
         { id: "auto-resolve-settings", icon: Zap, labelKey: "nav.autoResolveSettings", path: "/auto-resolve-settings", adminOnly: true },
         { id: "latency-monitoring", icon: Activity, labelKey: "nav.latencyMonitoring", path: "/latency-monitoring", adminOnly: true },
         { id: "notification-preferences", icon: Bell, labelKey: "nav.notificationPreferences", path: "/notification-preferences" },
+        { id: "notification-history", icon: History, labelKey: "nav.notificationHistory", path: "/notification-history" },
         { id: "iot-user-guide", icon: BookOpen, labelKey: "nav.iotUserGuide", path: "/iot-user-guide" },
+      ],
+    },
+  ],
+};
+
+// ===== AOI/AVI SYSTEM MENU =====
+export const AOI_AVI_MENU: SystemMenuConfig = {
+  system: SYSTEMS.AOI_AVI,
+  menuGroups: [
+    {
+      id: "aoi-avi-overview",
+      labelKey: "menuGroup.aoiAviOverview",
+      icon: Gauge,
+      defaultOpen: true,
+      items: [
+        { id: "avi-aoi-dashboard", icon: Eye, labelKey: "nav.aviAoiDashboard", path: "/avi-aoi-dashboard" },
+        { id: "ai-vision-analysis", icon: Camera, labelKey: "nav.aiVisionAnalysis", path: "/ai-vision-analysis" },
+        { id: "batch-image-analysis", icon: Images, labelKey: "nav.batchImageAnalysis", path: "/batch-image-analysis" },
+        { id: "dashboard-customization", icon: LayoutGrid, labelKey: "nav.dashboardCustomization", path: "/dashboard-customization" },
+      ],
+    },
+    {
+      id: "aoi-avi-inspection",
+      labelKey: "menuGroup.aoiAviInspection",
+      icon: ScanEye,
+      items: [
+        { id: "image-comparison", icon: ArrowLeftRight, labelKey: "nav.imageComparison", path: "/image-comparison", licenseFeature: "aoi_avi" },
+        { id: "sn-images", icon: Images, labelKey: "nav.snImages", path: "/sn-images", licenseFeature: "aoi_avi" },
+        { id: "sn-image-compare", icon: Columns, labelKey: "nav.snImageCompare", path: "/sn-image-compare", licenseFeature: "aoi_avi" },
+        { id: "sn-image-history", icon: History, labelKey: "nav.snImageHistory", path: "/sn-image-history", licenseFeature: "aoi_avi" },
+        { id: "defect-detection", icon: AlertTriangle, labelKey: "nav.defectDetection", path: "/ai-vision-detection", licenseFeature: "aoi_avi" },
+      ],
+    },
+    {
+      id: "aoi-avi-camera",
+      labelKey: "menuGroup.aoiAviCamera",
+      icon: Camera,
+      items: [
+        { id: "camera-management", icon: Camera, labelKey: "nav.cameraManagement", path: "/camera-management", licenseFeature: "aoi_avi" },
+        { id: "camera-capture", icon: Camera, labelKey: "nav.cameraCapture", path: "/camera-capture", licenseFeature: "aoi_avi" },
+        { id: "camera-capture-schedule", icon: Clock, labelKey: "nav.cameraCaptureSchedule", path: "/camera-capture-schedule", licenseFeature: "aoi_avi" },
+        { id: "image-history", icon: Calendar, labelKey: "nav.imageHistory", path: "/image-history", licenseFeature: "aoi_avi" },
+      ],
+    },
+    {
+      id: "aoi-avi-reports",
+      labelKey: "menuGroup.aoiAviReports",
+      icon: BarChart3,
+      items: [
+        { id: "quality-statistics-report", icon: BarChart3, labelKey: "nav.qualityStatisticsReport", path: "/quality-statistics-report", licenseFeature: "aoi_avi" },
+        { id: "defect-statistics", icon: BarChart3, labelKey: "nav.defectStatistics", path: "/defect-statistics" },
+        { id: "ntf-dashboard", icon: TrendingUp, labelKey: "nav.ntfDashboard", path: "/ntf-dashboard" },
+      ],
+    },
+    {
+      id: "aoi-avi-config",
+      labelKey: "menuGroup.aoiAviConfig",
+      icon: Settings,
+      items: [
+        { id: "alert-email-config", icon: Mail, labelKey: "nav.alertEmailConfig", path: "/alert-email-config", adminOnly: true, licenseFeature: "aoi_avi" },
+        { id: "auto-capture", icon: Camera, labelKey: "nav.autoCapture", path: "/auto-capture", adminOnly: true, licenseFeature: "aoi_avi" },
       ],
     },
   ],
@@ -648,6 +716,7 @@ export const ALL_SYSTEM_MENUS: Record<string, SystemMenuConfig> = {
   system: SYSTEM_MENU,
   ai: AI_MENU,
   iot: IOT_MENU,
+  aoi_avi: AOI_AVI_MENU,
 };
 
 // Get menu for a specific system

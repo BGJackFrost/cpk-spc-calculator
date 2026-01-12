@@ -1152,4 +1152,88 @@ export const reportRouter = router({
         })),
       };
     }),
+
+  // Xuất báo cáo PDF với biểu đồ thực tế
+  exportPdfWithCharts: protectedProcedure
+    .input(z.object({
+      startDate: z.date(),
+      endDate: z.date(),
+      productionLineId: z.number().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const { getSpcAnalysisReport, getCpkTrendByDay } = await import("./db");
+      const { generateAndUploadSpcReport } = await import("./services/pdfReportGenerator");
+      
+      // Lấy dữ liệu báo cáo
+      const data = await getSpcAnalysisReport(input.startDate, input.endDate, input.productionLineId);
+      
+      // Tính số ngày
+      const days = Math.ceil((input.endDate.getTime() - input.startDate.getTime()) / (1000 * 60 * 60 * 24));
+      
+      // Lấy trend CPK
+      const cpkTrend = await getCpkTrendByDay(days);
+      
+      // Tính toán thống kê
+      const cpkValues = data.filter(d => d.cpk).map(d => (d.cpk || 0) / 1000);
+      const totalSamples = data.length;
+      const avgCpk = cpkValues.length > 0 ? cpkValues.reduce((a, b) => a + b, 0) / cpkValues.length : 0;
+      const minCpk = cpkValues.length > 0 ? Math.min(...cpkValues) : 0;
+      const maxCpk = cpkValues.length > 0 ? Math.max(...cpkValues) : 0;
+      const violationCount = cpkValues.filter(c => c < 1.0).length;
+      const warningCount = cpkValues.filter(c => c >= 1.0 && c < 1.33).length;
+      const goodCount = cpkValues.filter(c => c >= 1.33).length;
+      
+      // Group by ca làm việc
+      const byShift: Record<string, number[]> = { morning: [], afternoon: [], night: [] };
+      for (const d of data) {
+        const hour = new Date(d.createdAt).getHours();
+        const cpk = d.cpk ? d.cpk / 1000 : null;
+        if (cpk !== null) {
+          if (hour >= 6 && hour < 14) byShift.morning.push(cpk);
+          else if (hour >= 14 && hour < 22) byShift.afternoon.push(cpk);
+          else byShift.night.push(cpk);
+        }
+      }
+      
+      const shiftStats = {
+        morning: {
+          count: byShift.morning.length,
+          avgCpk: byShift.morning.length > 0 ? byShift.morning.reduce((a, b) => a + b, 0) / byShift.morning.length : 0,
+        },
+        afternoon: {
+          count: byShift.afternoon.length,
+          avgCpk: byShift.afternoon.length > 0 ? byShift.afternoon.reduce((a, b) => a + b, 0) / byShift.afternoon.length : 0,
+        },
+        night: {
+          count: byShift.night.length,
+          avgCpk: byShift.night.length > 0 ? byShift.night.reduce((a, b) => a + b, 0) / byShift.night.length : 0,
+        },
+      };
+      
+      // Format date range string
+      const dateRangeStr = `${input.startDate.toLocaleDateString('vi-VN')} - ${input.endDate.toLocaleDateString('vi-VN')}`;
+      
+      // Generate PDF
+      const result = await generateAndUploadSpcReport({
+        title: 'BÁO CÁO TỔNG HỢP SPC',
+        dateRange: dateRangeStr,
+        generatedAt: new Date(),
+        summary: {
+          totalSamples,
+          avgCpk,
+          minCpk,
+          maxCpk,
+          violationCount,
+          warningCount,
+          goodCount,
+        },
+        shiftStats,
+        cpkTrend: cpkTrend.map(t => ({
+          date: t.date,
+          cpk: t.avgCpk,
+        })),
+      }, ctx.user.id);
+      
+      return result;
+    }),
 });

@@ -1,12 +1,13 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import * as XLSX from "xlsx";
+import { DateRange } from "react-day-picker";
 import DashboardLayout from "@/components/DashboardLayout";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { DateRangePicker } from "@/components/DateRangePicker";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { 
@@ -24,7 +25,8 @@ import {
   Sun,
   Sunset,
   Moon,
-  FileSpreadsheet
+  FileSpreadsheet,
+  FileDown
 } from "lucide-react";
 import {
   LineChart,
@@ -44,20 +46,33 @@ import {
 
 export default function SpcReport() {
   const { t } = useLanguage();
-  const [dateRange, setDateRange] = useState<"7" | "14" | "30" | "90">("30");
   const [isExporting, setIsExporting] = useState(false);
+  
+  // Initialize with last 30 days
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - 30);
+    return { from: startDate, to: endDate };
+  });
+
+  // Calculate days for trend query
+  const days = useMemo(() => {
+    if (!dateRange?.from || !dateRange?.to) return 30;
+    return Math.ceil((dateRange.to.getTime() - dateRange.from.getTime()) / (1000 * 60 * 60 * 24));
+  }, [dateRange]);
 
   // Fetch CPK trend data
   const { data: cpkTrend, isLoading: trendLoading, refetch: refetchTrend } = trpc.report.getCpkTrend.useQuery({
-    days: parseInt(dateRange),
+    days,
   });
 
   // Fetch SPC report
-  const startDate = new Date();
-  startDate.setDate(startDate.getDate() - parseInt(dateRange));
+  const startDate = dateRange?.from || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const endDate = dateRange?.to || new Date();
   const { data: spcReport, isLoading: reportLoading, refetch: refetchReport } = trpc.report.getSpcReport.useQuery({
     startDate,
-    endDate: new Date(),
+    endDate,
   });
 
   const handleRefresh = () => {
@@ -114,50 +129,25 @@ export default function SpcReport() {
     }
   };
 
+  // Export PDF with charts mutation
+  const exportPdfMutation = trpc.report.exportPdfWithCharts.useMutation({
+    onSuccess: (result) => {
+      // Open PDF in new tab
+      window.open(result.url, '_blank');
+      toast.success("Xuất PDF thành công! Đang mở file...");
+    },
+    onError: (error) => {
+      toast.error("Lỗi xuất PDF: " + error.message);
+    },
+  });
+
   const handleExportPDF = async () => {
     setIsExporting(true);
     try {
-      // Create a simple text-based report for now
-      if (!spcReport) {
-        toast.error("Không có dữ liệu để xuất");
-        return;
-      }
-      
-      const reportContent = `
-BÁO CÁO TỔNG HỢP SPC
-======================
-Thời gian: ${dateRange} ngày gần nhất
-Ngày xuất: ${new Date().toLocaleDateString('vi-VN')}
-
-THỐNG KÊ TỔNG HỢP
-------------------
-Tổng số mẫu: ${spcReport.summary.totalSamples}
-CPK Trung bình: ${spcReport.summary.avgCpk.toFixed(3)}
-CPK Thấp nhất: ${spcReport.summary.minCpk.toFixed(3)}
-CPK Cao nhất: ${spcReport.summary.maxCpk.toFixed(3)}
-Số vi phạm (CPK < 1.0): ${spcReport.summary.violationCount}
-Số cảnh báo (1.0 ≤ CPK < 1.33): ${spcReport.summary.warningCount}
-Số đạt chuẩn (CPK ≥ 1.33): ${spcReport.summary.goodCount}
-
-THỐNG KÊ THEO CA
------------------
-Ca Sáng (6h-14h): ${spcReport.shiftStats.morning.count} mẫu, CPK TB: ${spcReport.shiftStats.morning.avgCpk.toFixed(3)}
-Ca Chiều (14h-22h): ${spcReport.shiftStats.afternoon.count} mẫu, CPK TB: ${spcReport.shiftStats.afternoon.avgCpk.toFixed(3)}
-Ca Tối (22h-6h): ${spcReport.shiftStats.night.count} mẫu, CPK TB: ${spcReport.shiftStats.night.avgCpk.toFixed(3)}
-      `.trim();
-      
-      // Create and download text file
-      const blob = new Blob([reportContent], { type: 'text/plain;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `bao-cao-spc-${new Date().toISOString().split('T')[0]}.txt`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      
-      toast.success("Xuất báo cáo thành công!");
+      await exportPdfMutation.mutateAsync({
+        startDate,
+        endDate,
+      });
     } finally {
       setIsExporting(false);
     }
@@ -192,9 +182,9 @@ Ca Tối (22h-6h): ${spcReport.shiftStats.night.count} mẫu, CPK TB: ${spcRepor
               {isExporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileSpreadsheet className="h-4 w-4 mr-2" />}
               Xuất Excel
             </Button>
-            <Button variant="outline" size="sm" onClick={handleExportPDF} disabled={isExporting}>
-              {isExporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
-              Xuất TXT
+            <Button variant="default" size="sm" onClick={handleExportPDF} disabled={isExporting}>
+              {isExporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileDown className="h-4 w-4 mr-2" />}
+              Xuất PDF
             </Button>
           </div>
         </div>
@@ -207,17 +197,11 @@ Ca Tối (22h-6h): ${spcReport.shiftStats.night.count} mẫu, CPK TB: ${spcRepor
                 <Calendar className="h-4 w-4" />
                 Khoảng thời gian:
               </Label>
-              <Select value={dateRange} onValueChange={(v) => setDateRange(v as any)}>
-                <SelectTrigger className="w-40">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="7">7 ngày qua</SelectItem>
-                  <SelectItem value="14">14 ngày qua</SelectItem>
-                  <SelectItem value="30">30 ngày qua</SelectItem>
-                  <SelectItem value="90">90 ngày qua</SelectItem>
-                </SelectContent>
-              </Select>
+              <DateRangePicker
+                dateRange={dateRange}
+                onDateRangeChange={setDateRange}
+                showPresets={true}
+              />
             </div>
           </CardContent>
         </Card>
@@ -233,7 +217,7 @@ Ca Tối (22h-6h): ${spcReport.shiftStats.night.count} mẫu, CPK TB: ${spcRepor
               <CardContent>
                 <div className="text-2xl font-bold">{spcReport.summary.totalSamples}</div>
                 <p className="text-xs text-muted-foreground">
-                  Trong {dateRange} ngày qua
+                  Trong {days} ngày qua
                 </p>
               </CardContent>
             </Card>

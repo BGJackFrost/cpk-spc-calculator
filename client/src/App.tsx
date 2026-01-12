@@ -71,6 +71,7 @@ import NotificationSettings from "./pages/NotificationSettings";
 import NotificationPreferences from "./pages/NotificationPreferences";
 import AlertUnified from "./pages/AlertUnified";
 import NotificationUnified from "./pages/NotificationUnified";
+import NotificationHistory from "./pages/NotificationHistory";
 import EnvironmentAlertConfig from "./pages/EnvironmentAlertConfig";
 import PerformanceDropAlertConfig from "./pages/PerformanceDropAlertConfig";
 import PushNotificationSettings from "./pages/PushNotificationSettings";
@@ -333,6 +334,7 @@ function Router() {
       <Route path="/notification-preferences" component={NotificationPreferences} />
       <Route path="/alert-unified" component={AlertUnified} />
       <Route path="/notification-unified" component={NotificationUnified} />
+      <Route path="/notification-history" component={NotificationHistory} />
       <Route path="/environment-alerts" component={EnvironmentAlertConfig} />
       <Route path="/performance-drop-alert" component={PerformanceDropAlertConfig} />
       <Route path="/push-notification-settings" component={PushNotificationSettings} />

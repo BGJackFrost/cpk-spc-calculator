@@ -9995,3 +9995,51 @@
 - [x] Thêm bộ lọc thời gian cho Auto-NTF Suggestions
 - [x] Thêm bộ lọc production line cho Auto-NTF Suggestions
 - [x] Tạo component WidgetFilterBar tái sử dụng cho các widgets
+
+
+## Phase 10 - Cải tiến AOI/AVI, Date Range, Notifications và PDF Charts
+
+### Tách module AOI/AVI
+- [x] Tạo menu riêng cho AOI/AVI ở Top menu
+- [x] Tách các chức năng AOI/AVI sang module riêng
+- [x] Cập nhật navigation và routing
+
+### Date Range Picker
+- [x] Thêm Date Range Picker component cho phép chọn khoảng thời gian tùy chỉnh
+- [x] Tích hợp vào trang Báo cáo SPC thay thế preset 7/14/30 ngày
+- [x] Tích hợp vào các trang phân tích khác
+
+### Lưu Notification vào Database
+- [x] Tạo bảng notifications trong database schema (đã có userNotifications)
+- [x] Tạo API lưu notification khi có cảnh báo (đã có userNotificationRouter)
+- [x] Tạo trang xem lịch sử thông báo (NotificationHistory.tsx)
+- [ ] Hiển thị badge số thông báo chưa đọc
+
+### Thêm biểu đồ vào báo cáo PDF
+- [ ] Cài đặt puppeteer hoặc chart rendering library
+- [ ] Tạo service render chart thành hình ảnh
+- [ ] Tích hợp chart images vào PDF report
+- [ ] Cập nhật PDF export với biểu đồ thực tế
+
+
+## Phase 10 - Cải tiến AOI/AVI, Date Range, Notifications và PDF Charts
+
+### Tách module AOI/AVI
+- [x] Tạo menu riêng cho AOI/AVI ở Top menu
+- [x] Tách các chức năng AOI/AVI sang module riêng
+- [x] Cập nhật navigation và routing
+
+### Date Range Picker
+- [x] Thêm Date Range Picker component cho phép chọn khoảng thời gian tùy chỉnh
+- [x] Tích hợp vào trang Báo cáo SPC thay thế preset 7/14/30 ngày
+
+### Lưu Notification vào Database
+- [x] Tạo bảng notifications trong database schema (đã có userNotifications)
+- [x] Tạo API lưu notification khi có cảnh báo (đã có userNotificationRouter)
+- [x] Tạo trang xem lịch sử thông báo (NotificationHistory.tsx)
+
+### Thêm biểu đồ vào báo cáo PDF
+- [x] Cài đặt chartjs-node-canvas và pdfkit
+- [x] Tạo service render biểu đồ trên server (chartRenderer.ts)
+- [x] Tạo PDF generator với biểu đồ (pdfReportGenerator.ts)
+- [x] Thêm nút xuất PDF với biểu đồ trong trang báo cáo SPC
