@@ -91,6 +91,9 @@ import { factoryWorkshopRouter } from "./routers/factoryWorkshopRouter";
 import { measurementRemarkRouter } from "./routers/measurementRemarkRouter";
 import { dashboardCustomizationRouter } from "./routers/dashboardCustomizationRouter";
 import { batchImageAnalysisRouter } from "./routers/batchImageAnalysisRouter";
+import { customWidgetRouter } from "./routers/customWidgetRouter";
+import { cameraConfigRouter } from "./routers/cameraConfigRouter";
+import { snImageRouter } from "./routers/snImageRouter";
 import { maintenanceWorkOrderRouter } from "./maintenanceWorkOrderRouter";
 import { mobileRouter } from "./mobileRouter";
 import { triggerLicenseExpiryCheck } from "./scheduledJobs";
@@ -12776,6 +12779,11 @@ Hãy trả về JSON với format:
   scheduledReport: scheduledReportRouter,
   aiVisionDashboard: aiVisionDashboardRouter,
   lineComparison: lineComparisonRouter,
+
+  // Phase 72 - Custom Widgets, Camera Integration, SN Images
+  customWidget: customWidgetRouter,
+  cameraConfig: cameraConfigRouter,
+  snImage: snImageRouter,
 });
 
 export type AppRouter = typeof appRouter;

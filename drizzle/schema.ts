@@ -7113,3 +7113,128 @@ export const batchImageItems = mysqlTable("batch_image_items", {
 
 export type BatchImageItem = typeof batchImageItems.$inferSelect;
 export type InsertBatchImageItem = typeof batchImageItems.$inferInsert;
+
+
+// ============================================
+// Custom Widgets - Widget tùy chỉnh với SQL/API
+// ============================================
+export const customWidgets = mysqlTable("custom_widgets", {
+	id: int().autoincrement().notNull(),
+	name: varchar({ length: 255 }).notNull(),
+	description: text(),
+	widgetType: mysqlEnum("widget_type", ['sql_query', 'api_endpoint', 'chart', 'table', 'kpi_card', 'gauge', 'custom']).notNull(),
+	// SQL Query config
+	sqlQuery: text("sql_query"),
+	// API Endpoint config
+	apiEndpoint: varchar("api_endpoint", { length: 1000 }),
+	apiMethod: mysqlEnum("api_method", ['GET', 'POST']).default('GET'),
+	apiHeaders: json("api_headers"),
+	apiBody: json("api_body"),
+	// Display config
+	width: int().default(1).notNull(),
+	height: int().default(1).notNull(),
+	position: int().default(0).notNull(),
+	refreshInterval: int("refresh_interval").default(60).notNull(),
+	chartType: mysqlEnum("chart_type", ['line', 'bar', 'pie', 'doughnut', 'area', 'scatter', 'radar']),
+	chartConfig: json("chart_config"),
+	// Access control
+	userId: int("user_id").notNull(),
+	isPublic: int("is_public").default(0).notNull(),
+	// Metadata
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("idx_custom_widgets_user").on(table.userId),
+	index("idx_custom_widgets_type").on(table.widgetType),
+	index("idx_custom_widgets_public").on(table.isPublic),
+]);
+
+export type CustomWidget = typeof customWidgets.$inferSelect;
+export type InsertCustomWidget = typeof customWidgets.$inferInsert;
+
+// ============================================
+// Camera Configs - Cấu hình camera AVI/AOI
+// ============================================
+export const cameraConfigs = mysqlTable("camera_configs", {
+	id: int().autoincrement().notNull(),
+	name: varchar({ length: 255 }).notNull(),
+	description: text(),
+	cameraType: mysqlEnum("camera_type", ['avi', 'aoi', 'ip_camera', 'usb_camera', 'rtsp', 'http_stream']).notNull(),
+	connectionUrl: varchar("connection_url", { length: 1000 }).notNull(),
+	// Authentication
+	username: varchar({ length: 100 }),
+	password: varchar({ length: 255 }),
+	apiKey: varchar("api_key", { length: 255 }),
+	// Analysis config
+	analysisType: mysqlEnum("analysis_type", ['defect_detection', 'quality_inspection', 'measurement', 'ocr', 'custom']).default('quality_inspection'),
+	analysisModelId: int("analysis_model_id"),
+	analysisConfig: json("analysis_config"),
+	// Production line association
+	productionLineId: int("production_line_id"),
+	workstationId: int("workstation_id"),
+	machineId: int("machine_id"),
+	// Alert config
+	alertEnabled: int("alert_enabled").default(1).notNull(),
+	alertThreshold: decimal("alert_threshold", { precision: 5, scale: 2 }).default('0.80'),
+	alertEmails: text("alert_emails"),
+	// Status
+	status: mysqlEnum(['active', 'inactive', 'error', 'disconnected']).default('inactive').notNull(),
+	lastConnectedAt: timestamp("last_connected_at", { mode: 'string' }),
+	lastErrorMessage: text("last_error_message"),
+	// Metadata
+	createdBy: int("created_by"),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("idx_camera_configs_type").on(table.cameraType),
+	index("idx_camera_configs_status").on(table.status),
+	index("idx_camera_configs_line").on(table.productionLineId),
+]);
+
+export type CameraConfig = typeof cameraConfigs.$inferSelect;
+export type InsertCameraConfig = typeof cameraConfigs.$inferInsert;
+
+// ============================================
+// SN Images - Ảnh theo Serial Number với điểm đo
+// ============================================
+export const snImages = mysqlTable("sn_images", {
+	id: int().autoincrement().notNull(),
+	serialNumber: varchar("serial_number", { length: 100 }).notNull(),
+	imageUrl: varchar("image_url", { length: 1000 }).notNull(),
+	thumbnailUrl: varchar("thumbnail_url", { length: 1000 }),
+	// Measurement data
+	measurementPoints: json("measurement_points"), // [{x, y, label, value, unit, result, tolerance: {min, max}}]
+	defectLocations: json("defect_locations"), // [{x, y, width, height, type, severity}]
+	// Analysis results
+	analysisResult: mysqlEnum("analysis_result", ['ok', 'ng', 'warning', 'pending']).default('pending'),
+	qualityScore: decimal("quality_score", { precision: 5, scale: 2 }),
+	defectsFound: int("defects_found").default(0).notNull(),
+	measurementsCount: int("measurements_count").default(0).notNull(),
+	// Source info
+	cameraId: int("camera_id"),
+	batchJobId: int("batch_job_id"),
+	source: mysqlEnum(['camera', 'upload', 'api', 'batch_job']).default('upload'),
+	// Product/Line association
+	productId: int("product_id"),
+	productionLineId: int("production_line_id"),
+	workstationId: int("workstation_id"),
+	// Metadata
+	capturedAt: timestamp("captured_at", { mode: 'string' }),
+	analyzedAt: timestamp("analyzed_at", { mode: 'string' }),
+	analyzedBy: int("analyzed_by"),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("idx_sn_images_sn").on(table.serialNumber),
+	index("idx_sn_images_result").on(table.analysisResult),
+	index("idx_sn_images_camera").on(table.cameraId),
+	index("idx_sn_images_product").on(table.productId),
+	index("idx_sn_images_line").on(table.productionLineId),
+	index("idx_sn_images_captured").on(table.capturedAt),
+]);
+
+export type SnImage = typeof snImages.$inferSelect;
+export type InsertSnImage = typeof snImages.$inferInsert;

@@ -245,6 +245,9 @@ import AviAoiDashboard from "./pages/AviAoiDashboard";
 import DashboardCustomization from "./pages/DashboardCustomization";
 import BatchImageAnalysis from "./pages/BatchImageAnalysis";
 import MachineApiDocumentation from "./pages/MachineApiDocumentation";
+import CustomWidgets from "./pages/CustomWidgets";
+import CameraManagement from "./pages/CameraManagement";
+import SNImageHistory from "./pages/SNImageHistory";
 
 // MMS
 import MMSDashboard from "./pages/MMSDashboard";
@@ -495,6 +498,9 @@ function Router() {
       <Route path="/dashboard-customization" component={DashboardCustomization} />
       <Route path="/batch-image-analysis" component={BatchImageAnalysis} />
       <Route path="/machine-api-documentation" component={MachineApiDocumentation} />
+      <Route path="/custom-widgets" component={CustomWidgets} />
+      <Route path="/camera-management" component={CameraManagement} />
+      <Route path="/sn-image-history" component={SNImageHistory} />
 
       {/* MMS */}
       <Route path="/mms-dashboard" component={MMSDashboard} />
