@@ -8948,9 +8948,37 @@
 - [x] Thêm routes vào App.tsx
 - [x] Thêm menu items vào systemMenu.ts (IOT_MENU)
 - [x] Thêm translations vào vi.json và en.json
+## Phase 182 - Tích hợp S3 Storage, AI Vision và Liên kết Ảnh
 
+### Tích hợp lưu ảnh vào S3 storage và database
+- [x] Cập nhật snImageRouter với tính năng upload S3
+- [x] Tạo trang SNImageUpload với giao diện upload ảnh
+- [x] Hỗ trợ upload nhiều ảnh cùng lúc
+- [x] Lưu metadata vào database (URL, fileKey, mimeType)
 
-## Phase 15 - Tích hợp dữ liệu thực, Realtime SSE, AI Vision Analysis
+### Kết nối AI comparison với backend LLM vision
+- [x] Cập nhật aiImageComparisonRouter với AI vision thực sự
+- [x] Tạo trang AIImageComparison với nhiều chế độ phân tích
+- [x] Hỗ trợ 5 loại phân tích: difference, quality, defect, measurement, similarity
+- [x] Lưu kết quả so sánh vào database
+- [x] Hiển thị lịch sử và thống kê
+
+### Liên kết ảnh với sản phẩm/dây chuyền/công trạm
+- [x] Thêm trường productId, productionLineId, workstationId vào snImages
+- [x] Tạo API lấy danh sách products, productionLines, workstations
+- [x] Cập nhật UI để chọn liên kết khi upload
+- [x] Hỗ trợ lọc ảnh theo sản phẩm/dây chuyền/công trạm
+
+### Menu và Navigation
+- [x] Thêm route /sn-image-upload và /ai-image-comparison
+- [x] Thêm menu items vào AI Vision group
+- [x] Thêm fallback labels cho Việt và English
+
+### Unit Tests
+- [x] Tạo snImageRouter.test.ts
+- [x] Tạo aiImageComparisonRouter.test.ts
+
+## Phase 182 - Tích hợp S3 Sliệu thực, Realtime SSE, AI Vision Analysis
 
 ### Tích hợp dữ liệu thực từ database
 - [x] Tạo realtimeRouter với API endpoints cho dữ liệu máy móc realtime
