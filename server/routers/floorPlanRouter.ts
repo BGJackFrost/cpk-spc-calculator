@@ -273,6 +273,116 @@ export const floorPlanRouter = router({
         return { success: false, error: 'Failed to update machine positions' };
       }
     }),
+
+  // Save floor plan (create or update)
+  save: protectedProcedure
+    .input(z.object({
+      id: z.number().optional(),
+      name: z.string().min(1),
+      width: z.number().default(1200),
+      height: z.number().default(800),
+      gridSize: z.number().default(20),
+      showGrid: z.boolean().default(true),
+      items: z.array(z.object({
+        id: z.string(),
+        type: z.string(),
+        name: z.string(),
+        x: z.number(),
+        y: z.number(),
+        width: z.number(),
+        height: z.number(),
+        rotation: z.number(),
+        color: z.string(),
+        status: z.string().optional(),
+        machineId: z.number().optional(),
+        iotDeviceId: z.number().optional(),
+        iotDeviceCode: z.string().optional(),
+        iotDeviceType: z.string().optional(),
+        layerId: z.string().optional(),
+        groupId: z.string().optional(),
+        metadata: z.record(z.any()).optional(),
+      })).default([]),
+      layers: z.array(z.object({
+        id: z.string(),
+        name: z.string(),
+        visible: z.boolean(),
+        locked: z.boolean(),
+        color: z.string(),
+        zIndex: z.number(),
+      })).optional(),
+      groups: z.array(z.object({
+        id: z.string(),
+        name: z.string(),
+        color: z.string(),
+        itemIds: z.array(z.string()),
+        locked: z.boolean().optional(),
+        visible: z.boolean().optional(),
+      })).optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) return { success: false, error: 'Database not available' };
+
+      try {
+        // Convert items to machinePositions format for storage
+        const machinePositions = input.items.map(item => ({
+          id: item.id,
+          type: item.type,
+          name: item.name,
+          x: item.x,
+          y: item.y,
+          width: item.width,
+          height: item.height,
+          rotation: item.rotation,
+          color: item.color,
+          status: item.status,
+          machineId: item.machineId,
+          iotDeviceId: item.iotDeviceId,
+          iotDeviceCode: item.iotDeviceCode,
+          iotDeviceType: item.iotDeviceType,
+          layerId: item.layerId,
+          groupId: item.groupId,
+          metadata: {
+            ...item.metadata,
+            layers: input.layers,
+            groups: input.groups,
+            showGrid: input.showGrid,
+          },
+        }));
+
+        if (input.id) {
+          // Update existing
+          await db.update(floorPlanConfigs)
+            .set({
+              name: input.name,
+              width: input.width,
+              height: input.height,
+              gridSize: input.gridSize,
+              machinePositions: machinePositions,
+            })
+            .where(eq(floorPlanConfigs.id, input.id));
+
+          return { success: true, id: input.id };
+        } else {
+          // Create new
+          const result = await db.insert(floorPlanConfigs).values({
+            name: input.name,
+            width: input.width,
+            height: input.height,
+            gridSize: input.gridSize,
+            machinePositions: machinePositions,
+            isActive: 1,
+            createdBy: ctx.user?.id,
+          });
+
+          const insertId = Number(result[0].insertId);
+          return { success: true, id: insertId };
+        }
+      } catch (error) {
+        console.error('Error saving floor plan:', error);
+        return { success: false, error: 'Failed to save floor plan' };
+      }
+    }),
 });
 
 export default floorPlanRouter;

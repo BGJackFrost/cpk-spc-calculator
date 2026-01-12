@@ -46,6 +46,10 @@ import MeasurementStandardsDashboard from "./pages/MeasurementStandardsDashboard
 // Production & Factory Management
 import ProductionLineManagement from "./pages/ProductionLineManagement";
 import FactoryManagement from "./pages/FactoryManagement";
+import FloorPlanHeatmapPage from "./pages/FloorPlanHeatmapPage";
+import IoTFloorPlanPage from "./pages/IoTFloorPlanPage";
+import IoT3DFloorPlanPage from "./pages/IoT3DFloorPlanPage";
+import FloorPlanLivePage from "./pages/FloorPlanLivePage";
 import WorkshopManagement from "./pages/WorkshopManagement";
 import WorkstationManagement from "./pages/WorkstationManagement";
 import MachineManagement from "./pages/MachineManagement";
@@ -245,6 +249,9 @@ import ImageComparison from "./pages/ImageComparison";
 import AviAoiDashboard from "./pages/AviAoiDashboard";
 import DashboardCustomization from "./pages/DashboardCustomization";
 import BatchImageAnalysis from "./pages/BatchImageAnalysis";
+import RealtimeInspection from "./pages/RealtimeInspection";
+import GoldenSample from "./pages/GoldenSample";
+import AiModelManagement from "./pages/AiModelManagement";
 import MachineApiDocumentation from "./pages/MachineApiDocumentation";
 import CustomWidgets from "./pages/CustomWidgets";
 import CameraManagement from "./pages/CameraManagement";
@@ -316,6 +323,10 @@ function Router() {
       <Route path="/machine-types" component={MachineTypeManagement} />
       <Route path="/machine-areas" component={MachineAreaManagement} />
       <Route path="/machine/:id" component={MachineDetail} />
+      <Route path="/floor-plan-heatmap" component={FloorPlanHeatmapPage} />
+      <Route path="/iot-floor-plan" component={IoTFloorPlanPage} />
+      <Route path="/iot-3d-floor-plan" component={IoT3DFloorPlanPage} />
+      <Route path="/floor-plan-live" component={FloorPlanLivePage} />
 
       {/* Defect & Quality */}
       <Route path="/defects" component={DefectManagement} />
@@ -513,6 +524,9 @@ function Router() {
       <Route path="/quality-statistics-report" component={QualityStatisticsReport} />
       <Route path="/sn-image-compare" component={SNImageCompare} />
       <Route path="/sn-images" component={SnImages} />
+      <Route path="/realtime-inspection" component={RealtimeInspection} />
+      <Route path="/golden-sample" component={GoldenSample} />
+      <Route path="/ai-model-management" component={AiModelManagement} />
 
       {/* MMS */}
       <Route path="/mms-dashboard" component={MMSDashboard} />

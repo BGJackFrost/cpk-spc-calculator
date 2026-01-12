@@ -10059,3 +10059,73 @@
 - [x] Thêm nút export lịch sử thông báo ra Excel
 - [x] Thêm nút export lịch sử thông báo ra CSV
 - [x] Tạo API endpoint xuất dữ liệu thông báo
+
+
+## Phase 11 - Di chuyển chức năng trực quan hóa và nâng cao AOI/AVI
+
+### Di chuyển chức năng trực quan hóa nhà máy sang module Production
+- [ ] Di chuyển Floor Plan Designer từ IoT sang Production menu
+- [ ] Di chuyển Floor Plan 2D từ IoT sang Production menu
+- [ ] Di chuyển Floor Plan 3D từ IoT sang Production menu
+- [ ] Di chuyển Floor Plan Live từ IoT sang Production menu
+- [ ] Di chuyển Model 3D Management từ IoT sang Production menu
+- [ ] Cập nhật systemMenu.ts với cấu trúc menu mới
+- [ ] Cập nhật routing và navigation
+
+### Rà soát và hoàn thiện chức năng trực quan hóa nhà máy
+- [ ] Rà soát FloorPlanDesigner component - chức năng kéo thả
+- [ ] Rà soát FloorPlan3D component - hiển thị 3D
+- [ ] Rà soát FloorPlanHeatMap component - bản đồ nhiệt
+- [ ] Rà soát FloorPlanViewer component - xem sơ đồ
+- [ ] Rà soát FloorPlanEditor component - chỉnh sửa sơ đồ
+- [ ] Hoàn thiện tích hợp realtime status cho các máy trên sơ đồ
+- [ ] Hoàn thiện export sơ đồ ra PDF/PNG
+
+### Rà soát và nâng cao module AOI/AVI
+- [ ] Rà soát AviAoiDashboard - tổng quan kiểm tra
+- [ ] Hoàn thiện tab Floor Plan trong AviAoiDashboard với tích hợp FloorPlan components
+- [ ] Hoàn thiện tab AI Vision với các chức năng phát hiện lỗi
+- [ ] Rà soát chức năng Image Comparison
+- [ ] Rà soát chức năng SN Image History
+- [ ] Rà soát chức năng Camera Management
+- [ ] Rà soát chức năng Batch Image Analysis
+- [ ] Hoàn thiện realtime SSE cho AVI/AOI inspection results
+- [ ] Hoàn thiện biểu đồ thống kê pass/fail rate
+- [ ] Hoàn thiện export báo cáo kiểm tra
+
+
+## Phase - Di chuyển Factory Visualization và Nâng cao AOI/AVI
+
+### Di chuyển Factory Visualization sang Production
+- [x] Di chuyển Floor Plan Designer từ IoT sang Production menu
+- [x] Di chuyển Floor Plan 2D/3D sang Production menu
+- [x] Di chuyển Floor Plan Live sang Production menu
+- [x] Di chuyển Model 3D Management sang Production menu
+- [x] Cập nhật routes và navigation
+- [x] Thêm trang FloorPlanHeatmapPage mới
+
+### Rà soát và hoàn thiện trực quan hóa nhà máy
+- [x] Kiểm tra FloorPlanDesigner component
+- [x] Kiểm tra FloorPlan3D component
+- [x] Kiểm tra FloorPlanHeatMap component
+- [x] Kiểm tra FloorPlanViewer component
+- [x] Tạo trang IoTFloorPlanPage mới
+- [x] Tạo trang IoT3DFloorPlanPage mới
+- [x] Tạo trang FloorPlanLivePage mới
+- [x] Thêm procedure save vào floorPlanRouter
+
+### Nâng cao module AOI/AVI
+- [x] Thêm Realtime Inspection page (RealtimeInspection.tsx)
+- [x] Thêm Golden Sample management (GoldenSample.tsx)
+- [x] Thêm AI Model Management (AiModelManagement.tsx)
+- [x] Cập nhật AOI_AVI_MENU với các chức năng mới
+- [x] Thêm labels tiếng Việt và tiếng Anh cho menu mới
+- [ ] Thêm AI Training Data page (placeholder)
+- [ ] Thêm AI Accuracy Report (placeholder)
+- [ ] Thêm Defect Classification (placeholder)
+- [ ] Thêm Camera Calibration (placeholder)
+- [ ] Thêm Defect Pareto chart (placeholder)
+- [ ] Thêm Inspection Trend analysis (placeholder)
+- [ ] Thêm Yield Analysis (placeholder)
+- [ ] Thêm Inspection Rules configuration (placeholder)
+- [ ] Thêm Defect Categories management (placeholder)

@@ -1,5 +1,7 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useLocation } from "wouter";
 import DashboardLayout from "@/components/DashboardLayout";
+import { FloorPlanViewer, FloorPlanConfig } from "@/components/FloorPlanViewer";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -65,6 +67,7 @@ interface InspectionItem {
 
 export default function AviAoiDashboard() {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [timeRange, setTimeRange] = useState<"1h" | "6h" | "24h" | "7d">("24h");
   const [selectedMachine, setSelectedMachine] = useState("all");
   const [selectedFactory, setSelectedFactory] = useState("all");
@@ -709,34 +712,118 @@ export default function AviAoiDashboard() {
 
           {/* Floor Plan Tab */}
           <TabsContent value="floor-plan" className="space-y-6">
+            {/* Quick Navigation */}
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" onClick={() => setLocation("/iot-floor-plan")}>
+                <MapPin className="h-4 w-4 mr-2" />
+                Sơ đồ 2D
+              </Button>
+              <Button variant="outline" onClick={() => setLocation("/iot-3d-floor-plan")}>
+                <Layers className="h-4 w-4 mr-2" />
+                Sơ đồ 3D
+              </Button>
+              <Button variant="outline" onClick={() => setLocation("/floor-plan-live")}>
+                <Activity className="h-4 w-4 mr-2" />
+                Floor Plan Live
+              </Button>
+              <Button variant="outline" onClick={() => setLocation("/floor-plan-heatmap")}>
+                <Target className="h-4 w-4 mr-2" />
+                Bản đồ Nhiệt
+              </Button>
+            </div>
+
+            {/* Floor Plan Preview */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <MapPin className="h-5 w-5" />
-                  Sơ đồ nhà xưởng
+                  Sơ đồ nhà xưởng - Máy AVI/AOI
                 </CardTitle>
                 <CardDescription>
-                  Vị trí và trạng thái máy AVI/AOI trong xưởng
+                  Vị trí và trạng thái máy AVI/AOI trong xưởng (Xem nhanh)
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-center py-12 text-muted-foreground">
-                  <MapPin className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                  <p className="text-lg font-medium mb-2">Floor Plan 2D/3D</p>
-                  <p className="text-sm mb-4">
-                    Xem vị trí máy trên sơ đồ nhà xưởng
-                  </p>
-                  <div className="flex justify-center gap-4">
-                    <Button variant="outline">
-                      Xem Floor Plan 2D
-                    </Button>
-                    <Button variant="outline">
-                      Xem Floor Plan 3D
-                    </Button>
+                {/* Mini Floor Plan with AVI/AOI machines */}
+                <div className="relative w-full h-[400px] bg-muted/30 rounded-lg border overflow-hidden">
+                  {/* Grid background */}
+                  <div className="absolute inset-0" style={{
+                    backgroundImage: 'linear-gradient(to right, hsl(var(--border)) 1px, transparent 1px), linear-gradient(to bottom, hsl(var(--border)) 1px, transparent 1px)',
+                    backgroundSize: '40px 40px'
+                  }} />
+                  
+                  {/* Machine positions - simplified view */}
+                  <div className="absolute inset-4">
+                    {displayMachines.map((machine, index) => {
+                      const row = Math.floor(index / 3);
+                      const col = index % 3;
+                      const statusColor = machine.status === 'running' ? 'bg-green-500' : 
+                                          machine.status === 'idle' ? 'bg-yellow-500' : 
+                                          machine.status === 'maintenance' ? 'bg-orange-500' : 'bg-red-500';
+                      return (
+                        <div
+                          key={machine.id}
+                          className={`absolute w-24 h-20 rounded-lg border-2 ${statusColor} bg-opacity-20 flex flex-col items-center justify-center cursor-pointer hover:scale-105 transition-transform`}
+                          style={{
+                            left: `${col * 35 + 5}%`,
+                            top: `${row * 45 + 10}%`,
+                          }}
+                          title={`${machine.name} - ${machine.status}`}
+                        >
+                          <Cpu className="h-6 w-6 mb-1" />
+                          <span className="text-xs font-medium">{machine.name}</span>
+                          <Badge variant="outline" className="text-[10px] mt-1">
+                            {machine.status}
+                          </Badge>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Legend */}
+                  <div className="absolute bottom-2 right-2 flex gap-2 bg-background/80 p-2 rounded-lg text-xs">
+                    <div className="flex items-center gap-1">
+                      <div className="w-3 h-3 rounded bg-green-500" />
+                      <span>Running</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <div className="w-3 h-3 rounded bg-yellow-500" />
+                      <span>Idle</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <div className="w-3 h-3 rounded bg-orange-500" />
+                      <span>Maintenance</span>
+                    </div>
                   </div>
                 </div>
               </CardContent>
             </Card>
+
+            {/* Machine Status Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+              {displayMachines.map((machine) => (
+                <Card key={machine.id} className="cursor-pointer hover:shadow-md transition-shadow">
+                  <CardContent className="pt-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-medium">{machine.name}</span>
+                      <Badge variant={machine.status === 'running' ? 'default' : 'secondary'}>
+                        {machine.status}
+                      </Badge>
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      <div className="flex justify-between">
+                        <span>OEE:</span>
+                        <span className="font-medium">{machine.oee.toFixed(1)}%</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Kiểm tra:</span>
+                        <span className="font-medium">{machine.inspections}</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           </TabsContent>
         </Tabs>
       </div>
