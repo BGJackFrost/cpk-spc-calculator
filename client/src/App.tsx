@@ -247,6 +247,9 @@ import AdvancedAnalytics from "./pages/AdvancedAnalytics";
 // Vision & AVI/AOI
 import ImageComparison from "./pages/ImageComparison";
 import AviAoiDashboard from "./pages/AviAoiDashboard";
+import AoiAviSummaryDashboard from "./pages/AoiAviSummaryDashboard";
+import GoldenSampleManager from "./pages/GoldenSampleManager";
+import DefectTypeManager from "./pages/DefectTypeManager";
 import DashboardCustomization from "./pages/DashboardCustomization";
 import BatchImageAnalysis from "./pages/BatchImageAnalysis";
 import RealtimeInspection from "./pages/RealtimeInspection";
@@ -513,6 +516,9 @@ function Router() {
       {/* Vision & AVI/AOI */}
       <Route path="/image-comparison" component={ImageComparison} />
       <Route path="/avi-aoi-dashboard" component={AviAoiDashboard} />
+      <Route path="/aoi-avi-summary" component={AoiAviSummaryDashboard} />
+      <Route path="/golden-sample-manager" component={GoldenSampleManager} />
+      <Route path="/defect-type-manager" component={DefectTypeManager} />
       <Route path="/dashboard-customization" component={DashboardCustomization} />
       <Route path="/batch-image-analysis" component={BatchImageAnalysis} />
       <Route path="/machine-api-documentation" component={MachineApiDocumentation} />

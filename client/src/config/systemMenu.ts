@@ -664,6 +664,7 @@ export const AOI_AVI_MENU: SystemMenuConfig = {
       defaultOpen: true,
       items: [
         { id: "avi-aoi-dashboard", icon: Eye, labelKey: "nav.aviAoiDashboard", path: "/avi-aoi-dashboard" },
+        { id: "aoi-avi-summary", icon: BarChart3, labelKey: "nav.aoiAviSummary", path: "/aoi-avi-summary" },
         { id: "ai-vision-analysis", icon: Camera, labelKey: "nav.aiVisionAnalysis", path: "/ai-vision-analysis" },
         { id: "batch-image-analysis", icon: Images, labelKey: "nav.batchImageAnalysis", path: "/batch-image-analysis" },
         { id: "realtime-inspection", icon: Zap, labelKey: "nav.realtimeInspection", path: "/realtime-inspection" },
@@ -681,6 +682,8 @@ export const AOI_AVI_MENU: SystemMenuConfig = {
         { id: "sn-image-history", icon: History, labelKey: "nav.snImageHistory", path: "/sn-image-history", licenseFeature: "aoi_avi" },
         { id: "defect-detection", icon: AlertTriangle, labelKey: "nav.defectDetection", path: "/ai-vision-detection", licenseFeature: "aoi_avi" },
         { id: "golden-sample", icon: Star, labelKey: "nav.goldenSample", path: "/golden-sample", licenseFeature: "aoi_avi" },
+        { id: "golden-sample-manager", icon: Images, labelKey: "nav.goldenSampleManager", path: "/golden-sample-manager", licenseFeature: "aoi_avi" },
+        { id: "defect-type-manager", icon: AlertTriangle, labelKey: "nav.defectTypeManager", path: "/defect-type-manager", licenseFeature: "aoi_avi" },
       ],
     },
     {

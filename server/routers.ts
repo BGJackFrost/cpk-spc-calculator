@@ -101,6 +101,7 @@ import { cameraCaptureScheduleRouter } from "./routers/cameraCaptureScheduleRout
 import { qualityStatisticsRouter } from "./routers/qualityStatisticsRouter";
 import { heatMapYieldRouter } from "./routers/heatMapYieldRouter";
 import { paretoChartRouter } from "./routers/paretoChartRouter";
+import { aoiAviRouter } from "./routers/aoiAviRouter";
 import { autoNtfRouter } from "./routers/autoNtfRouter";
 import { maintenanceWorkOrderRouter } from "./maintenanceWorkOrderRouter";
 import { mobileRouter } from "./mobileRouter";
@@ -4008,6 +4009,7 @@ export const appRouter = router({
   qualityStatistics: qualityStatisticsRouter,
   heatMapYield: heatMapYieldRouter,
   paretoChart: paretoChartRouter,
+  aoiAvi: aoiAviRouter,
   autoNtf: autoNtfRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),

@@ -7564,3 +7564,164 @@ export const qualityStatisticsReports = mysqlTable("quality_statistics_reports",
 
 export type QualityStatisticsReport = typeof qualityStatisticsReports.$inferSelect;
 export type InsertQualityStatisticsReport = typeof qualityStatisticsReports.$inferInsert;
+
+
+// =============================================
+// AOI/AVI Integration Tables
+// =============================================
+
+// Defect Types for AOI/AVI
+export const aoiAviDefectTypes = mysqlTable("aoi_avi_defect_types", {
+	id: int().autoincrement().notNull().primaryKey(),
+	code: varchar({ length: 50 }).notNull(),
+	name: varchar({ length: 255 }).notNull(),
+	description: text(),
+	category: mysqlEnum(['visual', 'dimensional', 'surface', 'structural', 'other']).default('visual').notNull(),
+	severity: mysqlEnum(['critical', 'major', 'minor', 'cosmetic']).default('minor').notNull(),
+	inspectionType: mysqlEnum("inspection_type", ['aoi', 'avi', 'both']).default('both').notNull(),
+	isActive: int("is_active").default(1).notNull(),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("idx_defect_type_code").on(table.code),
+	index("idx_defect_type_category").on(table.category),
+	index("idx_defect_type_severity").on(table.severity),
+]);
+export type AoiAviDefectType = typeof aoiAviDefectTypes.$inferSelect;
+export type InsertAoiAviDefectType = typeof aoiAviDefectTypes.$inferInsert;
+
+// AOI Inspection Records
+export const aoiInspectionRecords = mysqlTable("aoi_inspection_records", {
+	id: int().autoincrement().notNull().primaryKey(),
+	serialNumber: varchar("serial_number", { length: 100 }).notNull(),
+	machineId: int("machine_id"),
+	productionLineId: int("production_line_id"),
+	productId: int("product_id"),
+	// Inspection result
+	result: mysqlEnum(['pass', 'fail', 'warning']).default('pass').notNull(),
+	defectCount: int("defect_count").default(0).notNull(),
+	defectTypes: json("defect_types"), // Array of defect type IDs
+	qualityScore: decimal("quality_score", { precision: 5, scale: 2 }),
+	// Image references
+	imageUrl: varchar("image_url", { length: 1000 }),
+	imageKey: varchar("image_key", { length: 255 }),
+	// Timing
+	inspectionStartedAt: timestamp("inspection_started_at", { mode: 'string' }),
+	inspectionCompletedAt: timestamp("inspection_completed_at", { mode: 'string' }),
+	inspectionDurationMs: int("inspection_duration_ms"),
+	// Metadata
+	operatorId: int("operator_id"),
+	shiftId: varchar("shift_id", { length: 50 }),
+	batchNumber: varchar("batch_number", { length: 100 }),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+	index("idx_aoi_serial").on(table.serialNumber),
+	index("idx_aoi_machine").on(table.machineId),
+	index("idx_aoi_line").on(table.productionLineId),
+	index("idx_aoi_result").on(table.result),
+	index("idx_aoi_created").on(table.createdAt),
+]);
+export type AoiInspectionRecord = typeof aoiInspectionRecords.$inferSelect;
+export type InsertAoiInspectionRecord = typeof aoiInspectionRecords.$inferInsert;
+
+// AVI Inspection Records
+export const aviInspectionRecords = mysqlTable("avi_inspection_records", {
+	id: int().autoincrement().notNull().primaryKey(),
+	serialNumber: varchar("serial_number", { length: 100 }).notNull(),
+	machineId: int("machine_id"),
+	productionLineId: int("production_line_id"),
+	productId: int("product_id"),
+	// Inspection result
+	result: mysqlEnum(['pass', 'fail', 'warning']).default('pass').notNull(),
+	defectCount: int("defect_count").default(0).notNull(),
+	defectTypes: json("defect_types"), // Array of defect type IDs
+	qualityScore: decimal("quality_score", { precision: 5, scale: 2 }),
+	// Video/Image references
+	videoUrl: varchar("video_url", { length: 1000 }),
+	videoKey: varchar("video_key", { length: 255 }),
+	thumbnailUrl: varchar("thumbnail_url", { length: 1000 }),
+	// Timing
+	inspectionStartedAt: timestamp("inspection_started_at", { mode: 'string' }),
+	inspectionCompletedAt: timestamp("inspection_completed_at", { mode: 'string' }),
+	inspectionDurationMs: int("inspection_duration_ms"),
+	// Metadata
+	operatorId: int("operator_id"),
+	shiftId: varchar("shift_id", { length: 50 }),
+	batchNumber: varchar("batch_number", { length: 100 }),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+	index("idx_avi_serial").on(table.serialNumber),
+	index("idx_avi_machine").on(table.machineId),
+	index("idx_avi_line").on(table.productionLineId),
+	index("idx_avi_result").on(table.result),
+	index("idx_avi_created").on(table.createdAt),
+]);
+export type AviInspectionRecord = typeof aviInspectionRecords.$inferSelect;
+export type InsertAviInspectionRecord = typeof aviInspectionRecords.$inferInsert;
+
+// Golden Sample Images
+export const goldenSampleImages = mysqlTable("golden_sample_images", {
+	id: int().autoincrement().notNull().primaryKey(),
+	name: varchar({ length: 255 }).notNull(),
+	description: text(),
+	productId: int("product_id"),
+	machineId: int("machine_id"),
+	// Image info
+	imageUrl: varchar("image_url", { length: 1000 }).notNull(),
+	imageKey: varchar("image_key", { length: 255 }).notNull(),
+	imageType: mysqlEnum("image_type", ['front', 'back', 'top', 'bottom', 'left', 'right', 'angle', 'other']).default('front').notNull(),
+	// Metadata
+	version: varchar({ length: 20 }).default('1.0'),
+	isActive: int("is_active").default(1).notNull(),
+	createdBy: int("created_by"),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("idx_golden_product").on(table.productId),
+	index("idx_golden_machine").on(table.machineId),
+	index("idx_golden_type").on(table.imageType),
+	index("idx_golden_active").on(table.isActive),
+]);
+export type GoldenSampleImage = typeof goldenSampleImages.$inferSelect;
+export type InsertGoldenSampleImage = typeof goldenSampleImages.$inferInsert;
+
+// AOI/AVI Yield Statistics
+export const aoiAviYieldStats = mysqlTable("aoi_avi_yield_stats", {
+	id: int().autoincrement().notNull().primaryKey(),
+	// Period
+	reportDate: date("report_date").notNull(),
+	periodType: mysqlEnum("period_type", ['hourly', 'daily', 'weekly', 'monthly']).default('daily').notNull(),
+	hour: int(), // For hourly stats
+	// Scope
+	inspectionType: mysqlEnum("inspection_type", ['aoi', 'avi', 'combined']).default('combined').notNull(),
+	machineId: int("machine_id"),
+	productionLineId: int("production_line_id"),
+	productId: int("product_id"),
+	// Statistics
+	totalInspected: int("total_inspected").default(0).notNull(),
+	passCount: int("pass_count").default(0).notNull(),
+	failCount: int("fail_count").default(0).notNull(),
+	warningCount: int("warning_count").default(0).notNull(),
+	yieldRate: decimal("yield_rate", { precision: 5, scale: 2 }), // Percentage
+	defectRate: decimal("defect_rate", { precision: 5, scale: 2 }), // Percentage
+	// Quality metrics
+	avgQualityScore: decimal("avg_quality_score", { precision: 5, scale: 2 }),
+	// Defect breakdown
+	defectsByType: json("defects_by_type"), // { defectTypeId: count }
+	topDefects: json("top_defects"), // Array of { defectTypeId, count, percentage }
+	// Metadata
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+	index("idx_yield_date").on(table.reportDate),
+	index("idx_yield_period").on(table.periodType),
+	index("idx_yield_type").on(table.inspectionType),
+	index("idx_yield_machine").on(table.machineId),
+	index("idx_yield_line").on(table.productionLineId),
+]);
+export type AoiAviYieldStat = typeof aoiAviYieldStats.$inferSelect;
+export type InsertAoiAviYieldStat = typeof aoiAviYieldStats.$inferInsert;

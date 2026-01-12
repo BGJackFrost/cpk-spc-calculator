@@ -1,0 +1,122 @@
+{
+  "query": "DESCRIBE aoi_avi_defect_types;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute DESCRIBE aoi_avi_defect_types;",
+  "rows": [
+    {
+      "Field": "id",
+      "Type": "int(11)",
+      "Null": "NO",
+      "Key": "PRI",
+      "Default": "NULL",
+      "Extra": "auto_increment"
+    },
+    {
+      "Field": "code",
+      "Type": "varchar(50)",
+      "Null": "NO",
+      "Key": "MUL",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "name",
+      "Type": "varchar(255)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "name_en",
+      "Type": "varchar(255)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "category",
+      "Type": "enum('visual','dimensional','functional','surface','structural','other')",
+      "Null": "NO",
+      "Key": "MUL",
+      "Default": "visual",
+      "Extra": ""
+    },
+    {
+      "Field": "severity",
+      "Type": "enum('minor','major','critical')",
+      "Null": "NO",
+      "Key": "MUL",
+      "Default": "minor",
+      "Extra": ""
+    },
+    {
+      "Field": "description",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "reference_image_url",
+      "Type": "varchar(1000)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "detection_method",
+      "Type": "enum('aoi','avi','manual','both')",
+      "Null": "YES",
+      "Key": "",
+      "Default": "both",
+      "Extra": ""
+    },
+    {
+      "Field": "is_active",
+      "Type": "tinyint(1)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "1",
+      "Extra": ""
+    },
+    {
+      "Field": "sort_order",
+      "Type": "int(11)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "0",
+      "Extra": ""
+    },
+    {
+      "Field": "created_by",
+      "Type": "int(11)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "created_at",
+      "Type": "timestamp",
+      "Null": "NO",
+      "Key": "",
+      "Default": "CURRENT_TIMESTAMP",
+      "Extra": ""
+    },
+    {
+      "Field": "updated_at",
+      "Type": "timestamp",
+      "Null": "NO",
+      "Key": "",
+      "Default": "CURRENT_TIMESTAMP",
+      "Extra": "DEFAULT_GENERATED on update CURRENT_TIMESTAMP"
+    }
+  ],
+  "messages": [],
+  "stdout": "Field\tType\tNull\tKey\tDefault\tExtra\nid\tint(11)\tNO\tPRI\tNULL\tauto_increment\ncode\tvarchar(50)\tNO\tMUL\tNULL\t\nname\tvarchar(255)\tNO\t\tNULL\t\nname_en\tvarchar(255)\tYES\t\tNULL\t\ncategory\tenum('visual','dimensional','functional','surface','structural','other')\tNO\tMUL\tvisual\t\nseverity\tenum('minor','major','critical')\tNO\tMUL\tminor\t\ndescription\ttext\tYES\t\tNULL\t\nreference_image_url\tvarchar(1000)\tYES\t\tNULL\t\ndetection_method\tenum('aoi','avi','manual','both')\tYES\t\tboth\t\nis_active\ttinyint(1)\tNO\t\t1\t\nsort_order\tint(11)\tNO\t\t0\t\ncreated_by\tint(11)\tYES\t\tNULL\t\ncreated_at\ttimestamp\tNO\t\tCURRENT_TIMESTAMP\t\nupdated_at\ttimestamp\tNO\t\tCURRENT_TIMESTAMP\tDEFAULT_GENERATED on update CURRENT_TIMESTAMP\n",
+  "stderr": "",
+  "execution_time_ms": 1522
+}

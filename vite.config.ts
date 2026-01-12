@@ -44,16 +44,37 @@ export default defineConfig({
     // Minimal rollup options to reduce memory
     rollupOptions: {
       output: {
-        // No manual chunks - let Vite handle it automatically
         chunkFileNames: 'assets/[name]-[hash].js',
         entryFileNames: 'assets/[name]-[hash].js',
         assetFileNames: 'assets/[name]-[hash].[ext]',
+        // Manual chunks to reduce memory during rendering
+        manualChunks: (id) => {
+          // Vendor chunks
+          if (id.includes('node_modules')) {
+            if (id.includes('react') || id.includes('scheduler')) return 'vendor-react';
+            if (id.includes('@radix-ui')) return 'vendor-radix';
+            if (id.includes('@tanstack')) return 'vendor-tanstack';
+            if (id.includes('recharts') || id.includes('d3')) return 'vendor-charts';
+            if (id.includes('lucide')) return 'vendor-icons';
+            if (id.includes('xlsx') || id.includes('jspdf') || id.includes('html2canvas')) return 'vendor-export';
+            return 'vendor-other';
+          }
+          // App chunks by feature
+          if (id.includes('/pages/Ai')) return 'pages-ai';
+          if (id.includes('/pages/IoT')) return 'pages-iot';
+          if (id.includes('/pages/Oee') || id.includes('/pages/OEE')) return 'pages-oee';
+          if (id.includes('/pages/Maintenance')) return 'pages-maintenance';
+          if (id.includes('/pages/License')) return 'pages-license';
+          if (id.includes('/pages/Alert') || id.includes('/pages/Notification')) return 'pages-alerts';
+          if (id.includes('/pages/')) return 'pages-other';
+          if (id.includes('/components/')) return 'components';
+        },
       },
       // Reduce memory by limiting parallel processing
       maxParallelFileOps: 1,
     },
     // Performance optimizations
-    chunkSizeWarningLimit: 200000,
+    chunkSizeWarningLimit: 5000,
     sourcemap: false,
     minify: false,
     reportCompressedSize: false,
