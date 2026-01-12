@@ -9826,3 +9826,53 @@
 - [x] Thêm tab "So sánh theo SN" vào trang ImageComparison
 - [x] Thêm route /sn-image-compare vào App.tsx
 - [x] Thêm menu items vào AI Vision menu group
+
+
+## Phase 72: Camera Capture, AI Image Analysis, Annotation Tools và CI/CD
+
+### Camera Capture từ Streaming
+- [ ] Tạo bảng sn_images để lưu ảnh SN (serial number images)
+- [ ] Tạo bảng sn_image_sessions để quản lý phiên chụp ảnh
+- [ ] Tạo component CameraCapture với WebRTC/MediaStream API
+- [ ] Tích hợp capture ảnh từ camera streaming
+- [ ] Lưu ảnh đã chụp vào S3 storage
+- [ ] Tạo trang quản lý SN Images với gallery view
+- [ ] Liên kết ảnh với sản phẩm/dây chuyền/công trạm
+
+### AI Phân tích Khác biệt Ảnh
+- [ ] Tạo service AI image comparison sử dụng LLM vision
+- [ ] Tạo component ImageComparison để hiển thị 2 ảnh cạnh nhau
+- [ ] Highlight vùng khác biệt được AI phát hiện
+- [ ] Tạo bảng image_comparison_results lưu kết quả phân tích
+- [ ] Hiển thị báo cáo chi tiết về các điểm khác biệt
+- [ ] Tích hợp vào workflow kiểm tra chất lượng
+
+### Annotation Tools cho Ảnh
+- [ ] Tạo component ImageAnnotator với canvas overlay
+- [ ] Công cụ vẽ hình chữ nhật (rectangle)
+- [ ] Công cụ vẽ hình tròn/ellipse
+- [ ] Công cụ vẽ mũi tên (arrow)
+- [ ] Công cụ vẽ tự do (freehand)
+- [ ] Công cụ thêm text/label
+- [ ] Công cụ highlight vùng
+- [ ] Lưu annotations vào database
+- [ ] Xuất ảnh với annotations
+
+### Tính năng CPK/SPC còn thiếu
+- [ ] Tối ưu hóa UX/UI cho các trang chính
+- [ ] Thêm validation và error handling chuyên nghiệp
+- [ ] Cải tiến Dashboard với thống kê chi tiết hơn
+- [ ] Thêm chức năng tìm kiếm và lọc nâng cao
+- [ ] Cải tiến biểu đồ SPC với annotations và markers
+- [ ] Thêm báo cáo tổng hợp theo ca/ngày/tuần/tháng
+- [ ] Cải tiến hệ thống thông báo realtime
+- [ ] Xuất báo cáo PDF/Excel hoàn chỉnh
+
+### CI/CD với GitHub Actions
+- [ ] Tạo workflow file .github/workflows/ci.yml
+- [ ] Cấu hình job chạy tests (vitest)
+- [ ] Cấu hình job build và type-check
+- [ ] Cấu hình job lint (ESLint)
+- [ ] Tạo workflow cho auto-deploy (nếu cần)
+- [ ] Thêm badge CI status vào README
+
