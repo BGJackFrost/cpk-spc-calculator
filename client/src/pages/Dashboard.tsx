@@ -59,6 +59,9 @@ import RadarChartHistoryWidget from "@/components/RadarChartHistoryWidget";
 import CapacityStatsWidget from "@/components/CapacityStatsWidget";
 import CapacityComparisonChart from "@/components/CapacityComparisonChart";
 import { DashboardCameraWidget } from "@/components/DashboardCameraWidget";
+import FloorPlanHeatMap from "@/components/FloorPlanHeatMap";
+import DefectParetoChart from "@/components/DefectParetoChart";
+import AutoNtfSuggestions from "@/components/AutoNtfSuggestions";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -428,6 +431,17 @@ export default function Dashboard() {
             AI Overview - Dự đoán và Phân tích
           </h2>
           <AiOverviewDashboard />
+        </div>
+
+        {/* Heat Map Yield & Pareto Chart */}
+        <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <FloorPlanHeatMap />
+          <DefectParetoChart />
+        </div>
+
+        {/* Auto-NTF Detection */}
+        <div className="mt-6">
+          <AutoNtfSuggestions />
         </div>
 
         {/* Recent Analyses */}

@@ -1888,7 +1888,7 @@
 - [ ] Tạo component AlarmHeatmap.tsx
 - [ ] Hiển thị mức độ alarm theo giờ/ngày cho từng máy
 - [ ] Color scale từ xanh (ít alarm) đến đỏ (nhiều alarm)
-- [ ] Tooltip hiển thị chi tiết khi hover
+- [x] Tooltip hiển thị chi tiết khi hover
 - [ ] Tích hợp vào MachineOverviewDashboard
 
 ### Group máy theo dây chuyền/khu vực
@@ -9942,3 +9942,27 @@
 - [ ] Xuất báo cáo PDF/Excel
 - [ ] So sánh trend giữa các kỳ (tuần này vs tuần trước)
 
+
+
+## Phase 82: Heat Map, Auto-NTF Detection và Pareto Chart
+
+### Heat Map Yield trên Floor Plan
+- [x] Tạo component FloorPlanHeatMap hiển thị bản đồ nhiệt yield rate
+- [x] Tạo API endpoint để lấy dữ liệu yield rate theo vùng nhà xưởng
+- [x] Áp dụng màu sắc gradient theo yield rate (xanh = tốt, đỏ = kém)
+- [x] Tooltip hiển thị chi tiết yield rate khi hover vào vùng
+- [x] Tích hợp vào Dashboard
+
+### Auto-NTF Detection với AI
+- [x] Tạo service phân tích pattern từ dữ liệu lịch sử
+- [x] Tích hợp AI để đề xuất NTF dựa trên pattern matching
+- [x] Tạo component AutoNtfSuggestions hiển thị các đề xuất
+- [x] Cho phép user xác nhận/từ chối đề xuất NTF
+- [x] Giảm thời gian xác nhận thủ công
+
+### Pareto Chart Integration
+- [x] Tạo component DefectParetoChart hiển thị top defects theo tần suất
+- [x] Tạo API endpoint để lấy dữ liệu defects theo tần suất
+- [x] Hiển thị biểu đồ cột (tần suất) và đường (% tích lũy) (% tích lũy)
+- [x] Hỗ trợ phân tích 80/20 (80% lỗi từ 20% nguyên nhân)
+- [x] Tích hợp vào Dashboard chính

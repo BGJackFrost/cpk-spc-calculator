@@ -99,6 +99,9 @@ import { imageAnnotationRouter } from "./routers/imageAnnotationRouter";
 import { aiImageComparisonRouter } from "./routers/aiImageComparisonRouter";
 import { cameraCaptureScheduleRouter } from "./routers/cameraCaptureScheduleRouter";
 import { qualityStatisticsRouter } from "./routers/qualityStatisticsRouter";
+import { heatMapYieldRouter } from "./routers/heatMapYieldRouter";
+import { paretoChartRouter } from "./routers/paretoChartRouter";
+import { autoNtfRouter } from "./routers/autoNtfRouter";
 import { maintenanceWorkOrderRouter } from "./maintenanceWorkOrderRouter";
 import { mobileRouter } from "./mobileRouter";
 import { triggerLicenseExpiryCheck } from "./scheduledJobs";
@@ -4003,6 +4006,9 @@ export const appRouter = router({
   batchImageAnalysis: batchImageAnalysisRouter,
   cameraCaptureSchedule: cameraCaptureScheduleRouter,
   qualityStatistics: qualityStatisticsRouter,
+  heatMapYield: heatMapYieldRouter,
+  paretoChart: paretoChartRouter,
+  autoNtf: autoNtfRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {
