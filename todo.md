@@ -9833,10 +9833,10 @@
 ### Camera Capture từ Streaming
 - [ ] Tạo bảng sn_images để lưu ảnh SN (serial number images)
 - [ ] Tạo bảng sn_image_sessions để quản lý phiên chụp ảnh
-- [ ] Tạo component CameraCapture với WebRTC/MediaStream API
+- [x] Tạo component CameraCapture với WebRTC/MediaStream API
 - [ ] Tích hợp capture ảnh từ camera streaming
 - [ ] Lưu ảnh đã chụp vào S3 storage
-- [ ] Tạo trang quản lý SN Images với gallery view
+- [x] Tạo trang quản lý SN Images với gallery view
 - [ ] Liên kết ảnh với sản phẩm/dây chuyền/công trạm
 
 ### AI Phân tích Khác biệt Ảnh
@@ -9848,15 +9848,15 @@
 - [ ] Tích hợp vào workflow kiểm tra chất lượng
 
 ### Annotation Tools cho Ảnh
-- [ ] Tạo component ImageAnnotator với canvas overlay
-- [ ] Công cụ vẽ hình chữ nhật (rectangle)
-- [ ] Công cụ vẽ hình tròn/ellipse
-- [ ] Công cụ vẽ mũi tên (arrow)
-- [ ] Công cụ vẽ tự do (freehand)
-- [ ] Công cụ thêm text/label
-- [ ] Công cụ highlight vùng
+- [x] Tạo component ImageAnnotator với canvas overlay
+- [x] Công cụ vẽ hình chữ nhật (rectangle)
+- [x] Công cụ vẽ hình tròn/ellipse
+- [x] Công cụ vẽ mũi tên (arrow)
+- [x] Công cụ vẽ tự do (freehand)
+- [x] Công cụ thêm text/label
+- [x] Công cụ highlight vùng
 - [ ] Lưu annotations vào database
-- [ ] Xuất ảnh với annotations
+- [x] Xuất ảnh với annotations
 
 ### Tính năng CPK/SPC còn thiếu
 - [ ] Tối ưu hóa UX/UI cho các trang chính

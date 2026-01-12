@@ -533,6 +533,7 @@ export const AI_MENU: SystemMenuConfig = {
       items: [
         { id: "ai-vision-detection", icon: Video, labelKey: "nav.aiVisionDetection", path: "/ai-vision-detection", licenseFeature: "ai_vision" },
         { id: "image-comparison", icon: ArrowLeftRight, labelKey: "nav.imageComparison", path: "/image-comparison", licenseFeature: "ai_vision" },
+        { id: "sn-images", icon: Images, labelKey: "nav.snImages", path: "/sn-images", licenseFeature: "ai_vision" },
         { id: "sn-image-compare", icon: Columns, labelKey: "nav.snImageCompare", path: "/sn-image-compare", licenseFeature: "ai_vision" },
         { id: "sn-image-history", icon: History, labelKey: "nav.snImageHistory", path: "/sn-image-history", licenseFeature: "ai_vision" },
         { id: "camera-management", icon: Camera, labelKey: "nav.cameraManagement", path: "/camera-management", licenseFeature: "ai_vision" },
