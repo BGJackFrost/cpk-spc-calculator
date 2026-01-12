@@ -20,8 +20,10 @@ import {
   TrendingUp,
   TrendingDown,
   Minus,
-  Trash2
+  Trash2,
+  Columns
 } from "lucide-react";
+import { SNImageComparison } from "@/components/SNImageComparison";
 
 export default function ImageComparison() {
   const [activeTab, setActiveTab] = useState("upload");
@@ -163,6 +165,10 @@ export default function ImageComparison() {
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList>
             <TabsTrigger value="upload">Upload & So sánh</TabsTrigger>
+            <TabsTrigger value="sn-compare" className="flex items-center gap-1">
+              <Columns className="h-4 w-4" />
+              So sánh theo SN
+            </TabsTrigger>
             <TabsTrigger value="library">Thư viện hình ảnh</TabsTrigger>
             <TabsTrigger value="history">Lịch sử so sánh</TabsTrigger>
           </TabsList>
@@ -246,6 +252,10 @@ export default function ImageComparison() {
                 </Button>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="sn-compare" className="space-y-4">
+            <SNImageComparison maxSlots={4} initialMode="side-by-side" />
           </TabsContent>
 
           <TabsContent value="library" className="space-y-4">

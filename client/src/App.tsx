@@ -248,6 +248,7 @@ import MachineApiDocumentation from "./pages/MachineApiDocumentation";
 import CustomWidgets from "./pages/CustomWidgets";
 import CameraManagement from "./pages/CameraManagement";
 import SNImageHistory from "./pages/SNImageHistory";
+import SNImageCompare from "./pages/SNImageCompare";
 
 // MMS
 import MMSDashboard from "./pages/MMSDashboard";
@@ -501,6 +502,7 @@ function Router() {
       <Route path="/custom-widgets" component={CustomWidgets} />
       <Route path="/camera-management" component={CameraManagement} />
       <Route path="/sn-image-history" component={SNImageHistory} />
+      <Route path="/sn-image-compare" component={SNImageCompare} />
 
       {/* MMS */}
       <Route path="/mms-dashboard" component={MMSDashboard} />

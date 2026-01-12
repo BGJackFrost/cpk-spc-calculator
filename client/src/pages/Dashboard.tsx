@@ -28,7 +28,8 @@ import {
   HelpCircle,
   ShieldCheck,
   XCircle,
-  Activity
+  Activity,
+  Camera
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -57,6 +58,7 @@ import { AiOverviewDashboard } from "@/components/ai/AiOverviewWidgets";
 import RadarChartHistoryWidget from "@/components/RadarChartHistoryWidget";
 import CapacityStatsWidget from "@/components/CapacityStatsWidget";
 import CapacityComparisonChart from "@/components/CapacityComparisonChart";
+import { DashboardCameraWidget } from "@/components/DashboardCameraWidget";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -274,6 +276,12 @@ export default function Dashboard() {
                 >
                   Công suất Factory/Workshop
                 </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem
+                  checked={isWidgetVisible("camera_streaming")}
+                  onCheckedChange={() => handleToggleWidget("camera_streaming")}
+                >
+                  Camera Streaming
+                </DropdownMenuCheckboxItem>
               </DropdownMenuContent>
             </DropdownMenu>
             {isCompleted && (
@@ -399,6 +407,17 @@ export default function Dashboard() {
         {isWidgetVisible("capacity_stats") && (
           <div className="mt-6">
             <CapacityComparisonChart />
+          </div>
+        )}
+
+        {/* Camera Streaming Widget */}
+        {isWidgetVisible("camera_streaming") && (
+          <div className="mt-6">
+            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+              <Camera className="h-5 w-5 text-blue-500" />
+              Camera Streaming Realtime
+            </h2>
+            <DashboardCameraWidget maxCameras={4} layout="2x2" />
           </div>
         )}
 

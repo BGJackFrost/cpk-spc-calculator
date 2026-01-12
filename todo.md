@@ -9782,3 +9782,47 @@
 - [x] Tổng hợp kết quả phân tích batch (OK/NG count, defect types)
 - [ ] Xuất kết quả phân tích batch ra CSV/Excel
 
+
+
+## Phase 10 - Camera Streaming và So sánh ảnh SN
+
+### Camera Streaming Realtime
+- [ ] Tạo component CameraStream để hiển thị video streaming
+- [ ] Tích hợp camera streaming vào Dashboard
+- [ ] Hỗ trợ nhiều nguồn camera (RTSP, WebRTC, HTTP Stream)
+- [ ] Điều khiển camera (play/pause, fullscreen)
+- [ ] Cấu hình URL camera cho từng dây chuyền/máy
+
+### So sánh ảnh giữa các SN (Serial Number)
+- [ ] Tạo bảng ProductImage để lưu ảnh sản phẩm theo SN
+- [ ] Tạo component ImageComparison để so sánh ảnh
+- [ ] Trang so sánh ảnh với chọn nhiều SN
+- [ ] Chế độ xem side-by-side và overlay
+- [ ] Zoom và pan đồng bộ giữa các ảnh
+- [ ] Highlight điểm khác biệt giữa các ảnh
+
+
+## Phase 10.1 - Camera Streaming & SN Image Comparison
+
+### Camera Streaming Realtime trên Dashboard
+- [x] Tạo component DashboardCameraWidget với hỗ trợ nhiều loại camera
+- [x] Hỗ trợ RTSP, HTTP Stream, IP Camera, WebRTC
+- [x] Layout linh hoạt (1x1, 1x2, 2x2, 3x3)
+- [x] Chọn camera hiển thị từ danh sách camera đã cấu hình
+- [x] Fullscreen mode cho từng camera
+- [x] Tích hợp toggle widget vào Dashboard
+
+### So sánh ảnh giữa các Serial Number
+- [x] Tạo component SNImageComparison với 3 chế độ so sánh
+- [x] Chế độ Side-by-Side: So sánh nhiều ảnh cạnh nhau
+- [x] Chế độ Overlay: Chồng 2 ảnh với blend mode (normal, difference, multiply)
+- [x] Chế độ Slider: Kéo thanh trượt để so sánh 2 ảnh
+- [x] Zoom và Pan đồng bộ giữa các ảnh
+- [x] Tìm kiếm và chọn ảnh theo Serial Number
+- [x] Hiển thị thông tin phân tích (OK/NG/Warning, Quality Score)
+
+### Trang và Navigation
+- [x] Tạo trang SNImageCompare.tsx riêng biệt
+- [x] Thêm tab "So sánh theo SN" vào trang ImageComparison
+- [x] Thêm route /sn-image-compare vào App.tsx
+- [x] Thêm menu items vào AI Vision menu group
