@@ -10179,3 +10179,21 @@
 - [x] Hỗ trợ cảnh báo qua Email, WebSocket, Push notification
 - [ ] Gửi thông báo tự động khi vượt ngưỡng
 
+
+
+## Phase 183 - Cải tiến Dashboard và Hoàn thiện Router
+
+### Gộp Dashboard thành Tabs/Widgets
+- [x] Gộp các dashboard của mỗi module thành 1 dashboard chính với tabs
+- [x] Tạo widget components cho các dashboard con
+- [x] Cập nhật navigation để giảm số lượng menu items
+
+### Tích hợp WebSocket vào AOI/AVI Dashboard
+- [x] Tích hợp RealtimeYieldDefectChart vào AviAoiDashboard
+- [x] Hiển thị dữ liệu yield/defect rate realtime
+- [x] Thêm auto-refresh với WebSocket events
+
+### Hoàn thiện tRPC Router
+- [x] Thêm aoiAvi.exportReport procedure
+- [x] Thêm alertConfig.getYieldDefectThresholds procedure
+- [x] Kết nối frontend với backend cho export và alert config

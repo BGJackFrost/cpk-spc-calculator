@@ -103,6 +103,7 @@ import { heatMapYieldRouter } from "./routers/heatMapYieldRouter";
 import { paretoChartRouter } from "./routers/paretoChartRouter";
 import { aoiAviRouter } from "./routers/aoiAviRouter";
 import { autoNtfRouter } from "./routers/autoNtfRouter";
+import { alertConfigRouter } from "./routers/alertConfigRouter";
 import { maintenanceWorkOrderRouter } from "./maintenanceWorkOrderRouter";
 import { mobileRouter } from "./mobileRouter";
 import { triggerLicenseExpiryCheck } from "./scheduledJobs";
@@ -4011,6 +4012,7 @@ export const appRouter = router({
   paretoChart: paretoChartRouter,
   aoiAvi: aoiAviRouter,
   autoNtf: autoNtfRouter,
+  alertConfig: alertConfigRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {
