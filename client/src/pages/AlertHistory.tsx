@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import { useState, useMemo } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { DateRangePicker } from "@/components/DateRangePicker";
+import { DateRange } from "react-day-picker";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -85,7 +87,23 @@ export default function AlertHistory() {
   const [severityFilter, setSeverityFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [lineFilter, setLineFilter] = useState("all");
-  const [dateRange, setDateRange] = useState("30"); // days
+  
+  // Date range picker state
+  const [dateRangeValue, setDateRangeValue] = useState<DateRange | undefined>(() => {
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - 30);
+    return { from: startDate, to: endDate };
+  });
+  
+  // Calculate days from date range for stats query
+  const dateRangeDays = useMemo(() => {
+    if (dateRangeValue?.from && dateRangeValue?.to) {
+      return Math.ceil((dateRangeValue.to.getTime() - dateRangeValue.from.getTime()) / (1000 * 60 * 60 * 24)).toString();
+    }
+    return "30";
+  }, [dateRangeValue]);
+  
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedAlert, setSelectedAlert] = useState<AlertRecord | null>(null);
   const [resolveDialogOpen, setResolveDialogOpen] = useState(false);
@@ -102,7 +120,7 @@ export default function AlertHistory() {
   });
 
   const { data: productionLines } = trpc.productionLine.list.useQuery();
-  const { data: alertStats } = trpc.kpiAlertStats.getSummary.useQuery({ days: parseInt(dateRange) });
+  const { data: alertStats } = trpc.kpiAlertStats.getSummary.useQuery({ days: parseInt(dateRangeDays) });
 
   // Mutations
   const acknowledgeMutation = trpc.kpiAlertStats.acknowledgeAlert.useMutation({
@@ -340,18 +358,11 @@ export default function AlertHistory() {
               </div>
               <div className="space-y-2">
                 <Label>Khoảng thời gian</Label>
-                <Select value={dateRange} onValueChange={setDateRange}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="7">7 ngày</SelectItem>
-                    <SelectItem value="14">14 ngày</SelectItem>
-                    <SelectItem value="30">30 ngày</SelectItem>
-                    <SelectItem value="90">90 ngày</SelectItem>
-                    <SelectItem value="365">1 năm</SelectItem>
-                  </SelectContent>
-                </Select>
+                <DateRangePicker
+                  dateRange={dateRangeValue}
+                  onDateRangeChange={setDateRangeValue}
+                  showPresets={true}
+                />
               </div>
             </div>
           </CardContent>

@@ -461,6 +461,200 @@ export const userNotificationRouter = router({
       return { success: true };
     }),
 
+  // Export lịch sử thông báo ra CSV
+  exportCsv: protectedProcedure
+    .input(z.object({
+      types: z.array(z.enum(['report_sent', 'spc_violation', 'cpk_alert', 'system', 'anomaly_detected'])).optional(),
+      severities: z.array(z.enum(['info', 'warning', 'critical'])).optional(),
+      timeRange: z.enum(['today', '7days', '30days', 'custom']).optional(),
+      startDate: z.string().optional(),
+      endDate: z.string().optional(),
+    }).optional())
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+      const conditions: any[] = [eq(userNotifications.userId, ctx.user.id)];
+      
+      if (input?.types && input.types.length > 0) {
+        const typeConditions = input.types.map(t => eq(userNotifications.type, t));
+        conditions.push(or(...typeConditions));
+      }
+      
+      if (input?.severities && input.severities.length > 0) {
+        const severityConditions = input.severities.map(s => eq(userNotifications.severity, s));
+        conditions.push(or(...severityConditions));
+      }
+      
+      if (input?.timeRange) {
+        const now = new Date();
+        let startDate: Date | null = null;
+        
+        switch (input.timeRange) {
+          case 'today':
+            startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            break;
+          case '7days':
+            startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            break;
+          case '30days':
+            startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+            break;
+          case 'custom':
+            if (input.startDate) {
+              startDate = new Date(input.startDate);
+            }
+            break;
+        }
+        
+        if (startDate) {
+          conditions.push(gte(userNotifications.createdAt, startDate.toISOString().slice(0, 19).replace('T', ' ')));
+        }
+        
+        if (input.timeRange === 'custom' && input.endDate) {
+          const endDate = new Date(input.endDate);
+          endDate.setHours(23, 59, 59, 999);
+          conditions.push(lte(userNotifications.createdAt, endDate.toISOString().slice(0, 19).replace('T', ' ')));
+        }
+      }
+
+      const notifications = await db
+        .select()
+        .from(userNotifications)
+        .where(and(...conditions))
+        .orderBy(desc(userNotifications.createdAt))
+        .limit(1000);
+
+      // Generate CSV content
+      const typeLabels: Record<string, string> = {
+        'report_sent': 'Báo cáo',
+        'spc_violation': 'Vi phạm SPC',
+        'cpk_alert': 'Cảnh báo CPK',
+        'system': 'Hệ thống',
+        'anomaly_detected': 'Bất thường',
+      };
+      
+      const severityLabels: Record<string, string> = {
+        'info': 'Thông tin',
+        'warning': 'Cảnh báo',
+        'critical': 'Nghiêm trọng',
+      };
+
+      const csvRows = [
+        ['ID', 'Loại', 'Mức độ', 'Tiêu đề', 'Nội dung', 'Trạng thái', 'Thời gian tạo', 'Thời gian đọc'].join(','),
+        ...notifications.map(n => [
+          n.id,
+          `"${typeLabels[n.type] || n.type}"`,
+          `"${severityLabels[n.severity] || n.severity}"`,
+          `"${(n.title || '').replace(/"/g, '""')}"`,
+          `"${(n.message || '').replace(/"/g, '""')}"`,
+          n.isRead ? 'Đã đọc' : 'Chưa đọc',
+          n.createdAt || '',
+          n.readAt || '',
+        ].join(','))
+      ];
+
+      return {
+        csv: csvRows.join('\n'),
+        filename: `notifications_${new Date().toISOString().split('T')[0]}.csv`,
+        count: notifications.length,
+      };
+    }),
+
+  // Export lịch sử thông báo ra Excel (JSON format for client-side processing)
+  exportExcel: protectedProcedure
+    .input(z.object({
+      types: z.array(z.enum(['report_sent', 'spc_violation', 'cpk_alert', 'system', 'anomaly_detected'])).optional(),
+      severities: z.array(z.enum(['info', 'warning', 'critical'])).optional(),
+      timeRange: z.enum(['today', '7days', '30days', 'custom']).optional(),
+      startDate: z.string().optional(),
+      endDate: z.string().optional(),
+    }).optional())
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+      const conditions: any[] = [eq(userNotifications.userId, ctx.user.id)];
+      
+      if (input?.types && input.types.length > 0) {
+        const typeConditions = input.types.map(t => eq(userNotifications.type, t));
+        conditions.push(or(...typeConditions));
+      }
+      
+      if (input?.severities && input.severities.length > 0) {
+        const severityConditions = input.severities.map(s => eq(userNotifications.severity, s));
+        conditions.push(or(...severityConditions));
+      }
+      
+      if (input?.timeRange) {
+        const now = new Date();
+        let startDate: Date | null = null;
+        
+        switch (input.timeRange) {
+          case 'today':
+            startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            break;
+          case '7days':
+            startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            break;
+          case '30days':
+            startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+            break;
+          case 'custom':
+            if (input.startDate) {
+              startDate = new Date(input.startDate);
+            }
+            break;
+        }
+        
+        if (startDate) {
+          conditions.push(gte(userNotifications.createdAt, startDate.toISOString().slice(0, 19).replace('T', ' ')));
+        }
+        
+        if (input.timeRange === 'custom' && input.endDate) {
+          const endDate = new Date(input.endDate);
+          endDate.setHours(23, 59, 59, 999);
+          conditions.push(lte(userNotifications.createdAt, endDate.toISOString().slice(0, 19).replace('T', ' ')));
+        }
+      }
+
+      const notifications = await db
+        .select()
+        .from(userNotifications)
+        .where(and(...conditions))
+        .orderBy(desc(userNotifications.createdAt))
+        .limit(1000);
+
+      const typeLabels: Record<string, string> = {
+        'report_sent': 'Báo cáo',
+        'spc_violation': 'Vi phạm SPC',
+        'cpk_alert': 'Cảnh báo CPK',
+        'system': 'Hệ thống',
+        'anomaly_detected': 'Bất thường',
+      };
+      
+      const severityLabels: Record<string, string> = {
+        'info': 'Thông tin',
+        'warning': 'Cảnh báo',
+        'critical': 'Nghiêm trọng',
+      };
+
+      return {
+        data: notifications.map(n => ({
+          id: n.id,
+          type: typeLabels[n.type] || n.type,
+          severity: severityLabels[n.severity] || n.severity,
+          title: n.title,
+          message: n.message,
+          status: n.isRead ? 'Đã đọc' : 'Chưa đọc',
+          createdAt: n.createdAt,
+          readAt: n.readAt,
+        })),
+        filename: `notifications_${new Date().toISOString().split('T')[0]}.xlsx`,
+        count: notifications.length,
+      };
+    }),
+
   // Xóa thông báo theo bộ lọc
   deleteFiltered: protectedProcedure
     .input(z.object({

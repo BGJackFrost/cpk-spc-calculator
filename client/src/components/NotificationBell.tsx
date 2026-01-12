@@ -2,8 +2,9 @@ import { useState, useEffect, useMemo } from "react";
 import { 
   Bell, AlertTriangle, CheckCircle2, TrendingDown, X, Trash2, 
   FileText, Activity, Info, AlertCircle, Search, Filter, 
-  Calendar, ChevronDown, Check, Clock
+  Calendar, ChevronDown, Check, Clock, Download, FileSpreadsheet
 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -19,6 +20,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuCheckboxItem,
+  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -333,26 +335,117 @@ export function NotificationBell() {
     return `${days} ngày trước`;
   };
 
+  // Export handlers
+  const handleExportCsv = async () => {
+    try {
+      const response = await fetch(`/api/trpc/userNotification.exportCsv?input=${encodeURIComponent(JSON.stringify({
+        types: selectedTypes.length > 0 ? selectedTypes : undefined,
+        severities: selectedSeverities.length > 0 ? selectedSeverities : undefined,
+        timeRange: selectedTimeRange,
+      }))}`, {
+        credentials: 'include',
+      });
+      const result = await response.json();
+      if (result.result?.data) {
+        const { csv, filename } = result.result.data;
+        const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        link.click();
+        URL.revokeObjectURL(url);
+        toast.success(`Đã xuất ${result.result.data.count} thông báo ra CSV`);
+      }
+    } catch (error) {
+      toast.error('Lỗi khi xuất CSV');
+    }
+  };
+
+  const handleExportExcel = async () => {
+    try {
+      const response = await fetch(`/api/trpc/userNotification.exportExcel?input=${encodeURIComponent(JSON.stringify({
+        types: selectedTypes.length > 0 ? selectedTypes : undefined,
+        severities: selectedSeverities.length > 0 ? selectedSeverities : undefined,
+        timeRange: selectedTimeRange,
+      }))}`, {
+        credentials: 'include',
+      });
+      const result = await response.json();
+      if (result.result?.data) {
+        const { data, filename } = result.result.data;
+        // Use xlsx library for Excel export
+        const XLSX = await import('xlsx');
+        const ws = XLSX.utils.json_to_sheet(data.map((row: any) => ({
+          'ID': row.id,
+          'Loại': row.type,
+          'Mức độ': row.severity,
+          'Tiêu đề': row.title,
+          'Nội dung': row.message,
+          'Trạng thái': row.status,
+          'Thời gian tạo': row.createdAt,
+          'Thời gian đọc': row.readAt || '',
+        })));
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Thông báo');
+        XLSX.writeFile(wb, filename);
+        toast.success(`Đã xuất ${result.result.data.count} thông báo ra Excel`);
+      }
+    } catch (error) {
+      toast.error('Lỗi khi xuất Excel');
+    }
+  };
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="h-5 w-5" />
           {totalUnreadCount > 0 && (
-            <Badge 
-              variant="destructive" 
-              className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs animate-pulse"
-            >
-              {totalUnreadCount > 9 ? "9+" : totalUnreadCount}
-            </Badge>
+            <span className="absolute -top-1.5 -right-1.5 flex h-5 min-w-5 items-center justify-center">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75"></span>
+              <Badge 
+                variant="destructive" 
+                className="relative h-5 min-w-5 flex items-center justify-center p-0 px-1 text-[10px] font-bold rounded-full shadow-lg"
+              >
+                {totalUnreadCount > 99 ? "99+" : totalUnreadCount}
+              </Badge>
+            </span>
           )}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[420px] p-0" align="end">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b">
-          <h4 className="font-semibold">Thông báo</h4>
+          <div className="flex items-center gap-2">
+            <h4 className="font-semibold">Thông báo</h4>
+            {totalUnreadCount > 0 && (
+              <Badge variant="destructive" className="h-5 px-1.5 text-[10px]">
+                {totalUnreadCount} chưa đọc
+              </Badge>
+            )}
+          </div>
           <div className="flex items-center gap-1">
+            {/* Export Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <Download className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Xuất lịch sử</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleExportCsv}>
+                  <FileText className="h-4 w-4 mr-2" />
+                  Xuất CSV
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportExcel}>
+                  <FileSpreadsheet className="h-4 w-4 mr-2" />
+                  Xuất Excel
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             {totalUnreadCount > 0 && (
               <Button variant="ghost" size="sm" onClick={handleMarkAllAsRead} className="h-8 text-xs">
                 <Check className="h-3 w-3 mr-1" />

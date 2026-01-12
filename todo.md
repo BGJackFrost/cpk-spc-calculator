@@ -10043,3 +10043,19 @@
 - [x] Tạo service render biểu đồ trên server (chartRenderer.ts)
 - [x] Tạo PDF generator với biểu đồ (pdfReportGenerator.ts)
 - [x] Thêm nút xuất PDF với biểu đồ trong trang báo cáo SPC
+
+## Phase 10.5 - Badge thông báo, Date Range Picker và Export
+
+### Badge thông báo chưa đọc
+- [x] Thêm badge số thông báo chưa đọc vào header (cải tiến với animation ping)
+- [x] Tạo API endpoint đếm số thông báo chưa đọc (đã có sẵn)
+- [x] Cập nhật realtime khi có thông báo mới (SSE)
+
+### Date Range Picker tích hợp
+- [x] Tích hợp Date Range Picker vào OEE Dashboard
+- [x] Tích hợp Date Range Picker vào Alert History
+
+### Export lịch sử thông báo
+- [x] Thêm nút export lịch sử thông báo ra Excel
+- [x] Thêm nút export lịch sử thông báo ra CSV
+- [x] Tạo API endpoint xuất dữ liệu thông báo

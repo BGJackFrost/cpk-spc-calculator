@@ -3,6 +3,8 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DateRangePicker } from "@/components/DateRangePicker";
+import { DateRange } from "react-day-picker";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -64,19 +66,43 @@ const demoLossData = [
 const COLORS = ['#ef4444', '#f97316', '#eab308', '#84cc16', '#22c55e', '#06b6d4'];
 
 export default function OEEDashboard() {
-  const [selectedPeriod, setSelectedPeriod] = useState("30d");
   const [selectedMachine, setSelectedMachine] = useState("all");
   const [isAddRecordOpen, setIsAddRecordOpen] = useState(false);
   
+  // Date range state
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - 30);
+    return { from: startDate, to: endDate };
+  });
+  
   const { data: machines } = trpc.machine.listAll.useQuery();
   
-  // Fetch real OEE data from API
-  const days = selectedPeriod === "7d" ? 7 : selectedPeriod === "30d" ? 30 : selectedPeriod === "90d" ? 90 : 365;
-  const [startDateStr] = useState(() => {
+  // Calculate start date string from date range
+  const startDateStr = useMemo(() => {
+    if (dateRange?.from) {
+      return dateRange.from.toISOString().split('T')[0];
+    }
     const d = new Date();
     d.setDate(d.getDate() - 30);
     return d.toISOString().split('T')[0];
-  });
+  }, [dateRange]);
+  
+  const endDateStr = useMemo(() => {
+    if (dateRange?.to) {
+      return dateRange.to.toISOString().split('T')[0];
+    }
+    return new Date().toISOString().split('T')[0];
+  }, [dateRange]);
+  
+  // Calculate days for comparison query
+  const days = useMemo(() => {
+    if (dateRange?.from && dateRange?.to) {
+      return Math.ceil((dateRange.to.getTime() - dateRange.from.getTime()) / (1000 * 60 * 60 * 24));
+    }
+    return 30;
+  }, [dateRange]);
   
   const { data: oeeRecords, refetch: refetchOEE } = trpc.oee.listRecords.useQuery({
     machineId: selectedMachine !== "all" ? Number(selectedMachine) : undefined,
@@ -195,18 +221,12 @@ export default function OEEDashboard() {
               Overall Equipment Effectiveness - Hiệu suất thiết bị tổng thể
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
-              <SelectTrigger className="w-[140px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="7d">7 ngày</SelectItem>
-                <SelectItem value="30d">30 ngày</SelectItem>
-                <SelectItem value="90d">90 ngày</SelectItem>
-                <SelectItem value="1y">1 năm</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="flex items-center gap-2 flex-wrap">
+            <DateRangePicker
+              dateRange={dateRange}
+              onDateRangeChange={setDateRange}
+              showPresets={true}
+            />
             <Select value={selectedMachine} onValueChange={setSelectedMachine}>
               <SelectTrigger className="w-[160px]">
                 <SelectValue placeholder="Tất cả máy" />
