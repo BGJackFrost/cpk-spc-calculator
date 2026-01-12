@@ -1,11 +1,14 @@
-import { Key, CheckCircle, AlertCircle } from 'lucide-react';
-import { useState } from "react";
+import { Key, CheckCircle, AlertCircle, Upload, Wifi, WifiOff, Fingerprint, RefreshCw, Building2, Calendar, Users as UsersIcon, Layers } from 'lucide-react';
+import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { 
   Info, 
   Server, 
@@ -24,13 +27,13 @@ import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 
-const SYSTEM_VERSION = "3.10.0";
-const BUILD_DATE = "2024-12-23";
-const BUILD_NUMBER = "fdd1e8ad";
+const SYSTEM_VERSION = "3.11.0";
+const BUILD_DATE = "2025-01-13";
+const BUILD_NUMBER = "phase182";
 
 const FEATURES = [
   { icon: BarChart3, name: "Tính toán SPC/CPK", description: "Tính toán Cp, Cpk, Pp, Ppk, Ca với control chart động" },
-  { icon: Activity, name: "Giám sát Realtime", description: "Theo dõi dây chuyền sản xuất theo thời gian thực với SSE" },
+  { icon: Activity, name: "Giám sát Realtime", description: "Theo dõi dây chuyền sản xuất theo thời gian thực với WebSocket" },
   { icon: Database, name: "Quản lý Database", description: "Kết nối và truy vấn dữ liệu từ nhiều nguồn database" },
   { icon: FileText, name: "Báo cáo & Xuất Excel/PDF", description: "Tạo báo cáo SPC và xuất dữ liệu ra Excel/PDF" },
   { icon: Shield, name: "8 SPC Rules", description: "Phát hiện vi phạm theo 8 quy tắc SPC tiêu chuẩn" },
@@ -45,17 +48,55 @@ const FEATURES = [
 
 const TECH_STACK = [
   { category: "Frontend", items: ["React 19", "TypeScript", "Tailwind CSS 4", "Recharts", "Radix UI"] },
-  { category: "Backend", items: ["Node.js", "Express.js", "tRPC", "Server-Sent Events"] },
+  { category: "Backend", items: ["Node.js", "Express.js", "tRPC", "WebSocket"] },
   { category: "Database", items: ["PostgreSQL", "Drizzle ORM", "MySQL Support"] },
   { category: "Khác", items: ["Vite", "Vitest", "Zod Validation"] },
 ];
 
+// Generate hardware fingerprint from browser
+function generateBrowserFingerprint(): string {
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    ctx.textBaseline = 'top';
+    ctx.font = '14px Arial';
+    ctx.fillText('fingerprint', 2, 2);
+  }
+  
+  const data = [
+    navigator.userAgent,
+    navigator.language,
+    screen.width + 'x' + screen.height,
+    new Date().getTimezoneOffset(),
+    canvas.toDataURL(),
+    navigator.hardwareConcurrency || 0,
+  ].join('|');
+  
+  let hash = 0;
+  for (let i = 0; i < data.length; i++) {
+    const char = data.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  return Math.abs(hash).toString(16).padStart(32, '0').substring(0, 32);
+}
+
 export default function About() {
   const { user } = useAuth();
   const [copied, setCopied] = useState(false);
+  const [licenseKey, setLicenseKey] = useState("");
+  const [licenseFile, setLicenseFile] = useState<File | null>(null);
+  const [hardwareFingerprint, setHardwareFingerprint] = useState("");
+  const [activationMode, setActivationMode] = useState<"online" | "offline">("online");
   
   // Fetch active license from database
-  const { data: activeLicense } = trpc.license.getActive.useQuery();
+  const { data: activeLicense, refetch: refetchLicense } = trpc.license.getActive.useQuery();
+  const activateOnlineMutation = trpc.license.activateOnline.useMutation();
+  const activateOfflineMutation = trpc.license.activateOffline.useMutation();
+  
+  useEffect(() => {
+    setHardwareFingerprint(generateBrowserFingerprint());
+  }, []);
   
   const licenseStatus = {
     isActive: activeLicense?.isActive === 1,
@@ -67,10 +108,10 @@ export default function About() {
 
   const getLicenseTypeBadge = (type: string) => {
     const styles: Record<string, string> = {
-      trial: "bg-yellow-100 text-yellow-800",
-      standard: "bg-blue-100 text-blue-800",
-      professional: "bg-purple-100 text-purple-800",
-      enterprise: "bg-green-100 text-green-800",
+      trial: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
+      standard: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
+      professional: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400",
+      enterprise: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
     };
     const labels: Record<string, string> = {
       trial: "Dùng thử",
@@ -105,6 +146,56 @@ export default function About() {
   };
 
   const daysRemaining = getDaysRemaining(licenseStatus.expiresAt);
+  
+  const handleOnlineActivation = async () => {
+    if (!licenseKey.trim()) {
+      toast.error("Vui lòng nhập License Key");
+      return;
+    }
+    
+    try {
+      await activateOnlineMutation.mutateAsync({
+        licenseKey: licenseKey.trim(),
+        hardwareFingerprint
+      });
+      toast.success("Kích hoạt license thành công!");
+      refetchLicense();
+      setLicenseKey("");
+    } catch (error: any) {
+      toast.error(error.message || "Kích hoạt thất bại");
+    }
+  };
+  
+  const handleOfflineActivation = async () => {
+    if (!licenseFile) {
+      toast.error("Vui lòng chọn file license (.lic)");
+      return;
+    }
+    
+    try {
+      const fileContent = await licenseFile.text();
+      await activateOfflineMutation.mutateAsync({
+        licenseFileContent: fileContent,
+        hardwareFingerprint
+      });
+      toast.success("Kích hoạt license offline thành công!");
+      refetchLicense();
+      setLicenseFile(null);
+    } catch (error: any) {
+      toast.error(error.message || "Kích hoạt thất bại");
+    }
+  };
+  
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!file.name.endsWith('.lic')) {
+        toast.error("Vui lòng chọn file có đuôi .lic");
+        return;
+      }
+      setLicenseFile(file);
+    }
+  };
 
   return (
     <DashboardLayout>
@@ -124,6 +215,7 @@ export default function About() {
         <Tabs defaultValue="info" className="space-y-4">
           <TabsList>
             <TabsTrigger value="info">Thông tin</TabsTrigger>
+            <TabsTrigger value="license">Kích hoạt License</TabsTrigger>
             <TabsTrigger value="features">Tính năng</TabsTrigger>
             <TabsTrigger value="tech">Công nghệ</TabsTrigger>
           </TabsList>
@@ -161,7 +253,7 @@ export default function About() {
                   <Separator />
                   <div className="flex justify-between items-center">
                     <span className="text-muted-foreground">Môi trường</span>
-                    <Badge className="bg-green-100 text-green-800">Production</Badge>
+                    <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">Production</Badge>
                   </div>
                 </CardContent>
               </Card>
@@ -182,12 +274,12 @@ export default function About() {
                   <div className="flex justify-between items-center">
                     <span className="text-muted-foreground">Trạng thái</span>
                     {licenseStatus.isActive ? (
-                      <Badge className="bg-green-100 text-green-800">
+                      <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
                         <CheckCircle className="h-3 w-3 mr-1" />
                         Đã kích hoạt
                       </Badge>
                     ) : (
-                      <Badge className="bg-yellow-100 text-yellow-800">
+                      <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">
                         <AlertCircle className="h-3 w-3 mr-1" />
                         Dùng thử
                       </Badge>
@@ -248,6 +340,203 @@ export default function About() {
                 </CardContent>
               </Card>
             )}
+          </TabsContent>
+
+          {/* License Activation Tab (Hybrid) */}
+          <TabsContent value="license" className="space-y-4">
+            {/* Current License Status */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Shield className="h-5 w-5 text-primary" />
+                    <CardTitle>Trạng thái License hiện tại</CardTitle>
+                  </div>
+                  {licenseStatus.isActive ? (
+                    <Badge className="bg-green-500">Đang hoạt động</Badge>
+                  ) : (
+                    <Badge variant="secondary">Chưa kích hoạt</Badge>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent>
+                {activeLicense ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                      <Building2 className="h-5 w-5 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm text-muted-foreground">Công ty</p>
+                        <p className="font-medium">{activeLicense.companyName || "N/A"}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                      <Key className="h-5 w-5 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm text-muted-foreground">Loại License</p>
+                        <p className="font-medium capitalize">{activeLicense.licenseType}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                      <Calendar className="h-5 w-5 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm text-muted-foreground">Hết hạn</p>
+                        <p className="font-medium">{formatDate(licenseStatus.expiresAt)}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                      <UsersIcon className="h-5 w-5 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm text-muted-foreground">Số người dùng</p>
+                        <p className="font-medium">{licenseStatus.maxUsers === -1 ? "Không giới hạn" : licenseStatus.maxUsers}</p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Chưa có license</AlertTitle>
+                    <AlertDescription>
+                      Vui lòng kích hoạt license để sử dụng đầy đủ tính năng của hệ thống.
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </CardContent>
+            </Card>
+            
+            {/* Hardware Fingerprint */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Fingerprint className="h-5 w-5" />
+                  Hardware Fingerprint
+                </CardTitle>
+                <CardDescription>
+                  Mã định danh phần cứng dùng để xác thực license
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 p-3 bg-muted rounded-lg font-mono text-sm break-all">
+                    {hardwareFingerprint || "Đang tạo..."}
+                  </code>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => copyToClipboard(hardwareFingerprint)}
+                  >
+                    {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+            
+            {/* Activation Methods */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Kích hoạt License (Hybrid)</CardTitle>
+                <CardDescription>
+                  Chọn phương thức kích hoạt phù hợp với môi trường của bạn
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Tabs value={activationMode} onValueChange={(v) => setActivationMode(v as "online" | "offline")}>
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="online" className="flex items-center gap-2">
+                      <Wifi className="h-4 w-4" />
+                      Online
+                    </TabsTrigger>
+                    <TabsTrigger value="offline" className="flex items-center gap-2">
+                      <WifiOff className="h-4 w-4" />
+                      Offline
+                    </TabsTrigger>
+                  </TabsList>
+                  
+                  <TabsContent value="online" className="space-y-4 mt-4">
+                    <Alert>
+                      <Wifi className="h-4 w-4" />
+                      <AlertTitle>Kích hoạt Online</AlertTitle>
+                      <AlertDescription>
+                        Nhập License Key để kích hoạt trực tiếp qua internet. Yêu cầu kết nối mạng.
+                      </AlertDescription>
+                    </Alert>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="license-key">License Key</Label>
+                      <Input
+                        id="license-key"
+                        placeholder="VD: PRO-LK5M2X-A1B2-C3D4-E5F6"
+                        value={licenseKey}
+                        onChange={(e) => setLicenseKey(e.target.value)}
+                      />
+                    </div>
+                    
+                    <Button 
+                      onClick={handleOnlineActivation}
+                      disabled={activateOnlineMutation.isPending}
+                      className="w-full"
+                    >
+                      {activateOnlineMutation.isPending ? (
+                        <>
+                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                          Đang kích hoạt...
+                        </>
+                      ) : (
+                        <>
+                          <Key className="h-4 w-4 mr-2" />
+                          Kích hoạt Online
+                        </>
+                      )}
+                    </Button>
+                  </TabsContent>
+                  
+                  <TabsContent value="offline" className="space-y-4 mt-4">
+                    <Alert>
+                      <WifiOff className="h-4 w-4" />
+                      <AlertTitle>Kích hoạt Offline</AlertTitle>
+                      <AlertDescription>
+                        Upload file license (.lic) được cấp bởi nhà cung cấp. Phù hợp cho môi trường không có internet.
+                      </AlertDescription>
+                    </Alert>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="license-file">File License (.lic)</Label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          id="license-file"
+                          type="file"
+                          accept=".lic"
+                          onChange={handleFileChange}
+                          className="flex-1"
+                        />
+                      </div>
+                      {licenseFile && (
+                        <p className="text-sm text-muted-foreground">
+                          Đã chọn: {licenseFile.name}
+                        </p>
+                      )}
+                    </div>
+                    
+                    <Button 
+                      onClick={handleOfflineActivation}
+                      disabled={activateOfflineMutation.isPending || !licenseFile}
+                      className="w-full"
+                    >
+                      {activateOfflineMutation.isPending ? (
+                        <>
+                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                          Đang kích hoạt...
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="h-4 w-4 mr-2" />
+                          Kích hoạt Offline
+                        </>
+                      )}
+                    </Button>
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* Features Tab */}

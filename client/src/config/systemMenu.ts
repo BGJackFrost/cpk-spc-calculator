@@ -98,14 +98,14 @@ export const SYSTEMS: Record<string, SystemConfig> = {
     description: "Production Line & Master Data Management",
     licenseKey: "production_system",
   },
-  LICENSE: {
-    id: "license",
-    name: "License Server",
-    shortName: "License",
-    icon: Key,
+  ADMIN: {
+    id: "admin",
+    name: "Admin Panel",
+    shortName: "Admin",
+    icon: Shield,
     color: "purple",
-    description: "License Management & Distribution",
-    licenseKey: "license_server",
+    description: "System Administration & Performance Monitoring",
+    licenseKey: "admin_panel",
   },
   SYSTEM: {
     id: "system",
@@ -320,37 +320,50 @@ export const PRODUCTION_MENU: SystemMenuConfig = {
   ],
 };
 
-// ===== LICENSE SERVER MENU (Admin Only - Quản lý License cho Công ty) =====
-export const LICENSE_MENU: SystemMenuConfig = {
-  system: SYSTEMS.LICENSE,
+// ===== ADMIN PANEL MENU (System Monitoring & Performance) =====
+export const ADMIN_MENU: SystemMenuConfig = {
+  system: SYSTEMS.ADMIN,
   menuGroups: [
     {
-      id: "license-dashboard",
-      labelKey: "menuGroup.licenseDashboard",
+      id: "admin-dashboard",
+      labelKey: "menuGroup.adminDashboard",
       icon: Gauge,
       defaultOpen: true,
       items: [
-        { id: "license-server-dashboard", icon: Gauge, labelKey: "nav.licenseServerDashboard", path: "/license-server-dashboard", adminOnly: true },
-        { id: "license-management", icon: Key, labelKey: "nav.licenseManagement", path: "/license-management", adminOnly: true },
-        { id: "license-notification-report", icon: Mail, labelKey: "nav.licenseNotificationReport", path: "/license-notification-report", adminOnly: true },
-        { id: "license-dashboard", icon: BarChart3, labelKey: "nav.licenseDashboard", path: "/license-dashboard", adminOnly: true },
+        { id: "admin-overview", icon: LayoutDashboard, labelKey: "nav.adminOverview", path: "/admin-dashboard", adminOnly: true },
       ],
     },
     {
-      id: "license-customers",
-      labelKey: "menuGroup.licenseCustomers",
-      icon: Building2,
+      id: "admin-monitoring",
+      labelKey: "menuGroup.adminMonitoring",
+      icon: Activity,
       items: [
-        { id: "license-customers", icon: Building2, labelKey: "nav.licenseCustomers", path: "/license-customers", adminOnly: true },
-        { id: "license-revenue", icon: BarChart3, labelKey: "nav.licenseRevenue", path: "/license-revenue", adminOnly: true },
+        { id: "system-health", icon: Activity, labelKey: "nav.systemHealth", path: "/system-health", adminOnly: true },
+        { id: "performance-trends", icon: TrendingUp, labelKey: "nav.performanceTrends", path: "/performance-trends", adminOnly: true },
+        { id: "admin-monitoring", icon: Activity, labelKey: "nav.adminMonitoring", path: "/admin-monitoring", adminOnly: true },
+        { id: "cache-monitoring", icon: Database, labelKey: "nav.cacheMonitoring", path: "/cache-monitoring", adminOnly: true },
+        { id: "rate-limit-dashboard", icon: Shield, labelKey: "nav.rateLimitDashboard", path: "/rate-limit-dashboard", adminOnly: true },
+        { id: "latency-monitoring", icon: Clock, labelKey: "nav.latencyMonitoring", path: "/latency-monitoring", adminOnly: true },
       ],
     },
     {
-      id: "license-settings",
-      labelKey: "menuGroup.licenseSettings",
-      icon: Settings,
+      id: "admin-security",
+      labelKey: "menuGroup.adminSecurity",
+      icon: Shield,
       items: [
-        { id: "license-server-settings", icon: Server, labelKey: "nav.licenseServerSettings", path: "/license-server-settings", adminOnly: true },
+        { id: "security-dashboard", icon: Shield, labelKey: "nav.securityDashboard", path: "/security-dashboard", adminOnly: true },
+        { id: "audit-logs", icon: FileText, labelKey: "nav.auditLog", path: "/audit-logs", adminOnly: true },
+        { id: "login-history", icon: History, labelKey: "nav.loginHistory", path: "/login-history", adminOnly: true },
+      ],
+    },
+    {
+      id: "admin-analytics",
+      labelKey: "menuGroup.adminAnalytics",
+      icon: BarChart3,
+      items: [
+        { id: "alert-analytics", icon: BarChart3, labelKey: "nav.alertAnalytics", path: "/alert-analytics", adminOnly: true },
+        { id: "unified-alert-kpi", icon: Target, labelKey: "nav.unifiedAlertKpi", path: "/unified-alert-kpi", adminOnly: true },
+        { id: "escalation-dashboard", icon: Bell, labelKey: "nav.escalationDashboard", path: "/escalation-dashboard", adminOnly: true },
       ],
     },
   ],
@@ -742,7 +755,7 @@ export const ALL_SYSTEM_MENUS: Record<string, SystemMenuConfig> = {
   spc: SPC_MENU,
   mms: MMS_MENU,
   production: PRODUCTION_MENU,
-  license: LICENSE_MENU,
+  admin: ADMIN_MENU,
   system: SYSTEM_MENU,
   ai: AI_MENU,
   iot: IOT_MENU,

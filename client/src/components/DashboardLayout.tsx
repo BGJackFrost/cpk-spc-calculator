@@ -42,7 +42,7 @@ import { SseIndicator } from "./SseIndicator";
 import { SyncStatusIndicator } from "./SyncStatusIndicator";
 import { MobileOfflineSyncIndicator } from "./MobileOfflineSyncIndicator";
 import { TopNavigation } from "./TopNavigation";
-import { ThemeSelector } from "./ThemeSelector";
+// ThemeSelector removed - dark mode only
 import { useSystem } from "@/contexts/SystemContext";
 import { MenuGroup as SystemMenuGroup, MenuItem as SystemMenuItem } from "@/config/systemMenu";
 import { useQuickAccess } from "@/hooks/useQuickAccess";
@@ -621,7 +621,7 @@ function DashboardLayoutContent({
   const sidebarRef = useRef<HTMLDivElement>(null);
   const { translate, language } = useLanguage();
   const { systemConfig, systemMenu, activeSystem } = useSystem();
-  const { theme, setTheme } = useTheme();
+  const { theme } = useTheme();
   
   // Load Quick Access items dynamically
   const { 
@@ -1093,23 +1093,7 @@ function DashboardLayoutContent({
           
           {/* Right side controls */}
           <div className="flex items-center gap-1">
-            {/* Theme Selector */}
-            <ThemeSelector />
-            
-            {/* Dark Mode Toggle */}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-              className="h-9 w-9 rounded-lg hover:bg-accent transition-colors"
-              title={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
-            >
-              {theme === "dark" ? (
-                <Sun className="h-4 w-4 text-yellow-500" />
-              ) : (
-                <Moon className="h-4 w-4 text-slate-700" />
-              )}
-            </Button>
+            {/* Dark Mode Only - Theme controls removed */}
             
             {/* Desktop: SyncStatusIndicator, Mobile: MobileOfflineSyncIndicator */}
             {isMobile ? (

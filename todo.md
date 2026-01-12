@@ -10129,3 +10129,53 @@
 - [ ] Thêm Yield Analysis (placeholder)
 - [ ] Thêm Inspection Rules configuration (placeholder)
 - [ ] Thêm Defect Categories management (placeholder)
+
+
+## Phase 182 - Tối ưu và Tái cấu trúc Hệ thống
+
+### Tối ưu Build
+- [x] Loại bỏ data seed 2D/3D không cần thiết để tối ưu build
+- [x] Loại bỏ các file model 3D mẫu không cần thiết
+
+### Tái cấu trúc Module Admin
+- [x] Tách các chức năng quản lý và theo dõi performance thành module Admin riêng
+- [x] Gộp AdminMonitoring vào module Admin mới
+- [x] Di chuyển các trang monitoring/performance vào Admin
+
+### Gộp Dashboard thành Tabs/Widgets
+- [ ] Mỗi module chỉ có 1 dashboard chính
+- [ ] Gộp các dashboard cũ thành tabs hoặc widgets
+- [ ] Thêm chức năng xem chi tiết khi nhấn vào widget
+
+### Loại bỏ Theme System
+- [x] Loại bỏ toàn bộ chức năng Theme selector
+- [x] Chỉ giữ lại Dark mode
+- [x] Cập nhật ThemeContext để chỉ hỗ trợ dark mode
+- [x] Loại bỏ ThemeSelector component
+
+### Loại bỏ License Management Module
+- [x] Loại bỏ module License Management khỏi menu
+- [x] Chuyển chức năng kích hoạt license thành tab trong About
+- [x] Tạo tab License Activation dạng Hybrid trong About
+- [x] Lưu tài liệu nguyên tắc và công thức tạo license key
+
+### Biểu đồ Realtime với WebSocket
+- [x] Tích hợp WebSocket cho cập nhật yield rate/defect rate realtime
+- [x] Thêm biểu đồ realtime không cần refresh
+- [x] Tạo hook useRealtimeYieldDefect
+- [x] Tạo component RealtimeYieldDefectChart
+
+### Export Báo cáo AOI/AVI
+- [x] Thêm chức năng xuất báo cáo PDF cho dữ liệu kiểm tra AOI/AVI
+- [x] Thêm chức năng xuất báo cáo Excel cho dữ liệu kiểm tra AOI/AVI
+- [x] Tạo service aoiAviExportService.ts
+- [x] Tạo component AoiAviExportButton.tsx
+
+### Cảnh báo Tự động
+- [x] Thiết lập ngưỡng cảnh báo khi yield rate giảm
+- [x] Thiết lập ngưỡng cảnh báo khi defect rate tăng đột biến
+- [x] Tạo service yieldDefectAlertService.ts
+- [x] Tạo component AlertThresholdConfig.tsx
+- [x] Hỗ trợ cảnh báo qua Email, WebSocket, Push notification
+- [ ] Gửi thông báo tự động khi vượt ngưỡng
+

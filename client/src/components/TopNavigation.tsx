@@ -52,10 +52,10 @@ const systemLabels: Record<string, { vi: string; en: string; description: { vi: 
     en: "AOI/AVI",
     description: { vi: "Kiểm tra quang học & hình ảnh tự động", en: "Automated Optical/Visual Inspection" }
   },
-  license: { 
-    vi: "License", 
-    en: "License",
-    description: { vi: "Quản lý License Server", en: "License Server Management" }
+  admin: { 
+    vi: "Admin", 
+    en: "Admin",
+    description: { vi: "Quản trị & Giám sát Hệ thống", en: "System Administration & Monitoring" }
   },
   system: { 
     vi: "Hệ thống", 
@@ -77,7 +77,7 @@ const systemDefaultPaths: Record<string, string> = {
   production: "/production-line-management",
   iot: "/iot-dashboard",
   aoi_avi: "/avi-aoi-dashboard",
-  license: "/license-server-dashboard",
+  admin: "/admin-dashboard",
   system: "/users",
   ai: "/ai-dashboard",
 };
@@ -99,7 +99,7 @@ export function TopNavigation() {
     { id: "iot", config: SYSTEMS.IOT },
     { id: "aoi_avi", config: SYSTEMS.AOI_AVI },
     { id: "ai", config: SYSTEMS.AI },
-    { id: "license", config: SYSTEMS.LICENSE },
+    { id: "admin", config: SYSTEMS.ADMIN },
     { id: "system", config: SYSTEMS.SYSTEM },
   ];
 
