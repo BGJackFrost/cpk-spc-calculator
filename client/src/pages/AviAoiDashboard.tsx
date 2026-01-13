@@ -58,6 +58,7 @@ import { useToast } from "@/hooks/use-toast";
 import { RealtimeYieldDefectChart } from "@/components/RealtimeYieldDefectChart";
 import { AoiAviExportButton } from "@/components/AoiAviExportButton";
 import { AlertThresholdConfig } from "@/components/AlertThresholdConfig";
+import { YieldDefectTrendChart, TrendDataPoint } from "@/components/YieldDefectTrendChart";
 
 interface InspectionItem {
   id: string;
@@ -910,6 +911,20 @@ export default function AviAoiDashboard() {
                 </CardContent>
               </Card>
             </div>
+
+            {/* Long-term Trend Chart */}
+            <YieldDefectTrendChart
+              data={inspectionApiData?.recentInspections?.map((item: any) => ({
+                timestamp: new Date(item.timestamp || item.createdAt).getTime(),
+                date: new Date(item.timestamp || item.createdAt).toISOString().split('T')[0],
+                yieldRate: item.yieldRate ?? (item.passed / (item.passed + item.failed) * 100) ?? 0,
+                defectRate: item.defectRate ?? (item.failed / (item.passed + item.failed) * 100) ?? 0,
+                totalInspected: item.total ?? (item.passed + item.failed) ?? 0,
+                totalPassed: item.passed ?? 0,
+                totalDefects: item.failed ?? 0,
+              } as TrendDataPoint)) || []}
+              title="Xu hướng Yield/Defect Rate dài hạn"
+            />
           </TabsContent>
 
           {/* Settings Tab - Alert Configuration */}

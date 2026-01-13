@@ -1,24 +1,29 @@
 /**
  * Service cảnh báo tự động cho Yield Rate và Defect Rate
+ * Tích hợp với hệ thống notification (Email, Push, Telegram, WebSocket)
  */
 
 import { db } from '../db';
 import { notifyOwner } from '../_core/notification';
+import { sendEmail } from '../emailService';
+import { sendTelegramAlert } from './telegramService';
+import { realtimeWebSocketService } from './realtimeWebSocketService';
 
 export interface AlertThreshold {
   id?: number;
   productionLineId?: number;
-  yieldWarningThreshold: number;      // % - cảnh báo khi yield < ngưỡng này
-  yieldCriticalThreshold: number;     // % - cảnh báo nghiêm trọng khi yield < ngưỡng này
-  defectWarningThreshold: number;     // % - cảnh báo khi defect > ngưỡng này
-  defectCriticalThreshold: number;    // % - cảnh báo nghiêm trọng khi defect > ngưỡng này
-  yieldDropThreshold: number;         // % - cảnh báo khi yield giảm đột ngột > ngưỡng này
-  defectSpikeThreshold: number;       // % - cảnh báo khi defect tăng đột ngột > ngưỡng này
-  cooldownMinutes: number;            // Thời gian chờ giữa các cảnh báo cùng loại
+  yieldWarningThreshold: number;
+  yieldCriticalThreshold: number;
+  defectWarningThreshold: number;
+  defectCriticalThreshold: number;
+  yieldDropThreshold: number;
+  defectSpikeThreshold: number;
+  cooldownMinutes: number;
   enabled: boolean;
   notifyEmail: boolean;
   notifyWebSocket: boolean;
   notifyPush: boolean;
+  notifyTelegram: boolean;
   emailRecipients: string[];
 }
 
@@ -44,15 +49,45 @@ export const DEFAULT_THRESHOLDS: AlertThreshold = {
   yieldCriticalThreshold: 90,
   defectWarningThreshold: 3,
   defectCriticalThreshold: 5,
-  yieldDropThreshold: 5,      // Cảnh báo khi yield giảm > 5% so với trung bình
-  defectSpikeThreshold: 50,   // Cảnh báo khi defect tăng > 50% so với trung bình
+  yieldDropThreshold: 5,
+  defectSpikeThreshold: 50,
   cooldownMinutes: 30,
   enabled: true,
   notifyEmail: true,
   notifyWebSocket: true,
   notifyPush: true,
+  notifyTelegram: true,
   emailRecipients: [],
 };
+
+// Helper: Gửi email cảnh báo
+async function sendAlertEmail(alert: AlertEvent, recipients: string[]): Promise<boolean> {
+  if (recipients.length === 0) return false;
+  const typeLabels: Record<string, string> = {
+    yield_low: 'Yield Rate Thấp', yield_critical: 'Yield Rate Nghiêm trọng',
+    defect_high: 'Defect Rate Cao', defect_critical: 'Defect Rate Nghiêm trọng',
+    yield_drop: 'Yield Rate Giảm Đột ngột', defect_spike: 'Defect Rate Tăng Đột biến',
+  };
+  const icon = alert.severity === 'critical' ? '🚨' : '⚠️';
+  const subject = `${icon} [SPC Alert] ${typeLabels[alert.type]} - ${alert.productionLineName || 'N/A'}`;
+  const html = `<div style="font-family:Arial;padding:20px;"><h2>${icon} ${typeLabels[alert.type]}</h2><p><strong>Giá trị:</strong> ${alert.currentValue.toFixed(2)}%</p><p><strong>Ngưỡng:</strong> ${alert.threshold}%</p><p><strong>Dây chuyền:</strong> ${alert.productionLineName || 'N/A'}</p><hr/><p>${alert.message}</p></div>`;
+  try { const result = await sendEmail(recipients, subject, html); return result.success; } catch { return false; }
+}
+
+// Helper: Gửi Telegram cảnh báo
+async function sendAlertTelegram(alert: AlertEvent): Promise<boolean> {
+  try {
+    const result = await sendTelegramAlert('yield_defect' as any, { severity: alert.severity, type: alert.type, productionLineName: alert.productionLineName, currentValue: alert.currentValue, threshold: alert.threshold, message: alert.message, timestamp: alert.timestamp });
+    return result.sent > 0;
+  } catch { return false; }
+}
+
+// Helper: Broadcast qua WebSocket
+function broadcastAlertWebSocket(alert: AlertEvent): void {
+  try {
+    realtimeWebSocketService.broadcastAlert({ alertId: `yield_defect_${Date.now()}`, type: 'yield_defect_alert', severity: alert.severity, message: alert.message, metadata: { category: 'yield_defect', productionLineId: alert.productionLineId, productionLineName: alert.productionLineName, currentValue: alert.currentValue, threshold: alert.threshold, alertType: alert.type } });
+  } catch { /* ignore */ }
+}
 
 // In-memory cache for recent values (for trend detection)
 const recentValues: Map<number, { yieldRates: number[]; defectRates: number[]; timestamps: number[] }> = new Map();
@@ -212,12 +247,33 @@ export async function checkAndCreateAlerts(
 
   // Send notifications for alerts
   for (const alert of alerts) {
+    // 1. Gửi Email
     if (thresholds.notifyEmail && thresholds.emailRecipients.length > 0) {
-      // Send email notification (implementation depends on email service)
-      console.log(`[YieldDefectAlert] Email notification: ${alert.message}`);
+      try {
+        const emailSent = await sendAlertEmail(alert, thresholds.emailRecipients);
+        console.log(`[YieldDefectAlert] Email: ${emailSent ? 'sent' : 'failed'} - ${alert.type}`);
+      } catch (error) {
+        console.error('[YieldDefectAlert] Email error:', error);
+      }
     }
 
-    // Notify owner for critical alerts
+    // 2. Gửi Telegram (chỉ cho critical alerts)
+    if (thresholds.notifyTelegram && alert.severity === 'critical') {
+      try {
+        const telegramSent = await sendAlertTelegram(alert);
+        console.log(`[YieldDefectAlert] Telegram: ${telegramSent ? 'sent' : 'failed'} - ${alert.type}`);
+      } catch (error) {
+        console.error('[YieldDefectAlert] Telegram error:', error);
+      }
+    }
+
+    // 3. Broadcast qua WebSocket
+    if (thresholds.notifyWebSocket) {
+      broadcastAlertWebSocket(alert);
+      console.log(`[YieldDefectAlert] WebSocket broadcast: ${alert.type}`);
+    }
+
+    // 4. Notify owner for critical alerts
     if (alert.severity === 'critical') {
       try {
         await notifyOwner({
