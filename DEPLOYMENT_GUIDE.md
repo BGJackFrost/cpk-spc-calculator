@@ -555,11 +555,27 @@ server {
     # Client max body size (cho file uploads)
     client_max_body_size 50M;
 
-    # Gzip compression
+    # Gzip compression (giảm 60-80% kích thước truyền tải)
     gzip on;
     gzip_vary on;
-    gzip_min_length 1024;
-    gzip_types text/plain text/css application/json application/javascript text/xml application/xml text/javascript image/svg+xml;
+    gzip_min_length 256;
+    gzip_comp_level 6;
+    gzip_proxied any;
+    gzip_types
+        text/plain
+        text/css
+        text/xml
+        text/javascript
+        application/json
+        application/javascript
+        application/x-javascript
+        application/xml
+        application/xml+rss
+        application/vnd.ms-fontobject
+        application/x-font-ttf
+        font/opentype
+        image/svg+xml
+        image/x-icon;
 
     # Static files caching
     location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {

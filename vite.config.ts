@@ -56,14 +56,14 @@ export default defineConfig({
         assetFileNames: 'assets/[name]-[hash].[ext]',
         manualChunks(id) {
           if (id.includes('node_modules')) {
-            // Charts & visualization
-            if (id.includes('recharts') || id.includes('d3-')) return 'vendor-charts';
+            // Charts & visualization (recharts + d3 + chart.js + react-chartjs-2)
+            if (id.includes('recharts') || id.includes('d3-') || id.includes('chart.js') || id.includes('react-chartjs-2')) return 'vendor-charts';
             // 3D rendering
             if (id.includes('three') || id.includes('@react-three')) return 'vendor-3d';
             // Icons
             if (id.includes('lucide')) return 'vendor-icons';
-            // UI primitives
-            if (id.includes('@radix-ui')) return 'vendor-radix';
+            // UI primitives (Radix + shadcn deps)
+            if (id.includes('@radix-ui') || id.includes('cmdk') || id.includes('vaul') || id.includes('sonner') || id.includes('embla-carousel') || id.includes('input-otp') || id.includes('react-resizable-panels') || id.includes('next-themes')) return 'vendor-ui';
             // React core
             if (id.includes('react-dom') || id.includes('react/') || id.includes('scheduler')) return 'vendor-react';
             // tRPC & data fetching
@@ -73,11 +73,45 @@ export default defineConfig({
             // Form & validation
             if (id.includes('zod') || id.includes('react-hook-form') || id.includes('@hookform')) return 'vendor-form';
             // PDF/Excel generation
-            if (id.includes('xlsx') || id.includes('exceljs') || id.includes('jspdf') || id.includes('html2canvas') || id.includes('pdfmake')) return 'vendor-export';
+            if (id.includes('xlsx') || id.includes('exceljs') || id.includes('jspdf') || id.includes('jspdf-autotable') || id.includes('html2canvas') || id.includes('pdfmake') || id.includes('pdfkit')) return 'vendor-export';
             // Markdown & editor
-            if (id.includes('marked') || id.includes('highlight') || id.includes('prism') || id.includes('codemirror') || id.includes('monaco')) return 'vendor-editor';
-            // Misc vendor
-            return 'vendor';
+            if (id.includes('marked') || id.includes('highlight') || id.includes('prism') || id.includes('codemirror') || id.includes('monaco') || id.includes('streamdown')) return 'vendor-editor';
+            // Superjson (serialization)
+            if (id.includes('superjson')) return 'vendor-superjson';
+            // QR Code & scanning
+            if (id.includes('html5-qrcode') || id.includes('qrcode')) return 'vendor-qrcode';
+            // Drag & drop
+            if (id.includes('@dnd-kit')) return 'vendor-dnd';
+            // React extensions (day-picker, joyride, image-crop)
+            if (id.includes('react-day-picker') || id.includes('react-joyride') || id.includes('react-image-crop')) return 'vendor-react-ext';
+            // Routing
+            if (id.includes('wouter')) return 'vendor-router';
+            // Utility libs (clsx, tailwind-merge, class-variance-authority)
+            if (id.includes('clsx') || id.includes('tailwind-merge') || id.includes('class-variance-authority')) return 'vendor-utils';
+            // Mermaid & diagram rendering (heavy: langium, chevrotain, dagre)
+            if (id.includes('mermaid') || id.includes('langium') || id.includes('chevrotain') || id.includes('dagre') || id.includes('khroma') || id.includes('cytoscape')) return 'vendor-mermaid';
+            // Syntax highlighting (shiki + vscode-jsonrpc + vscode-textmate)
+            if (id.includes('shiki') || id.includes('vscode-jsonrpc') || id.includes('vscode-textmate') || id.includes('vscode-oniguruma')) return 'vendor-syntax';
+            // Animation (framer-motion)
+            if (id.includes('framer-motion') || id.includes('motion')) return 'vendor-animation';
+            // MQTT & IoT
+            if (id.includes('mqtt')) return 'vendor-mqtt';
+            // State management (zustand)
+            if (id.includes('zustand')) return 'vendor-state';
+            // HTML parsing (parse5)
+            if (id.includes('parse5')) return 'vendor-html-parser';
+            // PPT generation
+            if (id.includes('pptxgenjs')) return 'vendor-pptx';
+            // Lodash utilities
+            if (id.includes('lodash')) return 'vendor-lodash';
+            // Core-js polyfills
+            if (id.includes('core-js')) return 'vendor-polyfill';
+            // Markdown processing (mdast, micromark, remark, rehype, unified)
+            if (id.includes('mdast') || id.includes('micromark') || id.includes('remark') || id.includes('rehype') || id.includes('unified') || id.includes('unist') || id.includes('hast')) return 'vendor-markdown';
+            // UUID & crypto
+            if (id.includes('uuid') || id.includes('nanoid')) return 'vendor-crypto';
+            // Misc vendor (remaining)
+            return 'vendor-misc';
           }
         },
       },

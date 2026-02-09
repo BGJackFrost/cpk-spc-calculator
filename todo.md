@@ -10264,3 +10264,11 @@
 - [x] Tạo Docker deployment guide - DEPLOYMENT_GUIDE.md (Dockerfile + docker-compose.yml)
 - [x] Tạo PM2 ecosystem config - ecosystem.config.cjs
 - [x] Tạo Nginx reverse proxy config - trong DEPLOYMENT_GUIDE.md
+
+## Phase - Tối ưu Vendor Chunks & Compression
+- [x] Phân tích vendor chunk 13MB: lodash-es, core-js, mermaid, shiki, langium, dagre-d3-es
+- [x] Tách vendor thành 24 chunks (vendor-misc giảm từ 13MB xuống 982KB)
+- [x] Thêm gzip compression vào Express server (compression middleware, level 6, skip SSE)
+- [x] Cập nhật Nginx config trong DEPLOYMENT_GUIDE.md với gzip tối ưu (comp_level 6, 15 MIME types)
+- [x] Build production: initial load 2.1MB (giảm 95% từ 40MB), gzip giảm thêm 71% transfer
+- [x] Tests: 226 files, 2808 passed, 0 failed

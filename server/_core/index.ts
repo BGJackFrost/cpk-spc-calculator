@@ -16,6 +16,7 @@ import { notifyOwner } from "./notification";
 import { storagePut } from "../storage";
 import { wsServer } from "../websocket";
 import addPerformanceIndexes from "../migrations/add-performance-indexes";
+import compression from "compression";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -53,6 +54,18 @@ async function startServer() {
   const app = express();
   const server = createServer(app);
   
+  // Gzip compression for all responses (reduces transfer size by 60-80%)
+  app.use(compression({
+    level: 6, // Balance between compression ratio and CPU usage
+    threshold: 1024, // Only compress responses > 1KB
+    filter: (req, res) => {
+      // Skip compression for SSE streams
+      if (req.path === '/api/sse') return false;
+      // Use default filter for everything else
+      return compression.filter(req, res);
+    },
+  }));
+
   // Security headers with Helmet
   app.use(helmet({
     contentSecurityPolicy: {
