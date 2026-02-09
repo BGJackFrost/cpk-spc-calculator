@@ -547,10 +547,17 @@ upstream spc_backend {
 
 server {
     listen 80;
+    listen 443 ssl http2;  # HTTP/2 với SSL
     server_name spc.company.com;  # Thay bằng domain của bạn
 
+    # SSL certificates (bỏ comment khi có SSL)
+    # ssl_certificate /etc/ssl/certs/spc.crt;
+    # ssl_certificate_key /etc/ssl/private/spc.key;
+    # ssl_protocols TLSv1.2 TLSv1.3;
+    # ssl_ciphers HIGH:!aNULL:!MD5;
+
     # Redirect HTTP to HTTPS (bỏ comment khi có SSL)
-    # return 301 https://$server_name$request_uri;
+    # if ($scheme != "https") { return 301 https://$server_name$request_uri; }
 
     # Client max body size (cho file uploads)
     client_max_body_size 50M;
@@ -578,11 +585,32 @@ server {
         image/svg+xml
         image/x-icon;
 
-    # Static files caching
-    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+    # Static files caching with HTTP/2 Server Push hints
+    location /assets/ {
+        proxy_pass http://spc_backend;
+        expires 1y;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+        access_log off;
+    }
+
+    # Other static files (images, fonts, icons)
+    location ~* \.(png|jpg|jpeg|gif|ico|svg|webp|avif|woff|woff2|ttf|eot)$ {
         proxy_pass http://spc_backend;
         expires 30d;
-        add_header Cache-Control "public, immutable";
+        add_header Cache-Control "public, max-age=2592000";
+        access_log off;
+    }
+
+    # HTTP/2 Server Push for critical assets
+    # Nginx reads Link headers from Express and pushes assets to client
+    location = / {
+        proxy_pass http://spc_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        http2_push_preload on;  # Enable HTTP/2 push from Link headers
     }
 
     # API and SSE
@@ -909,6 +937,289 @@ docker-compose logs -f app
 
 # Rebuild
 docker-compose up -d --build
+```
+
+---
+
+## 13. CDN Deployment
+
+Triển khai static assets lên CDN giúp giảm latency cho user ở xa server, giảm tải cho origin server, và tăng khả năng chịu tải. Dưới đây là hướng dẫn cho cả AWS CloudFront và Cloudflare.
+
+### 13.1. AWS CloudFront
+
+#### Bước 1: Tạo S3 Bucket cho static assets
+
+```bash
+# Tạo S3 bucket
+aws s3 mb s3://spc-calculator-assets --region ap-southeast-1
+
+# Sync build assets lên S3
+aws s3 sync dist/public/assets/ s3://spc-calculator-assets/assets/ \
+  --cache-control "public, max-age=31536000, immutable" \
+  --exclude "*.map"
+
+# Sync pre-built gzip files
+aws s3 sync dist/public/assets/ s3://spc-calculator-assets/assets/ \
+  --include "*.gz" \
+  --content-encoding gzip \
+  --cache-control "public, max-age=31536000, immutable"
+```
+
+#### Bước 2: Tạo CloudFront Distribution
+
+```bash
+# Tạo CloudFront distribution với S3 origin
+aws cloudfront create-distribution \
+  --origin-domain-name spc-calculator-assets.s3.ap-southeast-1.amazonaws.com \
+  --default-root-object index.html \
+  --query 'Distribution.DomainName'
+```
+
+Cấu hình CloudFront quan trọng:
+
+| Thiết lập | Giá trị | Mô tả |
+|-----------|---------|--------|
+| Price Class | PriceClass_200 | Asia + US + Europe |
+| Compress Objects | Yes | Tự động gzip/brotli |
+| Default TTL | 86400 (1 ngày) | Cache mặc định |
+| Max TTL | 31536000 (1 năm) | Cho hashed assets |
+| Viewer Protocol | Redirect HTTP to HTTPS | Bắt buộc HTTPS |
+| HTTP/2 | Enabled | Tăng tốc độ |
+| HTTP/3 | Enabled | QUIC protocol |
+
+#### Bước 3: Cấu hình Cache Behaviors
+
+Tạo 2 cache behaviors:
+
+**Behavior 1: Hashed Assets** (`/assets/*`)
+- TTL: 31536000 (1 năm, immutable)
+- Compress: Yes
+- Query String: None
+- Cookies: None
+
+**Behavior 2: API Requests** (`/api/*`)
+- TTL: 0 (no cache)
+- Forward All Headers
+- Forward All Query Strings
+- Forward Cookies
+
+#### Bước 4: Cập nhật Nginx để dùng CDN
+
+```nginx
+# Thay thế static file serving bằng CDN redirect
+location /assets/ {
+    # Redirect tới CloudFront
+    return 301 https://d1234567890.cloudfront.net$request_uri;
+}
+```
+
+Hoặc cấu hình trong app bằng biến môi trường:
+
+```bash
+# .env
+CDN_URL=https://d1234567890.cloudfront.net
+```
+
+#### Bước 5: Script tự động deploy lên CloudFront
+
+```bash
+#!/bin/bash
+# scripts/deploy-cdn.sh
+set -e
+
+CDN_BUCKET="spc-calculator-assets"
+DIST_ID="E1234567890"  # CloudFront Distribution ID
+
+echo "=== Building production ==="
+pnpm build
+
+echo "=== Syncing assets to S3 ==="
+# JS/CSS with immutable cache
+aws s3 sync dist/public/assets/ s3://$CDN_BUCKET/assets/ \
+  --cache-control "public, max-age=31536000, immutable" \
+  --exclude "*.map" \
+  --delete
+
+echo "=== Invalidating CloudFront cache ==="
+aws cloudfront create-invalidation \
+  --distribution-id $DIST_ID \
+  --paths "/assets/*" "/index.html"
+
+echo "=== CDN deployment complete ==="
+```
+
+---
+
+### 13.2. Cloudflare CDN
+
+Cloudflare cung cấp CDN miễn phí với cấu hình đơn giản hơn CloudFront.
+
+#### Bước 1: Thêm domain vào Cloudflare
+
+1. Đăng ký tài khoản tại [dash.cloudflare.com](https://dash.cloudflare.com)
+2. Thêm domain `spc.company.com`
+3. Cập nhật nameservers tại nhà đăng ký domain
+4. Chờ DNS propagation (tối đa 24h)
+
+#### Bước 2: Cấu hình DNS
+
+| Type | Name | Content | Proxy |
+|------|------|---------|-------|
+| A | spc | IP server của bạn | Proxied (đám mây cam) |
+| CNAME | www | spc.company.com | Proxied |
+
+#### Bước 3: Cấu hình Caching Rules
+
+Trong Cloudflare Dashboard, vào **Caching > Cache Rules**:
+
+**Rule 1: Immutable Assets**
+- Match: URI Path starts with `/assets/`
+- Cache TTL: 1 year
+- Browser TTL: 1 year
+- Cache Level: Cache Everything
+
+**Rule 2: No Cache API**
+- Match: URI Path starts with `/api/`
+- Cache Level: Bypass
+
+#### Bước 4: Cấu hình Performance
+
+Trong Cloudflare Dashboard:
+
+| Thiết lập | Vị trí | Giá trị |
+|-----------|--------|--------|
+| Auto Minify | Speed > Optimization | JS, CSS, HTML |
+| Brotli | Speed > Optimization | On |
+| HTTP/2 | Network | On (mặc định) |
+| HTTP/3 (QUIC) | Network | On |
+| Early Hints | Speed > Optimization | On |
+| Rocket Loader | Speed > Optimization | Off (xài React) |
+| Polish | Speed > Optimization | Lossy (Pro plan) |
+| WebP | Speed > Optimization | On (Pro plan) |
+
+#### Bước 5: Page Rules (Optional)
+
+```
+URL: spc.company.com/assets/*
+Settings:
+  - Cache Level: Cache Everything
+  - Edge Cache TTL: 1 month
+  - Browser Cache TTL: 1 year
+
+URL: spc.company.com/api/*
+Settings:
+  - Cache Level: Bypass
+  - Disable Performance
+```
+
+#### Bước 6: Cloudflare Workers (Optional - Advanced)
+
+Tạo Worker để tự động serve WebP/AVIF dựa trên Accept header:
+
+```javascript
+// cloudflare-worker.js
+addEventListener('fetch', event => {
+  event.respondWith(handleRequest(event.request));
+});
+
+async function handleRequest(request) {
+  const url = new URL(request.url);
+  
+  // Only process image requests
+  if (!/\.(jpg|jpeg|png|gif)$/i.test(url.pathname)) {
+    return fetch(request);
+  }
+
+  const accept = request.headers.get('Accept') || '';
+  let format = 'original';
+  
+  if (accept.includes('image/avif')) {
+    format = 'avif';
+  } else if (accept.includes('image/webp')) {
+    format = 'webp';
+  }
+
+  if (format !== 'original') {
+    const newPath = url.pathname.replace(/\.(jpg|jpeg|png|gif)$/i, `.${format}`);
+    url.pathname = newPath;
+    
+    const response = await fetch(url.toString(), request);
+    if (response.ok) {
+      return new Response(response.body, {
+        headers: {
+          ...Object.fromEntries(response.headers),
+          'Content-Type': `image/${format}`,
+          'Cache-Control': 'public, max-age=2592000',
+          'Vary': 'Accept',
+        }
+      });
+    }
+  }
+
+  return fetch(request);
+}
+```
+
+---
+
+### 13.3. So sánh CloudFront vs Cloudflare
+
+| Tiêu chí | AWS CloudFront | Cloudflare |
+|---------|---------------|------------|
+| Chi phí | Trả theo lưu lượng ($0.085/GB) | Free plan khá đủ |
+| SSL | ACM (miễn phí) | Universal SSL (miễn phí) |
+| HTTP/2 | Có | Có |
+| HTTP/3 | Có | Có |
+| Brotli | Có | Có |
+| Image Optimization | CloudFront Functions | Polish (Pro $20/tháng) |
+| DDoS Protection | AWS Shield (Basic free) | Tích hợp sẵn |
+| Độ phức tạp | Trung bình-Cao | Thấp |
+| Tích hợp AWS | Xuất sắc | Không |
+| Edge Locations VN | Singapore (gần) | Hà Nội, HCM |
+
+**Khuyến nghị:**
+- **Cloudflare** nếu muốn đơn giản, miễn phí, và có edge location tại Việt Nam
+- **CloudFront** nếu đã dùng hệ sinh thái AWS (S3, EC2, RDS)
+
+---
+
+### 13.4. Image Optimization tích hợp
+
+Hệ thống đã tích hợp sẵn image optimization:
+
+**Server-side (Sharp):**
+- Endpoint: `GET /api/image-optimize/{path}?w=800&q=80&f=webp`
+- Tự động phát hiện Accept header để trả về WebP/AVIF
+- Cache in-memory (100 images, TTL 1h)
+- Responsive variants: thumbnail (150px), small (400px), medium (800px), large (1200px)
+
+**Client-side (LazyImage component):**
+```tsx
+import { LazyImage } from '@/components/LazyImage';
+
+// Basic lazy loading
+<LazyImage src="/uploads/photo.jpg" alt="Photo" />
+
+// With optimization
+<LazyImage
+  src="/uploads/photo.jpg"
+  optimized
+  optimizedWidth={800}
+  alt="Optimized photo"
+/>
+
+// With placeholder blur-up
+<LazyImage
+  src="/uploads/photo.jpg"
+  placeholder="data:image/jpeg;base64,..."
+  alt="Photo with blur-up"
+/>
+```
+
+**Build script:**
+```bash
+# Convert tất cả images sang WebP/AVIF
+node scripts/optimize-images.mjs
 ```
 
 ---

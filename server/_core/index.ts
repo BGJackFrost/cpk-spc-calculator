@@ -289,6 +289,18 @@ async function startServer() {
     }
   });
 
+  // Image optimization endpoint (on-the-fly WebP/AVIF conversion)
+  app.get('/api/image-optimize/*', async (req, res, next) => {
+    try {
+      const { createImageOptimizationMiddleware } = await import('../services/imageOptimizationService');
+      const uploadsDir = path.resolve(process.cwd(), 'uploads');
+      const middleware = createImageOptimizationMiddleware(uploadsDir);
+      return middleware(req, res, next);
+    } catch (error) {
+      next(error);
+    }
+  });
+
   // tRPC API
   app.use(
     "/api/trpc",

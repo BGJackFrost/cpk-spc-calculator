@@ -10282,3 +10282,13 @@
 - [x] Cấu hình cache strategy: cache-first immutable cho vendor chunks, network-first cho API, stale-while-revalidate cho static
 - [x] Build production: initial load 2.0MB raw / 360KB gzip (giảm 99.1% từ 40MB)
 - [x] Tests: 226 files, 2808 passed, 0 failed
+
+## Phase - HTTP/2 Push, Image Optimization, CDN Guide
+- [x] Cấu hình HTTP/2 Server Push trong Nginx config (listen 443 ssl http2, http2_push_preload on)
+- [x] Thêm Link preload headers trong Express server (auto-discover critical assets, immutable caching)
+- [x] Tạo image optimization service (sharp: WebP/AVIF/JPEG, responsive variants, in-memory cache)
+- [x] Tạo LazyImage component (Intersection Observer, blur-up placeholder, error fallback)
+- [x] Tạo image optimization build script (scripts/optimize-images.mjs - WebP/AVIF batch convert)
+- [x] Tạo CDN deployment guide (CloudFront 5 bước + Cloudflare 6 bước + so sánh + Worker script)
+- [x] Cập nhật DEPLOYMENT_GUIDE.md với HTTP/2, CDN, image optimization (Section 13)
+- [x] Build: 321 .gz files, exit 0. Tests: 227 files, 2815 passed, 0 failed
