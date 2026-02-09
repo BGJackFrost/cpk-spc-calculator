@@ -2362,4 +2362,166 @@ export const oeeRouter = router({
       const { exportOEEReportToS3 } = await import('../services/oeeExportService');
       return await exportOEEReportToS3(input, 'pdf', ctx.user?.id);
     }),
+
+  // OEE Period Summary Report (by shift/day/week/month)
+  getPeriodSummary: protectedProcedure
+    .input(z.object({
+      productionLineId: z.number().optional(),
+      machineId: z.number().optional(),
+      period: z.enum(['shift', 'day', 'week', 'month']),
+      startDate: z.date(),
+      endDate: z.date(),
+    }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return [];
+
+      let groupExpr: any;
+      switch (input.period) {
+        case 'shift':
+          groupExpr = oeeRecords.shiftId;
+          break;
+        case 'day':
+          groupExpr = sql`DATE(${oeeRecords.recordDate})`;
+          break;
+        case 'week':
+          groupExpr = sql`YEARWEEK(${oeeRecords.recordDate}, 1)`;
+          break;
+        case 'month':
+          groupExpr = sql`DATE_FORMAT(${oeeRecords.recordDate}, '%Y-%m')`;
+          break;
+      }
+
+      const conditions = [
+        gte(oeeRecords.recordDate, input.startDate),
+        lte(oeeRecords.recordDate, input.endDate),
+      ];
+      if (input.productionLineId) {
+        conditions.push(eq(oeeRecords.productionLineId, input.productionLineId));
+      }
+      if (input.machineId) {
+        conditions.push(eq(oeeRecords.machineId, input.machineId));
+      }
+
+      const results = await db.select({
+        groupKey: groupExpr,
+        avgOee: sql<number>`AVG(CAST(${oeeRecords.oee} AS DECIMAL(5,2)))`,
+        avgAvailability: sql<number>`AVG(CAST(${oeeRecords.availability} AS DECIMAL(5,2)))`,
+        avgPerformance: sql<number>`AVG(CAST(${oeeRecords.performance} AS DECIMAL(5,2)))`,
+        avgQuality: sql<number>`AVG(CAST(${oeeRecords.quality} AS DECIMAL(5,2)))`,
+        totalGoodCount: sql<number>`SUM(COALESCE(${oeeRecords.goodCount}, 0))`,
+        totalDefectCount: sql<number>`SUM(COALESCE(${oeeRecords.defectCount}, 0))`,
+        totalCount: sql<number>`SUM(COALESCE(${oeeRecords.totalCount}, 0))`,
+        recordCount: sql<number>`COUNT(*)`,
+      })
+        .from(oeeRecords)
+        .where(and(...conditions))
+        .groupBy(groupExpr)
+        .orderBy(groupExpr)
+        .limit(100);
+
+      return results.map(row => {
+        const key = String(row.groupKey ?? '');
+        let label = key;
+        if (input.period === 'shift') label = `Ca ${key || 'N/A'}`;
+        else if (input.period === 'week') label = `Tu\u1EA7n ${key}`;
+        return {
+          label,
+          groupKey: key,
+          avgOee: Number(row.avgOee) || 0,
+          avgAvailability: Number(row.avgAvailability) || 0,
+          avgPerformance: Number(row.avgPerformance) || 0,
+          avgQuality: Number(row.avgQuality) || 0,
+          totalGoodCount: Number(row.totalGoodCount) || 0,
+          totalDefectCount: Number(row.totalDefectCount) || 0,
+          totalCount: Number(row.totalCount) || 0,
+          recordCount: Number(row.recordCount) || 0,
+        };
+      });
+    }),
+
+  exportPeriodExcel: protectedProcedure
+    .input(z.object({
+      period: z.enum(['shift', 'day', 'week', 'month']),
+      startDate: z.date(),
+      endDate: z.date(),
+      productionLineId: z.number().optional(),
+      data: z.array(z.object({
+        label: z.string(),
+        avgOee: z.number(),
+        avgAvailability: z.number(),
+        avgPerformance: z.number(),
+        avgQuality: z.number(),
+        totalGoodCount: z.number(),
+        totalDefectCount: z.number(),
+        recordCount: z.number(),
+      })),
+    }))
+    .mutation(async ({ input }) => {
+      const ExcelJS = (await import('exceljs')).default;
+      const workbook = new ExcelJS.Workbook();
+      workbook.creator = 'CPK/SPC Calculator';
+      const ws = workbook.addWorksheet('OEE Period Report');
+
+      const periodLabels: Record<string, string> = {
+        shift: 'Ca', day: 'Ngày', week: 'Tuần', month: 'Tháng',
+      };
+
+      // Title
+      ws.mergeCells('A1:H1');
+      const titleCell = ws.getCell('A1');
+      titleCell.value = `Báo cáo OEE theo ${periodLabels[input.period] || input.period}`;
+      titleCell.font = { size: 16, bold: true };
+      titleCell.alignment = { horizontal: 'center' };
+
+      ws.mergeCells('A2:H2');
+      const dateCell = ws.getCell('A2');
+      dateCell.value = `Từ ${input.startDate.toISOString().split('T')[0]} đến ${input.endDate.toISOString().split('T')[0]}`;
+      dateCell.alignment = { horizontal: 'center' };
+      dateCell.font = { italic: true, color: { argb: '666666' } };
+
+      // Headers
+      const headers = ['Kỳ', 'OEE (%)', 'Availability (%)', 'Performance (%)', 'Quality (%)', 'SP Tốt', 'SP Lỗi', 'Bản ghi'];
+      const headerRow = ws.addRow(headers);
+      headerRow.eachCell((cell) => {
+        cell.font = { bold: true, color: { argb: 'FFFFFF' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '2563EB' } };
+        cell.alignment = { horizontal: 'center' };
+        cell.border = { bottom: { style: 'thin' } };
+      });
+
+      // Data rows
+      for (const row of input.data) {
+        const dataRow = ws.addRow([
+          row.label,
+          Number(row.avgOee.toFixed(1)),
+          Number(row.avgAvailability.toFixed(1)),
+          Number(row.avgPerformance.toFixed(1)),
+          Number(row.avgQuality.toFixed(1)),
+          row.totalGoodCount,
+          row.totalDefectCount,
+          row.recordCount,
+        ]);
+        // Color OEE cell
+        const oeeCell = dataRow.getCell(2);
+        if (row.avgOee >= 85) oeeCell.font = { color: { argb: '16A34A' }, bold: true };
+        else if (row.avgOee >= 65) oeeCell.font = { color: { argb: 'CA8A04' }, bold: true };
+        else oeeCell.font = { color: { argb: 'DC2626' }, bold: true };
+      }
+
+      // Column widths
+      ws.columns = [
+        { width: 20 }, { width: 12 }, { width: 16 }, { width: 16 },
+        { width: 14 }, { width: 12 }, { width: 12 }, { width: 10 },
+      ];
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      const filename = `oee-period-${input.period}-${Date.now()}.xlsx`;
+      const { url } = await storagePut(
+        `exports/${filename}`,
+        Buffer.from(buffer as ArrayBuffer),
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      );
+      return { url, filename };
+    }),
 });

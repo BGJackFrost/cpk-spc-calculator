@@ -80,7 +80,7 @@ export interface CreateRetrainingConfigInput {
 
 // Get all retraining configs
 export async function getAllRetrainingConfigs(): Promise<RetrainingConfig[]> {
-  const db = getDb();
+  const db = await getDb();
   if (!db) return [];
   try {
     const results = await db.execute(`SELECT * FROM model_retraining_configs ORDER BY created_at DESC`);
@@ -93,7 +93,7 @@ export async function getAllRetrainingConfigs(): Promise<RetrainingConfig[]> {
 
 // Get retraining config by ID
 export async function getRetrainingConfigById(id: number): Promise<RetrainingConfig | null> {
-  const db = getDb();
+  const db = await getDb();
   if (!db) return null;
   try {
     const results = await db.execute(`SELECT * FROM model_retraining_configs WHERE id = ?`, [id]);
@@ -107,7 +107,7 @@ export async function getRetrainingConfigById(id: number): Promise<RetrainingCon
 
 // Create retraining config
 export async function createRetrainingConfig(input: CreateRetrainingConfigInput): Promise<RetrainingConfig | null> {
-  const db = getDb();
+  const db = await getDb();
   if (!db) return null;
   try {
     const nextCheckAt = Date.now() + (input.checkIntervalHours || 6) * 60 * 60 * 1000;
@@ -144,7 +144,7 @@ export async function createRetrainingConfig(input: CreateRetrainingConfigInput)
 
 // Toggle retraining config
 export async function toggleRetrainingConfig(id: number, isEnabled: boolean): Promise<boolean> {
-  const db = getDb();
+  const db = await getDb();
   if (!db) return false;
   try {
     await db.execute(`UPDATE model_retraining_configs SET is_enabled = ? WHERE id = ?`, [isEnabled ? 1 : 0, id]);
@@ -220,7 +220,7 @@ export async function getRetrainingHistory(options: {
   limit?: number;
   offset?: number;
 }): Promise<{ history: RetrainingHistory[]; total: number }> {
-  const db = getDb();
+  const db = await getDb();
   if (!db) return { history: [], total: 0 };
   try {
     let whereClause = '1=1';
@@ -256,7 +256,7 @@ export async function getRetrainingHistory(options: {
 
 // Cancel retraining
 export async function cancelRetraining(historyId: number): Promise<boolean> {
-  const db = getDb();
+  const db = await getDb();
   if (!db) return false;
   try {
     await db.execute(
@@ -278,7 +278,7 @@ export async function getRetrainingStats(): Promise<{
   avgAccuracyImprovement: number;
   avgTrainingDuration: number;
 }> {
-  const db = getDb();
+  const db = await getDb();
   if (!db) {
     return {
       totalRetrainings: 0,

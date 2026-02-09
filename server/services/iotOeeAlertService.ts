@@ -4,14 +4,14 @@ export interface AlertConfig { id: number; name: string; targetType: 'device' | 
 export interface AlertResult { configId: number; alertType: string; severity: 'info' | 'warning' | 'critical'; targetName: string; currentValue: number; thresholdValue: number; message: string; }
 
 export async function getAlertConfigs(): Promise<AlertConfig[]> {
-  const db = getDb();
+  const db = await getDb();
   const [rows] = await db.execute('SELECT * FROM iot_oee_alert_config WHERE is_enabled = 1');
   return (rows as any[]).map(row => ({ id: row.id, name: row.name, targetType: row.target_type, targetId: row.target_id, oeeWarningThreshold: parseFloat(row.oee_warning_threshold), oeeCriticalThreshold: parseFloat(row.oee_critical_threshold), mttrWarningMinutes: row.mttr_warning_minutes, mttrCriticalMinutes: row.mttr_critical_minutes, mtbfWarningHours: row.mtbf_warning_hours, mtbfCriticalHours: row.mtbf_critical_hours, notifyEmail: row.notify_email, notifyTelegram: row.notify_telegram, emailRecipients: row.email_recipients ? JSON.parse(row.email_recipients) : [], checkIntervalMinutes: row.check_interval_minutes, cooldownMinutes: row.cooldown_minutes, isEnabled: row.is_enabled }));
 }
 
 export async function checkOeeAlerts(config: AlertConfig): Promise<AlertResult[]> {
   const alerts: AlertResult[] = [];
-  const db = getDb();
+  const db = await getDb();
   let query = 'SELECT AVG(oee) as avg_oee FROM oee_records WHERE created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR)';
   if (config.targetType === 'production_line' && config.targetId) query += ` AND production_line_id = ${config.targetId}`;
   else if (config.targetType === 'machine' && config.targetId) query += ` AND machine_id = ${config.targetId}`;
@@ -25,15 +25,15 @@ export async function checkOeeAlerts(config: AlertConfig): Promise<AlertResult[]
 }
 
 export async function saveAlertHistory(alert: AlertResult): Promise<number> {
-  const db = getDb();
+  const db = await getDb();
   const [result] = await db.execute(`INSERT INTO iot_oee_alert_history (config_id, alert_type, severity, target_name, current_value, threshold_value, message) VALUES (?, ?, ?, ?, ?, ?, ?)`, [alert.configId, alert.alertType, alert.severity, alert.targetName, alert.currentValue, alert.thresholdValue, alert.message]);
   return (result as any).insertId;
 }
 
-export async function getAlertHistory(limit = 100): Promise<any[]> { const db = getDb(); const [rows] = await db.execute(`SELECT * FROM iot_oee_alert_history ORDER BY created_at DESC LIMIT ?`, [limit]); return rows as any[]; }
+export async function getAlertHistory(limit = 100): Promise<any[]> { const db = await getDb(); const [rows] = await db.execute(`SELECT * FROM iot_oee_alert_history ORDER BY created_at DESC LIMIT ?`, [limit]); return rows as any[]; }
 
 export async function getAlertStatistics(days = 7): Promise<any> {
-  const db = getDb();
+  const db = await getDb();
   const [rows] = await db.execute(`SELECT COUNT(*) as total, SUM(CASE WHEN severity = 'critical' THEN 1 ELSE 0 END) as critical, SUM(CASE WHEN severity = 'warning' THEN 1 ELSE 0 END) as warning, SUM(CASE WHEN severity = 'info' THEN 1 ELSE 0 END) as info, SUM(CASE WHEN acknowledged = 1 THEN 1 ELSE 0 END) as acknowledged, SUM(CASE WHEN acknowledged = 0 THEN 1 ELSE 0 END) as pending FROM iot_oee_alert_history WHERE created_at > DATE_SUB(NOW(), INTERVAL ? DAY)`, [days]);
   const stats = (rows as any[])[0];
   return { total: stats.total || 0, bySeverity: { critical: stats.critical || 0, warning: stats.warning || 0, info: stats.info || 0 }, acknowledged: stats.acknowledged || 0, pending: stats.pending || 0 };

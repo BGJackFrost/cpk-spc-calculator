@@ -125,7 +125,7 @@ export const cacheWarmingService = {
   async warmCacheKey(config: CacheWarmingConfig): Promise<WarmingResult> {
     const startTime = Date.now();
     try {
-      const db = getDb();
+      const db = await getDb();
       let data: any = null;
       
       switch (config.cacheKey) {

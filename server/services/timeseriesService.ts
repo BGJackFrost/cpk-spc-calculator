@@ -54,7 +54,7 @@ export async function insertTimeseriesData(
     sourceId?: string;
   }
 ): Promise<boolean> {
-  const db = getDb();
+  const db = await getDb();
   if (!db) return false;
   
   const ts = timestamp ?? Date.now();
@@ -82,7 +82,7 @@ export async function insertBatchTimeseriesData(
     quality?: 'good' | 'uncertain' | 'bad';
   }>
 ): Promise<number> {
-  const db = getDb();
+  const db = await getDb();
   if (!db) return 0;
   
   let inserted = 0;
@@ -110,7 +110,7 @@ export async function queryTimeseriesData(
   endTime: number,
   limit: number = 1000
 ): Promise<TimeseriesDataPoint[]> {
-  const db = getDb();
+  const db = await getDb();
   
   if (!db) return [];
   
@@ -141,7 +141,7 @@ export async function getHourlyAggregates(
   startTime: number,
   endTime: number
 ): Promise<HourlyAggregate[]> {
-  const db = getDb();
+  const db = await getDb();
   
   if (!db) return [];
   
@@ -176,7 +176,7 @@ export async function getDailyAggregates(
   startTime: number,
   endTime: number
 ): Promise<DailyAggregate[]> {
-  const db = getDb();
+  const db = await getDb();
   
   if (!db) return [];
   
@@ -235,7 +235,7 @@ export async function getDeviceStatistics(
     lastTimestamp: now,
   };
   
-  const db = getDb();
+  const db = await getDb();
   if (!db) return emptyStats;
   
   try {
@@ -275,7 +275,7 @@ export async function getDownsampledData(
   const duration = endTime - startTime;
   const bucketSize = Math.ceil(duration / targetPoints);
   
-  const db = getDb();
+  const db = await getDb();
   
   if (!db) return [];
   
@@ -306,7 +306,7 @@ export async function computeHourlyAggregates(
   deviceId: number,
   hourBucket: number
 ): Promise<HourlyAggregate | null> {
-  const db = getDb();
+  const db = await getDb();
   if (!db) return null;
   
   try {
@@ -347,7 +347,7 @@ export async function computeDailyAggregates(
   deviceId: number,
   dayBucket: number
 ): Promise<DailyAggregate | null> {
-  const db = getDb();
+  const db = await getDb();
   if (!db) return null;
   
   try {

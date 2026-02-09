@@ -139,6 +139,7 @@ const OeeAlertThresholdSettings = lazy(() => import("./pages/OeeAlertThresholdSe
 const OeeThresholdsByLine = lazy(() => import("./pages/OeeThresholdsByLine"));
 const OeeAlertIntegrations = lazy(() => import("./pages/OeeAlertIntegrations"));
 const IotOeeAlertConfig = lazy(() => import("./pages/IotOeeAlertConfig"));
+const OeePeriodReport = lazy(() => import("./pages/OeePeriodReport"));
 
 // KPI
 const KpiAlertThresholds = lazy(() => import("./pages/KpiAlertThresholds"));
@@ -418,6 +419,7 @@ function Router() {
 
         {/* OEE - Master Dashboard */}
         <Route path="/oee-master" component={OeeMasterDashboard} />
+        <Route path="/oee-period-report" component={OeePeriodReport} />
         <Route path="/oee-dashboard" component={OEEDashboard} />
         <Route path="/oee-alert-thresholds" component={OeeAlertThresholdSettings} />
         <Route path="/oee-thresholds-by-line" component={OeeThresholdsByLine} />

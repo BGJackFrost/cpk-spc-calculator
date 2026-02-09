@@ -55,7 +55,7 @@ export function isInCooldown(lastTriggeredAt: number | null, cooldownMinutes: nu
 }
 
 export async function evaluateAllRules() {
-  const db = getDb();
+  const db = await getDb();
   const rules = await db.select().from(customAlertRules).where(eq(customAlertRules.isActive, true));
   let evaluated = 0, triggered = 0, errors = 0;
   const results: Array<{ ruleId: number; ruleName: string; triggered: boolean; value: number | null; error?: string }> = [];
@@ -90,7 +90,7 @@ export async function evaluateAllRules() {
 }
 
 export async function getAlertStats() {
-  const db = getDb();
+  const db = await getDb();
   const now = Date.now();
   const oneDayAgo = now - 86400000;
   const oneWeekAgo = now - 604800000;

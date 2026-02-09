@@ -24,45 +24,7 @@ import {
   PieChart as RechartsPieChart, Pie, Cell, Legend, BarChart, Bar, ComposedChart, Line
 } from "recharts";
 
-// Demo data for OEE
-const generateDemoOEEData = () => {
-  const today = new Date();
-  const data = [];
-  for (let i = 29; i >= 0; i--) {
-    const date = new Date(today);
-    date.setDate(date.getDate() - i);
-    const availability = 85 + Math.random() * 10;
-    const performance = 88 + Math.random() * 10;
-    const quality = 95 + Math.random() * 4;
-    const oee = (availability * performance * quality) / 10000;
-    data.push({
-      date: date.toISOString().split('T')[0],
-      availability: Number(availability.toFixed(1)),
-      performance: Number(performance.toFixed(1)),
-      quality: Number(quality.toFixed(1)),
-      oee: Number(oee.toFixed(1)),
-    });
-  }
-  return data;
-};
-
-const demoMachineOEE = [
-  { machine: "CNC-001", oee: 87.5, availability: 92.1, performance: 95.2, quality: 99.8, status: "good" },
-  { machine: "CNC-002", oee: 82.3, availability: 88.5, performance: 93.1, quality: 99.9, status: "good" },
-  { machine: "CNC-003", oee: 75.8, availability: 85.2, performance: 89.5, quality: 99.5, status: "warning" },
-  { machine: "CNC-004", oee: 68.2, availability: 78.3, performance: 87.2, quality: 99.9, status: "critical" },
-  { machine: "Press-001", oee: 91.2, availability: 95.5, performance: 95.8, quality: 99.7, status: "excellent" },
-  { machine: "Press-002", oee: 84.6, availability: 90.2, performance: 94.1, quality: 99.6, status: "good" },
-];
-
-const demoLossData = [
-  { name: "Hỏng máy", value: 35, type: "availability", color: "#ef4444" },
-  { name: "Chuyển đổi", value: 20, type: "availability", color: "#f97316" },
-  { name: "Chạy chậm", value: 25, type: "performance", color: "#eab308" },
-  { name: "Dừng ngắn", value: 12, type: "performance", color: "#84cc16" },
-  { name: "Phế phẩm", value: 5, type: "quality", color: "#22c55e" },
-  { name: "Làm lại", value: 3, type: "quality", color: "#06b6d4" },
-];
+// All data comes from tRPC endpoints (oee.listRecords, oee.listLossRecords, oee.getMachineComparison)
 
 const COLORS = ['#ef4444', '#f97316', '#eab308', '#84cc16', '#22c55e', '#06b6d4'];
 
@@ -129,7 +91,7 @@ export default function OEEDashboard() {
     onError: (err) => toast.error(err.message),
   });
   
-  // Use API data or fallback to demo data
+  // Process OEE records from API
   const oeeData = useMemo(() => {
     if (oeeRecords && oeeRecords.length > 0) {
       return oeeRecords.map(r => ({
@@ -140,7 +102,7 @@ export default function OEEDashboard() {
         oee: Number(r.oee) || 0,
       }));
     }
-    return generateDemoOEEData();
+    return [];
   }, [oeeRecords]);
   
   const currentOEE = oeeData[oeeData.length - 1] || { oee: 0, availability: 0, performance: 0, quality: 0 };
@@ -173,7 +135,7 @@ export default function OEEDashboard() {
       });
       return Object.entries(grouped).map(([name, data]) => ({ name, ...data }));
     }
-    return demoLossData;
+    return [];
   }, [lossRecords]);
   
   // Process machine comparison data
@@ -188,7 +150,7 @@ export default function OEEDashboard() {
         status: Number(m.avgOee) >= 85 ? 'excellent' : Number(m.avgOee) >= 75 ? 'good' : Number(m.avgOee) >= 65 ? 'warning' : 'critical',
       }));
     }
-    return demoMachineOEE;
+    return [];
   }, [machineOEEData]);
   
   const handleAddRecord = (e: React.FormEvent<HTMLFormElement>) => {

@@ -108,27 +108,35 @@ export default function MachineDetail() {
     };
   }, [oeeRecords]);
 
-  // Demo SPC data
+  // Real SPC data from DB
+  const { data: spcMachineData } = trpc.spcPlan.getSpcByMachine.useQuery(
+    { machineId, limit: 50 },
+    { enabled: machineId > 0 }
+  );
   const spcData = useMemo(() => {
-    return Array.from({ length: 30 }, (_, i) => ({
-      id: i + 1,
-      timestamp: new Date(Date.now() - (30 - i) * 5 * 60 * 1000).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
-      value: 50 + Math.random() * 10 - 5,
-      ucl: 55,
-      lcl: 45,
-      mean: 50
-    }));
-  }, []);
+    if (!spcMachineData?.analyses?.length) return [];
+    return spcMachineData.analyses.map((a: any, i: number) => ({
+      id: a.id || i + 1,
+      timestamp: a.createdAt ? new Date(a.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : `#${i + 1}`,
+      value: a.mean ? Number(a.mean) / 1000 : 0,
+      ucl: a.ucl ? Number(a.ucl) / 1000 : 0,
+      lcl: a.lcl ? Number(a.lcl) / 1000 : 0,
+      mean: a.mean ? Number(a.mean) / 1000 : 0,
+    })).reverse();
+  }, [spcMachineData]);
+  const spcStats = spcMachineData?.stats;
 
-  // Demo loss data
-  const lossData = [
-    { name: "Hỏng thiết bị", value: 25, color: "#ef4444" },
-    { name: "Cài đặt/Điều chỉnh", value: 15, color: "#f97316" },
-    { name: "Chạy không tải", value: 20, color: "#eab308" },
-    { name: "Giảm tốc độ", value: 18, color: "#22c55e" },
-    { name: "Lỗi quy trình", value: 12, color: "#3b82f6" },
-    { name: "Giảm năng suất khởi động", value: 10, color: "#8b5cf6" }
-  ];
+  // Real OEE loss data from DB
+  const { data: lossData = [] } = trpc.spcPlan.getOeeLossByMachine.useQuery(
+    { machineId, days: 7 },
+    { enabled: machineId > 0 }
+  );
+
+  // Real alerts data from DB
+  const { data: machineAlerts } = trpc.spcPlan.getAlertsByMachine.useQuery(
+    { machineId, days: 7 },
+    { enabled: machineId > 0 }
+  );
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -441,28 +449,44 @@ export default function MachineDetail() {
               <Card>
                 <CardContent className="pt-4 text-center">
                   <p className="text-sm text-muted-foreground">Cp</p>
-                  <p className="text-2xl font-bold">1.45</p>
+                  <p className={`text-2xl font-bold ${(spcStats?.avgCp || 0) >= 1.33 ? 'text-green-500' : (spcStats?.avgCp || 0) >= 1.0 ? 'text-yellow-500' : 'text-red-500'}`}>
+                    {spcStats?.avgCp?.toFixed(2) || '—'}
+                  </p>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="pt-4 text-center">
                   <p className="text-sm text-muted-foreground">Cpk</p>
-                  <p className="text-2xl font-bold text-green-500">1.33</p>
+                  <p className={`text-2xl font-bold ${(spcStats?.avgCpk || 0) >= 1.33 ? 'text-green-500' : (spcStats?.avgCpk || 0) >= 1.0 ? 'text-yellow-500' : 'text-red-500'}`}>
+                    {spcStats?.avgCpk?.toFixed(2) || '—'}
+                  </p>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="pt-4 text-center">
-                  <p className="text-sm text-muted-foreground">Pp</p>
-                  <p className="text-2xl font-bold">1.38</p>
+                  <p className="text-sm text-muted-foreground">Tổng mẫu</p>
+                  <p className="text-2xl font-bold">
+                    {spcStats?.totalSamples?.toLocaleString() || '—'}
+                  </p>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="pt-4 text-center">
-                  <p className="text-sm text-muted-foreground">Ppk</p>
-                  <p className="text-2xl font-bold text-green-500">1.25</p>
+                  <p className="text-sm text-muted-foreground">Cảnh báo</p>
+                  <p className={`text-2xl font-bold ${(spcStats?.alertCount || 0) > 0 ? 'text-red-500' : 'text-green-500'}`}>
+                    {spcStats?.alertCount ?? '—'}
+                  </p>
                 </CardContent>
               </Card>
             </div>
+            {!spcMachineData?.analyses?.length && (
+              <Card>
+                <CardContent className="py-8 text-center text-muted-foreground">
+                  <BarChart3 className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                  <p>Chưa có dữ liệu SPC cho máy này. Hãy tạo SPC Sampling Plan và liên kết với máy.</p>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           <TabsContent value="bom" className="space-y-4">
@@ -542,32 +566,28 @@ export default function MachineDetail() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between p-3 border-l-4 border-red-500 bg-red-50 dark:bg-red-900/20 rounded-r-lg">
-                    <div>
-                      <p className="font-medium">OEE dưới ngưỡng</p>
-                      <p className="text-sm text-muted-foreground">OEE = 72.5% (ngưỡng: 85%)</p>
-                      <p className="text-xs text-muted-foreground">15/12/2025 14:30</p>
-                    </div>
-                    <Badge className="bg-red-500">Nghiêm trọng</Badge>
+                {machineAlerts && machineAlerts.length > 0 ? (
+                  <div className="space-y-3">
+                    {machineAlerts.slice(0, 10).map((alert: any) => (
+                      <div key={alert.id} className={`flex items-center justify-between p-3 border-l-4 ${
+                        alert.severity === 'critical' ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : 'border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20'
+                      } rounded-r-lg`}>
+                        <div>
+                          <p className="font-medium">{alert.alertType?.replace(/_/g, ' ') || 'Cảnh báo'}</p>
+                          <p className="text-sm text-muted-foreground">{alert.message || 'Không có chi tiết'}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {alert.createdAt ? new Date(alert.createdAt).toLocaleString('vi-VN') : ''}
+                          </p>
+                        </div>
+                        <Badge className={alert.severity === 'critical' ? 'bg-red-500' : 'bg-yellow-500'}>
+                          {alert.severity === 'critical' ? 'Nghiêm trọng' : 'Cảnh báo'}
+                        </Badge>
+                      </div>
+                    ))}
                   </div>
-                  <div className="flex items-center justify-between p-3 border-l-4 border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20 rounded-r-lg">
-                    <div>
-                      <p className="font-medium">CPK cảnh báo</p>
-                      <p className="text-sm text-muted-foreground">CPK = 1.25 (ngưỡng: 1.33)</p>
-                      <p className="text-xs text-muted-foreground">15/12/2025 10:15</p>
-                    </div>
-                    <Badge className="bg-yellow-500">Cảnh báo</Badge>
-                  </div>
-                  <div className="flex items-center justify-between p-3 border-l-4 border-orange-500 bg-orange-50 dark:bg-orange-900/20 rounded-r-lg">
-                    <div>
-                      <p className="font-medium">Performance giảm</p>
-                      <p className="text-sm text-muted-foreground">Performance = 78% (ngưỡng: 90%)</p>
-                      <p className="text-xs text-muted-foreground">14/12/2025 16:45</p>
-                    </div>
-                    <Badge className="bg-orange-500">Trung bình</Badge>
-                  </div>
-                </div>
+                ) : (
+                  <p className="text-center text-muted-foreground py-4">Không có cảnh báo nào trong 7 ngày qua</p>
+                )}
               </CardContent>
             </Card>
 
@@ -576,28 +596,28 @@ export default function MachineDetail() {
               <Card>
                 <CardContent className="pt-4 text-center">
                   <p className="text-sm text-muted-foreground">Tổng cảnh báo</p>
-                  <p className="text-2xl font-bold">24</p>
+                  <p className="text-2xl font-bold">{machineAlerts?.length || 0}</p>
                   <p className="text-xs text-muted-foreground">7 ngày qua</p>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="pt-4 text-center">
                   <p className="text-sm text-muted-foreground">Nghiêm trọng</p>
-                  <p className="text-2xl font-bold text-red-500">3</p>
+                  <p className="text-2xl font-bold text-red-500">{machineAlerts?.filter((a: any) => a.severity === 'critical').length || 0}</p>
                   <p className="text-xs text-muted-foreground">Cần xử lý ngay</p>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="pt-4 text-center">
                   <p className="text-sm text-muted-foreground">Cảnh báo</p>
-                  <p className="text-2xl font-bold text-yellow-500">8</p>
+                  <p className="text-2xl font-bold text-yellow-500">{machineAlerts?.filter((a: any) => a.severity === 'warning').length || 0}</p>
                   <p className="text-xs text-muted-foreground">Cần theo dõi</p>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="pt-4 text-center">
-                  <p className="text-sm text-muted-foreground">Đã xử lý</p>
-                  <p className="text-2xl font-bold text-green-500">13</p>
+                  <p className="text-sm text-muted-foreground">Đã xác nhận</p>
+                  <p className="text-2xl font-bold text-green-500">{machineAlerts?.filter((a: any) => a.acknowledgedAt).length || 0}</p>
                   <p className="text-xs text-muted-foreground">Hoàn thành</p>
                 </CardContent>
               </Card>

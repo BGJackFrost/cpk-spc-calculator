@@ -3266,6 +3266,95 @@ const spcPlanRouter = router({
       await db.delete(spcPlanTemplates).where(eq(spcPlanTemplates.id, input.id));
       return { success: true };
     }),
+  // Get SPC analysis data for a specific machine
+  getSpcByMachine: protectedProcedure
+    .input(z.object({
+      machineId: z.number(),
+      limit: z.number().min(1).max(200).default(50),
+    }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return { analyses: [], plans: [], stats: null };
+      const { spcSamplingPlans } = await import('../drizzle/schema');
+      const plans = await db.select()
+        .from(spcSamplingPlans)
+        .where(eq(spcSamplingPlans.machineId, input.machineId))
+        .orderBy(desc(spcSamplingPlans.createdAt))
+        .limit(20);
+      const planIds = plans.map(p => p.id);
+      let analyses: any[] = [];
+      if (planIds.length > 0) {
+        analyses = await db.select()
+          .from(spcAnalysisHistory)
+          .where(sql`mapping_id IN (${sql.join(planIds.map(id => sql`${id}`), sql`,`)})`)
+          .orderBy(desc(spcAnalysisHistory.createdAt))
+          .limit(input.limit);
+      }
+      const cpkValues = analyses.filter(a => a.cpk != null);
+      const stats = analyses.length > 0 ? {
+        avgCp: cpkValues.length > 0 ? cpkValues.reduce((s, a) => s + Number(a.cp || 0) / 1000, 0) / cpkValues.length : 0,
+        avgCpk: cpkValues.length > 0 ? cpkValues.reduce((s, a) => s + Number(a.cpk || 0) / 1000, 0) / cpkValues.length : 0,
+        avgMean: analyses.reduce((s, a) => s + Number(a.mean || 0) / 1000, 0) / analyses.length,
+        avgStdDev: analyses.reduce((s, a) => s + Number(a.stdDev || 0) / 1000, 0) / analyses.length,
+        totalSamples: analyses.reduce((s, a) => s + (a.sampleCount || 0), 0),
+        alertCount: analyses.filter(a => a.alertTriggered === 1).length,
+        latestAnalysis: analyses[0] || null,
+      } : null;
+      return { analyses, plans, stats };
+    }),
+  // Get OEE loss breakdown for a machine
+  getOeeLossByMachine: protectedProcedure
+    .input(z.object({
+      machineId: z.number(),
+      days: z.number().min(1).max(90).default(7),
+    }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return [];
+      const { oeeRecords } = await import('../drizzle/schema');
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - input.days);
+      const records = await db.select()
+        .from(oeeRecords)
+        .where(and(
+          eq(oeeRecords.machineId, input.machineId),
+          gte(oeeRecords.recordDate, startDate)
+        ))
+        .orderBy(desc(oeeRecords.recordDate))
+        .limit(100);
+      const totalDowntime = records.reduce((s, r) => s + (r.downtime || 0), 0);
+      const totalRun = records.reduce((s, r) => s + (r.actualRunTime || 0), 0);
+      const defectCount = records.reduce((s, r) => s + (r.defectCount || 0), 0);
+      const totalCount = records.reduce((s, r) => s + (r.totalCount || 0), 0);
+      const idealCycle = records[0]?.idealCycleTime ? Number(records[0].idealCycleTime) : 0;
+      const speedLoss = idealCycle > 0 ? Math.max(0, totalRun - (totalCount * idealCycle)) : 0;
+      return [
+        { name: "Thời gian dừng máy", value: totalDowntime, color: "#ef4444" },
+        { name: "Giảm tốc độ", value: Math.round(speedLoss), color: "#f97316" },
+        { name: "Sản phẩm lỗi", value: defectCount, color: "#eab308" },
+        { name: "Thời gian chạy hiệu quả", value: Math.max(0, totalRun - Math.round(speedLoss)), color: "#22c55e" },
+      ].filter(d => d.value > 0);
+    }),
+  // Get alerts for a specific machine
+  getAlertsByMachine: protectedProcedure
+    .input(z.object({
+      machineId: z.number(),
+      days: z.number().min(1).max(90).default(7),
+    }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return [];
+      const { realtimeAlerts } = await import('../drizzle/schema');
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - input.days);
+      return db.select().from(realtimeAlerts)
+        .where(and(
+          eq(realtimeAlerts.machineId, input.machineId),
+          gte(realtimeAlerts.createdAt, startDate)
+        ))
+        .orderBy(desc(realtimeAlerts.createdAt))
+        .limit(50);
+    }),
 });
 
 // User Line Assignment Router
@@ -12956,7 +13045,7 @@ Hãy trả về JSON với format:
   }),
   customAlert: router({
     list: protectedProcedure.input(z.object({ page: z.number().default(1), limit: z.number().default(20), metricType: z.string().optional(), severity: z.string().optional(), isActive: z.boolean().optional() })).query(async ({ input }) => {
-      const db = getDb();
+      const db = await getDb();
       const conditions: any[] = [];
       if (input.metricType) conditions.push(eq(customAlertRules.metricType, input.metricType));
       if (input.severity) conditions.push(eq(customAlertRules.severity, input.severity));
@@ -12967,29 +13056,29 @@ Hãy trả về JSON với format:
       return { rules, total: total?.count ?? 0, page: input.page, totalPages: Math.ceil((total?.count ?? 0) / input.limit) };
     }),
     getById: protectedProcedure.input(z.object({ id: z.number() })).query(async ({ input }) => {
-      const db = getDb();
+      const db = await getDb();
       const [rule] = await db.select().from(customAlertRules).where(eq(customAlertRules.id, input.id));
       return rule ?? null;
     }),
     create: protectedProcedure.input(z.object({ name: z.string().min(1), description: z.string().optional(), metricType: z.string(), operator: z.string(), threshold: z.number(), thresholdMax: z.number().optional(), severity: z.string().default("warning"), evaluationIntervalMinutes: z.number().default(5), cooldownMinutes: z.number().default(30), consecutiveBreachesRequired: z.number().default(1), notificationChannels: z.string().optional(), recipients: z.string().optional(), webhookUrl: z.string().optional() })).mutation(async ({ input, ctx }) => {
-      const db = getDb();
+      const db = await getDb();
       const now = Date.now();
       const [result] = await db.insert(customAlertRules).values({ ...input, createdBy: ctx.user?.openId ?? "system", createdAt: now, updatedAt: now });
       return { id: result.insertId, success: true };
     }),
     update: protectedProcedure.input(z.object({ id: z.number(), name: z.string().optional(), description: z.string().optional(), metricType: z.string().optional(), operator: z.string().optional(), threshold: z.number().optional(), thresholdMax: z.number().optional(), severity: z.string().optional(), evaluationIntervalMinutes: z.number().optional(), cooldownMinutes: z.number().optional(), consecutiveBreachesRequired: z.number().optional(), notificationChannels: z.string().optional(), recipients: z.string().optional(), webhookUrl: z.string().optional() })).mutation(async ({ input }) => {
-      const db = getDb();
+      const db = await getDb();
       const { id, ...data } = input;
       await db.update(customAlertRules).set({ ...data, updatedAt: Date.now() }).where(eq(customAlertRules.id, id));
       return { success: true };
     }),
     delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
-      const db = getDb();
+      const db = await getDb();
       await db.delete(customAlertRules).where(eq(customAlertRules.id, input.id));
       return { success: true };
     }),
     toggle: protectedProcedure.input(z.object({ id: z.number(), isActive: z.boolean() })).mutation(async ({ input }) => {
-      const db = getDb();
+      const db = await getDb();
       await db.update(customAlertRules).set({ isActive: input.isActive, updatedAt: Date.now() }).where(eq(customAlertRules.id, input.id));
       return { success: true };
     }),
@@ -12998,7 +13087,7 @@ Hãy trả về JSON với format:
       return evaluateAllRules();
     }),
     history: protectedProcedure.input(z.object({ page: z.number().default(1), limit: z.number().default(20), ruleId: z.number().optional(), severity: z.string().optional(), status: z.string().optional() })).query(async ({ input }) => {
-      const db = getDb();
+      const db = await getDb();
       const conditions: any[] = [];
       if (input.ruleId) conditions.push(eq(customAlertHistory.ruleId, input.ruleId));
       if (input.severity) conditions.push(eq(customAlertHistory.severity, input.severity));
@@ -13013,12 +13102,12 @@ Hãy trả về JSON với format:
       return getAlertStats();
     }),
     acknowledge: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input, ctx }) => {
-      const db = getDb();
+      const db = await getDb();
       await db.update(customAlertHistory).set({ status: "acknowledged", acknowledgedAt: Date.now(), acknowledgedBy: ctx.user?.name ?? "admin" }).where(eq(customAlertHistory.id, input.id));
       return { success: true };
     }),
     resolve: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input, ctx }) => {
-      const db = getDb();
+      const db = await getDb();
       await db.update(customAlertHistory).set({ status: "resolved", resolvedAt: Date.now(), resolvedBy: ctx.user?.name ?? "admin" }).where(eq(customAlertHistory.id, input.id));
       return { success: true };
     }),

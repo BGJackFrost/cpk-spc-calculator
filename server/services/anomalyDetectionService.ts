@@ -176,7 +176,7 @@ const modelCache = new Map<number, IsolationForest>();
 
 // Get all models from ai_anomaly_models table
 export async function getAllModels(): Promise<IsolationForestModel[]> {
-  const db = getDb();
+  const db = await getDb();
   if (!db) return [];
   
   try {
@@ -190,7 +190,7 @@ export async function getAllModels(): Promise<IsolationForestModel[]> {
 
 // Get model by ID from ai_anomaly_models table
 export async function getModelById(id: number): Promise<IsolationForestModel | null> {
-  const db = getDb();
+  const db = await getDb();
   if (!db) return null;
   
   try {
@@ -205,7 +205,7 @@ export async function getModelById(id: number): Promise<IsolationForestModel | n
 
 // Create model
 export async function createModel(input: CreateModelInput): Promise<IsolationForestModel | null> {
-  const db = getDb();
+  const db = await getDb();
   if (!db) return null;
   
   try {
@@ -225,7 +225,7 @@ export async function trainModel(
   modelId: number,
   trainingData: { values?: number[]; startTime?: number; endTime?: number }
 ): Promise<{ success: boolean; metrics?: any } | null> {
-  const db = getDb();
+  const db = await getDb();
   if (!db) return null;
   
   try {
@@ -306,7 +306,7 @@ export async function detectAnomalies(
   
   if (!iforest) {
     // Try to load model from DB
-    const db = getDb();
+    const db = await getDb();
     if (db) {
       try {
         const models = await db.select().from(aiAnomalyModels).where(eq(aiAnomalyModels.id, modelId)).limit(1);
@@ -378,7 +378,7 @@ export async function getRecentAnomalies(options: {
   severity?: 'low' | 'medium' | 'high' | 'critical';
   limit?: number;
 }): Promise<any[]> {
-  const db = getDb();
+  const db = await getDb();
   if (!db) return [];
   
   try {
@@ -415,7 +415,7 @@ export async function saveAnomalyDetection(
   result: AnomalyDetectionResult,
   deviceId?: number
 ): Promise<boolean> {
-  const db = getDb();
+  const db = await getDb();
   if (!db) return false;
   
   try {
@@ -442,7 +442,7 @@ export async function getAnomalyStats(options: {
   bySeverity: Record<string, number>;
   byType: Record<string, number>;
 }> {
-  const db = getDb();
+  const db = await getDb();
   if (!db) {
     return { totalDetections: 0, anomalyCount: 0, bySeverity: {}, byType: {} };
   }

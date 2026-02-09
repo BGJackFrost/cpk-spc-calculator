@@ -79,7 +79,7 @@ export interface CreateDeviceInput {
 
 // Gateway CRUD operations
 export async function getAllGateways(): Promise<EdgeGateway[]> {
-  const db = getDb();
+  const db = await getDb();
   if (!db) return [];
   
   try {
@@ -116,7 +116,7 @@ export async function getAllGateways(): Promise<EdgeGateway[]> {
 }
 
 export async function getGatewayById(id: number): Promise<EdgeGateway | null> {
-  const db = getDb();
+  const db = await getDb();
   if (!db) return null;
   
   try {
@@ -152,7 +152,7 @@ export async function getGatewayById(id: number): Promise<EdgeGateway | null> {
 }
 
 export async function createGateway(input: CreateGatewayInput): Promise<EdgeGateway | null> {
-  const db = getDb();
+  const db = await getDb();
   if (!db) return null;
   
   try {
@@ -168,7 +168,7 @@ export async function createGateway(input: CreateGatewayInput): Promise<EdgeGate
 }
 
 export async function updateGateway(id: number, updates: Partial<CreateGatewayInput>): Promise<boolean> {
-  const db = getDb();
+  const db = await getDb();
   if (!db) return false;
   
   try {
@@ -191,7 +191,7 @@ export async function updateGateway(id: number, updates: Partial<CreateGatewayIn
 }
 
 export async function deleteGateway(id: number): Promise<boolean> {
-  const db = getDb();
+  const db = await getDb();
   if (!db) return false;
   
   try {
@@ -205,7 +205,7 @@ export async function deleteGateway(id: number): Promise<boolean> {
 
 // Device operations
 export async function getDevicesByGateway(gatewayId: number): Promise<EdgeDevice[]> {
-  const db = getDb();
+  const db = await getDb();
   if (!db) return [];
   
   try {
@@ -238,7 +238,7 @@ export async function getDevicesByGateway(gatewayId: number): Promise<EdgeDevice
 }
 
 export async function createDevice(input: CreateDeviceInput): Promise<EdgeDevice | null> {
-  const db = getDb();
+  const db = await getDb();
   if (!db) return null;
   
   try {
@@ -260,7 +260,7 @@ export async function updateHeartbeat(gatewayId: number, metrics?: {
   diskUsage?: number;
   currentBufferSize?: number;
 }): Promise<boolean> {
-  const db = getDb();
+  const db = await getDb();
   if (!db) return false;
   
   try {
@@ -281,7 +281,7 @@ export async function syncData(gatewayId: number, data: Array<{
   timestamp: number;
   quality?: 'good' | 'uncertain' | 'bad';
 }>): Promise<{ synced: number; failed: number }> {
-  const db = getDb();
+  const db = await getDb();
   if (!db) return { synced: 0, failed: 0 };
   
   const startTime = Date.now();
@@ -329,7 +329,7 @@ export async function getGatewayStats(gatewayId: number): Promise<{
   pendingSync: number;
   avgLatency: number;
 }> {
-  const db = getDb();
+  const db = await getDb();
   if (!db) {
     return { totalDevices: 0, activeDevices: 0, totalDataPoints: 0, pendingSync: 0, avgLatency: 0 };
   }

@@ -23,7 +23,7 @@ export interface NotificationPreferencesInput {
  * Get notification preferences for a user
  */
 export async function getPreferencesByUserId(userId: number) {
-  const db = getDb();
+  const db = await getDb();
   if (!db) return null;
 
   const results = await db
@@ -39,7 +39,7 @@ export async function getPreferencesByUserId(userId: number) {
  * Create default notification preferences for a user
  */
 export async function createDefaultPreferences(userId: number) {
-  const db = getDb();
+  const db = await getDb();
   if (!db) throw new Error('Database not available');
 
   const result = await db.insert(notificationPreferences).values({
@@ -60,7 +60,7 @@ export async function createDefaultPreferences(userId: number) {
  * Update notification preferences for a user
  */
 export async function updatePreferences(userId: number, input: NotificationPreferencesInput) {
-  const db = getDb();
+  const db = await getDb();
   if (!db) throw new Error('Database not available');
 
   const updateData: Record<string, any> = {};
@@ -105,7 +105,7 @@ export async function updatePreferences(userId: number, input: NotificationPrefe
  * Get or create notification preferences for a user
  */
 export async function getOrCreatePreferences(userId: number) {
-  const db = getDb();
+  const db = await getDb();
   if (!db) throw new Error('Database not available');
 
   let prefs = await getPreferencesByUserId(userId);

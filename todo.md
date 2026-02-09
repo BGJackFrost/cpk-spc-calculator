@@ -10555,7 +10555,7 @@
 
 ### 3.1 SPC/CPK
 - [ ] Nâng cấp Dashboard SPC Realtime
-- [ ] Nâng cấp MachineDetail.tsx với OEE/SPC
+- [x] Nâng cấp MachineDetail.tsx với real SPC data, OEE loss, và real alerts từ DB
 - [ ] Cải thiện SPC Plan Overview
 - [ ] Xuất báo cáo SPC PDF/Excel hoàn chỉnh
 
@@ -10565,8 +10565,9 @@
 - [ ] Xuất báo cáo MTTR/MTBF Excel
 
 ### 3.3 Production Line
-- [ ] Báo cáo OEE theo ca/ngày/tuần/tháng
-- [ ] Xuất báo cáo OEE PDF/Excel
+- [x] Báo cáo OEE theo ca/ngày/tuần/tháng (OeePeriodReport.tsx với real tRPC data)
+- [x] Xuất báo cáo OEE Excel (oee.exportPeriodExcel endpoint)
+- [ ] Xuất báo cáo OEE PDF
 - [ ] Scheduled job gửi báo cáo hàng tuần
 
 ## GĐ4 - Mở rộng Enterprise
@@ -10580,3 +10581,12 @@
 - [ ] Cập nhật User Guide
 - [ ] Hoàn thiện API Documentation
 - [ ] Cập nhật UPGRADE_PLAN.md và VERSION_HISTORY.md
+
+### 3.4 Mock Data Removal (GĐ3)
+- [x] Loại bỏ demo data từ OEEDashboard.tsx (generateDemoOEEData, demoMachineOEE, demoLossData)
+- [x] Loại bỏ mock data từ SnImages.tsx (mockImages array)
+- [x] Xác nhận MaintenanceDashboard.tsx đã dùng real tRPC data (666 dòng, 0 mock)
+- [x] Xác nhận SparePartsGuide.tsx là trang hướng dẫn tĩnh (không cần refactor)
+- [x] Xác nhận OeePeriodReport.tsx đã dùng real tRPC data (oee.getPeriodSummary)
+- [x] Thêm export Excel cho OeePeriodReport (oee.exportPeriodExcel)
+- [x] Vitest tests cho GĐ3 refactor (25 tests passed)
