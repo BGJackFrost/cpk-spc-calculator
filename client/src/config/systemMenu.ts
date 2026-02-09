@@ -747,6 +747,7 @@ export const AOI_AVI_MENU: SystemMenuConfig = {
         { id: "inspection-trend", icon: TrendingUp, labelKey: "nav.inspectionTrend", path: "/inspection-trend" },
         { id: "ntf-dashboard", icon: TrendingUp, labelKey: "nav.ntfDashboard", path: "/ntf-dashboard" },
         { id: "yield-analysis", icon: Target, labelKey: "nav.yieldAnalysis", path: "/yield-analysis" },
+        { id: "yield-defect-alert-history", icon: Bell, labelKey: "nav.yieldDefectAlertHistory", path: "/yield-defect-alert-history" },
       ],
     },
     {

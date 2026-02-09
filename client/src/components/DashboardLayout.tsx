@@ -1080,7 +1080,7 @@ function DashboardLayoutContent({
             title={language === 'en' ? 'Go to Dashboard' : 'Về Bảng điều khiển'}
           >
             <img 
-              src={import.meta.env.VITE_APP_LOGO || "/logo.png"} 
+              src={import.meta.env.VITE_APP_LOGO || "https://files.manuscdn.com/user_upload_by_module/session_file/310519663243606474/jLjFIplRgffsFopW.png"} 
               alt={import.meta.env.VITE_APP_TITLE || "Logo"} 
               className="h-8 w-8 object-contain"
               onError={(e) => {

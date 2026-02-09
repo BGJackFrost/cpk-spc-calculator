@@ -248,6 +248,7 @@ import AdvancedAnalytics from "./pages/AdvancedAnalytics";
 import ImageComparison from "./pages/ImageComparison";
 import AviAoiDashboard from "./pages/AviAoiDashboard";
 import AoiAviSummaryDashboard from "./pages/AoiAviSummaryDashboard";
+import YieldDefectAlertHistory from "./pages/YieldDefectAlertHistory";
 import GoldenSampleManager from "./pages/GoldenSampleManager";
 import DefectTypeManager from "./pages/DefectTypeManager";
 import DashboardCustomization from "./pages/DashboardCustomization";
@@ -517,6 +518,7 @@ function Router() {
       <Route path="/image-comparison" component={ImageComparison} />
       <Route path="/avi-aoi-dashboard" component={AviAoiDashboard} />
       <Route path="/aoi-avi-summary" component={AoiAviSummaryDashboard} />
+      <Route path="/yield-defect-alert-history" component={YieldDefectAlertHistory} />
       <Route path="/golden-sample-manager" component={GoldenSampleManager} />
       <Route path="/defect-type-manager" component={DefectTypeManager} />
       <Route path="/dashboard-customization" component={DashboardCustomization} />

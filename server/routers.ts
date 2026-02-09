@@ -102,6 +102,7 @@ import { qualityStatisticsRouter } from "./routers/qualityStatisticsRouter";
 import { heatMapYieldRouter } from "./routers/heatMapYieldRouter";
 import { paretoChartRouter } from "./routers/paretoChartRouter";
 import { aoiAviRouter } from "./routers/aoiAviRouter";
+import { alertHistoryRouter } from "./routers/alertHistoryRouter";
 import { autoNtfRouter } from "./routers/autoNtfRouter";
 import { alertConfigRouter } from "./routers/alertConfigRouter";
 import { maintenanceWorkOrderRouter } from "./maintenanceWorkOrderRouter";
@@ -4011,6 +4012,7 @@ export const appRouter = router({
   heatMapYield: heatMapYieldRouter,
   paretoChart: paretoChartRouter,
   aoiAvi: aoiAviRouter,
+  alertHistory: alertHistoryRouter,
   autoNtf: autoNtfRouter,
   alertConfig: alertConfigRouter,
   auth: router({

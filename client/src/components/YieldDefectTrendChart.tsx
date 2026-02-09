@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { TrendingUp, TrendingDown, Minus, RefreshCw, Calendar, BarChart3, Loader2 } from "lucide-react";
+import TrendExportButton from "./TrendExportButton";
 import { ResponsiveContainer, ComposedChart, Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ReferenceLine } from "recharts";
 
 export interface TrendDataPoint {
@@ -186,6 +187,7 @@ export function YieldDefectTrendChart({
               <SelectTrigger className="w-[130px]"><SelectValue /></SelectTrigger>
               <SelectContent>{AGGREGATION_OPTIONS.map((opt) => (<SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>))}</SelectContent>
             </Select>
+            <TrendExportButton data={data} timeRange={timeRange} aggregation={aggregation} />
             {onRefresh && (<Button variant="outline" size="icon" onClick={onRefresh} disabled={isLoading}><RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} /></Button>)}
           </div>
         </div>

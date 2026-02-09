@@ -13,6 +13,7 @@ import {
 } from "../../drizzle/schema";
 import { eq, and, desc, gte, lte, sql, count } from "drizzle-orm";
 import { storagePut } from "../storage";
+import { generateTrendPdfHtml, generateTrendExcel, type TrendDataPoint, type TrendExportOptions } from "../services/trendExportService";
 import { exportAoiAviToExcel, generateAoiAviPdfHtml, type AoiAviInspectionData, type DefectDetail } from "../services/aoiAviExportService";
 
 // Helper to generate random suffix for file keys
@@ -675,6 +676,54 @@ export const aoiAviRouter = router({
         return {
           base64,
           filename,
+          mimeType: 'text/html',
+        };
+      }
+    }),
+
+  exportTrendReport: protectedProcedure
+    .input(z.object({
+      format: z.enum(['pdf', 'excel']),
+      timeRange: z.string(),
+      aggregation: z.string(),
+      data: z.array(z.object({
+        timestamp: z.number(),
+        date: z.string(),
+        yieldRate: z.number(),
+        defectRate: z.number(),
+        totalInspected: z.number(),
+        totalPassed: z.number(),
+        totalDefects: z.number(),
+      })),
+      yieldWarningThreshold: z.number().optional().default(95),
+      yieldCriticalThreshold: z.number().optional().default(90),
+      defectWarningThreshold: z.number().optional().default(3),
+      defectCriticalThreshold: z.number().optional().default(5),
+    }))
+    .mutation(async ({ input }) => {
+      const options: TrendExportOptions = {
+        title: 'B\u00e1o c\u00e1o Xu h\u01b0\u1edbng Yield/Defect Rate',
+        timeRange: input.timeRange,
+        aggregation: input.aggregation,
+        yieldWarningThreshold: input.yieldWarningThreshold,
+        yieldCriticalThreshold: input.yieldCriticalThreshold,
+        defectWarningThreshold: input.defectWarningThreshold,
+        defectCriticalThreshold: input.defectCriticalThreshold,
+      };
+      if (input.format === 'excel') {
+        const buffer = await generateTrendExcel(input.data, options);
+        const base64 = buffer.toString('base64');
+        return {
+          base64,
+          filename: `trend-report-${input.timeRange}.xlsx`,
+          mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        };
+      } else {
+        const html = generateTrendPdfHtml(input.data, options);
+        const base64 = Buffer.from(html).toString('base64');
+        return {
+          base64,
+          filename: `trend-report-${input.timeRange}.html`,
           mimeType: 'text/html',
         };
       }

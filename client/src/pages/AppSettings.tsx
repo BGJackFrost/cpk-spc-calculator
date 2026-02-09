@@ -103,7 +103,7 @@ export default function AppSettings() {
   useEffect(() => {
     // Load from env or localStorage
     setAppTitle(import.meta.env.VITE_APP_TITLE || localStorage.getItem("app-title") || "MMS/SPC");
-    setAppLogo(import.meta.env.VITE_APP_LOGO || localStorage.getItem("app-logo") || "/logo.png");
+    setAppLogo(import.meta.env.VITE_APP_LOGO || localStorage.getItem("app-logo") || "https://files.manuscdn.com/user_upload_by_module/session_file/310519663243606474/jLjFIplRgffsFopW.png");
     setCompanyName(localStorage.getItem("company-name") || "");
   }, []);
   

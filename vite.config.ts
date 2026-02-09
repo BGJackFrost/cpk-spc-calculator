@@ -54,8 +54,16 @@ export default defineConfig({
         chunkFileNames: 'assets/[name]-[hash].js',
         entryFileNames: 'assets/[name]-[hash].js',
         assetFileNames: 'assets/[name]-[hash].[ext]',
-        // Disable manual chunks for faster build
-        // manualChunks: undefined,
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('recharts') || id.includes('d3-')) return 'vendor-charts';
+            if (id.includes('three') || id.includes('@react-three')) return 'vendor-3d';
+            if (id.includes('lucide')) return 'vendor-icons';
+            if (id.includes('@radix-ui')) return 'vendor-radix';
+            if (id.includes('react-dom')) return 'vendor-react';
+            return 'vendor';
+          }
+        },
       },
       // Reduce memory by limiting parallel processing
       maxParallelFileOps: 1,

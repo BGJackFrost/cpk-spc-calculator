@@ -7725,3 +7725,34 @@ export const aoiAviYieldStats = mysqlTable("aoi_avi_yield_stats", {
 ]);
 export type AoiAviYieldStat = typeof aoiAviYieldStats.$inferSelect;
 export type InsertAoiAviYieldStat = typeof aoiAviYieldStats.$inferInsert;
+
+
+// ============ Yield/Defect Alert History ============
+export const yieldDefectAlertHistory = mysqlTable("yield_defect_alert_history", {
+  id: int("id").primaryKey().autoincrement(),
+  alertType: varchar("alert_type", { length: 50 }).notNull(), // yield_low, defect_high, spc_violation
+  severity: varchar("severity", { length: 20 }).notNull(), // info, warning, critical
+  status: varchar("status", { length: 20 }).notNull().default("active"), // active, acknowledged, resolved, dismissed
+  title: varchar("title", { length: 255 }).notNull(),
+  message: text("message"),
+  source: varchar("source", { length: 100 }), // machine, line, station
+  sourceId: varchar("source_id", { length: 100 }),
+  sourceName: varchar("source_name", { length: 255 }),
+  metricName: varchar("metric_name", { length: 100 }),
+  metricValue: decimal("metric_value", { precision: 15, scale: 6 }),
+  thresholdValue: decimal("threshold_value", { precision: 15, scale: 6 }),
+  acknowledgedBy: varchar("acknowledged_by", { length: 255 }),
+  acknowledgedAt: bigint("acknowledged_at", { mode: "number" }),
+  resolvedBy: varchar("resolved_by", { length: 255 }),
+  resolvedAt: bigint("resolved_at", { mode: "number" }),
+  resolvedNote: text("resolved_note"),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+  updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
+}, (table) => [
+  index("idx_alert_type").on(table.alertType),
+  index("idx_alert_severity").on(table.severity),
+  index("idx_alert_status").on(table.status),
+  index("idx_alert_created").on(table.createdAt),
+]);
+export type YieldDefectAlertHistory = typeof yieldDefectAlertHistory.$inferSelect;
+export type InsertYieldDefectAlertHistory = typeof yieldDefectAlertHistory.$inferInsert;
