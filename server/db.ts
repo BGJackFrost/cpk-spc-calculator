@@ -7375,3 +7375,136 @@ export async function getBatchImageStats(jobId: number) {
     return null;
   }
 }
+
+// ============================================
+// Audit Log Dashboard Functions
+// ============================================
+
+/**
+ * Get audit log statistics for dashboard
+ */
+export async function getAuditLogStats(filters?: {
+  userId?: number;
+  startDate?: string;
+  endDate?: string;
+}) {
+  const db = await getDb();
+  if (!db) return null;
+
+  const conditions: any[] = [];
+  if (filters?.userId) conditions.push(eq(auditLogs.userId, filters.userId));
+  if (filters?.startDate) conditions.push(gte(auditLogs.createdAt, filters.startDate));
+  if (filters?.endDate) conditions.push(lte(auditLogs.createdAt, filters.endDate));
+
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+  const [totalResult, actionStats, moduleStats, userStats, recentActivity] = await Promise.all([
+    whereClause
+      ? db.select({ count: sql<number>`count(*)` }).from(auditLogs).where(whereClause)
+      : db.select({ count: sql<number>`count(*)` }).from(auditLogs),
+    whereClause
+      ? db.select({ action: auditLogs.action, count: sql<number>`count(*)` }).from(auditLogs).where(whereClause).groupBy(auditLogs.action).orderBy(sql`count(*) DESC`)
+      : db.select({ action: auditLogs.action, count: sql<number>`count(*)` }).from(auditLogs).groupBy(auditLogs.action).orderBy(sql`count(*) DESC`),
+    whereClause
+      ? db.select({ module: auditLogs.module, count: sql<number>`count(*)` }).from(auditLogs).where(whereClause).groupBy(auditLogs.module).orderBy(sql`count(*) DESC`).limit(10)
+      : db.select({ module: auditLogs.module, count: sql<number>`count(*)` }).from(auditLogs).groupBy(auditLogs.module).orderBy(sql`count(*) DESC`).limit(10),
+    whereClause
+      ? db.select({ userId: auditLogs.userId, userName: auditLogs.userName, count: sql<number>`count(*)` }).from(auditLogs).where(whereClause).groupBy(auditLogs.userId, auditLogs.userName).orderBy(sql`count(*) DESC`).limit(10)
+      : db.select({ userId: auditLogs.userId, userName: auditLogs.userName, count: sql<number>`count(*)` }).from(auditLogs).groupBy(auditLogs.userId, auditLogs.userName).orderBy(sql`count(*) DESC`).limit(10),
+    db.select({ hour: sql<string>`DATE_FORMAT(createdAt, '%Y-%m-%d %H:00:00')`, count: sql<number>`count(*)` }).from(auditLogs)
+      .where(gte(auditLogs.createdAt, sql`DATE_SUB(NOW(), INTERVAL 24 HOUR)`))
+      .groupBy(sql`DATE_FORMAT(createdAt, '%Y-%m-%d %H:00:00')`)
+      .orderBy(sql`DATE_FORMAT(createdAt, '%Y-%m-%d %H:00:00')`),
+  ]);
+
+  return {
+    total: totalResult[0]?.count || 0,
+    byAction: actionStats,
+    byModule: moduleStats,
+    topUsers: userStats,
+    recentActivity,
+  };
+}
+
+export async function getAuditLogUsers() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.selectDistinct({ userId: auditLogs.userId, userName: auditLogs.userName }).from(auditLogs).orderBy(auditLogs.userName);
+}
+
+export async function getAuditLogModules() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.selectDistinct({ module: auditLogs.module }).from(auditLogs).orderBy(auditLogs.module);
+}
+
+export async function getAuditLogsAdvanced(params: {
+  page: number;
+  pageSize: number;
+  userId?: number;
+  action?: string;
+  module?: string;
+  search?: string;
+  startDate?: string;
+  endDate?: string;
+  authType?: string;
+  sortOrder?: 'asc' | 'desc';
+}) {
+  const db = await getDb();
+  if (!db) return { logs: [], total: 0, totalPages: 0, page: params.page, pageSize: params.pageSize };
+
+  const { page, pageSize, userId, action, module, search, startDate, endDate, authType, sortOrder: sortDir = 'desc' } = params;
+  const offset = (page - 1) * pageSize;
+
+  const conditions: any[] = [];
+  if (userId) conditions.push(eq(auditLogs.userId, userId));
+  if (action && action !== 'all') conditions.push(eq(auditLogs.action, action as any));
+  if (module && module !== 'all') conditions.push(eq(auditLogs.module, module));
+  if (authType && authType !== 'all') conditions.push(eq(auditLogs.authType, authType as any));
+  if (startDate) conditions.push(gte(auditLogs.createdAt, startDate));
+  if (endDate) conditions.push(lte(auditLogs.createdAt, endDate));
+  if (search) {
+    conditions.push(sql`(${auditLogs.description} LIKE ${`%${search}%`} OR ${auditLogs.userName} LIKE ${`%${search}%`} OR ${auditLogs.tableName} LIKE ${`%${search}%`})`);
+  }
+
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+  const orderByClause = sortDir === 'asc' ? asc(auditLogs.createdAt) : desc(auditLogs.createdAt);
+
+  const [logs, countResult] = await Promise.all([
+    whereClause
+      ? db.select().from(auditLogs).where(whereClause).orderBy(orderByClause).limit(pageSize).offset(offset)
+      : db.select().from(auditLogs).orderBy(orderByClause).limit(pageSize).offset(offset),
+    whereClause
+      ? db.select({ count: sql<number>`count(*)` }).from(auditLogs).where(whereClause)
+      : db.select({ count: sql<number>`count(*)` }).from(auditLogs),
+  ]);
+
+  const total = countResult[0]?.count || 0;
+  return { logs, total, totalPages: Math.ceil(total / pageSize), page, pageSize };
+}
+
+export async function getAuditLogsForExport(params: {
+  userId?: number;
+  action?: string;
+  module?: string;
+  startDate?: string;
+  endDate?: string;
+  limit?: number;
+}) {
+  const db = await getDb();
+  if (!db) return [];
+
+  const conditions: any[] = [];
+  if (params.userId) conditions.push(eq(auditLogs.userId, params.userId));
+  if (params.action && params.action !== 'all') conditions.push(eq(auditLogs.action, params.action as any));
+  if (params.module && params.module !== 'all') conditions.push(eq(auditLogs.module, params.module));
+  if (params.startDate) conditions.push(gte(auditLogs.createdAt, params.startDate));
+  if (params.endDate) conditions.push(lte(auditLogs.createdAt, params.endDate));
+
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+  const maxLimit = params.limit || 10000;
+
+  return whereClause
+    ? db.select().from(auditLogs).where(whereClause).orderBy(desc(auditLogs.createdAt)).limit(maxLimit)
+    : db.select().from(auditLogs).orderBy(desc(auditLogs.createdAt)).limit(maxLimit);
+}

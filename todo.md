@@ -10357,3 +10357,31 @@
 - [x] Thêm request/response schemas (Error, TRPCResponse, Pagination, DateRange, Health schemas)
 - [x] Thêm authentication info (cookieAuth, localAuth security schemes)
 - [x] Viết 21 tests cho API documentation endpoints (apiDocumentation.test.ts - all passed)
+
+## Phase - Audit Log Dashboard & Performance Benchmark
+
+### Audit Log Dashboard
+- [x] Khảo sát audit log schema và routers hiện tại (đã có audit_logs table, audit.list/listWithCursor, AuditLogs.tsx)
+- [x] Mở rộng backend audit log queries (advancedSearch, stats, users, modules, export)
+- [x] Tạo trang Audit Log Dashboard nâng cấp với 2 tabs (Nhật ký + Thống kê)
+- [x] Filter theo user (dropdown dynamic từ API)
+- [x] Filter theo action/event type (15 loại)
+- [x] Filter theo thời gian (date range picker - datetime-local)
+- [x] Filter theo module (dynamic từ API)
+- [x] Filter theo loại xác thực (Local/OAuth)
+- [x] Bảng hiển thị logs với pagination (25/trang, nút trang)
+- [x] Thống kê tổng quan: 4 stat cards + phân bổ hành động + top modules + top users + timeline 24h
+- [x] Export audit logs (CSV với BOM UTF-8)
+- [x] Dialog chi tiết với diff giá trị cũ/mới (màu đỏ/xanh)
+- [x] Sắp xếp theo thời gian (mới nhất/cũ nhất)
+- [x] Viết 17 tests cho audit log dashboard + benchmark (auditLogDashboard.test.ts - all passed)
+- [x] Full test suite: 230 files, 2866 passed, 1 skipped, 1 pre-existing failure (Twilio timeout)
+
+### Performance Benchmark Suite
+- [x] Tạo benchmark runner script (benchmark/run-benchmark.mjs) - zero dependencies
+- [x] Benchmark cho SPC analysis (8 endpoints), OEE (6 endpoints), Audit (5 endpoints), Health (5 endpoints)
+- [x] Đo throughput (requests/second) dưới tải cao với configurable concurrency
+- [x] Đo latency (p50, p95, p99, min, max, avg) cho mỗi endpoint
+- [x] Tạo báo cáo benchmark tự động (Markdown) với đánh giá và khuyến nghị
+- [x] README hướng dẫn sử dụng + CI/CD integration (GitHub Actions)
+- [x] Kết quả: Liveness 2450 req/s, Health 1990 req/s, 0 errors

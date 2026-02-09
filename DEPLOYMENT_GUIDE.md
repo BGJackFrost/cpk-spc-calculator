@@ -1001,6 +1001,62 @@ Các nhóm module chính:
 
 ---
 
+### 10.7. Performance Benchmark Suite
+
+Bộ benchmark tích hợp sẵn giúp đo hiệu suất API endpoints trước và sau khi tối ưu.
+
+```bash
+# Chạy benchmark đầy đủ (24 endpoints, 10s/endpoint)
+node benchmark/run-benchmark.mjs
+
+# Chạy chỉ SPC endpoints với 20 concurrent requests
+node benchmark/run-benchmark.mjs --endpoints spc --concurrency 20
+
+# Chạy với URL production
+node benchmark/run-benchmark.mjs --url https://your-app.manus.space --duration 15
+```
+
+**Endpoint Groups:**
+
+| Group | Endpoints | Mô tả |
+|-------|-----------|--------|
+| `health` | 5 | Health check, liveness, readiness, metrics |
+| `spc` | 8 | SPC analysis, CPK trend, products, specs |
+| `oee` | 6 | OEE records, dashboard, MTTR/MTBF |
+| `audit` | 5 | Audit logs, stats, users, modules |
+
+**Đánh giá tự động:**
+
+| P95 Latency | Đánh giá | Hành động |
+|-------------|----------|----------|
+| < 200ms | Xuất sắc | Không cần tối ưu |
+| 200-500ms | Tốt | Chấp nhận được |
+| 500-2000ms | Trung bình | Xem xét thêm index/cache |
+| > 2000ms | Chậm | Cần tối ưu ngay |
+
+Kết quả được lưu tại `benchmark/results.md` dưới dạng Markdown.
+
+### 10.8. Audit Log Dashboard
+
+Trang quản trị Nhật ký Hoạt động (`/audit-logs`) cho phép giám sát mọi thao tác trong hệ thống:
+
+- **Bộ lọc nâng cao:** Theo người dùng, hành động (15 loại), module, loại xác thực (Local/OAuth), khoảng thời gian
+- **Thống kê trực quan:** 4 stat cards, phân bổ hành động, top modules, top users, timeline 24h
+- **Export CSV:** Xuất dữ liệu với BOM UTF-8 cho Excel
+- **Chi tiết sự kiện:** Xem diff giá trị cũ/mới với highlight màu
+
+**API Endpoints mới:**
+
+| Endpoint | Mô tả |
+|----------|--------|
+| `audit.advancedSearch` | Tìm kiếm nâng cao với tất cả filters |
+| `audit.stats` | Thống kê tổng quan (by action, module, user, timeline) |
+| `audit.users` | Danh sách users cho dropdown filter |
+| `audit.modules` | Danh sách modules cho dropdown filter |
+| `audit.export` | Xuất dữ liệu (max 50,000 records) |
+
+---
+
 ## 11. Troubleshooting
 
 ### 11.1. Lỗi thường gặp

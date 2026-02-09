@@ -5125,6 +5125,59 @@ export const appRouter = router({
         const { cursor, limit, direction, ...filters } = input;
         return await getAuditLogsWithCursor(filters, { cursor, limit, direction });
       }),
+    // Advanced search with all filters
+    advancedSearch: protectedProcedure
+      .input(z.object({
+        page: z.number().default(1),
+        pageSize: z.number().min(1).max(100).default(20),
+        userId: z.number().optional(),
+        action: z.string().optional(),
+        module: z.string().optional(),
+        search: z.string().optional(),
+        startDate: z.string().optional(),
+        endDate: z.string().optional(),
+        authType: z.string().optional(),
+        sortOrder: z.enum(['asc', 'desc']).default('desc'),
+      }))
+      .query(async ({ input }) => {
+        const { getAuditLogsAdvanced } = await import("./db");
+        return await getAuditLogsAdvanced(input);
+      }),
+    // Dashboard statistics
+    stats: protectedProcedure
+      .input(z.object({
+        userId: z.number().optional(),
+        startDate: z.string().optional(),
+        endDate: z.string().optional(),
+      }).optional())
+      .query(async ({ input }) => {
+        const { getAuditLogStats } = await import("./db");
+        return await getAuditLogStats(input);
+      }),
+    // Get distinct users for filter dropdown
+    users: protectedProcedure.query(async () => {
+      const { getAuditLogUsers } = await import("./db");
+      return await getAuditLogUsers();
+    }),
+    // Get distinct modules for filter dropdown
+    modules: protectedProcedure.query(async () => {
+      const { getAuditLogModules } = await import("./db");
+      return await getAuditLogModules();
+    }),
+    // Export audit logs
+    export: protectedProcedure
+      .input(z.object({
+        userId: z.number().optional(),
+        action: z.string().optional(),
+        module: z.string().optional(),
+        startDate: z.string().optional(),
+        endDate: z.string().optional(),
+        limit: z.number().max(50000).default(10000),
+      }))
+      .query(async ({ input }) => {
+        const { getAuditLogsForExport } = await import("./db");
+        return await getAuditLogsForExport(input);
+      }),
   }),
 
   // Rules Management router
