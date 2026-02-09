@@ -277,22 +277,15 @@ export async function forecastOEE(
     quality: Number(r.quality) || 0,
   }));
   
-  // If no data, generate mock data for demo
+  // Return early if no real data available
   if (historicalData.length === 0) {
-    const mockData: OEEDataPoint[] = [];
-    for (let i = 30; i >= 0; i--) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      const baseOEE = 75 + Math.random() * 15;
-      mockData.push({
-        date: date.toISOString().split('T')[0],
-        oee: baseOEE,
-        availability: 85 + Math.random() * 10,
-        performance: 80 + Math.random() * 15,
-        quality: 90 + Math.random() * 8,
-      });
-    }
-    historicalData.push(...mockData);
+    return {
+      historicalData: [],
+      forecastData: [],
+      metrics: { mape: 0, rmse: 0, mae: 0, r2: 0 },
+      trend: 'stable' as const,
+      alerts: ['Không có dữ liệu OEE trong khoảng thời gian đã chọn'],
+    };
   }
   
   const oeeValues = historicalData.map(d => d.oee);

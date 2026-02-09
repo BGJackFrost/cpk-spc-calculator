@@ -75,104 +75,17 @@ export interface CreateDeviceInput {
   unit?: string;
 }
 
-// Mock data for demo
-const mockGateways: EdgeGateway[] = [
-  {
-    id: 1,
-    gatewayCode: 'GW-PROD-001',
-    name: 'Edge Gateway - Khu vực A',
-    description: 'Gateway chính cho khu vực sản xuất A',
-    location: 'Nhà máy 1 - Khu A',
-    productionLineId: 1,
-    ipAddress: '192.168.1.100',
-    macAddress: 'AA:BB:CC:DD:EE:01',
-    status: 'online',
-    lastHeartbeat: Date.now() - 5000,
-    lastSyncAt: Date.now() - 60000,
-    bufferCapacity: 10000,
-    currentBufferSize: 245,
-    syncInterval: 60,
-    cpuUsage: 35.5,
-    memoryUsage: 42.3,
-    diskUsage: 28.7,
-    firmwareVersion: '2.1.0',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 2,
-    gatewayCode: 'GW-PROD-002',
-    name: 'Edge Gateway - Khu vực B',
-    description: 'Gateway phụ cho khu vực sản xuất B',
-    location: 'Nhà máy 1 - Khu B',
-    productionLineId: 2,
-    ipAddress: '192.168.1.101',
-    macAddress: 'AA:BB:CC:DD:EE:02',
-    status: 'syncing',
-    lastHeartbeat: Date.now() - 2000,
-    lastSyncAt: Date.now() - 30000,
-    bufferCapacity: 10000,
-    currentBufferSize: 1520,
-    syncInterval: 30,
-    cpuUsage: 65.2,
-    memoryUsage: 58.1,
-    diskUsage: 45.3,
-    firmwareVersion: '2.0.5',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-];
-
-const mockDevices: EdgeDevice[] = [
-  {
-    id: 1,
-    gatewayId: 1,
-    deviceCode: 'TEMP-001',
-    name: 'Temperature Sensor 1',
-    deviceType: 'sensor',
-    protocol: 'modbus_tcp',
-    address: '1:40001',
-    pollingInterval: 1000,
-    dataType: 'float32',
-    scaleFactor: 1,
-    offset: 0,
-    unit: '°C',
-    status: 'active',
-    lastValue: 25.5,
-    lastReadAt: Date.now() - 1000,
-    errorCount: 0,
-  },
-  {
-    id: 2,
-    gatewayId: 1,
-    deviceCode: 'HUMID-001',
-    name: 'Humidity Sensor 1',
-    deviceType: 'sensor',
-    protocol: 'modbus_tcp',
-    address: '1:40002',
-    pollingInterval: 2000,
-    dataType: 'float32',
-    scaleFactor: 1,
-    offset: 0,
-    unit: '%RH',
-    status: 'active',
-    lastValue: 65.2,
-    lastReadAt: Date.now() - 2000,
-    errorCount: 0,
-  },
-];
+// No more mock data - all data comes from real database
 
 // Gateway CRUD operations
 export async function getAllGateways(): Promise<EdgeGateway[]> {
   const db = getDb();
-  if (!db) {
-    return mockGateways;
-  }
+  if (!db) return [];
   
   try {
     const results = await db.execute(`SELECT * FROM edge_gateways ORDER BY created_at DESC`);
     if (!results || (results as any[]).length === 0) {
-      return mockGateways;
+      return [];
     }
     return (results as any[]).map((r: any) => ({
       id: r.id,
@@ -198,15 +111,13 @@ export async function getAllGateways(): Promise<EdgeGateway[]> {
     }));
   } catch (error) {
     console.error('[EdgeGateway] Error fetching gateways:', error);
-    return mockGateways;
+    return [];
   }
 }
 
 export async function getGatewayById(id: number): Promise<EdgeGateway | null> {
   const db = getDb();
-  if (!db) {
-    return mockGateways.find(g => g.id === id) || null;
-  }
+  if (!db) return null;
   
   try {
     const results = await db.execute(`SELECT * FROM edge_gateways WHERE id = ?`, [id]);
@@ -295,14 +206,12 @@ export async function deleteGateway(id: number): Promise<boolean> {
 // Device operations
 export async function getDevicesByGateway(gatewayId: number): Promise<EdgeDevice[]> {
   const db = getDb();
-  if (!db) {
-    return mockDevices.filter(d => d.gatewayId === gatewayId);
-  }
+  if (!db) return [];
   
   try {
     const results = await db.execute(`SELECT * FROM edge_devices WHERE gateway_id = ?`, [gatewayId]);
     if (!results || (results as any[]).length === 0) {
-      return mockDevices.filter(d => d.gatewayId === gatewayId);
+      return [];
     }
     return (results as any[]).map((r: any) => ({
       id: r.id,
@@ -422,13 +331,7 @@ export async function getGatewayStats(gatewayId: number): Promise<{
 }> {
   const db = getDb();
   if (!db) {
-    return {
-      totalDevices: mockDevices.filter(d => d.gatewayId === gatewayId).length,
-      activeDevices: mockDevices.filter(d => d.gatewayId === gatewayId && d.status === 'active').length,
-      totalDataPoints: 15420,
-      pendingSync: 245,
-      avgLatency: 35,
-    };
+    return { totalDevices: 0, activeDevices: 0, totalDataPoints: 0, pendingSync: 0, avgLatency: 0 };
   }
   
   try {

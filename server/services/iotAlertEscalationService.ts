@@ -16,6 +16,8 @@ import {
 } from '../../drizzle/schema';
 import { eq, and, desc, gte } from 'drizzle-orm';
 import { notifyOwner } from '../_core/notification';
+import { sendEmail } from '../emailService';
+import { sendAlertToWebhooks } from './alertWebhookService';
 
 // ============ Types ============
 
@@ -308,28 +310,39 @@ async function sendEscalationNotification(
         break;
       
       case 'email':
-        // TODO: Implement email notification
-        console.log(`[Escalation] Email to ${level.recipients.join(', ')}: ${message}`);
+        try {
+          const emailHtml = `<h3>Alert Escalation - Level ${level.level}</h3><p>${message}</p><p>Rule: ${rule.name}</p><p>Time: ${new Date().toISOString()}</p>`;
+          await sendEmail(
+            level.recipients,
+            `[SPC/CPK Escalation L${level.level}] ${alert.message || 'Alert'}`,
+            emailHtml
+          );
+          console.log(`[Escalation] Email sent to ${level.recipients.join(', ')}`);
+        } catch (err) {
+          console.error(`[Escalation] Email failed:`, err);
+        }
         break;
       
       case 'sms':
-        // TODO: Implement SMS notification
+        // SMS requires Twilio config - log for now, will send via configured provider
         console.log(`[Escalation] SMS to ${level.recipients.join(', ')}: ${message}`);
         break;
       
       case 'webhook':
-        // TODO: Implement webhook notification
-        console.log(`[Escalation] Webhook: ${message}`);
-        break;
-      
       case 'slack':
-        // TODO: Implement Slack notification
-        console.log(`[Escalation] Slack: ${message}`);
-        break;
-      
       case 'teams':
-        // TODO: Implement Teams notification
-        console.log(`[Escalation] Teams: ${message}`);
+        try {
+          await sendAlertToWebhooks({
+            title: `Alert Escalation (Level ${level.level})`,
+            message,
+            severity: (alert.severity as 'info' | 'warning' | 'critical') || 'warning',
+            source: `escalation-rule-${rule.id}`,
+            data: { ruleId: rule.id, ruleName: rule.name, level: level.level },
+          });
+          console.log(`[Escalation] ${channel} notification sent`);
+        } catch (err) {
+          console.error(`[Escalation] ${channel} notification failed:`, err);
+        }
         break;
     }
   }

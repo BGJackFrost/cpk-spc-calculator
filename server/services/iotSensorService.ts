@@ -58,7 +58,7 @@ export async function getAllSensors(filters?: {
   status?: string;
 }): Promise<SensorDevice[]> {
   const db = await getDb();
-  if (!db) return generateMockSensors(filters);
+  if (!db) return [];
 
   try {
     // Query devices from database
@@ -74,7 +74,7 @@ export async function getAllSensors(filters?: {
     const devices = await query;
 
     if (devices.length === 0) {
-      return generateMockSensors(filters);
+      return [];
     }
 
     // Get latest readings for each device
@@ -136,7 +136,7 @@ export async function getAllSensors(filters?: {
     return filtered;
   } catch (error) {
     console.error('Error fetching sensors:', error);
-    return generateMockSensors(filters);
+    return [];
   }
 }
 
@@ -157,9 +157,7 @@ export async function getSensorReadings(
     case '7d': startTime.setDate(now.getDate() - 7); break;
   }
 
-  if (!db) {
-    return generateMockReadings(deviceId, timeRange);
-  }
+  if (!db) return [];
 
   try {
     const readings = await db
@@ -175,7 +173,7 @@ export async function getSensorReadings(
       .limit(500);
 
     if (readings.length === 0) {
-      return generateMockReadings(deviceId, timeRange);
+      return [];
     }
 
     return readings.map(r => ({
@@ -189,7 +187,7 @@ export async function getSensorReadings(
     }));
   } catch (error) {
     console.error('Error fetching readings:', error);
-    return generateMockReadings(deviceId, timeRange);
+    return [];
   }
 }
 
@@ -200,9 +198,7 @@ export async function getActiveAlerts(filters?: {
 }): Promise<SensorAlert[]> {
   const db = await getDb();
   
-  if (!db) {
-    return generateMockAlerts(filters);
-  }
+  if (!db) return [];
 
   try {
     let conditions = [];
@@ -231,7 +227,7 @@ export async function getActiveAlerts(filters?: {
       .limit(100);
 
     if (alerts.length === 0) {
-      return generateMockAlerts(filters);
+      return [];
     }
 
     // Get device names
@@ -257,7 +253,7 @@ export async function getActiveAlerts(filters?: {
     }));
   } catch (error) {
     console.error('Error fetching alerts:', error);
-    return generateMockAlerts(filters);
+    return [];
   }
 }
 
@@ -428,151 +424,6 @@ async function createAlert(
   };
 }
 
-// Mock data generators
-function generateMockSensors(filters?: any): SensorDevice[] {
-  const sensorTypes = ['temperature', 'humidity', 'pressure', 'vibration', 'current', 'voltage'];
-  const units: Record<string, string> = {
-    temperature: '°C',
-    humidity: '%',
-    pressure: 'hPa',
-    vibration: 'mm/s',
-    current: 'A',
-    voltage: 'V',
-  };
-  
-  const sensors: SensorDevice[] = [];
-  
-  for (let i = 1; i <= 20; i++) {
-    const type = sensorTypes[i % sensorTypes.length];
-    const value = generateMockValue(type);
-    const quality = getQuality(value, type);
-    
-    sensors.push({
-      id: i,
-      name: `Sensor ${type.charAt(0).toUpperCase() + type.slice(1)} ${Math.ceil(i / sensorTypes.length)}`,
-      type,
-      machineId: Math.ceil(i / 4),
-      machineName: `Machine ${Math.ceil(i / 4)}`,
-      lineId: Math.ceil(i / 8),
-      lineName: `Line ${Math.ceil(i / 8)}`,
-      status: Math.random() > 0.1 ? 'online' : (Math.random() > 0.5 ? 'offline' : 'error'),
-      lastReading: {
-        id: i * 1000,
-        deviceId: i,
-        sensorType: type,
-        value,
-        unit: units[type],
-        timestamp: new Date(Date.now() - Math.random() * 60000),
-        quality,
-      },
-      alertCount: quality === 'critical' ? Math.floor(Math.random() * 3) + 1 : (quality === 'warning' ? Math.floor(Math.random() * 2) : 0),
-    });
-  }
-
-  // Apply filters
-  let filtered = sensors;
-  if (filters?.lineId) {
-    filtered = filtered.filter(s => s.lineId === filters.lineId);
-  }
-  if (filters?.machineId) {
-    filtered = filtered.filter(s => s.machineId === filters.machineId);
-  }
-  if (filters?.sensorType && filters.sensorType !== 'all') {
-    filtered = filtered.filter(s => s.type === filters.sensorType);
-  }
-  if (filters?.status && filters.status !== 'all') {
-    filtered = filtered.filter(s => s.status === filters.status);
-  }
-
-  return filtered;
-}
-
-function generateMockValue(sensorType: string): number {
-  const ranges: Record<string, { min: number; max: number }> = {
-    temperature: { min: 18, max: 42 },
-    humidity: { min: 25, max: 85 },
-    pressure: { min: 850, max: 1150 },
-    vibration: { min: 0, max: 12 },
-    current: { min: 0, max: 22 },
-    voltage: { min: 190, max: 250 },
-  };
-  
-  const range = ranges[sensorType] || ranges.temperature;
-  return Math.round((range.min + Math.random() * (range.max - range.min)) * 10) / 10;
-}
-
-function generateMockReadings(deviceId: number, timeRange: string): SensorReading[] {
-  const readings: SensorReading[] = [];
-  const sensorTypes = ['temperature', 'humidity', 'pressure', 'vibration', 'current', 'voltage'];
-  const type = sensorTypes[deviceId % sensorTypes.length];
-  const units: Record<string, string> = {
-    temperature: '°C',
-    humidity: '%',
-    pressure: 'hPa',
-    vibration: 'mm/s',
-    current: 'A',
-    voltage: 'V',
-  };
-
-  let points = 60;
-  let intervalMs = 60000; // 1 minute
-
-  switch (timeRange) {
-    case '1h': points = 60; intervalMs = 60000; break;
-    case '6h': points = 72; intervalMs = 300000; break;
-    case '24h': points = 96; intervalMs = 900000; break;
-    case '7d': points = 168; intervalMs = 3600000; break;
-  }
-
-  const now = Date.now();
-  let baseValue = generateMockValue(type);
-
-  for (let i = points - 1; i >= 0; i--) {
-    // Add some variation
-    baseValue += (Math.random() - 0.5) * 2;
-    const value = Math.round(baseValue * 10) / 10;
-    
-    readings.push({
-      id: deviceId * 10000 + i,
-      deviceId,
-      sensorType: type,
-      value,
-      unit: units[type],
-      timestamp: new Date(now - i * intervalMs),
-      quality: getQuality(value, type),
-    });
-  }
-
-  return readings;
-}
-
-function generateMockAlerts(filters?: any): SensorAlert[] {
-  const alerts: SensorAlert[] = [];
-  const sensorTypes = ['temperature', 'humidity', 'pressure', 'vibration'];
-  
-  for (let i = 1; i <= 8; i++) {
-    const severity = i <= 3 ? 'critical' : 'warning';
-    const type = sensorTypes[i % sensorTypes.length];
-    
-    if (filters?.severity && filters.severity !== severity) continue;
-    if (filters?.acknowledged !== undefined && filters.acknowledged !== (i > 5)) continue;
-    
-    alerts.push({
-      id: i,
-      deviceId: i,
-      deviceName: `Sensor ${type.charAt(0).toUpperCase() + type.slice(1)} ${i}`,
-      sensorType: type,
-      value: type === 'temperature' ? 48 + i : 85 + i,
-      threshold: type === 'temperature' ? 45 : 80,
-      severity,
-      message: `Giá trị ${type} vượt ngưỡng ${severity}`,
-      acknowledged: i > 5,
-      createdAt: new Date(Date.now() - i * 300000),
-    });
-  }
-
-  return alerts;
-}
 
 export default {
   getAllSensors,

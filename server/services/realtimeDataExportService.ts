@@ -34,36 +34,6 @@ export interface ExportConfig {
   includeHeaders?: boolean;
 }
 
-// Generate mock realtime data
-export function generateMockRealtimeData(
-  machineIds: number[],
-  pointsPerMachine: number = 100
-): RealtimeDataPoint[] {
-  const data: RealtimeDataPoint[] = [];
-  const now = Date.now();
-
-  for (const machineId of machineIds) {
-    for (let i = 0; i < pointsPerMachine; i++) {
-      data.push({
-        timestamp: new Date(now - (pointsPerMachine - i) * 60000), // 1 minute intervals
-        machineId,
-        machineName: `Machine-${machineId.toString().padStart(3, "0")}`,
-        oee: 70 + Math.random() * 25,
-        availability: 85 + Math.random() * 12,
-        performance: 80 + Math.random() * 15,
-        quality: 92 + Math.random() * 7,
-        temperature: 35 + Math.random() * 25,
-        vibration: 0.3 + Math.random() * 1.2,
-        pressure: 1.5 + Math.random() * 2,
-        speed: 1000 + Math.random() * 400,
-        output: Math.floor(Math.random() * 100),
-        defects: Math.floor(Math.random() * 5),
-      });
-    }
-  }
-
-  return data.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
-}
 
 // Export to CSV
 export function exportToCSV(
@@ -209,8 +179,8 @@ export async function exportRealtimeData(
   config: ExportConfig,
   data?: RealtimeDataPoint[]
 ): Promise<{ content: string | Buffer; filename: string; mimeType: string }> {
-  // Generate mock data if not provided
-  const exportData = data || generateMockRealtimeData(config.machineIds || [1, 2, 3], 100);
+  // Use provided data or return empty dataset
+  const exportData = data || [];
   
   // Filter by date range if specified
   const filteredData = config.dateRange

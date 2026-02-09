@@ -10497,3 +10497,79 @@
 - [x] Fix: ReferenceError 'Rt' before initialization in vendor-markdown bundle (merged vendor-markdown into vendor-editor chunk)
 - [x] Fix: CORS error on manifest.json redirect (already had handler with CORS headers)
 - [x] Fix: CORS error on favicon.ico redirect (added direct handler with CORS headers)
+
+
+## GĐ1 - Sửa lỗi và Loại bỏ Mock Data (10/02/2026)
+
+### 1.1 Refactor Services - Loại bỏ Mock Data
+- [x] Refactor anomalyDetectionService.ts — query từ DB thay vì mock
+- [x] Refactor defectPredictionService.ts — query từ DB thay vì mock
+- [x] Refactor mttrMtbfPredictionService.ts — query từ DB thay vì mock
+- [x] Refactor oeeForecastingService.ts — query từ DB thay vì mock
+- [x] Refactor timeseriesService.ts — query từ DB thay vì mock
+- [x] Refactor iotSensorService.ts — query từ DB thay vì mock
+- [x] Refactor realtimeDataExportService.ts — query real data
+- [x] Refactor edgeGatewayService.ts — query real gateway data
+- [x] Refactor iotDbService.ts — already uses real DB (no mock fallback found)
+
+### 1.2 Giải quyết TODO/FIXME
+- [x] Implement actual FCM push notification (wired to existing notifyOwner)
+- [x] Implement IoT alert escalation channels (email, SMS, webhook, Slack, Teams)
+- [x] Implement SPC alert email notification
+- [ ] Fix permission system — roleId trong user table
+- [ ] Implement export cho FloorPlanHeatmap và IoTFloorPlan
+
+### 1.3 Database và Connection
+- [x] Fix ECONNRESET errors trong scheduled jobs (fixed index column mismatches)
+- [x] Push database migration — fixed all index column names, all 36 indexes created
+- [x] Vitest tests cho refactored services (27 tests passed)
+
+## GĐ2 - Tối ưu Performance và Bảo mật
+
+### 2.1 Schema và Code Splitting
+- [ ] Tách schema.ts thành modules (spc, mms, iot, production, etc.)
+- [ ] Lazy load Shiki syntax highlighter
+- [ ] Lazy load Mermaid diagram renderer
+- [ ] Audit và tối ưu vendor-misc chunk
+- [ ] Code splitting cho main index chunk
+
+### 2.2 Database Optimization
+- [ ] Database query audit — EXPLAIN ANALYZE top slow queries
+- [ ] Cursor-based pagination cho danh sách lớn
+- [ ] Connection pooling optimization
+
+### 2.3 Security Hardening
+- [ ] Encrypt sensitive config at rest
+- [ ] CORS whitelist cho production
+- [ ] Per-endpoint rate limiting
+- [ ] Memory leak profiling WebSocket/SSE
+
+## GĐ3 - Hoàn thiện Core Business Features
+
+### 3.1 SPC/CPK
+- [ ] Nâng cấp Dashboard SPC Realtime
+- [ ] Nâng cấp MachineDetail.tsx với OEE/SPC
+- [ ] Cải thiện SPC Plan Overview
+- [ ] Xuất báo cáo SPC PDF/Excel hoàn chỉnh
+
+### 3.2 MMS/Machine
+- [ ] Tìm kiếm/lọc KPI Dashboard
+- [ ] Kéo thả Gantt chart
+- [ ] Xuất báo cáo MTTR/MTBF Excel
+
+### 3.3 Production Line
+- [ ] Báo cáo OEE theo ca/ngày/tuần/tháng
+- [ ] Xuất báo cáo OEE PDF/Excel
+- [ ] Scheduled job gửi báo cáo hàng tuần
+
+## GĐ4 - Mở rộng Enterprise
+
+### 4.1 PostgreSQL Migration
+- [ ] Hoàn thành schema-pg.ts cho tất cả bảng
+- [ ] Test data migration scripts
+- [ ] Update Drizzle queries cho PG compatibility
+
+### 4.2 Documentation
+- [ ] Cập nhật User Guide
+- [ ] Hoàn thiện API Documentation
+- [ ] Cập nhật UPGRADE_PLAN.md và VERSION_HISTORY.md

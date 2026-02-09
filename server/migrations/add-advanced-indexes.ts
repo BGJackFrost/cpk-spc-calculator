@@ -44,7 +44,7 @@ export async function addAdvancedIndexes() {
     {
       name: "idx_iot_device_data_device",
       table: "iot_device_data",
-      columns: "device_id, recorded_at DESC",
+      columns: "device_id, created_at DESC",
     },
 
     // iot_alarms: device_id(int), alarm_type(enum), created_at(timestamp)
@@ -98,28 +98,28 @@ export async function addAdvancedIndexes() {
     {
       name: "idx_alert_escalation_alert",
       table: "alert_escalation_logs",
-      columns: "alert_id, escalated_at DESC",
+      columns: "alert_id, created_at DESC",
     },
 
     // alert_notification_logs: alert_id(int), sent_at(timestamp)
     {
       name: "idx_alert_notif_logs_alert",
       table: "alert_notification_logs",
-      columns: "alert_id, sent_at DESC",
+      columns: "alert_id, created_at DESC",
     },
 
     // alert_webhook_logs: webhook_id(int), sent_at(timestamp)
     {
       name: "idx_alert_webhook_logs_webhook",
       table: "alert_webhook_logs",
-      columns: "webhook_id, sent_at DESC",
+      columns: "webhook_config_id, sent_at DESC",
     },
 
     // kpi_alert_stats: record_date(date), alert_type(varchar)
     {
       name: "idx_kpi_alert_stats_date",
       table: "kpi_alert_stats",
-      columns: "record_date DESC, alert_type",
+      columns: "date, alert_type",
     },
 
     // notifications: user_id(int), is_read(boolean), created_at(timestamp)
@@ -142,12 +142,12 @@ export async function addAdvancedIndexes() {
     {
       name: "idx_machine_data_logs_machine",
       table: "machine_data_logs",
-      columns: "machine_id, timestamp DESC",
+      columns: "apiKeyId, createdAt DESC",
     },
     {
       name: "idx_machine_data_logs_type",
       table: "machine_data_logs",
-      columns: "data_type, timestamp DESC",
+      columns: "endpoint, createdAt DESC",
     },
 
     // machine_downtime_records: machine_id(int), start_time(timestamp)
@@ -159,28 +159,28 @@ export async function addAdvancedIndexes() {
     {
       name: "idx_machine_downtime_reason",
       table: "machine_downtime_records",
-      columns: "reason_id, start_time DESC",
+      columns: "downtime_category, start_time DESC",
     },
 
     // machine_inspection_data: machine_id(int), inspection_date(date)
     {
       name: "idx_machine_inspection_machine",
       table: "machine_inspection_data",
-      columns: "machine_id, inspection_date DESC",
+      columns: "machineId, inspectedAt DESC",
     },
 
     // machine_yield_statistics: machine_id(int), record_date(date)
     {
       name: "idx_machine_yield_machine",
       table: "machine_yield_statistics",
-      columns: "machine_id, record_date DESC",
+      columns: "machine_id, statistics_date DESC",
     },
 
     // production_lines: status(enum)
     {
       name: "idx_production_lines_status",
       table: "production_lines",
-      columns: "status",
+      columns: "isActive",
     },
 
     // ==========================================
@@ -226,7 +226,7 @@ export async function addAdvancedIndexes() {
     {
       name: "idx_sched_report_logs_report",
       table: "scheduled_report_logs",
-      columns: "report_id, executed_at DESC",
+      columns: "reportId, sentAt DESC",
     },
 
     // ==========================================

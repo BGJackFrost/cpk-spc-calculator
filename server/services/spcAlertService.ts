@@ -11,6 +11,8 @@ import {
 } from '../../drizzle/schema';
 import { eq, and, isNotNull } from 'drizzle-orm';
 import { notifyOwner } from '../_core/notification';
+import { sendEmail } from '../emailService';
+import { sendAlertToWebhooks } from './alertWebhookService';
 
 export interface CpkCheckResult {
   planId: number;
@@ -150,8 +152,29 @@ async function triggerCpkAlert(
 
   // Send email if configured
   if (plan.notifyEmail) {
-    // TODO: Implement email notification
-    console.log(`[SPC Alert] Email would be sent to ${plan.notifyEmail}: ${message}`);
+    try {
+      const emailHtml = `<h3>SPC Alert: ${plan.name}</h3><p>${message}</p><p>CPK: ${cpkValue.toFixed(2)} | Threshold: ${threshold.toFixed(2)}</p><p>Time: ${new Date().toISOString()}</p>`;
+      await sendEmail(
+        plan.notifyEmail,
+        `[SPC Alert] ${plan.name}: ${alertType}`,
+        emailHtml
+      );
+    } catch (err) {
+      console.error('[SPC Alert] Email failed:', err);
+    }
+  }
+
+  // Send to configured webhooks (Slack/Teams/Discord)
+  try {
+    await sendAlertToWebhooks({
+      title: `SPC Alert: ${plan.name}`,
+      message,
+      severity: alertType === 'cpk_low' ? 'critical' : 'warning',
+      type: 'spc_violation',
+      data: { planId: plan.id, planName: plan.name, alertType, cpkValue, threshold },
+    });
+  } catch (err) {
+    console.error('[SPC Alert] Webhook failed:', err);
   }
 }
 

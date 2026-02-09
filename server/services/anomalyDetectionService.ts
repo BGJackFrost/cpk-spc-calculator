@@ -4,6 +4,8 @@
  */
 
 import { getDb } from "../db";
+import { aiAnomalyModels } from "../../drizzle/schema";
+import { eq, desc, and, gte, lte, sql } from "drizzle-orm";
 
 // Types
 export interface IsolationForestModel {
@@ -53,53 +55,31 @@ export interface CreateModelInput {
   maxDepth?: number;
 }
 
-// Mock models
-const mockModels: IsolationForestModel[] = [
-  {
-    id: 1,
-    name: 'Temperature Anomaly Model',
-    description: 'Phát hiện bất thường nhiệt độ cho khu vực A',
-    targetType: 'device',
-    targetId: 1,
-    sensorType: 'temperature',
+// Helper to map DB row to IsolationForestModel interface
+function mapDbRowToModel(r: any): IsolationForestModel {
+  return {
+    id: r.id,
+    name: r.name,
+    description: r.description,
+    targetType: r.targetMetric === 'cpk' ? 'production_line' : 'device',
+    targetId: r.productionLineId || r.machineId || null,
+    sensorType: r.targetMetric || null,
     numTrees: 100,
     sampleSize: 256,
     contamination: 0.01,
-    maxDepth: 8,
-    status: 'active',
-    accuracy: 0.95,
-    precision: 0.92,
-    recall: 0.88,
-    f1Score: 0.90,
-    trainedAt: Date.now() - 86400000,
-    trainingSamples: 10000,
-    version: 3,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 2,
-    name: 'Pressure Anomaly Model',
-    description: 'Phát hiện bất thường áp suất',
-    targetType: 'production_line',
-    targetId: 1,
-    sensorType: 'pressure',
-    numTrees: 150,
-    sampleSize: 512,
-    contamination: 0.005,
-    maxDepth: 10,
-    status: 'active',
-    accuracy: 0.97,
-    precision: 0.94,
-    recall: 0.91,
-    f1Score: 0.92,
-    trainedAt: Date.now() - 172800000,
-    trainingSamples: 25000,
-    version: 2,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-];
+    maxDepth: null,
+    status: r.status === 'deprecated' ? 'inactive' : r.status as any,
+    accuracy: r.accuracy ? parseFloat(r.accuracy) : null,
+    precision: r.precisionScore ? parseFloat(r.precisionScore) : null,
+    recall: r.recallVal ? parseFloat(r.recallVal) : null,
+    f1Score: r.f1Score ? parseFloat(r.f1Score) : null,
+    trainedAt: r.trainedAt ? new Date(r.trainedAt).getTime() : null,
+    trainingSamples: null,
+    version: parseInt(r.version) || 1,
+    createdAt: r.createdAt,
+    updatedAt: r.updatedAt,
+  };
+}
 
 // Isolation Forest implementation (simplified)
 class IsolationForest {
@@ -194,81 +174,29 @@ class IsolationForest {
 // Model cache
 const modelCache = new Map<number, IsolationForest>();
 
-// Get all models
+// Get all models from ai_anomaly_models table
 export async function getAllModels(): Promise<IsolationForestModel[]> {
   const db = getDb();
-  if (!db) {
-    return mockModels;
-  }
+  if (!db) return [];
   
   try {
-    const results = await db.execute(`SELECT * FROM isolation_forest_models ORDER BY created_at DESC`);
-    if (!results || (results as any[]).length === 0) {
-      return mockModels;
-    }
-    
-    return (results as any[]).map((r: any) => ({
-      id: r.id,
-      name: r.name,
-      description: r.description,
-      targetType: r.target_type,
-      targetId: r.target_id,
-      sensorType: r.sensor_type,
-      numTrees: r.num_trees,
-      sampleSize: r.sample_size,
-      contamination: r.contamination ? parseFloat(r.contamination) : 0.01,
-      maxDepth: r.max_depth,
-      status: r.status,
-      accuracy: r.accuracy ? parseFloat(r.accuracy) : null,
-      precision: r.precision ? parseFloat(r.precision) : null,
-      recall: r.recall ? parseFloat(r.recall) : null,
-      f1Score: r.f1_score ? parseFloat(r.f1_score) : null,
-      trainedAt: r.trained_at,
-      trainingSamples: r.training_samples,
-      version: r.version,
-      createdAt: r.created_at,
-      updatedAt: r.updated_at,
-    }));
+    const results = await db.select().from(aiAnomalyModels).orderBy(desc(aiAnomalyModels.createdAt));
+    return results.map(mapDbRowToModel);
   } catch (error) {
     console.error('[AnomalyDetection] Error fetching models:', error);
-    return mockModels;
+    return [];
   }
 }
 
-// Get model by ID
+// Get model by ID from ai_anomaly_models table
 export async function getModelById(id: number): Promise<IsolationForestModel | null> {
   const db = getDb();
-  if (!db) {
-    return mockModels.find(m => m.id === id) || null;
-  }
+  if (!db) return null;
   
   try {
-    const results = await db.execute(`SELECT * FROM isolation_forest_models WHERE id = ?`, [id]);
-    if (!results || (results as any[]).length === 0) return null;
-    
-    const r = (results as any[])[0];
-    return {
-      id: r.id,
-      name: r.name,
-      description: r.description,
-      targetType: r.target_type,
-      targetId: r.target_id,
-      sensorType: r.sensor_type,
-      numTrees: r.num_trees,
-      sampleSize: r.sample_size,
-      contamination: r.contamination ? parseFloat(r.contamination) : 0.01,
-      maxDepth: r.max_depth,
-      status: r.status,
-      accuracy: r.accuracy ? parseFloat(r.accuracy) : null,
-      precision: r.precision ? parseFloat(r.precision) : null,
-      recall: r.recall ? parseFloat(r.recall) : null,
-      f1Score: r.f1_score ? parseFloat(r.f1_score) : null,
-      trainedAt: r.trained_at,
-      trainingSamples: r.training_samples,
-      version: r.version,
-      createdAt: r.created_at,
-      updatedAt: r.updated_at,
-    };
+    const results = await db.select().from(aiAnomalyModels).where(eq(aiAnomalyModels.id, id)).limit(1);
+    if (results.length === 0) return null;
+    return mapDbRowToModel(results[0]);
   } catch (error) {
     console.error('[AnomalyDetection] Error fetching model:', error);
     return null;
@@ -324,8 +252,8 @@ export async function trainModel(
     }
     
     if (values.length < 100) {
-      // Generate mock training data
-      values = Array.from({ length: 1000 }, () => 25 + (Math.random() - 0.5) * 10);
+      console.warn('[AnomalyDetection] Insufficient training data:', values.length, 'samples. Need at least 100.');
+      return { success: false, metrics: { error: 'Insufficient training data. Need at least 100 samples.' } };
     }
     
     // Train isolation forest
@@ -377,17 +305,24 @@ export async function detectAnomalies(
   let iforest = modelCache.get(modelId);
   
   if (!iforest) {
-    // Create default model with mock stats
-    iforest = new IsolationForest({
-      numTrees: 100,
-      sampleSize: 256,
-      contamination: 0.01,
-    });
-    
-    // Train with mock data
-    const mockData = Array.from({ length: 500 }, () => 25 + (Math.random() - 0.5) * 10);
-    iforest.train(mockData);
-    modelCache.set(modelId, iforest);
+    // Try to load model from DB
+    const db = getDb();
+    if (db) {
+      try {
+        const models = await db.select().from(aiAnomalyModels).where(eq(aiAnomalyModels.id, modelId)).limit(1);
+        if (models.length > 0 && models[0].parameters) {
+          const params = JSON.parse(models[0].parameters);
+          iforest = IsolationForest.fromJSON(params);
+          modelCache.set(modelId, iforest);
+        }
+      } catch (e) {
+        console.error('[AnomalyDetection] Error loading model from DB:', e);
+      }
+    }
+    if (!iforest) {
+      console.warn('[AnomalyDetection] Model', modelId, 'not found or not trained. Cannot detect anomalies.');
+      return [];
+    }
   }
   
   const results: AnomalyDetectionResult[] = [];
@@ -444,37 +379,7 @@ export async function getRecentAnomalies(options: {
   limit?: number;
 }): Promise<any[]> {
   const db = getDb();
-  if (!db) {
-    // Return mock anomalies
-    return [
-      {
-        id: 1,
-        modelId: 1,
-        deviceId: 1,
-        timestamp: Date.now() - 300000,
-        value: 45.2,
-        anomalyScore: 0.85,
-        isAnomaly: true,
-        anomalyType: 'spike',
-        severity: 'high',
-        confidence: 0.92,
-        acknowledged: false,
-      },
-      {
-        id: 2,
-        modelId: 1,
-        deviceId: 1,
-        timestamp: Date.now() - 600000,
-        value: 12.1,
-        anomalyScore: 0.72,
-        isAnomaly: true,
-        anomalyType: 'drop',
-        severity: 'medium',
-        confidence: 0.88,
-        acknowledged: true,
-      },
-    ];
-  }
+  if (!db) return [];
   
   try {
     let query = `SELECT * FROM anomaly_detections WHERE is_anomaly = 1`;
@@ -525,7 +430,7 @@ export async function saveAnomalyDetection(
   }
 }
 
-// Get anomaly statistics
+// Get anomaly statistics from DB
 export async function getAnomalyStats(options: {
   modelId?: number;
   deviceId?: number;
@@ -537,22 +442,38 @@ export async function getAnomalyStats(options: {
   bySeverity: Record<string, number>;
   byType: Record<string, number>;
 }> {
-  // Mock stats
-  return {
-    totalDetections: 15420,
-    anomalyCount: 127,
-    bySeverity: {
-      low: 45,
-      medium: 52,
-      high: 25,
-      critical: 5,
-    },
-    byType: {
-      spike: 48,
-      drop: 35,
-      drift: 22,
-      noise: 15,
-      pattern: 7,
-    },
-  };
+  const db = getDb();
+  if (!db) {
+    return { totalDetections: 0, anomalyCount: 0, bySeverity: {}, byType: {} };
+  }
+  
+  try {
+    let whereClause = '1=1';
+    const params: any[] = [];
+    
+    if (options.modelId) { whereClause += ' AND model_id = ?'; params.push(options.modelId); }
+    if (options.deviceId) { whereClause += ' AND device_id = ?'; params.push(options.deviceId); }
+    if (options.startTime) { whereClause += ' AND timestamp >= ?'; params.push(options.startTime); }
+    if (options.endTime) { whereClause += ' AND timestamp <= ?'; params.push(options.endTime); }
+    
+    const [totalResult] = await db.execute(`SELECT COUNT(*) as total, SUM(CASE WHEN is_anomaly = 1 THEN 1 ELSE 0 END) as anomalies FROM anomaly_detections WHERE ${whereClause}`, params) as any;
+    const severityResult = await db.execute(`SELECT severity, COUNT(*) as cnt FROM anomaly_detections WHERE is_anomaly = 1 AND ${whereClause} GROUP BY severity`, params) as any[];
+    const typeResult = await db.execute(`SELECT anomaly_type, COUNT(*) as cnt FROM anomaly_detections WHERE is_anomaly = 1 AND ${whereClause} GROUP BY anomaly_type`, params) as any[];
+    
+    const bySeverity: Record<string, number> = {};
+    (severityResult || []).forEach((r: any) => { if (r.severity) bySeverity[r.severity] = Number(r.cnt); });
+    
+    const byType: Record<string, number> = {};
+    (typeResult || []).forEach((r: any) => { if (r.anomaly_type) byType[r.anomaly_type] = Number(r.cnt); });
+    
+    return {
+      totalDetections: Number(totalResult?.total || 0),
+      anomalyCount: Number(totalResult?.anomalies || 0),
+      bySeverity,
+      byType,
+    };
+  } catch (error) {
+    console.error('[AnomalyDetection] Error fetching stats:', error);
+    return { totalDetections: 0, anomalyCount: 0, bySeverity: {}, byType: {} };
+  }
 }

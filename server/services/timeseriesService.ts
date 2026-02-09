@@ -112,23 +112,7 @@ export async function queryTimeseriesData(
 ): Promise<TimeseriesDataPoint[]> {
   const db = getDb();
   
-  // Generate mock data if no db
-  if (!db) {
-    const mockData: TimeseriesDataPoint[] = [];
-    const interval = (endTime - startTime) / Math.min(limit, 100);
-    let baseValue = 25;
-    
-    for (let i = 0; i < Math.min(limit, 100); i++) {
-      const timestamp = startTime + i * interval;
-      baseValue += (Math.random() - 0.5) * 2;
-      mockData.push({
-        timestamp: Math.floor(timestamp),
-        value: Math.round(baseValue * 100) / 100,
-        quality: 'good',
-      });
-    }
-    return mockData;
-  }
+  if (!db) return [];
   
   try {
     const results = await db.execute(
@@ -137,20 +121,7 @@ export async function queryTimeseriesData(
     );
     
     if (!results || (results as any[]).length === 0) {
-      // Return mock data
-      const mockData: TimeseriesDataPoint[] = [];
-      const interval = (endTime - startTime) / 50;
-      let baseValue = 25;
-      
-      for (let i = 0; i < 50; i++) {
-        baseValue += (Math.random() - 0.5) * 2;
-        mockData.push({
-          timestamp: Math.floor(startTime + i * interval),
-          value: Math.round(baseValue * 100) / 100,
-          quality: 'good',
-        });
-      }
-      return mockData;
+      return [];
     }
     
     return (results as any[]).map((r: any) => ({
@@ -172,27 +143,7 @@ export async function getHourlyAggregates(
 ): Promise<HourlyAggregate[]> {
   const db = getDb();
   
-  // Generate mock aggregates
-  const mockAggregates: HourlyAggregate[] = [];
-  const hours = Math.ceil((endTime - startTime) / 3600000);
-  
-  for (let i = 0; i < Math.min(hours, 24); i++) {
-    const timeBucket = startTime + i * 3600000;
-    const baseValue = 25 + Math.random() * 10;
-    mockAggregates.push({
-      timeBucket,
-      minValue: baseValue - 2,
-      maxValue: baseValue + 3,
-      avgValue: baseValue,
-      sumValue: baseValue * 60,
-      sampleCount: 60,
-      stdDev: 1.5,
-    });
-  }
-  
-  if (!db) {
-    return mockAggregates;
-  }
+  if (!db) return [];
   
   try {
     const results = await db.execute(
@@ -201,7 +152,7 @@ export async function getHourlyAggregates(
     );
     
     if (!results || (results as any[]).length === 0) {
-      return mockAggregates;
+      return [];
     }
     
     return (results as any[]).map((r: any) => ({
@@ -215,7 +166,7 @@ export async function getHourlyAggregates(
     }));
   } catch (error) {
     console.error('[Timeseries] Error getting hourly aggregates:', error);
-    return mockAggregates;
+    return [];
   }
 }
 
@@ -227,31 +178,7 @@ export async function getDailyAggregates(
 ): Promise<DailyAggregate[]> {
   const db = getDb();
   
-  // Generate mock aggregates
-  const mockAggregates: DailyAggregate[] = [];
-  const days = Math.ceil((endTime - startTime) / 86400000);
-  
-  for (let i = 0; i < Math.min(days, 30); i++) {
-    const timeBucket = startTime + i * 86400000;
-    const baseValue = 25 + Math.random() * 10;
-    mockAggregates.push({
-      timeBucket,
-      minValue: baseValue - 5,
-      maxValue: baseValue + 8,
-      avgValue: baseValue,
-      sumValue: baseValue * 1440,
-      sampleCount: 1440,
-      stdDev: 2.5,
-      uptimePercent: 95 + Math.random() * 5,
-      p50: baseValue,
-      p95: baseValue + 5,
-      p99: baseValue + 7,
-    });
-  }
-  
-  if (!db) {
-    return mockAggregates;
-  }
+  if (!db) return [];
   
   try {
     const results = await db.execute(
@@ -260,7 +187,7 @@ export async function getDailyAggregates(
     );
     
     if (!results || (results as any[]).length === 0) {
-      return mockAggregates;
+      return [];
     }
     
     return (results as any[]).map((r: any) => ({
@@ -278,7 +205,7 @@ export async function getDailyAggregates(
     }));
   } catch (error) {
     console.error('[Timeseries] Error getting daily aggregates:', error);
-    return mockAggregates;
+    return [];
   }
 }
 
@@ -297,22 +224,19 @@ export async function getDeviceStatistics(
   
   const startTime = now - rangeMs;
   
-  // Mock statistics
-  const mockStats: DeviceStatistics = {
+  const emptyStats: DeviceStatistics = {
     deviceId,
-    totalSamples: Math.floor(rangeMs / 60000),
-    minValue: 20.5,
-    maxValue: 35.2,
-    avgValue: 27.8,
-    stdDev: 2.3,
+    totalSamples: 0,
+    minValue: 0,
+    maxValue: 0,
+    avgValue: 0,
+    stdDev: 0,
     firstTimestamp: startTime,
     lastTimestamp: now,
   };
   
   const db = getDb();
-  if (!db) {
-    return mockStats;
-  }
+  if (!db) return emptyStats;
   
   try {
     const results = await db.execute(
@@ -321,7 +245,7 @@ export async function getDeviceStatistics(
     );
     
     if (!results || (results as any[]).length === 0 || !(results as any[])[0].total) {
-      return mockStats;
+      return emptyStats;
     }
     
     const r = (results as any[])[0];
@@ -337,7 +261,7 @@ export async function getDeviceStatistics(
     };
   } catch (error) {
     console.error('[Timeseries] Error getting statistics:', error);
-    return mockStats;
+    return emptyStats;
   }
 }
 
@@ -353,23 +277,7 @@ export async function getDownsampledData(
   
   const db = getDb();
   
-  // Generate mock downsampled data
-  const mockData: TimeseriesDataPoint[] = [];
-  let baseValue = 25;
-  
-  for (let i = 0; i < targetPoints; i++) {
-    const timestamp = startTime + i * bucketSize;
-    baseValue += (Math.random() - 0.5) * 3;
-    mockData.push({
-      timestamp,
-      value: Math.round(baseValue * 100) / 100,
-      quality: 'good',
-    });
-  }
-  
-  if (!db) {
-    return mockData;
-  }
+  if (!db) return [];
   
   try {
     // Use time buckets for downsampling
@@ -379,7 +287,7 @@ export async function getDownsampledData(
     );
     
     if (!results || (results as any[]).length === 0) {
-      return mockData;
+      return [];
     }
     
     return (results as any[]).map((r: any) => ({
@@ -389,7 +297,7 @@ export async function getDownsampledData(
     }));
   } catch (error) {
     console.error('[Timeseries] Error getting downsampled data:', error);
-    return mockData;
+    return [];
   }
 }
 

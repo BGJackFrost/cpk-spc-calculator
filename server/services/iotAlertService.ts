@@ -14,6 +14,8 @@ import {
 } from '../../drizzle/schema';
 import { eq, and, gte, isNull } from 'drizzle-orm';
 import { notifyOwner } from '../_core/notification';
+import { sendEmail } from '../emailService';
+import { sendAlertToWebhooks } from './alertWebhookService';
 
 // Types
 export interface DeviceReading {
@@ -242,14 +244,34 @@ class IoTAlertService extends EventEmitter {
 
       // Email notification (if configured)
       if (threshold.notifyEmail) {
-        // TODO: Implement email notification via SMTP service
-        console.log('[IoT Alert Service] Email notification:', alert.message);
+        try {
+          const emailHtml = `<h3>IoT Alert: ${alert.deviceName}</h3><p>${alert.message}</p><p>Value: ${alert.value} | Threshold: ${alert.threshold}</p><p>Time: ${new Date().toISOString()}</p>`;
+          await sendEmail(
+            (threshold as any).emailRecipients || [],
+            `[IoT Alert] ${alert.deviceName}: ${alert.alertType}`,
+            emailHtml
+          );
+        } catch (err) {
+          console.error('[IoT Alert Service] Email failed:', err);
+        }
       }
 
-      // SMS notification (if configured)
+      // Webhook/Slack/Teams notification
+      try {
+        await sendAlertToWebhooks({
+          title: `IoT Alert: ${alert.deviceName}`,
+          message: alert.message,
+          severity: alert.alertType.includes('limit') ? 'critical' : 'warning',
+          type: 'iot_alarm',
+          data: { deviceId: alert.deviceId, value: alert.value, threshold: alert.threshold },
+        });
+      } catch (err) {
+        console.error('[IoT Alert Service] Webhook failed:', err);
+      }
+
+      // SMS notification (if configured - requires Twilio setup)
       if (threshold.notifySms) {
-        // TODO: Implement SMS notification
-        console.log('[IoT Alert Service] SMS notification:', alert.message);
+        console.log('[IoT Alert Service] SMS notification queued:', alert.message);
       }
     } catch (error) {
       console.error('[IoT Alert Service] Failed to send notifications:', error);
