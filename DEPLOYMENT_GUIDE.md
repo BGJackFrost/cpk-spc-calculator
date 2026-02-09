@@ -811,31 +811,128 @@ curl http://localhost:3000/api/metrics
 
 ### 10.4. Prometheus + Grafana Integration
 
-Cấu hình Prometheus scrape:
+#### Quick Start với Docker Compose
+
+Hệ thống cung cấp sẵn monitoring stack trong thư mục `monitoring/`:
+
+```bash
+# Khởi động toàn bộ monitoring stack
+cd monitoring/
+docker compose -f docker-compose.monitoring.yml up -d
+
+# Truy cập:
+# - Grafana:      http://localhost:3001 (admin/admin)
+# - Prometheus:   http://localhost:9090
+# - Alertmanager: http://localhost:9093
+```
+
+#### Cấu hình Prometheus
+
+Sửa file `monitoring/prometheus.yml`, thay `YOUR_APP_HOST` bằng hostname thực tế:
 
 ```yaml
-# prometheus.yml
 scrape_configs:
   - job_name: 'cpk-spc-calculator'
     scrape_interval: 15s
     metrics_path: '/api/metrics'
+    scheme: 'https'
     static_configs:
-      - targets: ['localhost:3000']
+      - targets: ['YOUR_APP_HOST:443']
+        labels:
+          environment: 'production'
+          service: 'cpk-spc-calculator'
 ```
 
-Các metrics có sẵn:
+#### Import Grafana Dashboard
+
+1. Mở Grafana tại `http://localhost:3001`
+2. Vào **Dashboards** → **Import**
+3. Upload file `monitoring/grafana-dashboard.json`
+4. Chọn datasource **Prometheus**
+5. Click **Import**
+
+Dashboard bao gồm các panels:
+
+| Panel | Mô tả |
+|-------|--------|
+| Application Health Overview | Status, uptime, version, DB connection, latency, table count |
+| Database Latency Gauge | Gauge hiển thị DB latency với ngưỡng xanh/vàng/đỏ |
+| Database Latency Over Time | Biểu đồ latency theo thời gian với threshold 500ms |
+| Memory Usage Gauges | System memory và heap memory (%) |
+| Process Memory Over Time | RSS, heap used, heap total, external theo thời gian |
+| System Memory | Total, free, used memory theo thời gian |
+| CPU Load | Load average 1m, 5m, 15m |
+| Services Status | WebSocket, SSE, Rate Limiter, Redis - màu sắc theo trạng thái |
+
+#### Cấu hình Alertmanager
+
+Sửa file `monitoring/alertmanager.yml` với thông tin thực tế:
+
+```yaml
+# Email SMTP
+global:
+  smtp_smarthost: 'smtp.gmail.com:587'
+  smtp_from: 'your-email@gmail.com'
+  smtp_auth_username: 'your-email@gmail.com'
+  smtp_auth_password: 'your-app-password'
+
+# Slack Webhook
+  slack_api_url: 'https://hooks.slack.com/services/YOUR/WEBHOOK/URL'
+```
+
+#### Alert Rules (15 rules, 5 groups)
+
+| Alert | Severity | Điều kiện | Thời gian |
+|-------|----------|-----------|----------|
+| DatabaseConnectionLost | critical | db_connected == 0 | 30s |
+| DatabaseLatencyHigh | warning | db_latency_ms > 500 | 2m |
+| DatabaseLatencyCritical | critical | db_latency_ms > 2000 | 1m |
+| DatabaseLatencySpike | warning | > 3x trung bình 1h | 5m |
+| SystemMemoryHigh | critical | > 90% | 5m |
+| SystemMemoryWarning | warning | > 80% | 10m |
+| HeapMemoryHigh | warning | > 85% | 5m |
+| PossibleMemoryLeak | warning | RSS > 1.5x min 6h | 30m |
+| CPULoadHigh | warning | > 80% per core | 5m |
+| CPULoadCritical | critical | > 95% per core | 3m |
+| ApplicationUnhealthy | critical | health_status < 1 | 1m |
+| ApplicationDown | critical | absent(metrics) | 1m |
+| ApplicationRestarted | info | uptime reset | instant |
+| WebSocketUnavailable | warning | ws_available == 0 | 2m |
+| RedisDisconnected | warning | redis == 0 | 2m |
+
+#### Slack Channels
+
+| Channel | Nhận alerts |
+|---------|-------------|
+| #spc-alerts-critical | Critical alerts + Email |
+| #spc-alerts-warning | Warning alerts |
+| #spc-alerts-info | Info alerts |
+| #spc-database-alerts | Database-specific alerts |
+
+#### Các metrics có sẵn (20+)
 
 | Metric | Type | Mô tả |
 |--------|------|--------|
 | `app_health_status` | gauge | 1=healthy, 0.5=degraded, 0=unhealthy |
 | `app_uptime_seconds` | gauge | Thời gian server chạy (giây) |
+| `app_version` | info | Phiên bản ứng dụng |
 | `db_connected` | gauge | Kết nối database (0/1) |
 | `db_latency_ms` | gauge | Độ trễ query database (ms) |
 | `db_table_count` | gauge | Số lượng bảng trong database |
 | `process_memory_rss_bytes` | gauge | RSS memory của process |
 | `process_memory_heap_used_bytes` | gauge | Heap memory đang dùng |
+| `process_memory_heap_total_bytes` | gauge | Heap memory tổng |
+| `process_memory_external_bytes` | gauge | External memory (C++ objects) |
+| `system_memory_total_bytes` | gauge | Tổng memory hệ thống |
+| `system_memory_free_bytes` | gauge | Memory trống |
+| `system_memory_used_bytes` | gauge | Memory đang dùng |
 | `system_memory_usage_percent` | gauge | % memory hệ thống đang dùng |
 | `system_cpu_load_1m` | gauge | CPU load trung bình 1 phút |
+| `system_cpu_load_5m` | gauge | CPU load trung bình 5 phút |
+| `system_cpu_load_15m` | gauge | CPU load trung bình 15 phút |
+| `system_cpu_count` | gauge | Số lượng CPU cores |
+| `service_websocket_available` | gauge | WebSocket khả dụng (0/1) |
+| `service_sse_available` | gauge | SSE khả dụng (0/1) |
 | `service_rate_limiter_enabled` | gauge | Rate limiter đang bật (0/1) |
 | `service_redis_connected` | gauge | Redis kết nối (0/1) |
 
@@ -870,6 +967,37 @@ Tính năng:
 - Cảnh báo tự động khi tỷ lệ block > 5%
 - Hỗ trợ Redis store cho môi trường multi-instance
 - Bật/tắt qua admin UI hoặc API
+
+### 10.6. API Documentation (Swagger/OpenAPI)
+
+Hệ thống cung cấp tài liệu API tương tác qua Swagger UI:
+
+| Endpoint | Mô tả |
+|----------|--------|
+| `GET /api/docs` | Swagger UI - Giao diện khám phá API tương tác |
+| `GET /api/openapi.json` | OpenAPI 3.0 spec (JSON) |
+| `GET /api/docs/stats` | Thống kê API (số modules, groups) |
+
+Thống kê API:
+- **172 router modules** được phân loại thành **15 nhóm chức năng**
+- **177 paths** trong OpenAPI spec (172 tRPC + 5 health check)
+- Hỗ trợ **Try It Out** trực tiếp từ Swagger UI
+- Tìm kiếm và lọc endpoints theo tag/module
+
+Các nhóm module chính:
+
+| Nhóm | Số modules | Ví dụ |
+|------|------------|--------|
+| Core | 5 | auth, user, permission, system |
+| SPC/CPK | 7 | spc, cpkHistory, cpkAlert, spcPlan |
+| Production | 13 | product, machine, workstation, defect |
+| OEE & Maintenance | 12 | oee, maintenance, mttrMtbf, spareParts |
+| IoT | 14 | iotDashboard, mqtt, edgeGateway, timeseries |
+| AI & Vision | 14 | ai, aiAdvanced, vision, anomalyDetectionAI |
+| Quality | 7 | qualityStatistics, paretoChart, heatMapYield |
+| Alerts & Notifications | 22 | alert, notification, telegram, sms |
+| Reports & Export | 9 | export, report, scheduledReport, shiftReport |
+| System & Admin | 40+ | security, audit, cache, rateLimit, backup |
 
 ---
 

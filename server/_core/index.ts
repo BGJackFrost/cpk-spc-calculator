@@ -157,6 +157,42 @@ async function startServer() {
     }
   });
 
+  // API Documentation - OpenAPI 3.0 spec
+  app.get('/api/openapi.json', async (_req, res) => {
+    try {
+      const { generateOpenAPISpec } = await import('../services/apiDocumentationService');
+      const protocol = _req.protocol;
+      const host = _req.get('host') || 'localhost:3000';
+      const baseUrl = `${protocol}://${host}`;
+      const spec = generateOpenAPISpec(baseUrl);
+      res.json(spec);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to generate API spec' });
+    }
+  });
+
+  // Swagger UI
+  app.get('/api/docs', async (_req, res) => {
+    try {
+      const { generateSwaggerUIHtml } = await import('../services/apiDocumentationService');
+      const html = generateSwaggerUIHtml('/api/openapi.json');
+      res.setHeader('Content-Type', 'text/html');
+      res.send(html);
+    } catch (error) {
+      res.status(500).send('Failed to load API documentation');
+    }
+  });
+
+  // API Statistics
+  app.get('/api/docs/stats', async (_req, res) => {
+    try {
+      const { getAPIStatistics } = await import('../services/apiDocumentationService');
+      res.json(getAPIStatistics());
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to get API statistics' });
+    }
+  });
+
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
   

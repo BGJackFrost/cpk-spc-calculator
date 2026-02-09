@@ -10318,3 +10318,42 @@
 - [x] Tạo /api/metrics endpoint format Prometheus text exposition (20+ metrics)
 - [x] Thêm 14 tests cho health check service và rate limiter (healthCheck.test.ts)
 - [x] Tests: 228 files, 2829 passed, 0 failed
+
+## Phase - Grafana Dashboard, Alertmanager, API Documentation
+
+### Grafana Dashboard Template
+- [x] Tạo file JSON dashboard Grafana sẵn để import (monitoring/grafana-dashboard.json)
+- [x] Panel: Application Health Overview (status, uptime, version, DB connection, DB latency, table count, CPU cores)
+- [x] Panel: Database Monitoring (connection status, latency gauge, latency over time with threshold line)
+- [x] Panel: Memory Usage (system gauge, heap gauge, RSS/heap/external time series, system total/free/used)
+- [x] Panel: CPU Load (1m, 5m, 15m averages time series)
+- [x] Panel: Services Status (WebSocket, SSE, Rate Limiter, Redis - color-coded status)
+- [x] Thêm variables cho datasource selection (DS_PROMETHEUS template variable)
+- [x] Thêm hướng dẫn import vào DEPLOYMENT_GUIDE.md (section 10.4 cập nhật đầy đủ)
+
+### Alertmanager Rules
+- [x] Tạo file prometheus alert rules (monitoring/prometheus-alerts.yml - 5 groups, 15 rules)
+- [x] Rule: Database connection lost (db_connected == 0, critical, 30s)
+- [x] Rule: Database latency cao (> 500ms warning, > 2000ms critical, spike detection)
+- [x] Rule: Memory usage cao (> 80% warning, > 90% critical, heap > 85%, memory leak detection)
+- [x] Rule: CPU load cao (> 80% warning, > 95% critical per core)
+- [x] Rule: Application unhealthy (app_health_status < 1), down (absent metrics), restart detection
+- [x] Rule: Service alerts (WebSocket unavailable, Redis disconnected)
+- [x] Tạo cấu hình Alertmanager cho Slack webhook (monitoring/alertmanager.yml - 5 receivers, 4 channels)
+- [x] Tạo cấu hình Alertmanager cho Email SMTP (HTML template, critical alerts)
+- [x] Tạo Prometheus config mẫu (monitoring/prometheus.yml)
+- [x] Tạo Docker Compose monitoring stack (monitoring/docker-compose.monitoring.yml)
+- [x] Tạo Grafana provisioning (datasources + dashboards auto-config)
+- [x] Inhibition rules để tránh alerts trùng lặp (5 rules)
+- [x] Thêm hướng dẫn vào DEPLOYMENT_GUIDE.md (section 10.4 + 10.6)
+
+### API Documentation (Swagger/OpenAPI)
+- [x] Khảo sát tất cả 172 tRPC routers và procedures
+- [x] Tạo OpenAPI 3.0 spec cho tất cả public/protected endpoints (177 paths)
+- [x] Tạo trang Swagger UI tích hợp vào ứng dụng (/api/docs) với custom header
+- [x] Tạo endpoint /api/openapi.json trả về spec (auto-detect base URL)
+- [x] Tạo endpoint /api/docs/stats trả về thống kê API
+- [x] Phân loại endpoints theo 15 nhóm module (Core, SPC/CPK, Production, OEE, IoT, AI, Quality, Alerts, Escalation, Reports, Integration, Dashboard, Camera, Webhooks, System)
+- [x] Thêm request/response schemas (Error, TRPCResponse, Pagination, DateRange, Health schemas)
+- [x] Thêm authentication info (cookieAuth, localAuth security schemes)
+- [x] Viết 21 tests cho API documentation endpoints (apiDocumentation.test.ts - all passed)

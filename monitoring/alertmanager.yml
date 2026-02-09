@@ -1,0 +1,241 @@
+# =============================================================================
+# CPK/SPC Calculator - Alertmanager Configuration
+# =============================================================================
+# File: monitoring/alertmanager.yml
+# Mô tả: Cấu hình Alertmanager cho gửi cảnh báo qua Slack và Email
+#
+# Hướng dẫn:
+# 1. Thay thế các giá trị placeholder (YOUR_*) bằng giá trị thực tế
+# 2. Copy file này vào thư mục config của Alertmanager
+# 3. Restart Alertmanager: systemctl restart alertmanager
+# =============================================================================
+
+global:
+  # Thời gian chờ trước khi đánh dấu alert đã resolved
+  resolve_timeout: 5m
+
+  # ===== SMTP Configuration (Email) =====
+  smtp_smarthost: 'smtp.gmail.com:587'
+  smtp_from: 'YOUR_EMAIL@gmail.com'
+  smtp_auth_username: 'YOUR_EMAIL@gmail.com'
+  smtp_auth_password: 'YOUR_APP_PASSWORD'
+  smtp_require_tls: true
+
+  # ===== Slack Configuration =====
+  slack_api_url: 'https://hooks.slack.com/services/YOUR_SLACK_WEBHOOK_URL'
+
+# =============================================================================
+# Templates
+# =============================================================================
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'
+
+# =============================================================================
+# Route Tree - Điều hướng alerts đến receivers phù hợp
+# =============================================================================
+route:
+  # Receiver mặc định
+  receiver: 'slack-critical'
+
+  # Nhóm alerts theo labels
+  group_by: ['alertname', 'service', 'component']
+
+  # Thời gian chờ trước khi gửi notification đầu tiên
+  group_wait: 30s
+
+  # Thời gian chờ giữa các notification cho cùng group
+  group_interval: 5m
+
+  # Thời gian chờ trước khi gửi lại notification cho alert đã gửi
+  repeat_interval: 4h
+
+  # Routes con - ưu tiên từ trên xuống
+  routes:
+    # Critical alerts → Slack + Email
+    - match:
+        severity: critical
+      receiver: 'slack-and-email-critical'
+      group_wait: 10s
+      repeat_interval: 1h
+      continue: false
+
+    # Warning alerts → Slack only
+    - match:
+        severity: warning
+      receiver: 'slack-warning'
+      group_wait: 1m
+      repeat_interval: 4h
+      continue: false
+
+    # Info alerts → Slack info channel
+    - match:
+        severity: info
+      receiver: 'slack-info'
+      group_wait: 5m
+      repeat_interval: 12h
+      continue: false
+
+    # Database-specific alerts → dedicated channel
+    - match:
+        component: database
+      receiver: 'slack-database'
+      group_wait: 15s
+      repeat_interval: 2h
+      continue: false
+
+# =============================================================================
+# Inhibition Rules - Ngăn chặn alerts trùng lặp
+# =============================================================================
+inhibit_rules:
+  # Nếu application down, không cần gửi alert cho từng service
+  - source_match:
+      alertname: 'ApplicationDown'
+    target_match_re:
+      alertname: 'DatabaseConnectionLost|WebSocketUnavailable|RedisDisconnected'
+    equal: ['service']
+
+  # Nếu critical, suppress warning cho cùng component
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'service', 'component']
+
+  # Database critical suppress database warning
+  - source_match:
+      alertname: 'DatabaseLatencyCritical'
+    target_match:
+      alertname: 'DatabaseLatencyHigh'
+    equal: ['service']
+
+  # Memory critical suppress memory warning
+  - source_match:
+      alertname: 'SystemMemoryHigh'
+    target_match:
+      alertname: 'SystemMemoryWarning'
+    equal: ['service']
+
+  # CPU critical suppress CPU warning
+  - source_match:
+      alertname: 'CPULoadCritical'
+    target_match:
+      alertname: 'CPULoadHigh'
+    equal: ['service']
+
+# =============================================================================
+# Receivers - Kênh nhận cảnh báo
+# =============================================================================
+receivers:
+  # ===== Slack Critical (+ Email) =====
+  - name: 'slack-and-email-critical'
+    slack_configs:
+      - channel: '#spc-alerts-critical'
+        send_resolved: true
+        username: 'CPK/SPC Alert Bot'
+        icon_emoji: ':rotating_light:'
+        color: '{{ if eq .Status "firing" }}danger{{ else }}good{{ end }}'
+        title: '{{ if eq .Status "firing" }}🚨 CRITICAL{{ else }}✅ RESOLVED{{ end }} | {{ .CommonLabels.alertname }}'
+        text: >-
+          *Service:* {{ .CommonLabels.service }}
+          *Component:* {{ .CommonLabels.component }}
+          *Severity:* {{ .CommonLabels.severity }}
+          *Status:* {{ .Status | toUpper }}
+
+          {{ range .Alerts }}
+          *Alert:* {{ .Labels.alertname }}
+          *Description:* {{ .Annotations.description }}
+          *Started:* {{ .StartsAt.Format "2006-01-02 15:04:05 MST" }}
+          {{ if .EndsAt }}*Ended:* {{ .EndsAt.Format "2006-01-02 15:04:05 MST" }}{{ end }}
+          {{ if .Annotations.runbook_url }}*Runbook:* {{ .Annotations.runbook_url }}{{ end }}
+          {{ if .Annotations.dashboard_url }}*Dashboard:* {{ .Annotations.dashboard_url }}{{ end }}
+          ---
+          {{ end }}
+        actions:
+          - type: button
+            text: 'View Dashboard'
+            url: 'https://grafana.example.com/d/cpk-spc-monitoring'
+          - type: button
+            text: 'Health Check'
+            url: 'https://your-app.example.com/api/health/detailed'
+    email_configs:
+      - to: 'admin@example.com, ops-team@example.com'
+        send_resolved: true
+        headers:
+          Subject: '{{ if eq .Status "firing" }}🚨 CRITICAL{{ else }}✅ RESOLVED{{ end }} CPK/SPC: {{ .CommonLabels.alertname }}'
+        html: |
+          <h2 style="color: {{ if eq .Status "firing" }}#dc3545{{ else }}#28a745{{ end }};">
+            {{ if eq .Status "firing" }}🚨 CRITICAL ALERT{{ else }}✅ RESOLVED{{ end }}
+          </h2>
+          <table style="border-collapse: collapse; width: 100%;">
+            <tr><td style="padding: 8px; border: 1px solid #ddd;"><strong>Service</strong></td><td style="padding: 8px; border: 1px solid #ddd;">{{ .CommonLabels.service }}</td></tr>
+            <tr><td style="padding: 8px; border: 1px solid #ddd;"><strong>Component</strong></td><td style="padding: 8px; border: 1px solid #ddd;">{{ .CommonLabels.component }}</td></tr>
+            <tr><td style="padding: 8px; border: 1px solid #ddd;"><strong>Severity</strong></td><td style="padding: 8px; border: 1px solid #ddd;">{{ .CommonLabels.severity }}</td></tr>
+          </table>
+          {{ range .Alerts }}
+          <h3>{{ .Labels.alertname }}</h3>
+          <p>{{ .Annotations.description }}</p>
+          <p><strong>Started:</strong> {{ .StartsAt.Format "2006-01-02 15:04:05 MST" }}</p>
+          {{ end }}
+          <p><a href="https://grafana.example.com/d/cpk-spc-monitoring">View Dashboard</a></p>
+
+  # ===== Slack Critical (without Email) =====
+  - name: 'slack-critical'
+    slack_configs:
+      - channel: '#spc-alerts-critical'
+        send_resolved: true
+        username: 'CPK/SPC Alert Bot'
+        icon_emoji: ':rotating_light:'
+        color: '{{ if eq .Status "firing" }}danger{{ else }}good{{ end }}'
+        title: '{{ if eq .Status "firing" }}🚨 CRITICAL{{ else }}✅ RESOLVED{{ end }} | {{ .CommonLabels.alertname }}'
+        text: >-
+          *Service:* {{ .CommonLabels.service }}
+          *Component:* {{ .CommonLabels.component }}
+          {{ range .Alerts }}
+          *Description:* {{ .Annotations.description }}
+          {{ end }}
+
+  # ===== Slack Warning =====
+  - name: 'slack-warning'
+    slack_configs:
+      - channel: '#spc-alerts-warning'
+        send_resolved: true
+        username: 'CPK/SPC Alert Bot'
+        icon_emoji: ':warning:'
+        color: '{{ if eq .Status "firing" }}warning{{ else }}good{{ end }}'
+        title: '{{ if eq .Status "firing" }}⚠️ WARNING{{ else }}✅ RESOLVED{{ end }} | {{ .CommonLabels.alertname }}'
+        text: >-
+          *Service:* {{ .CommonLabels.service }}
+          *Component:* {{ .CommonLabels.component }}
+          {{ range .Alerts }}
+          *Description:* {{ .Annotations.description }}
+          {{ end }}
+
+  # ===== Slack Info =====
+  - name: 'slack-info'
+    slack_configs:
+      - channel: '#spc-alerts-info'
+        send_resolved: false
+        username: 'CPK/SPC Alert Bot'
+        icon_emoji: ':information_source:'
+        color: '#439FE0'
+        title: 'ℹ️ INFO | {{ .CommonLabels.alertname }}'
+        text: >-
+          {{ range .Alerts }}
+          {{ .Annotations.description }}
+          {{ end }}
+
+  # ===== Slack Database =====
+  - name: 'slack-database'
+    slack_configs:
+      - channel: '#spc-database-alerts'
+        send_resolved: true
+        username: 'CPK/SPC DB Monitor'
+        icon_emoji: ':floppy_disk:'
+        color: '{{ if eq .Status "firing" }}{{ if eq .CommonLabels.severity "critical" }}danger{{ else }}warning{{ end }}{{ else }}good{{ end }}'
+        title: '{{ if eq .Status "firing" }}🗄️ DB ALERT{{ else }}✅ DB RESOLVED{{ end }} | {{ .CommonLabels.alertname }}'
+        text: >-
+          *Severity:* {{ .CommonLabels.severity }}
+          {{ range .Alerts }}
+          *Description:* {{ .Annotations.description }}
+          *Started:* {{ .StartsAt.Format "2006-01-02 15:04:05" }}
+          {{ end }}

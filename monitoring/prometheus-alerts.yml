@@ -1,0 +1,225 @@
+# =============================================================================
+# CPK/SPC Calculator - Prometheus Alert Rules
+# =============================================================================
+# File: monitoring/prometheus-alerts.yml
+# Mô tả: Các rule cảnh báo cho hệ thống CPK/SPC Calculator
+# Sử dụng: Copy file này vào thư mục rules của Prometheus
+#
+# Cấu hình trong prometheus.yml:
+#   rule_files:
+#     - "rules/cpk-spc-alerts.yml"
+# =============================================================================
+
+groups:
+  # =========================================================================
+  # Group 1: Database Alerts
+  # =========================================================================
+  - name: cpk_spc_database
+    interval: 15s
+    rules:
+      # Database connection lost
+      - alert: DatabaseConnectionLost
+        expr: db_connected == 0
+        for: 30s
+        labels:
+          severity: critical
+          service: cpk-spc-calculator
+          component: database
+        annotations:
+          summary: "Database connection lost"
+          description: "CPK/SPC Calculator đã mất kết nối database trong hơn 30 giây. Ứng dụng không thể hoạt động bình thường."
+          runbook_url: "https://docs.example.com/runbooks/db-connection-lost"
+          dashboard_url: "https://grafana.example.com/d/cpk-spc-monitoring"
+
+      # Database latency cao (> 500ms)
+      - alert: DatabaseLatencyHigh
+        expr: db_latency_ms > 500
+        for: 2m
+        labels:
+          severity: warning
+          service: cpk-spc-calculator
+          component: database
+        annotations:
+          summary: "Database latency cao ({{ $value }}ms)"
+          description: "Database latency đã vượt 500ms trong hơn 2 phút. Hiện tại: {{ $value }}ms. Có thể do slow queries hoặc database overload."
+          runbook_url: "https://docs.example.com/runbooks/db-latency-high"
+
+      # Database latency rất cao (> 2000ms) - critical
+      - alert: DatabaseLatencyCritical
+        expr: db_latency_ms > 2000
+        for: 1m
+        labels:
+          severity: critical
+          service: cpk-spc-calculator
+          component: database
+        annotations:
+          summary: "Database latency cực cao ({{ $value }}ms)"
+          description: "Database latency đã vượt 2000ms trong hơn 1 phút. Hiện tại: {{ $value }}ms. Cần kiểm tra ngay lập tức."
+
+      # Database latency tăng đột biến
+      - alert: DatabaseLatencySpike
+        expr: db_latency_ms > 3 * avg_over_time(db_latency_ms[1h])
+        for: 5m
+        labels:
+          severity: warning
+          service: cpk-spc-calculator
+          component: database
+        annotations:
+          summary: "Database latency tăng đột biến"
+          description: "Database latency hiện tại ({{ $value }}ms) cao gấp 3 lần trung bình 1 giờ qua. Có thể có slow query hoặc lock contention."
+
+  # =========================================================================
+  # Group 2: Memory Alerts
+  # =========================================================================
+  - name: cpk_spc_memory
+    interval: 30s
+    rules:
+      # System memory usage > 90%
+      - alert: SystemMemoryHigh
+        expr: system_memory_usage_percent > 90
+        for: 5m
+        labels:
+          severity: critical
+          service: cpk-spc-calculator
+          component: memory
+        annotations:
+          summary: "System memory usage cao ({{ $value }}%)"
+          description: "System memory usage đã vượt 90% trong hơn 5 phút. Hiện tại: {{ $value }}%. Có nguy cơ OOM killer."
+          runbook_url: "https://docs.example.com/runbooks/memory-high"
+
+      # System memory usage > 80% - warning
+      - alert: SystemMemoryWarning
+        expr: system_memory_usage_percent > 80
+        for: 10m
+        labels:
+          severity: warning
+          service: cpk-spc-calculator
+          component: memory
+        annotations:
+          summary: "System memory usage cảnh báo ({{ $value }}%)"
+          description: "System memory usage đã vượt 80% trong hơn 10 phút. Hiện tại: {{ $value }}%. Cần theo dõi."
+
+      # Heap memory usage > 85%
+      - alert: HeapMemoryHigh
+        expr: (process_memory_heap_used_bytes / process_memory_heap_total_bytes * 100) > 85
+        for: 5m
+        labels:
+          severity: warning
+          service: cpk-spc-calculator
+          component: memory
+        annotations:
+          summary: "Node.js heap memory usage cao ({{ $value }}%)"
+          description: "Heap memory usage đã vượt 85% trong hơn 5 phút. Có thể có memory leak. Hiện tại: {{ $value }}%."
+
+      # RSS memory tăng liên tục (memory leak detection)
+      - alert: PossibleMemoryLeak
+        expr: process_memory_rss_bytes > 1.5 * min_over_time(process_memory_rss_bytes[6h])
+        for: 30m
+        labels:
+          severity: warning
+          service: cpk-spc-calculator
+          component: memory
+        annotations:
+          summary: "Nghi ngờ memory leak"
+          description: "RSS memory đã tăng hơn 50% so với mức thấp nhất trong 6 giờ qua. Hiện tại: {{ $value | humanize1024 }}B."
+
+  # =========================================================================
+  # Group 3: CPU Alerts
+  # =========================================================================
+  - name: cpk_spc_cpu
+    interval: 30s
+    rules:
+      # CPU load cao (> 80% capacity)
+      - alert: CPULoadHigh
+        expr: system_cpu_load_1m / system_cpu_count > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          service: cpk-spc-calculator
+          component: cpu
+        annotations:
+          summary: "CPU load cao ({{ $value | printf \"%.1f\" }} per core)"
+          description: "CPU load per core đã vượt 80% trong hơn 5 phút. Load 1m: {{ $value | printf \"%.2f\" }}. Số cores: {{ with query \"system_cpu_count\" }}{{ . | first | value }}{{ end }}."
+
+      # CPU load rất cao (> 95% capacity)
+      - alert: CPULoadCritical
+        expr: system_cpu_load_1m / system_cpu_count > 0.95
+        for: 3m
+        labels:
+          severity: critical
+          service: cpk-spc-calculator
+          component: cpu
+        annotations:
+          summary: "CPU load cực cao ({{ $value | printf \"%.1f\" }} per core)"
+          description: "CPU load per core đã vượt 95% trong hơn 3 phút. Hệ thống có thể bị chậm nghiêm trọng."
+
+  # =========================================================================
+  # Group 4: Application Health Alerts
+  # =========================================================================
+  - name: cpk_spc_application
+    interval: 15s
+    rules:
+      # Application unhealthy
+      - alert: ApplicationUnhealthy
+        expr: app_health_status < 1
+        for: 1m
+        labels:
+          severity: critical
+          service: cpk-spc-calculator
+          component: application
+        annotations:
+          summary: "Application health status: {{ if eq $value 0.5 }}degraded{{ else }}unhealthy{{ end }}"
+          description: "CPK/SPC Calculator đang ở trạng thái không healthy. Health status: {{ $value }}. Cần kiểm tra ngay."
+
+      # Application down (no metrics)
+      - alert: ApplicationDown
+        expr: absent(app_uptime_seconds)
+        for: 1m
+        labels:
+          severity: critical
+          service: cpk-spc-calculator
+          component: application
+        annotations:
+          summary: "Application không phản hồi"
+          description: "Không nhận được metrics từ CPK/SPC Calculator trong hơn 1 phút. Application có thể đã crash hoặc không thể truy cập."
+
+      # Application restart detected
+      - alert: ApplicationRestarted
+        expr: changes(app_uptime_seconds[5m]) > 0
+        labels:
+          severity: info
+          service: cpk-spc-calculator
+          component: application
+        annotations:
+          summary: "Application đã restart"
+          description: "CPK/SPC Calculator đã restart. Uptime hiện tại: {{ $value }}s."
+
+  # =========================================================================
+  # Group 5: Service Alerts
+  # =========================================================================
+  - name: cpk_spc_services
+    interval: 30s
+    rules:
+      # WebSocket unavailable
+      - alert: WebSocketUnavailable
+        expr: service_websocket_available == 0
+        for: 2m
+        labels:
+          severity: warning
+          service: cpk-spc-calculator
+          component: websocket
+        annotations:
+          summary: "WebSocket service không khả dụng"
+          description: "WebSocket service đã không khả dụng trong hơn 2 phút. Real-time features sẽ không hoạt động."
+
+      # Redis disconnected (khi đã cấu hình)
+      - alert: RedisDisconnected
+        expr: service_redis_connected == 0 and service_rate_limiter_enabled == 1
+        for: 2m
+        labels:
+          severity: warning
+          service: cpk-spc-calculator
+          component: redis
+        annotations:
+          summary: "Redis cache bị mất kết nối"
+          description: "Redis đã mất kết nối trong hơn 2 phút. Rate limiting sẽ fallback về memory store."
