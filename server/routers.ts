@@ -9665,8 +9665,8 @@ Hãy trả về JSON với format:
         if (!db) return null;
         
         const result = await db.execute(sql.raw(`
-          SELECT configKey, configValue FROM ntf_alert_config 
-          WHERE configKey LIKE 'env_%'
+          SELECT \`key\` as configKey, \`value\` as configValue FROM system_settings 
+          WHERE \`key\` LIKE 'env_%'
         `));
         
         const configs = ((result as unknown as any[])[0] as any[]) || [];

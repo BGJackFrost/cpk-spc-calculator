@@ -56,11 +56,27 @@ export default defineConfig({
         assetFileNames: 'assets/[name]-[hash].[ext]',
         manualChunks(id) {
           if (id.includes('node_modules')) {
+            // Charts & visualization
             if (id.includes('recharts') || id.includes('d3-')) return 'vendor-charts';
+            // 3D rendering
             if (id.includes('three') || id.includes('@react-three')) return 'vendor-3d';
+            // Icons
             if (id.includes('lucide')) return 'vendor-icons';
+            // UI primitives
             if (id.includes('@radix-ui')) return 'vendor-radix';
-            if (id.includes('react-dom')) return 'vendor-react';
+            // React core
+            if (id.includes('react-dom') || id.includes('react/') || id.includes('scheduler')) return 'vendor-react';
+            // tRPC & data fetching
+            if (id.includes('@trpc') || id.includes('@tanstack')) return 'vendor-data';
+            // Date/time libs
+            if (id.includes('date-fns') || id.includes('dayjs') || id.includes('moment')) return 'vendor-date';
+            // Form & validation
+            if (id.includes('zod') || id.includes('react-hook-form') || id.includes('@hookform')) return 'vendor-form';
+            // PDF/Excel generation
+            if (id.includes('xlsx') || id.includes('exceljs') || id.includes('jspdf') || id.includes('html2canvas') || id.includes('pdfmake')) return 'vendor-export';
+            // Markdown & editor
+            if (id.includes('marked') || id.includes('highlight') || id.includes('prism') || id.includes('codemirror') || id.includes('monaco')) return 'vendor-editor';
+            // Misc vendor
             return 'vendor';
           }
         },
@@ -71,10 +87,10 @@ export default defineConfig({
     // Performance optimizations
     chunkSizeWarningLimit: 5000,
     sourcemap: false,
-    minify: false,
+    minify: 'esbuild',
     reportCompressedSize: false,
     assetsInlineLimit: 0,
-    cssMinify: false,
+    cssMinify: true,
     modulePreload: false,
   },
   // Optimize deps - fix React unstable_now error

@@ -10231,3 +10231,36 @@
 ### Component Fixes
 - [x] Fix DashboardLayout.tsx - thêm setTheme và fallback labels cho license menu
 - [x] Thêm license-notification-report và license-dashboard vào systemMenu.ts
+
+## Phase - Tối ưu Bundle, Export Reports, và Triển khai Production (09/02/2026)
+
+### Tối ưu Bundle Size
+- [x] Phân tích bundle hiện tại và xác định các chunks lớn
+- [x] Áp dụng React.lazy() và Suspense cho tất cả pages (~183 pages lazy loaded)
+- [x] Code splitting theo route groups + vendor splitting (11 vendor chunks)
+- [x] Xác minh build: total 28.26MB (243 chunks), initial load ~1.76MB (giảm 96% từ 40MB)
+
+### Export PDF/Excel - SPC Report
+- [x] Tạo server-side SPC report generation service (pdfReportGenerator.ts)
+- [x] Export PDF cho SPC analysis results (exportPdfWithCharts, upload S3)
+- [x] Export Excel cho SPC raw data và summary (exportExcel, client-side XLSX)
+- [x] Tích hợp nút export vào SPC pages (SpcReport.tsx)
+
+### Export PDF/Excel - OEE Report
+- [x] Tạo server-side OEE report generation service (oeeExportService.ts)
+- [x] Export PDF cho OEE dashboard data (exportOeePdf, HTML→S3)
+- [x] Export Excel cho OEE metrics và trends (exportOeeExcel, ExcelJS 3 sheets)
+- [x] Tích hợp nút export vào OEE pages (OEEDashboard.tsx - DropdownMenu)
+
+### Export PDF/Excel - MTTR/MTBF Report
+- [x] Tạo server-side MTTR/MTBF report generation service (mttrMtbfExportService.ts)
+- [x] Export PDF cho MTTR/MTBF analysis (exportMttrMtbfToPdf, base64)
+- [x] Export Excel cho maintenance data (exportMttrMtbfToExcel, ExcelJS)
+- [x] Tích hợp nút export vào Maintenance pages (MttrMtbfReport.tsx)
+
+### Hướng dẫn Triển khai Production
+- [x] Tạo hướng dẫn triển khai chi tiết cho Linux (Ubuntu/CentOS) - DEPLOYMENT_GUIDE.md
+- [x] Tạo hướng dẫn triển khai chi tiết cho Windows Server - DEPLOYMENT_GUIDE.md
+- [x] Tạo Docker deployment guide - DEPLOYMENT_GUIDE.md (Dockerfile + docker-compose.yml)
+- [x] Tạo PM2 ecosystem config - ecosystem.config.cjs
+- [x] Tạo Nginx reverse proxy config - trong DEPLOYMENT_GUIDE.md

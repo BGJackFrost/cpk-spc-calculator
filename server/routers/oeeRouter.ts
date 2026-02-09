@@ -2329,4 +2329,37 @@ export const oeeRouter = router({
 
       return { url, fileName, format: 'html' };
     }),
+
+  // Export OEE Report to Excel (server-side)
+  exportOeeExcel: protectedProcedure
+    .input(z.object({
+      startDate: z.date(),
+      endDate: z.date(),
+      machineIds: z.array(z.number()).optional(),
+      productionLineId: z.number().optional(),
+      language: z.enum(['vi', 'en']).default('vi'),
+    }))
+    .mutation(async ({ input }) => {
+      const { exportOEEToExcel } = await import('../services/oeeExportService');
+      const buffer = await exportOEEToExcel(input);
+      return {
+        data: buffer.toString('base64'),
+        filename: `oee-report-${new Date().toISOString().split('T')[0]}.xlsx`,
+        contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      };
+    }),
+
+  // Export OEE Report to PDF (HTML format)
+  exportOeePdf: protectedProcedure
+    .input(z.object({
+      startDate: z.date(),
+      endDate: z.date(),
+      machineIds: z.array(z.number()).optional(),
+      productionLineId: z.number().optional(),
+      language: z.enum(['vi', 'en']).default('vi'),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const { exportOEEReportToS3 } = await import('../services/oeeExportService');
+      return await exportOEEReportToS3(input, 'pdf', ctx.user?.id);
+    }),
 });

@@ -85,7 +85,7 @@ class DataDriftService {
       autoRollbackThreshold: String(input.autoRollbackThreshold ?? 0.15),
       notifyOwner: input.notifyOwner ? 1 : 0,
       notifyEmail: input.notifyEmail,
-      isActive: 1,
+      isEnabled: 1,
       createdBy: input.createdBy,
     });
 
@@ -97,7 +97,7 @@ class DataDriftService {
   async getConfig(modelId: number): Promise<AiDriftConfig | null> {
     const db = await this.db();
     const [config] = await db.select().from(aiDriftConfigs)
-      .where(and(eq(aiDriftConfigs.modelId, modelId), eq(aiDriftConfigs.isActive, 1)));
+      .where(and(eq(aiDriftConfigs.modelId, modelId), eq(aiDriftConfigs.isEnabled, 1)));
     return config || null;
   }
 

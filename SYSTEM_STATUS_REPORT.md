@@ -22,7 +22,7 @@ Hệ thống CPK/SPC Calculator là một ứng dụng web toàn diện phục v
 | **Schema file** | 7,880 dòng |
 | **Test files** | 225 test files |
 | **Dependencies** | 106 production + 32 dev |
-| **Build output** | ~50 MB |
+| **Build output** | 28.26 MB (243 chunks, initial load ~1.76 MB) |
 
 ---
 
@@ -43,8 +43,8 @@ Build production hoàn thành thành công, không có lỗi biên dịch hay l�
 
 | Tiêu chí | Kết quả |
 |-----------|---------|
-| **Test files** | **225/225 passed** (100%) |
-| **Test cases** | **2,803 passed / 0 failed / 1 skipped** |
+| **Test files** | **226/226 passed** (100%) |
+| **Test cases** | **2,808 passed / 0 failed / 1 skipped** |
 | **Tỷ lệ pass** | **99.96%** |
 | **Thời gian chạy** | 67.61 giây |
 
