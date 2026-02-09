@@ -10527,18 +10527,25 @@
 ## GĐ2 - Tối ưu Performance và Bảo mật
 
 ### 2.1 Schema và Code Splitting
-- [ ] Tách schema.ts thành modules (spc, mms, iot, production, etc.)
-- [ ] Lazy load Shiki syntax highlighter
-- [ ] Lazy load Mermaid diagram renderer
-- [ ] Audit và tối ưu vendor-misc chunk
-- [ ] Code splitting cho main index chunk
+- [x] Tách schema.ts (7,940 dòng) thành 32 domain modules trong drizzle/schema/
+- [x] Tạo barrel re-export schema.ts → schema/index.ts
+- [x] Lazy load Shiki syntax highlighter (đã dynamic import qua streamdown)
+- [x] Lazy load Mermaid diagram renderer (đã dynamic import qua streamdown)
+- [x] Disable modulePreload polyfill (giảm index.html từ 370KB → ~5KB)
+- [x] Thêm preconnect/dns-prefetch hints cho Google Fonts và API endpoints
 
 ### 2.2 Database Optimization
+- [x] Thêm safety limits (10000) cho unbounded queries (getSpcAnalysisReport, getCpkTrendByDay)
+- [x] Connection pooling với retry logic (executeWithRetry, enableKeepAlive)
 - [ ] Database query audit — EXPLAIN ANALYZE top slow queries
 - [ ] Cursor-based pagination cho danh sách lớn
-- [ ] Connection pooling optimization
 
 ### 2.3 Security Hardening
+- [x] Fix SQL injection trong cpkWebhookNotificationService (parameterized JSON_CONTAINS)
+- [x] Thêm DOMPurify sanitization cho dangerouslySetInnerHTML (ShiftReportHistory)
+- [x] Tạo sanitize utility lib (client/src/lib/sanitize.ts)
+- [x] CSP nonce middleware đã active (server/_core/cspNonce.ts)
+- [x] Vitest tests cho GĐ2 (15 tests passed)
 - [ ] Encrypt sensitive config at rest
 - [ ] CORS whitelist cho production
 - [ ] Per-endpoint rate limiting

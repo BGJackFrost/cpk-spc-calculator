@@ -455,7 +455,8 @@ export async function getSpcAnalysisReport(startDate: Date, endDate: Date, produ
         lte(spcAnalysisHistory.createdAt, endDate)
       )
     )
-    .orderBy(asc(spcAnalysisHistory.createdAt));
+    .orderBy(asc(spcAnalysisHistory.createdAt))
+    .limit(10000); // Safety limit to prevent unbounded queries
   
   return await query;
 }
@@ -470,7 +471,8 @@ export async function getCpkTrendByDay(days: number = 30) {
   
   const results = await db.select().from(spcAnalysisHistory)
     .where(gte(spcAnalysisHistory.createdAt, startDate))
-    .orderBy(asc(spcAnalysisHistory.createdAt));
+    .orderBy(asc(spcAnalysisHistory.createdAt))
+    .limit(10000); // Safety limit to prevent unbounded queries
   
   // Group by date
   const grouped: Record<string, { date: string; cpkSum: number; count: number; cpkValues: number[] }> = {};

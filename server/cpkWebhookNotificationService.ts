@@ -525,7 +525,7 @@ export async function triggerCpkWebhooks(
       and(
         eq(unifiedWebhookConfigs.isActive, 1),
         // Check if config subscribes to this event type
-        sql`JSON_CONTAINS(${unifiedWebhookConfigs.events}, '"${eventType}"')`
+        sql`JSON_CONTAINS(${unifiedWebhookConfigs.events}, ${JSON.stringify(eventType)})`
       )
     );
   

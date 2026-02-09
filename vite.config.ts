@@ -134,7 +134,12 @@ export default defineConfig({
     assetsInlineLimit: 0,
     cssMinify: true,
     modulePreload: {
-      polyfill: true,
+      polyfill: false,
+      resolveDependencies: (filename, deps) => {
+        // Don't preload heavy optional chunks - they'll be loaded on demand
+        const heavyChunks = ['vendor-syntax', 'vendor-mermaid', 'vendor-3d', 'vendor-export', 'vendor-qrcode', 'vendor-pptx', 'vendor-mqtt'];
+        return deps.filter(dep => !heavyChunks.some(chunk => dep.includes(chunk)));
+      },
     },
   },
   // Optimize deps - fix React unstable_now error
