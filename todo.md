@@ -10292,3 +10292,29 @@
 - [x] Tạo CDN deployment guide (CloudFront 5 bước + Cloudflare 6 bước + so sánh + Worker script)
 - [x] Cập nhật DEPLOYMENT_GUIDE.md với HTTP/2, CDN, image optimization (Section 13)
 - [x] Build: 321 .gz files, exit 0. Tests: 227 files, 2815 passed, 0 failed
+
+## Phase - Rate Limiting, Database Indexing, Health Check
+### Rate Limiting Nâng Cao
+- [x] Tạo rate limiter middleware theo user/IP (trpcRateLimiter.ts - 4 tiers: export/upload/compute/general)
+- [x] Rate limit cho export endpoints (PDF/Excel) - 10 req/phút/user (configurable)
+- [x] Rate limit cho upload endpoints - 20 req/phút/user (mounted in index.ts)
+- [x] Rate limit cho auth endpoints - 200 req/15min/IP (đã có authRateLimiter)
+- [x] Rate limit cho API tổng quát - 100 req/phút/user (general tier)
+- [x] Configurable limits qua env: RATE_LIMIT_EXPORT_PER_MIN, RATE_LIMIT_UPLOAD_PER_MIN, RATE_LIMIT_COMPUTE_PER_MIN, RATE_LIMIT_GENERAL_PER_MIN
+
+### Database Indexing
+- [x] Phân tích schema và xác định bảng lớn cần index (117 bảng IoT/alert/machine/quality)
+- [x] Thêm composite indexes cho spc_analysis_history (đã có Phase 1: 3 indexes)
+- [x] Thêm composite indexes cho oee_records (đã có Phase 1: 3 indexes)
+- [x] Thêm indexes cho IoT/sensor data (Phase 2: 8 indexes - iot_data_points, iot_device_data, iot_alarms, iot_alert_history, iot_devices)
+- [x] Thêm indexes cho alerts, notifications, machine, quality, maintenance, scheduled reports (Phase 2: 30 indexes tổng cộng)
+- [x] Tự động chạy migration khi server khởi động (add-advanced-indexes.ts)
+
+### Health Check Endpoint
+- [x] Tạo /api/health endpoint kiểm tra DB connection
+- [x] Kiểm tra memory usage, CPU load, system info
+- [x] Tạo /api/health/detailed cho admin với metrics chi tiết (DB latency, table count, memory, CPU, services)
+- [x] Tạo /api/health/live (liveness probe) và /api/health/ready (readiness probe) cho Kubernetes
+- [x] Tạo /api/metrics endpoint format Prometheus text exposition (20+ metrics)
+- [x] Thêm 14 tests cho health check service và rate limiter (healthCheck.test.ts)
+- [x] Tests: 228 files, 2829 passed, 0 failed

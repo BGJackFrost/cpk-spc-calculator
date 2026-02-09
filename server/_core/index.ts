@@ -11,11 +11,12 @@ import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { addSseClient, startHeartbeat } from "../sse";
 import { initScheduledJobs } from "../scheduledJobs";
-import { apiRateLimiter, authRateLimiter, setAlertCallback } from "./rateLimiter";
+import { apiRateLimiter, authRateLimiter, exportRateLimiter, setAlertCallback } from "./rateLimiter";
 import { notifyOwner } from "./notification";
 import { storagePut } from "../storage";
 import { wsServer } from "../websocket";
 import addPerformanceIndexes from "../migrations/add-performance-indexes";
+import addAdvancedIndexes from "../migrations/add-advanced-indexes";
 import compression from "compression";
 
 function isPortAvailable(port: number): Promise<boolean> {
@@ -91,6 +92,8 @@ async function startServer() {
   // Rate limiting for API endpoints
   app.use("/api/trpc", apiRateLimiter);
   app.use("/api/oauth", authRateLimiter);
+  app.use("/api/upload", exportRateLimiter);
+  app.use("/api/upload-logo", exportRateLimiter);
   
   // Serve manifest.json directly without auth (fix CORS issue)
   app.get('/manifest.json', (req, res) => {
@@ -102,6 +105,58 @@ async function startServer() {
     res.sendFile(manifestPath);
   });
   
+  // Health check endpoints (no auth required, no rate limiting)
+  app.get('/api/health', async (_req, res) => {
+    try {
+      const { getBasicHealth } = await import('../services/healthCheckService');
+      const health = await getBasicHealth();
+      res.json(health);
+    } catch (error) {
+      res.status(503).json({ status: 'unhealthy', error: 'Health check failed' });
+    }
+  });
+
+  app.get('/api/health/detailed', async (_req, res) => {
+    try {
+      const { getDetailedHealth } = await import('../services/healthCheckService');
+      const health = await getDetailedHealth();
+      const statusCode = health.status === 'healthy' ? 200 : health.status === 'degraded' ? 200 : 503;
+      res.status(statusCode).json(health);
+    } catch (error) {
+      res.status(503).json({ status: 'unhealthy', error: 'Health check failed' });
+    }
+  });
+
+  app.get('/api/health/live', async (_req, res) => {
+    try {
+      const { getLivenessStatus } = await import('../services/healthCheckService');
+      res.json(getLivenessStatus());
+    } catch (error) {
+      res.status(503).json({ status: 'error' });
+    }
+  });
+
+  app.get('/api/health/ready', async (_req, res) => {
+    try {
+      const { getReadinessStatus } = await import('../services/healthCheckService');
+      const readiness = await getReadinessStatus();
+      res.status(readiness.ready ? 200 : 503).json(readiness);
+    } catch (error) {
+      res.status(503).json({ ready: false, error: 'Readiness check failed' });
+    }
+  });
+
+  app.get('/api/metrics', async (_req, res) => {
+    try {
+      const { getPrometheusMetrics } = await import('../services/healthCheckService');
+      const metrics = await getPrometheusMetrics();
+      res.setHeader('Content-Type', 'text/plain; version=0.0.4; charset=utf-8');
+      res.send(metrics);
+    } catch (error) {
+      res.status(503).send('# Health check failed\n');
+    }
+  });
+
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
   
@@ -343,6 +398,11 @@ async function startServer() {
     // Run performance indexes migration (async, non-blocking)
     addPerformanceIndexes().catch(err => {
       console.error('[Migration] Failed to add performance indexes:', err.message);
+    });
+    
+    // Run advanced indexes migration Phase 2 (async, non-blocking)
+    addAdvancedIndexes().catch(err => {
+      console.error('[Migration] Failed to add advanced indexes:', err.message);
     });
   });
 }

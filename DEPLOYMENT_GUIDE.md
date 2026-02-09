@@ -772,18 +772,104 @@ pm2 show spc-calculator
 | Nginx access | `/var/log/nginx/access.log` | HTTP requests |
 | Nginx error | `/var/log/nginx/error.log` | Nginx errors |
 
-### 10.3. Health Check
+### 10.3. Health Check Endpoints
+
+Hệ thống cung cấp 5 health check endpoints không yêu cầu xác thực, phù hợp cho monitoring và load balancer:
+
+| Endpoint | Mô tả | Sử dụng |
+|----------|---------|--------|
+| `GET /api/health` | Kiểm tra cơ bản (status, uptime, version) | Load balancer probe |
+| `GET /api/health/detailed` | Chi tiết (DB, memory, CPU, services) | Admin monitoring |
+| `GET /api/health/live` | Liveness probe (process running) | Kubernetes liveness |
+| `GET /api/health/ready` | Readiness probe (DB + memory) | Kubernetes readiness |
+| `GET /api/metrics` | Prometheus text exposition format | Prometheus scraping |
 
 ```bash
-# Kiểm tra ứng dụng
-curl http://localhost:3000/
+# Kiểm tra cơ bản
+curl http://localhost:3000/api/health
+# {"status":"healthy","uptime":12345,"uptimeFormatted":"3h 25m 45s",...}
 
-# Kiểm tra API
-curl http://localhost:3000/api/trpc/health
+# Kiểm tra chi tiết (DB latency, memory, CPU, services)
+curl http://localhost:3000/api/health/detailed
 
-# Kiểm tra database connection
-curl http://localhost:3000/api/trpc/system.health
+# Liveness probe (cho Kubernetes)
+curl http://localhost:3000/api/health/live
+# {"status":"ok","timestamp":"2026-02-09T07:00:00.000Z"}
+
+# Readiness probe (cho Kubernetes)
+curl http://localhost:3000/api/health/ready
+# {"ready":true,"checks":{"database":true,"memory":true}}
+
+# Prometheus metrics
+curl http://localhost:3000/api/metrics
+# app_uptime_seconds 12345
+# db_connected 1
+# db_latency_ms 15
+# process_memory_heap_used_bytes 279313664
+# ...
 ```
+
+### 10.4. Prometheus + Grafana Integration
+
+Cấu hình Prometheus scrape:
+
+```yaml
+# prometheus.yml
+scrape_configs:
+  - job_name: 'cpk-spc-calculator'
+    scrape_interval: 15s
+    metrics_path: '/api/metrics'
+    static_configs:
+      - targets: ['localhost:3000']
+```
+
+Các metrics có sẵn:
+
+| Metric | Type | Mô tả |
+|--------|------|--------|
+| `app_health_status` | gauge | 1=healthy, 0.5=degraded, 0=unhealthy |
+| `app_uptime_seconds` | gauge | Thời gian server chạy (giây) |
+| `db_connected` | gauge | Kết nối database (0/1) |
+| `db_latency_ms` | gauge | Độ trễ query database (ms) |
+| `db_table_count` | gauge | Số lượng bảng trong database |
+| `process_memory_rss_bytes` | gauge | RSS memory của process |
+| `process_memory_heap_used_bytes` | gauge | Heap memory đang dùng |
+| `system_memory_usage_percent` | gauge | % memory hệ thống đang dùng |
+| `system_cpu_load_1m` | gauge | CPU load trung bình 1 phút |
+| `service_rate_limiter_enabled` | gauge | Rate limiter đang bật (0/1) |
+| `service_redis_connected` | gauge | Redis kết nối (0/1) |
+
+### 10.5. Rate Limiting
+
+Hệ thống hỗ trợ rate limiting với các tier:
+
+| Tier | Giới hạn | Áp dụng cho |
+|------|-----------|------------|
+| General API | 5000 req/15min | Tất cả API endpoints |
+| Auth | 200 req/15min | Đăng nhập, OAuth |
+| Export | 100 req/15min | PDF/Excel export, upload |
+| Per-user | 3000 req/15min | Mỗi user |
+
+```bash
+# Bật rate limiting qua biến môi trường
+RATE_LIMIT_ENABLED=true
+
+# Tùy chỉnh giới hạn (optional)
+RATE_LIMIT_EXPORT_PER_MIN=10
+RATE_LIMIT_UPLOAD_PER_MIN=20
+RATE_LIMIT_COMPUTE_PER_MIN=30
+RATE_LIMIT_GENERAL_PER_MIN=100
+
+# Sử dụng Redis cho rate limiting (multi-instance)
+REDIS_URL=redis://localhost:6379
+```
+
+Tính năng:
+- IP whitelist tự động cho mạng nội bộ (10.x, 192.168.x, 172.16-31.x)
+- Thống kê chi tiết: top blocked IPs, endpoints, users
+- Cảnh báo tự động khi tỷ lệ block > 5%
+- Hỗ trợ Redis store cho môi trường multi-instance
+- Bật/tắt qua admin UI hoặc API
 
 ---
 
