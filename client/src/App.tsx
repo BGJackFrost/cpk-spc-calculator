@@ -256,6 +256,10 @@ const CpkComparisonPage = lazy(() => import("./pages/ai/CpkComparisonPage"));
 const AiModelPerformance = lazy(() => import("./pages/ai/AiModelPerformance"));
 const AiModelComparison = lazy(() => import("./pages/ai/AiModelComparison"));
 
+// WebSocket & Custom Alerts
+const WebSocketDashboard = lazy(() => import("./pages/WebSocketDashboard"));
+const CustomAlertRules = lazy(() => import("./pages/CustomAlertRules"));
+
 // Realtime & Monitoring
 const RealtimeMachineConfig = lazy(() => import("./pages/RealtimeMachineConfig"));
 const RealtimeHistory = lazy(() => import("./pages/RealtimeHistory"));
@@ -566,6 +570,10 @@ function Router() {
         {/* MMS */}
         <Route path="/mms-dashboard" component={MMSDashboard} />
         <Route path="/mms-data-init" component={MMSDataInit} />
+
+        {/* WebSocket & Custom Alerts */}
+        <Route path="/websocket-dashboard" component={WebSocketDashboard} />
+        <Route path="/custom-alert-rules" component={CustomAlertRules} />
 
         {/* Escalation */}
         <Route path="/escalation-config" component={EscalationConfigPage} />

@@ -153,7 +153,8 @@ import { cache } from "./cache";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { spcDefectRecords, spcAnalysisHistory } from "../drizzle/schema";
-import { eq, and, gte, lte, desc, or } from "drizzle-orm";
+import { eq, and, gte, lte, desc, or, count } from "drizzle-orm";
+import { customAlertRules, customAlertHistory } from "../drizzle/schema";
 import {
   createDatabaseConnection,
   getDatabaseConnections,
@@ -12921,6 +12922,107 @@ Hãy trả về JSON với format:
   cameraSession: cameraSessionRouter,
   imageAnnotation: imageAnnotationRouter,
   aiImageComparison: aiImageComparisonRouter,
+  wsMonitor: router({
+    stats: protectedProcedure.query(async () => {
+      const { wsServer } = await import("./websocket");
+      return wsServer.getDetailedStats();
+    }),
+    eventLog: protectedProcedure.input(z.object({ limit: z.number().min(10).max(200).default(50) })).query(async ({ input }) => {
+      const { wsServer } = await import("./websocket");
+      return wsServer.getEventLog(input.limit);
+    }),
+    rooms: protectedProcedure.query(async () => {
+      const { wsServer } = await import("./websocket");
+      const rooms = wsServer.getRooms();
+      return Object.fromEntries(rooms);
+    }),
+    clientsInRoom: protectedProcedure.input(z.object({ room: z.string() })).query(async ({ input }) => {
+      const { wsServer } = await import("./websocket");
+      return wsServer.getClientsInRoom(input.room);
+    }),
+    broadcast: protectedProcedure.input(z.object({ type: z.string(), data: z.any(), room: z.string().optional(), userId: z.string().optional() })).mutation(async ({ input }) => {
+      const { wsServer } = await import("./websocket");
+      let count = 0;
+      if (input.userId) count = wsServer.broadcastToUser(input.userId, input.type, input.data);
+      else if (input.room) count = wsServer.broadcastToRoom(input.room, input.type, input.data);
+      else count = wsServer.broadcastAll(input.type, input.data);
+      return { sent: count };
+    }),
+    clearEventLog: protectedProcedure.mutation(async () => {
+      const { wsServer } = await import("./websocket");
+      wsServer.clearEventLog();
+      return { success: true };
+    }),
+  }),
+  customAlert: router({
+    list: protectedProcedure.input(z.object({ page: z.number().default(1), limit: z.number().default(20), metricType: z.string().optional(), severity: z.string().optional(), isActive: z.boolean().optional() })).query(async ({ input }) => {
+      const db = getDb();
+      const conditions: any[] = [];
+      if (input.metricType) conditions.push(eq(customAlertRules.metricType, input.metricType));
+      if (input.severity) conditions.push(eq(customAlertRules.severity, input.severity));
+      if (input.isActive !== undefined) conditions.push(eq(customAlertRules.isActive, input.isActive));
+      const where = conditions.length > 0 ? and(...conditions) : undefined;
+      const [total] = await db.select({ count: sql<number>`count(*)` }).from(customAlertRules).where(where);
+      const rules = await db.select().from(customAlertRules).where(where).orderBy(desc(customAlertRules.createdAt)).limit(input.limit).offset((input.page - 1) * input.limit);
+      return { rules, total: total?.count ?? 0, page: input.page, totalPages: Math.ceil((total?.count ?? 0) / input.limit) };
+    }),
+    getById: protectedProcedure.input(z.object({ id: z.number() })).query(async ({ input }) => {
+      const db = getDb();
+      const [rule] = await db.select().from(customAlertRules).where(eq(customAlertRules.id, input.id));
+      return rule ?? null;
+    }),
+    create: protectedProcedure.input(z.object({ name: z.string().min(1), description: z.string().optional(), metricType: z.string(), operator: z.string(), threshold: z.number(), thresholdMax: z.number().optional(), severity: z.string().default("warning"), evaluationIntervalMinutes: z.number().default(5), cooldownMinutes: z.number().default(30), consecutiveBreachesRequired: z.number().default(1), notificationChannels: z.string().optional(), recipients: z.string().optional(), webhookUrl: z.string().optional() })).mutation(async ({ input, ctx }) => {
+      const db = getDb();
+      const now = Date.now();
+      const [result] = await db.insert(customAlertRules).values({ ...input, createdBy: ctx.user?.openId ?? "system", createdAt: now, updatedAt: now });
+      return { id: result.insertId, success: true };
+    }),
+    update: protectedProcedure.input(z.object({ id: z.number(), name: z.string().optional(), description: z.string().optional(), metricType: z.string().optional(), operator: z.string().optional(), threshold: z.number().optional(), thresholdMax: z.number().optional(), severity: z.string().optional(), evaluationIntervalMinutes: z.number().optional(), cooldownMinutes: z.number().optional(), consecutiveBreachesRequired: z.number().optional(), notificationChannels: z.string().optional(), recipients: z.string().optional(), webhookUrl: z.string().optional() })).mutation(async ({ input }) => {
+      const db = getDb();
+      const { id, ...data } = input;
+      await db.update(customAlertRules).set({ ...data, updatedAt: Date.now() }).where(eq(customAlertRules.id, id));
+      return { success: true };
+    }),
+    delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
+      const db = getDb();
+      await db.delete(customAlertRules).where(eq(customAlertRules.id, input.id));
+      return { success: true };
+    }),
+    toggle: protectedProcedure.input(z.object({ id: z.number(), isActive: z.boolean() })).mutation(async ({ input }) => {
+      const db = getDb();
+      await db.update(customAlertRules).set({ isActive: input.isActive, updatedAt: Date.now() }).where(eq(customAlertRules.id, input.id));
+      return { success: true };
+    }),
+    evaluate: protectedProcedure.mutation(async () => {
+      const { evaluateAllRules } = await import("./services/customAlertEngine");
+      return evaluateAllRules();
+    }),
+    history: protectedProcedure.input(z.object({ page: z.number().default(1), limit: z.number().default(20), ruleId: z.number().optional(), severity: z.string().optional(), status: z.string().optional() })).query(async ({ input }) => {
+      const db = getDb();
+      const conditions: any[] = [];
+      if (input.ruleId) conditions.push(eq(customAlertHistory.ruleId, input.ruleId));
+      if (input.severity) conditions.push(eq(customAlertHistory.severity, input.severity));
+      if (input.status) conditions.push(eq(customAlertHistory.status, input.status));
+      const where = conditions.length > 0 ? and(...conditions) : undefined;
+      const [total] = await db.select({ count: sql<number>`count(*)` }).from(customAlertHistory).where(where);
+      const alerts = await db.select().from(customAlertHistory).where(where).orderBy(desc(customAlertHistory.triggeredAt)).limit(input.limit).offset((input.page - 1) * input.limit);
+      return { alerts, total: total?.count ?? 0, page: input.page, totalPages: Math.ceil((total?.count ?? 0) / input.limit) };
+    }),
+    stats: protectedProcedure.query(async () => {
+      const { getAlertStats } = await import("./services/customAlertEngine");
+      return getAlertStats();
+    }),
+    acknowledge: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input, ctx }) => {
+      const db = getDb();
+      await db.update(customAlertHistory).set({ status: "acknowledged", acknowledgedAt: Date.now(), acknowledgedBy: ctx.user?.name ?? "admin" }).where(eq(customAlertHistory.id, input.id));
+      return { success: true };
+    }),
+    resolve: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input, ctx }) => {
+      const db = getDb();
+      await db.update(customAlertHistory).set({ status: "resolved", resolvedAt: Date.now(), resolvedBy: ctx.user?.name ?? "admin" }).where(eq(customAlertHistory.id, input.id));
+      return { success: true };
+    }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

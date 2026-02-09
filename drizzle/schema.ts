@@ -7878,3 +7878,63 @@ export const aiImageAnalysisResults = mysqlTable("ai_image_analysis_results", {
 ]);
 export type AiImageAnalysisResult = typeof aiImageAnalysisResults.$inferSelect;
 export type InsertAiImageAnalysisResult = typeof aiImageAnalysisResults.$inferInsert;
+
+// ============================================================
+// Custom Alert Rules & History
+// ============================================================
+export const customAlertRules = mysqlTable("custom_alert_rules", {
+  id: int("id").primaryKey().autoincrement(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  metricType: varchar("metric_type", { length: 50 }).notNull(),
+  operator: varchar("operator", { length: 20 }).notNull(),
+  threshold: decimal("threshold", { precision: 15, scale: 6 }).notNull(),
+  thresholdMax: decimal("threshold_max", { precision: 15, scale: 6 }),
+  severity: varchar("severity", { length: 20 }).notNull().default("warning"),
+  isActive: boolean("is_active").notNull().default(true),
+  evaluationIntervalMinutes: int("evaluation_interval_minutes").notNull().default(5),
+  cooldownMinutes: int("cooldown_minutes").notNull().default(30),
+  consecutiveBreachesRequired: int("consecutive_breaches_required").notNull().default(1),
+  currentConsecutiveBreaches: int("current_consecutive_breaches").notNull().default(0),
+  notificationChannels: text("notification_channels"),
+  recipients: text("recipients"),
+  webhookUrl: varchar("webhook_url", { length: 500 }),
+  lastEvaluatedAt: bigint("last_evaluated_at", { mode: "number" }),
+  lastTriggeredAt: bigint("last_triggered_at", { mode: "number" }),
+  totalTriggers: int("total_triggers").notNull().default(0),
+  createdBy: varchar("created_by", { length: 255 }),
+  createdAt: bigint("created_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+  updatedAt: bigint("updated_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+}, (table) => [
+  index("idx_custom_alert_metric").on(table.metricType),
+  index("idx_custom_alert_active").on(table.isActive),
+  index("idx_custom_alert_severity").on(table.severity),
+]);
+export type CustomAlertRule = typeof customAlertRules.$inferSelect;
+export type InsertCustomAlertRule = typeof customAlertRules.$inferInsert;
+
+export const customAlertHistory = mysqlTable("custom_alert_history", {
+  id: int("id").primaryKey().autoincrement(),
+  ruleId: int("rule_id").notNull(),
+  ruleName: varchar("rule_name", { length: 255 }).notNull(),
+  metricType: varchar("metric_type", { length: 50 }).notNull(),
+  currentValue: decimal("current_value", { precision: 15, scale: 6 }).notNull(),
+  threshold: decimal("threshold", { precision: 15, scale: 6 }).notNull(),
+  operator: varchar("operator", { length: 20 }).notNull(),
+  severity: varchar("severity", { length: 20 }).notNull(),
+  status: varchar("status", { length: 20 }).notNull().default("active"),
+  message: text("message"),
+  notificationChannels: text("notification_channels"),
+  triggeredAt: bigint("triggered_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+  acknowledgedAt: bigint("acknowledged_at", { mode: "number" }),
+  acknowledgedBy: varchar("acknowledged_by", { length: 255 }),
+  resolvedAt: bigint("resolved_at", { mode: "number" }),
+  resolvedBy: varchar("resolved_by", { length: 255 }),
+}, (table) => [
+  index("idx_custom_alert_hist_rule").on(table.ruleId),
+  index("idx_custom_alert_hist_status").on(table.status),
+  index("idx_custom_alert_hist_severity").on(table.severity),
+  index("idx_custom_alert_hist_triggered").on(table.triggeredAt),
+]);
+export type CustomAlertHistoryEntry = typeof customAlertHistory.$inferSelect;
+export type InsertCustomAlertHistoryEntry = typeof customAlertHistory.$inferInsert;

@@ -10457,3 +10457,38 @@
 - [x] Filter theo weeks (1-12), userId, action, module
 - [x] Viết tests cho heatmap data endpoint (trong wsBackupHeatmap.test.ts)
 - [x] Full test suite: 232 files, 2926 passed, 1 skipped, 0 failures
+
+## Phase - WebSocket Dashboard, Backup Restore UI, Custom Alert Rules
+
+### WebSocket Dashboard (Admin)
+- [x] Tạo trang WebSocketDashboard.tsx hiển thị real-time connected clients
+- [x] Hiển thị rooms và số clients trong mỗi room
+- [x] Event log với auto-refresh và clear
+- [x] Broadcast message thủ công (global, room, user)
+- [x] Stats cards (total connections, rooms, events, uptime)
+- [x] Thêm route /websocket-dashboard vào App.tsx
+
+### Backup Restore UI (S3 Cloud Backup Tab)
+- [x] Thêm tab S3 Cloud Backup vào BackupHistory.tsx
+- [x] Stats cards cho S3 backups (total, success, size, last backup)
+- [x] Nút tạo S3 backup mới (createS3Backup)
+- [x] Bảng lịch sử S3 backups (s3History)
+- [x] Download backup file từ S3
+- [x] Generate và hiển thị restore script (generateRestoreScript)
+- [x] Copy restore script to clipboard
+- [x] Backup configuration info (retention, max backups, avg duration)
+
+### Custom Alert Rules
+- [x] Tạo trang CustomAlertRules.tsx với CRUD đầy đủ
+- [x] Tạo alert rules tùy chỉnh (CPK < 1.33, OEE < 85%, etc.)
+- [x] Hỗ trợ nhiều metric types (CPK, OEE, defect rate, machine downtime, memory, CPU, etc.)
+- [x] Hỗ trợ nhiều operators (>, >=, <, <=, =, !=, between, outside)
+- [x] Cấu hình severity (info, warning, critical, emergency)
+- [x] Cấu hình evaluation interval, cooldown, consecutive breaches
+- [x] Notification channels (in_app, email, slack, webhook, sms)
+- [x] Toggle enable/disable rules
+- [x] Evaluate all rules manually
+- [x] Alert history với acknowledge và resolve
+- [x] Stats dashboard (total rules, active, triggers, active alerts)
+- [x] Thêm route /custom-alert-rules vào App.tsx
+- [x] Vitest tests (34 tests passed) cho WebSocket, Backup, Alert features
