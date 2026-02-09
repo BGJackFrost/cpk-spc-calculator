@@ -5178,6 +5178,19 @@ export const appRouter = router({
         const { getAuditLogsForExport } = await import("./db");
         return await getAuditLogsForExport(input);
       }),
+
+    // Activity Heatmap - hourly activity data for the past N weeks
+    activityHeatmap: protectedProcedure
+      .input(z.object({
+        weeks: z.number().min(1).max(12).default(4),
+        userId: z.number().optional(),
+        action: z.string().optional(),
+        module: z.string().optional(),
+      }))
+      .query(async ({ input }) => {
+        const { getActivityHeatmapData } = await import("./db");
+        return await getActivityHeatmapData(input);
+      }),
   }),
 
   // Rules Management router
@@ -6792,6 +6805,55 @@ export const appRouter = router({
         }
         const { updateBackupSchedule } = await import("./backupService");
         return updateBackupSchedule(input.type, input.schedule);
+      }),
+
+    // S3 Database Backup - create full SQL dump and upload to S3
+    createS3Backup: protectedProcedure
+      .input(z.object({
+        includeSchema: z.boolean().default(true),
+        includeData: z.boolean().default(true),
+        retentionDays: z.number().default(30),
+        excludeTables: z.array(z.string()).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { createBackup } = await import("./services/databaseBackupService");
+        return createBackup(input);
+      }),
+
+    // S3 Backup History
+    s3History: protectedProcedure.query(async ({ ctx }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+      }
+      const { getBackupHistory } = await import("./services/databaseBackupService");
+      return getBackupHistory();
+    }),
+
+    // S3 Backup Stats
+    s3Stats: protectedProcedure.query(async ({ ctx }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+      }
+      const { getBackupStats } = await import("./services/databaseBackupService");
+      return getBackupStats();
+    }),
+
+    // Generate restore script for a backup
+    generateRestoreScript: protectedProcedure
+      .input(z.object({ backupId: z.string() }))
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const { getBackupById, generateRestoreScript } = await import("./services/databaseBackupService");
+        const backup = getBackupById(input.backupId);
+        if (!backup) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Backup not found" });
+        }
+        return { script: generateRestoreScript(backup), backup };
       }),
   }),
   

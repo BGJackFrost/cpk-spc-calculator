@@ -445,6 +445,13 @@ export function sendSseEvent(eventType: string, data: any) {
     data,
     timestamp: new Date(),
   });
+  // Bridge to WebSocket for dual-protocol support
+  try {
+    const { wsServer } = require('./websocket');
+    wsServer.bridgeSseEvent(eventType, data);
+  } catch {
+    // WebSocket not available, SSE-only mode
+  }
 }
 
 

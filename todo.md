@@ -10419,3 +10419,41 @@
 - [x] Custom metrics: health_latency, spc_latency, oee_latency, audit_latency, db_query_latency
 - [x] Thresholds: HTTP p95<2s, error<5%, health p95<500ms, SPC/OEE p95<3s
 - [x] README hướng dẫn sử dụng + CI/CD integration (GitHub Actions + Grafana)
+
+## Phase - WebSocket Migration, Database Backup, Activity Heatmap
+
+### WebSocket Migration
+- [x] Khảo sát SSE infrastructure (sse.ts: 37 exports, 27 event types, 11 client files, useSSE hook, ws package đã có)
+- [x] ws package đã có sẵn, nâng cấp websocket.ts hiện tại
+- [x] Nâng cấp WebSocket server: clientId, rooms, MAX_CLIENTS=200, maxPayload=64KB
+- [x] SSE Bridge: sendSseEvent() tự động bridge events sang WebSocket (dual-protocol)
+- [x] Bidirectional: join_room, leave_room, identify, custom handlers, room broadcast
+- [x] Room/channel system: global room, user:id rooms, broadcastToRoom, broadcastToUser
+- [x] Event log, getDetailedStats, getEventLog, clearEventLog, getRooms, getClientsInRoom
+- [x] Tạo useUnifiedRealtime hook (WS+SSE fallback, rooms, channels, identify, latency)
+- [x] Migrate AuditLogs.tsx từ raw EventSource sang useUnifiedRealtime
+- [x] Transport indicator hiển thị WS/SSE và latency
+- [x] Fallback mechanism: WebSocket → SSE (exponential backoff, maxReconnectAttempts)
+- [x] Giữ backward compatibility: SSE endpoints vẫn hoạt động, bridge events sang WS
+- [x] Viết 31 tests cho WebSocket, backup, heatmap (wsBackupHeatmap.test.ts - all passed)
+
+### Automated Database Backup
+- [x] Tạo databaseBackupService.ts (SQL dump, S3 upload, retention policy)
+- [x] Scheduled job backup hàng ngày (2:00 AM Asia/Ho_Chi_Minh)
+- [x] Retention policy (30 ngày, max 30 backups, configurable)
+- [x] Upload backup files lên S3 với random suffix
+- [x] Tạo restore script tự động (bash script với curl/wget)
+- [x] API endpoints: createS3Backup, s3History, s3Stats, generateRestoreScript
+- [x] Schema-only backup option, exclude tables option
+- [x] Viết tests cho backup service (trong wsBackupHeatmap.test.ts)
+
+### User Activity Heatmap
+- [x] Tạo backend endpoint getActivityHeatmapData (db.ts + audit.activityHeatmap router)
+- [x] Tạo Heatmap component (7 ngày x 24 giờ grid) với 5 mức màu
+- [x] Tích hợp vào Audit Dashboard tab Thống kê (full-width card)
+- [x] Color scale 5 cấp (green-100 → green-700) theo mật độ hoạt động
+- [x] Tooltip hiển thị chi tiết khi hover (ngày, giờ, số hoạt động)
+- [x] Phân bổ theo giờ (bar chart), summary stats (tổng, giờ/ngày cao điểm)
+- [x] Filter theo weeks (1-12), userId, action, module
+- [x] Viết tests cho heatmap data endpoint (trong wsBackupHeatmap.test.ts)
+- [x] Full test suite: 232 files, 2926 passed, 1 skipped, 0 failures

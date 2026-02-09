@@ -1141,6 +1141,67 @@ Hệ thống sử dụng **SSE (Server-Sent Events)** để stream audit logs re
 - Bấm nút "Real-time" hoặc chuyển sang tab "Real-time"
 - Sự kiện mới sẽ tự động xuất hiện không cần refresh
 
+### 10.12. WebSocket Migration
+
+Hệ thống đã được nâng cấp từ SSE sang **WebSocket** cho real-time communication hai chiều, với SSE làm fallback.
+
+**Kiến trúc:**
+- WebSocket server tích hợp vào Express HTTP server (cùng port)
+- SSE Bridge: mọi SSE event tự động được bridge sang WebSocket
+- Room/Channel system: global room, user-specific rooms
+- Client-side `useUnifiedRealtime` hook hỗ trợ cả WS và SSE fallback
+
+**Client-side usage:**
+```tsx
+import { useUnifiedRealtime } from "@/hooks/useUnifiedRealtime";
+
+const { isConnected, transport, latency, send, joinRoom, leaveRoom } = useUnifiedRealtime({
+  events: ["audit_log_new", "spc_update"],
+  onEvent: (event) => console.log(event),
+  rooms: ["spc-dashboard"],
+});
+```
+
+### 10.13. Automated Database Backup
+
+Hệ thống tự động backup database hàng ngày lúc 2:00 AM (Asia/Ho_Chi_Minh) và upload lên S3.
+
+**Cấu hình:**
+- Retention policy: 30 ngày, tối đa 30 backups
+- Hỗ trợ full backup và schema-only backup
+- Tự động generate restore script
+
+**API Endpoints:**
+| Endpoint | Mô tả |
+|---|---|
+| `backup.createS3Backup` | Tạo backup thủ công và upload S3 |
+| `backup.s3History` | Xem lịch sử backup |
+| `backup.s3Stats` | Thống kê backup |
+| `backup.generateRestoreScript` | Tạo script khôi phục |
+
+**Khôi phục từ backup:**
+```bash
+# Download và restore
+curl -o backup.sql "<S3_URL>"
+mysql -h <host> -u <user> -p <database> < backup.sql
+```
+
+### 10.14. User Activity Heatmap
+
+Biểu đồ heatmap trên Audit Dashboard hiển thị mật độ hoạt động theo giờ và ngày trong tuần.
+
+**Tính năng:**
+- Grid 7 ngày x 24 giờ với 5 mức màu (green scale)
+- Filter theo tuần (1-12), user, action, module
+- Phân bổ theo giờ (bar chart)
+- Hiển thị giờ/ngày cao điểm
+- Tooltip chi tiết khi hover
+
+**API Endpoint:**
+```
+audit.activityHeatmap({ weeks: 4, userId?: number, action?: string, module?: string })
+```
+
 ---
 
 ## 11. Troubleshooting

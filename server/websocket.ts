@@ -1,13 +1,18 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import type { Server } from 'http';
+import type { IncomingMessage } from 'http';
 
 interface WebSocketClient extends WebSocket {
+  clientId: string;
   isAlive: boolean;
   userId?: number;
+  userName?: string;
   subscriptions: Set<string>;
+  rooms: Set<string>;
   subscribedPlanIds: Set<number>;
   subscribedMachineIds: Set<number>;
   subscribedFixtureIds: Set<number>;
+  connectedAt: Date;
   lastActivity: number;
 }
 
@@ -73,60 +78,76 @@ export interface MachineStatusData {
 class RealtimeWebSocketServer {
   private wss: WebSocketServer | null = null;
   private clients: Set<WebSocketClient> = new Set();
+  private clientMap: Map<string, WebSocketClient> = new Map();
   private heartbeatInterval: NodeJS.Timeout | null = null;
   private cleanupInterval: NodeJS.Timeout | null = null;
+  private eventLog: Array<{ id: number; type: string; data: any; timestamp: Date; clientCount: number }> = [];
+  private eventLogCounter = 0;
+  private customHandlers = new Map<string, (client: WebSocketClient, data: any) => void>();
+  private static MAX_CLIENTS = 200;
+  private static MAX_EVENT_LOG = 200;
 
   initialize(server: Server) {
     this.wss = new WebSocketServer({ 
       server, 
       path: '/ws',
-      perMessageDeflate: false, // Disable compression for lower latency
+      perMessageDeflate: false,
+      maxPayload: 64 * 1024, // 64KB max message
     });
+    this.wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
+      if (this.clients.size >= RealtimeWebSocketServer.MAX_CLIENTS) {
+        ws.close(1013, 'Too many connections');
+        return;
+      }
 
-    this.wss.on('connection', (ws: WebSocket) => {
+      const url = new URL(req.url || '/', `http://${req.headers.host}`);
+      const clientId = url.searchParams.get('clientId') || `ws_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+
       const client = ws as WebSocketClient;
+      client.clientId = clientId;
       client.isAlive = true;
       client.subscriptions = new Set();
+      client.rooms = new Set(['global']);
       client.subscribedPlanIds = new Set();
       client.subscribedMachineIds = new Set();
       client.subscribedFixtureIds = new Set();
+      client.connectedAt = new Date();
       client.lastActivity = Date.now();
       this.clients.add(client);
-
-      console.log(`[WebSocket] Client connected. Total clients: ${this.clients.size}`);
-
+      this.clientMap.set(clientId, client);
+      console.log(`[WebSocket] Client ${clientId} connected. Total: ${this.clients.size}`);
       client.on('pong', () => {
         client.isAlive = true;
         client.lastActivity = Date.now();
       });
-
       client.on('message', (message: Buffer) => {
         try {
           const data: WebSocketMessage = JSON.parse(message.toString());
           client.lastActivity = Date.now();
           this.handleMessage(client, data);
         } catch (error) {
-          console.error('[WebSocket] Error parsing message:', error);
+          this.sendToClient(client, { type: 'error', data: { message: 'Invalid message format' } });
         }
       });
-
       client.on('close', () => {
         this.clients.delete(client);
-        console.log(`[WebSocket] Client disconnected. Total clients: ${this.clients.size}`);
+        this.clientMap.delete(clientId);
+        console.log(`[WebSocket] Client ${clientId} disconnected. Total: ${this.clients.size}`);
       });
-
       client.on('error', (error) => {
-        console.error('[WebSocket] Client error:', error);
+        console.error(`[WebSocket] Client ${clientId} error:`, error.message);
         this.clients.delete(client);
+        this.clientMap.delete(clientId);
       });
-
       // Send welcome message
       this.sendToClient(client, {
         type: 'connected',
         data: { 
+          clientId,
           message: 'Connected to SPC realtime server',
           timestamp: new Date().toISOString(),
-          serverTime: Date.now()
+          serverTime: Date.now(),
+          rooms: Array.from(client.rooms),
         }
       });
     });
@@ -161,23 +182,51 @@ class RealtimeWebSocketServer {
     console.log('[WebSocket] Server initialized on /ws');
   }
 
-  private handleMessage(client: WebSocketClient, message: WebSocketMessage) {
+   private handleMessage(client: WebSocketClient, message: WebSocketMessage) {
     switch (message.type) {
       case 'subscribe':
         if (message.channel) {
           client.subscriptions.add(message.channel);
-          console.log(`[WebSocket] Client subscribed to: ${message.channel}`);
           this.sendToClient(client, {
             type: 'subscribed',
             channel: message.channel
           });
         }
         break;
-
       case 'unsubscribe':
         if (message.channel) {
           client.subscriptions.delete(message.channel);
-          console.log(`[WebSocket] Client unsubscribed from: ${message.channel}`);
+        }
+        break;
+      // Room management
+      case 'join_room':
+        if (message.data?.room) {
+          client.rooms.add(message.data.room);
+          this.sendToClient(client, {
+            type: 'room_joined',
+            data: { room: message.data.room, rooms: Array.from(client.rooms) }
+          });
+        }
+        break;
+      case 'leave_room':
+        if (message.data?.room && message.data.room !== 'global') {
+          client.rooms.delete(message.data.room);
+          this.sendToClient(client, {
+            type: 'room_left',
+            data: { room: message.data.room, rooms: Array.from(client.rooms) }
+          });
+        }
+        break;
+      // User identification
+      case 'identify':
+        if (message.data?.userId) {
+          client.userId = message.data.userId;
+          client.userName = message.data.userName;
+          client.rooms.add(`user:${message.data.userId}`);
+          this.sendToClient(client, {
+            type: 'identified',
+            data: { userId: message.data.userId, rooms: Array.from(client.rooms) }
+          });
         }
         break;
 
@@ -267,15 +316,21 @@ class RealtimeWebSocketServer {
       case 'authenticate':
         if (message.data?.userId) {
           client.userId = message.data.userId;
+          client.userName = message.data.userName;
+          client.rooms.add(`user:${message.data.userId}`);
           this.sendToClient(client, {
             type: 'authenticated',
-            data: { userId: message.data.userId }
+            data: { userId: message.data.userId, rooms: Array.from(client.rooms) }
           });
         }
         break;
-
       default:
-        console.log(`[WebSocket] Unknown message type: ${message.type}`);
+        // Check custom handlers
+        const handler = this.customHandlers.get(message.type);
+        if (handler) {
+          handler(client, message.data);
+        }
+        break;
     }
   }
 
@@ -301,13 +356,20 @@ class RealtimeWebSocketServer {
   }
 
   // Broadcast to all clients
-  broadcastAll(type: string, data: any) {
-    const message: WebSocketMessage = { type, data };
+  broadcastAll(type: string, data: any): number {
+    const message = { type, data, timestamp: new Date().toISOString() };
+    const payload = JSON.stringify(message);
+    let sent = 0;
     this.clients.forEach((client) => {
       if (client.readyState === WebSocket.OPEN) {
-        client.send(JSON.stringify(message));
+        try {
+          client.send(payload);
+          sent++;
+        } catch {}
       }
     });
+    this.logEvent(type, data, sent);
+    return sent;
   }
 
   // Send SPC update to subscribed clients
@@ -476,6 +538,129 @@ class RealtimeWebSocketServer {
     };
   }
 
+   // ─── SSE Bridge: Broadcast SSE events through WebSocket ─────────
+  bridgeSseEvent(eventType: string, data: any): number {
+    return this.broadcastAll(eventType, data);
+  }
+
+  // ─── Room Broadcast ────────────────────────────────────────────
+  broadcastToRoom(room: string, type: string, data: any): number {
+    let sent = 0;
+    this.clients.forEach((client) => {
+      if (client.rooms.has(room) && client.readyState === WebSocket.OPEN) {
+        client.send(JSON.stringify({ type, data, timestamp: new Date().toISOString() }));
+        sent++;
+      }
+    });
+    this.logEvent(type, data, sent);
+    return sent;
+  }
+
+  // ─── Send to specific user ─────────────────────────────────────
+  broadcastToUser(userId: number, type: string, data: any): number {
+    return this.broadcastToRoom(`user:${userId}`, type, data);
+  }
+
+  // ─── Send to specific client ───────────────────────────────────
+  sendToClientById(clientId: string, message: any): boolean {
+    const client = this.clientMap.get(clientId);
+    if (!client || client.readyState !== WebSocket.OPEN) return false;
+    try {
+      client.send(JSON.stringify({ ...message, timestamp: new Date().toISOString() }));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  // ─── Custom Handler Registration ──────────────────────────────
+  registerHandler(action: string, handler: (client: WebSocketClient, data: any) => void): void {
+    this.customHandlers.set(action, handler);
+  }
+
+  unregisterHandler(action: string): void {
+    this.customHandlers.delete(action);
+  }
+
+  // ─── Event Log ─────────────────────────────────────────────────
+  private logEvent(type: string, data: any, clientCount: number): void {
+    this.eventLog.push({
+      id: ++this.eventLogCounter,
+      type,
+      data,
+      timestamp: new Date(),
+      clientCount,
+    });
+    if (this.eventLog.length > RealtimeWebSocketServer.MAX_EVENT_LOG) {
+      this.eventLog.splice(0, this.eventLog.length - RealtimeWebSocketServer.MAX_EVENT_LOG);
+    }
+  }
+
+  getEventLog(limit: number = 50) {
+    return this.eventLog.slice(-limit);
+  }
+
+  clearEventLog(): void {
+    this.eventLog.length = 0;
+  }
+
+  // ─── Room Info ─────────────────────────────────────────────────
+  getRooms(): Record<string, number> {
+    const rooms: Record<string, number> = {};
+    this.clients.forEach((client) => {
+      client.rooms.forEach((room) => {
+        rooms[room] = (rooms[room] || 0) + 1;
+      });
+    });
+    return rooms;
+  }
+
+  getClientsInRoom(room: string): string[] {
+    const result: string[] = [];
+    this.clients.forEach((client) => {
+      if (client.rooms.has(room)) {
+        result.push(client.clientId);
+      }
+    });
+    return result;
+  }
+
+  // ─── Enhanced Stats ────────────────────────────────────────────
+  getDetailedStats() {
+    let authenticatedCount = 0;
+    let planSubscriptions = 0;
+    let machineSubscriptions = 0;
+    let fixtureSubscriptions = 0;
+    const clientDetails: any[] = [];
+    this.clients.forEach((client) => {
+      if (client.userId) authenticatedCount++;
+      planSubscriptions += client.subscribedPlanIds.size;
+      machineSubscriptions += client.subscribedMachineIds.size;
+      fixtureSubscriptions += client.subscribedFixtureIds.size;
+      clientDetails.push({
+        clientId: client.clientId,
+        userId: client.userId,
+        userName: client.userName,
+        rooms: Array.from(client.rooms),
+        subscriptions: Array.from(client.subscriptions),
+        connectedAt: client.connectedAt?.toISOString(),
+        isAlive: client.isAlive,
+      });
+    });
+    return {
+      totalConnections: this.clients.size,
+      authenticatedConnections: authenticatedCount,
+      rooms: this.getRooms(),
+      subscriptions: {
+        plans: planSubscriptions,
+        machines: machineSubscriptions,
+        fixtures: fixtureSubscriptions,
+      },
+      clients: clientDetails,
+      eventLogSize: this.eventLog.length,
+    };
+  }
+
   shutdown() {
     if (this.heartbeatInterval) {
       clearInterval(this.heartbeatInterval);
@@ -487,11 +672,11 @@ class RealtimeWebSocketServer {
       client.terminate();
     });
     this.clients.clear();
+    this.clientMap.clear();
     if (this.wss) {
       this.wss.close();
     }
     console.log('[WebSocket] Server shutdown complete');
   }
 }
-
 export const wsServer = new RealtimeWebSocketServer();

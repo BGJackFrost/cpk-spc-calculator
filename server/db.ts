@@ -7508,3 +7508,94 @@ export async function getAuditLogsForExport(params: {
     ? db.select().from(auditLogs).where(whereClause).orderBy(desc(auditLogs.createdAt)).limit(maxLimit)
     : db.select().from(auditLogs).orderBy(desc(auditLogs.createdAt)).limit(maxLimit);
 }
+
+// ─── Activity Heatmap Data ──────────────────────────────────────
+export async function getActivityHeatmapData(params: {
+  weeks?: number;
+  userId?: number;
+  action?: string;
+  module?: string;
+}): Promise<{
+  heatmap: Array<{ dayOfWeek: number; hour: number; count: number }>;
+  dailyTotals: Array<{ date: string; count: number }>;
+  hourlyTotals: Array<{ hour: number; count: number }>;
+  peakHour: number;
+  peakDay: number;
+  totalActivities: number;
+  dateRange: { start: string; end: string };
+}> {
+  const db = await getDb();
+  if (!db) return { heatmap: [], dailyTotals: [], hourlyTotals: [], peakHour: 0, peakDay: 0, totalActivities: 0, dateRange: { start: '', end: '' } };
+
+  const weeks = params.weeks || 4;
+  const endDate = new Date();
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - (weeks * 7));
+
+  const conditions: any[] = [
+    gte(auditLogs.createdAt, startDate),
+    lte(auditLogs.createdAt, endDate),
+  ];
+  if (params.userId) conditions.push(eq(auditLogs.userId, params.userId));
+  if (params.action) conditions.push(eq(auditLogs.action, params.action));
+  if (params.module) conditions.push(eq(auditLogs.module, params.module));
+
+  const logs = await db.select({ createdAt: auditLogs.createdAt })
+    .from(auditLogs)
+    .where(and(...conditions))
+    .orderBy(asc(auditLogs.createdAt));
+
+  const heatmapGrid: Record<string, number> = {};
+  const dailyTotalsMap: Record<string, number> = {};
+  const hourlyTotalsArr = new Array(24).fill(0);
+  let totalActivities = 0;
+
+  for (const log of logs) {
+    if (!log.createdAt) continue;
+    const date = new Date(log.createdAt);
+    const dayOfWeek = date.getDay();
+    const hour = date.getHours();
+    const dateStr = date.toISOString().slice(0, 10);
+
+    const key = `${dayOfWeek}-${hour}`;
+    heatmapGrid[key] = (heatmapGrid[key] || 0) + 1;
+    dailyTotalsMap[dateStr] = (dailyTotalsMap[dateStr] || 0) + 1;
+    hourlyTotalsArr[hour]++;
+    totalActivities++;
+  }
+
+  const heatmap: Array<{ dayOfWeek: number; hour: number; count: number }> = [];
+  for (let day = 0; day < 7; day++) {
+    for (let hour = 0; hour < 24; hour++) {
+      heatmap.push({ dayOfWeek: day, hour, count: heatmapGrid[`${day}-${hour}`] || 0 });
+    }
+  }
+
+  const dailyTotals = Object.entries(dailyTotalsMap)
+    .map(([date, count]) => ({ date, count }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  const hourlyTotals = hourlyTotalsArr.map((count: number, hour: number) => ({ hour, count }));
+
+  let peakHour = 0, peakHourCount = 0;
+  hourlyTotals.forEach((h: { hour: number; count: number }) => {
+    if (h.count > peakHourCount) { peakHour = h.hour; peakHourCount = h.count; }
+  });
+
+  const dayTotals = new Array(7).fill(0);
+  heatmap.forEach(h => { dayTotals[h.dayOfWeek] += h.count; });
+  let peakDay = 0, peakDayCount = 0;
+  dayTotals.forEach((count: number, day: number) => {
+    if (count > peakDayCount) { peakDay = day; peakDayCount = count; }
+  });
+
+  return {
+    heatmap,
+    dailyTotals,
+    hourlyTotals,
+    peakHour,
+    peakDay,
+    totalActivities,
+    dateRange: { start: startDate.toISOString(), end: endDate.toISOString() },
+  };
+}

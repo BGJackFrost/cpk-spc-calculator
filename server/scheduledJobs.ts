@@ -3753,3 +3753,48 @@ export async function triggerCameraCaptureJob(): Promise<void> {
     console.error('[ScheduledJob] Error triggering camera capture job:', error);
   }
 }
+
+
+// ═══════════════════════════════════════════════════════════
+// Automated Database Backup Job
+// Runs daily at 2:00 AM (Asia/Ho_Chi_Minh)
+// ═══════════════════════════════════════════════════════════
+import { createBackup, getBackupStats, getBackupHistory } from './services/databaseBackupService';
+
+cron.schedule('0 0 2 * * *', async () => {
+  console.log('[ScheduledJob] Triggered: Automated database backup');
+  try {
+    const result = await createBackup({
+      retentionDays: 30,
+      maxBackups: 30,
+      includeSchema: true,
+      includeData: true,
+    });
+    console.log(`[ScheduledJob] Backup ${result.status}: ${result.tableCount} tables, ${result.totalRows} rows, ${(result.fileSize / 1024).toFixed(1)}KB, ${result.duration}ms`);
+    if (result.s3Url) {
+      console.log(`[ScheduledJob] Backup stored at: ${result.s3Url}`);
+    }
+    if (result.errors.length > 0) {
+      console.warn(`[ScheduledJob] Backup warnings: ${result.errors.join(', ')}`);
+    }
+  } catch (error: any) {
+    console.error('[ScheduledJob] Backup failed:', error.message);
+  }
+}, {
+  timezone: 'Asia/Ho_Chi_Minh'
+});
+console.log('[ScheduledJob] Scheduled: Database backup at 2:00 AM daily (Asia/Ho_Chi_Minh)');
+
+/**
+ * Manually trigger database backup (for testing or on-demand)
+ */
+export async function triggerDatabaseBackup(config?: any): Promise<any> {
+  try {
+    return await createBackup(config);
+  } catch (error: any) {
+    console.error('[ScheduledJob] Error triggering database backup:', error.message);
+    throw error;
+  }
+}
+
+export { getBackupStats, getBackupHistory };

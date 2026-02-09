@@ -1,4 +1,5 @@
-import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
+import { useUnifiedRealtime } from "@/hooks/useUnifiedRealtime";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -81,14 +82,15 @@ export default function AuditLogs() {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("logs");
   const [isLiveMode, setIsLiveMode] = useState(false);
+  // Unified Realtime hook (WebSocket + SSE fallback)
   const [sseConnected, setSseConnected] = useState(false);
   const [newEventsCount, setNewEventsCount] = useState(0);
-  const [realtimeEvents, setRealtimeEvents] = useState<Array<{
+  const [realtimeEventsLocal, setRealtimeEventsLocal] = useState<Array<{
     id: string; userId: number; userName?: string; action: string;
     module: string; tableName?: string; description?: string; timestamp: string;
   }>>([]);
   const { toast } = useToast();
-  const eventSourceRef = useRef<EventSource | null>(null);
+  // Use unified realtime hook instead of raw EventSource
   const [filters, setFilters] = useState({
     action: "all",
     module: "all",
@@ -128,6 +130,16 @@ export default function AuditLogs() {
   const { data: auditUsers } = trpc.audit.users.useQuery();
   const { data: auditModules } = trpc.audit.modules.useQuery();
 
+  // Heatmap data
+  const [heatmapWeeks, setHeatmapWeeks] = useState(4);
+  const heatmapInput = useMemo(() => ({
+    weeks: heatmapWeeks,
+    userId: filters.userId,
+    action: filters.action !== "all" ? filters.action : undefined,
+    module: filters.module !== "all" ? filters.module : undefined,
+  }), [heatmapWeeks, filters.userId, filters.action, filters.module]);
+  const { data: heatmapData } = trpc.audit.activityHeatmap.useQuery(heatmapInput);
+
   const openDetail = (log: AuditLog) => {
     setSelectedLog(log);
     setIsDetailOpen(true);
@@ -153,52 +165,33 @@ export default function AuditLogs() {
   }, [refetch]);
 
   // SSE Real-time connection
-  useEffect(() => {
-    if (!isLiveMode) {
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
-        eventSourceRef.current = null;
-        setSseConnected(false);
+  const realtime = useUnifiedRealtime({
+    enabled: isLiveMode,
+    preferredTransport: 'websocket',
+    enableFallback: true,
+    eventTypes: ['audit_log_new'],
+    rooms: ['audit'],
+    onEvent: (event) => {
+      if (event.type === 'audit_log_new') {
+        const eventData = event.data;
+        setRealtimeEventsLocal(prev => [{
+          id: `rt_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+          ...eventData,
+        }, ...prev].slice(0, 50));
+        setNewEventsCount(prev => prev + 1);
+        toast({
+          title: `${actionLabels[eventData.action as keyof typeof actionLabels] || eventData.action}`,
+          description: `${eventData.userName || 'User'} - ${eventData.module}${eventData.description ? ': ' + eventData.description : ''}`,
+          duration: 4000,
+        });
       }
-      return;
-    }
+    },
+  });
 
-    const es = new EventSource('/api/sse');
-    eventSourceRef.current = es;
-
-    es.onopen = () => {
-      setSseConnected(true);
-    };
-
-    es.onmessage = (event) => {
-      try {
-        const parsed = JSON.parse(event.data);
-        if (parsed.type === 'audit_log_new') {
-          const eventData = parsed.data;
-          setRealtimeEvents(prev => [{
-            id: `rt_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
-            ...eventData,
-          }, ...prev].slice(0, 50));
-          setNewEventsCount(prev => prev + 1);
-          toast({
-            title: `${actionLabels[eventData.action as keyof typeof actionLabels] || eventData.action}`,
-            description: `${eventData.userName || 'User'} - ${eventData.module}${eventData.description ? ': ' + eventData.description : ''}`,
-            duration: 4000,
-          });
-        }
-      } catch {}
-    };
-
-    es.onerror = () => {
-      setSseConnected(false);
-    };
-
-    return () => {
-      es.close();
-      eventSourceRef.current = null;
-      setSseConnected(false);
-    };
-  }, [isLiveMode, toast]);
+  // Sync connection state
+  useEffect(() => {
+    setSseConnected(realtime.isConnected);
+  }, [realtime.isConnected]);
 
   const handleExportCSV = useCallback(() => {
     if (!logsData?.logs || logsData.logs.length === 0) return;
@@ -257,7 +250,7 @@ export default function AuditLogs() {
               className={isLiveMode ? 'bg-green-600 hover:bg-green-700 text-white' : ''}
             >
               {isLiveMode ? (
-                <><Wifi className="h-4 w-4 mr-1" />{sseConnected ? 'Live' : 'Đang kết nối...'}
+                <><Wifi className="h-4 w-4 mr-1" />{sseConnected ? `Live (${realtime.transport === 'websocket' ? 'WS' : 'SSE'})` : 'Đang kết nối...'}
                   {newEventsCount > 0 && <Badge variant="secondary" className="ml-1 bg-white text-green-700 text-xs px-1">{newEventsCount}</Badge>}
                 </>
               ) : (
@@ -638,7 +631,7 @@ export default function AuditLogs() {
                       {isLiveMode ? (
                         <span className="flex items-center gap-1.5 mt-1">
                           <span className={`inline-block h-2 w-2 rounded-full ${sseConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
-                          {sseConnected ? 'Đang kết nối - Sự kiện mới sẽ tự động hiển thị' : 'Mất kết nối - Đang thử lại...'}
+                          {sseConnected ? `Đang kết nối qua ${realtime.transport === 'websocket' ? 'WebSocket' : 'SSE'}${realtime.latency ? ` (${realtime.latency}ms)` : ''} - Sự kiện mới sẽ tự động hiển thị` : 'Mất kết nối - Đang thử lại...'}
                         </span>
                       ) : (
                         <span className="mt-1 block">Bấm nút "Real-time" ở góc phải để bắt đầu theo dõi</span>
@@ -652,7 +645,7 @@ export default function AuditLogs() {
                   )}
                   {isLiveMode && (
                     <div className="flex gap-2">
-                      <Button variant="outline" size="sm" onClick={() => { setRealtimeEvents([]); setNewEventsCount(0); }}>
+                      <Button variant="outline" size="sm" onClick={() => { setRealtimeEventsLocal([]); setNewEventsCount(0); }}>
                         Xóa lịch sử
                       </Button>
                       <Button variant="destructive" size="sm" onClick={() => setIsLiveMode(false)}>
@@ -663,7 +656,7 @@ export default function AuditLogs() {
                 </div>
               </CardHeader>
               <CardContent>
-                {realtimeEvents.length === 0 ? (
+                {realtimeEventsLocal.length === 0 ? (
                   <div className="text-center py-12 text-muted-foreground">
                     <Radio className="h-12 w-12 mx-auto mb-3 opacity-30" />
                     <p className="text-lg font-medium">Chưa có sự kiện nào</p>
@@ -673,7 +666,7 @@ export default function AuditLogs() {
                   </div>
                 ) : (
                   <div className="space-y-2 max-h-[600px] overflow-y-auto">
-                    {realtimeEvents.map((evt) => (
+                    {realtimeEventsLocal.map((evt) => (
                       <div key={evt.id} className="flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors animate-in slide-in-from-top-2 duration-300">
                         <div className="flex-shrink-0 mt-0.5">
                           <span className="text-lg">{actionIcons[evt.action] || '📋'}</span>
@@ -842,6 +835,137 @@ export default function AuditLogs() {
                 </CardContent>
               </Card>
             </div>
+
+            {/* Activity Heatmap */}
+            <Card className="mt-4">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-base">Heatmap Hoạt động</CardTitle>
+                    <CardDescription>Mật độ hoạt động theo giờ và ngày trong tuần</CardDescription>
+                  </div>
+                  <select
+                    value={heatmapWeeks}
+                    onChange={(e) => setHeatmapWeeks(Number(e.target.value))}
+                    className="text-sm border rounded-md px-2 py-1 bg-background"
+                  >
+                    <option value={1}>1 tuần</option>
+                    <option value={2}>2 tuần</option>
+                    <option value={4}>4 tuần</option>
+                    <option value={8}>8 tuần</option>
+                    <option value={12}>12 tuần</option>
+                  </select>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {heatmapData?.heatmap?.length ? (() => {
+                  const dayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+                  const maxCount = Math.max(...heatmapData.heatmap.map((h: any) => h.count), 1);
+                  const getColor = (count: number) => {
+                    if (count === 0) return 'bg-muted';
+                    const intensity = count / maxCount;
+                    if (intensity < 0.2) return 'bg-green-100 dark:bg-green-900/30';
+                    if (intensity < 0.4) return 'bg-green-300 dark:bg-green-700/50';
+                    if (intensity < 0.6) return 'bg-green-500 dark:bg-green-600/70';
+                    if (intensity < 0.8) return 'bg-green-600 dark:bg-green-500';
+                    return 'bg-green-700 dark:bg-green-400';
+                  };
+                  return (
+                    <div className="space-y-4">
+                      {/* Summary stats */}
+                      <div className="flex gap-4 text-sm">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-muted-foreground">Tổng:</span>
+                          <span className="font-semibold">{heatmapData.totalActivities.toLocaleString()}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-muted-foreground">Giờ cao điểm:</span>
+                          <span className="font-semibold">{heatmapData.peakHour}:00</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-muted-foreground">Ngày cao điểm:</span>
+                          <span className="font-semibold">{dayNames[heatmapData.peakDay]}</span>
+                        </div>
+                      </div>
+
+                      {/* Heatmap Grid */}
+                      <div className="overflow-x-auto">
+                        <div className="min-w-[600px]">
+                          {/* Hour headers */}
+                          <div className="flex items-center gap-0.5 mb-1">
+                            <div className="w-8" />
+                            {Array.from({length: 24}, (_, h) => (
+                              <div key={h} className="flex-1 text-center text-[10px] text-muted-foreground font-mono">
+                                {h % 3 === 0 ? `${h}` : ''}
+                              </div>
+                            ))}
+                          </div>
+                          {/* Day rows */}
+                          {dayNames.map((dayName, dayIdx) => (
+                            <div key={dayIdx} className="flex items-center gap-0.5 mb-0.5">
+                              <div className="w-8 text-xs text-muted-foreground font-medium">{dayName}</div>
+                              {Array.from({length: 24}, (_, hour) => {
+                                const cell = heatmapData.heatmap.find((h: any) => h.dayOfWeek === dayIdx && h.hour === hour);
+                                const count = cell?.count || 0;
+                                return (
+                                  <div
+                                    key={hour}
+                                    className={`flex-1 aspect-square rounded-sm ${getColor(count)} transition-colors cursor-pointer hover:ring-1 hover:ring-primary`}
+                                    title={`${dayName} ${hour}:00 - ${count} hoạt động`}
+                                  />
+                                );
+                              })}
+                            </div>
+                          ))}
+                          {/* Legend */}
+                          <div className="flex items-center gap-2 mt-3 justify-end">
+                            <span className="text-xs text-muted-foreground">Ít</span>
+                            <div className="flex gap-0.5">
+                              <div className="w-3 h-3 rounded-sm bg-muted" />
+                              <div className="w-3 h-3 rounded-sm bg-green-100 dark:bg-green-900/30" />
+                              <div className="w-3 h-3 rounded-sm bg-green-300 dark:bg-green-700/50" />
+                              <div className="w-3 h-3 rounded-sm bg-green-500 dark:bg-green-600/70" />
+                              <div className="w-3 h-3 rounded-sm bg-green-600 dark:bg-green-500" />
+                              <div className="w-3 h-3 rounded-sm bg-green-700 dark:bg-green-400" />
+                            </div>
+                            <span className="text-xs text-muted-foreground">Nhiều</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Hourly distribution bar chart */}
+                      <div className="mt-4">
+                        <p className="text-sm font-medium mb-2">Phân bổ theo giờ</p>
+                        <div className="flex items-end gap-0.5 h-20">
+                          {heatmapData.hourlyTotals.map((h: any) => {
+                            const maxH = Math.max(...heatmapData.hourlyTotals.map((t: any) => t.count), 1);
+                            const pct = (h.count / maxH) * 100;
+                            return (
+                              <div key={h.hour} className="flex-1 flex flex-col items-center">
+                                <div
+                                  className="w-full bg-primary/60 rounded-t-sm transition-all hover:bg-primary"
+                                  style={{ height: `${Math.max(pct, 2)}%` }}
+                                  title={`${h.hour}:00 - ${h.count} hoạt động`}
+                                />
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <div className="flex gap-0.5 mt-0.5">
+                          {Array.from({length: 24}, (_, h) => (
+                            <div key={h} className="flex-1 text-center text-[9px] text-muted-foreground font-mono">
+                              {h % 4 === 0 ? h : ''}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })() : (
+                  <p className="text-sm text-muted-foreground text-center py-8">Chưa có dữ liệu heatmap</p>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
 
