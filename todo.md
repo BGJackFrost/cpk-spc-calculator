@@ -10596,3 +10596,4 @@
 - [x] Loại bỏ mock/demo data từ 31 trang (48 biến mock đã xóa): AI pages (14), IoT pages (1), System pages (16)
 - [x] Thêm export PDF cho OEE Period Report (oee.exportPeriodPdf endpoint + nút Xuất PDF trên UI)
 - [x] Vitest tests cho GD3 features (9 tests passed: Gantt progress, mock removal verification, PDF export logic)
+- [x] Fix AiPredictive.tsx syntax error từ mock data removal script
