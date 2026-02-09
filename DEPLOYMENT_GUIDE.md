@@ -561,6 +561,7 @@ server {
     gzip_min_length 256;
     gzip_comp_level 6;
     gzip_proxied any;
+    gzip_static on;  # Serve pre-built .gz files (từ vite-plugin-compression)
     gzip_types
         text/plain
         text/css

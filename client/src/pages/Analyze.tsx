@@ -43,7 +43,7 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from "recharts";
-import { Streamdown } from "streamdown";
+import { LazyStreamdown as Streamdown } from "@/components/LazyStreamdown";
 import AdvancedCharts from "@/components/AdvancedCharts";
 import SpcChartSelector from "@/components/SpcChartSelector";
 import { useKeyboardShortcuts, createCommonShortcuts } from "@/hooks/useKeyboardShortcuts";

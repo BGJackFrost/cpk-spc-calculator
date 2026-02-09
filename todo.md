@@ -10272,3 +10272,13 @@
 - [x] Cập nhật Nginx config trong DEPLOYMENT_GUIDE.md với gzip tối ưu (comp_level 6, 15 MIME types)
 - [x] Build production: initial load 2.1MB (giảm 95% từ 40MB), gzip giảm thêm 71% transfer
 - [x] Tests: 226 files, 2808 passed, 0 failed
+
+## Phase - Lazy Load Shiki, Pre-build Gzip, PWA Service Worker
+- [x] Lazy load shiki/streamdown - tạo LazyStreamdown wrapper component
+- [x] Thay thế import Streamdown trực tiếp bằng LazyStreamdown trong 4 files (AIChatBox, AiNaturalLanguage, Analyze, IoTPredictiveMaintenance)
+- [x] Pre-build gzip files với vite-plugin-compression (321 .gz files tạo sẵn)
+- [x] Cấu hình Nginx serve pre-built gzip files (gzip_static on) - DEPLOYMENT_GUIDE.md
+- [x] Tạo Service Worker v3 cho PWA caching (immutable cache cho hashed assets)
+- [x] Cấu hình cache strategy: cache-first immutable cho vendor chunks, network-first cho API, stale-while-revalidate cho static
+- [x] Build production: initial load 2.0MB raw / 360KB gzip (giảm 99.1% từ 40MB)
+- [x] Tests: 226 files, 2808 passed, 0 failed

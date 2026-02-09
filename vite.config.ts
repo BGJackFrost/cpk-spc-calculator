@@ -6,6 +6,7 @@ import path from "path";
 import { defineConfig } from "vite";
 import { vitePluginManusRuntime } from "vite-plugin-manus-runtime";
 import { visualizer } from "rollup-plugin-visualizer";
+import viteCompression from "vite-plugin-compression";
 
 
 const plugins = [
@@ -13,6 +14,14 @@ const plugins = [
   tailwindcss(), 
   jsxLocPlugin(), 
   vitePluginManusRuntime(),
+  // Pre-build gzip files for static assets (Nginx gzip_static on)
+  viteCompression({
+    algorithm: 'gzip',
+    ext: '.gz',
+    threshold: 1024, // Only compress files > 1KB
+    deleteOriginFile: false, // Keep original files for fallback
+    filter: /\.(js|css|html|json|svg|xml|txt|woff|woff2|ttf|eot)$/i,
+  }),
   // Bundle analyzer - chỉ chạy khi có flag ANALYZE=true
   process.env.ANALYZE === 'true' && visualizer({
     open: false,
