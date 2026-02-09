@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,8 +12,9 @@ import { trpc } from "@/lib/trpc";
 import {
   Loader2, Search, Eye, FileText, RefreshCw, Download,
   Activity, Users, Shield, BarChart3, Clock, ChevronLeft, ChevronRight,
-  ArrowUpDown, Filter, CalendarDays
+  ArrowUpDown, Filter, CalendarDays, Radio, BellRing, Wifi, WifiOff
 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 
@@ -79,6 +80,15 @@ export default function AuditLogs() {
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("logs");
+  const [isLiveMode, setIsLiveMode] = useState(false);
+  const [sseConnected, setSseConnected] = useState(false);
+  const [newEventsCount, setNewEventsCount] = useState(0);
+  const [realtimeEvents, setRealtimeEvents] = useState<Array<{
+    id: string; userId: number; userName?: string; action: string;
+    module: string; tableName?: string; description?: string; timestamp: string;
+  }>>([]);
+  const { toast } = useToast();
+  const eventSourceRef = useRef<EventSource | null>(null);
   const [filters, setFilters] = useState({
     action: "all",
     module: "all",
@@ -139,7 +149,56 @@ export default function AuditLogs() {
 
   const handleRefresh = useCallback(() => {
     refetch();
+    setNewEventsCount(0);
   }, [refetch]);
+
+  // SSE Real-time connection
+  useEffect(() => {
+    if (!isLiveMode) {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+        setSseConnected(false);
+      }
+      return;
+    }
+
+    const es = new EventSource('/api/sse');
+    eventSourceRef.current = es;
+
+    es.onopen = () => {
+      setSseConnected(true);
+    };
+
+    es.onmessage = (event) => {
+      try {
+        const parsed = JSON.parse(event.data);
+        if (parsed.type === 'audit_log_new') {
+          const eventData = parsed.data;
+          setRealtimeEvents(prev => [{
+            id: `rt_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+            ...eventData,
+          }, ...prev].slice(0, 50));
+          setNewEventsCount(prev => prev + 1);
+          toast({
+            title: `${actionLabels[eventData.action as keyof typeof actionLabels] || eventData.action}`,
+            description: `${eventData.userName || 'User'} - ${eventData.module}${eventData.description ? ': ' + eventData.description : ''}`,
+            duration: 4000,
+          });
+        }
+      } catch {}
+    };
+
+    es.onerror = () => {
+      setSseConnected(false);
+    };
+
+    return () => {
+      es.close();
+      eventSourceRef.current = null;
+      setSseConnected(false);
+    };
+  }, [isLiveMode, toast]);
 
   const handleExportCSV = useCallback(() => {
     if (!logsData?.logs || logsData.logs.length === 0) return;
@@ -190,7 +249,21 @@ export default function AuditLogs() {
               Theo dõi và giám sát mọi thao tác trong hệ thống
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
+            <Button
+              variant={isLiveMode ? "default" : "outline"}
+              size="sm"
+              onClick={() => { setIsLiveMode(!isLiveMode); setNewEventsCount(0); }}
+              className={isLiveMode ? 'bg-green-600 hover:bg-green-700 text-white' : ''}
+            >
+              {isLiveMode ? (
+                <><Wifi className="h-4 w-4 mr-1" />{sseConnected ? 'Live' : 'Đang kết nối...'}
+                  {newEventsCount > 0 && <Badge variant="secondary" className="ml-1 bg-white text-green-700 text-xs px-1">{newEventsCount}</Badge>}
+                </>
+              ) : (
+                <><Radio className="h-4 w-4 mr-1" />Real-time</>
+              )}
+            </Button>
             <Button variant="outline" size="sm" onClick={handleExportCSV} disabled={!logsData?.logs?.length}>
               <Download className="h-4 w-4 mr-1" />
               Xuất CSV
@@ -263,10 +336,15 @@ export default function AuditLogs() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-2 max-w-md">
+          <TabsList className="grid w-full grid-cols-3 max-w-lg">
             <TabsTrigger value="logs" className="flex items-center gap-1.5">
               <FileText className="h-4 w-4" />
               Nhật ký
+            </TabsTrigger>
+            <TabsTrigger value="realtime" className="flex items-center gap-1.5">
+              <Radio className="h-4 w-4" />
+              Real-time
+              {newEventsCount > 0 && <Badge variant="destructive" className="ml-1 text-xs px-1 py-0">{newEventsCount}</Badge>}
             </TabsTrigger>
             <TabsTrigger value="analytics" className="flex items-center gap-1.5">
               <BarChart3 className="h-4 w-4" />
@@ -541,6 +619,84 @@ export default function AuditLogs() {
                       </div>
                     </div>
                   </>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Real-time Tab */}
+          <TabsContent value="realtime" className="space-y-4 mt-4">
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Radio className="h-5 w-5" />
+                      Luồng Sự kiện Thời gian Thực
+                    </CardTitle>
+                    <CardDescription>
+                      {isLiveMode ? (
+                        <span className="flex items-center gap-1.5 mt-1">
+                          <span className={`inline-block h-2 w-2 rounded-full ${sseConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
+                          {sseConnected ? 'Đang kết nối - Sự kiện mới sẽ tự động hiển thị' : 'Mất kết nối - Đang thử lại...'}
+                        </span>
+                      ) : (
+                        <span className="mt-1 block">Bấm nút "Real-time" ở góc phải để bắt đầu theo dõi</span>
+                      )}
+                    </CardDescription>
+                  </div>
+                  {!isLiveMode && (
+                    <Button size="sm" onClick={() => setIsLiveMode(true)} className="bg-green-600 hover:bg-green-700">
+                      <Wifi className="h-4 w-4 mr-1" /> Bắt đầu
+                    </Button>
+                  )}
+                  {isLiveMode && (
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" onClick={() => { setRealtimeEvents([]); setNewEventsCount(0); }}>
+                        Xóa lịch sử
+                      </Button>
+                      <Button variant="destructive" size="sm" onClick={() => setIsLiveMode(false)}>
+                        <WifiOff className="h-4 w-4 mr-1" /> Dừng
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent>
+                {realtimeEvents.length === 0 ? (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <Radio className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                    <p className="text-lg font-medium">Chưa có sự kiện nào</p>
+                    <p className="text-sm mt-1">
+                      {isLiveMode ? 'Sự kiện mới sẽ xuất hiện tại đây khi có thao tác trong hệ thống' : 'Bật chế độ Real-time để bắt đầu theo dõi'}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-[600px] overflow-y-auto">
+                    {realtimeEvents.map((evt) => (
+                      <div key={evt.id} className="flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors animate-in slide-in-from-top-2 duration-300">
+                        <div className="flex-shrink-0 mt-0.5">
+                          <span className="text-lg">{actionIcons[evt.action] || '📋'}</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Badge className={`text-xs ${actionColors[evt.action] || 'bg-gray-100 text-gray-800'}`}>
+                              {actionLabels[evt.action as keyof typeof actionLabels] || evt.action}
+                            </Badge>
+                            <span className="text-sm font-medium">{evt.userName || `User #${evt.userId}`}</span>
+                            <span className="text-xs text-muted-foreground">•</span>
+                            <span className="text-xs text-muted-foreground capitalize">{evt.module}</span>
+                          </div>
+                          {evt.description && (
+                            <p className="text-sm text-muted-foreground mt-1 truncate">{evt.description}</p>
+                          )}
+                        </div>
+                        <div className="flex-shrink-0 text-xs text-muted-foreground">
+                          {evt.timestamp ? format(new Date(evt.timestamp), 'HH:mm:ss') : ''}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </CardContent>
             </Card>

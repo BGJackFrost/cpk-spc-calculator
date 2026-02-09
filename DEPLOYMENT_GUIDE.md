@@ -1055,6 +1055,92 @@ Trang quản trị Nhật ký Hoạt động (`/audit-logs`) cho phép giám sá
 | `audit.modules` | Danh sách modules cho dropdown filter |
 | `audit.export` | Xuất dữ liệu (max 50,000 records) |
 
+### 10.9. Playwright E2E Testing
+
+Bộ test E2E sử dụng Playwright để kiểm tra tự động các luồng chính của ứng dụng.
+
+**Cài đặt:**
+```bash
+cd e2e
+npm install
+npx playwright install chromium
+```
+
+**Chạy tests:**
+```bash
+# Tất cả tests
+npm test
+
+# Chỉ API tests
+npm run test:api
+
+# Chỉ UI tests
+npm run test:ui
+
+# Với URL khác
+BASE_URL=https://your-app.manus.space npm test
+```
+
+| Test File | Mô tả | Tests |
+|-----------|--------|-------|
+| `auth.spec.ts` | Authentication & Login | 5 |
+| `navigation.spec.ts` | Navigation & Routing | 7 |
+| `api-health.spec.ts` | API Health Endpoints | 10 |
+| `audit-logs.spec.ts` | Audit Logs Page | 6 |
+| `performance.spec.ts` | Performance & A11y | 9 |
+| **Tổng** | | **37** |
+
+### 10.10. k6 Load Testing
+
+Sử dụng [k6](https://k6.io/) để stress test hệ thống dưới tải cao.
+
+**Cài đặt k6:**
+```bash
+# Ubuntu
+sudo apt-get install k6
+# macOS
+brew install k6
+```
+
+**Chạy tests:**
+```bash
+# Smoke test (1 VU, 30s)
+k6 run k6/load-test.js --env SCENARIO=smoke
+
+# Load test (100 VUs, 5m)
+k6 run k6/load-test.js
+
+# Stress test (50→1000 VUs, 13m)
+k6 run k6/stress-test.js
+
+# Spike test (đầu ca sản xuất)
+k6 run k6/spike-test.js
+```
+
+| Script | Kịch bản | VUs | Thời gian |
+|--------|-----------|-----|----------|
+| `load-test.js` | 5 scenarios (smoke/load/stress/spike/soak) | 1-1000 | 30s-30m |
+| `stress-test.js` | Tìm breaking point | 50-1000 | ~13m |
+| `spike-test.js` | Đột ngột tăng tải | 10-1000 | ~6m |
+
+**Thresholds:**
+- HTTP p(95) < 2000ms, Error rate < 5%
+- Health p(95) < 500ms, SPC/OEE p(95) < 3000ms
+
+### 10.11. Real-time Audit Stream
+
+Hệ thống sử dụng **SSE (Server-Sent Events)** để stream audit logs real-time.
+
+**Cách hoạt động:**
+1. Khi có audit log mới, server tự động broadcast event `audit_log_new` qua SSE
+2. Frontend lắng nghe và hiển thị real-time trên tab "Real-time" của Audit Logs
+3. Toast notification xuất hiện cho mỗi sự kiện mới
+
+**Sử dụng:**
+- Truy cập trang Audit Logs
+- Bấm nút "Real-time" hoặc chuyển sang tab "Real-time"
+- Sự kiện mới sẽ tự động xuất hiện không cần refresh
+
 ---
 
 ## 11. Troubleshooting

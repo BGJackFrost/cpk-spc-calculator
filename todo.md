@@ -10385,3 +10385,37 @@
 - [x] Tạo báo cáo benchmark tự động (Markdown) với đánh giá và khuyến nghị
 - [x] README hướng dẫn sử dụng + CI/CD integration (GitHub Actions)
 - [x] Kết quả: Liveness 2450 req/s, Health 1990 req/s, 0 errors
+
+## Phase - Real-time Audit Stream, E2E Testing, Load Testing
+
+### Real-time Audit Stream (SSE)
+- [x] Khảo sát SSE infrastructure hiện tại (sse.ts, sendSseEvent, auditService.ts)
+- [x] Tái sử dụng SSE endpoint hiện có (/api/sse) với event type 'audit_log_new'
+- [x] Emit events khi có audit log mới (tất cả actions: create/update/delete/login/logout/export/analyze)
+- [x] Cập nhật AuditLogs.tsx với Real-time tab, live indicator, auto-append events
+- [x] Hiển thị toast notification cho sự kiện mới với action label và mô tả
+- [x] Nút Live/Dừng, xóa lịch sử, connection status indicator
+- [x] Viết 28 tests cho SSE audit stream, k6 scripts, Playwright config (realtimeAudit.test.ts)
+- [x] Full test suite: 231 files, 2895 passed, 1 skipped, 0 failures
+
+### Playwright E2E Testing
+- [x] Cài đặt Playwright và cấu hình (e2e/playwright.config.ts, e2e/package.json)
+- [x] Test: Authentication & Login (5 tests - page load, login button, protected routes, metadata)
+- [x] Test: Navigation & Dashboard (7 tests - routing, responsive nav, 404 handling)
+- [x] Test: Audit Logs page (6 tests - filters, tabs, export, real-time button)
+- [x] Test: API Health Check endpoints (10 tests - health, live, ready, detailed, metrics, openapi, docs)
+- [x] Test: Performance & Accessibility (9 tests - load time, console errors, responsive, a11y)
+- [x] Tạo README hướng dẫn chạy E2E tests với CI/CD integration
+- [x] Tổng: 37 E2E tests trong 5 files
+
+### k6 Load Testing
+- [x] Tạo k6 load-test.js (5 scenarios: smoke/load/stress/spike/soak) với custom metrics
+- [x] Tạo k6 stress-test.js (50→1000 VUs, 13 phút, tìm breaking point)
+- [x] Tạo k6 spike-test.js (mô phỏng đầu ca sản xuất: 10→500→1000→50→0 VUs)
+- [x] Test SPC endpoints (list, products, specs, control plans)
+- [x] Test OEE endpoints (list, dashboard, production lines)
+- [x] Test Audit endpoints (advancedSearch, stats)
+- [x] Test Health/Metrics endpoints
+- [x] Custom metrics: health_latency, spc_latency, oee_latency, audit_latency, db_query_latency
+- [x] Thresholds: HTTP p95<2s, error<5%, health p95<500ms, SPC/OEE p95<3s
+- [x] README hướng dẫn sử dụng + CI/CD integration (GitHub Actions + Grafana)

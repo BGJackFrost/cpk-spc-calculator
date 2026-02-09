@@ -33,7 +33,9 @@ export type SseEventType =
   | "avi_aoi_stats_update"
   // NTF Pattern Detection events
   | "ntf_pattern_detected"
-  | "ntf_suggestion_new";
+  | "ntf_suggestion_new"
+  // Audit Log events
+  | "audit_log_new";
 
 export interface SseEvent {
   type: SseEventType;
