@@ -83,8 +83,8 @@ export default defineConfig({
             if (id.includes('zod') || id.includes('react-hook-form') || id.includes('@hookform')) return 'vendor-form';
             // PDF/Excel generation
             if (id.includes('xlsx') || id.includes('exceljs') || id.includes('jspdf') || id.includes('jspdf-autotable') || id.includes('html2canvas') || id.includes('pdfmake') || id.includes('pdfkit')) return 'vendor-export';
-            // Markdown & editor
-            if (id.includes('marked') || id.includes('highlight') || id.includes('prism') || id.includes('codemirror') || id.includes('monaco') || id.includes('streamdown')) return 'vendor-editor';
+            // Markdown & editor (streamdown + all its remark/rehype/unified deps must be in same chunk to avoid circular dep)
+            if (id.includes('marked') || id.includes('highlight') || id.includes('prism') || id.includes('codemirror') || id.includes('monaco') || id.includes('streamdown') || id.includes('mdast') || id.includes('micromark') || id.includes('remark') || id.includes('rehype') || id.includes('unified') || id.includes('unist') || id.includes('hast') || id.includes('katex') || id.includes('remend')) return 'vendor-editor';
             // Superjson (serialization)
             if (id.includes('superjson')) return 'vendor-superjson';
             // QR Code & scanning
@@ -115,8 +115,7 @@ export default defineConfig({
             if (id.includes('lodash')) return 'vendor-lodash';
             // Core-js polyfills
             if (id.includes('core-js')) return 'vendor-polyfill';
-            // Markdown processing (mdast, micromark, remark, rehype, unified)
-            if (id.includes('mdast') || id.includes('micromark') || id.includes('remark') || id.includes('rehype') || id.includes('unified') || id.includes('unist') || id.includes('hast')) return 'vendor-markdown';
+            // (vendor-markdown merged into vendor-editor above to prevent circular dependency)
             // UUID & crypto
             if (id.includes('uuid') || id.includes('nanoid')) return 'vendor-crypto';
             // Misc vendor (remaining)

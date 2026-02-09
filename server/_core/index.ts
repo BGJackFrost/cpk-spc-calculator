@@ -104,6 +104,17 @@ async function startServer() {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.sendFile(manifestPath);
   });
+
+  // Serve favicon.ico directly without auth (fix CORS issue)
+  app.get('/favicon.ico', (req, res) => {
+    const faviconPath = process.env.NODE_ENV === 'development'
+      ? path.resolve(import.meta.dirname, '../../client/public/favicon.ico')
+      : path.resolve(import.meta.dirname, 'public/favicon.ico');
+    res.setHeader('Content-Type', 'image/x-icon');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.sendFile(faviconPath);
+  });
   
   // Health check endpoints (no auth required, no rate limiting)
   app.get('/api/health', async (_req, res) => {

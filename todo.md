@@ -10492,3 +10492,8 @@
 - [x] Stats dashboard (total rules, active, triggers, active alerts)
 - [x] Thêm route /custom-alert-rules vào App.tsx
 - [x] Vitest tests (34 tests passed) cho WebSocket, Backup, Alert features
+
+## Bug Fixes - Console Errors
+- [x] Fix: ReferenceError 'Rt' before initialization in vendor-markdown bundle (merged vendor-markdown into vendor-editor chunk)
+- [x] Fix: CORS error on manifest.json redirect (already had handler with CORS headers)
+- [x] Fix: CORS error on favicon.ico redirect (added direct handler with CORS headers)
