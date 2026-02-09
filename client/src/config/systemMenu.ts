@@ -471,10 +471,18 @@ export const SYSTEM_MENU: SystemMenuConfig = {
         { id: "about", icon: Info, labelKey: "nav.about", path: "/about" },
       ],
     },
+    {
+      id: "license-management",
+      labelKey: "menuGroup.licenseManagement",
+      icon: Key,
+      items: [
+        { id: "license-dashboard", icon: BarChart3, labelKey: "nav.licenseDashboard", path: "/license-dashboard", adminOnly: true },
+        { id: "license-notification-report", icon: Bell, labelKey: "nav.licenseNotificationReport", path: "/license-notification-report", adminOnly: true },
+      ],
+    },
   ],
 };
-
-// ===== DASHBOARD SYSTEM MENU =====
+// ===== DASHBOARD SYSTEM MENU ======
 // Dashboard sidebar chỉ có 2 phần:
 // 1. Tổng quan - cố định với menu Dashboard
 // 2. Quick Access - động, load từ database và cho phép tạo category tùy chỉnh

@@ -111,8 +111,8 @@ async function getUsersToNotify(
         id: user.id,
         email: user.email || '',
         telegramChatId: pref?.telegramChatId || undefined,
-        emailEnabled: pref?.emailEnabled === 1 ?? true,
-        telegramEnabled: pref?.telegramEnabled === 1 ?? false,
+        emailEnabled: pref?.emailEnabled !== undefined ? pref.emailEnabled === 1 : true,
+        telegramEnabled: pref?.telegramEnabled !== undefined ? pref.telegramEnabled === 1 : false,
       };
     }).filter((u): u is NonNullable<typeof u> => u !== null);
   } catch (error) {

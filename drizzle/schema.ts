@@ -3627,11 +3627,13 @@ export const spcAnalysisHistory = mysqlTable("spc_analysis_history", {
 	alertTriggered: int().default(0).notNull(),
 	llmAnalysis: text(),
 	analyzedBy: int().notNull(),
+	analyzedAt: timestamp("analyzed_at", { mode: 'string' }).default('CURRENT_TIMESTAMP'),
+	productionLineId: int("production_line_id"),
+	violations: text(),
 	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
 },
 (table) => [
-	index("idx_spc_analysis_history_product_code").on(table.productCode),
-	index("idx_spc_analysis_history_station_name").on(table.stationName),
+	index("idx_spc_analysis_history_product_code").on(table.productCode),	index("idx_spc_analysis_history_station_name").on(table.stationName),
 	index("idx_spc_analysis_history_created_at").on(table.createdAt),
 	index("idx_spc_analysis_history_cpk").on(table.cpk),
 	index("idx_spc_analysis_product").on(table.productCode),
@@ -6521,21 +6523,31 @@ export const scheduledReports = mysqlTable("scheduled_reports", {
 	description: text(),
 	// User who created the report
 	userId: int("user_id").notNull(),
+	createdBy: int("created_by"),
 	// Report type
-	reportType: mysqlEnum("report_type", ['spc_summary', 'cpk_analysis', 'violation_report', 'production_line_status', 'ai_vision_dashboard', 'radar_chart_comparison']).default('spc_summary').notNull(),
-	// Schedule configuration
+	reportType: mysqlEnum("report_type", ['spc_summary', 'cpk_analysis', 'violation_report', 'production_line_status', 'ai_vision_dashboard', 'radar_chart_comparison', 'oee', 'cpk', 'oee_cpk_combined', 'production_summary']).default('spc_summary').notNull(),
+	// Schedule configuration (legacy fields)
 	scheduleType: mysqlEnum("schedule_type", ['daily', 'weekly', 'monthly']).default('daily').notNull(),
-	scheduleTime: varchar("schedule_time", { length: 10 }).default('08:00').notNull(), // HH:mm format
-	scheduleDayOfWeek: int("schedule_day_of_week"), // 0-6 for weekly (0 = Sunday)
-	scheduleDayOfMonth: int("schedule_day_of_month"), // 1-31 for monthly
+	scheduleTime: varchar("schedule_time", { length: 10 }).default('08:00').notNull(),
+	scheduleDayOfWeek: int("schedule_day_of_week"),
+	scheduleDayOfMonth: int("schedule_day_of_month"),
+	// New schedule fields (used by OEE router)
+	frequency: mysqlEnum("frequency", ['daily', 'weekly', 'monthly']).default('daily'),
+	dayOfWeek: int("day_of_week"),
+	dayOfMonth: int("day_of_month"),
+	timeOfDay: varchar("time_of_day", { length: 10 }).default('08:00'),
 	// Filter configuration
-	productionLineIds: json("production_line_ids"), // Array of production line IDs to include
-	productIds: json("product_ids"), // Array of product IDs to include
+	productionLineIds: json("production_line_ids"),
+	productIds: json("product_ids"),
+	machineIds: json("machine_ids"),
 	includeCharts: tinyint("include_charts").default(1).notNull(),
 	includeRawData: tinyint("include_raw_data").default(0).notNull(),
+	includeTrends: tinyint("include_trends").default(1),
+	includeAlerts: tinyint("include_alerts").default(1),
+	format: varchar("format", { length: 20 }).default('html'),
 	// Email recipients
-	recipients: json("recipients").notNull(), // Array of email addresses
-	ccRecipients: json("cc_recipients"), // Array of CC email addresses
+	recipients: json("recipients").notNull(),
+	ccRecipients: json("cc_recipients"),
 	// Status
 	isActive: tinyint("is_active").default(1).notNull(),
 	lastRunAt: timestamp("last_run_at", { mode: 'string' }),
@@ -7756,3 +7768,113 @@ export const yieldDefectAlertHistory = mysqlTable("yield_defect_alert_history", 
 ]);
 export type YieldDefectAlertHistory = typeof yieldDefectAlertHistory.$inferSelect;
 export type InsertYieldDefectAlertHistory = typeof yieldDefectAlertHistory.$inferInsert;
+
+// ============================================================
+// AVI/AOI Enhancement Module - Additional Tables
+// ============================================================
+
+// Reference Images - Ảnh tham chiếu cho so sánh
+export const referenceImages = mysqlTable("reference_images", {
+	id: int().autoincrement().notNull().primaryKey(),
+	productId: int("product_id"),
+	machineId: int("machine_id"),
+	stationId: int("station_id"),
+	imageUrl: text("image_url").notNull(),
+	thumbnailUrl: text("thumbnail_url"),
+	name: varchar({ length: 255 }).notNull(),
+	description: text(),
+	imageType: mysqlEnum("image_type", ['golden_sample', 'reference', 'standard']).default('reference').notNull(),
+	isActive: tinyint("is_active").default(1).notNull(),
+	metadata: json("metadata"),
+	createdBy: int("created_by"),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+}, (table) => [
+	index("idx_ref_img_product").on(table.productId),
+	index("idx_ref_img_machine").on(table.machineId),
+]);
+export type ReferenceImage = typeof referenceImages.$inferSelect;
+export type InsertReferenceImage = typeof referenceImages.$inferInsert;
+
+// NTF Confirmations - Xác nhận No Trouble Found
+export const ntfConfirmations = mysqlTable("ntf_confirmations", {
+	id: int().autoincrement().notNull().primaryKey(),
+	inspectionId: int("inspection_id"),
+	originalResult: mysqlEnum("original_result", ['ng', 'ok', 'ntf']).notNull(),
+	confirmedResult: mysqlEnum("confirmed_result", ['ng', 'ok', 'ntf']).notNull(),
+	reason: text(),
+	confirmedBy: int("confirmed_by"),
+	confirmedAt: timestamp("confirmed_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	metadata: json("metadata"),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+}, (table) => [
+	index("idx_ntf_inspection").on(table.inspectionId),
+	index("idx_ntf_confirmed_by").on(table.confirmedBy),
+]);
+export type NtfConfirmation = typeof ntfConfirmations.$inferSelect;
+export type InsertNtfConfirmation = typeof ntfConfirmations.$inferInsert;
+
+// Inspection Measurement Points - Điểm đo kiểm tra
+export const inspectionMeasurementPoints = mysqlTable("inspection_measurement_points", {
+	id: int().autoincrement().notNull().primaryKey(),
+	inspectionId: int("inspection_id"),
+	pointName: varchar("point_name", { length: 255 }).notNull(),
+	measuredValue: decimal("measured_value", { precision: 15, scale: 6 }),
+	nominalValue: decimal("nominal_value", { precision: 15, scale: 6 }),
+	upperLimit: decimal("upper_limit", { precision: 15, scale: 6 }),
+	lowerLimit: decimal("lower_limit", { precision: 15, scale: 6 }),
+	unit: varchar({ length: 50 }),
+	result: mysqlEnum(['pass', 'fail', 'warning']).default('pass'),
+	coordinates: json("coordinates"), // {x, y} position on image
+	metadata: json("metadata"),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+}, (table) => [
+	index("idx_measure_point_inspection").on(table.inspectionId),
+]);
+export type InspectionMeasurementPoint = typeof inspectionMeasurementPoints.$inferSelect;
+export type InsertInspectionMeasurementPoint = typeof inspectionMeasurementPoints.$inferInsert;
+
+// Machine Yield Statistics - Thống kê yield theo máy
+export const machineYieldStatistics = mysqlTable("machine_yield_statistics", {
+	id: int().autoincrement().notNull().primaryKey(),
+	machineId: int("machine_id").notNull(),
+	productId: int("product_id"),
+	date: varchar({ length: 10 }).notNull(), // YYYY-MM-DD
+	shift: varchar({ length: 20 }),
+	totalInspected: int("total_inspected").default(0).notNull(),
+	okCount: int("ok_count").default(0).notNull(),
+	ngCount: int("ng_count").default(0).notNull(),
+	ntfCount: int("ntf_count").default(0).notNull(),
+	yieldRate: decimal("yield_rate", { precision: 8, scale: 4 }),
+	firstPassYield: decimal("first_pass_yield", { precision: 8, scale: 4 }),
+	topDefects: json("top_defects"),
+	metadata: json("metadata"),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+}, (table) => [
+	index("idx_yield_machine").on(table.machineId),
+	index("idx_yield_date").on(table.date),
+	index("idx_yield_product").on(table.productId),
+]);
+export type MachineYieldStatistic = typeof machineYieldStatistics.$inferSelect;
+export type InsertMachineYieldStatistic = typeof machineYieldStatistics.$inferInsert;
+
+// AI Image Analysis Results - Kết quả phân tích ảnh AI
+export const aiImageAnalysisResults = mysqlTable("ai_image_analysis_results", {
+	id: int().autoincrement().notNull().primaryKey(),
+	inspectionId: int("inspection_id"),
+	imageUrl: text("image_url").notNull(),
+	analysisType: mysqlEnum("analysis_type", ['defect_detection', 'comparison', 'classification', 'measurement']).default('defect_detection').notNull(),
+	result: json("result").notNull(), // Full AI analysis result
+	confidence: decimal("confidence", { precision: 5, scale: 4 }),
+	defectsFound: int("defects_found").default(0),
+	processingTimeMs: int("processing_time_ms"),
+	modelVersion: varchar("model_version", { length: 50 }),
+	metadata: json("metadata"),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+}, (table) => [
+	index("idx_ai_analysis_inspection").on(table.inspectionId),
+	index("idx_ai_analysis_type").on(table.analysisType),
+]);
+export type AiImageAnalysisResult = typeof aiImageAnalysisResults.$inferSelect;
+export type InsertAiImageAnalysisResult = typeof aiImageAnalysisResults.$inferInsert;

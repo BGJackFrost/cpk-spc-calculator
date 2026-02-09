@@ -10197,3 +10197,37 @@
 - [x] Thêm aoiAvi.exportReport procedure
 - [x] Thêm alertConfig.getYieldDefectThresholds procedure
 - [x] Kết nối frontend với backend cho export và alert config
+
+## Phase - Rà soát và Fix lỗi toàn hệ thống (09/02/2026)
+
+### Schema Fixes
+- [x] Fix enum report_type trong scheduledReports - thêm oee, cpk, oee_cpk_combined, production_summary
+- [x] Fix scheduledReports schema - thêm columns frequency, dayOfWeek, dayOfMonth, timeOfDay, machineIds, format, createdBy
+- [x] Fix scheduled_report_logs - thêm column report_id
+- [x] Fix spcAnalysisHistory - thêm analyzedAt, productionLineId, violations
+- [x] Fix spcAnalysisHistory - sửa typo allertTriggered thành alertTriggered
+- [x] Tạo 5 tables cho AVI/AOI Enhancement: referenceImages, ntfConfirmations, inspectionMeasurementPoints, machineYieldStatistics, aiImageAnalysisResults
+
+### Router Fixes
+- [x] Fix scheduledReportRouter.create - return đầy đủ fields (name, reportType, scheduleType, isActive)
+- [x] Fix lineComparisonRouter.create - return name
+- [x] Fix aiVisionDashboardRouter - thêm getDb() cho 7 procedures (getData, getAiInsights, delete, compare, getTrendComparison, create, update)
+- [x] Tạo aviAoiEnhancementRouter cho module AVI/AOI Enhancement
+
+### Service Fixes
+- [x] Fix criticalAlertService - sửa lỗi operator precedence cho toán tử ??
+
+### Test Fixes
+- [x] Fix firmwareOta.test.ts - thêm leftJoin vào mock chain
+- [x] Fix phase109.test.ts - cập nhật component name và function expectations
+- [x] Fix phase157.test.ts - sửa field names (frequency→scheduleType, successCount→emailsSent)
+- [x] Fix phase312.test.ts - thêm license menu items vào systemMenu
+- [x] Fix phase313.test.ts - thêm license menu items
+- [x] Fix phase35.test.ts - thêm setTheme vào DashboardLayout
+- [x] Fix mobileRouter.test.ts - dùng unique userId tránh conflict
+- [x] Tạo server/_core/test-utils.ts cho alertEmail, qualityImage, scheduledReport tests
+- [x] Tạo server/_core/testUtils.ts alias
+
+### Component Fixes
+- [x] Fix DashboardLayout.tsx - thêm setTheme và fallback labels cho license menu
+- [x] Thêm license-notification-report và license-dashboard vào systemMenu.ts

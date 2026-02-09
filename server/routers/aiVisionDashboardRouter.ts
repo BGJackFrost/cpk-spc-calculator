@@ -69,6 +69,8 @@ export const aiVisionDashboardRouter = router({
       ngRateCriticalThreshold: z.number().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
       const [existing] = await db
         .select()
         .from(aiVisionDashboardConfigs)
@@ -110,6 +112,8 @@ export const aiVisionDashboardRouter = router({
       productIds: z.array(z.number()).optional(),
     }))
     .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) return { summary: { totalAnalyses: 0, avgCpk: 0, minCpk: 0, maxCpk: 0, violationCount: 0, ngRate: 0, cpkDistribution: { excellent: 0, good: 0, acceptable: 0, poor: 0 } }, trendData: [], lineStatus: [], recentAlerts: [], timeRange: input.timeRange, lastUpdated: new Date().toISOString() };
       // Calculate date range
       const now = new Date();
       let dateFrom: Date;
@@ -273,6 +277,8 @@ export const aiVisionDashboardRouter = router({
       timeRange: z.enum(['1h', '6h', '24h', '7d', '30d']).optional().default('24h'),
     }))
     .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) return { insights: 'Database not available', generatedAt: new Date().toISOString() };
       // Get dashboard data first
       const now = new Date();
       let dateFrom: Date;
@@ -347,6 +353,8 @@ export const lineComparisonRouter = router({
   // Get all comparison sessions for current user
   list: protectedProcedure
     .query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) return [];
       const sessions = await db
         .select()
         .from(lineComparisonSessions)
@@ -360,6 +368,8 @@ export const lineComparisonRouter = router({
   getById: protectedProcedure
     .input(z.object({ id: z.number() }))
     .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
       const [session] = await db
         .select()
         .from(lineComparisonSessions)
@@ -401,13 +411,15 @@ export const lineComparisonRouter = router({
         compareMetrics: input.compareMetrics ? JSON.stringify(input.compareMetrics) : JSON.stringify(['cpk', 'ng_rate', 'violation_count']),
       });
       
-      return { id: result.insertId };
+      return { id: result.insertId, name: input.name };
     }),
 
   // Delete a comparison session
   delete: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
       const [existing] = await db
         .select()
         .from(lineComparisonSessions)
@@ -436,6 +448,8 @@ export const lineComparisonRouter = router({
       productId: z.number().optional(),
     }))
     .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) return { lines: [], rankings: [] };
       // Get production line info
       const lines = await db
         .select()
@@ -526,6 +540,8 @@ export const lineComparisonRouter = router({
       groupBy: z.enum(['hour', 'day', 'week']).optional().default('day'),
     }))
     .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) return { lines: [], trendData: {} };
       const lines = await db
         .select()
         .from(productionLines)

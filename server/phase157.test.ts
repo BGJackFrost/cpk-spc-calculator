@@ -40,7 +40,7 @@ describe("Phase 157 - OEE/CPK UI Management & Home Widget", () => {
       expect(columns).toContain("id");
       expect(columns).toContain("name");
       expect(columns).toContain("reportType");
-      expect(columns).toContain("frequency"); // Changed from 'schedule' to 'frequency'
+      expect(columns).toContain("scheduleType"); // Schedule type: daily/weekly/monthly
       expect(columns).toContain("recipients");
     });
 
@@ -69,8 +69,8 @@ describe("Phase 157 - OEE/CPK UI Management & Home Widget", () => {
       expect(columns).toContain("id");
       expect(columns).toContain("reportId");
       expect(columns).toContain("status");
-      expect(columns).toContain("successCount");
-      expect(columns).toContain("failedCount");
+      expect(columns).toContain("emailsSent");
+      expect(columns).toContain("recipientCount");
     });
   });
 

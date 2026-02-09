@@ -188,6 +188,9 @@ const fallbackLabelsVi: Record<string, string> = {
   "nav.aiMlHealth": "Sức khỏe AI/ML",
   "nav.aiDataDrift": "Giám sát Data Drift",
   "nav.about": "Thông tin",
+  "menuGroup.licenseManagement": "Quản lý License",
+  "nav.licenseDashboard": "Dashboard License",
+  "nav.licenseNotificationReport": "Báo cáo Thông báo License",
   "nav.imageHistory": "Lịch sử Ảnh (Timeline)",
   "nav.cameraCaptureSchedule": "Lịch Chụp Tự động",
   "nav.qualityStatisticsReport": "Báo cáo Thống kê Chất lượng",
@@ -447,6 +450,9 @@ const fallbackLabelsEn: Record<string, string> = {
   "nav.aiMlHealth": "AI/ML Health",
   "nav.aiDataDrift": "Data Drift Monitoring",
   "nav.about": "About",
+  "menuGroup.licenseManagement": "License Management",
+  "nav.licenseDashboard": "License Dashboard",
+  "nav.licenseNotificationReport": "License Notification Report",
   "nav.userGuide": "User Guide",
   "menuGroup.myLicense": "My License",
   "nav.myLicenseStatus": "License Status",
@@ -627,7 +633,7 @@ function DashboardLayoutContent({
   const sidebarRef = useRef<HTMLDivElement>(null);
   const { translate, language } = useLanguage();
   const { systemConfig, systemMenu, activeSystem } = useSystem();
-  const { theme } = useTheme();
+  const { theme, setTheme } = useTheme();
   
   // Load Quick Access items dynamically
   const { 
