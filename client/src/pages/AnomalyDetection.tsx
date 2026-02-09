@@ -67,100 +67,7 @@ interface TrendPrediction {
 }
 
 // Mock data generator
-function generateMockData(): {
-  dataPoints: DataPoint[];
-  alerts: AnomalyAlert[];
-  predictions: TrendPrediction[];
-  stats: {
-    totalDataPoints: number;
-    anomaliesDetected: number;
-    anomalyRate: number;
-    avgAnomalyScore: number;
-    trendDirection: "up" | "down" | "stable";
-    cpkTrend: number;
-  };
-} {
-  const now = new Date();
-  const dataPoints: DataPoint[] = [];
-  const alerts: AnomalyAlert[] = [];
-  const predictions: TrendPrediction[] = [];
-
-  // Generate historical data with some anomalies
-  for (let i = 100; i >= 0; i--) {
-    const timestamp = new Date(now.getTime() - i * 60 * 60 * 1000);
-    const baseValue = 50 + Math.sin(i / 10) * 10;
-    const noise = (Math.random() - 0.5) * 5;
-    
-    // Inject some anomalies
-    let value = baseValue + noise;
-    let isAnomaly = false;
-    let anomalyScore = Math.random() * 0.3;
-    let anomalyType: DataPoint["anomalyType"] = undefined;
-
-    if (i === 25 || i === 50 || i === 75) {
-      // Spike anomaly
-      value = baseValue + 30 + Math.random() * 10;
-      isAnomaly = true;
-      anomalyScore = 0.85 + Math.random() * 0.15;
-      anomalyType = "spike";
-    } else if (i === 35 || i === 60) {
-      // Dip anomaly
-      value = baseValue - 25 - Math.random() * 10;
-      isAnomaly = true;
-      anomalyScore = 0.75 + Math.random() * 0.2;
-      anomalyType = "dip";
-    }
-
-    dataPoints.push({ timestamp, value, isAnomaly, anomalyScore, anomalyType });
-  }
-
-  // Generate alerts
-  const machines = ["CNC-001", "CNC-002", "SMT-001", "AOI-001", "Reflow-001"];
-  const parameters = ["Temperature", "Pressure", "Speed", "Vibration", "CPK"];
-  const severities: AnomalyAlert["severity"][] = ["low", "medium", "high", "critical"];
-
-  for (let i = 0; i < 8; i++) {
-    const severity = severities[Math.floor(Math.random() * severities.length)];
-    alerts.push({
-      id: `alert-${i}`,
-      timestamp: new Date(now.getTime() - Math.random() * 24 * 60 * 60 * 1000),
-      machine: machines[Math.floor(Math.random() * machines.length)],
-      parameter: parameters[Math.floor(Math.random() * parameters.length)],
-      value: 50 + Math.random() * 50,
-      expectedRange: { min: 40, max: 60 },
-      severity,
-      status: i < 3 ? "active" : i < 5 ? "acknowledged" : "resolved",
-      rootCause: i % 2 === 0 ? "Tool wear detected" : "Environmental temperature fluctuation",
-      recommendation: i % 2 === 0 ? "Schedule tool replacement" : "Check HVAC system",
-    });
-  }
-
-  // Generate predictions
-  for (let i = 0; i < 24; i++) {
-    const timestamp = new Date(now.getTime() + i * 60 * 60 * 1000);
-    const predicted = 50 + Math.sin((100 + i) / 10) * 10 + i * 0.1;
-    predictions.push({
-      timestamp,
-      predicted,
-      lower: predicted - 5 - Math.random() * 3,
-      upper: predicted + 5 + Math.random() * 3,
-    });
-  }
-
-  return {
-    dataPoints,
-    alerts,
-    predictions,
-    stats: {
-      totalDataPoints: dataPoints.length,
-      anomaliesDetected: dataPoints.filter(d => d.isAnomaly).length,
-      anomalyRate: (dataPoints.filter(d => d.isAnomaly).length / dataPoints.length) * 100,
-      avgAnomalyScore: dataPoints.reduce((sum, d) => sum + d.anomalyScore, 0) / dataPoints.length,
-      trendDirection: "up",
-      cpkTrend: 1.45,
-    },
-  };
-}
+// Mock data removed - generateMockData (data comes from tRPC or is not yet implemented)
 
 // Z-Score calculation
 function calculateZScore(values: number[]): { zScores: number[]; mean: number; std: number } {
@@ -206,11 +113,11 @@ export default function AnomalyDetection() {
   const [showPredictions, setShowPredictions] = useState(true);
 
   // Generate mock data
-  const mockData = useMemo(() => generateMockData(), []);
+  // Mock data removed - mockData (data comes from tRPC or is not yet implemented)
 
   // Calculate statistics
   const analysisResults = useMemo(() => {
-    const values = mockData.dataPoints.map(d => d.value);
+    const values = ([] as any[]).map(d => d.value);
     const zScoreResult = calculateZScore(values);
     const iqrResult = calculateIQR(values);
     const movingAvg = calculateMovingAverage(values, 10);
@@ -220,10 +127,10 @@ export default function AnomalyDetection() {
       iqr: iqrResult,
       movingAverage: movingAvg,
     };
-  }, [mockData]);
+  }, [{ dataPoints: [], alerts: [], anomalies: [] }]);
 
-  const activeAlerts = mockData.alerts.filter(a => a.status === "active");
-  const criticalAlerts = mockData.alerts.filter(a => a.severity === "critical" && a.status === "active");
+  const activeAlerts = ([] as any[]).filter(a => a.status === "active");
+  const criticalAlerts = ([] as any[]).filter(a => a.severity === "critical" && a.status === "active");
 
   return (
     <DashboardLayout>
@@ -284,7 +191,7 @@ export default function AnomalyDetection() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{mockData.stats.totalDataPoints.toLocaleString()}</div>
+              <div className="text-2xl font-bold">{0}</div>
               <p className="text-xs text-muted-foreground mt-1">Last 24 hours</p>
             </CardContent>
           </Card>
@@ -296,9 +203,9 @@ export default function AnomalyDetection() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-orange-600">{mockData.stats.anomaliesDetected}</div>
+              <div className="text-2xl font-bold text-orange-600">{0}</div>
               <p className="text-xs text-muted-foreground mt-1">
-                {mockData.stats.anomalyRate.toFixed(2)}% anomaly rate
+                {"0.00"}% anomaly rate
               </p>
             </CardContent>
           </Card>
@@ -329,7 +236,7 @@ export default function AnomalyDetection() {
             </CardHeader>
             <CardContent>
               <div className="flex items-center gap-2">
-                <span className="text-2xl font-bold text-green-600">{mockData.stats.cpkTrend.toFixed(2)}</span>
+                <span className="text-2xl font-bold text-green-600">{"0.00"}</span>
                 <ArrowUp className="h-5 w-5 text-green-600" />
               </div>
               <p className="text-xs text-muted-foreground mt-1">Trending up</p>
@@ -366,9 +273,9 @@ export default function AnomalyDetection() {
                     <div className="text-center text-muted-foreground">
                       <Activity className="h-12 w-12 mx-auto mb-2 opacity-50" />
                       <p>Real-time chart visualization</p>
-                      <p className="text-sm">Showing {mockData.dataPoints.length} data points</p>
+                      <p className="text-sm">Showing {([] as any[]).length} data points</p>
                       <p className="text-sm text-orange-600 mt-2">
-                        {mockData.stats.anomaliesDetected} anomalies detected (highlighted in red)
+                        {0} anomalies detected (highlighted in red)
                       </p>
                     </div>
                   </div>
@@ -461,7 +368,7 @@ export default function AnomalyDetection() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {mockData.alerts.slice(0, 5).map((alert) => (
+                    {([] as any[]).slice(0, 5).map((alert) => (
                       <TableRow key={alert.id}>
                         <TableCell className="text-sm">
                           {alert.timestamp.toLocaleTimeString()}
@@ -535,7 +442,7 @@ export default function AnomalyDetection() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {mockData.alerts.map((alert) => (
+                    {([] as any[]).map((alert) => (
                       <TableRow key={alert.id}>
                         <TableCell className="text-sm">
                           {alert.timestamp.toLocaleString()}
@@ -693,7 +600,7 @@ export default function AnomalyDetection() {
                   <div className="text-center text-muted-foreground">
                     <TrendingUp className="h-12 w-12 mx-auto mb-2 opacity-50" />
                     <p>Prediction chart visualization</p>
-                    <p className="text-sm">Showing {mockData.predictions.length} predicted data points</p>
+                    <p className="text-sm">Showing {0} predicted data points</p>
                     <p className="text-sm text-blue-600 mt-2">
                       Confidence interval: 95%
                     </p>

@@ -237,63 +237,11 @@ interface SyncStatus {
 }
 
 // Mock data for demonstration
-const mockConnections: DatabaseConnection[] = [
-  {
-    id: 1,
-    name: "PostgreSQL Primary",
-    databaseType: "postgresql",
-    host: "localhost",
-    port: 5432,
-    database: "spc_calculator",
-    username: "spc_user",
-    description: "Database chính của hệ thống - PostgreSQL",
-    isDefault: true,
-    isActive: true,
-    isPrimary: true,
-    syncEnabled: false,
-    healthStatus: "healthy",
-    connectionCount: 5,
-    maxConnections: 100,
-  },
-  {
-    id: 2,
-    name: "MySQL Secondary",
-    databaseType: "mysql",
-    host: "localhost",
-    port: 3306,
-    database: "spc_calculator_mysql",
-    username: "spc_user",
-    description: "Database phụ - MySQL (sync từ PostgreSQL)",
-    isDefault: false,
-    isActive: true,
-    isPrimary: false,
-    syncEnabled: true,
-    healthStatus: "healthy",
-    connectionCount: 2,
-    maxConnections: 50,
-  },
-  {
-    id: 3,
-    name: "Internal System DB",
-    databaseType: "internal",
-    host: "internal",
-    port: 0,
-    database: "system",
-    username: "system",
-    description: "Database nội bộ của Manus",
-    isDefault: false,
-    isActive: true,
-    isPrimary: false,
-    syncEnabled: false,
-    healthStatus: "healthy",
-    connectionCount: 1,
-    maxConnections: 10,
-  },
-];
+// Mock data removed - mockConnections (data comes from tRPC or is not yet implemented)
 
 export default function DatabaseUnified() {
   const [activeTab, setActiveTab] = useState("overview");
-  const [connections, setConnections] = useState<DatabaseConnection[]>(mockConnections);
+  const [connections, setConnections] = useState<DatabaseConnection[]>([]);
   const [isLoadingConnections, setIsLoadingConnections] = useState(true);
   
   // Load connections from API

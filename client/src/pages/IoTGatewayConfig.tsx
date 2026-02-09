@@ -44,21 +44,13 @@ interface DataPoint {
 }
 
 // Demo data
-const demoGateways: Gateway[] = [
-  { id: 1, name: "OPC-UA Server 1", type: "opcua", host: "192.168.1.100", port: 4840, status: "connected", lastSync: new Date(), enabled: true },
-  { id: 2, name: "Modbus RTU Gateway", type: "modbus", host: "192.168.1.101", port: 502, status: "connected", lastSync: new Date(), enabled: true },
-  { id: 3, name: "MQTT Broker", type: "mqtt", host: "192.168.1.102", port: 1883, status: "disconnected", enabled: false },
-];
+// Mock data removed - demoGateways (data comes from tRPC or is not yet implemented)
 
-const demoDataPoints: DataPoint[] = [
-  { id: 1, gatewayId: 1, name: "CNC-001 Temperature", address: "ns=2;s=CNC001.Temperature", dataType: "Float", machineId: 1, sensorType: "temperature", pollInterval: 5000, lastValue: "45.2", lastUpdate: new Date() },
-  { id: 2, gatewayId: 1, name: "CNC-001 Vibration", address: "ns=2;s=CNC001.Vibration", dataType: "Float", machineId: 1, sensorType: "vibration", pollInterval: 1000, lastValue: "0.15", lastUpdate: new Date() },
-  { id: 3, gatewayId: 2, name: "Press-001 Pressure", address: "40001", dataType: "Int16", machineId: 2, sensorType: "pressure", pollInterval: 2000, lastValue: "1250", lastUpdate: new Date() },
-];
+// Mock data removed - ([] as any[]) (data comes from tRPC or is not yet implemented)
 
 export default function IoTGatewayConfig() {
-  const [gateways, setGateways] = useState<Gateway[]>(demoGateways);
-  const [dataPoints, setDataPoints] = useState<DataPoint[]>(demoDataPoints);
+  const [gateways, setGateways] = useState<Gateway[]>([]);
+  const [dataPoints, setDataPoints] = useState<DataPoint[]>([]);
   const [isAddGatewayOpen, setIsAddGatewayOpen] = useState(false);
   const [isAddDataPointOpen, setIsAddDataPointOpen] = useState(false);
   const [selectedGateway, setSelectedGateway] = useState<Gateway | null>(null);

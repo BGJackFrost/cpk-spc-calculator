@@ -19,6 +19,7 @@ import {
   Download,
   RefreshCw,
   Loader2,
+  FileText,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -69,9 +70,17 @@ export default function OeePeriodReport() {
   const exportMutation = trpc.oee.exportPeriodExcel.useMutation({
     onSuccess: (result) => {
       window.open(result.url, '_blank');
-      toast.success('Đã xuất báo cáo OEE thành công');
+      toast.success('Đã xuất báo cáo OEE Excel thành công');
     },
     onError: (err) => toast.error('Lỗi xuất Excel: ' + err.message),
+  });
+
+  const exportPdfMutation = trpc.oee.exportPeriodPdf.useMutation({
+    onSuccess: (result) => {
+      window.open(result.url, '_blank');
+      toast.success('Đã xuất báo cáo OEE PDF thành công');
+    },
+    onError: (err) => toast.error('Lỗi xuất PDF: ' + err.message),
   });
 
   const { data: periodData = [], isLoading, refetch } = trpc.oee.getPeriodSummary.useQuery({
@@ -164,6 +173,26 @@ export default function OeePeriodReport() {
                 <Download className="h-4 w-4 mr-2" />
               )}
               Xuất Excel
+            </Button>
+            <Button
+              variant="outline"
+              disabled={periodData.length === 0 || exportPdfMutation.isPending}
+              onClick={() => {
+                exportPdfMutation.mutate({
+                  period,
+                  startDate: dateRange.start,
+                  endDate: dateRange.end,
+                  productionLineId: selectedLineId,
+                  data: periodData,
+                });
+              }}
+            >
+              {exportPdfMutation.isPending ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <FileText className="h-4 w-4 mr-2" />
+              )}
+              Xuất PDF
             </Button>
           </div>
         </div>

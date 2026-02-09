@@ -10590,3 +10590,9 @@
 - [x] Xác nhận OeePeriodReport.tsx đã dùng real tRPC data (oee.getPeriodSummary)
 - [x] Thêm export Excel cho OeePeriodReport (oee.exportPeriodExcel)
 - [x] Vitest tests cho GĐ3 refactor (25 tests passed)
+
+### 3.5 Gantt Chart & PDF Export & Mock Data Cleanup
+- [x] Cải thiện Gantt chart: thêm progress bar (0-100%), dependency field, hiển thị % hoàn thành trên thanh task
+- [x] Loại bỏ mock/demo data từ 31 trang (48 biến mock đã xóa): AI pages (14), IoT pages (1), System pages (16)
+- [x] Thêm export PDF cho OEE Period Report (oee.exportPeriodPdf endpoint + nút Xuất PDF trên UI)
+- [x] Vitest tests cho GD3 features (9 tests passed: Gantt progress, mock removal verification, PDF export logic)

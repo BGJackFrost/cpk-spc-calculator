@@ -110,87 +110,10 @@ interface TrainedModel {
 }
 
 // Mock training jobs
-const mockTrainingJobs: TrainingJob[] = [
-  {
-    id: "job_001",
-    modelName: "CPK Predictor v3",
-    modelType: "cpk_prediction",
-    status: "training",
-    progress: 65,
-    startedAt: new Date(Date.now() - 1000 * 60 * 30),
-    completedAt: null,
-    dataSource: "spc_analysis_history",
-    sampleCount: 15420,
-    epochs: 100,
-    currentEpoch: 65,
-    metrics: { accuracy: 0.87, loss: 0.023 },
-    logs: [
-      "[INFO] Loading training data...",
-      "[INFO] Found 15420 samples",
-      "[INFO] Starting training with 100 epochs",
-      "[INFO] Epoch 65/100 - loss: 0.023, accuracy: 0.87",
-    ],
-  },
-  {
-    id: "job_002",
-    modelName: "Anomaly Detector v2",
-    modelType: "anomaly_detection",
-    status: "completed",
-    progress: 100,
-    startedAt: new Date(Date.now() - 1000 * 60 * 120),
-    completedAt: new Date(Date.now() - 1000 * 60 * 60),
-    dataSource: "spc_realtime_data",
-    sampleCount: 28500,
-    epochs: 50,
-    currentEpoch: 50,
-    metrics: { accuracy: 0.92, loss: 0.015, mape: 3.2, rmse: 0.045 },
-    logs: [
-      "[INFO] Training completed successfully",
-      "[INFO] Final accuracy: 0.92",
-      "[INFO] Model saved to storage",
-    ],
-  },
-];
+// Mock data removed - mockTrainingJobs (data comes from tRPC or is not yet implemented)
 
 // Mock trained models
-const mockTrainedModels: TrainedModel[] = [
-  {
-    id: "model_001",
-    name: "CPK Predictor",
-    type: "cpk_prediction",
-    version: "2.1.0",
-    status: "active",
-    accuracy: 0.89,
-    trainedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 7),
-    dataPoints: 45000,
-    metrics: { mape: 4.2, rmse: 0.052, r2: 0.91 },
-    config: { algorithm: "ARIMA", horizon: 7, features: ["mean", "stdDev", "cpk"] },
-  },
-  {
-    id: "model_002",
-    name: "Anomaly Detector",
-    type: "anomaly_detection",
-    version: "2.0.0",
-    status: "active",
-    accuracy: 0.92,
-    trainedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3),
-    dataPoints: 28500,
-    metrics: { mape: 3.2, rmse: 0.045, r2: 0.94 },
-    config: { algorithm: "Isolation Forest", threshold: 2.5, sensitivity: 0.95 },
-  },
-  {
-    id: "model_003",
-    name: "Root Cause Analyzer",
-    type: "root_cause",
-    version: "1.0.0",
-    status: "inactive",
-    accuracy: 0.78,
-    trainedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 14),
-    dataPoints: 12000,
-    metrics: { mape: 8.5, rmse: 0.12, r2: 0.72 },
-    config: { algorithm: "Random Forest", features: ["5M1E"] },
-  },
-];
+// Mock data removed - mockTrainedModels (data comes from tRPC or is not yet implemented)
 
 // Training history for chart
 const trainingHistory = [
@@ -235,8 +158,8 @@ export default function AiModelTraining() {
   const [activeTab, setActiveTab] = useState("jobs");
   const [isCreatingJob, setIsCreatingJob] = useState(false);
   const [selectedJob, setSelectedJob] = useState<TrainingJob | null>(null);
-  const [trainingJobs, setTrainingJobs] = useState<TrainingJob[]>(mockTrainingJobs);
-  const [trainedModels, setTrainedModels] = useState<TrainedModel[]>(mockTrainedModels);
+  const [trainingJobs, setTrainingJobs] = useState<TrainingJob[]>([]);
+  const [trainedModels, setTrainedModels] = useState<TrainedModel[]>([]);
 
   // Form state for new training job
   const [newJobForm, setNewJobForm] = useState({

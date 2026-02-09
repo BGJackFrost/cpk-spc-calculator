@@ -2524,4 +2524,120 @@ export const oeeRouter = router({
       );
       return { url, filename };
     }),
+
+  exportPeriodPdf: protectedProcedure
+    .input(z.object({
+      period: z.enum(['shift', 'day', 'week', 'month']),
+      startDate: z.date(),
+      endDate: z.date(),
+      productionLineId: z.number().optional(),
+      data: z.array(z.object({
+        label: z.string(),
+        avgOee: z.number(),
+        avgAvailability: z.number(),
+        avgPerformance: z.number(),
+        avgQuality: z.number(),
+        totalGoodCount: z.number(),
+        totalDefectCount: z.number(),
+        recordCount: z.number(),
+      })),
+    }))
+    .mutation(async ({ input }) => {
+      const periodLabels: Record<string, string> = {
+        shift: 'Ca', day: 'Ngày', week: 'Tuần', month: 'Tháng',
+      };
+      const periodLabel = periodLabels[input.period] || input.period;
+      const startStr = input.startDate.toISOString().split('T')[0];
+      const endStr = input.endDate.toISOString().split('T')[0];
+
+      // Calculate summary stats
+      const totalRecords = input.data.reduce((s, r) => s + r.recordCount, 0);
+      const avgOee = input.data.length > 0 ? input.data.reduce((s, r) => s + r.avgOee, 0) / input.data.length : 0;
+      const totalGood = input.data.reduce((s, r) => s + r.totalGoodCount, 0);
+      const totalDefect = input.data.reduce((s, r) => s + r.totalDefectCount, 0);
+
+      const getOeeColor = (v: number) => v >= 85 ? '#16a34a' : v >= 65 ? '#ca8a04' : '#dc2626';
+
+      const tableRows = input.data.map((row, idx) => `
+        <tr style="background:${idx % 2 === 0 ? '#fff' : '#f8fafc'}">
+          <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0">${row.label}</td>
+          <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;text-align:center;font-weight:bold;color:${getOeeColor(row.avgOee)}">${row.avgOee.toFixed(1)}%</td>
+          <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;text-align:center">${row.avgAvailability.toFixed(1)}%</td>
+          <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;text-align:center">${row.avgPerformance.toFixed(1)}%</td>
+          <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;text-align:center">${row.avgQuality.toFixed(1)}%</td>
+          <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;text-align:right">${row.totalGoodCount.toLocaleString()}</td>
+          <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;text-align:right">${row.totalDefectCount.toLocaleString()}</td>
+          <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;text-align:center">${row.recordCount}</td>
+        </tr>
+      `).join('');
+
+      const html = `
+      <!DOCTYPE html>
+      <html><head><meta charset="utf-8"><title>OEE Period Report</title>
+      <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 40px; color: #1e293b; }
+        .header { text-align: center; margin-bottom: 30px; border-bottom: 3px solid #2563eb; padding-bottom: 20px; }
+        .header h1 { font-size: 24px; color: #2563eb; margin: 0 0 8px 0; }
+        .header p { color: #64748b; margin: 4px 0; font-size: 14px; }
+        .summary { display: flex; gap: 16px; margin-bottom: 30px; }
+        .summary-card { flex: 1; background: #f8fafc; border-radius: 8px; padding: 16px; text-align: center; border: 1px solid #e2e8f0; }
+        .summary-card .label { font-size: 12px; color: #64748b; text-transform: uppercase; }
+        .summary-card .value { font-size: 28px; font-weight: bold; margin-top: 4px; }
+        table { width: 100%; border-collapse: collapse; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        th { background: #2563eb; color: white; padding: 10px 12px; text-align: center; font-size: 13px; }
+        th:first-child { text-align: left; }
+        .footer { margin-top: 30px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 16px; }
+      </style></head><body>
+        <div class="header">
+          <h1>Báo cáo OEE theo ${periodLabel}</h1>
+          <p>Khoảng thời gian: ${startStr} đến ${endStr}</p>
+          <p>Tổng số kỳ: ${input.data.length} | Tổng bản ghi: ${totalRecords}</p>
+        </div>
+        <div class="summary">
+          <div class="summary-card">
+            <div class="label">OEE Trung bình</div>
+            <div class="value" style="color:${getOeeColor(avgOee)}">${avgOee.toFixed(1)}%</div>
+          </div>
+          <div class="summary-card">
+            <div class="label">Sản phẩm tốt</div>
+            <div class="value" style="color:#16a34a">${totalGood.toLocaleString()}</div>
+          </div>
+          <div class="summary-card">
+            <div class="label">Sản phẩm lỗi</div>
+            <div class="value" style="color:#dc2626">${totalDefect.toLocaleString()}</div>
+          </div>
+          <div class="summary-card">
+            <div class="label">Tỷ lệ lỗi</div>
+            <div class="value">${totalGood + totalDefect > 0 ? ((totalDefect / (totalGood + totalDefect)) * 100).toFixed(2) : '0.00'}%</div>
+          </div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th style="text-align:left">Kỳ</th>
+              <th>OEE (%)</th>
+              <th>Availability (%)</th>
+              <th>Performance (%)</th>
+              <th>Quality (%)</th>
+              <th style="text-align:right">SP Tốt</th>
+              <th style="text-align:right">SP Lỗi</th>
+              <th>Bản ghi</th>
+            </tr>
+          </thead>
+          <tbody>${tableRows}</tbody>
+        </table>
+        <div class="footer">
+          <p>Báo cáo được tạo bởi CPK/SPC Calculator - MSoftware AI</p>
+          <p>Ngày tạo: ${new Date().toLocaleDateString('vi-VN')} ${new Date().toLocaleTimeString('vi-VN')}</p>
+        </div>
+      </body></html>`;
+
+      const filename = `oee-period-${input.period}-${Date.now()}.html`;
+      const { url } = await storagePut(
+        `exports/${filename}`,
+        Buffer.from(html, 'utf-8'),
+        'text/html'
+      );
+      return { url, filename };
+    }),
 });

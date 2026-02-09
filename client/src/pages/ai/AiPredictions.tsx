@@ -11,38 +11,7 @@ import { Brain, RefreshCw, Download, Search, Eye, TrendingUp, TrendingDown, Minu
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
 // Mock predictions data
-const mockPredictionsData = {
-  summary: {
-    total: 12580,
-    today: 856,
-    accuracy: 0.94,
-    avgLatency: 45,
-  },
-  predictions: [
-    { id: 1, timestamp: "25/12/2024 10:31:45", model: "CPK Predictor v2.1", input: "Line 1 - Batch 2024-12-25-001", predicted: 1.35, actual: 1.33, confidence: 0.95, status: "verified", latency: 42 },
-    { id: 2, timestamp: "25/12/2024 10:31:30", model: "OEE Forecaster v3.0", input: "Line 2 - Next 4h", predicted: 82.5, actual: null, confidence: 0.88, status: "pending", latency: 65 },
-    { id: 3, timestamp: "25/12/2024 10:31:15", model: "Defect Classifier", input: "Product A - Image #45892", predicted: "Scratch", actual: "Scratch", confidence: 0.92, status: "verified", latency: 38 },
-    { id: 4, timestamp: "25/12/2024 10:31:00", model: "Anomaly Detector", input: "Sensor Data - Line 3", predicted: "Normal", actual: "Normal", confidence: 0.97, status: "verified", latency: 28 },
-    { id: 5, timestamp: "25/12/2024 10:30:45", model: "CPK Predictor v2.1", input: "Line 2 - Batch 2024-12-25-002", predicted: 1.28, actual: 1.25, confidence: 0.91, status: "verified", latency: 45 },
-    { id: 6, timestamp: "25/12/2024 10:30:30", model: "Quality Predictor", input: "Product B - Batch 458", predicted: 96.5, actual: null, confidence: 0.85, status: "pending", latency: 52 },
-    { id: 7, timestamp: "25/12/2024 10:30:15", model: "Anomaly Detector", input: "Sensor Data - Line 1", predicted: "Anomaly", actual: "Anomaly", confidence: 0.89, status: "verified", latency: 31 },
-    { id: 8, timestamp: "25/12/2024 10:30:00", model: "CPK Predictor v2.1", input: "Line 3 - Batch 2024-12-25-003", predicted: 1.42, actual: 1.38, confidence: 0.93, status: "verified", latency: 44 },
-  ],
-  accuracyTrend: [
-    { date: "20/12", accuracy: 92.5, predictions: 780 },
-    { date: "21/12", accuracy: 93.2, predictions: 820 },
-    { date: "22/12", accuracy: 93.8, predictions: 795 },
-    { date: "23/12", accuracy: 94.1, predictions: 810 },
-    { date: "24/12", accuracy: 93.9, predictions: 845 },
-    { date: "25/12", accuracy: 94.2, predictions: 856 },
-  ],
-  modelStats: [
-    { model: "CPK Predictor v2.1", predictions: 4520, accuracy: 0.94, avgLatency: 43 },
-    { model: "OEE Forecaster v3.0", predictions: 2180, accuracy: 0.91, avgLatency: 62 },
-    { model: "Defect Classifier", predictions: 3250, accuracy: 0.92, avgLatency: 35 },
-    { model: "Anomaly Detector", predictions: 2630, accuracy: 0.96, avgLatency: 29 },
-  ],
-};
+// Mock data removed - mockPredictionsData (data comes from tRPC or is not yet implemented)
 
 export default function AiPredictions() {
   const { toast } = useToast();

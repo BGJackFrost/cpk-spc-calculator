@@ -14,31 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { FileText, RefreshCw, Download, Brain, Plus, Calendar, Clock, Mail, Eye, Trash2, Edit, Play, Pause, CheckCircle, AlertTriangle } from "lucide-react";
 
 // Mock reports data
-const mockReportsData = {
-  templates: [
-    { id: 1, name: "Báo cáo SPC hàng ngày", type: "spc", frequency: "daily", lastRun: "25/12/2024 06:00", status: "active", recipients: 5 },
-    { id: 2, name: "Báo cáo OEE hàng tuần", type: "oee", frequency: "weekly", lastRun: "23/12/2024 08:00", status: "active", recipients: 8 },
-    { id: 3, name: "Báo cáo Defect hàng tháng", type: "defect", frequency: "monthly", lastRun: "01/12/2024 09:00", status: "active", recipients: 3 },
-    { id: 4, name: "Báo cáo AI Insights", type: "ai", frequency: "weekly", lastRun: "22/12/2024 10:00", status: "paused", recipients: 4 },
-  ],
-  recentReports: [
-    { id: 1, name: "SPC Report - Line 1", generatedAt: "25/12/2024 06:05", size: "2.4 MB", format: "PDF", status: "completed" },
-    { id: 2, name: "OEE Weekly Summary", generatedAt: "23/12/2024 08:12", size: "1.8 MB", format: "Excel", status: "completed" },
-    { id: 3, name: "AI Anomaly Report", generatedAt: "24/12/2024 14:30", size: "3.1 MB", format: "PDF", status: "completed" },
-    { id: 4, name: "Defect Analysis Q4", generatedAt: "20/12/2024 09:00", size: "5.2 MB", format: "PDF", status: "completed" },
-  ],
-  aiSummary: {
-    totalReports: 156,
-    thisMonth: 24,
-    avgGenerationTime: "45s",
-    aiEnhanced: 89,
-  },
-  insights: [
-    { type: "info", message: "24 báo cáo đã được tạo trong tháng này, tăng 15% so với tháng trước." },
-    { type: "positive", message: "89% báo cáo được AI phân tích và bổ sung insights tự động." },
-    { type: "warning", message: "Có 2 báo cáo scheduled bị lỗi trong tuần qua. Cần kiểm tra." },
-  ],
-};
+// Mock data removed - mockReportsData (data comes from tRPC or is not yet implemented)
 
 export default function AiReports() {
   const { toast } = useToast();

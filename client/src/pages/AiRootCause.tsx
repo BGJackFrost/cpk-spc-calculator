@@ -65,165 +65,9 @@ interface CausalChain {
   confidence: number;
 }
 
-function generateMockRootCauses(): RootCause[] {
-  return [
-    {
-      id: "rc-1",
-      category: "machine",
-      title: "Tool Wear - Dao cắt bị mòn",
-      description: "Dao cắt đã vượt quá tuổi thọ khuyến nghị, gây ra biến động kích thước sản phẩm",
-      probability: 0.85,
-      impact: "high",
-      evidence: [
-        "CPK giảm 15% trong 2 tuần qua",
-        "Tần suất điểm ngoài UCL tăng",
-        "Dao cắt đã sử dụng 120% tuổi thọ khuyến nghị",
-      ],
-      recommendations: [
-        "Thay dao cắt ngay lập tức",
-        "Thiết lập cảnh báo tuổi thọ dao tự động",
-        "Xem xét nâng cấp vật liệu dao cắt",
-      ],
-      relatedFactors: ["Tốc độ cắt", "Vật liệu gia công", "Hệ thống làm mát"],
-    },
-    {
-      id: "rc-2",
-      category: "environment",
-      title: "Temperature Fluctuation - Biến động nhiệt độ",
-      description: "Nhiệt độ xưởng dao động ±5°C trong ca làm việc, ảnh hưởng đến độ chính xác gia công",
-      probability: 0.72,
-      impact: "medium",
-      evidence: [
-        "Tương quan cao giữa nhiệt độ và CPK (r=0.78)",
-        "CPK thấp nhất vào buổi trưa (nhiệt độ cao nhất)",
-        "Hệ thống HVAC hoạt động không ổn định",
-      ],
-      recommendations: [
-        "Kiểm tra và bảo trì hệ thống HVAC",
-        "Cài đặt cảm biến nhiệt độ bổ sung",
-        "Điều chỉnh lịch sản xuất theo nhiệt độ",
-      ],
-      relatedFactors: ["Độ ẩm", "Hệ thống thông gió", "Vị trí máy"],
-    },
-    {
-      id: "rc-3",
-      category: "man",
-      title: "Operator Skill Gap - Chênh lệch kỹ năng",
-      description: "Sự khác biệt về kỹ năng giữa các ca làm việc dẫn đến biến động chất lượng",
-      probability: 0.65,
-      impact: "medium",
-      evidence: [
-        "CPK ca A: 1.45, ca B: 1.28, ca C: 1.15",
-        "Tỷ lệ lỗi setup cao hơn ở ca C",
-        "Thời gian đào tạo trung bình ca C thấp hơn 30%",
-      ],
-      recommendations: [
-        "Tổ chức đào tạo nâng cao cho ca C",
-        "Thiết lập buddy system với nhân viên kinh nghiệm",
-        "Chuẩn hóa quy trình setup với checklist",
-      ],
-      relatedFactors: ["Kinh nghiệm", "Đào tạo", "Quy trình làm việc"],
-    },
-    {
-      id: "rc-4",
-      category: "material",
-      title: "Raw Material Variation - Biến động nguyên liệu",
-      description: "Lô nguyên liệu mới có độ cứng cao hơn 8% so với spec, ảnh hưởng đến gia công",
-      probability: 0.58,
-      impact: "high",
-      evidence: [
-        "Thay đổi nhà cung cấp từ tháng trước",
-        "Hardness test: 245 HB vs spec 227 HB",
-        "Tăng mài mòn dao cắt 25%",
-      ],
-      recommendations: [
-        "Liên hệ nhà cung cấp về spec nguyên liệu",
-        "Điều chỉnh thông số gia công cho vật liệu cứng hơn",
-        "Tăng tần suất kiểm tra incoming quality",
-      ],
-      relatedFactors: ["Nhà cung cấp", "Incoming inspection", "Thông số gia công"],
-    },
-    {
-      id: "rc-5",
-      category: "method",
-      title: "Process Parameter Drift - Trôi thông số quy trình",
-      description: "Thông số tốc độ feed đã trôi 3% so với giá trị chuẩn do không có calibration định kỳ",
-      probability: 0.52,
-      impact: "medium",
-      evidence: [
-        "Feed rate thực tế: 103% so với setting",
-        "Calibration cuối cùng: 6 tháng trước",
-        "Xu hướng CPK giảm dần theo thời gian",
-      ],
-      recommendations: [
-        "Thực hiện calibration ngay",
-        "Thiết lập lịch calibration định kỳ (hàng tháng)",
-        "Cài đặt monitoring feed rate real-time",
-      ],
-      relatedFactors: ["Calibration", "Preventive maintenance", "SPC monitoring"],
-    },
-    {
-      id: "rc-6",
-      category: "measurement",
-      title: "Gauge R&R Issue - Vấn đề hệ thống đo",
-      description: "Gauge R&R = 28% (>10% threshold), hệ thống đo đang đóng góp đáng kể vào biến động",
-      probability: 0.45,
-      impact: "medium",
-      evidence: [
-        "Gauge R&R study: 28% total variation",
-        "Repeatability: 18%, Reproducibility: 10%",
-        "Calibration certificate hết hạn 2 tháng",
-      ],
-      recommendations: [
-        "Calibrate lại thiết bị đo",
-        "Đào tạo lại kỹ thuật đo cho operators",
-        "Xem xét nâng cấp thiết bị đo chính xác hơn",
-      ],
-      relatedFactors: ["Thiết bị đo", "Kỹ thuật đo", "Môi trường đo"],
-    },
-  ];
-}
+// Mock data removed - generateMockRootCauses (data comes from tRPC or is not yet implemented)
 
-function generateMockCausalChains(): CausalChain[] {
-  return [
-    {
-      id: "chain-1",
-      name: "Tool Wear → Dimension Variation",
-      steps: [
-        { factor: "Tool age exceeded", description: "Dao cắt vượt tuổi thọ", category: "machine" },
-        { factor: "Cutting edge degradation", description: "Lưỡi cắt bị mòn", category: "machine" },
-        { factor: "Increased cutting force", description: "Lực cắt tăng", category: "method" },
-        { factor: "Dimension variation", description: "Biến động kích thước", category: "measurement" },
-        { factor: "CPK decline", description: "CPK giảm", category: "measurement" },
-      ],
-      confidence: 0.85,
-    },
-    {
-      id: "chain-2",
-      name: "Temperature → Thermal Expansion",
-      steps: [
-        { factor: "HVAC malfunction", description: "HVAC hoạt động không ổn định", category: "environment" },
-        { factor: "Temperature fluctuation", description: "Nhiệt độ dao động", category: "environment" },
-        { factor: "Thermal expansion", description: "Giãn nở nhiệt", category: "machine" },
-        { factor: "Spindle position shift", description: "Trục chính dịch chuyển", category: "machine" },
-        { factor: "Dimension error", description: "Sai số kích thước", category: "measurement" },
-      ],
-      confidence: 0.72,
-    },
-    {
-      id: "chain-3",
-      name: "Material Hardness → Tool Wear",
-      steps: [
-        { factor: "New supplier material", description: "Nguyên liệu nhà cung cấp mới", category: "material" },
-        { factor: "Higher hardness", description: "Độ cứng cao hơn", category: "material" },
-        { factor: "Accelerated tool wear", description: "Mài mòn dao nhanh hơn", category: "machine" },
-        { factor: "Surface finish degradation", description: "Chất lượng bề mặt giảm", category: "measurement" },
-        { factor: "Quality rejection", description: "Từ chối chất lượng", category: "measurement" },
-      ],
-      confidence: 0.68,
-    },
-  ];
-}
+// Mock data removed - generateMockCausalChains (data comes from tRPC or is not yet implemented)
 
 export default function AiRootCause() {
   const { language } = useLanguage();
@@ -233,8 +77,8 @@ export default function AiRootCause() {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
 
   // Mock data
-  const rootCauses = useMemo(() => generateMockRootCauses(), []);
-  const causalChains = useMemo(() => generateMockCausalChains(), []);
+  const rootCauses = useMemo(() => [], []);
+  const causalChains = useMemo(() => [], []);
 
   // Filter root causes by category
   const filteredCauses = selectedCategory === "all" 

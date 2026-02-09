@@ -13,45 +13,7 @@ import { Target, RefreshCw, Download, Brain, AlertTriangle, CheckCircle, Trendin
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ComposedChart, Bar, ReferenceLine, RadialBarChart, RadialBar, PieChart, Pie, Cell } from "recharts";
 
 // Mock OEE forecast data
-const mockOeeData = {
-  currentOee: {
-    overall: 78.5,
-    availability: 92.3,
-    performance: 88.2,
-    quality: 96.5,
-  },
-  forecast: [
-    { date: "25/12", actual: 78.5, predicted: 79.0, availability: 92.3, performance: 88.2, quality: 96.5 },
-    { date: "26/12", actual: null, predicted: 79.8, availability: 93.0, performance: 88.5, quality: 97.0 },
-    { date: "27/12", actual: null, predicted: 80.5, availability: 93.5, performance: 89.0, quality: 96.8 },
-    { date: "28/12", actual: null, predicted: 81.2, availability: 94.0, performance: 89.5, quality: 96.5 },
-    { date: "29/12", actual: null, predicted: 81.8, availability: 94.2, performance: 90.0, quality: 96.3 },
-    { date: "30/12", actual: null, predicted: 82.5, availability: 94.5, performance: 90.5, quality: 96.5 },
-    { date: "31/12", actual: null, predicted: 83.0, availability: 95.0, performance: 91.0, quality: 96.0 },
-  ],
-  byLine: [
-    { line: "Line 1", current: 82.5, forecast: 85.0, trend: "up" },
-    { line: "Line 2", current: 75.3, forecast: 78.5, trend: "up" },
-    { line: "Line 3", current: 80.1, forecast: 79.0, trend: "down" },
-    { line: "Line 4", current: 76.8, forecast: 80.2, trend: "up" },
-  ],
-  lossAnalysis: [
-    { name: "Downtime", value: 7.7, color: "#ef4444" },
-    { name: "Speed Loss", value: 11.8, color: "#f97316" },
-    { name: "Quality Loss", value: 3.5, color: "#eab308" },
-    { name: "OEE", value: 78.5, color: "#22c55e" },
-  ],
-  insights: [
-    { type: "positive", message: "OEE dự báo tăng 5.7% trong 7 ngày tới, đạt 83% vào cuối tháng." },
-    { type: "info", message: "Availability là yếu tố cải thiện nhiều nhất (+2.7%). Performance cần chú ý." },
-    { type: "warning", message: "Line 3 có xu hướng giảm OEE. Cần kiểm tra thiết bị." },
-  ],
-  recommendations: [
-    { priority: "high", action: "Bảo trì phòng ngừa Line 3", impact: "+2.5% OEE", deadline: "27/12" },
-    { priority: "medium", action: "Tối ưu tốc độ Line 2", impact: "+1.8% Performance", deadline: "29/12" },
-    { priority: "low", action: "Đào tạo vận hành Line 4", impact: "+1.2% Quality", deadline: "31/12" },
-  ],
-};
+// Mock data removed - mockOeeData (data comes from tRPC or is not yet implemented)
 
 const COLORS = ["#ef4444", "#f97316", "#eab308", "#22c55e"];
 

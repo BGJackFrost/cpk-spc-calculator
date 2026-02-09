@@ -10,37 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ScrollText, Download, RefreshCw, Search, Filter, Eye, Brain, Settings, Database, Cpu, AlertTriangle, CheckCircle, Info } from "lucide-react";
 
 // Mock audit logs data
-const mockAuditLogs = {
-  logs: [
-    { id: 1, timestamp: "25/12/2024 10:31:45", action: "model_prediction", user: "system", model: "CPK Predictor v2.1", details: "Batch prediction: 150 samples", status: "success", duration: "45ms" },
-    { id: 2, timestamp: "25/12/2024 10:30:00", action: "auto_retrain", user: "system", model: "Anomaly Detector", details: "Auto retrain triggered due to accuracy drop", status: "success", duration: "15min" },
-    { id: 3, timestamp: "25/12/2024 10:28:30", action: "threshold_update", user: "admin@example.com", model: "-", details: "CPK Warning threshold changed: 1.0 → 1.05", status: "success", duration: "120ms" },
-    { id: 4, timestamp: "25/12/2024 10:25:00", action: "data_drift_check", user: "system", model: "OEE Forecaster", details: "Drift score: 0.12 (below threshold)", status: "success", duration: "2.3s" },
-    { id: 5, timestamp: "25/12/2024 10:20:15", action: "model_deployment", user: "admin@example.com", model: "CPK Predictor v2.1", details: "Deployed to production", status: "success", duration: "5.2s" },
-    { id: 6, timestamp: "25/12/2024 10:15:00", action: "training_job", user: "system", model: "Defect Classifier", details: "Training completed: accuracy 91.2%", status: "success", duration: "45min" },
-    { id: 7, timestamp: "25/12/2024 10:10:30", action: "config_change", user: "admin@example.com", model: "-", details: "Auto retrain enabled for all models", status: "success", duration: "85ms" },
-    { id: 8, timestamp: "25/12/2024 10:05:00", action: "model_prediction", user: "system", model: "Quality Predictor", details: "Prediction failed: timeout", status: "error", duration: "30s" },
-    { id: 9, timestamp: "25/12/2024 10:00:00", action: "ab_test_update", user: "system", model: "CPK Predictor", details: "Traffic split updated: v2.0 (20%) → v2.1 (80%)", status: "success", duration: "150ms" },
-    { id: 10, timestamp: "25/12/2024 09:55:00", action: "alert_triggered", user: "system", model: "Anomaly Detector", details: "Anomaly detected in Line 2 data", status: "warning", duration: "-" },
-  ],
-  summary: {
-    total: 1250,
-    today: 156,
-    errors: 8,
-    warnings: 23,
-  },
-  actionTypes: [
-    { value: "model_prediction", label: "Model Prediction" },
-    { value: "auto_retrain", label: "Auto Retrain" },
-    { value: "threshold_update", label: "Threshold Update" },
-    { value: "data_drift_check", label: "Data Drift Check" },
-    { value: "model_deployment", label: "Model Deployment" },
-    { value: "training_job", label: "Training Job" },
-    { value: "config_change", label: "Config Change" },
-    { value: "ab_test_update", label: "A/B Test Update" },
-    { value: "alert_triggered", label: "Alert Triggered" },
-  ],
-};
+// Mock data removed - mockAuditLogs (data comes from tRPC or is not yet implemented)
 
 export default function AiAuditLogs() {
   const { toast } = useToast();

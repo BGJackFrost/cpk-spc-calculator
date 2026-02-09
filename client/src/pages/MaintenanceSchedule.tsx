@@ -71,6 +71,9 @@ export default function MaintenanceSchedule() {
       machineId: wo.machineId,
       machineName: wo.machineName || undefined,
       priority: wo.priority as "low" | "medium" | "high" | "critical",
+      progress: wo.status === "completed" ? 100 :
+               wo.status === "in_progress" ? 50 :
+               wo.status === "on_hold" ? 25 : 0,
     }));
   }, [workOrders]);
 

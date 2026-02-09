@@ -55,54 +55,9 @@ interface WebhookLog {
 }
 
 // Demo data
-const demoWebhooks: WebhookConfig[] = [
-  {
-    id: 1,
-    name: "Slack Notification",
-    url: "https://hooks.slack.com/services/xxx/yyy/zzz",
-    method: "POST",
-    events: ["cpk_alert", "oee_alert", "maintenance_due"],
-    headers: { "Content-Type": "application/json" },
-    enabled: true,
-    retryCount: 3,
-    retryDelay: 60,
-    createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-    lastTriggeredAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
-  },
-  {
-    id: 2,
-    name: "ERP Integration",
-    url: "https://erp.company.com/api/webhooks/spc",
-    method: "POST",
-    events: ["spc_analysis_complete", "quality_report"],
-    headers: { "Content-Type": "application/json", "Authorization": "Bearer xxx" },
-    secret: "whsec_xxxxx",
-    enabled: true,
-    retryCount: 5,
-    retryDelay: 120,
-    createdAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000),
-    lastTriggeredAt: new Date(Date.now() - 1 * 60 * 60 * 1000),
-  },
-  {
-    id: 3,
-    name: "Custom Analytics",
-    url: "https://analytics.company.com/ingest",
-    method: "POST",
-    events: ["machine_status_change", "production_complete"],
-    headers: { "Content-Type": "application/json" },
-    enabled: false,
-    retryCount: 2,
-    retryDelay: 30,
-    createdAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000),
-  },
-];
+// Mock data removed - demoWebhooks (data comes from tRPC or is not yet implemented)
 
-const demoLogs: WebhookLog[] = [
-  { id: 1, webhookId: 1, webhookName: "Slack Notification", event: "cpk_alert", status: "success", statusCode: 200, requestBody: '{"event":"cpk_alert","data":{"cpk":1.15}}', responseBody: '{"ok":true}', duration: 245, triggeredAt: new Date(Date.now() - 2 * 60 * 60 * 1000), completedAt: new Date(Date.now() - 2 * 60 * 60 * 1000 + 245), retryAttempt: 0 },
-  { id: 2, webhookId: 2, webhookName: "ERP Integration", event: "spc_analysis_complete", status: "success", statusCode: 200, requestBody: '{"event":"spc_analysis_complete","data":{}}', responseBody: '{"received":true}', duration: 523, triggeredAt: new Date(Date.now() - 1 * 60 * 60 * 1000), completedAt: new Date(Date.now() - 1 * 60 * 60 * 1000 + 523), retryAttempt: 0 },
-  { id: 3, webhookId: 1, webhookName: "Slack Notification", event: "oee_alert", status: "failed", statusCode: 500, requestBody: '{"event":"oee_alert","data":{"oee":68.5}}', responseBody: '{"error":"Internal error"}', duration: 1200, triggeredAt: new Date(Date.now() - 5 * 60 * 60 * 1000), completedAt: new Date(Date.now() - 5 * 60 * 60 * 1000 + 1200), retryAttempt: 3 },
-  { id: 4, webhookId: 2, webhookName: "ERP Integration", event: "quality_report", status: "retrying", requestBody: '{"event":"quality_report","data":{}}', triggeredAt: new Date(Date.now() - 10 * 60 * 1000), retryAttempt: 1 },
-];
+// Mock data removed - demoLogs (data comes from tRPC or is not yet implemented)
 
 const availableEvents = [
   { value: "cpk_alert", label: "Cảnh báo CPK" },
@@ -117,8 +72,8 @@ const availableEvents = [
 
 export default function WebhookUnified() {
   const [activeTab, setActiveTab] = useState("webhooks");
-  const [webhooks, setWebhooks] = useState<WebhookConfig[]>(demoWebhooks);
-  const [logs, setLogs] = useState<WebhookLog[]>(demoLogs);
+  const [webhooks, setWebhooks] = useState<WebhookConfig[]>([]);
+  const [logs, setLogs] = useState<WebhookLog[]>([]);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [selectedWebhook, setSelectedWebhook] = useState<WebhookConfig | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>("all");

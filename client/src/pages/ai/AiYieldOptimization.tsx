@@ -13,53 +13,7 @@ import { BarChart3, RefreshCw, Download, Brain, CheckCircle, TrendingUp, Target,
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ComposedChart, Bar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from "recharts";
 
 // Mock yield optimization data
-const mockYieldData = {
-  summary: {
-    currentYield: 94.5,
-    optimizedYield: 97.2,
-    potentialGain: 2.7,
-    estimatedSavings: 125000,
-    confidenceScore: 0.91,
-  },
-  parameters: [
-    { name: "Nhiệt độ", current: 185, optimal: 192, unit: "°C", impact: "high" },
-    { name: "Áp suất", current: 2.5, optimal: 2.8, unit: "bar", impact: "high" },
-    { name: "Tốc độ", current: 120, optimal: 115, unit: "rpm", impact: "medium" },
-    { name: "Thời gian chu kỳ", current: 45, optimal: 42, unit: "s", impact: "medium" },
-    { name: "Độ ẩm", current: 55, optimal: 50, unit: "%", impact: "low" },
-  ],
-  yieldTrend: [
-    { date: "20/12", actual: 93.8, optimized: 96.5 },
-    { date: "21/12", actual: 94.2, optimized: 96.8 },
-    { date: "22/12", actual: 94.0, optimized: 97.0 },
-    { date: "23/12", actual: 94.5, optimized: 97.2 },
-    { date: "24/12", actual: 94.3, optimized: 97.1 },
-    { date: "25/12", actual: 94.5, optimized: 97.2 },
-  ],
-  scenarios: [
-    { name: "Kịch bản 1: Tối ưu nhiệt độ", yield: 95.8, cost: 5000, roi: 2.5 },
-    { name: "Kịch bản 2: Tối ưu áp suất", yield: 96.2, cost: 8000, roi: 2.1 },
-    { name: "Kịch bản 3: Tối ưu tốc độ", yield: 95.5, cost: 3000, roi: 3.2 },
-    { name: "Kịch bản 4: Tối ưu toàn diện", yield: 97.2, cost: 15000, roi: 2.8 },
-  ],
-  radarData: [
-    { subject: "Yield", A: 94.5, B: 97.2, fullMark: 100 },
-    { subject: "Quality", A: 96.5, B: 98.0, fullMark: 100 },
-    { subject: "Speed", A: 85, B: 82, fullMark: 100 },
-    { subject: "Cost", A: 88, B: 90, fullMark: 100 },
-    { subject: "Energy", A: 75, B: 80, fullMark: 100 },
-  ],
-  insights: [
-    { type: "positive", message: "Tối ưu hóa có thể tăng năng suất 2.7%, tiết kiệm ~125,000 VND/ngày." },
-    { type: "info", message: "Nhiệt độ và áp suất là 2 yếu tố có ảnh hưởng lớn nhất đến năng suất." },
-    { type: "warning", message: "Giảm tốc độ 5 rpm sẽ tăng yield nhưng giảm throughput 3%." },
-  ],
-  recommendations: [
-    { priority: 1, action: "Tăng nhiệt độ từ 185°C lên 192°C", impact: "+1.2% yield", risk: "low" },
-    { priority: 2, action: "Điều chỉnh áp suất từ 2.5 bar lên 2.8 bar", impact: "+0.8% yield", risk: "low" },
-    { priority: 3, action: "Giảm tốc độ từ 120 rpm xuống 115 rpm", impact: "+0.5% yield", risk: "medium" },
-  ],
-};
+// Mock data removed - mockYieldData (data comes from tRPC or is not yet implemented)
 
 export default function AiYieldOptimization() {
   const { toast } = useToast();

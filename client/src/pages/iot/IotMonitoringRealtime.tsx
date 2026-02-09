@@ -83,22 +83,11 @@ const generateSensorData = (sensorId: string, type: string) => {
 };
 
 // Mock sensors
-const MOCK_SENSORS = [
-  { id: 'TEMP-001', name: 'Nhiệt độ Lò Reflow Zone 1', type: 'temperature', machine: 'Reflow Oven 1', line: 'SMT Line 1', status: 'online' },
-  { id: 'TEMP-002', name: 'Nhiệt độ Lò Reflow Zone 2', type: 'temperature', machine: 'Reflow Oven 1', line: 'SMT Line 1', status: 'online' },
-  { id: 'TEMP-003', name: 'Nhiệt độ Lò Reflow Zone 3', type: 'temperature', machine: 'Reflow Oven 1', line: 'SMT Line 1', status: 'online' },
-  { id: 'HUM-001', name: 'Độ ẩm Phòng sạch', type: 'humidity', machine: 'Clean Room', line: 'SMT Line 1', status: 'online' },
-  { id: 'PRES-001', name: 'Áp suất Khí nén', type: 'pressure', machine: 'Air Compressor', line: 'Assembly Line', status: 'online' },
-  { id: 'VOLT-001', name: 'Điện áp Nguồn chính', type: 'voltage', machine: 'Power Supply', line: 'All Lines', status: 'online' },
-  { id: 'VIB-001', name: 'Rung động Motor 1', type: 'vibration', machine: 'Pick & Place 1', line: 'SMT Line 1', status: 'warning' },
-  { id: 'VIB-002', name: 'Rung động Motor 2', type: 'vibration', machine: 'Pick & Place 2', line: 'SMT Line 2', status: 'online' },
-  { id: 'FLOW-001', name: 'Lưu lượng Flux', type: 'flow', machine: 'Wave Solder', line: 'Assembly Line', status: 'online' },
-  { id: 'NOISE-001', name: 'Tiếng ồn Khu vực A', type: 'noise', machine: 'Area A', line: 'SMT Line 1', status: 'critical' }
-];
+// Mock data removed - ([] as any[]) (data comes from tRPC or is not yet implemented)
 
 // Sensor Card Component
 const SensorCard: React.FC<{
-  sensor: typeof MOCK_SENSORS[0];
+  sensor: any;
   data: ReturnType<typeof generateSensorData>;
   history: { time: string; value: number }[];
   onExpand: () => void;
@@ -268,7 +257,7 @@ export default function IotMonitoringRealtime() {
     const initialHistory: Record<string, { time: string; value: number }[]> = {};
     const initialAlerts: Record<string, boolean> = {};
     
-    MOCK_SENSORS.forEach(sensor => {
+    ([] as any[]).forEach(sensor => {
       initialData[sensor.id] = generateSensorData(sensor.id, sensor.type);
       initialHistory[sensor.id] = Array.from({ length: 20 }, (_, i) => ({
         time: new Date(Date.now() - (19 - i) * 5000).toLocaleTimeString(),
@@ -288,7 +277,7 @@ export default function IotMonitoringRealtime() {
     const newHistory: Record<string, { time: string; value: number }[]> = {};
     const newAlerts: typeof alerts = [];
     
-    MOCK_SENSORS.forEach(sensor => {
+    ([] as any[]).forEach(sensor => {
       const data = generateSensorData(sensor.id, sensor.type);
       newData[sensor.id] = data;
       
@@ -358,7 +347,7 @@ export default function IotMonitoringRealtime() {
   
   // Filter sensors
   const filteredSensors = useMemo(() => {
-    return MOCK_SENSORS.filter(sensor => {
+    return ([] as any[]).filter(sensor => {
       if (searchQuery && !sensor.name.toLowerCase().includes(searchQuery.toLowerCase()) && 
           !sensor.id.toLowerCase().includes(searchQuery.toLowerCase())) {
         return false;
@@ -372,20 +361,20 @@ export default function IotMonitoringRealtime() {
   
   // Get unique lines
   const uniqueLines = useMemo(() => {
-    return [...new Set(MOCK_SENSORS.map(s => s.line))];
+    return [...new Set(([] as any[]).map(s => s.line))];
   }, []);
   
   // Stats
   const stats = useMemo(() => {
     let online = 0, warning = 0, critical = 0;
-    MOCK_SENSORS.forEach(sensor => {
+    ([] as any[]).forEach(sensor => {
       const data = sensorData[sensor.id];
       if (!data) return;
       if (data.value < data.min * 1.1 || data.value > data.max * 0.9) critical++;
       else if (data.value < data.lsl || data.value > data.usl) warning++;
       else online++;
     });
-    return { online, warning, critical, total: MOCK_SENSORS.length };
+    return { online, warning, critical, total: ([] as any[]).length };
   }, [sensorData]);
   
   return (

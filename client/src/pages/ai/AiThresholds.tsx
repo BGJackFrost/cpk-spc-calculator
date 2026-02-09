@@ -15,23 +15,7 @@ import { Gauge, Save, RefreshCw, Plus, Edit, Trash2, AlertTriangle, CheckCircle,
 import { trpc } from "@/lib/trpc";
 
 // Mock thresholds data
-const mockThresholdsData = {
-  thresholds: [
-    { id: 1, name: "CPK Warning", metric: "cpk", type: "warning", value: 1.0, operator: "lt", autoAdjust: true, lastAdjusted: "24/12/2024", aiSuggestion: 1.05 },
-    { id: 2, name: "CPK Critical", metric: "cpk", type: "critical", value: 0.67, operator: "lt", autoAdjust: true, lastAdjusted: "23/12/2024", aiSuggestion: 0.7 },
-    { id: 3, name: "OEE Warning", metric: "oee", type: "warning", value: 75, operator: "lt", autoAdjust: true, lastAdjusted: "24/12/2024", aiSuggestion: 78 },
-    { id: 4, name: "OEE Critical", metric: "oee", type: "critical", value: 60, operator: "lt", autoAdjust: false, lastAdjusted: "20/12/2024", aiSuggestion: null },
-    { id: 5, name: "Defect Rate Warning", metric: "defect", type: "warning", value: 3, operator: "gt", autoAdjust: true, lastAdjusted: "25/12/2024", aiSuggestion: 2.5 },
-    { id: 6, name: "Defect Rate Critical", metric: "defect", type: "critical", value: 5, operator: "gt", autoAdjust: true, lastAdjusted: "24/12/2024", aiSuggestion: 4.5 },
-    { id: 7, name: "Accuracy Drop", metric: "accuracy", type: "warning", value: 85, operator: "lt", autoAdjust: true, lastAdjusted: "23/12/2024", aiSuggestion: 87 },
-    { id: 8, name: "Data Drift", metric: "drift", type: "warning", value: 15, operator: "gt", autoAdjust: true, lastAdjusted: "24/12/2024", aiSuggestion: 12 },
-  ],
-  aiRecommendations: [
-    { metric: "CPK Warning", current: 1.0, suggested: 1.05, reason: "Dựa trên phân bố dữ liệu 30 ngày, nâng ngưỡng để phát hiện sớm hơn", confidence: 0.88 },
-    { metric: "Defect Rate Warning", current: 3, suggested: 2.5, reason: "Tỷ lệ lỗi trung bình đã giảm, cần điều chỉnh ngưỡng phù hợp", confidence: 0.92 },
-    { metric: "Data Drift", current: 15, suggested: 12, reason: "Phát hiện drift nhanh hơn để kịp thời retrain model", confidence: 0.85 },
-  ],
-};
+// Mock data removed - mockThresholdsData (data comes from tRPC or is not yet implemented)
 
 export default function AiThresholds() {
   const { toast } = useToast();

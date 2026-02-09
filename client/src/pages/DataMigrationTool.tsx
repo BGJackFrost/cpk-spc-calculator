@@ -116,18 +116,11 @@ export default function DataMigrationTool() {
     try {
       // Mock loading tables
       await new Promise(resolve => setTimeout(resolve, 1000));
-      const mockTables: TableInfo[] = [
-        { name: "measurements", rowCount: 15000, selected: true, status: "pending" },
-        { name: "products", rowCount: 50, selected: true, status: "pending" },
-        { name: "stations", rowCount: 20, selected: true, status: "pending" },
-        { name: "production_lines", rowCount: 5, selected: true, status: "pending" },
-        { name: "machines", rowCount: 30, selected: false, status: "pending" },
-        { name: "audit_logs", rowCount: 50000, selected: false, status: "pending" },
-      ];
+      // Mock data removed - mockTables (data comes from tRPC or is not yet implemented)
       setTables(mockTables);
       toast({
         title: "Thành công",
-        description: `Đã tải ${mockTables.length} bảng từ database nguồn`,
+        description: `Đã tải ${([] as any[]).length} bảng từ database nguồn`,
       });
     } catch (error: any) {
       toast({
@@ -143,13 +136,8 @@ export default function DataMigrationTool() {
   const handlePreviewTable = async (tableName: string) => {
     setPreviewTable(tableName);
     // Mock preview data
-    const mockData = Array.from({ length: 10 }, (_, i) => ({
-      id: i + 1,
-      name: `Item ${i + 1}`,
-      value: Math.random() * 100,
-      created_at: new Date().toISOString(),
-    }));
-    setPreviewData(mockData);
+    // Mock data removed - null (data comes from tRPC or is not yet implemented)
+    setPreviewData(null);
   };
 
   const handleStartMigration = async () => {
