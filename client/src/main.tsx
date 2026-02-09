@@ -10,6 +10,7 @@ import { LanguageProvider } from "./contexts/LanguageContext";
 import { SystemProvider } from "./contexts/SystemContext";
 import { LicenseAccessProvider } from "./contexts/LicenseAccessContext";
 import { PushNotificationProvider } from "./components/PushNotificationProvider";
+import { ServiceWorkerUpdater, OfflineIndicator } from "./components/ServiceWorkerUpdater";
 import "./index.css";
 
 const queryClient = new QueryClient({
@@ -93,12 +94,22 @@ const trpcClient = trpc.createClient({
   ],
 });
 
-// Register Service Worker for PWA
+// Register Service Worker for PWA with update detection
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')
       .then((registration) => {
         console.log('SW registered:', registration.scope);
+        registration.addEventListener('updatefound', () => {
+          const newWorker = registration.installing;
+          if (newWorker) {
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'activated' && navigator.serviceWorker.controller) {
+                console.log('SW updated and activated');
+              }
+            });
+          }
+        });
       })
       .catch((error) => {
         console.log('SW registration failed:', error);
@@ -114,6 +125,8 @@ createRoot(document.getElementById("root")!).render(
           <LicenseAccessProvider>
             <PushNotificationProvider>
               <App />
+              <ServiceWorkerUpdater />
+              <OfflineIndicator />
             </PushNotificationProvider>
           </LicenseAccessProvider>
         </SystemProvider>

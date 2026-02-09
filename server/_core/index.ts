@@ -18,6 +18,7 @@ import { wsServer } from "../websocket";
 import addPerformanceIndexes from "../migrations/add-performance-indexes";
 import addAdvancedIndexes from "../migrations/add-advanced-indexes";
 import compression from "compression";
+import { cspNonceMiddleware, getCSPDirectives } from "./cspNonce";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -67,20 +68,14 @@ async function startServer() {
     },
   }));
 
-  // Security headers with Helmet
+  // CSP nonce middleware — generates res.locals.cspNonce per request
+  app.use(cspNonceMiddleware);
+
+  // Security headers with Helmet (nonce-based CSP in production)
+  const isDev = process.env.NODE_ENV === 'development';
   app.use(helmet({
     contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://fonts.googleapis.com"],
-        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-        fontSrc: ["'self'", "https://fonts.gstatic.com"],
-        imgSrc: ["'self'", "data:", "blob:", "https:"],
-        connectSrc: ["'self'", "https:", "wss:"],
-        frameSrc: ["'self'"],
-        objectSrc: ["'none'"],
-        upgradeInsecureRequests: [],
-      },
+      directives: getCSPDirectives(isDev),
     },
     crossOriginEmbedderPolicy: false, // Allow embedding resources
     crossOriginResourcePolicy: { policy: "cross-origin" },

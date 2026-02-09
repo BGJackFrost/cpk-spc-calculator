@@ -38,6 +38,14 @@ export async function setupVite(app: Express, server: Server) {
         `src="/src/main.tsx"`,
         `src="/src/main.tsx?v=${nanoid()}"`
       );
+      // Inject CSP nonce into script tags (dev mode keeps unsafe-inline so nonce is optional)
+      const nonce = res.locals.cspNonce;
+      if (nonce) {
+        template = template.replace(
+          /<script(\s)/g,
+          `<script nonce="${nonce}"$1`
+        );
+      }
       const page = await vite.transformIndexHtml(url, template);
       res.status(200).set({ "Content-Type": "text/html" }).end(page);
     } catch (e) {
@@ -73,7 +81,7 @@ export function serveStatic(app: Express) {
     }
   }));
 
-  // fall through to index.html with Link preload headers for HTTP/2 push
+  // fall through to index.html with Link preload headers and CSP nonce injection
   app.use("*", (_req, res) => {
     // Add Link headers for HTTP/2 Server Push / preload hints
     if (criticalAssets.length > 0) {
@@ -83,7 +91,26 @@ export function serveStatic(app: Express) {
       });
       res.setHeader('Link', linkHeaders.join(', '));
     }
-    res.sendFile(path.resolve(distPath, "index.html"));
+
+    // In production, inject nonce into the built index.html
+    const nonce = res.locals.cspNonce;
+    const indexPath = path.resolve(distPath, "index.html");
+    if (nonce && fs.existsSync(indexPath)) {
+      let html = fs.readFileSync(indexPath, 'utf-8');
+      html = html.replace(/<script(\s)/g, `<script nonce="${nonce}"$1`);
+      if (criticalAssets.length > 0) {
+        const preloadTags = criticalAssets.map(asset => {
+          const asType = asset.endsWith('.css') ? 'style' : 'script';
+          const crossorigin = asType === 'script' ? ' crossorigin' : '';
+          return `<link rel="preload" href="${asset}" as="${asType}"${crossorigin}>`;
+        }).join('\n    ');
+        html = html.replace('</head>', `    ${preloadTags}\n  </head>`);
+      }
+      res.setHeader('Content-Type', 'text/html');
+      res.send(html);
+    } else {
+      res.sendFile(indexPath);
+    }
   });
 }
 

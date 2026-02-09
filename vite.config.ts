@@ -133,7 +133,9 @@ export default defineConfig({
     reportCompressedSize: false,
     assetsInlineLimit: 0,
     cssMinify: true,
-    modulePreload: false,
+    modulePreload: {
+      polyfill: true,
+    },
   },
   // Optimize deps - fix React unstable_now error
   optimizeDeps: {
