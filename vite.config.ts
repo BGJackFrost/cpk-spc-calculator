@@ -137,7 +137,7 @@ export default defineConfig({
       polyfill: false,
       resolveDependencies: (filename, deps) => {
         // Don't preload heavy optional chunks - they'll be loaded on demand
-        const heavyChunks = ['vendor-syntax', 'vendor-mermaid', 'vendor-3d', 'vendor-export', 'vendor-qrcode', 'vendor-pptx', 'vendor-mqtt'];
+        const heavyChunks = ['vendor-syntax', 'vendor-mermaid', 'vendor-3d', 'vendor-export', 'vendor-qrcode', 'vendor-pptx', 'vendor-mqtt', 'vendor-editor', 'vendor-html-parser', 'vendor-animation'];
         return deps.filter(dep => !heavyChunks.some(chunk => dep.includes(chunk)));
       },
     },

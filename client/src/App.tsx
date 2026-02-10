@@ -21,15 +21,19 @@ function PageLoading() {
 }
 
 // ==========================================
-// CORE PAGES - Direct imports (always loaded)
+// CORE PAGES - Minimal direct imports
 // ==========================================
-import Home from "./pages/Home";
-import LandingPage from "./pages/LandingPage";
 import LocalLogin from "./pages/LocalLogin";
 import NotFound from "./pages/NotFound";
-import Dashboard from "./pages/Dashboard";
-import Profile from "./pages/Profile";
-import About from "./pages/About";
+
+// ==========================================
+// LAZY-LOADED CORE PAGES - Code splitting
+// ==========================================
+const Home = lazy(() => import("./pages/Home"));
+const LandingPage = lazy(() => import("./pages/LandingPage"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Profile = lazy(() => import("./pages/Profile"));
+const About = lazy(() => import("./pages/About"));
 
 // ==========================================
 // LAZY-LOADED PAGES - Code splitting by module

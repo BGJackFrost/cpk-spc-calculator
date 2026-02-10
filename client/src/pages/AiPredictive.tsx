@@ -139,7 +139,7 @@ interface ForecastSummary {
 }
 
 // Generate mock historical data
-// Mock data removed - generateMockHistoricalData (data comes from tRPC or is not yet implemented)
+// Historical data now fetched from tRPC ai.history.list endpoint
 
 // Generate mock predictions
 // Mock data removed - generateMockPredictions (data comes from tRPC or is not yet implemented)
@@ -191,8 +191,20 @@ export default function AiPredictive() {
   const { data: products } = trpc.product.list.useQuery();
   const { data: stations } = trpc.workstation.list.useQuery();
 
-  // Generate data
-  const historicalData = useMemo(() => [], []);
+  // Fetch prediction history from backend
+  const { data: historyResult } = trpc.ai.history.list.useQuery({
+    predictionType: "cpk",
+    limit: 50,
+  });
+
+  const historicalData = useMemo(() => {
+    if (!historyResult?.history?.length) return [];
+    return historyResult.history.map((h: any) => ({
+      date: new Date(h.createdAt).toISOString().split('T')[0],
+      actualCpk: h.actualValue ?? h.predictedValue ?? 1.33,
+    }));
+  }, [historyResult]);
+
   const lastActualCpk = historicalData[historicalData.length - 1]?.actualCpk || 1.35;
   const { predictions, summary } = useMemo(
     () => ({ predictions: [] as any[], summary: { avgCpk: 0, minCpk: 0, maxCpk: 0, trend: 'stable' } }),

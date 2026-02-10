@@ -66,6 +66,7 @@ import { mttrMtbfPredictionRouter } from "./routers/mttrMtbfPredictionRouter";
 import { scheduledOeeReportRouter } from "./routers/scheduledOeeReportRouter";
 import { userGuideRouter } from "./routers/userGuideRouter";
 import { edgeGatewayRouter } from "./routers/edgeGatewayRouter";
+import { aiRootCauseRouter } from "./routers/aiRootCauseRouter";
 import { timeseriesRouter } from "./routers/timeseriesRouter";
 import { anomalyDetectionRouter } from "./routers/anomalyDetectionRouter";
 import { anomalyAlertRouter } from "./routers/anomalyAlertRouter";
@@ -12977,6 +12978,7 @@ Hãy trả về JSON với format:
 
   // Phase 14 - Edge Gateway, TimescaleDB, Anomaly Detection
   edgeGateway: edgeGatewayRouter,
+  aiRootCause: aiRootCauseRouter,
   timeseries: timeseriesRouter,
   anomalyDetectionAI: anomalyDetectionRouter,
 

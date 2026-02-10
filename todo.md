@@ -10597,3 +10597,15 @@
 - [x] Thêm export PDF cho OEE Period Report (oee.exportPeriodPdf endpoint + nút Xuất PDF trên UI)
 - [x] Vitest tests cho GD3 features (9 tests passed: Gantt progress, mock removal verification, PDF export logic)
 - [x] Fix AiPredictive.tsx syntax error từ mock data removal script
+
+### 3.6 Build Performance, AI/IoT Backend, OEE Weekly Report
+- [x] Tối ưu build: Lazy load Dashboard, Profile, About, Home, LandingPage, History, Mappings, Settings, Analyze trong App.tsx
+- [x] Tối ưu build: Cải thiện vite.config.ts - tách vendor chunks (editor, charts, html-parser, misc), treeshake
+- [x] Backend AI: Tạo aiRootCauseRouter với LLM-powered 5M1E analysis + fallback cho cpk_decline/high_variation/out_of_spec/trend_shift
+- [x] Backend AI: Kết nối AiPredictive.tsx với ai.history.list endpoint cho historical data
+- [x] Backend IoT: Kết nối IoTGatewayConfig.tsx với edgeGateway tRPC endpoints (list, create, update, delete)
+- [x] Backend AI: Đăng ký aiRootCause router trong routers.ts
+- [x] Scheduled job: Tích hợp processScheduledOeeReports vào scheduledJobs.ts (mỗi 5 phút check báo cáo đến hạn)
+- [x] Scheduled job: Service đã có sẵn - hỗ trợ daily/weekly/monthly frequency, notifyOwner khi gửi
+- [x] Scheduled job: Router CRUD đầy đủ (list, create, update, delete, sendNow, history)
+- [x] Vitest tests: 13 tests passed cho tất cả features mới

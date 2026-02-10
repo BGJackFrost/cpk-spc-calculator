@@ -745,6 +745,23 @@ export function initScheduledJobs(): void {
   
   console.log('[ScheduledJob] Scheduled: MTTR/MTBF reports check every 5 minutes (Asia/Ho_Chi_Minh)');
   
+  // Weekly OEE report processor - runs every 5 minutes to check for due OEE reports
+  cron.schedule('0 */5 * * * *', async () => {
+    try {
+      const { processScheduledOeeReports } = await import('./services/scheduledOeeReportService');
+      const result = await processScheduledOeeReports();
+      if (result.processed > 0) {
+        console.log(`[ScheduledJob] OEE reports processed: ${result.sent}/${result.processed} sent, ${result.failed} failed`);
+      }
+    } catch (error) {
+      console.error('[ScheduledJob] Error processing scheduled OEE reports:', error);
+    }
+  }, {
+    timezone: 'Asia/Ho_Chi_Minh'
+  });
+  
+  console.log('[ScheduledJob] Scheduled: OEE report processor every 5 minutes (Asia/Ho_Chi_Minh)');
+  
   // Cache warming on startup
   setTimeout(async () => {
     try {
