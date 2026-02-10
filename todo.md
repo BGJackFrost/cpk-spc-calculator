@@ -10609,3 +10609,10 @@
 - [x] Scheduled job: Service đã có sẵn - hỗ trợ daily/weekly/monthly frequency, notifyOwner khi gửi
 - [x] Scheduled job: Router CRUD đầy đủ (list, create, update, delete, sendNow, history)
 - [x] Vitest tests: 13 tests passed cho tất cả features mới
+### 3.7 AI Backend Completion, DB Indexes, About Page
+- [x] Refactor AnomalyDetection.tsx: kết nối với anomalyDetectionAI (listModels, stats, recentAnomalies) + anomalyAlert (getHistory, getStats, getConfigs)
+- [x] Refactor AiModelTraining.tsx: kết nối với ai.training.listJobs, ai.training.getStats, ai.models.list, ai.training.startJob mutation
+- [x] AiDashboard.tsx: đã có 5 tRPC queries, xác nhận hoạt động tốt
+- [x] Database indexes: Thêm 10 composite indexes cho machine_oee_data, work_orders, maintenance_schedules, iot_data_points
+- [x] About.tsx: Cập nhật version 4.0.0, build date 2026-02-10, thêm bảng so sánh License (Trial/Standard/Professional/Enterprise)
+- [x] Vitest tests: 20 tests passed cho tất cả GĐ3.7 features

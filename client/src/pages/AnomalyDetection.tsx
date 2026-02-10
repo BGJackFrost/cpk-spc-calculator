@@ -13,11 +13,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Progress } from "@/components/ui/progress";
 import { trpc } from "@/lib/trpc";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { toast } from "sonner";
 import {
   Brain,
   AlertTriangle,
   TrendingUp,
-  TrendingDown,
   Activity,
   Zap,
   Target,
@@ -29,108 +29,72 @@ import {
   XCircle,
   Clock,
   BarChart3,
-  LineChart,
-  ArrowUp,
-  ArrowDown,
-  Minus,
   Info,
   Lightbulb,
+  Plus,
+  Eye,
 } from "lucide-react";
-
-// Types
-interface DataPoint {
-  timestamp: Date;
-  value: number;
-  isAnomaly: boolean;
-  anomalyScore: number;
-  anomalyType?: "spike" | "dip" | "trend" | "pattern";
-}
-
-interface AnomalyAlert {
-  id: string;
-  timestamp: Date;
-  machine: string;
-  parameter: string;
-  value: number;
-  expectedRange: { min: number; max: number };
-  severity: "low" | "medium" | "high" | "critical";
-  status: "active" | "acknowledged" | "resolved";
-  rootCause?: string;
-  recommendation?: string;
-}
-
-interface TrendPrediction {
-  timestamp: Date;
-  predicted: number;
-  lower: number;
-  upper: number;
-}
-
-// Mock data generator
-// Mock data removed - generateMockData (data comes from tRPC or is not yet implemented)
-
-// Z-Score calculation
-function calculateZScore(values: number[]): { zScores: number[]; mean: number; std: number } {
-  const mean = values.reduce((a, b) => a + b, 0) / values.length;
-  const std = Math.sqrt(values.reduce((sum, v) => sum + Math.pow(v - mean, 2), 0) / values.length);
-  const zScores = values.map(v => (v - mean) / (std || 1));
-  return { zScores, mean, std };
-}
-
-// IQR calculation
-function calculateIQR(values: number[]): { q1: number; q3: number; iqr: number; lowerBound: number; upperBound: number } {
-  const sorted = [...values].sort((a, b) => a - b);
-  const q1 = sorted[Math.floor(sorted.length * 0.25)];
-  const q3 = sorted[Math.floor(sorted.length * 0.75)];
-  const iqr = q3 - q1;
-  return {
-    q1,
-    q3,
-    iqr,
-    lowerBound: q1 - 1.5 * iqr,
-    upperBound: q3 + 1.5 * iqr,
-  };
-}
-
-// Moving Average calculation
-function calculateMovingAverage(values: number[], window: number): number[] {
-  const result: number[] = [];
-  for (let i = 0; i < values.length; i++) {
-    const start = Math.max(0, i - window + 1);
-    const slice = values.slice(start, i + 1);
-    result.push(slice.reduce((a, b) => a + b, 0) / slice.length);
-  }
-  return result;
-}
 
 export default function AnomalyDetection() {
   const { translate } = useLanguage();
-  const [selectedMachine, setSelectedMachine] = useState<string>("all");
-  const [selectedParameter, setSelectedParameter] = useState<string>("all");
-  const [detectionMethod, setDetectionMethod] = useState<"zscore" | "iqr" | "ml">("zscore");
-  const [sensitivity, setSensitivity] = useState([2.5]); // Z-score threshold
+  const [selectedSeverity, setSelectedSeverity] = useState<string>("all");
   const [autoRefresh, setAutoRefresh] = useState(true);
-  const [showPredictions, setShowPredictions] = useState(true);
 
-  // Generate mock data
-  // Mock data removed - mockData (data comes from tRPC or is not yet implemented)
+  // === tRPC Queries ===
+  const { data: models, isLoading: modelsLoading, refetch: refetchModels } = trpc.anomalyDetectionAI.listModels.useQuery();
+  const { data: stats, isLoading: statsLoading } = trpc.anomalyDetectionAI.stats.useQuery({});
+  const { data: recentAnomalies, isLoading: anomaliesLoading, refetch: refetchAnomalies } = trpc.anomalyDetectionAI.recentAnomalies.useQuery({ limit: 50 });
+  const { data: alertHistory, isLoading: alertsLoading, refetch: refetchAlerts } = trpc.anomalyAlert.getHistory.useQuery({ limit: 50 });
+  const { data: alertStats } = trpc.anomalyAlert.getStats.useQuery({});
+  const { data: alertConfigs } = trpc.anomalyAlert.getConfigs.useQuery();
 
-  // Calculate statistics
-  const analysisResults = useMemo(() => {
-    const values = ([] as any[]).map(d => d.value);
-    const zScoreResult = calculateZScore(values);
-    const iqrResult = calculateIQR(values);
-    const movingAvg = calculateMovingAverage(values, 10);
+  const acknowledgeMutation = trpc.anomalyAlert.acknowledgeAlert.useMutation({
+    onSuccess: () => {
+      toast.success("Đã xác nhận cảnh báo");
+      refetchAlerts();
+    },
+    onError: (err) => toast.error(err.message),
+  });
 
-    return {
-      zScore: zScoreResult,
-      iqr: iqrResult,
-      movingAverage: movingAvg,
+  // Derived data
+  const modelsList = models || [];
+  const anomaliesList = recentAnomalies || [];
+  const alertsList = alertHistory || [];
+  const configsList = alertConfigs || [];
+
+  const activeAlerts = useMemo(() => 
+    alertsList.filter((a: any) => !a.acknowledgedAt), 
+    [alertsList]
+  );
+  const criticalAlerts = useMemo(() => 
+    alertsList.filter((a: any) => a.severity === "critical" && !a.acknowledgedAt), 
+    [alertsList]
+  );
+
+  const handleRefresh = () => {
+    refetchModels();
+    refetchAnomalies();
+    refetchAlerts();
+    toast.success("Đã làm mới dữ liệu");
+  };
+
+  const getSeverityBadge = (severity: string) => {
+    const styles: Record<string, string> = {
+      low: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
+      medium: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
+      high: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400",
+      critical: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
     };
-  }, [{ dataPoints: [], alerts: [], anomalies: [] }]);
+    return <Badge className={styles[severity] || ""}>{severity}</Badge>;
+  };
 
-  const activeAlerts = ([] as any[]).filter(a => a.status === "active");
-  const criticalAlerts = ([] as any[]).filter(a => a.severity === "critical" && a.status === "active");
+  const getStatusBadge = (status: string) => {
+    if (status === "trained") return <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">Trained</Badge>;
+    if (status === "training") return <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">Training</Badge>;
+    return <Badge variant="secondary">{status}</Badge>;
+  };
+
+  const isLoading = modelsLoading || statsLoading || anomaliesLoading || alertsLoading;
 
   return (
     <DashboardLayout>
@@ -155,17 +119,9 @@ export default function AnomalyDetection() {
               />
               <Label htmlFor="auto-refresh" className="text-sm">Auto Refresh</Label>
             </div>
-            <Button variant="outline" size="sm">
-              <RefreshCw className="h-4 w-4 mr-2" />
+            <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isLoading}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
               Refresh
-            </Button>
-            <Button variant="outline" size="sm">
-              <Download className="h-4 w-4 mr-2" />
-              Export
-            </Button>
-            <Button variant="outline" size="sm">
-              <Settings className="h-4 w-4 mr-2" />
-              Settings
             </Button>
           </div>
         </div>
@@ -177,7 +133,6 @@ export default function AnomalyDetection() {
             <AlertTitle>Critical Anomalies Detected!</AlertTitle>
             <AlertDescription>
               {criticalAlerts.length} critical anomalies require immediate attention.
-              {criticalAlerts.map(a => ` ${a.machine}: ${a.parameter}`).join(", ")}
             </AlertDescription>
           </Alert>
         )}
@@ -187,12 +142,14 @@ export default function AnomalyDetection() {
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
-                Data Points Analyzed
+                AI Models
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{0}</div>
-              <p className="text-xs text-muted-foreground mt-1">Last 24 hours</p>
+              <div className="text-2xl font-bold">{modelsList.length}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {modelsList.filter((m: any) => m.status === "trained").length} trained
+              </p>
             </CardContent>
           </Card>
 
@@ -203,10 +160,8 @@ export default function AnomalyDetection() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-orange-600">{0}</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {"0.00"}% anomaly rate
-              </p>
+              <div className="text-2xl font-bold text-orange-600">{anomaliesList.length}</div>
+              <p className="text-xs text-muted-foreground mt-1">Recent detections</p>
             </CardContent>
           </Card>
 
@@ -218,202 +173,178 @@ export default function AnomalyDetection() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-red-600">{activeAlerts.length}</div>
-              <div className="flex gap-1 mt-1">
-                {criticalAlerts.length > 0 && (
-                  <Badge variant="destructive" className="text-xs">
-                    {criticalAlerts.length} Critical
-                  </Badge>
-                )}
-              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {criticalAlerts.length} critical
+              </p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
-                CPK Trend
+                Alert Configs
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center gap-2">
-                <span className="text-2xl font-bold text-green-600">{"0.00"}</span>
-                <ArrowUp className="h-5 w-5 text-green-600" />
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">Trending up</p>
+              <div className="text-2xl font-bold">{configsList.length}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {configsList.filter((c: any) => c.isActive).length} active
+              </p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Main Content */}
-        <Tabs defaultValue="dashboard" className="space-y-4">
+        {/* Main Content Tabs */}
+        <Tabs defaultValue="models" className="space-y-4">
           <TabsList>
-            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-            <TabsTrigger value="alerts">Alerts ({activeAlerts.length})</TabsTrigger>
-            <TabsTrigger value="analysis">Analysis</TabsTrigger>
-            <TabsTrigger value="predictions">Predictions</TabsTrigger>
-            <TabsTrigger value="settings">Settings</TabsTrigger>
+            <TabsTrigger value="models">
+              <Brain className="h-4 w-4 mr-2" />
+              Models
+            </TabsTrigger>
+            <TabsTrigger value="anomalies">
+              <Zap className="h-4 w-4 mr-2" />
+              Anomalies
+            </TabsTrigger>
+            <TabsTrigger value="alerts">
+              <Bell className="h-4 w-4 mr-2" />
+              Alerts ({activeAlerts.length})
+            </TabsTrigger>
+            <TabsTrigger value="configs">
+              <Settings className="h-4 w-4 mr-2" />
+              Configs
+            </TabsTrigger>
           </TabsList>
 
-          {/* Dashboard Tab */}
-          <TabsContent value="dashboard" className="space-y-4">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              {/* Real-time Chart Placeholder */}
-              <Card className="lg:col-span-2">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <LineChart className="h-5 w-5" />
-                    Real-time Anomaly Detection
-                  </CardTitle>
-                  <CardDescription>
-                    Live monitoring with anomaly highlighting
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-[300px] bg-muted/30 rounded-lg flex items-center justify-center border-2 border-dashed">
-                    <div className="text-center text-muted-foreground">
-                      <Activity className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                      <p>Real-time chart visualization</p>
-                      <p className="text-sm">Showing {([] as any[]).length} data points</p>
-                      <p className="text-sm text-orange-600 mt-2">
-                        {0} anomalies detected (highlighted in red)
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Detection Summary */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Brain className="h-5 w-5" />
-                    Detection Summary
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span>Z-Score Method</span>
-                      <span className="text-green-600">Active</span>
-                    </div>
-                    <Progress value={75} className="h-2" />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Threshold: ±{sensitivity[0]} σ
-                    </p>
-                  </div>
-
-                  <div>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span>IQR Method</span>
-                      <span className="text-muted-foreground">Standby</span>
-                    </div>
-                    <Progress value={0} className="h-2" />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Bounds: [{analysisResults.iqr.lowerBound.toFixed(1)}, {analysisResults.iqr.upperBound.toFixed(1)}]
-                    </p>
-                  </div>
-
-                  <div>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span>ML Model</span>
-                      <span className="text-blue-600">Training</span>
-                    </div>
-                    <Progress value={45} className="h-2" />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Accuracy: 94.5%
-                    </p>
-                  </div>
-
-                  <div className="pt-4 border-t">
-                    <h4 className="font-medium mb-2">Statistics</h4>
-                    <div className="space-y-1 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Mean</span>
-                        <span>{analysisResults.zScore.mean.toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Std Dev</span>
-                        <span>{analysisResults.zScore.std.toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Q1 / Q3</span>
-                        <span>{analysisResults.iqr.q1.toFixed(1)} / {analysisResults.iqr.q3.toFixed(1)}</span>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Recent Anomalies */}
+          {/* Models Tab */}
+          <TabsContent value="models" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <AlertTriangle className="h-5 w-5 text-orange-600" />
-                  Recent Anomalies
-                </CardTitle>
+                <CardTitle>Anomaly Detection Models</CardTitle>
+                <CardDescription>Danh sách các model AI phát hiện bất thường</CardDescription>
               </CardHeader>
               <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Time</TableHead>
-                      <TableHead>Machine</TableHead>
-                      <TableHead>Parameter</TableHead>
-                      <TableHead>Value</TableHead>
-                      <TableHead>Expected</TableHead>
-                      <TableHead>Severity</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Root Cause</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {([] as any[]).slice(0, 5).map((alert) => (
-                      <TableRow key={alert.id}>
-                        <TableCell className="text-sm">
-                          {alert.timestamp.toLocaleTimeString()}
-                        </TableCell>
-                        <TableCell className="font-medium">{alert.machine}</TableCell>
-                        <TableCell>{alert.parameter}</TableCell>
-                        <TableCell className="text-red-600 font-medium">
-                          {alert.value.toFixed(2)}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {alert.expectedRange.min} - {alert.expectedRange.max}
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={
-                              alert.severity === "critical" ? "destructive" :
-                              alert.severity === "high" ? "destructive" :
-                              alert.severity === "medium" ? "default" : "secondary"
-                            }
-                          >
-                            {alert.severity}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {alert.status === "active" ? (
-                            <Badge variant="outline" className="text-red-600 border-red-600">
-                              Active
-                            </Badge>
-                          ) : alert.status === "acknowledged" ? (
-                            <Badge variant="outline" className="text-yellow-600 border-yellow-600">
-                              Acknowledged
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="text-green-600 border-green-600">
-                              Resolved
-                            </Badge>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {alert.rootCause || "-"}
-                        </TableCell>
+                {modelsLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : modelsList.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Brain className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p className="font-medium">Chưa có model nào</p>
+                    <p className="text-sm mt-1">Tạo model mới để bắt đầu phát hiện bất thường</p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Tên Model</TableHead>
+                        <TableHead>Target Type</TableHead>
+                        <TableHead>Sensor Type</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Accuracy</TableHead>
+                        <TableHead>Created</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {modelsList.map((model: any) => (
+                        <TableRow key={model.id}>
+                          <TableCell className="font-medium">{model.name}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{model.targetType}</Badge>
+                          </TableCell>
+                          <TableCell>{model.sensorType || "—"}</TableCell>
+                          <TableCell>{getStatusBadge(model.status)}</TableCell>
+                          <TableCell>
+                            {model.accuracy ? (
+                              <div className="flex items-center gap-2">
+                                <Progress value={model.accuracy * 100} className="w-16 h-2" />
+                                <span className="text-sm">{(model.accuracy * 100).toFixed(1)}%</span>
+                              </div>
+                            ) : "—"}
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {model.createdAt ? new Date(model.createdAt).toLocaleDateString("vi-VN") : "—"}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Anomalies Tab */}
+          <TabsContent value="anomalies" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Recent Anomalies</CardTitle>
+                    <CardDescription>Các bất thường được phát hiện gần đây</CardDescription>
+                  </div>
+                  <Select value={selectedSeverity} onValueChange={setSelectedSeverity}>
+                    <SelectTrigger className="w-[150px]">
+                      <SelectValue placeholder="Severity" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tất cả</SelectItem>
+                      <SelectItem value="low">Low</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="high">High</SelectItem>
+                      <SelectItem value="critical">Critical</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {anomaliesLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : anomaliesList.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <CheckCircle className="h-12 w-12 mx-auto mb-4 text-green-500 opacity-50" />
+                    <p className="font-medium">Không phát hiện bất thường</p>
+                    <p className="text-sm mt-1">Hệ thống đang hoạt động bình thường</p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Thời gian</TableHead>
+                        <TableHead>Model</TableHead>
+                        <TableHead>Device</TableHead>
+                        <TableHead>Severity</TableHead>
+                        <TableHead>Score</TableHead>
+                        <TableHead>Description</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {anomaliesList
+                        .filter((a: any) => selectedSeverity === "all" || a.severity === selectedSeverity)
+                        .map((anomaly: any) => (
+                          <TableRow key={anomaly.id}>
+                            <TableCell className="text-sm">
+                              {anomaly.detectedAt ? new Date(anomaly.detectedAt).toLocaleString("vi-VN") : "—"}
+                            </TableCell>
+                            <TableCell className="font-medium">{anomaly.modelName || `Model #${anomaly.modelId}`}</TableCell>
+                            <TableCell>{anomaly.deviceName || `Device #${anomaly.deviceId || "—"}`}</TableCell>
+                            <TableCell>{getSeverityBadge(anomaly.severity || "medium")}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <Progress value={(anomaly.anomalyScore || 0) * 100} className="w-12 h-2" />
+                                <span className="text-sm">{((anomaly.anomalyScore || 0) * 100).toFixed(0)}%</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
+                              {anomaly.description || "—"}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                    </TableBody>
+                  </Table>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -422,307 +353,178 @@ export default function AnomalyDetection() {
           <TabsContent value="alerts" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>All Anomaly Alerts</CardTitle>
-                <CardDescription>
-                  Manage and respond to detected anomalies
-                </CardDescription>
+                <CardTitle>Alert History</CardTitle>
+                <CardDescription>Lịch sử cảnh báo bất thường</CardDescription>
               </CardHeader>
               <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Time</TableHead>
-                      <TableHead>Machine</TableHead>
-                      <TableHead>Parameter</TableHead>
-                      <TableHead>Value</TableHead>
-                      <TableHead>Severity</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Recommendation</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {([] as any[]).map((alert) => (
-                      <TableRow key={alert.id}>
-                        <TableCell className="text-sm">
-                          {alert.timestamp.toLocaleString()}
-                        </TableCell>
-                        <TableCell className="font-medium">{alert.machine}</TableCell>
-                        <TableCell>{alert.parameter}</TableCell>
-                        <TableCell className="text-red-600 font-medium">
-                          {alert.value.toFixed(2)}
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={
-                              alert.severity === "critical" ? "destructive" :
-                              alert.severity === "high" ? "destructive" :
-                              alert.severity === "medium" ? "default" : "secondary"
-                            }
-                          >
-                            {alert.severity}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {alert.status === "active" ? (
-                            <Badge variant="outline" className="text-red-600 border-red-600">
-                              Active
-                            </Badge>
-                          ) : alert.status === "acknowledged" ? (
-                            <Badge variant="outline" className="text-yellow-600 border-yellow-600">
-                              Acknowledged
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="text-green-600 border-green-600">
-                              Resolved
-                            </Badge>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-sm">
-                          <div className="flex items-center gap-1">
-                            <Lightbulb className="h-3 w-3 text-yellow-600" />
-                            {alert.recommendation || "-"}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex gap-1">
-                            {alert.status === "active" && (
-                              <Button variant="outline" size="sm">
+                {alertsLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : alertsList.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Bell className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p className="font-medium">Chưa có cảnh báo nào</p>
+                    <p className="text-sm mt-1">Cấu hình alert configs để nhận cảnh báo tự động</p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Thời gian</TableHead>
+                        <TableHead>Severity</TableHead>
+                        <TableHead>Score</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {alertsList.map((alert: any) => (
+                        <TableRow key={alert.id}>
+                          <TableCell className="text-sm">
+                            {alert.triggeredAt ? new Date(alert.triggeredAt).toLocaleString("vi-VN") : "—"}
+                          </TableCell>
+                          <TableCell>{getSeverityBadge(alert.severity || "medium")}</TableCell>
+                          <TableCell>
+                            <span className="font-mono text-sm">{((alert.anomalyScore || 0) * 100).toFixed(0)}%</span>
+                          </TableCell>
+                          <TableCell>
+                            {alert.acknowledgedAt ? (
+                              <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                                <CheckCircle className="h-3 w-3 mr-1" />
+                                Acknowledged
+                              </Badge>
+                            ) : (
+                              <Badge className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
+                                <XCircle className="h-3 w-3 mr-1" />
+                                Active
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {!alert.acknowledgedAt && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => acknowledgeMutation.mutate({ alertId: alert.id })}
+                                disabled={acknowledgeMutation.isPending}
+                              >
+                                <CheckCircle className="h-3 w-3 mr-1" />
                                 Acknowledge
                               </Button>
                             )}
-                            {alert.status === "acknowledged" && (
-                              <Button variant="outline" size="sm">
-                                Resolve
-                              </Button>
-                            )}
-                          </div>
-                        </TableCell>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Alert Stats */}
+            {alertStats && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Alert Statistics</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="text-center p-3 bg-muted/50 rounded-lg">
+                      <p className="text-2xl font-bold">{(alertStats as any).total || 0}</p>
+                      <p className="text-sm text-muted-foreground">Total Alerts</p>
+                    </div>
+                    <div className="text-center p-3 bg-muted/50 rounded-lg">
+                      <p className="text-2xl font-bold text-red-600">{(alertStats as any).unacknowledged || 0}</p>
+                      <p className="text-sm text-muted-foreground">Unacknowledged</p>
+                    </div>
+                    <div className="text-center p-3 bg-muted/50 rounded-lg">
+                      <p className="text-2xl font-bold text-green-600">{(alertStats as any).acknowledged || 0}</p>
+                      <p className="text-sm text-muted-foreground">Acknowledged</p>
+                    </div>
+                    <div className="text-center p-3 bg-muted/50 rounded-lg">
+                      <p className="text-2xl font-bold text-orange-600">{(alertStats as any).critical || 0}</p>
+                      <p className="text-sm text-muted-foreground">Critical</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          {/* Configs Tab */}
+          <TabsContent value="configs" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Alert Configurations</CardTitle>
+                <CardDescription>Cấu hình ngưỡng cảnh báo và kênh thông báo</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {configsList.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Settings className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p className="font-medium">Chưa có cấu hình cảnh báo</p>
+                    <p className="text-sm mt-1">Tạo cấu hình mới để nhận thông báo khi phát hiện bất thường</p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Tên</TableHead>
+                        <TableHead>Severity Threshold</TableHead>
+                        <TableHead>Score Threshold</TableHead>
+                        <TableHead>Channels</TableHead>
+                        <TableHead>Status</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Analysis Tab */}
-          <TabsContent value="analysis" className="space-y-4">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Z-Score Analysis</CardTitle>
-                  <CardDescription>
-                    Statistical deviation from mean
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="p-4 bg-muted/30 rounded-lg">
-                      <p className="text-sm text-muted-foreground">Mean (μ)</p>
-                      <p className="text-2xl font-bold">{analysisResults.zScore.mean.toFixed(2)}</p>
-                    </div>
-                    <div className="p-4 bg-muted/30 rounded-lg">
-                      <p className="text-sm text-muted-foreground">Std Dev (σ)</p>
-                      <p className="text-2xl font-bold">{analysisResults.zScore.std.toFixed(2)}</p>
-                    </div>
-                  </div>
-                  <div>
-                    <Label>Detection Threshold (σ)</Label>
-                    <div className="flex items-center gap-4 mt-2">
-                      <Slider
-                        value={sensitivity}
-                        onValueChange={setSensitivity}
-                        min={1}
-                        max={4}
-                        step={0.1}
-                        className="flex-1"
-                      />
-                      <span className="font-mono w-12 text-right">{sensitivity[0]}σ</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Values beyond ±{sensitivity[0]}σ will be flagged as anomalies
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>IQR Analysis</CardTitle>
-                  <CardDescription>
-                    Interquartile range method
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="p-4 bg-muted/30 rounded-lg">
-                      <p className="text-sm text-muted-foreground">Q1</p>
-                      <p className="text-xl font-bold">{analysisResults.iqr.q1.toFixed(2)}</p>
-                    </div>
-                    <div className="p-4 bg-muted/30 rounded-lg">
-                      <p className="text-sm text-muted-foreground">IQR</p>
-                      <p className="text-xl font-bold">{analysisResults.iqr.iqr.toFixed(2)}</p>
-                    </div>
-                    <div className="p-4 bg-muted/30 rounded-lg">
-                      <p className="text-sm text-muted-foreground">Q3</p>
-                      <p className="text-xl font-bold">{analysisResults.iqr.q3.toFixed(2)}</p>
-                    </div>
-                  </div>
-                  <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg">
-                    <p className="text-sm font-medium">Outlier Bounds</p>
-                    <p className="text-lg">
-                      [{analysisResults.iqr.lowerBound.toFixed(2)}, {analysisResults.iqr.upperBound.toFixed(2)}]
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Values outside this range are considered outliers
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          {/* Predictions Tab */}
-          <TabsContent value="predictions" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5" />
-                  Trend Prediction (Next 24 Hours)
-                </CardTitle>
-                <CardDescription>
-                  AI-powered forecasting using moving average and pattern recognition
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[300px] bg-muted/30 rounded-lg flex items-center justify-center border-2 border-dashed">
-                  <div className="text-center text-muted-foreground">
-                    <TrendingUp className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                    <p>Prediction chart visualization</p>
-                    <p className="text-sm">Showing {0} predicted data points</p>
-                    <p className="text-sm text-blue-600 mt-2">
-                      Confidence interval: 95%
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-                  <div className="p-4 bg-muted/30 rounded-lg">
-                    <p className="text-sm text-muted-foreground">Predicted Trend</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <ArrowUp className="h-5 w-5 text-green-600" />
-                      <span className="text-xl font-bold text-green-600">Upward</span>
-                    </div>
-                  </div>
-                  <div className="p-4 bg-muted/30 rounded-lg">
-                    <p className="text-sm text-muted-foreground">Expected CPK (24h)</p>
-                    <p className="text-xl font-bold">1.52 ± 0.08</p>
-                  </div>
-                  <div className="p-4 bg-muted/30 rounded-lg">
-                    <p className="text-sm text-muted-foreground">Anomaly Probability</p>
-                    <p className="text-xl font-bold text-yellow-600">12%</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Lightbulb className="h-5 w-5 text-yellow-600" />
-                  AI Recommendations
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <Alert>
-                    <Info className="h-4 w-4" />
-                    <AlertTitle>Preventive Action Suggested</AlertTitle>
-                    <AlertDescription>
-                      Based on trend analysis, CNC-001 may require tool calibration within 48 hours to maintain CPK above 1.33.
-                    </AlertDescription>
-                  </Alert>
-                  <Alert>
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                    <AlertTitle>Process Stability</AlertTitle>
-                    <AlertDescription>
-                      SMT-001 shows excellent stability. Current process capability is well above target.
-                    </AlertDescription>
-                  </Alert>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Settings Tab */}
-          <TabsContent value="settings" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Detection Settings</CardTitle>
-                <CardDescription>
-                  Configure anomaly detection parameters
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-2">
-                  <Label>Detection Method</Label>
-                  <Select value={detectionMethod} onValueChange={(v: any) => setDetectionMethod(v)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="zscore">Z-Score (Statistical)</SelectItem>
-                      <SelectItem value="iqr">IQR (Interquartile Range)</SelectItem>
-                      <SelectItem value="ml">Machine Learning (AI)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Sensitivity Threshold</Label>
-                  <div className="flex items-center gap-4">
-                    <Slider
-                      value={sensitivity}
-                      onValueChange={setSensitivity}
-                      min={1}
-                      max={4}
-                      step={0.1}
-                      className="flex-1"
-                    />
-                    <span className="font-mono w-16 text-right">{sensitivity[0]}σ</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label>Show Predictions</Label>
-                    <p className="text-sm text-muted-foreground">Display trend predictions on charts</p>
-                  </div>
-                  <Switch
-                    checked={showPredictions}
-                    onCheckedChange={setShowPredictions}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label>Auto Refresh</Label>
-                    <p className="text-sm text-muted-foreground">Automatically update data every 30 seconds</p>
-                  </div>
-                  <Switch
-                    checked={autoRefresh}
-                    onCheckedChange={setAutoRefresh}
-                  />
-                </div>
-
-                <Button className="w-full">
-                  Save Settings
-                </Button>
+                    </TableHeader>
+                    <TableBody>
+                      {configsList.map((config: any) => (
+                        <TableRow key={config.id}>
+                          <TableCell className="font-medium">{config.name}</TableCell>
+                          <TableCell>{getSeverityBadge(config.severityThreshold || "medium")}</TableCell>
+                          <TableCell>
+                            <span className="font-mono">{((config.anomalyScoreThreshold || 0) * 100).toFixed(0)}%</span>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-1">
+                              {config.emailEnabled && <Badge variant="outline" className="text-xs">Email</Badge>}
+                              {config.telegramEnabled && <Badge variant="outline" className="text-xs">Telegram</Badge>}
+                              {config.slackEnabled && <Badge variant="outline" className="text-xs">Slack</Badge>}
+                              {!config.emailEnabled && !config.telegramEnabled && !config.slackEnabled && (
+                                <span className="text-muted-foreground text-sm">None</span>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {config.isActive ? (
+                              <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">Active</Badge>
+                            ) : (
+                              <Badge variant="secondary">Inactive</Badge>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* Info Banner */}
+        <Alert>
+          <Lightbulb className="h-4 w-4" />
+          <AlertTitle>Hướng dẫn sử dụng</AlertTitle>
+          <AlertDescription>
+            <ul className="list-disc list-inside mt-2 space-y-1 text-sm">
+              <li>Tạo model AI để phát hiện bất thường tự động từ dữ liệu sensor/SPC</li>
+              <li>Cấu hình alert configs để nhận thông báo qua Email, Telegram hoặc Slack</li>
+              <li>Sử dụng tab Anomalies để xem chi tiết các bất thường được phát hiện</li>
+              <li>Acknowledge alerts để đánh dấu đã xử lý</li>
+            </ul>
+          </AlertDescription>
+        </Alert>
       </div>
     </DashboardLayout>
   );

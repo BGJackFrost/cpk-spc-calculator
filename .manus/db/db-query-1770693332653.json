@@ -1,0 +1,9 @@
+{
+  "query": "\nCREATE INDEX IF NOT EXISTS idx_ms_machine_next ON maintenance_schedules(machineId, nextDueAt);\nCREATE INDEX IF NOT EXISTS idx_ms_active_next ON maintenance_schedules(isActive, nextDueAt);\nCREATE INDEX IF NOT EXISTS idx_iot_dp_device_ts ON iot_data_points(device_id, `timestamp`);\nCREATE INDEX IF NOT EXISTS idx_iot_dp_tag_ts ON iot_data_points(tag_type, `timestamp`);\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute \nCREATE INDEX IF NOT EXISTS idx_ms_machine_next ON maintenance_schedules(machineId, nextDueAt);\nCREATE INDEX IF NOT EXISTS idx_ms_active_next ON maintenance_schedules(isActive, nextDueAt);\nCREATE INDEX IF NOT EXISTS idx_iot_dp_device_ts ON iot_data_points(device_id, `timestamp`);\nCREATE INDEX IF NOT EXISTS idx_iot_dp_tag_ts ON iot_data_points(tag_type, `timestamp`);\n",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 4268
+}

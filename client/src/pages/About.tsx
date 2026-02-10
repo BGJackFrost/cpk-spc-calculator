@@ -27,9 +27,9 @@ import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 
-const SYSTEM_VERSION = "3.11.0";
-const BUILD_DATE = "2025-01-13";
-const BUILD_NUMBER = "phase182";
+const SYSTEM_VERSION = "4.0.0";
+const BUILD_DATE = "2026-02-10";
+const BUILD_NUMBER = "phase200-gd37";
 
 const FEATURES = [
   { icon: BarChart3, name: "Tính toán SPC/CPK", description: "Tính toán Cp, Cpk, Pp, Ppk, Ca với control chart động" },
@@ -561,6 +561,66 @@ export default function About() {
                       </div>
                     </div>
                   ))}
+                </div>
+              </CardContent>
+            </Card>
+            {/* License Comparison Table */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Layers className="h-5 w-5" />
+                  So sánh các gói License
+                </CardTitle>
+                <CardDescription>Tính năng theo từng gói license</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left py-3 px-2 font-semibold">Tính năng</th>
+                        <th className="text-center py-3 px-2"><Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">Trial</Badge></th>
+                        <th className="text-center py-3 px-2"><Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">Standard</Badge></th>
+                        <th className="text-center py-3 px-2"><Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400">Professional</Badge></th>
+                        <th className="text-center py-3 px-2"><Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">Enterprise</Badge></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[
+                        { feature: "Tính toán SPC/CPK cơ bản", trial: true, standard: true, professional: true, enterprise: true },
+                        { feature: "Control Charts (X̄-R, X̄-S)", trial: true, standard: true, professional: true, enterprise: true },
+                        { feature: "8 SPC Rules Detection", trial: true, standard: true, professional: true, enterprise: true },
+                        { feature: "Xuất Excel/PDF", trial: false, standard: true, professional: true, enterprise: true },
+                        { feature: "OEE Monitoring", trial: false, standard: true, professional: true, enterprise: true },
+                        { feature: "MMS Bảo trì", trial: false, standard: true, professional: true, enterprise: true },
+                        { feature: "Số người dùng", trial: "5", standard: "20", professional: "50", enterprise: "∞" },
+                        { feature: "Số dây chuyền", trial: "3", standard: "10", professional: "30", enterprise: "∞" },
+                        { feature: "AI Anomaly Detection", trial: false, standard: false, professional: true, enterprise: true },
+                        { feature: "AI Root Cause Analysis", trial: false, standard: false, professional: true, enterprise: true },
+                        { feature: "AI Model Training", trial: false, standard: false, professional: true, enterprise: true },
+                        { feature: "IoT Gateway Config", trial: false, standard: false, professional: true, enterprise: true },
+                        { feature: "Scheduled Reports", trial: false, standard: false, professional: true, enterprise: true },
+                        { feature: "Offline Mode", trial: false, standard: false, professional: false, enterprise: true },
+                        { feature: "Custom Integrations", trial: false, standard: false, professional: false, enterprise: true },
+                        { feature: "Priority Support", trial: false, standard: false, professional: false, enterprise: true },
+                      ].map((row, i) => (
+                        <tr key={i} className="border-b last:border-0 hover:bg-muted/50">
+                          <td className="py-2.5 px-2 font-medium">{row.feature}</td>
+                          {[row.trial, row.standard, row.professional, row.enterprise].map((val, j) => (
+                            <td key={j} className="text-center py-2.5 px-2">
+                              {typeof val === 'string' ? (
+                                <span className="font-semibold">{val}</span>
+                              ) : val ? (
+                                <CheckCircle className="h-4 w-4 text-green-500 mx-auto" />
+                              ) : (
+                                <span className="text-muted-foreground">—</span>
+                              )}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </CardContent>
             </Card>

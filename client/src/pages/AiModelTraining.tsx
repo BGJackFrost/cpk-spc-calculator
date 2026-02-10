@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -158,8 +158,45 @@ export default function AiModelTraining() {
   const [activeTab, setActiveTab] = useState("jobs");
   const [isCreatingJob, setIsCreatingJob] = useState(false);
   const [selectedJob, setSelectedJob] = useState<TrainingJob | null>(null);
-  const [trainingJobs, setTrainingJobs] = useState<TrainingJob[]>([]);
-  const [trainedModels, setTrainedModels] = useState<TrainedModel[]>([]);
+  // Real data from tRPC
+  const { data: trainingJobsData, refetch: refetchJobs } = trpc.ai.training.listJobs.useQuery({ limit: 50 });
+  const { data: trainingStatsData } = trpc.ai.training.getStats.useQuery();
+  const { data: modelsListData } = trpc.ai.models.list.useQuery({});
+
+  // Map real data to component types
+  const trainingJobs: TrainingJob[] = useMemo(() => {
+    if (!trainingJobsData) return [];
+    return (trainingJobsData as any[]).map((j: any) => ({
+      id: String(j.id),
+      modelName: j.modelName || j.name || `Job #${j.id}`,
+      modelType: j.modelType || 'cpk_prediction',
+      status: j.status || 'pending',
+      progress: j.progress || (j.status === 'completed' ? 100 : 0),
+      startedAt: j.startedAt ? new Date(j.startedAt) : new Date(j.createdAt),
+      completedAt: j.completedAt ? new Date(j.completedAt) : null,
+      dataSource: j.datasetType || j.dataSource || 'spc_analysis_history',
+      sampleCount: j.sampleCount || 0,
+      epochs: j.epochs || 100,
+      currentEpoch: j.currentEpoch || (j.status === 'completed' ? (j.epochs || 100) : 0),
+      metrics: j.metrics || { accuracy: j.accuracy || 0, loss: j.loss || 0 },
+      logs: j.logs || [],
+    }));
+  }, [trainingJobsData]);
+
+  const trainedModels: TrainedModel[] = useMemo(() => {
+    if (!modelsListData) return [];
+    return ((modelsListData as any).models || modelsListData as any[] || []).filter((m: any) => m.status === 'active' || m.status === 'trained').map((m: any) => ({
+      id: String(m.id),
+      name: m.name,
+      type: m.modelType || m.type || 'cpk_prediction',
+      version: m.version || '1.0',
+      accuracy: m.accuracy || 0,
+      trainedAt: m.trainedAt ? new Date(m.trainedAt) : new Date(m.createdAt),
+      size: m.size || '0 MB',
+      status: m.status === 'active' ? 'deployed' : 'ready',
+      description: m.description || '',
+    }));
+  }, [modelsListData]);
 
   // Form state for new training job
   const [newJobForm, setNewJobForm] = useState({
@@ -171,37 +208,17 @@ export default function AiModelTraining() {
 
   // Queries
   const { data: analysisHistory } = trpc.spc.getAnalysisHistory.useQuery({ limit: 10 });
-  const { data: aiModels } = trpc.ai.models.list.useQuery({});
-  const startTrainingMutation = trpc.ai.training.startJob.useMutation();
+  const startTrainingMutation = trpc.ai.training.startJob.useMutation({
+    onSuccess: () => refetchJobs(),
+  });
 
-  // Simulate training progress
+  // Auto-refresh training jobs every 10 seconds
   useEffect(() => {
-    const interval = setInterval(() => {
-      setTrainingJobs(prev =>
-        prev.map(job => {
-          if (job.status === "training" && job.progress < 100) {
-            const newProgress = Math.min(100, job.progress + Math.random() * 2);
-            const newEpoch = Math.floor((newProgress / 100) * job.epochs);
-            return {
-              ...job,
-              progress: newProgress,
-              currentEpoch: newEpoch,
-              metrics: {
-                ...job.metrics,
-                accuracy: Math.min(0.95, (job.metrics.accuracy || 0.7) + Math.random() * 0.005),
-                loss: Math.max(0.01, (job.metrics.loss || 0.2) - Math.random() * 0.002),
-              },
-              status: newProgress >= 100 ? "completed" : "training",
-              completedAt: newProgress >= 100 ? new Date() : null,
-            };
-          }
-          return job;
-        })
-      );
-    }, 2000);
-
+    const hasRunningJobs = trainingJobs.some(j => j.status === 'training');
+    if (!hasRunningJobs) return;
+    const interval = setInterval(() => refetchJobs(), 10000);
     return () => clearInterval(interval);
-  }, []);
+  }, [trainingJobs, refetchJobs]);
 
   // Start new training job
   const handleStartTraining = async () => {
@@ -210,27 +227,18 @@ export default function AiModelTraining() {
       return;
     }
 
-    const newJob: TrainingJob = {
-      id: `job_${Date.now()}`,
-      modelName: newJobForm.modelName,
-      modelType: newJobForm.modelType,
-      status: "training",
-      progress: 0,
-      startedAt: new Date(),
-      completedAt: null,
-      dataSource: newJobForm.dataSource,
-      sampleCount: Math.floor(Math.random() * 20000) + 5000,
-      epochs: newJobForm.epochs,
-      currentEpoch: 0,
-      metrics: { accuracy: 0.7, loss: 0.2 },
-      logs: [
-        "[INFO] Initializing training job...",
-        `[INFO] Loading data from ${newJobForm.dataSource}`,
-        `[INFO] Starting training with ${newJobForm.epochs} epochs`,
-      ],
-    };
-
-    setTrainingJobs(prev => [newJob, ...prev]);
+    try {
+      await startTrainingMutation.mutateAsync({
+        modelName: newJobForm.modelName,
+        modelType: newJobForm.modelType as any,
+        dataSource: newJobForm.dataSource,
+        epochs: newJobForm.epochs,
+      });
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to start training');
+      return;
+    }
+    refetchJobs();
     setIsCreatingJob(false);
     setNewJobForm({ modelName: "", modelType: "cpk_prediction", dataSource: "spc_analysis_history", epochs: 100 });
     toast.success(isVi ? "Đã bắt đầu training" : "Training started");
@@ -238,21 +246,14 @@ export default function AiModelTraining() {
 
   // Cancel training job
   const handleCancelJob = (jobId: string) => {
-    setTrainingJobs(prev =>
-      prev.map(job =>
-        job.id === jobId ? { ...job, status: "failed" as const, completedAt: new Date() } : job
-      )
-    );
+    // TODO: Call cancel endpoint when available
     toast.info(isVi ? "Đã hủy training" : "Training cancelled");
+    refetchJobs();
   };
 
   // Deploy model
   const handleDeployModel = (model: TrainedModel) => {
-    setTrainedModels(prev =>
-      prev.map(m =>
-        m.id === model.id ? { ...m, status: "active" as const } : m
-      )
-    );
+    // TODO: Call deploy endpoint when available
     toast.success(isVi ? `Đã deploy model ${model.name}` : `Deployed model ${model.name}`);
   };
 
