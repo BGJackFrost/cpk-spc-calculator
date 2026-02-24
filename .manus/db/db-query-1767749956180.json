@@ -1,0 +1,9 @@
+{
+  "query": "INSERT INTO iot_devices (device_code, device_name, device_type, protocol, status, is_active, last_heartbeat) \nVALUES \n('TEMP-001', 'Temperature Sensor A1', 'sensor', 'mqtt', 'online', 1, NOW()),\n('PRESS-002', 'Pressure Sensor B2', 'sensor', 'http', 'online', 1, NOW()),\n('VIB-003', 'Vibration Monitor C3', 'sensor', 'mqtt', 'error', 1, DATE_SUB(NOW(), INTERVAL 5 MINUTE)),\n('PWR-004', 'Power Meter D4', 'sensor', 'tcp', 'offline', 1, DATE_SUB(NOW(), INTERVAL 2 HOUR))\nON DUPLICATE KEY UPDATE last_heartbeat = NOW();",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute INSERT INTO iot_devices (device_code, device_name, device_type, protocol, status, is_active, last_heartbeat) \nVALUES \n('TEMP-001', 'Temperature Sensor A1', 'sensor', 'mqtt', 'online', 1, NOW()),\n('PRESS-002', 'Pressure Sensor B2', 'sensor', 'http', 'online', 1, NOW()),\n('VIB-003', 'Vibration Monitor C3', 'sensor', 'mqtt', 'error', 1, DATE_SUB(NOW(), INTERVAL 5 MINUTE)),\n('PWR-004', 'Power Meter D4', 'sensor', 'tcp', 'offline', 1, DATE_SUB(NOW(), INTERVAL 2 HOUR))\nON DUPLICATE KEY UPDATE last_heartbeat = NOW();",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1569
+}

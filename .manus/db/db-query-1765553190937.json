@@ -1,0 +1,28 @@
+{
+  "query": "SELECT * FROM licenses LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute SELECT * FROM licenses LIMIT 5;",
+  "rows": [
+    {
+      "id": "1",
+      "licenseKey": "5OLOD-CR1L9-LWKVU-LMZJO",
+      "licenseType": "trial",
+      "companyName": "BoyD",
+      "contactEmail": "dcnkid@gmail.com",
+      "maxUsers": "100",
+      "maxProductionLines": "100",
+      "maxSpcPlans": "100",
+      "features": "NULL",
+      "issuedAt": "2025-12-12 08:25:25",
+      "expiresAt": "2026-01-11 08:24:55",
+      "activatedAt": "2025-12-12 08:25:44",
+      "activatedBy": "1",
+      "isActive": "1",
+      "createdAt": "2025-12-12 08:25:25",
+      "updatedAt": "2025-12-12 08:25:44"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tlicenseKey\tlicenseType\tcompanyName\tcontactEmail\tmaxUsers\tmaxProductionLines\tmaxSpcPlans\tfeatures\tissuedAt\texpiresAt\tactivatedAt\tactivatedBy\tisActive\tcreatedAt\tupdatedAt\n1\t5OLOD-CR1L9-LWKVU-LMZJO\ttrial\tBoyD\tdcnkid@gmail.com\t100\t100\t100\tNULL\t2025-12-12 08:25:25\t2026-01-11 08:24:55\t2025-12-12 08:25:44\t1\t1\t2025-12-12 08:25:25\t2025-12-12 08:25:44\n",
+  "stderr": "",
+  "execution_time_ms": 2182
+}

@@ -1,0 +1,30 @@
+{
+  "query": "SELECT * FROM database_connections WHERE name LIKE '%Demo%' LIMIT 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute SELECT * FROM database_connections WHERE name LIKE '%Demo%' LIMIT 1;",
+  "rows": [
+    {
+      "id": "1",
+      "name": "MachineDatabase Demo",
+      "connectionString": "mysql://demo:demo123@localhost:3306/machine_db",
+      "databaseType": "mysql",
+      "description": "Demo database connection for testing",
+      "isActive": "0",
+      "createdBy": "1",
+      "createdAt": "2025-12-11 05:50:00",
+      "updatedAt": "2025-12-13 14:52:06",
+      "host": "NULL",
+      "port": "NULL",
+      "database": "NULL",
+      "username": "NULL",
+      "password": "NULL",
+      "filePath": "NULL",
+      "connectionOptions": "NULL",
+      "lastTestedAt": "NULL",
+      "lastTestStatus": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tconnectionString\tdatabaseType\tdescription\tisActive\tcreatedBy\tcreatedAt\tupdatedAt\thost\tport\tdatabase\tusername\tpassword\tfilePath\tconnectionOptions\tlastTestedAt\tlastTestStatus\n1\tMachineDatabase Demo\tmysql://demo:demo123@localhost:3306/machine_db\tmysql\tDemo database connection for testing\t0\t1\t2025-12-11 05:50:00\t2025-12-13 14:52:06\tNULL\tNULL\tNULL\tNULL\tNULL\tNULL\tNULL\tNULL\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 1517
+}

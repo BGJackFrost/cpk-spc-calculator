@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE scheduled_reports ADD COLUMN schedule_day_of_month INT, ADD COLUMN production_line_ids JSON, ADD COLUMN product_ids JSON, ADD COLUMN include_charts TINYINT DEFAULT 1, ADD COLUMN include_raw_data TINYINT DEFAULT 0, ADD COLUMN cc_recipients JSON, ADD COLUMN last_run_at TIMESTAMP NULL, ADD COLUMN last_run_status ENUM('success', 'failed', 'pending'), ADD COLUMN last_run_error TEXT, ADD COLUMN next_run_at TIMESTAMP NULL;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute ALTER TABLE scheduled_reports ADD COLUMN schedule_day_of_month INT, ADD COLUMN production_line_ids JSON, ADD COLUMN product_ids JSON, ADD COLUMN include_charts TINYINT DEFAULT 1, ADD COLUMN include_raw_data TINYINT DEFAULT 0, ADD COLUMN cc_recipients JSON, ADD COLUMN last_run_at TIMESTAMP NULL, ADD COLUMN last_run_status ENUM('success', 'failed', 'pending'), ADD COLUMN last_run_error TEXT, ADD COLUMN next_run_at TIMESTAMP NULL;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 4287
+}

@@ -1,0 +1,165 @@
+openapi: 3.0.3
+info:
+  title: CPK/SPC Calculator API
+  description: |
+    API documentation for CPK/SPC Calculator - Hệ thống tính toán và giám sát chỉ số CPK/SPC cho sản xuất công nghiệp.
+    
+    ## Tính năng chính
+    - **SPC Analysis**: Phân tích thống kê quy trình
+    - **CPK Calculation**: Tính toán chỉ số năng lực quy trình
+    - **IoT Integration**: Tích hợp thiết bị IoT
+    - **AI/ML Features**: Phát hiện bất thường và dự đoán xu hướng
+    - **License Management**: Quản lý license
+    - **ERP Integration**: Tích hợp ERP/MES
+    
+  version: 2.0.0
+  contact:
+    name: MSoftware AI Support
+    email: support@msoftware.ai
+
+servers:
+  - url: /api/trpc
+    description: tRPC API Server
+
+tags:
+  - name: SPC
+    description: Statistical Process Control operations
+  - name: CPK
+    description: Process Capability Index calculations
+  - name: IoT
+    description: IoT device management
+  - name: AI
+    description: AI/ML features
+  - name: License
+    description: License management
+  - name: ERP
+    description: ERP/MES integration
+  - name: Security
+    description: Security operations
+
+paths:
+  /spc.analyze:
+    post:
+      tags: [SPC]
+      summary: Analyze SPC data
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                mappingId:
+                  type: integer
+                startDate:
+                  type: string
+                  format: date-time
+                endDate:
+                  type: string
+                  format: date-time
+      responses:
+        '200':
+          description: SPC analysis results
+
+  /spc.calculateCpk:
+    post:
+      tags: [CPK]
+      summary: Calculate CPK index
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                measurements:
+                  type: array
+                  items:
+                    type: number
+                usl:
+                  type: number
+                lsl:
+                  type: number
+      responses:
+        '200':
+          description: CPK calculation result
+
+  /iotDashboard.listDevices:
+    get:
+      tags: [IoT]
+      summary: List IoT devices
+      responses:
+        '200':
+          description: List of IoT devices
+
+  /ai.detectAnomalies:
+    post:
+      tags: [AI]
+      summary: Detect anomalies
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                data:
+                  type: array
+                  items:
+                    type: number
+                sensitivity:
+                  type: number
+      responses:
+        '200':
+          description: Anomaly detection results
+
+  /license.activate:
+    post:
+      tags: [License]
+      summary: Activate license
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                licenseKey:
+                  type: string
+      responses:
+        '200':
+          description: License activated
+
+  /erpIntegration.sync:
+    post:
+      tags: [ERP]
+      summary: Sync with ERP
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                configId:
+                  type: integer
+                syncType:
+                  type: string
+      responses:
+        '200':
+          description: Sync completed
+
+  /security.getAuditLogs:
+    get:
+      tags: [Security]
+      summary: Get audit logs
+      responses:
+        '200':
+          description: Audit logs
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

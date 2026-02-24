@@ -1,0 +1,8 @@
+{
+  "query": "ALTER TABLE escalation_history ADD COLUMN alert_title VARCHAR(255), ADD COLUMN alert_message TEXT, ADD COLUMN max_level INT DEFAULT 3, ADD COLUMN notifications_sent INT DEFAULT 0, ADD COLUMN auto_resolved_reason TEXT, ADD COLUMN notes TEXT, ADD COLUMN metadata JSON;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute ALTER TABLE escalation_history ADD COLUMN alert_title VARCHAR(255), ADD COLUMN alert_message TEXT, ADD COLUMN max_level INT DEFAULT 3, ADD COLUMN notifications_sent INT DEFAULT 0, ADD COLUMN auto_resolved_reason TEXT, ADD COLUMN notes TEXT, ADD COLUMN metadata JSON;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1060 (42S21) at line 1: Duplicate column name 'alert_message'"
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS edge_sync_logs (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  gateway_id INT NOT NULL,\n  sync_type ENUM('full', 'incremental', 'manual') DEFAULT 'incremental',\n  started_at BIGINT NOT NULL,\n  completed_at BIGINT,\n  records_synced INT DEFAULT 0,\n  records_failed INT DEFAULT 0,\n  latency_ms INT,\n  status ENUM('running', 'completed', 'failed', 'partial') DEFAULT 'running',\n  error_message TEXT,\n  INDEX idx_sync_gateway (gateway_id),\n  INDEX idx_sync_started (started_at)\n)",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute CREATE TABLE IF NOT EXISTS edge_sync_logs (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  gateway_id INT NOT NULL,\n  sync_type ENUM('full', 'incremental', 'manual') DEFAULT 'incremental',\n  started_at BIGINT NOT NULL,\n  completed_at BIGINT,\n  records_synced INT DEFAULT 0,\n  records_failed INT DEFAULT 0,\n  latency_ms INT,\n  status ENUM('running', 'completed', 'failed', 'partial') DEFAULT 'running',\n  error_message TEXT,\n  INDEX idx_sync_gateway (gateway_id),\n  INDEX idx_sync_started (started_at)\n)",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1494
+}

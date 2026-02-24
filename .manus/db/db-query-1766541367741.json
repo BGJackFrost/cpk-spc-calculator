@@ -1,0 +1,50 @@
+{
+  "query": "SELECT COLUMN_NAME, DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'kpi_alert_stats';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute SELECT COLUMN_NAME, DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'kpi_alert_stats';",
+  "rows": [
+    {
+      "COLUMN_NAME": "id",
+      "DATA_TYPE": "int"
+    },
+    {
+      "COLUMN_NAME": "date",
+      "DATA_TYPE": "timestamp"
+    },
+    {
+      "COLUMN_NAME": "production_line_id",
+      "DATA_TYPE": "int"
+    },
+    {
+      "COLUMN_NAME": "production_line_name",
+      "DATA_TYPE": "varchar"
+    },
+    {
+      "COLUMN_NAME": "alert_type",
+      "DATA_TYPE": "varchar"
+    },
+    {
+      "COLUMN_NAME": "alert_count",
+      "DATA_TYPE": "int"
+    },
+    {
+      "COLUMN_NAME": "avg_value",
+      "DATA_TYPE": "decimal"
+    },
+    {
+      "COLUMN_NAME": "min_value",
+      "DATA_TYPE": "decimal"
+    },
+    {
+      "COLUMN_NAME": "max_value",
+      "DATA_TYPE": "decimal"
+    },
+    {
+      "COLUMN_NAME": "created_at",
+      "DATA_TYPE": "timestamp"
+    }
+  ],
+  "messages": [],
+  "stdout": "COLUMN_NAME\tDATA_TYPE\nid\tint\ndate\ttimestamp\nproduction_line_id\tint\nproduction_line_name\tvarchar\nalert_type\tvarchar\nalert_count\tint\navg_value\tdecimal\nmin_value\tdecimal\nmax_value\tdecimal\ncreated_at\ttimestamp\n",
+  "stderr": "",
+  "execution_time_ms": 1596
+}

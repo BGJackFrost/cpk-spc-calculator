@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE erp_integration_configs \nADD COLUMN IF NOT EXISTS sync_interval INT DEFAULT 3600,\nADD COLUMN IF NOT EXISTS sync_direction VARCHAR(50) DEFAULT 'bidirectional',\nADD COLUMN IF NOT EXISTS auth_type VARCHAR(50) DEFAULT 'api_key',\nADD COLUMN IF NOT EXISTS credentials TEXT,\nADD COLUMN IF NOT EXISTS mapping_config TEXT,\nADD COLUMN IF NOT EXISTS last_sync_at DATETIME,\nADD COLUMN IF NOT EXISTS last_sync_status VARCHAR(50);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute ALTER TABLE erp_integration_configs \nADD COLUMN IF NOT EXISTS sync_interval INT DEFAULT 3600,\nADD COLUMN IF NOT EXISTS sync_direction VARCHAR(50) DEFAULT 'bidirectional',\nADD COLUMN IF NOT EXISTS auth_type VARCHAR(50) DEFAULT 'api_key',\nADD COLUMN IF NOT EXISTS credentials TEXT,\nADD COLUMN IF NOT EXISTS mapping_config TEXT,\nADD COLUMN IF NOT EXISTS last_sync_at DATETIME,\nADD COLUMN IF NOT EXISTS last_sync_status VARCHAR(50);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 2418
+}

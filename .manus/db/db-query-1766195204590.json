@@ -1,0 +1,9 @@
+{
+  "query": "INSERT INTO database_connections (name, databaseType, host, port, `database`, username, connectionString, isActive, createdBy, createdAt, updatedAt) VALUES \n('Production MySQL', 'mysql', 'localhost', 3306, 'production_db', 'admin', '', 1, 1, NOW(), NOW()),\n('Development PostgreSQL', 'postgresql', 'localhost', 5432, 'dev_db', 'developer', '', 1, 1, NOW(), NOW()),\n('Test Database', 'mysql', '192.168.1.100', 3306, 'test_db', 'tester', '', 1, 1, NOW(), NOW());",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute INSERT INTO database_connections (name, databaseType, host, port, `database`, username, connectionString, isActive, createdBy, createdAt, updatedAt) VALUES \n('Production MySQL', 'mysql', 'localhost', 3306, 'production_db', 'admin', '', 1, 1, NOW(), NOW()),\n('Development PostgreSQL', 'postgresql', 'localhost', 5432, 'dev_db', 'developer', '', 1, 1, NOW(), NOW()),\n('Test Database', 'mysql', '192.168.1.100', 3306, 'test_db', 'tester', '', 1, 1, NOW(), NOW());",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1555
+}

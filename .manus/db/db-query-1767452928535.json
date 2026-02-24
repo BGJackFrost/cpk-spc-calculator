@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS latency_metrics (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  source_type VARCHAR(50) NOT NULL,\n  source_id VARCHAR(255) NOT NULL,\n  source_name VARCHAR(255),\n  latency_ms INT NOT NULL,\n  endpoint VARCHAR(500),\n  status_code INT,\n  is_success TINYINT DEFAULT 1,\n  recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n  INDEX idx_latency_source (source_type, source_id),\n  INDEX idx_latency_time (recorded_at),\n  INDEX idx_latency_type (source_type)\n)",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute CREATE TABLE IF NOT EXISTS latency_metrics (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  source_type VARCHAR(50) NOT NULL,\n  source_id VARCHAR(255) NOT NULL,\n  source_name VARCHAR(255),\n  latency_ms INT NOT NULL,\n  endpoint VARCHAR(500),\n  status_code INT,\n  is_success TINYINT DEFAULT 1,\n  recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n  INDEX idx_latency_source (source_type, source_id),\n  INDEX idx_latency_time (recorded_at),\n  INDEX idx_latency_type (source_type)\n)",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1533
+}

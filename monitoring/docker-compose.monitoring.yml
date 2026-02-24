@@ -1,0 +1,93 @@
+# =============================================================================
+# CPK/SPC Calculator - Monitoring Stack (Docker Compose)
+# =============================================================================
+# File: monitoring/docker-compose.monitoring.yml
+# Mô tả: Docker Compose cho Prometheus + Grafana + Alertmanager
+#
+# Hướng dẫn:
+# 1. Cấu hình các file YAML trong thư mục monitoring/
+# 2. Chạy: docker compose -f docker-compose.monitoring.yml up -d
+# 3. Truy cập:
+#    - Grafana:      http://localhost:3001 (admin/admin)
+#    - Prometheus:   http://localhost:9090
+#    - Alertmanager: http://localhost:9093
+# =============================================================================
+
+version: '3.8'
+
+services:
+  # ===== Prometheus =====
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    container_name: cpk-spc-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus-alerts.yml:/etc/prometheus/rules/cpk-spc-alerts.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--storage.tsdb.retention.size=10GB'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+    networks:
+      - monitoring
+
+  # ===== Grafana =====
+  grafana:
+    image: grafana/grafana:10.4.0
+    container_name: cpk-spc-grafana
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=http://localhost:3001
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
+      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/var/lib/grafana/dashboards/cpk-spc-monitoring.json
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana-dashboard.json:/var/lib/grafana/dashboards/cpk-spc-monitoring.json:ro
+      - ./grafana-provisioning/:/etc/grafana/provisioning/:ro
+    depends_on:
+      - prometheus
+    networks:
+      - monitoring
+
+  # ===== Alertmanager =====
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: cpk-spc-alertmanager
+    restart: unless-stopped
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager_data:/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+      - '--web.listen-address=:9093'
+      - '--cluster.listen-address='
+    networks:
+      - monitoring
+
+volumes:
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  alertmanager_data:
+    driver: local
+
+networks:
+  monitoring:
+    driver: bridge

@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `suppliers` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `name` varchar(255) NOT NULL,\n  `code` varchar(50) NOT NULL,\n  `contactPerson` varchar(255),\n  `email` varchar(255),\n  `phone` varchar(50),\n  `address` text,\n  `website` varchar(255),\n  `paymentTerms` varchar(100),\n  `leadTimeDays` int,\n  `rating` int DEFAULT 3,\n  `notes` text,\n  `isActive` int NOT NULL DEFAULT 1,\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  `updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  CONSTRAINT `suppliers_id` PRIMARY KEY(`id`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute CREATE TABLE IF NOT EXISTS `suppliers` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `name` varchar(255) NOT NULL,\n  `code` varchar(50) NOT NULL,\n  `contactPerson` varchar(255),\n  `email` varchar(255),\n  `phone` varchar(50),\n  `address` text,\n  `website` varchar(255),\n  `paymentTerms` varchar(100),\n  `leadTimeDays` int,\n  `rating` int DEFAULT 3,\n  `notes` text,\n  `isActive` int NOT NULL DEFAULT 1,\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  `updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  CONSTRAINT `suppliers_id` PRIMARY KEY(`id`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1678
+}

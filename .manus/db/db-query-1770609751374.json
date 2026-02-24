@@ -1,0 +1,13 @@
+{
+  "query": "SELECT COUNT(*) as cnt FROM mobile_notification_settings WHERE user_id = 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute SELECT COUNT(*) as cnt FROM mobile_notification_settings WHERE user_id = 1;",
+  "rows": [
+    {
+      "cnt": "1"
+    }
+  ],
+  "messages": [],
+  "stdout": "cnt\n1\n",
+  "stderr": "",
+  "execution_time_ms": 1531
+}

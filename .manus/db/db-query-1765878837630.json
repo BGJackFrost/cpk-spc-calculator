@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `purchase_order_items` (\n  `id` int(11) NOT NULL AUTO_INCREMENT,\n  `purchaseOrderId` int(11) NOT NULL,\n  `sparePartId` int(11) NOT NULL,\n  `quantity` int(11) NOT NULL,\n  `unitPrice` decimal(12,2) DEFAULT NULL,\n  `totalPrice` decimal(12,2) DEFAULT NULL,\n  `receivedQuantity` int(11) DEFAULT 0,\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`),\n  KEY `idx_po_items_purchaseOrderId` (`purchaseOrderId`),\n  KEY `idx_po_items_sparePartId` (`sparePartId`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute CREATE TABLE IF NOT EXISTS `purchase_order_items` (\n  `id` int(11) NOT NULL AUTO_INCREMENT,\n  `purchaseOrderId` int(11) NOT NULL,\n  `sparePartId` int(11) NOT NULL,\n  `quantity` int(11) NOT NULL,\n  `unitPrice` decimal(12,2) DEFAULT NULL,\n  `totalPrice` decimal(12,2) DEFAULT NULL,\n  `receivedQuantity` int(11) DEFAULT 0,\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`),\n  KEY `idx_po_items_purchaseOrderId` (`purchaseOrderId`),\n  KEY `idx_po_items_sparePartId` (`sparePartId`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1697
+}

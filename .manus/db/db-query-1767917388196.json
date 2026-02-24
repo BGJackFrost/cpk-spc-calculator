@@ -1,0 +1,9 @@
+{
+  "query": "CREATE INDEX IF NOT EXISTS `idx_auto_capture_user` ON `auto_capture_schedules` (`user_id`);\nCREATE INDEX IF NOT EXISTS `idx_auto_capture_status` ON `auto_capture_schedules` (`status`);\nCREATE INDEX IF NOT EXISTS `idx_auto_capture_line` ON `auto_capture_schedules` (`production_line_id`);\nCREATE INDEX IF NOT EXISTS `idx_auto_capture_workstation` ON `auto_capture_schedules` (`workstation_id`);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute CREATE INDEX IF NOT EXISTS `idx_auto_capture_user` ON `auto_capture_schedules` (`user_id`);\nCREATE INDEX IF NOT EXISTS `idx_auto_capture_status` ON `auto_capture_schedules` (`status`);\nCREATE INDEX IF NOT EXISTS `idx_auto_capture_line` ON `auto_capture_schedules` (`production_line_id`);\nCREATE INDEX IF NOT EXISTS `idx_auto_capture_workstation` ON `auto_capture_schedules` (`workstation_id`);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 3875
+}

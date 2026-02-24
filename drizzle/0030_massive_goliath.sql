@@ -1,0 +1,42 @@
+CREATE TABLE `alarm_thresholds` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`machineId` int,
+	`fixtureId` int,
+	`measurementName` varchar(100),
+	`warningUsl` int,
+	`warningLsl` int,
+	`warningCpkMin` int,
+	`criticalUsl` int,
+	`criticalLsl` int,
+	`criticalCpkMin` int,
+	`enableSpcRules` int NOT NULL DEFAULT 1,
+	`spcRuleSeverity` enum('warning','critical') DEFAULT 'warning',
+	`enableSound` int NOT NULL DEFAULT 1,
+	`enableEmail` int NOT NULL DEFAULT 0,
+	`emailRecipients` text,
+	`escalationDelayMinutes` int DEFAULT 5,
+	`escalationEmails` text,
+	`isActive` int NOT NULL DEFAULT 1,
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `alarm_thresholds_id` PRIMARY KEY(`id`)
+);
+--> statement-breakpoint
+CREATE TABLE `machine_online_status` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`machineId` int NOT NULL,
+	`connectionId` int,
+	`isOnline` int NOT NULL DEFAULT 0,
+	`lastHeartbeat` timestamp,
+	`lastDataReceived` timestamp,
+	`currentCpk` int,
+	`currentMean` int,
+	`activeAlarmCount` int NOT NULL DEFAULT 0,
+	`warningCount` int NOT NULL DEFAULT 0,
+	`criticalCount` int NOT NULL DEFAULT 0,
+	`status` enum('idle','running','warning','critical','offline') DEFAULT 'offline',
+	`statusMessage` text,
+	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `machine_online_status_id` PRIMARY KEY(`id`),
+	CONSTRAINT `machine_online_status_machineId_unique` UNIQUE(`machineId`)
+);

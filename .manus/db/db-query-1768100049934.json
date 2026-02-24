@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `inspection_remarks` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `inspection_id` int NOT NULL,\n  `remark` text NOT NULL,\n  `remark_type` enum('note','defect_detail','root_cause','corrective_action','observation') DEFAULT 'note',\n  `severity` enum('info','warning','critical') DEFAULT 'info',\n  `defect_category` varchar(100),\n  `image_urls` json,\n  `attachment_urls` json,\n  `created_by` int,\n  `created_by_name` varchar(255),\n  `created_at` timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,\n  `updated_at` timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL,\n  PRIMARY KEY (`id`),\n  INDEX `idx_inspection_remarks_inspection` (`inspection_id`),\n  INDEX `idx_inspection_remarks_type` (`remark_type`),\n  INDEX `idx_inspection_remarks_created_by` (`created_by`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute CREATE TABLE IF NOT EXISTS `inspection_remarks` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `inspection_id` int NOT NULL,\n  `remark` text NOT NULL,\n  `remark_type` enum('note','defect_detail','root_cause','corrective_action','observation') DEFAULT 'note',\n  `severity` enum('info','warning','critical') DEFAULT 'info',\n  `defect_category` varchar(100),\n  `image_urls` json,\n  `attachment_urls` json,\n  `created_by` int,\n  `created_by_name` varchar(255),\n  `created_at` timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,\n  `updated_at` timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL,\n  PRIMARY KEY (`id`),\n  INDEX `idx_inspection_remarks_inspection` (`inspection_id`),\n  INDEX `idx_inspection_remarks_type` (`remark_type`),\n  INDEX `idx_inspection_remarks_created_by` (`created_by`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1660
+}

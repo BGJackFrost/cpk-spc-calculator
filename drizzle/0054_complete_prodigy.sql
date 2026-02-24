@@ -1,0 +1,122 @@
+CREATE TABLE `machine_api_keys` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`name` varchar(255) NOT NULL,
+	`apiKey` varchar(64) NOT NULL,
+	`apiKeyHash` varchar(255) NOT NULL,
+	`vendorName` varchar(255) NOT NULL,
+	`machineType` varchar(100) NOT NULL,
+	`machineId` int,
+	`productionLineId` int,
+	`permissions` text,
+	`rateLimit` int NOT NULL DEFAULT 100,
+	`isActive` int NOT NULL DEFAULT 1,
+	`expiresAt` timestamp,
+	`lastUsedAt` timestamp,
+	`createdBy` int NOT NULL,
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `machine_api_keys_id` PRIMARY KEY(`id`),
+	CONSTRAINT `machine_api_keys_apiKey_unique` UNIQUE(`apiKey`)
+);
+--> statement-breakpoint
+CREATE TABLE `machine_data_logs` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`apiKeyId` int NOT NULL,
+	`endpoint` varchar(255) NOT NULL,
+	`method` varchar(10) NOT NULL,
+	`requestBody` text,
+	`responseStatus` int NOT NULL,
+	`responseBody` text,
+	`processingTimeMs` int,
+	`ipAddress` varchar(45),
+	`userAgent` varchar(500),
+	`errorMessage` text,
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	CONSTRAINT `machine_data_logs_id` PRIMARY KEY(`id`)
+);
+--> statement-breakpoint
+CREATE TABLE `machine_inspection_data` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`apiKeyId` int NOT NULL,
+	`machineId` int,
+	`productionLineId` int,
+	`batchId` varchar(100),
+	`productCode` varchar(100),
+	`serialNumber` varchar(100),
+	`inspectionType` varchar(50) NOT NULL,
+	`inspectionResult` varchar(20) NOT NULL,
+	`defectCount` int DEFAULT 0,
+	`defectTypes` text,
+	`defectDetails` text,
+	`imageUrls` text,
+	`inspectedAt` timestamp NOT NULL,
+	`cycleTimeMs` int,
+	`operatorId` varchar(50),
+	`shiftId` varchar(50),
+	`rawData` text,
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	CONSTRAINT `machine_inspection_data_id` PRIMARY KEY(`id`)
+);
+--> statement-breakpoint
+CREATE TABLE `machine_integration_configs` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`apiKeyId` int NOT NULL,
+	`configType` varchar(50) NOT NULL,
+	`configName` varchar(255) NOT NULL,
+	`configValue` text NOT NULL,
+	`isActive` int NOT NULL DEFAULT 1,
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `machine_integration_configs_id` PRIMARY KEY(`id`)
+);
+--> statement-breakpoint
+CREATE TABLE `machine_measurement_data` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`apiKeyId` int NOT NULL,
+	`machineId` int,
+	`productionLineId` int,
+	`batchId` varchar(100),
+	`productCode` varchar(100),
+	`serialNumber` varchar(100),
+	`parameterName` varchar(255) NOT NULL,
+	`parameterCode` varchar(100),
+	`measuredValue` decimal(15,6) NOT NULL,
+	`unit` varchar(50),
+	`lsl` decimal(15,6),
+	`usl` decimal(15,6),
+	`target` decimal(15,6),
+	`isWithinSpec` int,
+	`measuredAt` timestamp NOT NULL,
+	`operatorId` varchar(50),
+	`shiftId` varchar(50),
+	`rawData` text,
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	CONSTRAINT `machine_measurement_data_id` PRIMARY KEY(`id`)
+);
+--> statement-breakpoint
+CREATE TABLE `machine_oee_data` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`apiKeyId` int NOT NULL,
+	`machineId` int,
+	`productionLineId` int,
+	`shiftId` varchar(50),
+	`recordDate` varchar(10) NOT NULL,
+	`plannedProductionTime` int,
+	`actualProductionTime` int,
+	`downtime` int,
+	`downtimeReasons` text,
+	`idealCycleTime` decimal(10,4),
+	`actualCycleTime` decimal(10,4),
+	`totalCount` int,
+	`goodCount` int,
+	`rejectCount` int,
+	`reworkCount` int,
+	`availability` decimal(5,2),
+	`performance` decimal(5,2),
+	`quality` decimal(5,2),
+	`oee` decimal(5,2),
+	`recordedAt` timestamp NOT NULL,
+	`rawData` text,
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	CONSTRAINT `machine_oee_data_id` PRIMARY KEY(`id`)
+);

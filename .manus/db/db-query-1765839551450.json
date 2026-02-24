@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `spare_parts` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `partNumber` varchar(100) NOT NULL,\n  `name` varchar(255) NOT NULL,\n  `description` text,\n  `category` varchar(100),\n  `machineTypeId` int,\n  `supplierId` int,\n  `specifications` text,\n  `unit` varchar(50) DEFAULT 'pcs',\n  `unitPrice` decimal(12, 2),\n  `currency` varchar(10) DEFAULT 'VND',\n  `minStock` int DEFAULT 0,\n  `maxStock` int,\n  `reorderPoint` int,\n  `reorderQuantity` int,\n  `location` varchar(100),\n  `isActive` int NOT NULL DEFAULT 1,\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  `updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  CONSTRAINT `spare_parts_id` PRIMARY KEY(`id`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute CREATE TABLE IF NOT EXISTS `spare_parts` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `partNumber` varchar(100) NOT NULL,\n  `name` varchar(255) NOT NULL,\n  `description` text,\n  `category` varchar(100),\n  `machineTypeId` int,\n  `supplierId` int,\n  `specifications` text,\n  `unit` varchar(50) DEFAULT 'pcs',\n  `unitPrice` decimal(12, 2),\n  `currency` varchar(10) DEFAULT 'VND',\n  `minStock` int DEFAULT 0,\n  `maxStock` int,\n  `reorderPoint` int,\n  `reorderQuantity` int,\n  `location` varchar(100),\n  `isActive` int NOT NULL DEFAULT 1,\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  `updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  CONSTRAINT `spare_parts_id` PRIMARY KEY(`id`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1744
+}

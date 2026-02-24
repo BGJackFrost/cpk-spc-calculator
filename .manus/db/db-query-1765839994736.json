@@ -1,0 +1,9 @@
+{
+  "query": "INSERT INTO `maintenance_types` (`name`, `code`, `category`, `description`, `defaultPriority`, `estimatedDuration`, `color`) VALUES\n('Sửa chữa khẩn cấp', 'CM-EMRG', 'corrective', 'Sửa chữa khi máy hỏng đột ngột', 'critical', 120, '#ef4444'),\n('Sửa chữa thông thường', 'CM-NORM', 'corrective', 'Sửa chữa các hỏng hóc không khẩn cấp', 'medium', 60, '#f97316'),\n('Bảo trì định kỳ', 'PM-SCHD', 'preventive', 'Bảo trì theo lịch định kỳ', 'medium', 90, '#3b82f6'),\n('Bảo trì dự phòng', 'PM-PREV', 'preventive', 'Bảo trì dự phòng trước khi hỏng', 'low', 45, '#22c55e'),\n('Bảo trì dự đoán', 'PDM', 'predictive', 'Bảo trì dựa trên dữ liệu dự đoán', 'medium', 60, '#8b5cf6'),\n('Bảo trì theo tình trạng', 'CBM', 'condition_based', 'Bảo trì dựa trên tình trạng thiết bị', 'medium', 45, '#06b6d4');",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute INSERT INTO `maintenance_types` (`name`, `code`, `category`, `description`, `defaultPriority`, `estimatedDuration`, `color`) VALUES\n('Sửa chữa khẩn cấp', 'CM-EMRG', 'corrective', 'Sửa chữa khi máy hỏng đột ngột', 'critical', 120, '#ef4444'),\n('Sửa chữa thông thường', 'CM-NORM', 'corrective', 'Sửa chữa các hỏng hóc không khẩn cấp', 'medium', 60, '#f97316'),\n('Bảo trì định kỳ', 'PM-SCHD', 'preventive', 'Bảo trì theo lịch định kỳ', 'medium', 90, '#3b82f6'),\n('Bảo trì dự phòng', 'PM-PREV', 'preventive', 'Bảo trì dự phòng trước khi hỏng', 'low', 45, '#22c55e'),\n('Bảo trì dự đoán', 'PDM', 'predictive', 'Bảo trì dựa trên dữ liệu dự đoán', 'medium', 60, '#8b5cf6'),\n('Bảo trì theo tình trạng', 'CBM', 'condition_based', 'Bảo trì dựa trên tình trạng thiết bị', 'medium', 45, '#06b6d4');",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1605
+}

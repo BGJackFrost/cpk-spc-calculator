@@ -1,0 +1,15 @@
+{
+  "query": "SELECT id, code, name FROM machines WHERE code = 'MC02' OR name LIKE '%Gắn Chip%' LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute SELECT id, code, name FROM machines WHERE code = 'MC02' OR name LIKE '%Gắn Chip%' LIMIT 5;",
+  "rows": [
+    {
+      "id": "30001",
+      "code": "MC02",
+      "name": "Máy Gắn Chip SMT"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tcode\tname\n30001\tMC02\tMáy Gắn Chip SMT\n",
+  "stderr": "",
+  "execution_time_ms": 1519
+}

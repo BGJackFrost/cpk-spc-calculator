@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS firebase_device_tokens (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  user_id VARCHAR(100) NOT NULL,\n  token VARCHAR(500) NOT NULL,\n  platform ENUM('android', 'ios', 'web') NOT NULL,\n  device_name VARCHAR(255),\n  device_model VARCHAR(100),\n  app_version VARCHAR(50),\n  is_active BOOLEAN DEFAULT TRUE NOT NULL,\n  last_used_at BIGINT,\n  created_at BIGINT NOT NULL,\n  updated_at BIGINT NOT NULL,\n  INDEX idx_device_token_user (user_id),\n  INDEX idx_device_token_active (is_active),\n  INDEX idx_device_token_platform (platform)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute CREATE TABLE IF NOT EXISTS firebase_device_tokens (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  user_id VARCHAR(100) NOT NULL,\n  token VARCHAR(500) NOT NULL,\n  platform ENUM('android', 'ios', 'web') NOT NULL,\n  device_name VARCHAR(255),\n  device_model VARCHAR(100),\n  app_version VARCHAR(50),\n  is_active BOOLEAN DEFAULT TRUE NOT NULL,\n  last_used_at BIGINT,\n  created_at BIGINT NOT NULL,\n  updated_at BIGINT NOT NULL,\n  INDEX idx_device_token_user (user_id),\n  INDEX idx_device_token_active (is_active),\n  INDEX idx_device_token_platform (platform)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1529
+}

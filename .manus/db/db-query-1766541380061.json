@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE kpi_alert_stats \nADD COLUMN IF NOT EXISTS machine_id INT NULL,\nADD COLUMN IF NOT EXISTS severity VARCHAR(20) DEFAULT 'warning',\nADD COLUMN IF NOT EXISTS current_value VARCHAR(50) NULL,\nADD COLUMN IF NOT EXISTS previous_value VARCHAR(50) NULL,\nADD COLUMN IF NOT EXISTS threshold_value VARCHAR(50) NULL,\nADD COLUMN IF NOT EXISTS change_percent VARCHAR(50) NULL,\nADD COLUMN IF NOT EXISTS email_sent TINYINT DEFAULT 0,\nADD COLUMN IF NOT EXISTS notification_sent TINYINT DEFAULT 0,\nADD COLUMN IF NOT EXISTS acknowledged_by INT NULL,\nADD COLUMN IF NOT EXISTS acknowledged_at DATETIME NULL,\nADD COLUMN IF NOT EXISTS resolved_by INT NULL,\nADD COLUMN IF NOT EXISTS resolved_at DATETIME NULL,\nADD COLUMN IF NOT EXISTS resolution_notes TEXT NULL;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute ALTER TABLE kpi_alert_stats \nADD COLUMN IF NOT EXISTS machine_id INT NULL,\nADD COLUMN IF NOT EXISTS severity VARCHAR(20) DEFAULT 'warning',\nADD COLUMN IF NOT EXISTS current_value VARCHAR(50) NULL,\nADD COLUMN IF NOT EXISTS previous_value VARCHAR(50) NULL,\nADD COLUMN IF NOT EXISTS threshold_value VARCHAR(50) NULL,\nADD COLUMN IF NOT EXISTS change_percent VARCHAR(50) NULL,\nADD COLUMN IF NOT EXISTS email_sent TINYINT DEFAULT 0,\nADD COLUMN IF NOT EXISTS notification_sent TINYINT DEFAULT 0,\nADD COLUMN IF NOT EXISTS acknowledged_by INT NULL,\nADD COLUMN IF NOT EXISTS acknowledged_at DATETIME NULL,\nADD COLUMN IF NOT EXISTS resolved_by INT NULL,\nADD COLUMN IF NOT EXISTS resolved_at DATETIME NULL,\nADD COLUMN IF NOT EXISTS resolution_notes TEXT NULL;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 5472
+}

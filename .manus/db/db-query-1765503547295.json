@@ -1,0 +1,9 @@
+{
+  "query": "\nCREATE INDEX IF NOT EXISTS idx_spc_sampling_plans_status ON spc_sampling_plans(status);\nCREATE INDEX IF NOT EXISTS idx_spc_sampling_plans_production_line ON spc_sampling_plans(productionLineId);\nCREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON audit_logs(userId);\nCREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action);\nCREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(createdAt);\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute \nCREATE INDEX IF NOT EXISTS idx_spc_sampling_plans_status ON spc_sampling_plans(status);\nCREATE INDEX IF NOT EXISTS idx_spc_sampling_plans_production_line ON spc_sampling_plans(productionLineId);\nCREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON audit_logs(userId);\nCREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action);\nCREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(createdAt);\n",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 4667
+}

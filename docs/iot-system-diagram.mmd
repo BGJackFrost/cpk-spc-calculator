@@ -1,0 +1,182 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#0ea5e9', 'primaryTextColor': '#fff', 'primaryBorderColor': '#0284c7', 'lineColor': '#64748b', 'secondaryColor': '#f0f9ff', 'tertiaryColor': '#e0f2fe'}}}%%
+flowchart TB
+    subgraph DataSources["📡 NGUỒN DỮ LIỆU GỐC"]
+        direction TB
+        PLC["🔧 PLC/Controller"]
+        Sensors["🌡️ Sensors"]
+        Gateway["📶 Gateway"]
+        HMI["🖥️ HMI/SCADA"]
+        External["🌐 External API"]
+    end
+
+    subgraph Protocols["🔌 GIAO THỨC KẾT NỐI"]
+        direction TB
+        MQTT["📨 MQTT Broker"]
+        OPCUA["🔗 OPC-UA Server"]
+        Modbus["⚡ Modbus TCP/RTU"]
+        REST["🌐 REST API"]
+    end
+
+    subgraph DataCollection["📥 THU THẬP DỮ LIỆU"]
+        direction TB
+        RealtimeBuffer["⚡ Realtime Buffer"]
+        DataPoints["📊 Data Points"]
+        DeviceData["💾 Device Data"]
+    end
+
+    subgraph DeviceManagement["🔧 QUẢN LÝ THIẾT BỊ"]
+        direction TB
+        DeviceCRUD["📝 Device CRUD"]
+        DeviceGroups["📁 Device Groups"]
+        DeviceTemplates["📋 Device Templates"]
+        DeviceHealth["💚 Device Health"]
+        DevicePositions["📍 Device Positions"]
+    end
+
+    subgraph Monitoring["📊 GIÁM SÁT REALTIME"]
+        direction TB
+        RealtimeDashboard["📈 Realtime Dashboard"]
+        SensorDashboard["🌡️ Sensor Dashboard"]
+        FloorPlanView["🗺️ Floor Plan View"]
+        FloorPlan3D["🏢 3D Floor Plan"]
+        UnifiedDashboard["📊 Unified Dashboard"]
+    end
+
+    subgraph AlertSystem["🚨 HỆ THỐNG CẢNH BÁO"]
+        direction TB
+        AlarmCRUD["⚠️ Alarm CRUD"]
+        Thresholds["📏 Thresholds Config"]
+        AlertHistory["📜 Alert History"]
+        AlertEscalation["📢 Alert Escalation"]
+        AlertCorrelation["🔗 Alert Correlation"]
+    end
+
+    subgraph Notifications["📬 THÔNG BÁO"]
+        direction TB
+        Telegram["💬 Telegram"]
+        Webhook["🔔 Webhook"]
+        SMS["📱 SMS"]
+        Push["📲 Push Notification"]
+        Email["📧 Email"]
+    end
+
+    subgraph Maintenance["🔧 BẢO TRÌ"]
+        direction TB
+        WorkOrders["📋 Work Orders"]
+        Technicians["👷 Technicians"]
+        Tasks["✅ Tasks"]
+        Schedules["📅 Maintenance Schedules"]
+        PredictiveMaint["🔮 Predictive Maintenance"]
+    end
+
+    subgraph Analytics["📈 PHÂN TÍCH"]
+        direction TB
+        MTTR_MTBF["📊 MTTR/MTBF"]
+        HealthAnalysis["💚 Health Analysis"]
+        TrendAnalysis["📈 Trend Analysis"]
+        Predictions["🔮 AI Predictions"]
+        Reports["📄 Reports Export"]
+    end
+
+    subgraph FirmwareOTA["📦 FIRMWARE & OTA"]
+        direction TB
+        FirmwarePackages["📦 Firmware Packages"]
+        OTADeployments["🚀 OTA Deployments"]
+        ScheduledOTA["📅 Scheduled OTA"]
+        DeviceStatus["📊 Device Status"]
+    end
+
+    %% Data Flow from Sources to Protocols
+    PLC --> MQTT
+    PLC --> OPCUA
+    PLC --> Modbus
+    Sensors --> MQTT
+    Sensors --> Modbus
+    Gateway --> MQTT
+    Gateway --> OPCUA
+    HMI --> OPCUA
+    External --> REST
+
+    %% Protocols to Data Collection
+    MQTT --> RealtimeBuffer
+    OPCUA --> RealtimeBuffer
+    Modbus --> RealtimeBuffer
+    REST --> RealtimeBuffer
+    RealtimeBuffer --> DataPoints
+    RealtimeBuffer --> DeviceData
+
+    %% Data Collection to Device Management
+    DataPoints --> DeviceHealth
+    DeviceData --> DeviceCRUD
+    DeviceCRUD --> DeviceGroups
+    DeviceCRUD --> DeviceTemplates
+    DeviceCRUD --> DevicePositions
+
+    %% Device Management to Monitoring
+    DeviceCRUD --> RealtimeDashboard
+    DeviceHealth --> SensorDashboard
+    DevicePositions --> FloorPlanView
+    DevicePositions --> FloorPlan3D
+    DeviceHealth --> UnifiedDashboard
+
+    %% Data to Alert System
+    DataPoints --> Thresholds
+    Thresholds --> AlarmCRUD
+    AlarmCRUD --> AlertHistory
+    AlertHistory --> AlertEscalation
+    AlertEscalation --> AlertCorrelation
+
+    %% Alert System to Notifications
+    AlertEscalation --> Telegram
+    AlertEscalation --> Webhook
+    AlertEscalation --> SMS
+    AlertEscalation --> Push
+    AlertEscalation --> Email
+
+    %% Alert to Maintenance
+    AlarmCRUD --> WorkOrders
+    WorkOrders --> Technicians
+    WorkOrders --> Tasks
+    Schedules --> WorkOrders
+    PredictiveMaint --> WorkOrders
+
+    %% Device Health to Analytics
+    DeviceHealth --> MTTR_MTBF
+    DeviceHealth --> HealthAnalysis
+    DataPoints --> TrendAnalysis
+    HealthAnalysis --> Predictions
+    MTTR_MTBF --> Reports
+    TrendAnalysis --> Reports
+
+    %% Analytics to Maintenance
+    Predictions --> PredictiveMaint
+    MTTR_MTBF --> Schedules
+
+    %% Firmware OTA Flow
+    DeviceCRUD --> FirmwarePackages
+    FirmwarePackages --> OTADeployments
+    OTADeployments --> ScheduledOTA
+    OTADeployments --> DeviceStatus
+
+    %% Styling
+    classDef sourceStyle fill:#0ea5e9,stroke:#0284c7,color:#fff
+    classDef protocolStyle fill:#8b5cf6,stroke:#7c3aed,color:#fff
+    classDef dataStyle fill:#10b981,stroke:#059669,color:#fff
+    classDef deviceStyle fill:#f59e0b,stroke:#d97706,color:#fff
+    classDef monitorStyle fill:#06b6d4,stroke:#0891b2,color:#fff
+    classDef alertStyle fill:#ef4444,stroke:#dc2626,color:#fff
+    classDef notifyStyle fill:#ec4899,stroke:#db2777,color:#fff
+    classDef maintStyle fill:#84cc16,stroke:#65a30d,color:#fff
+    classDef analyticsStyle fill:#6366f1,stroke:#4f46e5,color:#fff
+    classDef otaStyle fill:#14b8a6,stroke:#0d9488,color:#fff
+
+    class PLC,Sensors,Gateway,HMI,External sourceStyle
+    class MQTT,OPCUA,Modbus,REST protocolStyle
+    class RealtimeBuffer,DataPoints,DeviceData dataStyle
+    class DeviceCRUD,DeviceGroups,DeviceTemplates,DeviceHealth,DevicePositions deviceStyle
+    class RealtimeDashboard,SensorDashboard,FloorPlanView,FloorPlan3D,UnifiedDashboard monitorStyle
+    class AlarmCRUD,Thresholds,AlertHistory,AlertEscalation,AlertCorrelation alertStyle
+    class Telegram,Webhook,SMS,Push,Email notifyStyle
+    class WorkOrders,Technicians,Tasks,Schedules,PredictiveMaint maintStyle
+    class MTTR_MTBF,HealthAnalysis,TrendAnalysis,Predictions,Reports analyticsStyle
+    class FirmwarePackages,OTADeployments,ScheduledOTA,DeviceStatus otaStyle

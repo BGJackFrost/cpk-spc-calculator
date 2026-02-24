@@ -1,0 +1,49 @@
+{
+  "query": "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'scheduled_report_logs' AND TABLE_SCHEMA = DATABASE() ORDER BY ORDINAL_POSITION;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'scheduled_report_logs' AND TABLE_SCHEMA = DATABASE() ORDER BY ORDINAL_POSITION;",
+  "rows": [
+    {
+      "COLUMN_NAME": "id"
+    },
+    {
+      "COLUMN_NAME": "reportId"
+    },
+    {
+      "COLUMN_NAME": "sentAt"
+    },
+    {
+      "COLUMN_NAME": "status"
+    },
+    {
+      "COLUMN_NAME": "recipientCount"
+    },
+    {
+      "COLUMN_NAME": "fileUrl"
+    },
+    {
+      "COLUMN_NAME": "errorMessage"
+    },
+    {
+      "COLUMN_NAME": "executionTimeMs"
+    },
+    {
+      "COLUMN_NAME": "successCount"
+    },
+    {
+      "COLUMN_NAME": "failedCount"
+    },
+    {
+      "COLUMN_NAME": "reportFileUrl"
+    },
+    {
+      "COLUMN_NAME": "reportFileSizeKb"
+    },
+    {
+      "COLUMN_NAME": "generationTimeMs"
+    }
+  ],
+  "messages": [],
+  "stdout": "COLUMN_NAME\nid\nreportId\nsentAt\nstatus\nrecipientCount\nfileUrl\nerrorMessage\nexecutionTimeMs\nsuccessCount\nfailedCount\nreportFileUrl\nreportFileSizeKb\ngenerationTimeMs\n",
+  "stderr": "",
+  "execution_time_ms": 1525
+}

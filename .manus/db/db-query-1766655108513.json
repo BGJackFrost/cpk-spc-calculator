@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `ai_feature_statistics` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `model_id` int NOT NULL,\n  `feature_name` varchar(255) NOT NULL,\n  `mean` decimal(20,10),\n  `std_dev` decimal(20,10),\n  `min` decimal(20,10),\n  `max` decimal(20,10),\n  `median` decimal(20,10),\n  `q1` decimal(20,10),\n  `q3` decimal(20,10),\n  `unique_count` int,\n  `histogram` json,\n  `is_baseline` int NOT NULL DEFAULT 0,\n  `created_at` timestamp NOT NULL DEFAULT (now()),\n  CONSTRAINT `ai_feature_statistics_id` PRIMARY KEY(`id`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute CREATE TABLE IF NOT EXISTS `ai_feature_statistics` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `model_id` int NOT NULL,\n  `feature_name` varchar(255) NOT NULL,\n  `mean` decimal(20,10),\n  `std_dev` decimal(20,10),\n  `min` decimal(20,10),\n  `max` decimal(20,10),\n  `median` decimal(20,10),\n  `q1` decimal(20,10),\n  `q3` decimal(20,10),\n  `unique_count` int,\n  `histogram` json,\n  `is_baseline` int NOT NULL DEFAULT 0,\n  `created_at` timestamp NOT NULL DEFAULT (now()),\n  CONSTRAINT `ai_feature_statistics_id` PRIMARY KEY(`id`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 3620
+}

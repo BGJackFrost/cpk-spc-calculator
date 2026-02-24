@@ -1,0 +1,9 @@
+{
+  "query": "INSERT INTO `technicians` (`employeeCode`, `name`, `email`, `phone`, `specialization`, `skillLevel`) VALUES\n('TECH001', 'Nguyễn Văn Minh', 'minh.nguyen@company.vn', '0901111111', 'Cơ khí', 'senior'),\n('TECH002', 'Trần Văn Hùng', 'hung.tran@company.vn', '0902222222', 'Điện', 'expert'),\n('TECH003', 'Lê Thị Hoa', 'hoa.le@company.vn', '0903333333', 'Tự động hóa', 'intermediate'),\n('TECH004', 'Phạm Văn Đức', 'duc.pham@company.vn', '0904444444', 'Cơ khí', 'intermediate'),\n('TECH005', 'Hoàng Văn Nam', 'nam.hoang@company.vn', '0905555555', 'Điện - Điện tử', 'junior');",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute INSERT INTO `technicians` (`employeeCode`, `name`, `email`, `phone`, `specialization`, `skillLevel`) VALUES\n('TECH001', 'Nguyễn Văn Minh', 'minh.nguyen@company.vn', '0901111111', 'Cơ khí', 'senior'),\n('TECH002', 'Trần Văn Hùng', 'hung.tran@company.vn', '0902222222', 'Điện', 'expert'),\n('TECH003', 'Lê Thị Hoa', 'hoa.le@company.vn', '0903333333', 'Tự động hóa', 'intermediate'),\n('TECH004', 'Phạm Văn Đức', 'duc.pham@company.vn', '0904444444', 'Cơ khí', 'intermediate'),\n('TECH005', 'Hoàng Văn Nam', 'nam.hoang@company.vn', '0905555555', 'Điện - Điện tử', 'junior');",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1579
+}

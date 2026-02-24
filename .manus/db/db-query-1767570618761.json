@@ -1,0 +1,9 @@
+{
+  "query": "\n-- IoT Device Groups\nCREATE TABLE IF NOT EXISTS iot_device_groups (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  name VARCHAR(100) NOT NULL,\n  description TEXT,\n  parent_group_id INT,\n  location VARCHAR(255),\n  icon VARCHAR(50) DEFAULT 'folder',\n  color VARCHAR(20) DEFAULT '#3b82f6',\n  sort_order INT DEFAULT 0,\n  is_active INT DEFAULT 1 NOT NULL,\n  created_by INT,\n  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,\n  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL,\n  INDEX idx_iot_groups_parent (parent_group_id),\n  INDEX idx_iot_groups_name (name)\n);\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute \n-- IoT Device Groups\nCREATE TABLE IF NOT EXISTS iot_device_groups (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  name VARCHAR(100) NOT NULL,\n  description TEXT,\n  parent_group_id INT,\n  location VARCHAR(255),\n  icon VARCHAR(50) DEFAULT 'folder',\n  color VARCHAR(20) DEFAULT '#3b82f6',\n  sort_order INT DEFAULT 0,\n  is_active INT DEFAULT 1 NOT NULL,\n  created_by INT,\n  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,\n  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL,\n  INDEX idx_iot_groups_parent (parent_group_id),\n  INDEX idx_iot_groups_name (name)\n);\n",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1687
+}

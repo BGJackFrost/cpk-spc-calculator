@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `iot_alarms` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `device_id` int NOT NULL,\n  `alarm_type` enum('threshold', 'connection', 'quality', 'custom') NOT NULL,\n  `severity` enum('info', 'warning', 'critical') NOT NULL DEFAULT 'warning',\n  `message` text NOT NULL,\n  `value` decimal(20, 6),\n  `threshold` decimal(20, 6),\n  `acknowledged_by` int,\n  `acknowledged_at` timestamp,\n  `resolved_at` timestamp,\n  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  CONSTRAINT `iot_alarms_id` PRIMARY KEY(`id`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute CREATE TABLE IF NOT EXISTS `iot_alarms` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `device_id` int NOT NULL,\n  `alarm_type` enum('threshold', 'connection', 'quality', 'custom') NOT NULL,\n  `severity` enum('info', 'warning', 'critical') NOT NULL DEFAULT 'warning',\n  `message` text NOT NULL,\n  `value` decimal(20, 6),\n  `threshold` decimal(20, 6),\n  `acknowledged_by` int,\n  `acknowledged_at` timestamp,\n  `resolved_at` timestamp,\n  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  CONSTRAINT `iot_alarms_id` PRIMARY KEY(`id`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1499
+}

@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `oee_records` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `machineId` int NOT NULL,\n  `productionLineId` int,\n  `shiftId` int,\n  `recordDate` timestamp NOT NULL,\n  `plannedProductionTime` int NOT NULL,\n  `actualRunTime` int NOT NULL,\n  `downtime` int DEFAULT 0,\n  `idealCycleTime` decimal(10, 4),\n  `totalCount` int DEFAULT 0,\n  `goodCount` int DEFAULT 0,\n  `defectCount` int DEFAULT 0,\n  `availability` decimal(5, 2),\n  `performance` decimal(5, 2),\n  `quality` decimal(5, 2),\n  `oee` decimal(5, 2),\n  `notes` text,\n  `createdBy` int,\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  `updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  CONSTRAINT `oee_records_id` PRIMARY KEY(`id`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute CREATE TABLE IF NOT EXISTS `oee_records` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `machineId` int NOT NULL,\n  `productionLineId` int,\n  `shiftId` int,\n  `recordDate` timestamp NOT NULL,\n  `plannedProductionTime` int NOT NULL,\n  `actualRunTime` int NOT NULL,\n  `downtime` int DEFAULT 0,\n  `idealCycleTime` decimal(10, 4),\n  `totalCount` int DEFAULT 0,\n  `goodCount` int DEFAULT 0,\n  `defectCount` int DEFAULT 0,\n  `availability` decimal(5, 2),\n  `performance` decimal(5, 2),\n  `quality` decimal(5, 2),\n  `oee` decimal(5, 2),\n  `notes` text,\n  `createdBy` int,\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  `updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  CONSTRAINT `oee_records_id` PRIMARY KEY(`id`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1598
+}

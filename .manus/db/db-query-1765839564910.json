@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `spare_parts_transactions` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `sparePartId` int NOT NULL,\n  `transactionType` enum('in', 'out', 'adjustment', 'return') NOT NULL,\n  `quantity` int NOT NULL,\n  `unitCost` decimal(12, 2),\n  `totalCost` decimal(12, 2),\n  `workOrderId` int,\n  `purchaseOrderId` int,\n  `reason` text,\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  CONSTRAINT `spare_parts_transactions_id` PRIMARY KEY(`id`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute CREATE TABLE IF NOT EXISTS `spare_parts_transactions` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `sparePartId` int NOT NULL,\n  `transactionType` enum('in', 'out', 'adjustment', 'return') NOT NULL,\n  `quantity` int NOT NULL,\n  `unitCost` decimal(12, 2),\n  `totalCost` decimal(12, 2),\n  `workOrderId` int,\n  `purchaseOrderId` int,\n  `reason` text,\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  CONSTRAINT `spare_parts_transactions_id` PRIMARY KEY(`id`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1671
+}

@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS webhook_escalation_rules (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  name VARCHAR(255) NOT NULL,\n  description TEXT,\n  source_webhook_id INT NOT NULL,\n  trigger_after_failures INT DEFAULT 3,\n  trigger_after_minutes INT DEFAULT 15,\n  level1_targets JSON,\n  level1_delay_minutes INT DEFAULT 0,\n  level2_targets JSON,\n  level2_delay_minutes INT DEFAULT 15,\n  level3_targets JSON,\n  level3_delay_minutes INT DEFAULT 30,\n  auto_resolve_on_success TINYINT DEFAULT 1,\n  notify_on_escalate TINYINT DEFAULT 1,\n  notify_on_resolve TINYINT DEFAULT 1,\n  is_active TINYINT DEFAULT 1,\n  created_by INT,\n  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP\n)",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute CREATE TABLE IF NOT EXISTS webhook_escalation_rules (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  name VARCHAR(255) NOT NULL,\n  description TEXT,\n  source_webhook_id INT NOT NULL,\n  trigger_after_failures INT DEFAULT 3,\n  trigger_after_minutes INT DEFAULT 15,\n  level1_targets JSON,\n  level1_delay_minutes INT DEFAULT 0,\n  level2_targets JSON,\n  level2_delay_minutes INT DEFAULT 15,\n  level3_targets JSON,\n  level3_delay_minutes INT DEFAULT 30,\n  auto_resolve_on_success TINYINT DEFAULT 1,\n  notify_on_escalate TINYINT DEFAULT 1,\n  notify_on_resolve TINYINT DEFAULT 1,\n  is_active TINYINT DEFAULT 1,\n  created_by INT,\n  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP\n)",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1625
+}

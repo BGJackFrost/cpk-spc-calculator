@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE permissions \nADD COLUMN IF NOT EXISTS `system` ENUM('SPC', 'MMS', 'COMMON') NOT NULL DEFAULT 'COMMON',\nADD COLUMN IF NOT EXISTS `parentId` INT NULL,\nADD COLUMN IF NOT EXISTS `sortOrder` INT DEFAULT 0;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute ALTER TABLE permissions \nADD COLUMN IF NOT EXISTS `system` ENUM('SPC', 'MMS', 'COMMON') NOT NULL DEFAULT 'COMMON',\nADD COLUMN IF NOT EXISTS `parentId` INT NULL,\nADD COLUMN IF NOT EXISTS `sortOrder` INT DEFAULT 0;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 2539
+}

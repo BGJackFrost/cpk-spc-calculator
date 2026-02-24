@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE purchase_orders \nADD COLUMN rejectedBy INT NULL,\nADD COLUMN rejectedAt TIMESTAMP NULL,\nADD COLUMN rejectionReason TEXT NULL;\n\nALTER TABLE spare_parts_transactions \nADD COLUMN exportPurpose ENUM('repair', 'borrow', 'destroy', 'normal') DEFAULT 'normal',\nADD COLUMN borrowerName VARCHAR(255) NULL,\nADD COLUMN borrowerDepartment VARCHAR(255) NULL,\nADD COLUMN expectedReturnDate TIMESTAMP NULL,\nADD COLUMN actualReturnDate TIMESTAMP NULL,\nADD COLUMN returnedQuantity INT DEFAULT 0,\nADD COLUMN returnStatus ENUM('pending', 'partial', 'completed') DEFAULT 'pending',\nADD COLUMN relatedTransactionId INT NULL;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute ALTER TABLE purchase_orders \nADD COLUMN rejectedBy INT NULL,\nADD COLUMN rejectedAt TIMESTAMP NULL,\nADD COLUMN rejectionReason TEXT NULL;\n\nALTER TABLE spare_parts_transactions \nADD COLUMN exportPurpose ENUM('repair', 'borrow', 'destroy', 'normal') DEFAULT 'normal',\nADD COLUMN borrowerName VARCHAR(255) NULL,\nADD COLUMN borrowerDepartment VARCHAR(255) NULL,\nADD COLUMN expectedReturnDate TIMESTAMP NULL,\nADD COLUMN actualReturnDate TIMESTAMP NULL,\nADD COLUMN returnedQuantity INT DEFAULT 0,\nADD COLUMN returnStatus ENUM('pending', 'partial', 'completed') DEFAULT 'pending',\nADD COLUMN relatedTransactionId INT NULL;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 4609
+}

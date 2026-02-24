@@ -1,0 +1,8 @@
+{
+  "query": "INSERT INTO iot_devices (device_id, name, type, protocol, status, location, last_seen, is_active) \nVALUES \n('TEMP-001', 'Temperature Sensor A1', 'sensor', 'mqtt', 'online', 'Production Line 1', NOW(), 1),\n('PRESS-002', 'Pressure Sensor B2', 'sensor', 'http', 'online', 'Production Line 1', NOW(), 1),\n('VIB-003', 'Vibration Monitor C3', 'sensor', 'mqtt', 'warning', 'Production Line 2', DATE_SUB(NOW(), INTERVAL 5 MINUTE), 1),\n('PWR-004', 'Power Meter D4', 'meter', 'coap', 'offline', 'Main Panel', DATE_SUB(NOW(), INTERVAL 2 HOUR), 1)\nON DUPLICATE KEY UPDATE last_seen = NOW();",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute INSERT INTO iot_devices (device_id, name, type, protocol, status, location, last_seen, is_active) \nVALUES \n('TEMP-001', 'Temperature Sensor A1', 'sensor', 'mqtt', 'online', 'Production Line 1', NOW(), 1),\n('PRESS-002', 'Pressure Sensor B2', 'sensor', 'http', 'online', 'Production Line 1', NOW(), 1),\n('VIB-003', 'Vibration Monitor C3', 'sensor', 'mqtt', 'warning', 'Production Line 2', DATE_SUB(NOW(), INTERVAL 5 MINUTE), 1),\n('PWR-004', 'Power Meter D4', 'meter', 'coap', 'offline', 'Main Panel', DATE_SUB(NOW(), INTERVAL 2 HOUR), 1)\nON DUPLICATE KEY UPDATE last_seen = NOW();",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 1: Unknown column 'device_id' in 'field list'"
+  ]
+}

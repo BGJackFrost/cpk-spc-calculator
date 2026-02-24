@@ -13,6 +13,10 @@
 - [x] Gửi thông báo cho owner/quản lý khi chỉ số CPK vượt ngưỡng cảnh báo (CPK < 1.33)
 - [x] Sử dụng LLM để phân tích xu hướng dữ liệu SPC và đưa ra khuyến nghị cải tiến
 
+## Bug Fixes
+
+- [x] Fix: Build script không tương thích với Windows (NODE_OPTIONS syntax)
+
 ## UI/UX
 
 - [x] Thiết kế giao diện elegant and perfect style
@@ -1884,7 +1888,7 @@
 - [ ] Tạo component AlarmHeatmap.tsx
 - [ ] Hiển thị mức độ alarm theo giờ/ngày cho từng máy
 - [ ] Color scale từ xanh (ít alarm) đến đỏ (nhiều alarm)
-- [ ] Tooltip hiển thị chi tiết khi hover
+- [x] Tooltip hiển thị chi tiết khi hover
 - [ ] Tích hợp vào MachineOverviewDashboard
 
 ### Group máy theo dây chuyền/khu vực
@@ -8944,9 +8948,37 @@
 - [x] Thêm routes vào App.tsx
 - [x] Thêm menu items vào systemMenu.ts (IOT_MENU)
 - [x] Thêm translations vào vi.json và en.json
+## Phase 182 - Tích hợp S3 Storage, AI Vision và Liên kết Ảnh
 
+### Tích hợp lưu ảnh vào S3 storage và database
+- [x] Cập nhật snImageRouter với tính năng upload S3
+- [x] Tạo trang SNImageUpload với giao diện upload ảnh
+- [x] Hỗ trợ upload nhiều ảnh cùng lúc
+- [x] Lưu metadata vào database (URL, fileKey, mimeType)
 
-## Phase 15 - Tích hợp dữ liệu thực, Realtime SSE, AI Vision Analysis
+### Kết nối AI comparison với backend LLM vision
+- [x] Cập nhật aiImageComparisonRouter với AI vision thực sự
+- [x] Tạo trang AIImageComparison với nhiều chế độ phân tích
+- [x] Hỗ trợ 5 loại phân tích: difference, quality, defect, measurement, similarity
+- [x] Lưu kết quả so sánh vào database
+- [x] Hiển thị lịch sử và thống kê
+
+### Liên kết ảnh với sản phẩm/dây chuyền/công trạm
+- [x] Thêm trường productId, productionLineId, workstationId vào snImages
+- [x] Tạo API lấy danh sách products, productionLines, workstations
+- [x] Cập nhật UI để chọn liên kết khi upload
+- [x] Hỗ trợ lọc ảnh theo sản phẩm/dây chuyền/công trạm
+
+### Menu và Navigation
+- [x] Thêm route /sn-image-upload và /ai-image-comparison
+- [x] Thêm menu items vào AI Vision group
+- [x] Thêm fallback labels cho Việt và English
+
+### Unit Tests
+- [x] Tạo snImageRouter.test.ts
+- [x] Tạo aiImageComparisonRouter.test.ts
+
+## Phase 182 - Tích hợp S3 Sliệu thực, Realtime SSE, AI Vision Analysis
 
 ### Tích hợp dữ liệu thực từ database
 - [x] Tạo realtimeRouter với API endpoints cho dữ liệu máy móc realtime
@@ -9662,3 +9694,925 @@
 - [x] Đường tỷ lệ đạt (%) với reference line 100%
 - [x] Bảng thống kê chi tiết theo workshop
 - [x] Tích hợp vào Dashboard
+
+## Pre-Publish Fixes
+
+- [x] Sửa lỗi test predictiveMaintenance.test.ts (mock database không hỗ trợ multiple leftJoin)
+- [x] Kiểm tra lockfile integrity (pnpm-lock.yaml)
+- [x] Xác nhận dependencies đã được cài đặt đúng
+
+
+## Phase 161 - Tối ưu hóa Cấu trúc Dự án để Build Thành công
+
+### Phân tích hiện trạng
+- Tổng số trang: 277 pages
+- Tổng số components: 131 components
+- Tổng số modules khi build: 9221 modules
+- Vấn đề: Build bị kill do thiếu memory
+
+### Các nhóm trang cần gộp/xóa
+- [ ] Gộp các trang Alert (AlertConfiguration, AlertConfigurationEnhanced, AlertConfigManagement, AlertDashboard, AlertHistory, AlertNotificationConfig, AlertThresholdConfig, AlertEmailConfig, AlertWebhookSettings) → AlertManagement
+- [ ] Gộp các trang IoT (IoTDashboard, IotDashboard, IoTEnhancedDashboard, IoTUnifiedDashboard, IotOverviewDashboard, IotRealtimeDashboard) → IoTDashboard
+- [ ] Gộp các trang License (LicenseActivation, LicenseAdmin, LicenseCustomers, LicenseDashboard, LicenseManagement, LicenseNotificationReport, LicenseRevenue, LicenseServerDashboard, LicenseServerPortal, LicenseServerSettings) → LicenseManagement
+- [ ] Gộp các trang Notification (NotificationCenter, NotificationChannelsSettings, NotificationPreferences, NotificationPreferencesPage, NotificationSettings) → NotificationSettings
+- [ ] Gộp các trang Scheduled Reports (ScheduledCpkJobs, ScheduledEmailReports, ScheduledJobsManagement, ScheduledKpiReports, ScheduledKpiReportsPage, ScheduledMttrMtbfReports, ScheduledOeeReports, ScheduledReportManagement, ScheduledReports) → ScheduledReports
+- [ ] Gộp các trang Webhook (WebhookEscalationPage, WebhookHistoryManagement, WebhookManagement, WebhookSettings, WebhookTemplates, UnifiedWebhooks) → WebhookManagement
+- [x] Xóa các trang duplicate/không sử dụng (giảm từ 277 xuống 197 trang)
+- [x] Tối ưu lazy loading trong App.tsx (đã viết lại hoàn toàn)
+- [x] Cấu hình Vite để giảm memory usage (tắt minify, cssMinify)
+
+
+
+## Phase 162 - Gộp Modules và Tạo Dữ liệu Test AVI/AOI
+
+### Gộp các trang tương tự để giảm modules
+- [ ] Gộp các trang Alert (AlertConfiguration, AlertDashboard, AlertHistory, AlertNotificationConfig, AlertThresholdConfig) → AlertUnified
+- [ ] Gộp các trang License (LicenseActivation, LicenseAdmin, LicenseDashboard, LicenseManagement, LicenseNotificationReport, LicenseServerSettings) → LicenseUnified
+- [ ] Gộp các trang Notification (NotificationPreferences, NotificationSettings) → NotificationUnified
+- [ ] Gộp các trang Webhook (WebhookManagement, WebhookSettings) → WebhookUnified
+
+### Tạo dữ liệu test cho AVI/AOI
+- [ ] Tạo script seed dữ liệu inspection cho AVI/AOI
+- [ ] Seed dữ liệu reference images
+- [ ] Seed dữ liệu inspection history
+- [ ] Seed dữ liệu defect samples
+
+### Kiểm tra các trang mới
+- [ ] Test trang InspectionHistory
+- [ ] Test trang ReferenceImageManagement
+
+
+## Phase 162.1 - Gộp Modules và Tạo Dữ liệu Test AVI/AOI (Hoàn thành)
+
+### Gộp các trang tương tự
+- [x] Tạo AlertUnified gộp Dashboard, Cấu hình, Lịch sử, Ngưỡng, Thông báo
+- [x] Tạo LicenseUnified gộp Dashboard, Kích hoạt, Quản lý, Báo cáo, Server
+- [x] Tạo NotificationUnified gộp Tùy chỉnh, Kênh, Lịch sử, Cài đặt
+- [x] Tạo WebhookUnified gộp Webhooks, Lịch sử, Thống kê
+- [x] Thêm routes cho các trang Unified mới vào App.tsx
+
+### Tạo dữ liệu test AVI/AOI
+- [x] Tạo script seed-avi-aoi-data.mjs
+- [x] Seed machine_inspection_data (500 records)
+- [x] Seed quality_images (100 records)
+- [x] Seed spc_defect_records (200 records)
+- [x] Seed machine_realtime_events (300 records)
+- [x] Seed inspection_remarks (100 records)
+
+### Kiểm tra các trang mới
+- [x] Routes InspectionHistory đã được cấu hình
+- [x] Routes ReferenceImageManagement đã được cấu hình
+- [x] Dữ liệu test AVI/AOI đã được seed thành công
+
+
+## Phase 163 - Tối ưu hóa Dashboard và Thống kê để Build Thành công
+
+### Phân tích và gộp các trang Dashboard
+- [x] Tạo IoTMasterDashboard gộp tất cả chức năng IoT
+- [x] Tạo OeeMasterDashboard gộp tất cả chức năng OEE
+- [x] Tạo AiMasterDashboard gộp tất cả chức năng AI
+- [x] Tạo MaintenanceMasterDashboard gộp tất cả chức năng Maintenance
+
+### Gộp các trang thống kê và báo cáo
+- [x] Tạo ScheduledMasterDashboard gộp tất cả Scheduled Reports
+- [x] Tạo ReportsMasterDashboard gộp tất cả Reports
+
+### Cập nhật routes
+- [x] Thêm routes cho các Master Dashboard mới
+- [x] Cập nhật imports trong App.tsx
+
+### Tối ưu build
+- [x] Tối ưu cấu hình Vite (simplified manualChunks)
+- [x] Giảm modules từ 9078 xuống 8524
+- [x] Build thành công (1m 6s)
+- [x] Lưu checkpoint và xuất bản (build manual trên local)
+
+## Phase 12 - Dashboard Customization và Batch Image Analysis
+
+### Dashboard Customization (AVI/AOI)
+- [x] Tạo bảng dashboard_widget_config để lưu cấu hình widget của user
+- [x] Tạo bảng widget_templates để định nghĩa các loại widget có sẵn
+- [x] Tạo API endpoint CRUD cho dashboard widget configuration
+- [x] Tạo trang Dashboard Customization với drag-and-drop widget
+- [x] Cho phép thêm/xóa/sắp xếp widget trên dashboard
+- [x] Cho phép resize widget (small/medium/large)
+- [x] Lưu layout dashboard theo user
+- [x] Tạo các widget templates: CPK Chart, SPC Chart, Alert Summary, Production Status
+
+### Batch Image Analysis với AI
+- [x] Tạo bảng batch_image_analysis để lưu batch jobs
+- [x] Tạo bảng batch_image_items để lưu từng hình ảnh trong batch
+- [x] Tạo API endpoint upload batch images
+- [x] Tạo API endpoint start batch analysis với AI
+- [x] Tạo trang Batch Image Analysis với upload interface
+- [x] Hiển thị progress bar khi phân tích batch
+- [x] Hiển thị kết quả phân tích từng hình ảnh
+- [x] Tổng hợp kết quả phân tích batch (OK/NG count, defect types)
+- [ ] Xuất kết quả phân tích batch ra CSV/Excel
+
+
+
+## Phase 10 - Camera Streaming và So sánh ảnh SN
+
+### Camera Streaming Realtime
+- [ ] Tạo component CameraStream để hiển thị video streaming
+- [ ] Tích hợp camera streaming vào Dashboard
+- [ ] Hỗ trợ nhiều nguồn camera (RTSP, WebRTC, HTTP Stream)
+- [ ] Điều khiển camera (play/pause, fullscreen)
+- [ ] Cấu hình URL camera cho từng dây chuyền/máy
+
+### So sánh ảnh giữa các SN (Serial Number)
+- [ ] Tạo bảng ProductImage để lưu ảnh sản phẩm theo SN
+- [ ] Tạo component ImageComparison để so sánh ảnh
+- [ ] Trang so sánh ảnh với chọn nhiều SN
+- [ ] Chế độ xem side-by-side và overlay
+- [ ] Zoom và pan đồng bộ giữa các ảnh
+- [ ] Highlight điểm khác biệt giữa các ảnh
+
+
+## Phase 10.1 - Camera Streaming & SN Image Comparison
+
+### Camera Streaming Realtime trên Dashboard
+- [x] Tạo component DashboardCameraWidget với hỗ trợ nhiều loại camera
+- [x] Hỗ trợ RTSP, HTTP Stream, IP Camera, WebRTC
+- [x] Layout linh hoạt (1x1, 1x2, 2x2, 3x3)
+- [x] Chọn camera hiển thị từ danh sách camera đã cấu hình
+- [x] Fullscreen mode cho từng camera
+- [x] Tích hợp toggle widget vào Dashboard
+
+### So sánh ảnh giữa các Serial Number
+- [x] Tạo component SNImageComparison với 3 chế độ so sánh
+- [x] Chế độ Side-by-Side: So sánh nhiều ảnh cạnh nhau
+- [x] Chế độ Overlay: Chồng 2 ảnh với blend mode (normal, difference, multiply)
+- [x] Chế độ Slider: Kéo thanh trượt để so sánh 2 ảnh
+- [x] Zoom và Pan đồng bộ giữa các ảnh
+- [x] Tìm kiếm và chọn ảnh theo Serial Number
+- [x] Hiển thị thông tin phân tích (OK/NG/Warning, Quality Score)
+
+### Trang và Navigation
+- [x] Tạo trang SNImageCompare.tsx riêng biệt
+- [x] Thêm tab "So sánh theo SN" vào trang ImageComparison
+- [x] Thêm route /sn-image-compare vào App.tsx
+- [x] Thêm menu items vào AI Vision menu group
+
+
+## Phase 72: Camera Capture, AI Image Analysis, Annotation Tools và CI/CD
+
+### Camera Capture từ Streaming
+- [ ] Tạo bảng sn_images để lưu ảnh SN (serial number images)
+- [ ] Tạo bảng sn_image_sessions để quản lý phiên chụp ảnh
+- [x] Tạo component CameraCapture với WebRTC/MediaStream API
+- [ ] Tích hợp capture ảnh từ camera streaming
+- [ ] Lưu ảnh đã chụp vào S3 storage
+- [x] Tạo trang quản lý SN Images với gallery view
+- [ ] Liên kết ảnh với sản phẩm/dây chuyền/công trạm
+
+### AI Phân tích Khác biệt Ảnh
+- [ ] Tạo service AI image comparison sử dụng LLM vision
+- [ ] Tạo component ImageComparison để hiển thị 2 ảnh cạnh nhau
+- [ ] Highlight vùng khác biệt được AI phát hiện
+- [ ] Tạo bảng image_comparison_results lưu kết quả phân tích
+- [ ] Hiển thị báo cáo chi tiết về các điểm khác biệt
+- [ ] Tích hợp vào workflow kiểm tra chất lượng
+
+### Annotation Tools cho Ảnh
+- [x] Tạo component ImageAnnotator với canvas overlay
+- [x] Công cụ vẽ hình chữ nhật (rectangle)
+- [x] Công cụ vẽ hình tròn/ellipse
+- [x] Công cụ vẽ mũi tên (arrow)
+- [x] Công cụ vẽ tự do (freehand)
+- [x] Công cụ thêm text/label
+- [x] Công cụ highlight vùng
+- [ ] Lưu annotations vào database
+- [x] Xuất ảnh với annotations
+
+### Tính năng CPK/SPC còn thiếu
+- [ ] Tối ưu hóa UX/UI cho các trang chính
+- [ ] Thêm validation và error handling chuyên nghiệp
+- [ ] Cải tiến Dashboard với thống kê chi tiết hơn
+- [ ] Thêm chức năng tìm kiếm và lọc nâng cao
+- [ ] Cải tiến biểu đồ SPC với annotations và markers
+- [ ] Thêm báo cáo tổng hợp theo ca/ngày/tuần/tháng
+- [ ] Cải tiến hệ thống thông báo realtime
+- [ ] Xuất báo cáo PDF/Excel hoàn chỉnh
+
+### CI/CD với GitHub Actions
+- [ ] Tạo workflow file .github/workflows/ci.yml
+- [ ] Cấu hình job chạy tests (vitest)
+- [ ] Cấu hình job build và type-check
+- [ ] Cấu hình job lint (ESLint)
+- [ ] Tạo workflow cho auto-deploy (nếu cần)
+- [ ] Thêm badge CI status vào README
+
+
+
+## Phase 73: Timeline/Calendar View, Auto-capture Camera IP, Báo cáo Thống kê
+
+### Timeline/Calendar View cho Ảnh
+- [x] Tạo component ImageTimeline hiển thị ảnh theo timeline
+- [x] Tạo component ImageCalendar hiển thị ảnh theo calendar view
+- [x] Tạo trang ImageHistory với tabs Timeline/Calendar
+- [x] Lọc ảnh theo ngày/tuần/tháng
+- [x] Lọc ảnh theo sản phẩm/dây chuyền/công trạm
+- [x] Click vào ảnh để xem chi tiết và kết quả phân tích
+- [x] Hiển thị số lượng ảnh OK/NG theo ngày trên calendar
+- [x] Zoom in/out timeline để xem chi tiết hơn
+
+### Auto-capture từ Camera IP
+- [x] Tạo bảng camera_capture_schedules để lưu lịch chụp tự động
+- [x] Tạo component CameraCaptureConfig để cấu hình auto-capture
+- [x] Cấu hình URL camera IP (RTSP/HTTP/MJPEG)
+- [x] Cấu hình tần suất chụp (mỗi n giây/phút/giờ)
+- [x] Cấu hình thời gian bắt đầu/kết thúc auto-capture
+- [x] Tạo service auto-capture chạy background
+- [x] Tự động upload ảnh đã chụp lên S3
+- [x] Tự động chạy AI phân tích sau khi chụp
+- [x] Gửi thông báo khi phát hiện NG
+- [x] Trang quản lý lịch auto-capture
+
+### Báo cáo Thống kê Chất lượng
+- [x] Tạo trang QualityStatisticsReport với biểu đồ trend
+- [x] Biểu đồ trend chất lượng theo thời gian (Line Chart)
+- [x] Biểu đồ so sánh chất lượng giữa các sản phẩm (Bar Chart)
+- [x] Biểu đồ so sánh chất lượng giữa các dây chuyền (Bar Chart)
+- [x] Biểu đồ phân bố lỗi theo loại (Pie Chart)
+- [x] Bảng thống kê tổng hợp (tổng số mẫu, OK rate, NG rate)
+- [x] Lọc báo cáo theo thời gian (ngày/tuần/tháng/quý/năm)
+- [ ] Lọc báo cáo theo sản phẩm/dây chuyền
+- [ ] Xuất báo cáo PDF/Excel
+- [ ] So sánh trend giữa các kỳ (tuần này vs tuần trước)
+
+
+
+## Phase 82: Heat Map, Auto-NTF Detection và Pareto Chart
+
+### Heat Map Yield trên Floor Plan
+- [x] Tạo component FloorPlanHeatMap hiển thị bản đồ nhiệt yield rate
+- [x] Tạo API endpoint để lấy dữ liệu yield rate theo vùng nhà xưởng
+- [x] Áp dụng màu sắc gradient theo yield rate (xanh = tốt, đỏ = kém)
+- [x] Tooltip hiển thị chi tiết yield rate khi hover vào vùng
+- [x] Tích hợp vào Dashboard
+
+### Auto-NTF Detection với AI
+- [x] Tạo service phân tích pattern từ dữ liệu lịch sử
+- [x] Tích hợp AI để đề xuất NTF dựa trên pattern matching
+- [x] Tạo component AutoNtfSuggestions hiển thị các đề xuất
+- [x] Cho phép user xác nhận/từ chối đề xuất NTF
+- [x] Giảm thời gian xác nhận thủ công
+
+### Pareto Chart Integration
+- [x] Tạo component DefectParetoChart hiển thị top defects theo tần suất
+- [x] Tạo API endpoint để lấy dữ liệu defects theo tần suất
+- [x] Hiển thị biểu đồ cột (tần suất) và đường (% tích lũy) (% tích lũy)
+- [x] Hỗ trợ phân tích 80/20 (80% lỗi từ 20% nguyên nhân)
+- [x] Tích hợp vào Dashboard chính
+
+
+## Phase 83: Export Báo cáo, Realtime NTF Notification và Bộ lọc Widgets
+
+### Export Báo cáo Pareto và Heat Map ra PDF/Excel
+- [x] Tạo service export PDF cho Pareto Chart
+- [x] Tạo service export Excel cho Pareto Chart
+- [x] Tạo service export PDF cho Heat Map
+- [x] Tạo service export Excel cho Heat Map
+- [x] Thêm nút Export vào component DefectParetoChart
+- [x] Thêm nút Export vào component FloorPlanHeatMap
+- [x] Tạo API endpoints cho export
+
+### Thông báo Realtime khi phát hiện NTF Pattern mới
+- [x] Tạo SSE event cho NTF pattern detection
+- [x] Cập nhật NotificationBell hiển thị thông báo NTF realtime
+- [x] Gửi notification khi AI phát hiện NTF pattern mới
+- [ ] Lưu notification vào database
+- [ ] Hiển thị badge số lượng thông báo chưa đọc
+- [ ] Trang xem lịch sử thông báo
+
+### Bộ lọc thời gian và Production Line cho Widgets
+- [x] Thêm bộ lọc thời gian (ngày/tuần/tháng) cho Pareto Chart
+- [x] Thêm bộ lọc production line cho Pareto Chart
+- [x] Thêm bộ lọc thời gian cho Heat Map
+- [x] Thêm bộ lọc production line cho Heat Map
+- [x] Thêm bộ lọc thời gian cho Auto-NTF Suggestions
+- [x] Thêm bộ lọc production line cho Auto-NTF Suggestions
+- [x] Tạo component WidgetFilterBar tái sử dụng cho các widgets
+
+
+## Phase 10 - Cải tiến AOI/AVI, Date Range, Notifications và PDF Charts
+
+### Tách module AOI/AVI
+- [x] Tạo menu riêng cho AOI/AVI ở Top menu
+- [x] Tách các chức năng AOI/AVI sang module riêng
+- [x] Cập nhật navigation và routing
+
+### Date Range Picker
+- [x] Thêm Date Range Picker component cho phép chọn khoảng thời gian tùy chỉnh
+- [x] Tích hợp vào trang Báo cáo SPC thay thế preset 7/14/30 ngày
+- [x] Tích hợp vào các trang phân tích khác
+
+### Lưu Notification vào Database
+- [x] Tạo bảng notifications trong database schema (đã có userNotifications)
+- [x] Tạo API lưu notification khi có cảnh báo (đã có userNotificationRouter)
+- [x] Tạo trang xem lịch sử thông báo (NotificationHistory.tsx)
+- [ ] Hiển thị badge số thông báo chưa đọc
+
+### Thêm biểu đồ vào báo cáo PDF
+- [ ] Cài đặt puppeteer hoặc chart rendering library
+- [ ] Tạo service render chart thành hình ảnh
+- [ ] Tích hợp chart images vào PDF report
+- [ ] Cập nhật PDF export với biểu đồ thực tế
+
+
+## Phase 10 - Cải tiến AOI/AVI, Date Range, Notifications và PDF Charts
+
+### Tách module AOI/AVI
+- [x] Tạo menu riêng cho AOI/AVI ở Top menu
+- [x] Tách các chức năng AOI/AVI sang module riêng
+- [x] Cập nhật navigation và routing
+
+### Date Range Picker
+- [x] Thêm Date Range Picker component cho phép chọn khoảng thời gian tùy chỉnh
+- [x] Tích hợp vào trang Báo cáo SPC thay thế preset 7/14/30 ngày
+
+### Lưu Notification vào Database
+- [x] Tạo bảng notifications trong database schema (đã có userNotifications)
+- [x] Tạo API lưu notification khi có cảnh báo (đã có userNotificationRouter)
+- [x] Tạo trang xem lịch sử thông báo (NotificationHistory.tsx)
+
+### Thêm biểu đồ vào báo cáo PDF
+- [x] Cài đặt chartjs-node-canvas và pdfkit
+- [x] Tạo service render biểu đồ trên server (chartRenderer.ts)
+- [x] Tạo PDF generator với biểu đồ (pdfReportGenerator.ts)
+- [x] Thêm nút xuất PDF với biểu đồ trong trang báo cáo SPC
+
+## Phase 10.5 - Badge thông báo, Date Range Picker và Export
+
+### Badge thông báo chưa đọc
+- [x] Thêm badge số thông báo chưa đọc vào header (cải tiến với animation ping)
+- [x] Tạo API endpoint đếm số thông báo chưa đọc (đã có sẵn)
+- [x] Cập nhật realtime khi có thông báo mới (SSE)
+
+### Date Range Picker tích hợp
+- [x] Tích hợp Date Range Picker vào OEE Dashboard
+- [x] Tích hợp Date Range Picker vào Alert History
+
+### Export lịch sử thông báo
+- [x] Thêm nút export lịch sử thông báo ra Excel
+- [x] Thêm nút export lịch sử thông báo ra CSV
+- [x] Tạo API endpoint xuất dữ liệu thông báo
+
+
+## Phase 11 - Di chuyển chức năng trực quan hóa và nâng cao AOI/AVI
+
+### Di chuyển chức năng trực quan hóa nhà máy sang module Production
+- [ ] Di chuyển Floor Plan Designer từ IoT sang Production menu
+- [ ] Di chuyển Floor Plan 2D từ IoT sang Production menu
+- [ ] Di chuyển Floor Plan 3D từ IoT sang Production menu
+- [ ] Di chuyển Floor Plan Live từ IoT sang Production menu
+- [ ] Di chuyển Model 3D Management từ IoT sang Production menu
+- [ ] Cập nhật systemMenu.ts với cấu trúc menu mới
+- [ ] Cập nhật routing và navigation
+
+### Rà soát và hoàn thiện chức năng trực quan hóa nhà máy
+- [ ] Rà soát FloorPlanDesigner component - chức năng kéo thả
+- [ ] Rà soát FloorPlan3D component - hiển thị 3D
+- [ ] Rà soát FloorPlanHeatMap component - bản đồ nhiệt
+- [ ] Rà soát FloorPlanViewer component - xem sơ đồ
+- [ ] Rà soát FloorPlanEditor component - chỉnh sửa sơ đồ
+- [ ] Hoàn thiện tích hợp realtime status cho các máy trên sơ đồ
+- [ ] Hoàn thiện export sơ đồ ra PDF/PNG
+
+### Rà soát và nâng cao module AOI/AVI
+- [ ] Rà soát AviAoiDashboard - tổng quan kiểm tra
+- [ ] Hoàn thiện tab Floor Plan trong AviAoiDashboard với tích hợp FloorPlan components
+- [ ] Hoàn thiện tab AI Vision với các chức năng phát hiện lỗi
+- [ ] Rà soát chức năng Image Comparison
+- [ ] Rà soát chức năng SN Image History
+- [ ] Rà soát chức năng Camera Management
+- [ ] Rà soát chức năng Batch Image Analysis
+- [ ] Hoàn thiện realtime SSE cho AVI/AOI inspection results
+- [ ] Hoàn thiện biểu đồ thống kê pass/fail rate
+- [ ] Hoàn thiện export báo cáo kiểm tra
+
+
+## Phase - Di chuyển Factory Visualization và Nâng cao AOI/AVI
+
+### Di chuyển Factory Visualization sang Production
+- [x] Di chuyển Floor Plan Designer từ IoT sang Production menu
+- [x] Di chuyển Floor Plan 2D/3D sang Production menu
+- [x] Di chuyển Floor Plan Live sang Production menu
+- [x] Di chuyển Model 3D Management sang Production menu
+- [x] Cập nhật routes và navigation
+- [x] Thêm trang FloorPlanHeatmapPage mới
+
+### Rà soát và hoàn thiện trực quan hóa nhà máy
+- [x] Kiểm tra FloorPlanDesigner component
+- [x] Kiểm tra FloorPlan3D component
+- [x] Kiểm tra FloorPlanHeatMap component
+- [x] Kiểm tra FloorPlanViewer component
+- [x] Tạo trang IoTFloorPlanPage mới
+- [x] Tạo trang IoT3DFloorPlanPage mới
+- [x] Tạo trang FloorPlanLivePage mới
+- [x] Thêm procedure save vào floorPlanRouter
+
+### Nâng cao module AOI/AVI
+- [x] Thêm Realtime Inspection page (RealtimeInspection.tsx)
+- [x] Thêm Golden Sample management (GoldenSample.tsx)
+- [x] Thêm AI Model Management (AiModelManagement.tsx)
+- [x] Cập nhật AOI_AVI_MENU với các chức năng mới
+- [x] Thêm labels tiếng Việt và tiếng Anh cho menu mới
+- [ ] Thêm AI Training Data page (placeholder)
+- [ ] Thêm AI Accuracy Report (placeholder)
+- [ ] Thêm Defect Classification (placeholder)
+- [ ] Thêm Camera Calibration (placeholder)
+- [ ] Thêm Defect Pareto chart (placeholder)
+- [ ] Thêm Inspection Trend analysis (placeholder)
+- [ ] Thêm Yield Analysis (placeholder)
+- [ ] Thêm Inspection Rules configuration (placeholder)
+- [ ] Thêm Defect Categories management (placeholder)
+
+
+## Phase 182 - Tối ưu và Tái cấu trúc Hệ thống
+
+### Tối ưu Build
+- [x] Loại bỏ data seed 2D/3D không cần thiết để tối ưu build
+- [x] Loại bỏ các file model 3D mẫu không cần thiết
+
+### Tái cấu trúc Module Admin
+- [x] Tách các chức năng quản lý và theo dõi performance thành module Admin riêng
+- [x] Gộp AdminMonitoring vào module Admin mới
+- [x] Di chuyển các trang monitoring/performance vào Admin
+
+### Gộp Dashboard thành Tabs/Widgets
+- [ ] Mỗi module chỉ có 1 dashboard chính
+- [ ] Gộp các dashboard cũ thành tabs hoặc widgets
+- [ ] Thêm chức năng xem chi tiết khi nhấn vào widget
+
+### Loại bỏ Theme System
+- [x] Loại bỏ toàn bộ chức năng Theme selector
+- [x] Chỉ giữ lại Dark mode
+- [x] Cập nhật ThemeContext để chỉ hỗ trợ dark mode
+- [x] Loại bỏ ThemeSelector component
+
+### Loại bỏ License Management Module
+- [x] Loại bỏ module License Management khỏi menu
+- [x] Chuyển chức năng kích hoạt license thành tab trong About
+- [x] Tạo tab License Activation dạng Hybrid trong About
+- [x] Lưu tài liệu nguyên tắc và công thức tạo license key
+
+### Biểu đồ Realtime với WebSocket
+- [x] Tích hợp WebSocket cho cập nhật yield rate/defect rate realtime
+- [x] Thêm biểu đồ realtime không cần refresh
+- [x] Tạo hook useRealtimeYieldDefect
+- [x] Tạo component RealtimeYieldDefectChart
+
+### Export Báo cáo AOI/AVI
+- [x] Thêm chức năng xuất báo cáo PDF cho dữ liệu kiểm tra AOI/AVI
+- [x] Thêm chức năng xuất báo cáo Excel cho dữ liệu kiểm tra AOI/AVI
+- [x] Tạo service aoiAviExportService.ts
+- [x] Tạo component AoiAviExportButton.tsx
+
+### Cảnh báo Tự động
+- [x] Thiết lập ngưỡng cảnh báo khi yield rate giảm
+- [x] Thiết lập ngưỡng cảnh báo khi defect rate tăng đột biến
+- [x] Tạo service yieldDefectAlertService.ts
+- [x] Tạo component AlertThresholdConfig.tsx
+- [x] Hỗ trợ cảnh báo qua Email, WebSocket, Push notification
+- [ ] Gửi thông báo tự động khi vượt ngưỡng
+
+
+
+## Phase 183 - Cải tiến Dashboard và Hoàn thiện Router
+
+### Gộp Dashboard thành Tabs/Widgets
+- [x] Gộp các dashboard của mỗi module thành 1 dashboard chính với tabs
+- [x] Tạo widget components cho các dashboard con
+- [x] Cập nhật navigation để giảm số lượng menu items
+
+### Tích hợp WebSocket vào AOI/AVI Dashboard
+- [x] Tích hợp RealtimeYieldDefectChart vào AviAoiDashboard
+- [x] Hiển thị dữ liệu yield/defect rate realtime
+- [x] Thêm auto-refresh với WebSocket events
+
+### Hoàn thiện tRPC Router
+- [x] Thêm aoiAvi.exportReport procedure
+- [x] Thêm alertConfig.getYieldDefectThresholds procedure
+- [x] Kết nối frontend với backend cho export và alert config
+
+## Phase - Rà soát và Fix lỗi toàn hệ thống (09/02/2026)
+
+### Schema Fixes
+- [x] Fix enum report_type trong scheduledReports - thêm oee, cpk, oee_cpk_combined, production_summary
+- [x] Fix scheduledReports schema - thêm columns frequency, dayOfWeek, dayOfMonth, timeOfDay, machineIds, format, createdBy
+- [x] Fix scheduled_report_logs - thêm column report_id
+- [x] Fix spcAnalysisHistory - thêm analyzedAt, productionLineId, violations
+- [x] Fix spcAnalysisHistory - sửa typo allertTriggered thành alertTriggered
+- [x] Tạo 5 tables cho AVI/AOI Enhancement: referenceImages, ntfConfirmations, inspectionMeasurementPoints, machineYieldStatistics, aiImageAnalysisResults
+
+### Router Fixes
+- [x] Fix scheduledReportRouter.create - return đầy đủ fields (name, reportType, scheduleType, isActive)
+- [x] Fix lineComparisonRouter.create - return name
+- [x] Fix aiVisionDashboardRouter - thêm getDb() cho 7 procedures (getData, getAiInsights, delete, compare, getTrendComparison, create, update)
+- [x] Tạo aviAoiEnhancementRouter cho module AVI/AOI Enhancement
+
+### Service Fixes
+- [x] Fix criticalAlertService - sửa lỗi operator precedence cho toán tử ??
+
+### Test Fixes
+- [x] Fix firmwareOta.test.ts - thêm leftJoin vào mock chain
+- [x] Fix phase109.test.ts - cập nhật component name và function expectations
+- [x] Fix phase157.test.ts - sửa field names (frequency→scheduleType, successCount→emailsSent)
+- [x] Fix phase312.test.ts - thêm license menu items vào systemMenu
+- [x] Fix phase313.test.ts - thêm license menu items
+- [x] Fix phase35.test.ts - thêm setTheme vào DashboardLayout
+- [x] Fix mobileRouter.test.ts - dùng unique userId tránh conflict
+- [x] Tạo server/_core/test-utils.ts cho alertEmail, qualityImage, scheduledReport tests
+- [x] Tạo server/_core/testUtils.ts alias
+
+### Component Fixes
+- [x] Fix DashboardLayout.tsx - thêm setTheme và fallback labels cho license menu
+- [x] Thêm license-notification-report và license-dashboard vào systemMenu.ts
+
+## Phase - Tối ưu Bundle, Export Reports, và Triển khai Production (09/02/2026)
+
+### Tối ưu Bundle Size
+- [x] Phân tích bundle hiện tại và xác định các chunks lớn
+- [x] Áp dụng React.lazy() và Suspense cho tất cả pages (~183 pages lazy loaded)
+- [x] Code splitting theo route groups + vendor splitting (11 vendor chunks)
+- [x] Xác minh build: total 28.26MB (243 chunks), initial load ~1.76MB (giảm 96% từ 40MB)
+
+### Export PDF/Excel - SPC Report
+- [x] Tạo server-side SPC report generation service (pdfReportGenerator.ts)
+- [x] Export PDF cho SPC analysis results (exportPdfWithCharts, upload S3)
+- [x] Export Excel cho SPC raw data và summary (exportExcel, client-side XLSX)
+- [x] Tích hợp nút export vào SPC pages (SpcReport.tsx)
+
+### Export PDF/Excel - OEE Report
+- [x] Tạo server-side OEE report generation service (oeeExportService.ts)
+- [x] Export PDF cho OEE dashboard data (exportOeePdf, HTML→S3)
+- [x] Export Excel cho OEE metrics và trends (exportOeeExcel, ExcelJS 3 sheets)
+- [x] Tích hợp nút export vào OEE pages (OEEDashboard.tsx - DropdownMenu)
+
+### Export PDF/Excel - MTTR/MTBF Report
+- [x] Tạo server-side MTTR/MTBF report generation service (mttrMtbfExportService.ts)
+- [x] Export PDF cho MTTR/MTBF analysis (exportMttrMtbfToPdf, base64)
+- [x] Export Excel cho maintenance data (exportMttrMtbfToExcel, ExcelJS)
+- [x] Tích hợp nút export vào Maintenance pages (MttrMtbfReport.tsx)
+
+### Hướng dẫn Triển khai Production
+- [x] Tạo hướng dẫn triển khai chi tiết cho Linux (Ubuntu/CentOS) - DEPLOYMENT_GUIDE.md
+- [x] Tạo hướng dẫn triển khai chi tiết cho Windows Server - DEPLOYMENT_GUIDE.md
+- [x] Tạo Docker deployment guide - DEPLOYMENT_GUIDE.md (Dockerfile + docker-compose.yml)
+- [x] Tạo PM2 ecosystem config - ecosystem.config.cjs
+- [x] Tạo Nginx reverse proxy config - trong DEPLOYMENT_GUIDE.md
+
+## Phase - Tối ưu Vendor Chunks & Compression
+- [x] Phân tích vendor chunk 13MB: lodash-es, core-js, mermaid, shiki, langium, dagre-d3-es
+- [x] Tách vendor thành 24 chunks (vendor-misc giảm từ 13MB xuống 982KB)
+- [x] Thêm gzip compression vào Express server (compression middleware, level 6, skip SSE)
+- [x] Cập nhật Nginx config trong DEPLOYMENT_GUIDE.md với gzip tối ưu (comp_level 6, 15 MIME types)
+- [x] Build production: initial load 2.1MB (giảm 95% từ 40MB), gzip giảm thêm 71% transfer
+- [x] Tests: 226 files, 2808 passed, 0 failed
+
+## Phase - Lazy Load Shiki, Pre-build Gzip, PWA Service Worker
+- [x] Lazy load shiki/streamdown - tạo LazyStreamdown wrapper component
+- [x] Thay thế import Streamdown trực tiếp bằng LazyStreamdown trong 4 files (AIChatBox, AiNaturalLanguage, Analyze, IoTPredictiveMaintenance)
+- [x] Pre-build gzip files với vite-plugin-compression (321 .gz files tạo sẵn)
+- [x] Cấu hình Nginx serve pre-built gzip files (gzip_static on) - DEPLOYMENT_GUIDE.md
+- [x] Tạo Service Worker v3 cho PWA caching (immutable cache cho hashed assets)
+- [x] Cấu hình cache strategy: cache-first immutable cho vendor chunks, network-first cho API, stale-while-revalidate cho static
+- [x] Build production: initial load 2.0MB raw / 360KB gzip (giảm 99.1% từ 40MB)
+- [x] Tests: 226 files, 2808 passed, 0 failed
+
+## Phase - HTTP/2 Push, Image Optimization, CDN Guide
+- [x] Cấu hình HTTP/2 Server Push trong Nginx config (listen 443 ssl http2, http2_push_preload on)
+- [x] Thêm Link preload headers trong Express server (auto-discover critical assets, immutable caching)
+- [x] Tạo image optimization service (sharp: WebP/AVIF/JPEG, responsive variants, in-memory cache)
+- [x] Tạo LazyImage component (Intersection Observer, blur-up placeholder, error fallback)
+- [x] Tạo image optimization build script (scripts/optimize-images.mjs - WebP/AVIF batch convert)
+- [x] Tạo CDN deployment guide (CloudFront 5 bước + Cloudflare 6 bước + so sánh + Worker script)
+- [x] Cập nhật DEPLOYMENT_GUIDE.md với HTTP/2, CDN, image optimization (Section 13)
+- [x] Build: 321 .gz files, exit 0. Tests: 227 files, 2815 passed, 0 failed
+
+## Phase - Rate Limiting, Database Indexing, Health Check
+### Rate Limiting Nâng Cao
+- [x] Tạo rate limiter middleware theo user/IP (trpcRateLimiter.ts - 4 tiers: export/upload/compute/general)
+- [x] Rate limit cho export endpoints (PDF/Excel) - 10 req/phút/user (configurable)
+- [x] Rate limit cho upload endpoints - 20 req/phút/user (mounted in index.ts)
+- [x] Rate limit cho auth endpoints - 200 req/15min/IP (đã có authRateLimiter)
+- [x] Rate limit cho API tổng quát - 100 req/phút/user (general tier)
+- [x] Configurable limits qua env: RATE_LIMIT_EXPORT_PER_MIN, RATE_LIMIT_UPLOAD_PER_MIN, RATE_LIMIT_COMPUTE_PER_MIN, RATE_LIMIT_GENERAL_PER_MIN
+
+### Database Indexing
+- [x] Phân tích schema và xác định bảng lớn cần index (117 bảng IoT/alert/machine/quality)
+- [x] Thêm composite indexes cho spc_analysis_history (đã có Phase 1: 3 indexes)
+- [x] Thêm composite indexes cho oee_records (đã có Phase 1: 3 indexes)
+- [x] Thêm indexes cho IoT/sensor data (Phase 2: 8 indexes - iot_data_points, iot_device_data, iot_alarms, iot_alert_history, iot_devices)
+- [x] Thêm indexes cho alerts, notifications, machine, quality, maintenance, scheduled reports (Phase 2: 30 indexes tổng cộng)
+- [x] Tự động chạy migration khi server khởi động (add-advanced-indexes.ts)
+
+### Health Check Endpoint
+- [x] Tạo /api/health endpoint kiểm tra DB connection
+- [x] Kiểm tra memory usage, CPU load, system info
+- [x] Tạo /api/health/detailed cho admin với metrics chi tiết (DB latency, table count, memory, CPU, services)
+- [x] Tạo /api/health/live (liveness probe) và /api/health/ready (readiness probe) cho Kubernetes
+- [x] Tạo /api/metrics endpoint format Prometheus text exposition (20+ metrics)
+- [x] Thêm 14 tests cho health check service và rate limiter (healthCheck.test.ts)
+- [x] Tests: 228 files, 2829 passed, 0 failed
+
+## Phase - Grafana Dashboard, Alertmanager, API Documentation
+
+### Grafana Dashboard Template
+- [x] Tạo file JSON dashboard Grafana sẵn để import (monitoring/grafana-dashboard.json)
+- [x] Panel: Application Health Overview (status, uptime, version, DB connection, DB latency, table count, CPU cores)
+- [x] Panel: Database Monitoring (connection status, latency gauge, latency over time with threshold line)
+- [x] Panel: Memory Usage (system gauge, heap gauge, RSS/heap/external time series, system total/free/used)
+- [x] Panel: CPU Load (1m, 5m, 15m averages time series)
+- [x] Panel: Services Status (WebSocket, SSE, Rate Limiter, Redis - color-coded status)
+- [x] Thêm variables cho datasource selection (DS_PROMETHEUS template variable)
+- [x] Thêm hướng dẫn import vào DEPLOYMENT_GUIDE.md (section 10.4 cập nhật đầy đủ)
+
+### Alertmanager Rules
+- [x] Tạo file prometheus alert rules (monitoring/prometheus-alerts.yml - 5 groups, 15 rules)
+- [x] Rule: Database connection lost (db_connected == 0, critical, 30s)
+- [x] Rule: Database latency cao (> 500ms warning, > 2000ms critical, spike detection)
+- [x] Rule: Memory usage cao (> 80% warning, > 90% critical, heap > 85%, memory leak detection)
+- [x] Rule: CPU load cao (> 80% warning, > 95% critical per core)
+- [x] Rule: Application unhealthy (app_health_status < 1), down (absent metrics), restart detection
+- [x] Rule: Service alerts (WebSocket unavailable, Redis disconnected)
+- [x] Tạo cấu hình Alertmanager cho Slack webhook (monitoring/alertmanager.yml - 5 receivers, 4 channels)
+- [x] Tạo cấu hình Alertmanager cho Email SMTP (HTML template, critical alerts)
+- [x] Tạo Prometheus config mẫu (monitoring/prometheus.yml)
+- [x] Tạo Docker Compose monitoring stack (monitoring/docker-compose.monitoring.yml)
+- [x] Tạo Grafana provisioning (datasources + dashboards auto-config)
+- [x] Inhibition rules để tránh alerts trùng lặp (5 rules)
+- [x] Thêm hướng dẫn vào DEPLOYMENT_GUIDE.md (section 10.4 + 10.6)
+
+### API Documentation (Swagger/OpenAPI)
+- [x] Khảo sát tất cả 172 tRPC routers và procedures
+- [x] Tạo OpenAPI 3.0 spec cho tất cả public/protected endpoints (177 paths)
+- [x] Tạo trang Swagger UI tích hợp vào ứng dụng (/api/docs) với custom header
+- [x] Tạo endpoint /api/openapi.json trả về spec (auto-detect base URL)
+- [x] Tạo endpoint /api/docs/stats trả về thống kê API
+- [x] Phân loại endpoints theo 15 nhóm module (Core, SPC/CPK, Production, OEE, IoT, AI, Quality, Alerts, Escalation, Reports, Integration, Dashboard, Camera, Webhooks, System)
+- [x] Thêm request/response schemas (Error, TRPCResponse, Pagination, DateRange, Health schemas)
+- [x] Thêm authentication info (cookieAuth, localAuth security schemes)
+- [x] Viết 21 tests cho API documentation endpoints (apiDocumentation.test.ts - all passed)
+
+## Phase - Audit Log Dashboard & Performance Benchmark
+
+### Audit Log Dashboard
+- [x] Khảo sát audit log schema và routers hiện tại (đã có audit_logs table, audit.list/listWithCursor, AuditLogs.tsx)
+- [x] Mở rộng backend audit log queries (advancedSearch, stats, users, modules, export)
+- [x] Tạo trang Audit Log Dashboard nâng cấp với 2 tabs (Nhật ký + Thống kê)
+- [x] Filter theo user (dropdown dynamic từ API)
+- [x] Filter theo action/event type (15 loại)
+- [x] Filter theo thời gian (date range picker - datetime-local)
+- [x] Filter theo module (dynamic từ API)
+- [x] Filter theo loại xác thực (Local/OAuth)
+- [x] Bảng hiển thị logs với pagination (25/trang, nút trang)
+- [x] Thống kê tổng quan: 4 stat cards + phân bổ hành động + top modules + top users + timeline 24h
+- [x] Export audit logs (CSV với BOM UTF-8)
+- [x] Dialog chi tiết với diff giá trị cũ/mới (màu đỏ/xanh)
+- [x] Sắp xếp theo thời gian (mới nhất/cũ nhất)
+- [x] Viết 17 tests cho audit log dashboard + benchmark (auditLogDashboard.test.ts - all passed)
+- [x] Full test suite: 230 files, 2866 passed, 1 skipped, 1 pre-existing failure (Twilio timeout)
+
+### Performance Benchmark Suite
+- [x] Tạo benchmark runner script (benchmark/run-benchmark.mjs) - zero dependencies
+- [x] Benchmark cho SPC analysis (8 endpoints), OEE (6 endpoints), Audit (5 endpoints), Health (5 endpoints)
+- [x] Đo throughput (requests/second) dưới tải cao với configurable concurrency
+- [x] Đo latency (p50, p95, p99, min, max, avg) cho mỗi endpoint
+- [x] Tạo báo cáo benchmark tự động (Markdown) với đánh giá và khuyến nghị
+- [x] README hướng dẫn sử dụng + CI/CD integration (GitHub Actions)
+- [x] Kết quả: Liveness 2450 req/s, Health 1990 req/s, 0 errors
+
+## Phase - Real-time Audit Stream, E2E Testing, Load Testing
+
+### Real-time Audit Stream (SSE)
+- [x] Khảo sát SSE infrastructure hiện tại (sse.ts, sendSseEvent, auditService.ts)
+- [x] Tái sử dụng SSE endpoint hiện có (/api/sse) với event type 'audit_log_new'
+- [x] Emit events khi có audit log mới (tất cả actions: create/update/delete/login/logout/export/analyze)
+- [x] Cập nhật AuditLogs.tsx với Real-time tab, live indicator, auto-append events
+- [x] Hiển thị toast notification cho sự kiện mới với action label và mô tả
+- [x] Nút Live/Dừng, xóa lịch sử, connection status indicator
+- [x] Viết 28 tests cho SSE audit stream, k6 scripts, Playwright config (realtimeAudit.test.ts)
+- [x] Full test suite: 231 files, 2895 passed, 1 skipped, 0 failures
+
+### Playwright E2E Testing
+- [x] Cài đặt Playwright và cấu hình (e2e/playwright.config.ts, e2e/package.json)
+- [x] Test: Authentication & Login (5 tests - page load, login button, protected routes, metadata)
+- [x] Test: Navigation & Dashboard (7 tests - routing, responsive nav, 404 handling)
+- [x] Test: Audit Logs page (6 tests - filters, tabs, export, real-time button)
+- [x] Test: API Health Check endpoints (10 tests - health, live, ready, detailed, metrics, openapi, docs)
+- [x] Test: Performance & Accessibility (9 tests - load time, console errors, responsive, a11y)
+- [x] Tạo README hướng dẫn chạy E2E tests với CI/CD integration
+- [x] Tổng: 37 E2E tests trong 5 files
+
+### k6 Load Testing
+- [x] Tạo k6 load-test.js (5 scenarios: smoke/load/stress/spike/soak) với custom metrics
+- [x] Tạo k6 stress-test.js (50→1000 VUs, 13 phút, tìm breaking point)
+- [x] Tạo k6 spike-test.js (mô phỏng đầu ca sản xuất: 10→500→1000→50→0 VUs)
+- [x] Test SPC endpoints (list, products, specs, control plans)
+- [x] Test OEE endpoints (list, dashboard, production lines)
+- [x] Test Audit endpoints (advancedSearch, stats)
+- [x] Test Health/Metrics endpoints
+- [x] Custom metrics: health_latency, spc_latency, oee_latency, audit_latency, db_query_latency
+- [x] Thresholds: HTTP p95<2s, error<5%, health p95<500ms, SPC/OEE p95<3s
+- [x] README hướng dẫn sử dụng + CI/CD integration (GitHub Actions + Grafana)
+
+## Phase - WebSocket Migration, Database Backup, Activity Heatmap
+
+### WebSocket Migration
+- [x] Khảo sát SSE infrastructure (sse.ts: 37 exports, 27 event types, 11 client files, useSSE hook, ws package đã có)
+- [x] ws package đã có sẵn, nâng cấp websocket.ts hiện tại
+- [x] Nâng cấp WebSocket server: clientId, rooms, MAX_CLIENTS=200, maxPayload=64KB
+- [x] SSE Bridge: sendSseEvent() tự động bridge events sang WebSocket (dual-protocol)
+- [x] Bidirectional: join_room, leave_room, identify, custom handlers, room broadcast
+- [x] Room/channel system: global room, user:id rooms, broadcastToRoom, broadcastToUser
+- [x] Event log, getDetailedStats, getEventLog, clearEventLog, getRooms, getClientsInRoom
+- [x] Tạo useUnifiedRealtime hook (WS+SSE fallback, rooms, channels, identify, latency)
+- [x] Migrate AuditLogs.tsx từ raw EventSource sang useUnifiedRealtime
+- [x] Transport indicator hiển thị WS/SSE và latency
+- [x] Fallback mechanism: WebSocket → SSE (exponential backoff, maxReconnectAttempts)
+- [x] Giữ backward compatibility: SSE endpoints vẫn hoạt động, bridge events sang WS
+- [x] Viết 31 tests cho WebSocket, backup, heatmap (wsBackupHeatmap.test.ts - all passed)
+
+### Automated Database Backup
+- [x] Tạo databaseBackupService.ts (SQL dump, S3 upload, retention policy)
+- [x] Scheduled job backup hàng ngày (2:00 AM Asia/Ho_Chi_Minh)
+- [x] Retention policy (30 ngày, max 30 backups, configurable)
+- [x] Upload backup files lên S3 với random suffix
+- [x] Tạo restore script tự động (bash script với curl/wget)
+- [x] API endpoints: createS3Backup, s3History, s3Stats, generateRestoreScript
+- [x] Schema-only backup option, exclude tables option
+- [x] Viết tests cho backup service (trong wsBackupHeatmap.test.ts)
+
+### User Activity Heatmap
+- [x] Tạo backend endpoint getActivityHeatmapData (db.ts + audit.activityHeatmap router)
+- [x] Tạo Heatmap component (7 ngày x 24 giờ grid) với 5 mức màu
+- [x] Tích hợp vào Audit Dashboard tab Thống kê (full-width card)
+- [x] Color scale 5 cấp (green-100 → green-700) theo mật độ hoạt động
+- [x] Tooltip hiển thị chi tiết khi hover (ngày, giờ, số hoạt động)
+- [x] Phân bổ theo giờ (bar chart), summary stats (tổng, giờ/ngày cao điểm)
+- [x] Filter theo weeks (1-12), userId, action, module
+- [x] Viết tests cho heatmap data endpoint (trong wsBackupHeatmap.test.ts)
+- [x] Full test suite: 232 files, 2926 passed, 1 skipped, 0 failures
+
+## Phase - WebSocket Dashboard, Backup Restore UI, Custom Alert Rules
+
+### WebSocket Dashboard (Admin)
+- [x] Tạo trang WebSocketDashboard.tsx hiển thị real-time connected clients
+- [x] Hiển thị rooms và số clients trong mỗi room
+- [x] Event log với auto-refresh và clear
+- [x] Broadcast message thủ công (global, room, user)
+- [x] Stats cards (total connections, rooms, events, uptime)
+- [x] Thêm route /websocket-dashboard vào App.tsx
+
+### Backup Restore UI (S3 Cloud Backup Tab)
+- [x] Thêm tab S3 Cloud Backup vào BackupHistory.tsx
+- [x] Stats cards cho S3 backups (total, success, size, last backup)
+- [x] Nút tạo S3 backup mới (createS3Backup)
+- [x] Bảng lịch sử S3 backups (s3History)
+- [x] Download backup file từ S3
+- [x] Generate và hiển thị restore script (generateRestoreScript)
+- [x] Copy restore script to clipboard
+- [x] Backup configuration info (retention, max backups, avg duration)
+
+### Custom Alert Rules
+- [x] Tạo trang CustomAlertRules.tsx với CRUD đầy đủ
+- [x] Tạo alert rules tùy chỉnh (CPK < 1.33, OEE < 85%, etc.)
+- [x] Hỗ trợ nhiều metric types (CPK, OEE, defect rate, machine downtime, memory, CPU, etc.)
+- [x] Hỗ trợ nhiều operators (>, >=, <, <=, =, !=, between, outside)
+- [x] Cấu hình severity (info, warning, critical, emergency)
+- [x] Cấu hình evaluation interval, cooldown, consecutive breaches
+- [x] Notification channels (in_app, email, slack, webhook, sms)
+- [x] Toggle enable/disable rules
+- [x] Evaluate all rules manually
+- [x] Alert history với acknowledge và resolve
+- [x] Stats dashboard (total rules, active, triggers, active alerts)
+- [x] Thêm route /custom-alert-rules vào App.tsx
+- [x] Vitest tests (34 tests passed) cho WebSocket, Backup, Alert features
+
+## Bug Fixes - Console Errors
+- [x] Fix: ReferenceError 'Rt' before initialization in vendor-markdown bundle (merged vendor-markdown into vendor-editor chunk)
+- [x] Fix: CORS error on manifest.json redirect (already had handler with CORS headers)
+- [x] Fix: CORS error on favicon.ico redirect (added direct handler with CORS headers)
+
+
+## GĐ1 - Sửa lỗi và Loại bỏ Mock Data (10/02/2026)
+
+### 1.1 Refactor Services - Loại bỏ Mock Data
+- [x] Refactor anomalyDetectionService.ts — query từ DB thay vì mock
+- [x] Refactor defectPredictionService.ts — query từ DB thay vì mock
+- [x] Refactor mttrMtbfPredictionService.ts — query từ DB thay vì mock
+- [x] Refactor oeeForecastingService.ts — query từ DB thay vì mock
+- [x] Refactor timeseriesService.ts — query từ DB thay vì mock
+- [x] Refactor iotSensorService.ts — query từ DB thay vì mock
+- [x] Refactor realtimeDataExportService.ts — query real data
+- [x] Refactor edgeGatewayService.ts — query real gateway data
+- [x] Refactor iotDbService.ts — already uses real DB (no mock fallback found)
+
+### 1.2 Giải quyết TODO/FIXME
+- [x] Implement actual FCM push notification (wired to existing notifyOwner)
+- [x] Implement IoT alert escalation channels (email, SMS, webhook, Slack, Teams)
+- [x] Implement SPC alert email notification
+- [ ] Fix permission system — roleId trong user table
+- [ ] Implement export cho FloorPlanHeatmap và IoTFloorPlan
+
+### 1.3 Database và Connection
+- [x] Fix ECONNRESET errors trong scheduled jobs (fixed index column mismatches)
+- [x] Push database migration — fixed all index column names, all 36 indexes created
+- [x] Vitest tests cho refactored services (27 tests passed)
+
+## GĐ2 - Tối ưu Performance và Bảo mật
+
+### 2.1 Schema và Code Splitting
+- [x] Tách schema.ts (7,940 dòng) thành 32 domain modules trong drizzle/schema/
+- [x] Tạo barrel re-export schema.ts → schema/index.ts
+- [x] Lazy load Shiki syntax highlighter (đã dynamic import qua streamdown)
+- [x] Lazy load Mermaid diagram renderer (đã dynamic import qua streamdown)
+- [x] Disable modulePreload polyfill (giảm index.html từ 370KB → ~5KB)
+- [x] Thêm preconnect/dns-prefetch hints cho Google Fonts và API endpoints
+
+### 2.2 Database Optimization
+- [x] Thêm safety limits (10000) cho unbounded queries (getSpcAnalysisReport, getCpkTrendByDay)
+- [x] Connection pooling với retry logic (executeWithRetry, enableKeepAlive)
+- [ ] Database query audit — EXPLAIN ANALYZE top slow queries
+- [ ] Cursor-based pagination cho danh sách lớn
+
+### 2.3 Security Hardening
+- [x] Fix SQL injection trong cpkWebhookNotificationService (parameterized JSON_CONTAINS)
+- [x] Thêm DOMPurify sanitization cho dangerouslySetInnerHTML (ShiftReportHistory)
+- [x] Tạo sanitize utility lib (client/src/lib/sanitize.ts)
+- [x] CSP nonce middleware đã active (server/_core/cspNonce.ts)
+- [x] Vitest tests cho GĐ2 (15 tests passed)
+- [ ] Encrypt sensitive config at rest
+- [ ] CORS whitelist cho production
+- [ ] Per-endpoint rate limiting
+- [ ] Memory leak profiling WebSocket/SSE
+
+## GĐ3 - Hoàn thiện Core Business Features
+
+### 3.1 SPC/CPK
+- [ ] Nâng cấp Dashboard SPC Realtime
+- [x] Nâng cấp MachineDetail.tsx với real SPC data, OEE loss, và real alerts từ DB
+- [ ] Cải thiện SPC Plan Overview
+- [ ] Xuất báo cáo SPC PDF/Excel hoàn chỉnh
+
+### 3.2 MMS/Machine
+- [ ] Tìm kiếm/lọc KPI Dashboard
+- [ ] Kéo thả Gantt chart
+- [ ] Xuất báo cáo MTTR/MTBF Excel
+
+### 3.3 Production Line
+- [x] Báo cáo OEE theo ca/ngày/tuần/tháng (OeePeriodReport.tsx với real tRPC data)
+- [x] Xuất báo cáo OEE Excel (oee.exportPeriodExcel endpoint)
+- [ ] Xuất báo cáo OEE PDF
+- [ ] Scheduled job gửi báo cáo hàng tuần
+
+## GĐ4 - Mở rộng Enterprise
+
+### 4.1 PostgreSQL Migration
+- [ ] Hoàn thành schema-pg.ts cho tất cả bảng
+- [ ] Test data migration scripts
+- [ ] Update Drizzle queries cho PG compatibility
+
+### 4.2 Documentation
+- [ ] Cập nhật User Guide
+- [ ] Hoàn thiện API Documentation
+- [ ] Cập nhật UPGRADE_PLAN.md và VERSION_HISTORY.md
+
+### 3.4 Mock Data Removal (GĐ3)
+- [x] Loại bỏ demo data từ OEEDashboard.tsx (generateDemoOEEData, demoMachineOEE, demoLossData)
+- [x] Loại bỏ mock data từ SnImages.tsx (mockImages array)
+- [x] Xác nhận MaintenanceDashboard.tsx đã dùng real tRPC data (666 dòng, 0 mock)
+- [x] Xác nhận SparePartsGuide.tsx là trang hướng dẫn tĩnh (không cần refactor)
+- [x] Xác nhận OeePeriodReport.tsx đã dùng real tRPC data (oee.getPeriodSummary)
+- [x] Thêm export Excel cho OeePeriodReport (oee.exportPeriodExcel)
+- [x] Vitest tests cho GĐ3 refactor (25 tests passed)
+
+### 3.5 Gantt Chart & PDF Export & Mock Data Cleanup
+- [x] Cải thiện Gantt chart: thêm progress bar (0-100%), dependency field, hiển thị % hoàn thành trên thanh task
+- [x] Loại bỏ mock/demo data từ 31 trang (48 biến mock đã xóa): AI pages (14), IoT pages (1), System pages (16)
+- [x] Thêm export PDF cho OEE Period Report (oee.exportPeriodPdf endpoint + nút Xuất PDF trên UI)
+- [x] Vitest tests cho GD3 features (9 tests passed: Gantt progress, mock removal verification, PDF export logic)
+- [x] Fix AiPredictive.tsx syntax error từ mock data removal script
+
+### 3.6 Build Performance, AI/IoT Backend, OEE Weekly Report
+- [x] Tối ưu build: Lazy load Dashboard, Profile, About, Home, LandingPage, History, Mappings, Settings, Analyze trong App.tsx
+- [x] Tối ưu build: Cải thiện vite.config.ts - tách vendor chunks (editor, charts, html-parser, misc), treeshake
+- [x] Backend AI: Tạo aiRootCauseRouter với LLM-powered 5M1E analysis + fallback cho cpk_decline/high_variation/out_of_spec/trend_shift
+- [x] Backend AI: Kết nối AiPredictive.tsx với ai.history.list endpoint cho historical data
+- [x] Backend IoT: Kết nối IoTGatewayConfig.tsx với edgeGateway tRPC endpoints (list, create, update, delete)
+- [x] Backend AI: Đăng ký aiRootCause router trong routers.ts
+- [x] Scheduled job: Tích hợp processScheduledOeeReports vào scheduledJobs.ts (mỗi 5 phút check báo cáo đến hạn)
+- [x] Scheduled job: Service đã có sẵn - hỗ trợ daily/weekly/monthly frequency, notifyOwner khi gửi
+- [x] Scheduled job: Router CRUD đầy đủ (list, create, update, delete, sendNow, history)
+- [x] Vitest tests: 13 tests passed cho tất cả features mới
+### 3.7 AI Backend Completion, DB Indexes, About Page
+- [x] Refactor AnomalyDetection.tsx: kết nối với anomalyDetectionAI (listModels, stats, recentAnomalies) + anomalyAlert (getHistory, getStats, getConfigs)
+- [x] Refactor AiModelTraining.tsx: kết nối với ai.training.listJobs, ai.training.getStats, ai.models.list, ai.training.startJob mutation
+- [x] AiDashboard.tsx: đã có 5 tRPC queries, xác nhận hoạt động tốt
+- [x] Database indexes: Thêm 10 composite indexes cho machine_oee_data, work_orders, maintenance_schedules, iot_data_points
+- [x] About.tsx: Cập nhật version 4.0.0, build date 2026-02-10, thêm bảng so sánh License (Trial/Standard/Professional/Enterprise)
+- [x] Vitest tests: 20 tests passed cho tất cả GĐ3.7 features

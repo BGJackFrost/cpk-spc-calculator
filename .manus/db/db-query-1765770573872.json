@@ -1,0 +1,26 @@
+{
+  "query": "SELECT id, username, email, role, isActive, createdAt FROM local_users LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute SELECT id, username, email, role, isActive, createdAt FROM local_users LIMIT 10;",
+  "rows": [
+    {
+      "id": "1",
+      "username": "tien.nv",
+      "email": "dcnkid@gmail.com",
+      "role": "admin",
+      "isActive": "1",
+      "createdAt": "2025-12-13 15:29:36"
+    },
+    {
+      "id": "30001",
+      "username": "dcnkid",
+      "email": "dcnkid@gmail.com",
+      "role": "user",
+      "isActive": "1",
+      "createdAt": "2025-12-15 03:46:14"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tusername\temail\trole\tisActive\tcreatedAt\n1\ttien.nv\tdcnkid@gmail.com\tadmin\t1\t2025-12-13 15:29:36\n30001\tdcnkid\tdcnkid@gmail.com\tuser\t1\t2025-12-15 03:46:14\n",
+  "stderr": "",
+  "execution_time_ms": 1628
+}

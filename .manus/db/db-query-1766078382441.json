@@ -1,0 +1,397 @@
+{
+  "query": "SHOW TABLES;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute SHOW TABLES;",
+  "rows": [
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "__drizzle_migrations"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "alert_settings"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "approval_histories"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "approval_requests"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "approval_steps"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "approval_workflows"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "audit_logs"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "ca_rules"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "companies"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "company_info"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "cpk_rules"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "custom_validation_rules"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "dashboard_configs"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "dashboard_line_selections"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "database_backups"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "database_connections"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "departments"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "downtime_reasons"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "email_notification_settings"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "employee_profiles"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "export_history"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "fixtures"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "jigs"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "license_customers"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "license_heartbeats"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "licenses"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "local_users"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "login_history"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "machine_api_keys"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "machine_area_assignments"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "machine_areas"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "machine_bom"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "machine_data_logs"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "machine_field_mappings"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "machine_inspection_data"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "machine_integration_configs"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "machine_measurement_data"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "machine_oee_data"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "machine_online_status"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "machine_realtime_events"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "machine_status_history"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "machine_types"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "machine_webhook_configs"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "machine_webhook_logs"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "machines"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "maintenance_history"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "maintenance_schedules"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "maintenance_types"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "mapping_templates"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "module_permissions"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "ntf_alert_config"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "ntf_alert_history"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "ntf_report_schedule"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "oee_alert_configs"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "oee_alert_history"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "oee_alert_thresholds"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "oee_loss_categories"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "oee_loss_records"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "oee_records"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "oee_report_history"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "oee_report_schedules"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "oee_targets"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "permissions"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "po_receiving_history"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "positions"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "process_configs"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "process_step_machines"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "process_steps"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "process_templates"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "product_specifications"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "product_station_machine_standards"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "product_station_mappings"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "production_line_machines"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "production_line_products"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "production_lines"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "products"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "purchase_order_items"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "purchase_orders"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "rate_limit_config"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "rate_limit_config_history"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "rate_limit_role_config"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "realtime_alerts"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "realtime_data_buffer"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "realtime_machine_connections"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "report_templates"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "role_module_permissions"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "role_permissions"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "role_templates"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "sample_measurements"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "sample_products"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "sampling_configs"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "scheduled_report_logs"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "scheduled_reports"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "shift_reports"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "smtp_config"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "spare_parts"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "spare_parts_inventory"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "spare_parts_inventory_check_items"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "spare_parts_inventory_checks"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "spare_parts_stock_movements"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "spare_parts_transactions"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "spc_analysis_history"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "spc_defect_categories"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "spc_defect_records"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "spc_plan_execution_logs"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "spc_plan_templates"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "spc_realtime_data"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "spc_rule_violations"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "spc_rules"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "spc_rules_config"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "spc_sampling_plans"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "spc_summary_stats"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "suppliers"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "system_config"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "system_modules"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "system_settings"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "teams"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "technicians"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "user_dashboard_configs"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "user_line_assignments"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "user_permissions"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "user_prediction_configs"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "users"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "validation_rule_logs"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "webhook_logs"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "webhooks"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "work_order_parts"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "work_orders"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq": "workstations"
+    }
+  ],
+  "messages": [],
+  "stdout": "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq\n__drizzle_migrations\nalert_settings\napproval_histories\napproval_requests\napproval_steps\napproval_workflows\naudit_logs\nca_rules\ncompanies\ncompany_info\ncpk_rules\ncustom_validation_rules\ndashboard_configs\ndashboard_line_selections\ndatabase_backups\ndatabase_connections\ndepartments\ndowntime_reasons\nemail_notification_settings\nemployee_profiles\nexport_history\nfixtures\njigs\nlicense_customers\nlicense_heartbeats\nlicenses\nlocal_users\nlogin_history\nmachine_api_keys\nmachine_area_assignments\nmachine_areas\nmachine_bom\nmachine_data_logs\nmachine_field_mappings\nmachine_inspection_data\nmachine_integration_configs\nmachine_measurement_data\nmachine_oee_data\nmachine_online_status\nmachine_realtime_events\nmachine_status_history\nmachine_types\nmachine_webhook_configs\nmachine_webhook_logs\nmachines\nmaintenance_history\nmaintenance_schedules\nmaintenance_types\nmapping_templates\nmodule_permissions\nntf_alert_config\nntf_alert_history\nntf_report_schedule\noee_alert_configs\noee_alert_history\noee_alert_thresholds\noee_loss_categories\noee_loss_records\noee_records\noee_report_history\noee_report_schedules\noee_targets\npermissions\npo_receiving_history\npositions\nprocess_configs\nprocess_step_machines\nprocess_steps\nprocess_templates\nproduct_specifications\nproduct_station_machine_standards\nproduct_station_mappings\nproduction_line_machines\nproduction_line_products\nproduction_lines\nproducts\npurchase_order_items\npurchase_orders\nrate_limit_config\nrate_limit_config_history\nrate_limit_role_config\nrealtime_alerts\nrealtime_data_buffer\nrealtime_machine_connections\nreport_templates\nrole_module_permissions\nrole_permissions\nrole_templates\nsample_measurements\nsample_products\nsampling_configs\nscheduled_report_logs\nscheduled_reports\nshift_reports\nsmtp_config\nspare_parts\nspare_parts_inventory\nspare_parts_inventory_check_items\nspare_parts_inventory_checks\nspare_parts_stock_movements\nspare_parts_transactions\nspc_analysis_history\nspc_defect_categories\nspc_defect_records\nspc_plan_execution_logs\nspc_plan_templates\nspc_realtime_data\nspc_rule_violations\nspc_rules\nspc_rules_config\nspc_sampling_plans\nspc_summary_stats\nsuppliers\nsystem_config\nsystem_modules\nsystem_settings\nteams\ntechnicians\nuser_dashboard_configs\nuser_line_assignments\nuser_permissions\nuser_prediction_configs\nusers\nvalidation_rule_logs\nwebhook_logs\nwebhooks\nwork_order_parts\nwork_orders\nworkstations\n",
+  "stderr": "",
+  "execution_time_ms": 1629
+}

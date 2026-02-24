@@ -1,0 +1,8 @@
+{
+  "query": "INSERT INTO database_connections (name, database_type, host, port, `database`, username, password, description, is_active, created_at, updated_at) \nVALUES ('Internal Database (Demo)', 'mysql', 'localhost', 3306, 'cpk_spc_calculator', 'demo_user', '', 'Kết nối mẫu đến database nội bộ của hệ thống. Sử dụng để thử nghiệm tính năng xem bảng và dữ liệu.', 1, NOW(), NOW())\nON DUPLICATE KEY UPDATE updated_at = NOW();",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute INSERT INTO database_connections (name, database_type, host, port, `database`, username, password, description, is_active, created_at, updated_at) \nVALUES ('Internal Database (Demo)', 'mysql', 'localhost', 3306, 'cpk_spc_calculator', 'demo_user', '', 'Kết nối mẫu đến database nội bộ của hệ thống. Sử dụng để thử nghiệm tính năng xem bảng và dữ liệu.', 1, NOW(), NOW())\nON DUPLICATE KEY UPDATE updated_at = NOW();",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 1: Unknown column 'database_type' in 'field list'"
+  ]
+}

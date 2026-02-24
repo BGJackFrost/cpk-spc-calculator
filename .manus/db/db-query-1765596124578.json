@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS login_history (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  userId INT NOT NULL,\n  username VARCHAR(100) NOT NULL,\n  authType ENUM('local', 'manus') NOT NULL DEFAULT 'local',\n  eventType ENUM('login', 'logout', 'login_failed') NOT NULL,\n  ipAddress VARCHAR(45),\n  userAgent TEXT,\n  createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute CREATE TABLE IF NOT EXISTS login_history (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  userId INT NOT NULL,\n  username VARCHAR(100) NOT NULL,\n  authType ENUM('local', 'manus') NOT NULL DEFAULT 'local',\n  eventType ENUM('login', 'logout', 'login_failed') NOT NULL,\n  ipAddress VARCHAR(45),\n  userAgent TEXT,\n  createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1727
+}

@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `database_backups` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `filename` varchar(255) NOT NULL,\n  `fileSize` int,\n  `fileUrl` text,\n  `backupType` enum('daily','weekly','manual') NOT NULL DEFAULT 'manual',\n  `status` enum('pending','completed','failed') NOT NULL DEFAULT 'pending',\n  `errorMessage` text,\n  `storageLocation` enum('s3','local') NOT NULL DEFAULT 's3',\n  `tablesIncluded` text,\n  `createdBy` int,\n  `createdAt` timestamp NOT NULL DEFAULT (now()),\n  `completedAt` timestamp,\n  CONSTRAINT `database_backups_id` PRIMARY KEY(`id`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute CREATE TABLE IF NOT EXISTS `database_backups` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `filename` varchar(255) NOT NULL,\n  `fileSize` int,\n  `fileUrl` text,\n  `backupType` enum('daily','weekly','manual') NOT NULL DEFAULT 'manual',\n  `status` enum('pending','completed','failed') NOT NULL DEFAULT 'pending',\n  `errorMessage` text,\n  `storageLocation` enum('s3','local') NOT NULL DEFAULT 's3',\n  `tablesIncluded` text,\n  `createdBy` int,\n  `createdAt` timestamp NOT NULL DEFAULT (now()),\n  `completedAt` timestamp,\n  CONSTRAINT `database_backups_id` PRIMARY KEY(`id`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1666
+}

@@ -1,0 +1,28 @@
+{
+  "query": "SHOW CREATE TABLE spare_parts_transactions;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute SHOW CREATE TABLE spare_parts_transactions;",
+  "rows": [
+    {
+      "Table": "spare_parts_transactions",
+      "Create Table": "CREATE TABLE `spare_parts_transactions` ("
+    }
+  ],
+  "messages": [
+    "  `id` int(11) NOT NULL AUTO_INCREMENT,",
+    "  `sparePartId` int(11) NOT NULL,",
+    "  `transactionType` enum('in','out','adjustment','return') NOT NULL,",
+    "  `quantity` int(11) NOT NULL,",
+    "  `unitCost` decimal(12,2) DEFAULT NULL,",
+    "  `totalCost` decimal(12,2) DEFAULT NULL,",
+    "  `workOrderId` int(11) DEFAULT NULL,",
+    "  `purchaseOrderId` int(11) DEFAULT NULL,",
+    "  `reason` text DEFAULT NULL,",
+    "  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,",
+    "  PRIMARY KEY (`id`) /*T![clustered_index] CLUSTERED */,",
+    "  KEY `idx_spare_parts_transactions_sparePartId` (`sparePartId`)",
+    ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin"
+  ],
+  "stdout": "Table\tCreate Table\nspare_parts_transactions\tCREATE TABLE `spare_parts_transactions` (\n  `id` int(11) NOT NULL AUTO_INCREMENT,\n  `sparePartId` int(11) NOT NULL,\n  `transactionType` enum('in','out','adjustment','return') NOT NULL,\n  `quantity` int(11) NOT NULL,\n  `unitCost` decimal(12,2) DEFAULT NULL,\n  `totalCost` decimal(12,2) DEFAULT NULL,\n  `workOrderId` int(11) DEFAULT NULL,\n  `purchaseOrderId` int(11) DEFAULT NULL,\n  `reason` text DEFAULT NULL,\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`) /*T![clustered_index] CLUSTERED */,\n  KEY `idx_spare_parts_transactions_sparePartId` (`sparePartId`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin\n",
+  "stderr": "",
+  "execution_time_ms": 1548
+}

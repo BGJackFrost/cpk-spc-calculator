@@ -1,0 +1,9 @@
+{
+  "query": "INSERT INTO rate_limit_role_config (role, maxRequests, maxAuthRequests, maxExportRequests, windowMs, description) VALUES \n('admin', 10000, 500, 200, 900000, 'Admin có giới hạn cao hơn'),\n('user', 5000, 200, 100, 900000, 'User thông thường'),\n('guest', 1000, 50, 20, 900000, 'Khách chưa đăng nhập')\nON DUPLICATE KEY UPDATE maxRequests = VALUES(maxRequests);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute INSERT INTO rate_limit_role_config (role, maxRequests, maxAuthRequests, maxExportRequests, windowMs, description) VALUES \n('admin', 10000, 500, 200, 900000, 'Admin có giới hạn cao hơn'),\n('user', 5000, 200, 100, 900000, 'User thông thường'),\n('guest', 1000, 50, 20, 900000, 'Khách chưa đăng nhập')\nON DUPLICATE KEY UPDATE maxRequests = VALUES(maxRequests);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1557
+}

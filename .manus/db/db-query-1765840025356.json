@@ -1,0 +1,9 @@
+{
+  "query": "CREATE INDEX idx_work_orders_machineId ON work_orders(machineId);\nCREATE INDEX idx_work_orders_assignedTo ON work_orders(assignedTo);\nCREATE INDEX idx_work_orders_status ON work_orders(status);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute CREATE INDEX idx_work_orders_machineId ON work_orders(machineId);\nCREATE INDEX idx_work_orders_assignedTo ON work_orders(assignedTo);\nCREATE INDEX idx_work_orders_status ON work_orders(status);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 3261
+}

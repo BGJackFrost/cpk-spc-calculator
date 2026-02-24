@@ -1,0 +1,13 @@
+{
+  "query": "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'spc_analysis_history' AND TABLE_SCHEMA = DATABASE() AND COLUMN_NAME LIKE '%alert%';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'spc_analysis_history' AND TABLE_SCHEMA = DATABASE() AND COLUMN_NAME LIKE '%alert%';",
+  "rows": [
+    {
+      "COLUMN_NAME": "alertTriggered"
+    }
+  ],
+  "messages": [],
+  "stdout": "COLUMN_NAME\nalertTriggered\n",
+  "stderr": "",
+  "execution_time_ms": 1542
+}

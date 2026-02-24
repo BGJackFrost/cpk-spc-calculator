@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `po_receiving_history` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `purchaseOrderId` int NOT NULL,\n  `purchaseOrderItemId` int NOT NULL,\n  `sparePartId` int NOT NULL,\n  `quantityReceived` int NOT NULL,\n  `receivedBy` int,\n  `receivedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  `notes` text,\n  `batchNumber` varchar(100),\n  `qualityStatus` enum('good','damaged','rejected') DEFAULT 'good',\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  CONSTRAINT `po_receiving_history_id` PRIMARY KEY(`id`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute CREATE TABLE IF NOT EXISTS `po_receiving_history` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `purchaseOrderId` int NOT NULL,\n  `purchaseOrderItemId` int NOT NULL,\n  `sparePartId` int NOT NULL,\n  `quantityReceived` int NOT NULL,\n  `receivedBy` int,\n  `receivedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  `notes` text,\n  `batchNumber` varchar(100),\n  `qualityStatus` enum('good','damaged','rejected') DEFAULT 'good',\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  CONSTRAINT `po_receiving_history_id` PRIMARY KEY(`id`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1798
+}

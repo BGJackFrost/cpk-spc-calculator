@@ -1,0 +1,151 @@
+{
+  "query": "SHOW TABLES LIKE 'iot%';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute SHOW TABLES LIKE 'iot%';",
+  "rows": [
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq (iot%)": "iot_3d_device_positions"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq (iot%)": "iot_3d_floor_plans"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq (iot%)": "iot_3d_model_instances"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq (iot%)": "iot_3d_models"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq (iot%)": "iot_alarms"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq (iot%)": "iot_alert_correlations"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq (iot%)": "iot_alert_escalation_rules"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq (iot%)": "iot_alert_history"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq (iot%)": "iot_alert_thresholds"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq (iot%)": "iot_analytics_reports"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq (iot%)": "iot_connection_logs"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq (iot%)": "iot_connections"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq (iot%)": "iot_dashboard_widgets"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq (iot%)": "iot_data_points"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq (iot%)": "iot_device_commissioning"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq (iot%)": "iot_device_data"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq (iot%)": "iot_device_firmware"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq (iot%)": "iot_device_groups"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq (iot%)": "iot_device_health"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq (iot%)": "iot_device_health_history"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq (iot%)": "iot_device_positions"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq (iot%)": "iot_device_templates"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq (iot%)": "iot_devices"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq (iot%)": "iot_failure_events"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq (iot%)": "iot_firmware_packages"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq (iot%)": "iot_floor_plan_zones"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq (iot%)": "iot_floor_plans"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq (iot%)": "iot_maintenance_predictions"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq (iot%)": "iot_maintenance_schedules"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq (iot%)": "iot_maintenance_work_orders"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq (iot%)": "iot_mttr_mtbf_stats"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq (iot%)": "iot_oee_alert_config"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq (iot%)": "iot_oee_alert_history"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq (iot%)": "iot_ota_deployments"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq (iot%)": "iot_ota_device_status"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq (iot%)": "iot_ota_schedule_runs"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq (iot%)": "iot_ota_schedules"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq (iot%)": "iot_prediction_models"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq (iot%)": "iot_protocol_configs"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq (iot%)": "iot_push_config"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq (iot%)": "iot_sms_config"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq (iot%)": "iot_technician_notification_prefs"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq (iot%)": "iot_technicians"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq (iot%)": "iot_work_order_comments"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq (iot%)": "iot_work_order_history"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq (iot%)": "iot_work_order_notifications"
+    },
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq (iot%)": "iot_work_order_tasks"
+    }
+  ],
+  "messages": [],
+  "stdout": "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq (iot%)\niot_3d_device_positions\niot_3d_floor_plans\niot_3d_model_instances\niot_3d_models\niot_alarms\niot_alert_correlations\niot_alert_escalation_rules\niot_alert_history\niot_alert_thresholds\niot_analytics_reports\niot_connection_logs\niot_connections\niot_dashboard_widgets\niot_data_points\niot_device_commissioning\niot_device_data\niot_device_firmware\niot_device_groups\niot_device_health\niot_device_health_history\niot_device_positions\niot_device_templates\niot_devices\niot_failure_events\niot_firmware_packages\niot_floor_plan_zones\niot_floor_plans\niot_maintenance_predictions\niot_maintenance_schedules\niot_maintenance_work_orders\niot_mttr_mtbf_stats\niot_oee_alert_config\niot_oee_alert_history\niot_ota_deployments\niot_ota_device_status\niot_ota_schedule_runs\niot_ota_schedules\niot_prediction_models\niot_protocol_configs\niot_push_config\niot_sms_config\niot_technician_notification_prefs\niot_technicians\niot_work_order_comments\niot_work_order_history\niot_work_order_notifications\niot_work_order_tasks\n",
+  "stderr": "",
+  "execution_time_ms": 1528
+}

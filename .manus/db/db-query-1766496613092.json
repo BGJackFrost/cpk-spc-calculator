@@ -1,0 +1,20 @@
+{
+  "query": "SELECT id, code, name FROM machines LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute SELECT id, code, name FROM machines LIMIT 10;",
+  "rows": [
+    {
+      "id": "1",
+      "code": "MC01",
+      "name": "Máy Hàn Bán Tự Động"
+    },
+    {
+      "id": "30001",
+      "code": "MC02",
+      "name": "Máy Gắn Chip SMT"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tcode\tname\n1\tMC01\tMáy Hàn Bán Tự Động\n30001\tMC02\tMáy Gắn Chip SMT\n",
+  "stderr": "",
+  "execution_time_ms": 1513
+}

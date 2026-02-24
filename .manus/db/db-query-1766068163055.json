@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS machine_field_mappings (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  name VARCHAR(200) NOT NULL,\n  apiKeyId INT,\n  machineType VARCHAR(100),\n  sourceField VARCHAR(200) NOT NULL,\n  targetField VARCHAR(200) NOT NULL,\n  targetTable ENUM('measurements', 'inspection_data', 'oee_records') NOT NULL,\n  transformType ENUM('direct', 'multiply', 'divide', 'add', 'subtract', 'custom') NOT NULL DEFAULT 'direct',\n  transformValue DECIMAL(15,6),\n  customTransform TEXT,\n  defaultValue VARCHAR(255),\n  isRequired INT NOT NULL DEFAULT 0,\n  isActive INT NOT NULL DEFAULT 1,\n  createdBy INT NOT NULL,\n  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,\n  updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL\n)",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute CREATE TABLE IF NOT EXISTS machine_field_mappings (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  name VARCHAR(200) NOT NULL,\n  apiKeyId INT,\n  machineType VARCHAR(100),\n  sourceField VARCHAR(200) NOT NULL,\n  targetField VARCHAR(200) NOT NULL,\n  targetTable ENUM('measurements', 'inspection_data', 'oee_records') NOT NULL,\n  transformType ENUM('direct', 'multiply', 'divide', 'add', 'subtract', 'custom') NOT NULL DEFAULT 'direct',\n  transformValue DECIMAL(15,6),\n  customTransform TEXT,\n  defaultValue VARCHAR(255),\n  isRequired INT NOT NULL DEFAULT 0,\n  isActive INT NOT NULL DEFAULT 1,\n  createdBy INT NOT NULL,\n  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,\n  updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL\n)",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1684
+}

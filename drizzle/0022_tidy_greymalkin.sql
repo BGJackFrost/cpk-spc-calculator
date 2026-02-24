@@ -1,0 +1,1 @@
+ALTER TABLE `audit_logs` ADD `authType` enum('local','online') DEFAULT 'online';

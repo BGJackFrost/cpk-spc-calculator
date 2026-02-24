@@ -1,0 +1,20 @@
+CREATE TABLE `forecast_history` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`production_line_id` int,
+	`metric_type` enum('cpk','oee','defect_rate') NOT NULL,
+	`forecast_date` timestamp NOT NULL,
+	`forecast_created_at` timestamp NOT NULL,
+	`predicted_value` decimal(10,4) NOT NULL,
+	`upper_bound` decimal(10,4),
+	`lower_bound` decimal(10,4),
+	`confidence_level` decimal(5,2) DEFAULT '95.00',
+	`actual_value` decimal(10,4),
+	`actual_recorded_at` timestamp,
+	`absolute_error` decimal(10,4),
+	`percentage_error` decimal(10,4),
+	`model_version` varchar(50),
+	`model_type` varchar(100),
+	`created_at` timestamp NOT NULL DEFAULT (now()),
+	`updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `forecast_history_id` PRIMARY KEY(`id`)
+);

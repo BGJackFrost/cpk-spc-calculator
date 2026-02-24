@@ -1,0 +1,1 @@
+ALTER TABLE `user_quick_access` ADD `is_pinned` int DEFAULT 0 NOT NULL;

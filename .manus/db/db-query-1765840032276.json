@@ -1,0 +1,9 @@
+{
+  "query": "CREATE INDEX idx_oee_records_machineId ON oee_records(machineId);\nCREATE INDEX idx_oee_records_recordDate ON oee_records(recordDate);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute CREATE INDEX idx_oee_records_machineId ON oee_records(machineId);\nCREATE INDEX idx_oee_records_recordDate ON oee_records(recordDate);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 2512
+}

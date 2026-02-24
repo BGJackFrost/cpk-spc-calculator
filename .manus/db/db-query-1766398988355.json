@@ -1,0 +1,9 @@
+{
+  "query": "CREATE INDEX IF NOT EXISTS idx_realtime_plan ON spc_realtime_data(planId);\nCREATE INDEX IF NOT EXISTS idx_realtime_sampled ON spc_realtime_data(sampledAt);\nCREATE INDEX IF NOT EXISTS idx_realtime_plan_sampled ON spc_realtime_data(planId, sampledAt DESC);\nCREATE INDEX IF NOT EXISTS idx_summary_plan ON spc_summary_stats(planId);\nCREATE INDEX IF NOT EXISTS idx_summary_period ON spc_summary_stats(periodStart);\nCREATE INDEX IF NOT EXISTS idx_summary_plan_period ON spc_summary_stats(planId, periodStart DESC);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute CREATE INDEX IF NOT EXISTS idx_realtime_plan ON spc_realtime_data(planId);\nCREATE INDEX IF NOT EXISTS idx_realtime_sampled ON spc_realtime_data(sampledAt);\nCREATE INDEX IF NOT EXISTS idx_realtime_plan_sampled ON spc_realtime_data(planId, sampledAt DESC);\nCREATE INDEX IF NOT EXISTS idx_summary_plan ON spc_summary_stats(planId);\nCREATE INDEX IF NOT EXISTS idx_summary_period ON spc_summary_stats(periodStart);\nCREATE INDEX IF NOT EXISTS idx_summary_plan_period ON spc_summary_stats(planId, periodStart DESC);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 4922
+}

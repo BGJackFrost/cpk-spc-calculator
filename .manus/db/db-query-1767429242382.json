@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS latency_records (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  device_id INT,\n  device_name VARCHAR(100),\n  source_type ENUM('sensor', 'plc', 'gateway', 'server') NOT NULL,\n  latency_ms DECIMAL(10, 2) NOT NULL,\n  timestamp TIMESTAMP NOT NULL,\n  metadata JSON,\n  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute CREATE TABLE IF NOT EXISTS latency_records (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  device_id INT,\n  device_name VARCHAR(100),\n  source_type ENUM('sensor', 'plc', 'gateway', 'server') NOT NULL,\n  latency_ms DECIMAL(10, 2) NOT NULL,\n  timestamp TIMESTAMP NOT NULL,\n  metadata JSON,\n  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1690
+}

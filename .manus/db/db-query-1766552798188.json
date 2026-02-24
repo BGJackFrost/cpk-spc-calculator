@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `webhook_subscriptions_v2` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `name` varchar(255) NOT NULL,\n  `url` varchar(500) NOT NULL,\n  `secret` varchar(255),\n  `events` text NOT NULL,\n  `headers` text,\n  `retry_count` int NOT NULL DEFAULT 3,\n  `retry_delay` int NOT NULL DEFAULT 60,\n  `is_active` int NOT NULL DEFAULT 1,\n  `last_triggered_at` timestamp,\n  `last_status` enum('success', 'failed', 'pending'),\n  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  CONSTRAINT `webhook_subscriptions_v2_id` PRIMARY KEY(`id`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute CREATE TABLE IF NOT EXISTS `webhook_subscriptions_v2` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `name` varchar(255) NOT NULL,\n  `url` varchar(500) NOT NULL,\n  `secret` varchar(255),\n  `events` text NOT NULL,\n  `headers` text,\n  `retry_count` int NOT NULL DEFAULT 3,\n  `retry_delay` int NOT NULL DEFAULT 60,\n  `is_active` int NOT NULL DEFAULT 1,\n  `last_triggered_at` timestamp,\n  `last_status` enum('success', 'failed', 'pending'),\n  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  CONSTRAINT `webhook_subscriptions_v2_id` PRIMARY KEY(`id`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1555
+}

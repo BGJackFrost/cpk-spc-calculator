@@ -1,0 +1,31 @@
+{
+  "query": "SELECT * FROM product_station_mappings LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute SELECT * FROM product_station_mappings LIMIT 10;",
+  "rows": [
+    {
+      "id": "1",
+      "productCode": "PROD01",
+      "stationName": "AOI-01",
+      "connectionId": "1",
+      "tableName": "Machine_data",
+      "productCodeColumn": "product_code",
+      "stationColumn": "station",
+      "valueColumn": "value",
+      "timestampColumn": "timestamp",
+      "usl": "-7",
+      "lsl": "7",
+      "target": "0",
+      "isActive": "0",
+      "createdBy": "1",
+      "createdAt": "2025-12-11 07:47:01",
+      "updatedAt": "2025-12-12 04:58:36",
+      "filterConditions": "NULL"
+    }
+  ],
+  "messages": [
+    "30001\tProd1\tSPP-01\t\t30001\tsample_measurements\tproduct_code\tstation_name\tmeasurement_value\tmeasurement_time\t100\t80\t90\t1\t1\t2025-12-13 15:53:47\t2025-12-13 15:53:47\tNULL"
+  ],
+  "stdout": "id\tproductCode\tstationName\tconnectionId\ttableName\tproductCodeColumn\tstationColumn\tvalueColumn\ttimestampColumn\tusl\tlsl\ttarget\tisActive\tcreatedBy\tcreatedAt\tupdatedAt\tfilterConditions\n1\tPROD01\tAOI-01\t1\tMachine_data\tproduct_code\tstation\tvalue\ttimestamp\t-7\t7\t0\t0\t1\t2025-12-11 07:47:01\t2025-12-12 04:58:36\tNULL\n30001\tProd1\tSPP-01\t\t30001\tsample_measurements\tproduct_code\tstation_name\tmeasurement_value\tmeasurement_time\t100\t80\t90\t1\t1\t2025-12-13 15:53:47\t2025-12-13 15:53:47\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 1570
+}

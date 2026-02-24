@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS user_notifications (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  user_id INT NOT NULL,\n  type ENUM('report_sent', 'spc_violation', 'cpk_alert', 'system', 'anomaly_detected') NOT NULL,\n  severity ENUM('info', 'warning', 'critical') DEFAULT 'info' NOT NULL,\n  title VARCHAR(255) NOT NULL,\n  message TEXT NOT NULL,\n  reference_type VARCHAR(50),\n  reference_id INT,\n  metadata JSON,\n  is_read TINYINT DEFAULT 0 NOT NULL,\n  read_at TIMESTAMP NULL,\n  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,\n  INDEX idx_user_notifications_user (user_id),\n  INDEX idx_user_notifications_type (type),\n  INDEX idx_user_notifications_read (is_read),\n  INDEX idx_user_notifications_created (created_at)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute CREATE TABLE IF NOT EXISTS user_notifications (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  user_id INT NOT NULL,\n  type ENUM('report_sent', 'spc_violation', 'cpk_alert', 'system', 'anomaly_detected') NOT NULL,\n  severity ENUM('info', 'warning', 'critical') DEFAULT 'info' NOT NULL,\n  title VARCHAR(255) NOT NULL,\n  message TEXT NOT NULL,\n  reference_type VARCHAR(50),\n  reference_id INT,\n  metadata JSON,\n  is_read TINYINT DEFAULT 0 NOT NULL,\n  read_at TIMESTAMP NULL,\n  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,\n  INDEX idx_user_notifications_user (user_id),\n  INDEX idx_user_notifications_type (type),\n  INDEX idx_user_notifications_read (is_read),\n  INDEX idx_user_notifications_created (created_at)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1828
+}

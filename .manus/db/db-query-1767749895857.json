@@ -1,0 +1,13 @@
+{
+  "query": "SHOW TABLES LIKE 'scheduled_mttr_mtbf_reports';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute SHOW TABLES LIKE 'scheduled_mttr_mtbf_reports';",
+  "rows": [
+    {
+      "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq (scheduled_mttr_mtbf_reports)": "scheduled_mttr_mtbf_reports"
+    }
+  ],
+  "messages": [],
+  "stdout": "Tables_in_RpnsLdN3u3f6PBDr9mn7Zq (scheduled_mttr_mtbf_reports)\nscheduled_mttr_mtbf_reports\n",
+  "stderr": "",
+  "execution_time_ms": 1515
+}

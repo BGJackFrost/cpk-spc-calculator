@@ -1,0 +1,94 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#3b82f6', 'primaryTextColor': '#fff', 'primaryBorderColor': '#2563eb', 'lineColor': '#64748b', 'secondaryColor': '#f1f5f9', 'tertiaryColor': '#e2e8f0'}}}%%
+flowchart LR
+    subgraph Layer1["1️⃣ NGUỒN DỮ LIỆU"]
+        direction TB
+        PLC["🔧 PLC<br/>Controller"]
+        SENSOR["🌡️ Sensors<br/>Cảm biến"]
+        GW["📶 Gateway<br/>Bộ thu thập"]
+        HMI["🖥️ HMI/SCADA"]
+    end
+
+    subgraph Layer2["2️⃣ GIAO THỨC"]
+        direction TB
+        MQTT["📨 MQTT"]
+        OPCUA["🔗 OPC-UA"]
+        MODBUS["⚡ Modbus"]
+    end
+
+    subgraph Layer3["3️⃣ THU THẬP"]
+        direction TB
+        BUFFER["⚡ Realtime<br/>Buffer"]
+        DATAPOINT["📊 Data<br/>Points"]
+        DEVICEDATA["💾 Device<br/>Data"]
+    end
+
+    subgraph Layer4["4️⃣ XỬ LÝ"]
+        direction TB
+        THRESHOLD["📏 Threshold<br/>Check"]
+        HEALTH["💚 Health<br/>Score"]
+        ANALYTICS["📈 Analytics<br/>Engine"]
+    end
+
+    subgraph Layer5["5️⃣ KẾT QUẢ"]
+        direction TB
+        ALARM["🚨 Alarms"]
+        DASHBOARD["📊 Dashboards"]
+        REPORT["📄 Reports"]
+        PREDICTION["🔮 Predictions"]
+    end
+
+    subgraph Layer6["6️⃣ HÀNH ĐỘNG"]
+        direction TB
+        ESCALATION["📢 Escalation"]
+        WORKORDER["📋 Work Orders"]
+        NOTIFY["📬 Notifications"]
+    end
+
+    %% Layer 1 to Layer 2
+    PLC --> MQTT
+    PLC --> OPCUA
+    PLC --> MODBUS
+    SENSOR --> MQTT
+    SENSOR --> MODBUS
+    GW --> MQTT
+    HMI --> OPCUA
+
+    %% Layer 2 to Layer 3
+    MQTT --> BUFFER
+    OPCUA --> BUFFER
+    MODBUS --> BUFFER
+    BUFFER --> DATAPOINT
+    BUFFER --> DEVICEDATA
+
+    %% Layer 3 to Layer 4
+    DATAPOINT --> THRESHOLD
+    DATAPOINT --> ANALYTICS
+    DEVICEDATA --> HEALTH
+
+    %% Layer 4 to Layer 5
+    THRESHOLD --> ALARM
+    HEALTH --> DASHBOARD
+    HEALTH --> PREDICTION
+    ANALYTICS --> REPORT
+    ANALYTICS --> PREDICTION
+
+    %% Layer 5 to Layer 6
+    ALARM --> ESCALATION
+    ALARM --> WORKORDER
+    PREDICTION --> WORKORDER
+    ESCALATION --> NOTIFY
+
+    %% Styling
+    classDef layer1 fill:#0ea5e9,stroke:#0284c7,color:#fff
+    classDef layer2 fill:#8b5cf6,stroke:#7c3aed,color:#fff
+    classDef layer3 fill:#10b981,stroke:#059669,color:#fff
+    classDef layer4 fill:#f59e0b,stroke:#d97706,color:#fff
+    classDef layer5 fill:#ef4444,stroke:#dc2626,color:#fff
+    classDef layer6 fill:#ec4899,stroke:#db2777,color:#fff
+
+    class PLC,SENSOR,GW,HMI layer1
+    class MQTT,OPCUA,MODBUS layer2
+    class BUFFER,DATAPOINT,DEVICEDATA layer3
+    class THRESHOLD,HEALTH,ANALYTICS layer4
+    class ALARM,DASHBOARD,REPORT,PREDICTION layer5
+    class ESCALATION,WORKORDER,NOTIFY layer6

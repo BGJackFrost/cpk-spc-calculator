@@ -1,0 +1,529 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+:root {
+  /* Modern Professional Blue Theme */
+  --primary: oklch(0.52 0.19 260);
+  --primary-foreground: oklch(0.99 0.002 240);
+  --sidebar-primary: oklch(0.52 0.19 260);
+  --sidebar-primary-foreground: oklch(0.99 0.002 240);
+  
+  /* Chart colors - Vibrant but professional */
+  --chart-1: oklch(0.58 0.19 260);
+  --chart-2: oklch(0.65 0.18 170);
+  --chart-3: oklch(0.60 0.18 145);
+  --chart-4: oklch(0.68 0.18 55);
+  --chart-5: oklch(0.58 0.20 25);
+  
+  /* Border radius - Slightly rounded for modern look */
+  --radius: 0.5rem;
+  
+  /* Background - Clean white with subtle warmth */
+  --background: oklch(0.985 0.003 250);
+  --foreground: oklch(0.18 0.02 260);
+  
+  /* Card - Pure white with subtle depth */
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.18 0.02 260);
+  
+  /* Popover */
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.18 0.02 260);
+  
+  /* Secondary - Soft gray-blue */
+  --secondary: oklch(0.96 0.012 260);
+  --secondary-foreground: oklch(0.28 0.03 260);
+  
+  /* Muted - Subtle background */
+  --muted: oklch(0.965 0.008 260);
+  --muted-foreground: oklch(0.48 0.02 260);
+  
+  /* Accent - Soft highlight */
+  --accent: oklch(0.95 0.025 260);
+  --accent-foreground: oklch(0.28 0.03 260);
+  
+  /* Destructive - Red */
+  --destructive: oklch(0.55 0.22 25);
+  --destructive-foreground: oklch(0.99 0.002 240);
+  
+  /* Border & Input */
+  --border: oklch(0.91 0.012 260);
+  --input: oklch(0.91 0.012 260);
+  --ring: oklch(0.52 0.19 260);
+  
+  /* Sidebar - Slightly off-white */
+  --sidebar: oklch(0.98 0.006 260);
+  --sidebar-foreground: oklch(0.18 0.02 260);
+  --sidebar-accent: oklch(0.94 0.025 260);
+  --sidebar-accent-foreground: oklch(0.28 0.03 260);
+  --sidebar-border: oklch(0.91 0.012 260);
+  --sidebar-ring: oklch(0.52 0.19 260);
+  
+  /* Status colors */
+  --success: oklch(0.58 0.18 145);
+  --success-foreground: oklch(0.99 0.002 240);
+  --warning: oklch(0.78 0.18 75);
+  --warning-foreground: oklch(0.22 0.02 75);
+  --info: oklch(0.58 0.18 230);
+  --info-foreground: oklch(0.99 0.002 240);
+  
+  /* Shadows - Refined depth */
+  --shadow-elegant: 0 1px 2px 0 oklch(0 0 0 / 0.03), 0 1px 3px 0 oklch(0 0 0 / 0.04);
+  --shadow-card: 0 2px 8px -2px oklch(0 0 0 / 0.06), 0 4px 12px -4px oklch(0 0 0 / 0.04);
+  --shadow-elevated: 0 8px 24px -4px oklch(0 0 0 / 0.08), 0 4px 8px -4px oklch(0 0 0 / 0.06);
+  --shadow-glow: 0 0 20px oklch(0.52 0.19 260 / 0.15);
+}
+
+.dark {
+  /* Dark theme - Deep blue-gray */
+  --primary: oklch(0.68 0.18 260);
+  --primary-foreground: oklch(0.12 0.02 260);
+  --sidebar-primary: oklch(0.68 0.18 260);
+  --sidebar-primary-foreground: oklch(0.12 0.02 260);
+  
+  /* Background - Rich dark */
+  --background: oklch(0.14 0.02 260);
+  --foreground: oklch(0.94 0.008 260);
+  
+  /* Card - Slightly elevated */
+  --card: oklch(0.18 0.02 260);
+  --card-foreground: oklch(0.94 0.008 260);
+  
+  /* Popover */
+  --popover: oklch(0.18 0.02 260);
+  --popover-foreground: oklch(0.94 0.008 260);
+  
+  /* Secondary */
+  --secondary: oklch(0.24 0.02 260);
+  --secondary-foreground: oklch(0.94 0.008 260);
+  --muted: oklch(0.22 0.02 265);
+  --muted-foreground: oklch(0.65 0.02 265);
+  --accent: oklch(0.25 0.03 265);
+  --accent-foreground: oklch(0.96 0.008 265);
+  --destructive: oklch(0.55 0.2 25);
+  --destructive-foreground: oklch(0.96 0.008 265);
+  --border: oklch(0.28 0.02 265);
+  --input: oklch(0.28 0.02 265);
+  --ring: oklch(0.65 0.18 265);
+  --chart-1: oklch(0.65 0.18 265);
+  --chart-2: oklch(0.7 0.15 180);
+  --chart-3: oklch(0.65 0.15 145);
+  --chart-4: oklch(0.7 0.18 50);
+  --chart-5: oklch(0.65 0.18 25);
+  --sidebar: oklch(0.14 0.02 265);
+  --sidebar-foreground: oklch(0.96 0.008 265);
+  --sidebar-accent: oklch(0.22 0.02 265);
+  --sidebar-accent-foreground: oklch(0.96 0.008 265);
+  --sidebar-border: oklch(0.28 0.02 265);
+  --sidebar-ring: oklch(0.65 0.18 265);
+  --success: oklch(0.65 0.18 145);
+  --success-foreground: oklch(0.12 0.02 265);
+  --warning: oklch(0.8 0.18 80);
+  --warning-foreground: oklch(0.15 0.02 80);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: "Geist", "Inter", system-ui, sans-serif;
+  }
+  html {
+    @apply scroll-smooth;
+  }
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [type="button"]:not(:disabled),
+  [type="submit"]:not(:disabled),
+  [type="reset"]:not(:disabled),
+  a[href],
+  select:not(:disabled),
+  input[type="checkbox"]:not(:disabled),
+  input[type="radio"]:not(:disabled) {
+    @apply cursor-pointer;
+  }
+}
+
+@layer components {
+  /**
+   * Custom container utility that centers content and adds responsive padding.
+   *
+   * This overrides Tailwind's default container behavior to:
+   * - Auto-center content (mx-auto)
+   * - Add responsive horizontal padding
+   * - Set max-width for large screens
+   *
+   * Usage: <div className="container">...</div>
+   *
+   * For custom widths, use max-w-* utilities directly:
+   * <div className="max-w-6xl mx-auto px-4">...</div>
+   */
+  .container {
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 1rem; /* 16px - mobile padding */
+    padding-right: 1rem;
+  }
+
+  .flex {
+    min-height: 0;
+    min-width: 0;
+  }
+
+  @media (min-width: 640px) {
+    .container {
+      padding-left: 1.5rem; /* 24px - tablet padding */
+      padding-right: 1.5rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .container {
+      padding-left: 2rem; /* 32px - desktop padding */
+      padding-right: 2rem;
+      max-width: 1280px; /* Standard content width */
+    }
+  }
+
+  .elegant-card {
+    background-color: var(--card);
+    border-radius: 0.75rem;
+    border: 1px solid oklch(from var(--border) l c h / 0.5);
+    transition: all 0.3s;
+    box-shadow: var(--shadow-card);
+  }
+
+  .elegant-card:hover {
+    box-shadow: var(--shadow-elevated);
+    border-color: var(--border);
+  }
+
+  .stat-card {
+    background-color: var(--card);
+    border-radius: 0.75rem;
+    border: 1px solid oklch(from var(--border) l c h / 0.5);
+    transition: all 0.3s;
+    box-shadow: var(--shadow-card);
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .stat-card:hover {
+    box-shadow: var(--shadow-elevated);
+    border-color: var(--border);
+  }
+
+  .stat-value {
+    @apply text-3xl font-bold tracking-tight text-foreground;
+  }
+
+  .stat-label {
+    @apply text-sm font-medium text-muted-foreground uppercase tracking-wider;
+  }
+
+  .gradient-text {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(to right, var(--primary), var(--chart-2), var(--chart-3));
+  }
+
+  .glass-effect {
+    @apply backdrop-blur-xl border;
+    background-color: oklch(from var(--background) l c h / 0.8);
+    border-color: oklch(from var(--border) l c h / 0.3);
+  }
+}
+
+@layer utilities {
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-out forwards;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.5s ease-out forwards;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes slideUp {
+    from { 
+      opacity: 0; 
+      transform: translateY(10px); 
+    }
+    to { 
+      opacity: 1; 
+      transform: translateY(0); 
+    }
+  }
+}
+
+/* ===== PRINT STYLES - Tối ưu cho in PDF A4 ===== */
+@media print {
+  /* Reset page margins and size */
+  @page {
+    size: A4;
+    margin: 15mm 10mm;
+  }
+  
+  @page :first {
+    margin-top: 10mm;
+  }
+  
+  /* Hide non-printable elements */
+  body * {
+    visibility: hidden;
+  }
+  
+  .printable-report,
+  .printable-report * {
+    visibility: visible;
+  }
+  
+  .printable-report {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    background: white !important;
+    color: black !important;
+    font-size: 11pt;
+    line-height: 1.4;
+  }
+  
+  /* Hide sidebar, header, footer */
+  nav,
+  aside,
+  header:not(.print-header),
+  footer:not(.print-footer),
+  .no-print,
+  button,
+  [role="dialog"],
+  [data-radix-popper-content-wrapper] {
+    display: none !important;
+  }
+  
+  /* Page breaks */
+  .print-page-break-before {
+    page-break-before: always;
+  }
+  
+  .print-page-break-after {
+    page-break-after: always;
+  }
+  
+  .print-avoid-break {
+    page-break-inside: avoid;
+  }
+  
+  /* Header styling */
+  .print-header {
+    position: running(header);
+    border-bottom: 2px solid #333 !important;
+    padding-bottom: 10pt;
+    margin-bottom: 15pt;
+  }
+  
+  .print-logo {
+    max-height: 50pt;
+    width: auto;
+  }
+  
+  /* Footer styling */
+  .print-footer {
+    position: running(footer);
+    border-top: 1px solid #ccc !important;
+    padding-top: 8pt;
+    margin-top: 15pt;
+    font-size: 9pt;
+    color: #666 !important;
+  }
+  
+  /* Table styling for print */
+  .print-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 10pt;
+    page-break-inside: auto;
+  }
+  
+  .print-table thead {
+    display: table-header-group;
+  }
+  
+  .print-table tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+  
+  .print-table th,
+  .print-table td {
+    border: 1px solid #333 !important;
+    padding: 6pt 8pt;
+    text-align: left;
+  }
+  
+  .print-table th {
+    background-color: #f0f0f0 !important;
+    font-weight: bold;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  
+  .print-table tbody tr:nth-child(even) {
+    background-color: #f9f9f9 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  
+  /* Stats grid for print */
+  .print-stats {
+    display: grid;
+    gap: 10pt;
+    page-break-inside: avoid;
+  }
+  
+  .print-stats > div {
+    border: 1px solid #ccc !important;
+    padding: 8pt;
+    text-align: center;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  
+  /* Chart container for print */
+  .print-chart {
+    page-break-inside: avoid;
+    margin: 15pt 0;
+  }
+  
+  .print-chart canvas,
+  .print-chart svg {
+    max-width: 100%;
+    height: auto !important;
+  }
+  
+  /* Section styling */
+  .print-section {
+    page-break-inside: avoid;
+    margin-bottom: 15pt;
+  }
+  
+  .print-section h2 {
+    font-size: 13pt;
+    font-weight: bold;
+    border-bottom: 1px solid #333;
+    padding-bottom: 5pt;
+    margin-bottom: 10pt;
+  }
+  
+  /* Links - show URL */
+  a[href]:after {
+    content: none;
+  }
+  
+  /* Ensure colors print correctly */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  
+  /* Badge/status colors for print */
+  .bg-green-100,
+  .bg-green-50 {
+    background-color: #dcfce7 !important;
+  }
+  
+  .bg-red-100,
+  .bg-red-50 {
+    background-color: #fee2e2 !important;
+  }
+  
+  .bg-yellow-100,
+  .bg-yellow-50 {
+    background-color: #fef9c3 !important;
+  }
+  
+  .bg-blue-100,
+  .bg-blue-50 {
+    background-color: #dbeafe !important;
+  }
+  
+  .text-green-600 {
+    color: #16a34a !important;
+  }
+  
+  .text-red-600 {
+    color: #dc2626 !important;
+  }
+  
+  .text-yellow-600 {
+    color: #ca8a04 !important;
+  }
+  
+  .text-blue-600 {
+    color: #2563eb !important;
+  }
+}
+
+/* Screen-only print preview styles */
+@media screen {
+  .printable-report {
+    max-width: 210mm;
+    margin: 0 auto;
+    padding: 20mm 15mm;
+    background: white;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  }
+  
+  .print-preview-mode .printable-report {
+    border: 1px dashed #ccc;
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "query": "SELECT id, name, model_url, category FROM iot_3d_models ORDER BY id DESC LIMIT 10",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute SELECT id, name, model_url, category FROM iot_3d_models ORDER BY id DESC LIMIT 10",
+  "rows": [
+    {
+      "id": "30004",
+      "name": "Test Direct Insert",
+      "model_url": "https://example.com/test.glb",
+      "category": "machine"
+    },
+    {
+      "id": "30003",
+      "name": "Test CNC Machine",
+      "model_url": "https://d2xsxph8kpxj0f.cloudfront.net/310519663243606474/RpnsLdN3u3f6PBDr9mn7Zq/3d-models/1767751641855-test_cube.glb",
+      "category": "machine"
+    },
+    {
+      "id": "30002",
+      "name": "Test CNC Machine Final",
+      "model_url": "https://d2xsxph8kpxj0f.cloudfront.net/310519663243606474/RpnsLdN3u3f6PBDr9mn7Zq/3d-models/1767751538691-test_cube.glb",
+      "category": "machine"
+    },
+    {
+      "id": "30001",
+      "name": "Test Model Direct",
+      "model_url": "https://example.com/test.glb",
+      "category": "machine"
+    },
+    {
+      "id": "3",
+      "name": "Milk Truck",
+      "model_url": "https://d2xsxph8kpxj0f.cloudfront.net/310519663243606474/RpnsLdN3u3f6PBDr9mn7Zq/3d-models/1767584226218-CesiumMilkTruck.glb",
+      "category": "equipment"
+    },
+    {
+      "id": "2",
+      "name": "Animated Box",
+      "model_url": "https://d2xsxph8kpxj0f.cloudfront.net/310519663243606474/RpnsLdN3u3f6PBDr9mn7Zq/3d-models/1767584225705-BoxAnimated.glb",
+      "category": "custom"
+    },
+    {
+      "id": "1",
+      "name": "Industrial Helmet",
+      "model_url": "https://d2xsxph8kpxj0f.cloudfront.net/310519663243606474/RpnsLdN3u3f6PBDr9mn7Zq/3d-models/1767584222650-DamagedHelmet.glb",
+      "category": "equipment"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tmodel_url\tcategory\n30004\tTest Direct Insert\thttps://example.com/test.glb\tmachine\n30003\tTest CNC Machine\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663243606474/RpnsLdN3u3f6PBDr9mn7Zq/3d-models/1767751641855-test_cube.glb\tmachine\n30002\tTest CNC Machine Final\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663243606474/RpnsLdN3u3f6PBDr9mn7Zq/3d-models/1767751538691-test_cube.glb\tmachine\n30001\tTest Model Direct\thttps://example.com/test.glb\tmachine\n3\tMilk Truck\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663243606474/RpnsLdN3u3f6PBDr9mn7Zq/3d-models/1767584226218-CesiumMilkTruck.glb\tequipment\n2\tAnimated Box\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663243606474/RpnsLdN3u3f6PBDr9mn7Zq/3d-models/1767584225705-BoxAnimated.glb\tcustom\n1\tIndustrial Helmet\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663243606474/RpnsLdN3u3f6PBDr9mn7Zq/3d-models/1767584222650-DamagedHelmet.glb\tequipment\n",
+  "stderr": "",
+  "execution_time_ms": 1502
+}

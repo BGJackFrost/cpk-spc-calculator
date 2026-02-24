@@ -1,0 +1,81 @@
+# =============================================================================
+# CPK/SPC Calculator - Prometheus Configuration
+# =============================================================================
+# File: monitoring/prometheus.yml
+# Mô tả: Cấu hình Prometheus để scrape metrics từ CPK/SPC Calculator
+#
+# Hướng dẫn:
+# 1. Thay thế YOUR_APP_HOST bằng hostname/IP thực tế
+# 2. Copy file này vào /etc/prometheus/prometheus.yml
+# 3. Restart Prometheus: systemctl restart prometheus
+# =============================================================================
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  scrape_timeout: 10s
+
+# =============================================================================
+# Alert Rules
+# =============================================================================
+rule_files:
+  - "rules/cpk-spc-alerts.yml"
+
+# =============================================================================
+# Alertmanager Configuration
+# =============================================================================
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - 'localhost:9093'
+      timeout: 10s
+
+# =============================================================================
+# Scrape Configuration
+# =============================================================================
+scrape_configs:
+  # CPK/SPC Calculator Application
+  - job_name: 'cpk-spc-calculator'
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    metrics_path: '/api/metrics'
+    scheme: 'https'
+    static_configs:
+      - targets: ['YOUR_APP_HOST:443']
+        labels:
+          environment: 'production'
+          service: 'cpk-spc-calculator'
+          team: 'manufacturing'
+
+    # TLS configuration (nếu dùng self-signed cert)
+    # tls_config:
+    #   insecure_skip_verify: true
+
+  # Health Check Monitoring (optional - dùng blackbox exporter)
+  # - job_name: 'cpk-spc-health'
+  #   scrape_interval: 30s
+  #   metrics_path: '/probe'
+  #   params:
+  #     module: [http_2xx]
+  #   static_configs:
+  #     - targets:
+  #         - 'https://YOUR_APP_HOST/api/health'
+  #         - 'https://YOUR_APP_HOST/api/health/ready'
+  #   relabel_configs:
+  #     - source_labels: [__address__]
+  #       target_label: __param_target
+  #     - source_labels: [__param_target]
+  #       target_label: instance
+  #     - target_label: __address__
+  #       replacement: 'localhost:9115'  # Blackbox exporter address
+
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Node Exporter (system metrics - optional)
+  # - job_name: 'node-exporter'
+  #   static_configs:
+  #     - targets: ['localhost:9100']

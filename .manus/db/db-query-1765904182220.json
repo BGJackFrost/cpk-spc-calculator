@@ -1,0 +1,50 @@
+{
+  "query": "SELECT * FROM spare_parts_inventory LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute SELECT * FROM spare_parts_inventory LIMIT 5;",
+  "rows": [
+    {
+      "id": "1",
+      "sparePartId": "1",
+      "warehouseId": "NULL",
+      "quantity": "25",
+      "reservedQuantity": "0",
+      "lastUpdated": "2025-12-15 23:06:15"
+    },
+    {
+      "id": "2",
+      "sparePartId": "2",
+      "warehouseId": "NULL",
+      "quantity": "18",
+      "reservedQuantity": "2",
+      "lastUpdated": "2025-12-15 23:06:15"
+    },
+    {
+      "id": "3",
+      "sparePartId": "3",
+      "warehouseId": "NULL",
+      "quantity": "45",
+      "reservedQuantity": "5",
+      "lastUpdated": "2025-12-15 23:06:15"
+    },
+    {
+      "id": "4",
+      "sparePartId": "4",
+      "warehouseId": "NULL",
+      "quantity": "22",
+      "reservedQuantity": "0",
+      "lastUpdated": "2025-12-15 23:06:15"
+    },
+    {
+      "id": "5",
+      "sparePartId": "5",
+      "warehouseId": "NULL",
+      "quantity": "12",
+      "reservedQuantity": "0",
+      "lastUpdated": "2025-12-15 23:06:15"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tsparePartId\twarehouseId\tquantity\treservedQuantity\tlastUpdated\n1\t1\tNULL\t25\t0\t2025-12-15 23:06:15\n2\t2\tNULL\t18\t2\t2025-12-15 23:06:15\n3\t3\tNULL\t45\t5\t2025-12-15 23:06:15\n4\t4\tNULL\t22\t0\t2025-12-15 23:06:15\n5\t5\tNULL\t12\t0\t2025-12-15 23:06:15\n",
+  "stderr": "",
+  "execution_time_ms": 1518
+}

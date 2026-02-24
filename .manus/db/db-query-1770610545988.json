@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE spc_analysis_history ADD COLUMN IF NOT EXISTS analyzed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP; ALTER TABLE spc_analysis_history ADD COLUMN IF NOT EXISTS production_line_id INT DEFAULT NULL; ALTER TABLE spc_analysis_history ADD COLUMN IF NOT EXISTS violations TEXT DEFAULT NULL;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute ALTER TABLE spc_analysis_history ADD COLUMN IF NOT EXISTS analyzed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP; ALTER TABLE spc_analysis_history ADD COLUMN IF NOT EXISTS production_line_id INT DEFAULT NULL; ALTER TABLE spc_analysis_history ADD COLUMN IF NOT EXISTS violations TEXT DEFAULT NULL;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 3345
+}

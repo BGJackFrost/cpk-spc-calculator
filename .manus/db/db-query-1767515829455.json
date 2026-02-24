@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS firebase_push_history (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  user_id VARCHAR(100),\n  device_token_id INT,\n  title VARCHAR(255) NOT NULL,\n  body TEXT NOT NULL,\n  data TEXT,\n  alert_type ENUM('iot_alert', 'spc_alert', 'cpk_alert', 'escalation_alert', 'system', 'test') NOT NULL,\n  severity ENUM('info', 'warning', 'critical') NOT NULL,\n  status ENUM('pending', 'sent', 'delivered', 'failed') NOT NULL,\n  message_id VARCHAR(255),\n  error_message TEXT,\n  sent_at BIGINT,\n  delivered_at BIGINT,\n  created_at BIGINT NOT NULL,\n  INDEX idx_push_history_user (user_id),\n  INDEX idx_push_history_status (status),\n  INDEX idx_push_history_type (alert_type),\n  INDEX idx_push_history_created (created_at)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute CREATE TABLE IF NOT EXISTS firebase_push_history (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  user_id VARCHAR(100),\n  device_token_id INT,\n  title VARCHAR(255) NOT NULL,\n  body TEXT NOT NULL,\n  data TEXT,\n  alert_type ENUM('iot_alert', 'spc_alert', 'cpk_alert', 'escalation_alert', 'system', 'test') NOT NULL,\n  severity ENUM('info', 'warning', 'critical') NOT NULL,\n  status ENUM('pending', 'sent', 'delivered', 'failed') NOT NULL,\n  message_id VARCHAR(255),\n  error_message TEXT,\n  sent_at BIGINT,\n  delivered_at BIGINT,\n  created_at BIGINT NOT NULL,\n  INDEX idx_push_history_user (user_id),\n  INDEX idx_push_history_status (status),\n  INDEX idx_push_history_type (alert_type),\n  INDEX idx_push_history_created (created_at)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1512
+}

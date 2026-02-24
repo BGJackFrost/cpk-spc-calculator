@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `company_info` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `companyName` varchar(255) NOT NULL,\n  `companyCode` varchar(50),\n  `address` text,\n  `phone` varchar(50),\n  `email` varchar(320),\n  `website` varchar(255),\n  `taxCode` varchar(50),\n  `logo` text,\n  `industry` varchar(100),\n  `contactPerson` varchar(255),\n  `contactPhone` varchar(50),\n  `contactEmail` varchar(320),\n  `notes` text,\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  `updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  CONSTRAINT `company_info_id` PRIMARY KEY(`id`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute CREATE TABLE IF NOT EXISTS `company_info` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `companyName` varchar(255) NOT NULL,\n  `companyCode` varchar(50),\n  `address` text,\n  `phone` varchar(50),\n  `email` varchar(320),\n  `website` varchar(255),\n  `taxCode` varchar(50),\n  `logo` text,\n  `industry` varchar(100),\n  `contactPerson` varchar(255),\n  `contactPhone` varchar(50),\n  `contactEmail` varchar(320),\n  `notes` text,\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  `updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  CONSTRAINT `company_info_id` PRIMARY KEY(`id`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1629
+}

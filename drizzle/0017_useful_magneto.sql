@@ -1,0 +1,20 @@
+CREATE TABLE `mapping_templates` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`name` varchar(255) NOT NULL,
+	`description` text,
+	`category` varchar(100),
+	`tableName` varchar(255),
+	`productCodeColumn` varchar(255) DEFAULT 'product_code',
+	`stationColumn` varchar(255) DEFAULT 'station',
+	`valueColumn` varchar(255) DEFAULT 'value',
+	`timestampColumn` varchar(255) DEFAULT 'timestamp',
+	`defaultUsl` int,
+	`defaultLsl` int,
+	`defaultTarget` int,
+	`filterConditions` text,
+	`isActive` int NOT NULL DEFAULT 1,
+	`createdBy` int,
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `mapping_templates_id` PRIMARY KEY(`id`)
+);

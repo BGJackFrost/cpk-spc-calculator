@@ -1,0 +1,9 @@
+{
+  "query": "-- Indexes for spc_analysis_history\nCREATE INDEX IF NOT EXISTS idx_spc_analysis_product ON spc_analysis_history(productCode);\nCREATE INDEX IF NOT EXISTS idx_spc_analysis_station ON spc_analysis_history(stationName);\nCREATE INDEX IF NOT EXISTS idx_spc_analysis_date ON spc_analysis_history(createdAt);\nCREATE INDEX IF NOT EXISTS idx_spc_analysis_mapping ON spc_analysis_history(mappingId);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute -- Indexes for spc_analysis_history\nCREATE INDEX IF NOT EXISTS idx_spc_analysis_product ON spc_analysis_history(productCode);\nCREATE INDEX IF NOT EXISTS idx_spc_analysis_station ON spc_analysis_history(stationName);\nCREATE INDEX IF NOT EXISTS idx_spc_analysis_date ON spc_analysis_history(createdAt);\nCREATE INDEX IF NOT EXISTS idx_spc_analysis_mapping ON spc_analysis_history(mappingId);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 4452
+}

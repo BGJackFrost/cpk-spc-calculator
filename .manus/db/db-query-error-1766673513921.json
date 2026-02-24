@@ -1,0 +1,8 @@
+{
+  "query": "ALTER TABLE `ai_drift_metrics_history` \nADD COLUMN `accuracy` decimal(10,6) AFTER `model_id`,\nADD COLUMN `accuracy_drop` decimal(10,6) AFTER `accuracy`,\nADD COLUMN `feature_drift` decimal(10,6) AFTER `accuracy_drop`,\nADD COLUMN `prediction_drift` decimal(10,6) AFTER `feature_drift`,\nADD COLUMN `severity` varchar(20) AFTER `prediction_drift`,\nADD COLUMN `timestamp` timestamp DEFAULT CURRENT_TIMESTAMP AFTER `severity`;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute ALTER TABLE `ai_drift_metrics_history` \nADD COLUMN `accuracy` decimal(10,6) AFTER `model_id`,\nADD COLUMN `accuracy_drop` decimal(10,6) AFTER `accuracy`,\nADD COLUMN `feature_drift` decimal(10,6) AFTER `accuracy_drop`,\nADD COLUMN `prediction_drift` decimal(10,6) AFTER `feature_drift`,\nADD COLUMN `severity` varchar(20) AFTER `prediction_drift`,\nADD COLUMN `timestamp` timestamp DEFAULT CURRENT_TIMESTAMP AFTER `severity`;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 1: Unknown column 'accuracy' in 'ai_drift_metrics_history'"
+  ]
+}

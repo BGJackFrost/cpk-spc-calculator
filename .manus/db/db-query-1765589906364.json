@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS report_templates (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  name VARCHAR(255) NOT NULL,\n  description TEXT,\n  companyName VARCHAR(255),\n  companyLogo TEXT,\n  headerText TEXT,\n  footerText TEXT,\n  primaryColor VARCHAR(20) DEFAULT '#3b82f6',\n  secondaryColor VARCHAR(20) DEFAULT '#64748b',\n  fontFamily VARCHAR(100) DEFAULT 'Arial',\n  showLogo INT NOT NULL DEFAULT 1,\n  showCompanyName INT NOT NULL DEFAULT 1,\n  showDate INT NOT NULL DEFAULT 1,\n  showCharts INT NOT NULL DEFAULT 1,\n  showRawData INT NOT NULL DEFAULT 0,\n  isDefault INT NOT NULL DEFAULT 0,\n  isActive INT NOT NULL DEFAULT 1,\n  createdBy INT,\n  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,\n  updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute CREATE TABLE IF NOT EXISTS report_templates (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  name VARCHAR(255) NOT NULL,\n  description TEXT,\n  companyName VARCHAR(255),\n  companyLogo TEXT,\n  headerText TEXT,\n  footerText TEXT,\n  primaryColor VARCHAR(20) DEFAULT '#3b82f6',\n  secondaryColor VARCHAR(20) DEFAULT '#64748b',\n  fontFamily VARCHAR(100) DEFAULT 'Arial',\n  showLogo INT NOT NULL DEFAULT 1,\n  showCompanyName INT NOT NULL DEFAULT 1,\n  showDate INT NOT NULL DEFAULT 1,\n  showCharts INT NOT NULL DEFAULT 1,\n  showRawData INT NOT NULL DEFAULT 0,\n  isDefault INT NOT NULL DEFAULT 0,\n  isActive INT NOT NULL DEFAULT 1,\n  createdBy INT,\n  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,\n  updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1749
+}

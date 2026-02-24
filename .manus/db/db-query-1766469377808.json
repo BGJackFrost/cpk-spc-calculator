@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS license_notification_logs (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  license_id INT NOT NULL,\n  license_key VARCHAR(255) NOT NULL,\n  notification_type ENUM('7_days_warning', '30_days_warning', 'expired', 'activated', 'deactivated') NOT NULL,\n  recipient_email VARCHAR(320) NOT NULL,\n  subject VARCHAR(500),\n  status ENUM('sent', 'failed', 'pending') NOT NULL DEFAULT 'pending',\n  error_message TEXT,\n  sent_at TIMESTAMP NULL,\n  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL\n)",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute CREATE TABLE IF NOT EXISTS license_notification_logs (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  license_id INT NOT NULL,\n  license_key VARCHAR(255) NOT NULL,\n  notification_type ENUM('7_days_warning', '30_days_warning', 'expired', 'activated', 'deactivated') NOT NULL,\n  recipient_email VARCHAR(320) NOT NULL,\n  subject VARCHAR(500),\n  status ENUM('sent', 'failed', 'pending') NOT NULL DEFAULT 'pending',\n  error_message TEXT,\n  sent_at TIMESTAMP NULL,\n  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL\n)",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1651
+}

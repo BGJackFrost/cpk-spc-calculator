@@ -1,0 +1,23 @@
+{
+  "query": "SELECT * FROM spare_parts_transactions ORDER BY createdAt DESC LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute SELECT * FROM spare_parts_transactions ORDER BY createdAt DESC LIMIT 10;",
+  "rows": [
+    {
+      "id": "1",
+      "sparePartId": "10",
+      "transactionType": "in",
+      "quantity": "1",
+      "unitCost": "NULL",
+      "totalCost": "NULL",
+      "workOrderId": "NULL",
+      "purchaseOrderId": "NULL",
+      "reason": "Nhập kho",
+      "createdAt": "2025-12-16 17:41:03",
+      "performedBy": "1"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tsparePartId\ttransactionType\tquantity\tunitCost\ttotalCost\tworkOrderId\tpurchaseOrderId\treason\tcreatedAt\tperformedBy\n1\t10\tin\t1\tNULL\tNULL\tNULL\tNULL\tNhập kho\t2025-12-16 17:41:03\t1\n",
+  "stderr": "",
+  "execution_time_ms": 1512
+}

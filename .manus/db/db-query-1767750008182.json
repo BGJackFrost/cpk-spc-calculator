@@ -1,0 +1,30 @@
+{
+  "query": "SELECT id, device_code, device_name FROM iot_devices WHERE device_code IN ('TEMP-001', 'PRESS-002', 'VIB-003', 'PWR-004');",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute SELECT id, device_code, device_name FROM iot_devices WHERE device_code IN ('TEMP-001', 'PRESS-002', 'VIB-003', 'PWR-004');",
+  "rows": [
+    {
+      "id": "1",
+      "device_code": "TEMP-001",
+      "device_name": "Temperature Sensor Line 1"
+    },
+    {
+      "id": "60002",
+      "device_code": "PRESS-002",
+      "device_name": "Pressure Sensor B2"
+    },
+    {
+      "id": "60003",
+      "device_code": "VIB-003",
+      "device_name": "Vibration Monitor C3"
+    },
+    {
+      "id": "60004",
+      "device_code": "PWR-004",
+      "device_name": "Power Meter D4"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tdevice_code\tdevice_name\n1\tTEMP-001\tTemperature Sensor Line 1\n60002\tPRESS-002\tPressure Sensor B2\n60003\tVIB-003\tVibration Monitor C3\n60004\tPWR-004\tPower Meter D4\n",
+  "stderr": "",
+  "execution_time_ms": 1496
+}

@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `iot_work_order_comments` (\n  `id` int AUTO_INCREMENT PRIMARY KEY,\n  `work_order_id` int NOT NULL,\n  `user_id` int NOT NULL,\n  `comment` text NOT NULL,\n  `attachments` json,\n  `is_internal` tinyint DEFAULT 0,\n  `created_at` timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,\n  INDEX `idx_comment_wo` (`work_order_id`),\n  INDEX `idx_comment_user` (`user_id`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute CREATE TABLE IF NOT EXISTS `iot_work_order_comments` (\n  `id` int AUTO_INCREMENT PRIMARY KEY,\n  `work_order_id` int NOT NULL,\n  `user_id` int NOT NULL,\n  `comment` text NOT NULL,\n  `attachments` json,\n  `is_internal` tinyint DEFAULT 0,\n  `created_at` timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,\n  INDEX `idx_comment_wo` (`work_order_id`),\n  INDEX `idx_comment_user` (`user_id`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1682
+}

@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE sn_images \nADD COLUMN IF NOT EXISTS product_id INT,\nADD COLUMN IF NOT EXISTS production_line_id INT,\nADD COLUMN IF NOT EXISTS workstation_id INT,\nADD COLUMN IF NOT EXISTS captured_at TIMESTAMP,\nADD COLUMN IF NOT EXISTS analyzed_at TIMESTAMP,\nADD COLUMN IF NOT EXISTS analyzed_by INT,\nADD COLUMN IF NOT EXISTS measurement_points JSON,\nADD COLUMN IF NOT EXISTS defect_locations JSON;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute ALTER TABLE sn_images \nADD COLUMN IF NOT EXISTS product_id INT,\nADD COLUMN IF NOT EXISTS production_line_id INT,\nADD COLUMN IF NOT EXISTS workstation_id INT,\nADD COLUMN IF NOT EXISTS captured_at TIMESTAMP,\nADD COLUMN IF NOT EXISTS analyzed_at TIMESTAMP,\nADD COLUMN IF NOT EXISTS analyzed_by INT,\nADD COLUMN IF NOT EXISTS measurement_points JSON,\nADD COLUMN IF NOT EXISTS defect_locations JSON;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 2146
+}

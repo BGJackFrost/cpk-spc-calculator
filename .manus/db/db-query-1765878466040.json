@@ -1,0 +1,32 @@
+{
+  "query": "SHOW CREATE TABLE purchase_orders;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bBfAdpTc8yvngq.root --database RpnsLdN3u3f6PBDr9mn7Zq --execute SHOW CREATE TABLE purchase_orders;",
+  "rows": [
+    {
+      "Table": "purchase_orders",
+      "Create Table": "CREATE TABLE `purchase_orders` ("
+    }
+  ],
+  "messages": [
+    "  `id` int(11) NOT NULL AUTO_INCREMENT,",
+    "  `poNumber` varchar(50) NOT NULL,",
+    "  `supplierId` int(11) NOT NULL,",
+    "  `status` enum('draft','pending','approved','ordered','partial','received','cancelled') NOT NULL DEFAULT 'draft',",
+    "  `total` decimal(15,2) DEFAULT NULL,",
+    "  `orderDate` timestamp NULL DEFAULT NULL,",
+    "  `expectedDeliveryDate` timestamp NULL DEFAULT NULL,",
+    "  `actualDeliveryDate` timestamp NULL DEFAULT NULL,",
+    "  `notes` text DEFAULT NULL,",
+    "  `createdBy` int(11) DEFAULT NULL,",
+    "  `approvedBy` int(11) DEFAULT NULL,",
+    "  `approvedAt` timestamp NULL DEFAULT NULL,",
+    "  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,",
+    "  `updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,",
+    "  PRIMARY KEY (`id`) /*T![clustered_index] CLUSTERED */,",
+    "  KEY `idx_purchase_orders_supplierId` (`supplierId`)",
+    ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin"
+  ],
+  "stdout": "Table\tCreate Table\npurchase_orders\tCREATE TABLE `purchase_orders` (\n  `id` int(11) NOT NULL AUTO_INCREMENT,\n  `poNumber` varchar(50) NOT NULL,\n  `supplierId` int(11) NOT NULL,\n  `status` enum('draft','pending','approved','ordered','partial','received','cancelled') NOT NULL DEFAULT 'draft',\n  `total` decimal(15,2) DEFAULT NULL,\n  `orderDate` timestamp NULL DEFAULT NULL,\n  `expectedDeliveryDate` timestamp NULL DEFAULT NULL,\n  `actualDeliveryDate` timestamp NULL DEFAULT NULL,\n  `notes` text DEFAULT NULL,\n  `createdBy` int(11) DEFAULT NULL,\n  `approvedBy` int(11) DEFAULT NULL,\n  `approvedAt` timestamp NULL DEFAULT NULL,\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  `updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`) /*T![clustered_index] CLUSTERED */,\n  KEY `idx_purchase_orders_supplierId` (`supplierId`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin\n",
+  "stderr": "",
+  "execution_time_ms": 1512
+}
