@@ -14,7 +14,56 @@ import { AlertTriangle, RefreshCw, Download, Brain, CheckCircle, TrendingUp, Tre
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ComposedChart, Bar, PieChart, Pie, Cell, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from "recharts";
 
 // Mock defect prediction data
-// Mock data removed - mockDefectData (data comes from tRPC or is not yet implemented)
+const mockDefectData = {
+  summary: {
+    currentDefectRate: 2.8,
+    predictedDefectRate: 2.3,
+    riskLevel: "medium",
+    confidenceScore: 0.89,
+    topRiskProduct: "Product A",
+    topRiskLine: "Line 2",
+  },
+  predictions: [
+    { date: "25/12", actual: 2.8, predicted: 2.7, lower: 2.4, upper: 3.0 },
+    { date: "26/12", actual: null, predicted: 2.6, lower: 2.2, upper: 3.0 },
+    { date: "27/12", actual: null, predicted: 2.5, lower: 2.1, upper: 2.9 },
+    { date: "28/12", actual: null, predicted: 2.4, lower: 2.0, upper: 2.8 },
+    { date: "29/12", actual: null, predicted: 2.3, lower: 1.9, upper: 2.7 },
+    { date: "30/12", actual: null, predicted: 2.2, lower: 1.8, upper: 2.6 },
+    { date: "31/12", actual: null, predicted: 2.1, lower: 1.7, upper: 2.5 },
+  ],
+  byDefectType: [
+    { type: "Scratch", current: 0.8, predicted: 0.6, trend: "down" },
+    { type: "Dimension", current: 0.7, predicted: 0.5, trend: "down" },
+    { type: "Surface", current: 0.6, predicted: 0.7, trend: "up" },
+    { type: "Assembly", current: 0.4, predicted: 0.3, trend: "down" },
+    { type: "Other", current: 0.3, predicted: 0.2, trend: "down" },
+  ],
+  riskFactors: [
+    { factor: "Nhiệt độ môi trường", score: 85, impact: "high" },
+    { factor: "Độ ẩm", score: 72, impact: "medium" },
+    { factor: "Tuổi thọ dao cắt", score: 68, impact: "medium" },
+    { factor: "Tốc độ máy", score: 55, impact: "low" },
+    { factor: "Chất lượng nguyên liệu", score: 45, impact: "low" },
+  ],
+  radarData: [
+    { subject: "Scratch", A: 0.8, B: 0.6, fullMark: 1.5 },
+    { subject: "Dimension", A: 0.7, B: 0.5, fullMark: 1.5 },
+    { subject: "Surface", A: 0.6, B: 0.7, fullMark: 1.5 },
+    { subject: "Assembly", A: 0.4, B: 0.3, fullMark: 1.5 },
+    { subject: "Other", A: 0.3, B: 0.2, fullMark: 1.5 },
+  ],
+  insights: [
+    { type: "positive", message: "Tỷ lệ lỗi dự báo giảm 18% trong 7 ngày tới nhờ cải tiến quy trình." },
+    { type: "warning", message: "Lỗi Surface có xu hướng tăng. Cần kiểm tra thiết bị xử lý bề mặt." },
+    { type: "info", message: "Nhiệt độ môi trường là yếu tố rủi ro cao nhất (85%). Cần kiểm soát." },
+  ],
+  preventiveActions: [
+    { action: "Kiểm tra và thay dao cắt", priority: "high", dueDate: "26/12", expectedImpact: "-0.3% defect" },
+    { action: "Điều chỉnh nhiệt độ phòng", priority: "high", dueDate: "25/12", expectedImpact: "-0.2% defect" },
+    { action: "Bảo trì thiết bị xử lý bề mặt", priority: "medium", dueDate: "28/12", expectedImpact: "-0.15% defect" },
+  ],
+};
 
 const COLORS = ["#ef4444", "#f97316", "#eab308", "#22c55e", "#3b82f6"];
 

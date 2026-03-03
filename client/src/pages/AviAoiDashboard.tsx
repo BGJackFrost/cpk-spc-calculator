@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useLocation } from "wouter";
 import DashboardLayout from "@/components/DashboardLayout";
 import { FloorPlanViewer, FloorPlanConfig } from "@/components/FloorPlanViewer";
@@ -32,10 +32,6 @@ import {
   Brain,
   Sparkles,
   MapPin,
-  Download,
-  Settings,
-  Zap,
-  Bell,
 } from "lucide-react";
 import {
   XAxis,
@@ -55,10 +51,6 @@ import {
 import { trpc } from "@/lib/trpc";
 import { useAviAoiSSE, InspectionResultData, DefectDetectedData, AviAoiStatsData } from "@/hooks/useRealtimeSSE";
 import { useToast } from "@/hooks/use-toast";
-import { RealtimeYieldDefectChart } from "@/components/RealtimeYieldDefectChart";
-import { AoiAviExportButton } from "@/components/AoiAviExportButton";
-import { AlertThresholdConfig } from "@/components/AlertThresholdConfig";
-import { YieldDefectTrendChart, TrendDataPoint } from "@/components/YieldDefectTrendChart";
 
 interface InspectionItem {
   id: string;
@@ -355,14 +347,6 @@ export default function AviAoiDashboard() {
             <TabsTrigger value="floor-plan" className="flex items-center gap-2">
               <MapPin className="h-4 w-4" />
               Sơ đồ xưởng
-            </TabsTrigger>
-            <TabsTrigger value="realtime" className="flex items-center gap-2">
-              <Zap className="h-4 w-4" />
-              Realtime
-            </TabsTrigger>
-            <TabsTrigger value="settings" className="flex items-center gap-2">
-              <Settings className="h-4 w-4" />
-              Cài đặt
             </TabsTrigger>
           </TabsList>
 
@@ -840,135 +824,6 @@ export default function AviAoiDashboard() {
                 </Card>
               ))}
             </div>
-          </TabsContent>
-
-          {/* Realtime Tab - WebSocket Yield/Defect Chart */}
-          <TabsContent value="realtime" className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-semibold flex items-center gap-2">
-                  <Zap className="h-5 w-5 text-yellow-500" />
-                  Biểu đồ Yield/Defect Rate Realtime
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  Theo dõi yield rate và defect rate theo thời gian thực qua WebSocket
-                </p>
-              </div>
-              <AoiAviExportButton
-                timeRange={timeRange}
-                machineId={selectedMachine !== "all" ? parseInt(selectedMachine) : undefined}
-              />
-            </div>
-
-            {/* Main Realtime Chart */}
-            <RealtimeYieldDefectChart
-              productionLineId={selectedMachine !== "all" ? parseInt(selectedMachine) : undefined}
-              productionLineName={selectedMachine !== "all" ? displayMachines.find(m => m.id.toString() === selectedMachine)?.name : undefined}
-              yieldWarningThreshold={95}
-              yieldCriticalThreshold={90}
-              defectWarningThreshold={3}
-              defectCriticalThreshold={5}
-              showAlerts={true}
-              height={400}
-            />
-
-            {/* Additional Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium flex items-center gap-2">
-                    <TrendingUp className="h-4 w-4 text-green-500" />
-                    Yield Rate TB
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-2xl font-bold text-green-600">{stats.passRate}%</p>
-                  <p className="text-xs text-muted-foreground">Trong {timeRange}</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium flex items-center gap-2">
-                    <TrendingDown className="h-4 w-4 text-red-500" />
-                    Defect Rate TB
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-2xl font-bold text-red-600">{stats.failRate}%</p>
-                  <p className="text-xs text-muted-foreground">Trong {timeRange}</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium flex items-center gap-2">
-                    <Activity className="h-4 w-4 text-blue-500" />
-                    Tổng kiểm tra
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-2xl font-bold">{stats.total.toLocaleString()}</p>
-                  <p className="text-xs text-muted-foreground">Trong {timeRange}</p>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Long-term Trend Chart */}
-            <YieldDefectTrendChart
-              data={inspectionApiData?.recentInspections?.map((item: any) => ({
-                timestamp: new Date(item.timestamp || item.createdAt).getTime(),
-                date: new Date(item.timestamp || item.createdAt).toISOString().split('T')[0],
-                yieldRate: item.yieldRate ?? (item.passed / (item.passed + item.failed) * 100) ?? 0,
-                defectRate: item.defectRate ?? (item.failed / (item.passed + item.failed) * 100) ?? 0,
-                totalInspected: item.total ?? (item.passed + item.failed) ?? 0,
-                totalPassed: item.passed ?? 0,
-                totalDefects: item.failed ?? 0,
-              } as TrendDataPoint)) || []}
-              title="Xu hướng Yield/Defect Rate dài hạn"
-            />
-          </TabsContent>
-
-          {/* Settings Tab - Alert Configuration */}
-          <TabsContent value="settings" className="space-y-6">
-            <div>
-              <h2 className="text-xl font-semibold flex items-center gap-2">
-                <Bell className="h-5 w-5 text-primary" />
-                Cấu hình cảnh báo Yield/Defect
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                Thiết lập ngưỡng cảnh báo khi yield rate giảm hoặc defect rate tăng
-              </p>
-            </div>
-
-            <AlertThresholdConfig
-              productionLineId={selectedMachine !== "all" ? parseInt(selectedMachine) : undefined}
-            />
-
-            {/* Export Options */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Download className="h-5 w-5" />
-                  Xuất báo cáo
-                </CardTitle>
-                <CardDescription>
-                  Xuất dữ liệu kiểm tra AOI/AVI ra file PDF hoặc Excel
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-4">
-                  <AoiAviExportButton
-                    timeRange={timeRange}
-                    machineId={selectedMachine !== "all" ? parseInt(selectedMachine) : undefined}
-                    variant="pdf"
-                  />
-                  <AoiAviExportButton
-                    timeRange={timeRange}
-                    machineId={selectedMachine !== "all" ? parseInt(selectedMachine) : undefined}
-                    variant="excel"
-                  />
-                </div>
-              </CardContent>
-            </Card>
           </TabsContent>
         </Tabs>
       </div>

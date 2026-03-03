@@ -63,20 +63,37 @@ interface ThresholdConfig {
 }
 
 // Demo data
-// Mock data removed - demoConfigs (data comes from tRPC or is not yet implemented)
+const demoConfigs: AlertConfig[] = [
+  { id: 1, name: "OEE thấp < 75%", type: "oee_low", condition: "oee < 75", threshold: 75, notifyEmail: true, notifySms: false, notifyInApp: true, enabled: true },
+  { id: 2, name: "Bảo trì quá hạn", type: "maintenance_overdue", condition: "overdue_days > 0", notifyEmail: true, notifySms: true, notifyInApp: true, enabled: true },
+  { id: 3, name: "Cảnh báo Predictive", type: "predictive_alert", condition: "health_score < 60", threshold: 60, notifyEmail: true, notifySms: false, notifyInApp: true, enabled: false },
+  { id: 4, name: "Phụ tùng sắp hết", type: "spare_parts_low", condition: "quantity < min_level", notifyEmail: true, notifySms: false, notifyInApp: true, enabled: true },
+  { id: 5, name: "CPK thấp < 1.33", type: "cpk_low", condition: "cpk < 1.33", threshold: 1.33, notifyEmail: true, notifySms: true, notifyInApp: true, enabled: true },
+];
 
-// Mock data removed - demoLogs (data comes from tRPC or is not yet implemented)
+const demoLogs: AlertLog[] = [
+  { id: 1, configName: "OEE thấp < 75%", message: "OEE máy CNC-001 giảm xuống 68.5%", severity: "warning", machineId: 1, machineName: "CNC-001", createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000) },
+  { id: 2, configName: "Bảo trì quá hạn", message: "Công việc bảo trì #WO-2024-001 đã quá hạn 2 ngày", severity: "critical", machineId: 2, machineName: "Press-001", createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000), acknowledgedAt: new Date(Date.now() - 4 * 60 * 60 * 1000) },
+  { id: 3, configName: "Phụ tùng sắp hết", message: "Phụ tùng 'Bearing SKF 6205' còn 5 (min: 10)", severity: "warning", createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+  { id: 4, configName: "CPK thấp < 1.33", message: "CPK sản phẩm A tại Line 1 = 1.15", severity: "critical", createdAt: new Date(Date.now() - 1 * 60 * 60 * 1000) },
+];
 
-// Mock data removed - demoThresholds (data comes from tRPC or is not yet implemented)
+const demoThresholds: ThresholdConfig[] = [
+  { id: 1, name: "OEE", metric: "oee", warningThreshold: 80, criticalThreshold: 70, enabled: true },
+  { id: 2, name: "CPK", metric: "cpk", warningThreshold: 1.33, criticalThreshold: 1.0, enabled: true },
+  { id: 3, name: "Availability", metric: "availability", warningThreshold: 90, criticalThreshold: 85, enabled: true },
+  { id: 4, name: "Performance", metric: "performance", warningThreshold: 85, criticalThreshold: 75, enabled: true },
+  { id: 5, name: "Quality", metric: "quality", warningThreshold: 98, criticalThreshold: 95, enabled: true },
+];
 
 const COLORS = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899'];
 
 export default function AlertUnified() {
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState("dashboard");
-  const [configs, setConfigs] = useState<AlertConfig[]>([]);
-  const [logs, setLogs] = useState<AlertLog[]>([]);
-  const [thresholds, setThresholds] = useState<ThresholdConfig[]>([]);
+  const [configs, setConfigs] = useState<AlertConfig[]>(demoConfigs);
+  const [logs, setLogs] = useState<AlertLog[]>(demoLogs);
+  const [thresholds, setThresholds] = useState<ThresholdConfig[]>(demoThresholds);
   const [isAddConfigOpen, setIsAddConfigOpen] = useState(false);
   const [isAddThresholdOpen, setIsAddThresholdOpen] = useState(false);
   const [timeRange, setTimeRange] = useState("7d");

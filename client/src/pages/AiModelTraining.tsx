@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -110,10 +110,87 @@ interface TrainedModel {
 }
 
 // Mock training jobs
-// Mock data removed - mockTrainingJobs (data comes from tRPC or is not yet implemented)
+const mockTrainingJobs: TrainingJob[] = [
+  {
+    id: "job_001",
+    modelName: "CPK Predictor v3",
+    modelType: "cpk_prediction",
+    status: "training",
+    progress: 65,
+    startedAt: new Date(Date.now() - 1000 * 60 * 30),
+    completedAt: null,
+    dataSource: "spc_analysis_history",
+    sampleCount: 15420,
+    epochs: 100,
+    currentEpoch: 65,
+    metrics: { accuracy: 0.87, loss: 0.023 },
+    logs: [
+      "[INFO] Loading training data...",
+      "[INFO] Found 15420 samples",
+      "[INFO] Starting training with 100 epochs",
+      "[INFO] Epoch 65/100 - loss: 0.023, accuracy: 0.87",
+    ],
+  },
+  {
+    id: "job_002",
+    modelName: "Anomaly Detector v2",
+    modelType: "anomaly_detection",
+    status: "completed",
+    progress: 100,
+    startedAt: new Date(Date.now() - 1000 * 60 * 120),
+    completedAt: new Date(Date.now() - 1000 * 60 * 60),
+    dataSource: "spc_realtime_data",
+    sampleCount: 28500,
+    epochs: 50,
+    currentEpoch: 50,
+    metrics: { accuracy: 0.92, loss: 0.015, mape: 3.2, rmse: 0.045 },
+    logs: [
+      "[INFO] Training completed successfully",
+      "[INFO] Final accuracy: 0.92",
+      "[INFO] Model saved to storage",
+    ],
+  },
+];
 
 // Mock trained models
-// Mock data removed - mockTrainedModels (data comes from tRPC or is not yet implemented)
+const mockTrainedModels: TrainedModel[] = [
+  {
+    id: "model_001",
+    name: "CPK Predictor",
+    type: "cpk_prediction",
+    version: "2.1.0",
+    status: "active",
+    accuracy: 0.89,
+    trainedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 7),
+    dataPoints: 45000,
+    metrics: { mape: 4.2, rmse: 0.052, r2: 0.91 },
+    config: { algorithm: "ARIMA", horizon: 7, features: ["mean", "stdDev", "cpk"] },
+  },
+  {
+    id: "model_002",
+    name: "Anomaly Detector",
+    type: "anomaly_detection",
+    version: "2.0.0",
+    status: "active",
+    accuracy: 0.92,
+    trainedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3),
+    dataPoints: 28500,
+    metrics: { mape: 3.2, rmse: 0.045, r2: 0.94 },
+    config: { algorithm: "Isolation Forest", threshold: 2.5, sensitivity: 0.95 },
+  },
+  {
+    id: "model_003",
+    name: "Root Cause Analyzer",
+    type: "root_cause",
+    version: "1.0.0",
+    status: "inactive",
+    accuracy: 0.78,
+    trainedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 14),
+    dataPoints: 12000,
+    metrics: { mape: 8.5, rmse: 0.12, r2: 0.72 },
+    config: { algorithm: "Random Forest", features: ["5M1E"] },
+  },
+];
 
 // Training history for chart
 const trainingHistory = [
@@ -158,45 +235,8 @@ export default function AiModelTraining() {
   const [activeTab, setActiveTab] = useState("jobs");
   const [isCreatingJob, setIsCreatingJob] = useState(false);
   const [selectedJob, setSelectedJob] = useState<TrainingJob | null>(null);
-  // Real data from tRPC
-  const { data: trainingJobsData, refetch: refetchJobs } = trpc.ai.training.listJobs.useQuery({ limit: 50 });
-  const { data: trainingStatsData } = trpc.ai.training.getStats.useQuery();
-  const { data: modelsListData } = trpc.ai.models.list.useQuery({});
-
-  // Map real data to component types
-  const trainingJobs: TrainingJob[] = useMemo(() => {
-    if (!trainingJobsData) return [];
-    return (trainingJobsData as any[]).map((j: any) => ({
-      id: String(j.id),
-      modelName: j.modelName || j.name || `Job #${j.id}`,
-      modelType: j.modelType || 'cpk_prediction',
-      status: j.status || 'pending',
-      progress: j.progress || (j.status === 'completed' ? 100 : 0),
-      startedAt: j.startedAt ? new Date(j.startedAt) : new Date(j.createdAt),
-      completedAt: j.completedAt ? new Date(j.completedAt) : null,
-      dataSource: j.datasetType || j.dataSource || 'spc_analysis_history',
-      sampleCount: j.sampleCount || 0,
-      epochs: j.epochs || 100,
-      currentEpoch: j.currentEpoch || (j.status === 'completed' ? (j.epochs || 100) : 0),
-      metrics: j.metrics || { accuracy: j.accuracy || 0, loss: j.loss || 0 },
-      logs: j.logs || [],
-    }));
-  }, [trainingJobsData]);
-
-  const trainedModels: TrainedModel[] = useMemo(() => {
-    if (!modelsListData) return [];
-    return ((modelsListData as any).models || modelsListData as any[] || []).filter((m: any) => m.status === 'active' || m.status === 'trained').map((m: any) => ({
-      id: String(m.id),
-      name: m.name,
-      type: m.modelType || m.type || 'cpk_prediction',
-      version: m.version || '1.0',
-      accuracy: m.accuracy || 0,
-      trainedAt: m.trainedAt ? new Date(m.trainedAt) : new Date(m.createdAt),
-      size: m.size || '0 MB',
-      status: m.status === 'active' ? 'deployed' : 'ready',
-      description: m.description || '',
-    }));
-  }, [modelsListData]);
+  const [trainingJobs, setTrainingJobs] = useState<TrainingJob[]>(mockTrainingJobs);
+  const [trainedModels, setTrainedModels] = useState<TrainedModel[]>(mockTrainedModels);
 
   // Form state for new training job
   const [newJobForm, setNewJobForm] = useState({
@@ -208,17 +248,37 @@ export default function AiModelTraining() {
 
   // Queries
   const { data: analysisHistory } = trpc.spc.getAnalysisHistory.useQuery({ limit: 10 });
-  const startTrainingMutation = trpc.ai.training.startJob.useMutation({
-    onSuccess: () => refetchJobs(),
-  });
+  const { data: aiModels } = trpc.ai.models.list.useQuery({});
+  const startTrainingMutation = trpc.ai.training.startJob.useMutation();
 
-  // Auto-refresh training jobs every 10 seconds
+  // Simulate training progress
   useEffect(() => {
-    const hasRunningJobs = trainingJobs.some(j => j.status === 'training');
-    if (!hasRunningJobs) return;
-    const interval = setInterval(() => refetchJobs(), 10000);
+    const interval = setInterval(() => {
+      setTrainingJobs(prev =>
+        prev.map(job => {
+          if (job.status === "training" && job.progress < 100) {
+            const newProgress = Math.min(100, job.progress + Math.random() * 2);
+            const newEpoch = Math.floor((newProgress / 100) * job.epochs);
+            return {
+              ...job,
+              progress: newProgress,
+              currentEpoch: newEpoch,
+              metrics: {
+                ...job.metrics,
+                accuracy: Math.min(0.95, (job.metrics.accuracy || 0.7) + Math.random() * 0.005),
+                loss: Math.max(0.01, (job.metrics.loss || 0.2) - Math.random() * 0.002),
+              },
+              status: newProgress >= 100 ? "completed" : "training",
+              completedAt: newProgress >= 100 ? new Date() : null,
+            };
+          }
+          return job;
+        })
+      );
+    }, 2000);
+
     return () => clearInterval(interval);
-  }, [trainingJobs, refetchJobs]);
+  }, []);
 
   // Start new training job
   const handleStartTraining = async () => {
@@ -227,18 +287,27 @@ export default function AiModelTraining() {
       return;
     }
 
-    try {
-      await startTrainingMutation.mutateAsync({
-        modelName: newJobForm.modelName,
-        modelType: newJobForm.modelType as any,
-        dataSource: newJobForm.dataSource,
-        epochs: newJobForm.epochs,
-      });
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to start training');
-      return;
-    }
-    refetchJobs();
+    const newJob: TrainingJob = {
+      id: `job_${Date.now()}`,
+      modelName: newJobForm.modelName,
+      modelType: newJobForm.modelType,
+      status: "training",
+      progress: 0,
+      startedAt: new Date(),
+      completedAt: null,
+      dataSource: newJobForm.dataSource,
+      sampleCount: Math.floor(Math.random() * 20000) + 5000,
+      epochs: newJobForm.epochs,
+      currentEpoch: 0,
+      metrics: { accuracy: 0.7, loss: 0.2 },
+      logs: [
+        "[INFO] Initializing training job...",
+        `[INFO] Loading data from ${newJobForm.dataSource}`,
+        `[INFO] Starting training with ${newJobForm.epochs} epochs`,
+      ],
+    };
+
+    setTrainingJobs(prev => [newJob, ...prev]);
     setIsCreatingJob(false);
     setNewJobForm({ modelName: "", modelType: "cpk_prediction", dataSource: "spc_analysis_history", epochs: 100 });
     toast.success(isVi ? "Đã bắt đầu training" : "Training started");
@@ -246,14 +315,21 @@ export default function AiModelTraining() {
 
   // Cancel training job
   const handleCancelJob = (jobId: string) => {
-    // TODO: Call cancel endpoint when available
+    setTrainingJobs(prev =>
+      prev.map(job =>
+        job.id === jobId ? { ...job, status: "failed" as const, completedAt: new Date() } : job
+      )
+    );
     toast.info(isVi ? "Đã hủy training" : "Training cancelled");
-    refetchJobs();
   };
 
   // Deploy model
   const handleDeployModel = (model: TrainedModel) => {
-    // TODO: Call deploy endpoint when available
+    setTrainedModels(prev =>
+      prev.map(m =>
+        m.id === model.id ? { ...m, status: "active" as const } : m
+      )
+    );
     toast.success(isVi ? `Đã deploy model ${model.name}` : `Deployed model ${model.name}`);
   };
 

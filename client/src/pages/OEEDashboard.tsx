@@ -13,9 +13,8 @@ import { toast } from "sonner";
 import { 
   Activity, TrendingUp, TrendingDown, Target, Clock, Package, 
   AlertTriangle, CheckCircle, XCircle, RefreshCw, Download,
-  BarChart3, PieChart, Calendar, Plus, FileSpreadsheet, FileText
+  BarChart3, PieChart, Calendar, Plus
 } from "lucide-react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,14 +23,51 @@ import {
   PieChart as RechartsPieChart, Pie, Cell, Legend, BarChart, Bar, ComposedChart, Line
 } from "recharts";
 
-// All data comes from tRPC endpoints (oee.listRecords, oee.listLossRecords, oee.getMachineComparison)
+// Demo data for OEE
+const generateDemoOEEData = () => {
+  const today = new Date();
+  const data = [];
+  for (let i = 29; i >= 0; i--) {
+    const date = new Date(today);
+    date.setDate(date.getDate() - i);
+    const availability = 85 + Math.random() * 10;
+    const performance = 88 + Math.random() * 10;
+    const quality = 95 + Math.random() * 4;
+    const oee = (availability * performance * quality) / 10000;
+    data.push({
+      date: date.toISOString().split('T')[0],
+      availability: Number(availability.toFixed(1)),
+      performance: Number(performance.toFixed(1)),
+      quality: Number(quality.toFixed(1)),
+      oee: Number(oee.toFixed(1)),
+    });
+  }
+  return data;
+};
+
+const demoMachineOEE = [
+  { machine: "CNC-001", oee: 87.5, availability: 92.1, performance: 95.2, quality: 99.8, status: "good" },
+  { machine: "CNC-002", oee: 82.3, availability: 88.5, performance: 93.1, quality: 99.9, status: "good" },
+  { machine: "CNC-003", oee: 75.8, availability: 85.2, performance: 89.5, quality: 99.5, status: "warning" },
+  { machine: "CNC-004", oee: 68.2, availability: 78.3, performance: 87.2, quality: 99.9, status: "critical" },
+  { machine: "Press-001", oee: 91.2, availability: 95.5, performance: 95.8, quality: 99.7, status: "excellent" },
+  { machine: "Press-002", oee: 84.6, availability: 90.2, performance: 94.1, quality: 99.6, status: "good" },
+];
+
+const demoLossData = [
+  { name: "Hỏng máy", value: 35, type: "availability", color: "#ef4444" },
+  { name: "Chuyển đổi", value: 20, type: "availability", color: "#f97316" },
+  { name: "Chạy chậm", value: 25, type: "performance", color: "#eab308" },
+  { name: "Dừng ngắn", value: 12, type: "performance", color: "#84cc16" },
+  { name: "Phế phẩm", value: 5, type: "quality", color: "#22c55e" },
+  { name: "Làm lại", value: 3, type: "quality", color: "#06b6d4" },
+];
 
 const COLORS = ['#ef4444', '#f97316', '#eab308', '#84cc16', '#22c55e', '#06b6d4'];
 
 export default function OEEDashboard() {
   const [selectedMachine, setSelectedMachine] = useState("all");
   const [isAddRecordOpen, setIsAddRecordOpen] = useState(false);
-  const [selectedPeriod] = useState("30d");
   
   // Date range state
   const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
@@ -79,9 +115,6 @@ export default function OEEDashboard() {
     days: selectedPeriod === "7d" ? 7 : selectedPeriod === "30d" ? 30 : selectedPeriod === "90d" ? 90 : 365,
   });
   
-  const exportOeeExcelMutation = trpc.oee.exportOeeExcel.useMutation();
-  const exportOeePdfMutation = trpc.oee.exportOeePdf.useMutation();
-
   const createOEEMutation = trpc.oee.createRecord.useMutation({
     onSuccess: () => {
       toast.success("Đã thêm bản ghi OEE");
@@ -91,7 +124,7 @@ export default function OEEDashboard() {
     onError: (err) => toast.error(err.message),
   });
   
-  // Process OEE records from API
+  // Use API data or fallback to demo data
   const oeeData = useMemo(() => {
     if (oeeRecords && oeeRecords.length > 0) {
       return oeeRecords.map(r => ({
@@ -102,7 +135,7 @@ export default function OEEDashboard() {
         oee: Number(r.oee) || 0,
       }));
     }
-    return [];
+    return generateDemoOEEData();
   }, [oeeRecords]);
   
   const currentOEE = oeeData[oeeData.length - 1] || { oee: 0, availability: 0, performance: 0, quality: 0 };
@@ -135,7 +168,7 @@ export default function OEEDashboard() {
       });
       return Object.entries(grouped).map(([name, data]) => ({ name, ...data }));
     }
-    return [];
+    return demoLossData;
   }, [lossRecords]);
   
   // Process machine comparison data
@@ -150,7 +183,7 @@ export default function OEEDashboard() {
         status: Number(m.avgOee) >= 85 ? 'excellent' : Number(m.avgOee) >= 75 ? 'good' : Number(m.avgOee) >= 65 ? 'warning' : 'critical',
       }));
     }
-    return [];
+    return demoMachineOEE;
   }, [machineOEEData]);
   
   const handleAddRecord = (e: React.FormEvent<HTMLFormElement>) => {
@@ -269,86 +302,41 @@ export default function OEEDashboard() {
             <Button variant="outline" size="icon" onClick={() => refetchOEE()}>
               <RefreshCw className="h-4 w-4" />
             </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon" disabled={exportOeeExcelMutation.isPending || exportOeePdfMutation.isPending}>
-                  <Download className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={async () => {
-                  try {
-                    toast.info("Đang xuất Excel...");
-                    const result = await exportOeeExcelMutation.mutateAsync({
-                      startDate: dateRange?.from || new Date(new Date().setDate(new Date().getDate() - 30)),
-                      endDate: dateRange?.to || new Date(),
-                      language: 'vi',
-                    });
-                    const byteCharacters = atob(result.data);
-                    const byteNumbers = new Array(byteCharacters.length);
-                    for (let i = 0; i < byteCharacters.length; i++) {
-                      byteNumbers[i] = byteCharacters.charCodeAt(i);
-                    }
-                    const byteArray = new Uint8Array(byteNumbers);
-                    const blob = new Blob([byteArray], { type: result.contentType });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = result.filename;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(url);
-                    toast.success("Xuất Excel thành công!");
-                  } catch (error: any) {
-                    toast.error("Lỗi xuất Excel: " + (error?.message || 'Unknown error'));
+            <Button 
+              variant="outline" 
+              size="icon"
+              onClick={async () => {
+                try {
+                  toast.info("Đang xuất báo cáo...");
+                  const element = document.getElementById('oee-dashboard-content');
+                  if (!element) {
+                    toast.error("Không tìm thấy nội dung để xuất");
+                    return;
                   }
-                }}>
-                  <FileSpreadsheet className="h-4 w-4 mr-2" />
-                  Xuất Excel
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={async () => {
-                  try {
-                    toast.info("Đang xuất PDF...");
-                    const result = await exportOeePdfMutation.mutateAsync({
-                      startDate: dateRange?.from || new Date(new Date().setDate(new Date().getDate() - 30)),
-                      endDate: dateRange?.to || new Date(),
-                      language: 'vi',
-                    });
-                    window.open(result.url, '_blank');
-                    toast.success("Xuất PDF thành công!");
-                  } catch (error: any) {
-                    toast.error("Lỗi xuất PDF: " + (error?.message || 'Unknown error'));
-                  }
-                }}>
-                  <FileText className="h-4 w-4 mr-2" />
-                  Xuất PDF
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={async () => {
-                  try {
-                    toast.info("Đang chụp màn hình...");
-                    const element = document.getElementById('oee-dashboard-content');
-                    if (!element) { toast.error("Không tìm thấy nội dung"); return; }
-                    const html2canvas = (await import('html2canvas')).default;
-                    const { jsPDF } = await import('jspdf');
-                    const canvas = await html2canvas(element, { backgroundColor: '#ffffff', scale: 2, useCORS: true, logging: false });
-                    const imgData = canvas.toDataURL('image/png');
-                    const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-                    const pdfWidth = pdf.internal.pageSize.getWidth();
-                    const imgWidth = pdfWidth - 20;
-                    const imgHeight = (canvas.height * imgWidth) / canvas.width;
-                    pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, imgHeight);
-                    pdf.save(`oee-screenshot-${new Date().toISOString().split('T')[0]}.pdf`);
-                    toast.success("Chụp màn hình thành công!");
-                  } catch (error) {
-                    toast.error("Lỗi chụp màn hình");
-                  }
-                }}>
-                  <Download className="h-4 w-4 mr-2" />
-                  Chụp màn hình (PDF)
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                  const html2canvas = (await import('html2canvas')).default;
+                  const { jsPDF } = await import('jspdf');
+                  const canvas = await html2canvas(element, {
+                    backgroundColor: '#ffffff',
+                    scale: 2,
+                    useCORS: true,
+                    logging: false,
+                  });
+                  const imgData = canvas.toDataURL('image/png');
+                  const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+                  const pdfWidth = pdf.internal.pageSize.getWidth();
+                  const imgWidth = pdfWidth - 20;
+                  const imgHeight = (canvas.height * imgWidth) / canvas.width;
+                  pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, imgHeight);
+                  pdf.save(`oee-dashboard-${new Date().toISOString().split('T')[0]}.pdf`);
+                  toast.success("Đã xuất báo cáo thành công");
+                } catch (error) {
+                  console.error('Export error:', error);
+                  toast.error("Đã xảy ra lỗi khi xuất báo cáo");
+                }
+              }}
+            >
+              <Download className="h-4 w-4" />
+            </Button>
           </div>
         </div>
 

@@ -149,17 +149,7 @@ export const scheduledReportRouter = router({
         nextRunAt: nextRunAt.toISOString().slice(0, 19).replace('T', ' '),
       });
       
-      return { 
-        id: result.insertId, 
-        name: input.name,
-        reportType: input.reportType,
-        scheduleType: input.scheduleType,
-        scheduleTime: input.scheduleTime,
-        scheduleDayOfWeek: input.scheduleDayOfWeek ?? null,
-        scheduleDayOfMonth: input.scheduleDayOfMonth ?? null,
-        isActive: true,
-        nextRunAt,
-      };
+      return { id: result.insertId, nextRunAt };
     }),
 
   // Update a scheduled report

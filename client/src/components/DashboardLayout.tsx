@@ -42,7 +42,7 @@ import { SseIndicator } from "./SseIndicator";
 import { SyncStatusIndicator } from "./SyncStatusIndicator";
 import { MobileOfflineSyncIndicator } from "./MobileOfflineSyncIndicator";
 import { TopNavigation } from "./TopNavigation";
-// ThemeSelector removed - dark mode only
+import { ThemeSelector } from "./ThemeSelector";
 import { useSystem } from "@/contexts/SystemContext";
 import { MenuGroup as SystemMenuGroup, MenuItem as SystemMenuItem } from "@/config/systemMenu";
 import { useQuickAccess } from "@/hooks/useQuickAccess";
@@ -75,9 +75,6 @@ const fallbackLabelsVi: Record<string, string> = {
   "menuGroup.users": "Người dùng",
   "menuGroup.system": "Hệ thống",
   "menuGroup.notifications": "Thông báo",
-  "menuGroup.notificationChannels": "Kênh Thông báo",
-  "menuGroup.notificationWebhooks": "Webhooks",
-  "menuGroup.notificationMonitoring": "Giám sát Cảnh báo",
   "menuGroup.systemTools": "Công cụ",
   "nav.dashboard": "Dashboard",
   "nav.realtimeLine": "Realtime Dashboard",
@@ -188,9 +185,6 @@ const fallbackLabelsVi: Record<string, string> = {
   "nav.aiMlHealth": "Sức khỏe AI/ML",
   "nav.aiDataDrift": "Giám sát Data Drift",
   "nav.about": "Thông tin",
-  "menuGroup.licenseManagement": "Quản lý License",
-  "nav.licenseDashboard": "Dashboard License",
-  "nav.licenseNotificationReport": "Báo cáo Thông báo License",
   "nav.imageHistory": "Lịch sử Ảnh (Timeline)",
   "nav.cameraCaptureSchedule": "Lịch Chụp Tự động",
   "nav.qualityStatisticsReport": "Báo cáo Thống kê Chất lượng",
@@ -339,9 +333,6 @@ const fallbackLabelsEn: Record<string, string> = {
   "menuGroup.users": "Users",
   "menuGroup.system": "System",
   "menuGroup.notifications": "Notifications",
-  "menuGroup.notificationChannels": "Notification Channels",
-  "menuGroup.notificationWebhooks": "Webhooks",
-  "menuGroup.notificationMonitoring": "Alert Monitoring",
   "menuGroup.systemTools": "Tools",
   "nav.dashboard": "Dashboard",
   "nav.realtimeLine": "Realtime Dashboard",
@@ -450,9 +441,6 @@ const fallbackLabelsEn: Record<string, string> = {
   "nav.aiMlHealth": "AI/ML Health",
   "nav.aiDataDrift": "Data Drift Monitoring",
   "nav.about": "About",
-  "menuGroup.licenseManagement": "License Management",
-  "nav.licenseDashboard": "License Dashboard",
-  "nav.licenseNotificationReport": "License Notification Report",
   "nav.userGuide": "User Guide",
   "menuGroup.myLicense": "My License",
   "nav.myLicenseStatus": "License Status",
@@ -1086,7 +1074,7 @@ function DashboardLayoutContent({
             title={language === 'en' ? 'Go to Dashboard' : 'Về Bảng điều khiển'}
           >
             <img 
-              src={import.meta.env.VITE_APP_LOGO || "https://files.manuscdn.com/user_upload_by_module/session_file/310519663243606474/jLjFIplRgffsFopW.png"} 
+              src={import.meta.env.VITE_APP_LOGO || "/logo.png"} 
               alt={import.meta.env.VITE_APP_TITLE || "Logo"} 
               className="h-8 w-8 object-contain"
               onError={(e) => {
@@ -1105,7 +1093,23 @@ function DashboardLayoutContent({
           
           {/* Right side controls */}
           <div className="flex items-center gap-1">
-            {/* Dark Mode Only - Theme controls removed */}
+            {/* Theme Selector */}
+            <ThemeSelector />
+            
+            {/* Dark Mode Toggle */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              className="h-9 w-9 rounded-lg hover:bg-accent transition-colors"
+              title={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            >
+              {theme === "dark" ? (
+                <Sun className="h-4 w-4 text-yellow-500" />
+              ) : (
+                <Moon className="h-4 w-4 text-slate-700" />
+              )}
+            </Button>
             
             {/* Desktop: SyncStatusIndicator, Mobile: MobileOfflineSyncIndicator */}
             {isMobile ? (

@@ -170,9 +170,25 @@ export default function AiSpcAnalysis() {
     setIsAnalyzing(true);
     try {
       // Get mock metrics for demo - in production, fetch from actual SPC data
-      // Mock data removed - mockMetrics (data comes from tRPC or is not yet implemented)
-      // Mock data removed - mockViolations (data comes from tRPC or is not yet implemented)
-      // Mock data removed - mockRecentData (data comes from tRPC or is not yet implemented)
+      const mockMetrics = {
+        mean: 50.5,
+        stdDev: 2.1,
+        cp: 1.45,
+        cpk: 1.32,
+        usl: 60,
+        lsl: 40,
+        ucl: 56.8,
+        lcl: 44.2,
+        sampleSize: 100,
+      };
+      const mockViolations = [
+        { rule: "Rule 1", description: "Điểm ngoài giới hạn kiểm soát", severity: "high" as const, affectedPoints: [45, 78] },
+      ];
+      const mockRecentData = Array.from({ length: 30 }, (_, i) => ({
+        value: 50 + Math.random() * 4 - 2,
+        timestamp: new Date(Date.now() - i * 3600000),
+        isViolation: Math.random() > 0.9,
+      }));
       
       await aiAnalysisMutation.mutateAsync({
         productCode: selectedProduct,

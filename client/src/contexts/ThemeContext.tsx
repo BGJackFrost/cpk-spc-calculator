@@ -1,30 +1,83 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
+import { applyTheme } from "@/components/ThemeSelector";
 
-type Theme = "dark";
+type Theme = "light" | "dark";
 
 interface ThemeContextType {
   theme: Theme;
-  isDark: boolean;
+  setTheme: (theme: Theme) => void;
+  toggleTheme: () => void;
+  switchable: boolean;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 interface ThemeProviderProps {
   children: React.ReactNode;
+  defaultTheme?: Theme;
+  switchable?: boolean;
 }
 
-export function ThemeProvider({ children }: ThemeProviderProps) {
-  const [theme] = useState<Theme>("dark");
+export function ThemeProvider({
+  children,
+  defaultTheme = "light",
+  switchable = true,
+}: ThemeProviderProps) {
+  const [theme, setThemeState] = useState<Theme>(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("theme");
+      if (stored === "dark" || stored === "light") {
+        return stored;
+      }
+      // Check system preference
+      if (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) {
+        return "dark";
+      }
+    }
+    return defaultTheme;
+  });
 
-  // Apply dark theme to document
+  // Apply theme to document
   useEffect(() => {
     const root = document.documentElement;
-    root.classList.add("dark");
-    localStorage.setItem("theme", "dark");
+    const isDark = theme === "dark";
+    
+    if (isDark) {
+      root.classList.add("dark");
+    } else {
+      root.classList.remove("dark");
+    }
+    localStorage.setItem("theme", theme);
+    
+    // Re-apply color theme when switching dark/light mode
+    const colorTheme = localStorage.getItem("app-color-theme") || "default-blue";
+    applyTheme(colorTheme, isDark);
+  }, [theme]);
+
+  // Listen for system theme changes
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const handleChange = (e: MediaQueryListEvent) => {
+      // Only auto-switch if user hasn't manually set a preference
+      const stored = localStorage.getItem("theme");
+      if (!stored) {
+        setThemeState(e.matches ? "dark" : "light");
+      }
+    };
+    mediaQuery.addEventListener("change", handleChange);
+    return () => mediaQuery.removeEventListener("change", handleChange);
+  }, []);
+
+  const setTheme = useCallback((newTheme: Theme) => {
+    setThemeState(newTheme);
+  }, []);
+
+  const toggleTheme = useCallback(() => {
+    setThemeState(prev => (prev === "light" ? "dark" : "light"));
   }, []);
 
   return (
-    <ThemeContext.Provider value={{ theme, isDark: true }}>
+    <ThemeContext.Provider value={{ theme, setTheme, toggleTheme, switchable }}>
       {children}
     </ThemeContext.Provider>
   );

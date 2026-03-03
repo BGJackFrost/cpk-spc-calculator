@@ -73,7 +73,7 @@ async function ensureFirebaseInitialized(): Promise<boolean> {
  * Get work orders that are due soon (within 24 hours)
  */
 async function getWorkOrdersDueSoon(): Promise<any[]> {
-  const db = await getDb();
+  const db = getDb();
   if (!db) return [];
 
   try {
@@ -102,7 +102,7 @@ async function getWorkOrdersDueSoon(): Promise<any[]> {
  * Get work orders that are overdue
  */
 async function getOverdueWorkOrders(): Promise<any[]> {
-  const db = await getDb();
+  const db = getDb();
   if (!db) return [];
 
   try {
@@ -129,7 +129,7 @@ async function getOverdueWorkOrders(): Promise<any[]> {
  * Get technician notification preferences
  */
 async function getTechnicianPrefs(technicianId: number): Promise<any | null> {
-  const db = await getDb();
+  const db = getDb();
   if (!db) return null;
 
   try {
@@ -150,7 +150,7 @@ async function getTechnicianPrefs(technicianId: number): Promise<any | null> {
  * Get technician details
  */
 async function getTechnician(technicianId: number): Promise<any | null> {
-  const db = await getDb();
+  const db = getDb();
   if (!db) return null;
 
   try {
@@ -180,7 +180,7 @@ async function logNotification(
   status: 'pending' | 'sent' | 'delivered' | 'failed',
   errorMessage?: string
 ): Promise<void> {
-  const db = await getDb();
+  const db = getDb();
   if (!db) return;
 
   try {
@@ -207,7 +207,7 @@ async function wasNotificationSentToday(
   workOrderId: number,
   notificationType: 'due_soon' | 'overdue'
 ): Promise<boolean> {
-  const db = await getDb();
+  const db = getDb();
   if (!db) return false;
 
   try {

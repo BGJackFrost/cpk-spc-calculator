@@ -85,7 +85,7 @@ const activeSimulators = new Map<number, {
 
 // Get all simulator configs
 export async function getAllSimulatorConfigs(): Promise<SimulatorConfig[]> {
-  const db = await getDb();
+  const db = getDb();
   if (!db) return [];
   try {
     const results = await db.execute(`SELECT * FROM edge_simulator_configs ORDER BY created_at DESC`);
@@ -98,7 +98,7 @@ export async function getAllSimulatorConfigs(): Promise<SimulatorConfig[]> {
 
 // Get simulator config by ID
 export async function getSimulatorConfigById(id: number): Promise<SimulatorConfig | null> {
-  const db = await getDb();
+  const db = getDb();
   if (!db) return null;
   try {
     const results = await db.execute(`SELECT * FROM edge_simulator_configs WHERE id = ?`, [id]);
@@ -112,7 +112,7 @@ export async function getSimulatorConfigById(id: number): Promise<SimulatorConfi
 
 // Create simulator config
 export async function createSimulatorConfig(input: CreateSimulatorConfigInput): Promise<SimulatorConfig | null> {
-  const db = await getDb();
+  const db = getDb();
   if (!db) return null;
   try {
     await db.execute(
@@ -150,7 +150,7 @@ export async function createSimulatorConfig(input: CreateSimulatorConfigInput): 
 
 // Start simulator
 export async function startSimulator(configId: number): Promise<{ success: boolean; sessionId?: number; error?: string }> {
-  const db = await getDb();
+  const db = getDb();
   if (!db) return { success: false, error: 'Database not available' };
   if (activeSimulators.has(configId)) {
     return { success: false, error: 'Simulator already running' };
@@ -195,7 +195,7 @@ export async function startSimulator(configId: number): Promise<{ success: boole
 
 // Stop simulator
 export async function stopSimulator(configId: number): Promise<boolean> {
-  const db = await getDb();
+  const db = getDb();
   if (!db) return false;
   const simulator = activeSimulators.get(configId);
   if (!simulator) return false;
@@ -221,7 +221,7 @@ export async function stopSimulator(configId: number): Promise<boolean> {
 
 // Simulation tick
 async function simulationTick(configId: number, sessionId: number, config: SimulatorConfig, state: any): Promise<void> {
-  const db = await getDb();
+  const db = getDb();
   if (!db) return;
   const now = Date.now();
   if (state.isOffline && now < state.offlineUntil) {
@@ -304,7 +304,7 @@ export function getSimulatorStatus(configId: number): { isRunning: boolean; sess
 
 // Get active session
 export async function getActiveSession(configId: number): Promise<SimulatorSession | null> {
-  const db = await getDb();
+  const db = getDb();
   if (!db) return null;
   try {
     const results = await db.execute(

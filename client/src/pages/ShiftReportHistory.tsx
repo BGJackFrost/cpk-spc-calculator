@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { createSafeHtml } from "@/lib/sanitize";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -292,7 +291,7 @@ export default function ShiftReportHistory() {
                                 </DialogHeader>
                                 <div 
                                   className="mt-4"
-                                  dangerouslySetInnerHTML={createSafeHtml(report.reportContent || '')}
+                                  dangerouslySetInnerHTML={{ __html: report.reportContent || '' }}
                                 />
                               </DialogContent>
                             </Dialog>

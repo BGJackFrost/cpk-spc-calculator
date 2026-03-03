@@ -66,7 +66,6 @@ import { mttrMtbfPredictionRouter } from "./routers/mttrMtbfPredictionRouter";
 import { scheduledOeeReportRouter } from "./routers/scheduledOeeReportRouter";
 import { userGuideRouter } from "./routers/userGuideRouter";
 import { edgeGatewayRouter } from "./routers/edgeGatewayRouter";
-import { aiRootCauseRouter } from "./routers/aiRootCauseRouter";
 import { timeseriesRouter } from "./routers/timeseriesRouter";
 import { anomalyDetectionRouter } from "./routers/anomalyDetectionRouter";
 import { anomalyAlertRouter } from "./routers/anomalyAlertRouter";
@@ -103,9 +102,7 @@ import { qualityStatisticsRouter } from "./routers/qualityStatisticsRouter";
 import { heatMapYieldRouter } from "./routers/heatMapYieldRouter";
 import { paretoChartRouter } from "./routers/paretoChartRouter";
 import { aoiAviRouter } from "./routers/aoiAviRouter";
-import { alertHistoryRouter } from "./routers/alertHistoryRouter";
 import { autoNtfRouter } from "./routers/autoNtfRouter";
-import { alertConfigRouter } from "./routers/alertConfigRouter";
 import { maintenanceWorkOrderRouter } from "./maintenanceWorkOrderRouter";
 import { mobileRouter } from "./mobileRouter";
 import { triggerLicenseExpiryCheck } from "./scheduledJobs";
@@ -154,8 +151,7 @@ import { cache } from "./cache";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { spcDefectRecords, spcAnalysisHistory } from "../drizzle/schema";
-import { eq, and, gte, lte, desc, or, count } from "drizzle-orm";
-import { customAlertRules, customAlertHistory } from "../drizzle/schema";
+import { eq, and, gte, lte, desc, or } from "drizzle-orm";
 import {
   createDatabaseConnection,
   getDatabaseConnections,
@@ -3267,95 +3263,6 @@ const spcPlanRouter = router({
       await db.delete(spcPlanTemplates).where(eq(spcPlanTemplates.id, input.id));
       return { success: true };
     }),
-  // Get SPC analysis data for a specific machine
-  getSpcByMachine: protectedProcedure
-    .input(z.object({
-      machineId: z.number(),
-      limit: z.number().min(1).max(200).default(50),
-    }))
-    .query(async ({ input }) => {
-      const db = await getDb();
-      if (!db) return { analyses: [], plans: [], stats: null };
-      const { spcSamplingPlans } = await import('../drizzle/schema');
-      const plans = await db.select()
-        .from(spcSamplingPlans)
-        .where(eq(spcSamplingPlans.machineId, input.machineId))
-        .orderBy(desc(spcSamplingPlans.createdAt))
-        .limit(20);
-      const planIds = plans.map(p => p.id);
-      let analyses: any[] = [];
-      if (planIds.length > 0) {
-        analyses = await db.select()
-          .from(spcAnalysisHistory)
-          .where(sql`mapping_id IN (${sql.join(planIds.map(id => sql`${id}`), sql`,`)})`)
-          .orderBy(desc(spcAnalysisHistory.createdAt))
-          .limit(input.limit);
-      }
-      const cpkValues = analyses.filter(a => a.cpk != null);
-      const stats = analyses.length > 0 ? {
-        avgCp: cpkValues.length > 0 ? cpkValues.reduce((s, a) => s + Number(a.cp || 0) / 1000, 0) / cpkValues.length : 0,
-        avgCpk: cpkValues.length > 0 ? cpkValues.reduce((s, a) => s + Number(a.cpk || 0) / 1000, 0) / cpkValues.length : 0,
-        avgMean: analyses.reduce((s, a) => s + Number(a.mean || 0) / 1000, 0) / analyses.length,
-        avgStdDev: analyses.reduce((s, a) => s + Number(a.stdDev || 0) / 1000, 0) / analyses.length,
-        totalSamples: analyses.reduce((s, a) => s + (a.sampleCount || 0), 0),
-        alertCount: analyses.filter(a => a.alertTriggered === 1).length,
-        latestAnalysis: analyses[0] || null,
-      } : null;
-      return { analyses, plans, stats };
-    }),
-  // Get OEE loss breakdown for a machine
-  getOeeLossByMachine: protectedProcedure
-    .input(z.object({
-      machineId: z.number(),
-      days: z.number().min(1).max(90).default(7),
-    }))
-    .query(async ({ input }) => {
-      const db = await getDb();
-      if (!db) return [];
-      const { oeeRecords } = await import('../drizzle/schema');
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - input.days);
-      const records = await db.select()
-        .from(oeeRecords)
-        .where(and(
-          eq(oeeRecords.machineId, input.machineId),
-          gte(oeeRecords.recordDate, startDate)
-        ))
-        .orderBy(desc(oeeRecords.recordDate))
-        .limit(100);
-      const totalDowntime = records.reduce((s, r) => s + (r.downtime || 0), 0);
-      const totalRun = records.reduce((s, r) => s + (r.actualRunTime || 0), 0);
-      const defectCount = records.reduce((s, r) => s + (r.defectCount || 0), 0);
-      const totalCount = records.reduce((s, r) => s + (r.totalCount || 0), 0);
-      const idealCycle = records[0]?.idealCycleTime ? Number(records[0].idealCycleTime) : 0;
-      const speedLoss = idealCycle > 0 ? Math.max(0, totalRun - (totalCount * idealCycle)) : 0;
-      return [
-        { name: "Thời gian dừng máy", value: totalDowntime, color: "#ef4444" },
-        { name: "Giảm tốc độ", value: Math.round(speedLoss), color: "#f97316" },
-        { name: "Sản phẩm lỗi", value: defectCount, color: "#eab308" },
-        { name: "Thời gian chạy hiệu quả", value: Math.max(0, totalRun - Math.round(speedLoss)), color: "#22c55e" },
-      ].filter(d => d.value > 0);
-    }),
-  // Get alerts for a specific machine
-  getAlertsByMachine: protectedProcedure
-    .input(z.object({
-      machineId: z.number(),
-      days: z.number().min(1).max(90).default(7),
-    }))
-    .query(async ({ input }) => {
-      const db = await getDb();
-      if (!db) return [];
-      const { realtimeAlerts } = await import('../drizzle/schema');
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - input.days);
-      return db.select().from(realtimeAlerts)
-        .where(and(
-          eq(realtimeAlerts.machineId, input.machineId),
-          gte(realtimeAlerts.createdAt, startDate)
-        ))
-        .orderBy(desc(realtimeAlerts.createdAt))
-        .limit(50);
-    }),
 });
 
 // User Line Assignment Router
@@ -4103,9 +4010,7 @@ export const appRouter = router({
   heatMapYield: heatMapYieldRouter,
   paretoChart: paretoChartRouter,
   aoiAvi: aoiAviRouter,
-  alertHistory: alertHistoryRouter,
   autoNtf: autoNtfRouter,
-  alertConfig: alertConfigRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {
@@ -5215,72 +5120,6 @@ export const appRouter = router({
       .query(async ({ input }) => {
         const { cursor, limit, direction, ...filters } = input;
         return await getAuditLogsWithCursor(filters, { cursor, limit, direction });
-      }),
-    // Advanced search with all filters
-    advancedSearch: protectedProcedure
-      .input(z.object({
-        page: z.number().default(1),
-        pageSize: z.number().min(1).max(100).default(20),
-        userId: z.number().optional(),
-        action: z.string().optional(),
-        module: z.string().optional(),
-        search: z.string().optional(),
-        startDate: z.string().optional(),
-        endDate: z.string().optional(),
-        authType: z.string().optional(),
-        sortOrder: z.enum(['asc', 'desc']).default('desc'),
-      }))
-      .query(async ({ input }) => {
-        const { getAuditLogsAdvanced } = await import("./db");
-        return await getAuditLogsAdvanced(input);
-      }),
-    // Dashboard statistics
-    stats: protectedProcedure
-      .input(z.object({
-        userId: z.number().optional(),
-        startDate: z.string().optional(),
-        endDate: z.string().optional(),
-      }).optional())
-      .query(async ({ input }) => {
-        const { getAuditLogStats } = await import("./db");
-        return await getAuditLogStats(input);
-      }),
-    // Get distinct users for filter dropdown
-    users: protectedProcedure.query(async () => {
-      const { getAuditLogUsers } = await import("./db");
-      return await getAuditLogUsers();
-    }),
-    // Get distinct modules for filter dropdown
-    modules: protectedProcedure.query(async () => {
-      const { getAuditLogModules } = await import("./db");
-      return await getAuditLogModules();
-    }),
-    // Export audit logs
-    export: protectedProcedure
-      .input(z.object({
-        userId: z.number().optional(),
-        action: z.string().optional(),
-        module: z.string().optional(),
-        startDate: z.string().optional(),
-        endDate: z.string().optional(),
-        limit: z.number().max(50000).default(10000),
-      }))
-      .query(async ({ input }) => {
-        const { getAuditLogsForExport } = await import("./db");
-        return await getAuditLogsForExport(input);
-      }),
-
-    // Activity Heatmap - hourly activity data for the past N weeks
-    activityHeatmap: protectedProcedure
-      .input(z.object({
-        weeks: z.number().min(1).max(12).default(4),
-        userId: z.number().optional(),
-        action: z.string().optional(),
-        module: z.string().optional(),
-      }))
-      .query(async ({ input }) => {
-        const { getActivityHeatmapData } = await import("./db");
-        return await getActivityHeatmapData(input);
       }),
   }),
 
@@ -6896,55 +6735,6 @@ export const appRouter = router({
         }
         const { updateBackupSchedule } = await import("./backupService");
         return updateBackupSchedule(input.type, input.schedule);
-      }),
-
-    // S3 Database Backup - create full SQL dump and upload to S3
-    createS3Backup: protectedProcedure
-      .input(z.object({
-        includeSchema: z.boolean().default(true),
-        includeData: z.boolean().default(true),
-        retentionDays: z.number().default(30),
-        excludeTables: z.array(z.string()).optional(),
-      }))
-      .mutation(async ({ ctx, input }) => {
-        if (ctx.user.role !== "admin") {
-          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
-        }
-        const { createBackup } = await import("./services/databaseBackupService");
-        return createBackup(input);
-      }),
-
-    // S3 Backup History
-    s3History: protectedProcedure.query(async ({ ctx }) => {
-      if (ctx.user.role !== "admin") {
-        throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
-      }
-      const { getBackupHistory } = await import("./services/databaseBackupService");
-      return getBackupHistory();
-    }),
-
-    // S3 Backup Stats
-    s3Stats: protectedProcedure.query(async ({ ctx }) => {
-      if (ctx.user.role !== "admin") {
-        throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
-      }
-      const { getBackupStats } = await import("./services/databaseBackupService");
-      return getBackupStats();
-    }),
-
-    // Generate restore script for a backup
-    generateRestoreScript: protectedProcedure
-      .input(z.object({ backupId: z.string() }))
-      .query(async ({ ctx, input }) => {
-        if (ctx.user.role !== "admin") {
-          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
-        }
-        const { getBackupById, generateRestoreScript } = await import("./services/databaseBackupService");
-        const backup = getBackupById(input.backupId);
-        if (!backup) {
-          throw new TRPCError({ code: "NOT_FOUND", message: "Backup not found" });
-        }
-        return { script: generateRestoreScript(backup), backup };
       }),
   }),
   
@@ -9871,8 +9661,8 @@ Hãy trả về JSON với format:
         if (!db) return null;
         
         const result = await db.execute(sql.raw(`
-          SELECT \`key\` as configKey, \`value\` as configValue FROM system_settings 
-          WHERE \`key\` LIKE 'env_%'
+          SELECT configKey, configValue FROM ntf_alert_config 
+          WHERE configKey LIKE 'env_%'
         `));
         
         const configs = ((result as unknown as any[])[0] as any[]) || [];
@@ -12978,7 +12768,6 @@ Hãy trả về JSON với format:
 
   // Phase 14 - Edge Gateway, TimescaleDB, Anomaly Detection
   edgeGateway: edgeGatewayRouter,
-  aiRootCause: aiRootCauseRouter,
   timeseries: timeseriesRouter,
   anomalyDetectionAI: anomalyDetectionRouter,
 
@@ -13013,107 +12802,6 @@ Hãy trả về JSON với format:
   cameraSession: cameraSessionRouter,
   imageAnnotation: imageAnnotationRouter,
   aiImageComparison: aiImageComparisonRouter,
-  wsMonitor: router({
-    stats: protectedProcedure.query(async () => {
-      const { wsServer } = await import("./websocket");
-      return wsServer.getDetailedStats();
-    }),
-    eventLog: protectedProcedure.input(z.object({ limit: z.number().min(10).max(200).default(50) })).query(async ({ input }) => {
-      const { wsServer } = await import("./websocket");
-      return wsServer.getEventLog(input.limit);
-    }),
-    rooms: protectedProcedure.query(async () => {
-      const { wsServer } = await import("./websocket");
-      const rooms = wsServer.getRooms();
-      return Object.fromEntries(rooms);
-    }),
-    clientsInRoom: protectedProcedure.input(z.object({ room: z.string() })).query(async ({ input }) => {
-      const { wsServer } = await import("./websocket");
-      return wsServer.getClientsInRoom(input.room);
-    }),
-    broadcast: protectedProcedure.input(z.object({ type: z.string(), data: z.any(), room: z.string().optional(), userId: z.string().optional() })).mutation(async ({ input }) => {
-      const { wsServer } = await import("./websocket");
-      let count = 0;
-      if (input.userId) count = wsServer.broadcastToUser(input.userId, input.type, input.data);
-      else if (input.room) count = wsServer.broadcastToRoom(input.room, input.type, input.data);
-      else count = wsServer.broadcastAll(input.type, input.data);
-      return { sent: count };
-    }),
-    clearEventLog: protectedProcedure.mutation(async () => {
-      const { wsServer } = await import("./websocket");
-      wsServer.clearEventLog();
-      return { success: true };
-    }),
-  }),
-  customAlert: router({
-    list: protectedProcedure.input(z.object({ page: z.number().default(1), limit: z.number().default(20), metricType: z.string().optional(), severity: z.string().optional(), isActive: z.boolean().optional() })).query(async ({ input }) => {
-      const db = await getDb();
-      const conditions: any[] = [];
-      if (input.metricType) conditions.push(eq(customAlertRules.metricType, input.metricType));
-      if (input.severity) conditions.push(eq(customAlertRules.severity, input.severity));
-      if (input.isActive !== undefined) conditions.push(eq(customAlertRules.isActive, input.isActive));
-      const where = conditions.length > 0 ? and(...conditions) : undefined;
-      const [total] = await db.select({ count: sql<number>`count(*)` }).from(customAlertRules).where(where);
-      const rules = await db.select().from(customAlertRules).where(where).orderBy(desc(customAlertRules.createdAt)).limit(input.limit).offset((input.page - 1) * input.limit);
-      return { rules, total: total?.count ?? 0, page: input.page, totalPages: Math.ceil((total?.count ?? 0) / input.limit) };
-    }),
-    getById: protectedProcedure.input(z.object({ id: z.number() })).query(async ({ input }) => {
-      const db = await getDb();
-      const [rule] = await db.select().from(customAlertRules).where(eq(customAlertRules.id, input.id));
-      return rule ?? null;
-    }),
-    create: protectedProcedure.input(z.object({ name: z.string().min(1), description: z.string().optional(), metricType: z.string(), operator: z.string(), threshold: z.number(), thresholdMax: z.number().optional(), severity: z.string().default("warning"), evaluationIntervalMinutes: z.number().default(5), cooldownMinutes: z.number().default(30), consecutiveBreachesRequired: z.number().default(1), notificationChannels: z.string().optional(), recipients: z.string().optional(), webhookUrl: z.string().optional() })).mutation(async ({ input, ctx }) => {
-      const db = await getDb();
-      const now = Date.now();
-      const [result] = await db.insert(customAlertRules).values({ ...input, createdBy: ctx.user?.openId ?? "system", createdAt: now, updatedAt: now });
-      return { id: result.insertId, success: true };
-    }),
-    update: protectedProcedure.input(z.object({ id: z.number(), name: z.string().optional(), description: z.string().optional(), metricType: z.string().optional(), operator: z.string().optional(), threshold: z.number().optional(), thresholdMax: z.number().optional(), severity: z.string().optional(), evaluationIntervalMinutes: z.number().optional(), cooldownMinutes: z.number().optional(), consecutiveBreachesRequired: z.number().optional(), notificationChannels: z.string().optional(), recipients: z.string().optional(), webhookUrl: z.string().optional() })).mutation(async ({ input }) => {
-      const db = await getDb();
-      const { id, ...data } = input;
-      await db.update(customAlertRules).set({ ...data, updatedAt: Date.now() }).where(eq(customAlertRules.id, id));
-      return { success: true };
-    }),
-    delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
-      const db = await getDb();
-      await db.delete(customAlertRules).where(eq(customAlertRules.id, input.id));
-      return { success: true };
-    }),
-    toggle: protectedProcedure.input(z.object({ id: z.number(), isActive: z.boolean() })).mutation(async ({ input }) => {
-      const db = await getDb();
-      await db.update(customAlertRules).set({ isActive: input.isActive, updatedAt: Date.now() }).where(eq(customAlertRules.id, input.id));
-      return { success: true };
-    }),
-    evaluate: protectedProcedure.mutation(async () => {
-      const { evaluateAllRules } = await import("./services/customAlertEngine");
-      return evaluateAllRules();
-    }),
-    history: protectedProcedure.input(z.object({ page: z.number().default(1), limit: z.number().default(20), ruleId: z.number().optional(), severity: z.string().optional(), status: z.string().optional() })).query(async ({ input }) => {
-      const db = await getDb();
-      const conditions: any[] = [];
-      if (input.ruleId) conditions.push(eq(customAlertHistory.ruleId, input.ruleId));
-      if (input.severity) conditions.push(eq(customAlertHistory.severity, input.severity));
-      if (input.status) conditions.push(eq(customAlertHistory.status, input.status));
-      const where = conditions.length > 0 ? and(...conditions) : undefined;
-      const [total] = await db.select({ count: sql<number>`count(*)` }).from(customAlertHistory).where(where);
-      const alerts = await db.select().from(customAlertHistory).where(where).orderBy(desc(customAlertHistory.triggeredAt)).limit(input.limit).offset((input.page - 1) * input.limit);
-      return { alerts, total: total?.count ?? 0, page: input.page, totalPages: Math.ceil((total?.count ?? 0) / input.limit) };
-    }),
-    stats: protectedProcedure.query(async () => {
-      const { getAlertStats } = await import("./services/customAlertEngine");
-      return getAlertStats();
-    }),
-    acknowledge: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input, ctx }) => {
-      const db = await getDb();
-      await db.update(customAlertHistory).set({ status: "acknowledged", acknowledgedAt: Date.now(), acknowledgedBy: ctx.user?.name ?? "admin" }).where(eq(customAlertHistory.id, input.id));
-      return { success: true };
-    }),
-    resolve: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input, ctx }) => {
-      const db = await getDb();
-      await db.update(customAlertHistory).set({ status: "resolved", resolvedAt: Date.now(), resolvedBy: ctx.user?.name ?? "admin" }).where(eq(customAlertHistory.id, input.id));
-      return { success: true };
-    }),
-  }),
 });
 
 export type AppRouter = typeof appRouter;

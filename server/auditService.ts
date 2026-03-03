@@ -4,7 +4,6 @@
 
 import { getDb } from "./db";
 import { auditLogs, InsertAuditLog } from "../drizzle/schema";
-import { sendSseEvent } from "./sse";
 
 export type AuditAction = "create" | "update" | "delete" | "login" | "logout" | "export" | "analyze";
 
@@ -49,22 +48,6 @@ export async function logAudit(params: AuditLogParams): Promise<void> {
 
     await db.insert(auditLogs).values(logEntry);
     console.log(`[AuditService] Logged: ${params.action} on ${params.module}${params.tableName ? `/${params.tableName}` : ""}`);
-
-    // Broadcast real-time SSE event
-    try {
-      sendSseEvent('audit_log_new', {
-        userId: params.userId,
-        userName: params.userName,
-        action: params.action,
-        module: params.module,
-        tableName: params.tableName,
-        recordId: params.recordId,
-        description: params.description,
-        timestamp: new Date().toISOString(),
-      });
-    } catch (sseErr) {
-      // SSE broadcast failure should not affect audit logging
-    }
   } catch (error) {
     console.error("[AuditService] Failed to log audit:", error);
     // Không throw error để không ảnh hưởng đến flow chính

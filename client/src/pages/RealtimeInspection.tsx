@@ -76,10 +76,33 @@ export default function RealtimeInspection() {
   useEffect(() => {
     if (!isLive || !autoRefresh) return;
 
-    // Mock data removed - generateMockResult (data comes from tRPC or is not yet implemented)
+    const generateMockResult = (): InspectionResult => {
+      const statuses: ('pass' | 'fail' | 'warning')[] = ['pass', 'pass', 'pass', 'pass', 'fail', 'warning'];
+      const status = statuses[Math.floor(Math.random() * statuses.length)];
+      const machine = aoiMachines[Math.floor(Math.random() * Math.max(1, aoiMachines.length))];
+      
+      return {
+        id: `insp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        serialNumber: `SN${Date.now().toString().slice(-8)}`,
+        timestamp: new Date(),
+        status,
+        machineId: machine?.id || 1,
+        machineName: machine?.name || 'AOI-01',
+        confidence: 85 + Math.random() * 15,
+        defects: status === 'fail' ? [
+          {
+            type: ['Scratch', 'Dent', 'Missing Component', 'Solder Bridge', 'Misalignment'][Math.floor(Math.random() * 5)],
+            severity: ['low', 'medium', 'high', 'critical'][Math.floor(Math.random() * 4)] as 'low' | 'medium' | 'high' | 'critical',
+            location: { x: Math.random() * 100, y: Math.random() * 100 },
+          }
+        ] : [],
+        processingTime: 50 + Math.random() * 200,
+      };
+    };
 
     const interval = setInterval(() => {
-      // No mock data generation - waiting for real inspection data
+      const newResult = generateMockResult();
+      setInspectionResults(prev => [newResult, ...prev].slice(0, 100));
     }, refreshInterval);
 
     return () => clearInterval(interval);

@@ -9,7 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { LazyStreamdown as Streamdown } from "@/components/LazyStreamdown";
+import { Streamdown } from "streamdown";
 import {
   MessageSquare,
   Send,

@@ -12,7 +12,37 @@ import { GitCompare, RefreshCw, TrendingUp, TrendingDown, Minus, BarChart3, Down
 import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell, BarChart, Bar, LineChart, Line } from "recharts";
 
 // Mock correlation data
-// Mock data removed - mockCorrelationData (data comes from tRPC or is not yet implemented)
+const mockCorrelationData = {
+  matrix: [
+    { var1: "CPK", var2: "Temperature", correlation: 0.85, pValue: 0.001, significance: "high" },
+    { var1: "CPK", var2: "Humidity", correlation: -0.42, pValue: 0.023, significance: "medium" },
+    { var1: "CPK", var2: "Speed", correlation: 0.67, pValue: 0.005, significance: "high" },
+    { var1: "CPK", var2: "Pressure", correlation: 0.23, pValue: 0.156, significance: "low" },
+    { var1: "OEE", var2: "Temperature", correlation: 0.58, pValue: 0.012, significance: "medium" },
+    { var1: "OEE", var2: "Humidity", correlation: -0.31, pValue: 0.089, significance: "low" },
+    { var1: "OEE", var2: "Speed", correlation: 0.72, pValue: 0.003, significance: "high" },
+    { var1: "Defect Rate", var2: "Temperature", correlation: -0.65, pValue: 0.008, significance: "high" },
+    { var1: "Defect Rate", var2: "Speed", correlation: -0.48, pValue: 0.019, significance: "medium" },
+  ],
+  scatterData: Array.from({ length: 50 }, (_, i) => ({
+    x: 20 + Math.random() * 30,
+    y: 0.8 + Math.random() * 0.8,
+    name: `Point ${i + 1}`,
+  })),
+  insights: [
+    { type: "positive", message: "Nhiệt độ có tương quan mạnh với CPK (r=0.85). Tối ưu nhiệt độ có thể cải thiện CPK." },
+    { type: "negative", message: "Độ ẩm có tương quan âm với CPK (r=-0.42). Cần kiểm soát độ ẩm." },
+    { type: "info", message: "Tốc độ máy ảnh hưởng đến cả CPK và OEE. Cần tìm điểm cân bằng tối ưu." },
+  ],
+  trendData: [
+    { date: "20/12", cpk: 1.2, temp: 25, speed: 100 },
+    { date: "21/12", cpk: 1.25, temp: 26, speed: 102 },
+    { date: "22/12", cpk: 1.18, temp: 24, speed: 98 },
+    { date: "23/12", cpk: 1.3, temp: 27, speed: 105 },
+    { date: "24/12", cpk: 1.35, temp: 28, speed: 108 },
+    { date: "25/12", cpk: 1.28, temp: 26, speed: 103 },
+  ],
+};
 
 const COLORS = ["#22c55e", "#3b82f6", "#f97316", "#ef4444", "#8b5cf6"];
 

@@ -19,8 +19,6 @@ export interface GanttTask {
   machineId?: number;
   machineName?: string;
   priority?: "low" | "medium" | "high" | "critical";
-  progress?: number; // 0-100 completion percentage
-  dependsOn?: number; // ID of task this depends on
 }
 
 interface TaskChange {
@@ -565,21 +563,11 @@ export function GanttChart({
                             />
                           )}
                           
-                          {/* Progress bar */}
-                          {task.progress !== undefined && task.progress > 0 && task.progress < 100 && (
-                            <div
-                              className="absolute bottom-0 left-0 h-1 bg-white/40 rounded-b"
-                              style={{ width: `${task.progress}%` }}
-                            />
-                          )}
                           <div className="px-1 sm:px-2 py-0.5 sm:py-1 text-[10px] sm:text-xs text-white truncate flex items-center gap-1">
                             {enableDragDrop && (
                               <GripVertical className="h-3 w-3 flex-shrink-0 opacity-70" />
                             )}
                             <span className="truncate">{task.title}</span>
-                            {task.progress !== undefined && (
-                              <span className="text-[9px] opacity-75 flex-shrink-0">{task.progress}%</span>
-                            )}
                           </div>
                           
                           {/* Right resize handle */}
@@ -601,9 +589,6 @@ export function GanttChart({
                           )}
                           <div className="text-xs">
                             {format(task.startDate, "dd/MM/yyyy")} - {format(task.endDate, "dd/MM/yyyy")}
-                            {task.progress !== undefined && (
-                              <span className="ml-1 text-muted-foreground">({task.progress}%)</span>
-                            )}
                           </div>
                           <div className="flex items-center gap-2">
                             <Badge variant={priority.variant} className="text-xs">

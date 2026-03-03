@@ -11,14 +11,11 @@ import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { addSseClient, startHeartbeat } from "../sse";
 import { initScheduledJobs } from "../scheduledJobs";
-import { apiRateLimiter, authRateLimiter, exportRateLimiter, setAlertCallback } from "./rateLimiter";
+import { apiRateLimiter, authRateLimiter, setAlertCallback } from "./rateLimiter";
 import { notifyOwner } from "./notification";
 import { storagePut } from "../storage";
 import { wsServer } from "../websocket";
 import addPerformanceIndexes from "../migrations/add-performance-indexes";
-import addAdvancedIndexes from "../migrations/add-advanced-indexes";
-import compression from "compression";
-import { cspNonceMiddleware, getCSPDirectives } from "./cspNonce";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -56,26 +53,20 @@ async function startServer() {
   const app = express();
   const server = createServer(app);
   
-  // Gzip compression for all responses (reduces transfer size by 60-80%)
-  app.use(compression({
-    level: 6, // Balance between compression ratio and CPU usage
-    threshold: 1024, // Only compress responses > 1KB
-    filter: (req, res) => {
-      // Skip compression for SSE streams
-      if (req.path === '/api/sse') return false;
-      // Use default filter for everything else
-      return compression.filter(req, res);
-    },
-  }));
-
-  // CSP nonce middleware — generates res.locals.cspNonce per request
-  app.use(cspNonceMiddleware);
-
-  // Security headers with Helmet (nonce-based CSP in production)
-  const isDev = process.env.NODE_ENV === 'development';
+  // Security headers with Helmet
   app.use(helmet({
     contentSecurityPolicy: {
-      directives: getCSPDirectives(isDev),
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://fonts.googleapis.com"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com"],
+        imgSrc: ["'self'", "data:", "blob:", "https:"],
+        connectSrc: ["'self'", "https:", "wss:"],
+        frameSrc: ["'self'"],
+        objectSrc: ["'none'"],
+        upgradeInsecureRequests: [],
+      },
     },
     crossOriginEmbedderPolicy: false, // Allow embedding resources
     crossOriginResourcePolicy: { policy: "cross-origin" },
@@ -87,8 +78,6 @@ async function startServer() {
   // Rate limiting for API endpoints
   app.use("/api/trpc", apiRateLimiter);
   app.use("/api/oauth", authRateLimiter);
-  app.use("/api/upload", exportRateLimiter);
-  app.use("/api/upload-logo", exportRateLimiter);
   
   // Serve manifest.json directly without auth (fix CORS issue)
   app.get('/manifest.json', (req, res) => {
@@ -99,106 +88,7 @@ async function startServer() {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.sendFile(manifestPath);
   });
-
-  // Serve favicon.ico directly without auth (fix CORS issue)
-  app.get('/favicon.ico', (req, res) => {
-    const faviconPath = process.env.NODE_ENV === 'development'
-      ? path.resolve(import.meta.dirname, '../../client/public/favicon.ico')
-      : path.resolve(import.meta.dirname, 'public/favicon.ico');
-    res.setHeader('Content-Type', 'image/x-icon');
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Cache-Control', 'public, max-age=86400');
-    res.sendFile(faviconPath);
-  });
   
-  // Health check endpoints (no auth required, no rate limiting)
-  app.get('/api/health', async (_req, res) => {
-    try {
-      const { getBasicHealth } = await import('../services/healthCheckService');
-      const health = await getBasicHealth();
-      res.json(health);
-    } catch (error) {
-      res.status(503).json({ status: 'unhealthy', error: 'Health check failed' });
-    }
-  });
-
-  app.get('/api/health/detailed', async (_req, res) => {
-    try {
-      const { getDetailedHealth } = await import('../services/healthCheckService');
-      const health = await getDetailedHealth();
-      const statusCode = health.status === 'healthy' ? 200 : health.status === 'degraded' ? 200 : 503;
-      res.status(statusCode).json(health);
-    } catch (error) {
-      res.status(503).json({ status: 'unhealthy', error: 'Health check failed' });
-    }
-  });
-
-  app.get('/api/health/live', async (_req, res) => {
-    try {
-      const { getLivenessStatus } = await import('../services/healthCheckService');
-      res.json(getLivenessStatus());
-    } catch (error) {
-      res.status(503).json({ status: 'error' });
-    }
-  });
-
-  app.get('/api/health/ready', async (_req, res) => {
-    try {
-      const { getReadinessStatus } = await import('../services/healthCheckService');
-      const readiness = await getReadinessStatus();
-      res.status(readiness.ready ? 200 : 503).json(readiness);
-    } catch (error) {
-      res.status(503).json({ ready: false, error: 'Readiness check failed' });
-    }
-  });
-
-  app.get('/api/metrics', async (_req, res) => {
-    try {
-      const { getPrometheusMetrics } = await import('../services/healthCheckService');
-      const metrics = await getPrometheusMetrics();
-      res.setHeader('Content-Type', 'text/plain; version=0.0.4; charset=utf-8');
-      res.send(metrics);
-    } catch (error) {
-      res.status(503).send('# Health check failed\n');
-    }
-  });
-
-  // API Documentation - OpenAPI 3.0 spec
-  app.get('/api/openapi.json', async (_req, res) => {
-    try {
-      const { generateOpenAPISpec } = await import('../services/apiDocumentationService');
-      const protocol = _req.protocol;
-      const host = _req.get('host') || 'localhost:3000';
-      const baseUrl = `${protocol}://${host}`;
-      const spec = generateOpenAPISpec(baseUrl);
-      res.json(spec);
-    } catch (error) {
-      res.status(500).json({ error: 'Failed to generate API spec' });
-    }
-  });
-
-  // Swagger UI
-  app.get('/api/docs', async (_req, res) => {
-    try {
-      const { generateSwaggerUIHtml } = await import('../services/apiDocumentationService');
-      const html = generateSwaggerUIHtml('/api/openapi.json');
-      res.setHeader('Content-Type', 'text/html');
-      res.send(html);
-    } catch (error) {
-      res.status(500).send('Failed to load API documentation');
-    }
-  });
-
-  // API Statistics
-  app.get('/api/docs/stats', async (_req, res) => {
-    try {
-      const { getAPIStatistics } = await import('../services/apiDocumentationService');
-      res.json(getAPIStatistics());
-    } catch (error) {
-      res.status(500).json({ error: 'Failed to get API statistics' });
-    }
-  });
-
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
   
@@ -386,18 +276,6 @@ async function startServer() {
     }
   });
 
-  // Image optimization endpoint (on-the-fly WebP/AVIF conversion)
-  app.get('/api/image-optimize/*', async (req, res, next) => {
-    try {
-      const { createImageOptimizationMiddleware } = await import('../services/imageOptimizationService');
-      const uploadsDir = path.resolve(process.cwd(), 'uploads');
-      const middleware = createImageOptimizationMiddleware(uploadsDir);
-      return middleware(req, res, next);
-    } catch (error) {
-      next(error);
-    }
-  });
-
   // tRPC API
   app.use(
     "/api/trpc",
@@ -440,11 +318,6 @@ async function startServer() {
     // Run performance indexes migration (async, non-blocking)
     addPerformanceIndexes().catch(err => {
       console.error('[Migration] Failed to add performance indexes:', err.message);
-    });
-    
-    // Run advanced indexes migration Phase 2 (async, non-blocking)
-    addAdvancedIndexes().catch(err => {
-      console.error('[Migration] Failed to add advanced indexes:', err.message);
     });
   });
 }

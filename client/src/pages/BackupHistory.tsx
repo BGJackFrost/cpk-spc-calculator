@@ -45,10 +45,6 @@ import {
   RotateCcw,
   FileJson,
   AlertTriangle,
-  Cloud,
-  HardDrive,
-  FileCode,
-  Copy,
 } from "lucide-react";
 
 interface Backup {
@@ -122,14 +118,6 @@ export default function BackupHistory() {
   const [exportPreview, setExportPreview] = useState<{sections: {name: string; count: number; description: string}[]} | null>(null);
   const [exportPreviewLoading, setExportPreviewLoading] = useState(true);
   const [exportPreviewError, setExportPreviewError] = useState<string | null>(null);
-
-  // S3 Cloud Backup state
-  const [s3Backups, setS3Backups] = useState<any[]>([]);
-  const [s3Stats, setS3Stats] = useState<any>(null);
-  const [isCreatingS3, setIsCreatingS3] = useState(false);
-  const [s3Loading, setS3Loading] = useState(false);
-  const [restoreScript, setRestoreScript] = useState<{script: string; backup: any} | null>(null);
-  const [showRestoreScriptDialog, setShowRestoreScriptDialog] = useState(false);
 
   const pageSize = 20;
 
@@ -207,64 +195,6 @@ export default function BackupHistory() {
     } finally {
       setExportPreviewLoading(false);
     }
-  };
-
-  // S3 Cloud Backup functions
-  const fetchS3History = async () => {
-    setS3Loading(true);
-    try {
-      const response = await fetch('/api/trpc/backup.s3History');
-      const data = await response.json();
-      if (data.result?.data) setS3Backups(data.result.data);
-    } catch (error) { console.error('Error fetching S3 history:', error); }
-    finally { setS3Loading(false); }
-  };
-
-  const fetchS3Stats = async () => {
-    try {
-      const response = await fetch('/api/trpc/backup.s3Stats');
-      const data = await response.json();
-      if (data.result?.data) setS3Stats(data.result.data);
-    } catch (error) { console.error('Error fetching S3 stats:', error); }
-  };
-
-  const handleCreateS3Backup = async () => {
-    setIsCreatingS3(true);
-    try {
-      const response = await fetch('/api/trpc/backup.createS3Backup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ includeSchema: true, includeData: true, retentionDays: 30 }),
-      });
-      const data = await response.json();
-      if (data.result?.data) {
-        toast.success(`S3 Backup created: ${data.result.data.fileName || 'success'}`);
-        fetchS3History();
-        fetchS3Stats();
-      } else {
-        toast.error(data.error?.message || 'Failed to create S3 backup');
-      }
-    } catch (error) {
-      toast.error('Failed to create S3 backup');
-    } finally { setIsCreatingS3(false); }
-  };
-
-  const handleGetRestoreScript = async (backupId: string) => {
-    try {
-      const response = await fetch(`/api/trpc/backup.generateRestoreScript?input=${encodeURIComponent(JSON.stringify({ backupId }))}`);
-      const data = await response.json();
-      if (data.result?.data) {
-        setRestoreScript(data.result.data);
-        setShowRestoreScriptDialog(true);
-      } else {
-        toast.error('Failed to generate restore script');
-      }
-    } catch (error) { toast.error('Failed to generate restore script'); }
-  };
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    toast.success('Copied to clipboard');
   };
 
   useEffect(() => {
@@ -595,8 +525,7 @@ export default function BackupHistory() {
 
         <Tabs defaultValue="backups">
           <TabsList>
-            <TabsTrigger value="backups"><HardDrive className="w-4 h-4 mr-1" /> Database Backup</TabsTrigger>
-            <TabsTrigger value="s3-cloud" onClick={() => { fetchS3History(); fetchS3Stats(); }}><Cloud className="w-4 h-4 mr-1" /> S3 Cloud Backup</TabsTrigger>
+            <TabsTrigger value="backups">Database Backup</TabsTrigger>
             <TabsTrigger value="settings">Export/Import Settings</TabsTrigger>
           </TabsList>
 
@@ -819,118 +748,6 @@ export default function BackupHistory() {
                     </div>
                   </div>
                 )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* S3 Cloud Backup Tab */}
-          <TabsContent value="s3-cloud" className="space-y-6">
-            {/* S3 Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <Card>
-                <CardContent className="pt-4">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground"><Cloud className="w-4 h-4" /> Total S3 Backups</div>
-                  <p className="text-2xl font-bold mt-1">{s3Stats?.totalBackups ?? 0}</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-4">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground"><CheckCircle className="w-4 h-4 text-green-500" /> Success</div>
-                  <p className="text-2xl font-bold mt-1 text-green-600">{s3Stats?.successCount ?? 0}</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-4">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground"><Database className="w-4 h-4" /> Total Size</div>
-                  <p className="text-2xl font-bold mt-1">{s3Stats?.totalSizeFormatted ?? '0 B'}</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-4">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground"><Clock className="w-4 h-4" /> Last Backup</div>
-                  <p className="text-sm font-medium mt-1">{s3Stats?.lastBackup?.timestamp ? new Date(s3Stats.lastBackup.timestamp).toLocaleString() : 'N/A'}</p>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Create S3 Backup Button */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="flex items-center gap-2"><Cloud className="w-5 h-5" /> S3 Cloud Backup</CardTitle>
-                    <CardDescription>Create full database backup and upload to S3 storage. Retention: {s3Stats?.retentionDays ?? 30} days.</CardDescription>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={() => { fetchS3History(); fetchS3Stats(); }}><RefreshCw className="w-4 h-4" /></Button>
-                    <Button onClick={handleCreateS3Backup} disabled={isCreatingS3}>
-                      {isCreatingS3 ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Creating...</> : <><Upload className="w-4 h-4 mr-2" /> Create S3 Backup</>}
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {s3Loading ? (
-                  <div className="flex items-center justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div>
-                ) : s3Backups.length > 0 ? (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>ID</TableHead>
-                        <TableHead>Timestamp</TableHead>
-                        <TableHead>File</TableHead>
-                        <TableHead>Size</TableHead>
-                        <TableHead>Tables</TableHead>
-                        <TableHead>Rows</TableHead>
-                        <TableHead>Duration</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {s3Backups.map((b: any) => (
-                        <TableRow key={b.id}>
-                          <TableCell className="font-mono text-xs">{b.id.slice(0, 8)}...</TableCell>
-                          <TableCell>{new Date(b.timestamp).toLocaleString()}</TableCell>
-                          <TableCell className="font-mono text-xs max-w-[200px] truncate">{b.fileName}</TableCell>
-                          <TableCell>{(b.fileSize / 1024).toFixed(1)} KB</TableCell>
-                          <TableCell>{b.tableCount}</TableCell>
-                          <TableCell>{b.totalRows?.toLocaleString()}</TableCell>
-                          <TableCell>{(b.duration / 1000).toFixed(1)}s</TableCell>
-                          <TableCell>
-                            <Badge variant={b.status === 'success' ? 'default' : 'destructive'} className={b.status === 'success' ? 'bg-green-500' : ''}>
-                              {b.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-1">
-                              {b.s3Url && <Button variant="ghost" size="sm" onClick={() => window.open(b.s3Url, '_blank')}><Download className="w-4 h-4" /></Button>}
-                              <Button variant="ghost" size="sm" onClick={() => handleGetRestoreScript(b.id)}><FileCode className="w-4 h-4" /></Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <Cloud className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p>No S3 backups yet. Click "Create S3 Backup" to start.</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Additional Info */}
-            <Card>
-              <CardHeader><CardTitle className="text-sm">Backup Configuration</CardTitle></CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                  <div><span className="text-muted-foreground">Retention:</span> <span className="font-medium">{s3Stats?.retentionDays ?? 30} days</span></div>
-                  <div><span className="text-muted-foreground">Max Backups:</span> <span className="font-medium">{s3Stats?.maxBackups ?? 30}</span></div>
-                  <div><span className="text-muted-foreground">Avg Duration:</span> <span className="font-medium">{s3Stats?.avgDurationMs ? `${(s3Stats.avgDurationMs / 1000).toFixed(1)}s` : 'N/A'}</span></div>
-                  <div><span className="text-muted-foreground">Next Backup:</span> <span className="font-medium">{s3Stats?.nextBackupEstimate ? new Date(s3Stats.nextBackupEstimate).toLocaleString() : 'N/A'}</span></div>
-                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -1252,36 +1069,6 @@ export default function BackupHistory() {
                 )}
                 Nhập
               </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Restore Script Dialog */}
-        <Dialog open={showRestoreScriptDialog} onOpenChange={setShowRestoreScriptDialog}>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2"><FileCode className="w-5 h-5" /> Restore Script</DialogTitle>
-              <DialogDescription>
-                Copy this script to restore the backup on your target database.
-              </DialogDescription>
-            </DialogHeader>
-            {restoreScript && (
-              <div className="space-y-3">
-                <div className="text-sm space-y-1">
-                  <p><span className="text-muted-foreground">Backup ID:</span> {restoreScript.backup?.id}</p>
-                  <p><span className="text-muted-foreground">Created:</span> {restoreScript.backup?.timestamp ? new Date(restoreScript.backup.timestamp).toLocaleString() : 'N/A'}</p>
-                  <p><span className="text-muted-foreground">Tables:</span> {restoreScript.backup?.tableCount} | <span className="text-muted-foreground">Rows:</span> {restoreScript.backup?.totalRows?.toLocaleString()}</p>
-                </div>
-                <div className="relative">
-                  <pre className="bg-muted p-4 rounded-lg text-xs overflow-auto max-h-[300px] font-mono">{restoreScript.script}</pre>
-                  <Button variant="outline" size="sm" className="absolute top-2 right-2" onClick={() => copyToClipboard(restoreScript.script)}>
-                    <Copy className="w-3 h-3 mr-1" /> Copy
-                  </Button>
-                </div>
-              </div>
-            )}
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setShowRestoreScriptDialog(false)}>Close</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

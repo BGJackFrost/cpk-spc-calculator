@@ -3,7 +3,7 @@
  * Phát hiện và cảnh báo khi hiệu suất dây chuyền giảm đột ngột
  */
 import { getDb } from '../db';
-import { productionLines, oeeRecords, kpiAlertStats, systemSettings } from '../../drizzle/schema';
+import { productionLines, oeeRecords, kpiAlertStats, ntfAlertConfig } from '../../drizzle/schema';
 import { eq, and, gte, lte, desc, sql, isNull } from 'drizzle-orm';
 import { notifyOwner } from '../_core/notification';
 
@@ -54,12 +54,12 @@ export async function getPerformanceDropConfig(): Promise<PerformanceDropConfig>
 
   try {
     const result = await db.select()
-      .from(systemSettings)
-      .where(eq(systemSettings.key, 'performance_drop_config'))
+      .from(ntfAlertConfig)
+      .where(eq(ntfAlertConfig.configKey, 'performance_drop_config'))
       .limit(1);
 
-    if (result.length > 0 && result[0].value) {
-      const savedConfig = JSON.parse(result[0].value);
+    if (result.length > 0) {
+      const savedConfig = JSON.parse(result[0].configValue);
       performanceDropConfig = { ...DEFAULT_CONFIG, ...savedConfig };
     }
   } catch (error) {
@@ -81,9 +81,9 @@ export async function savePerformanceDropConfig(config: Partial<PerformanceDropC
     const configJson = JSON.stringify(performanceDropConfig);
 
     await db.execute(sql.raw(`
-      INSERT INTO system_settings (\`key\`, \`value\`, createdAt, updatedAt)
+      INSERT INTO ntf_alert_config (configKey, configValue, createdAt, updatedAt)
       VALUES ('performance_drop_config', '${configJson.replace(/'/g, "''")}', NOW(), NOW())
-      ON DUPLICATE KEY UPDATE \`value\` = '${configJson.replace(/'/g, "''")}', updatedAt = NOW()
+      ON DUPLICATE KEY UPDATE configValue = '${configJson.replace(/'/g, "''")}', updatedAt = NOW()
     `));
 
     return true;

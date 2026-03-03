@@ -14,7 +14,76 @@ import { useToast } from "@/hooks/use-toast";
 import { Database, Plus, RefreshCw, Edit, Trash2, CheckCircle, XCircle, Clock, Link2, Unlink, Play, Pause, Settings } from "lucide-react";
 
 // Mock data sources
-// Mock data removed - ({ summary: { totalSources: 0, connected: 0, totalRecords: 0, lastFullSync: "N/A" }, sources: [] } as any) (data comes from tRPC or is not yet implemented)
+const mockDataSources = {
+  sources: [
+    {
+      id: 1,
+      name: "Production Database",
+      type: "database",
+      connection: "mysql://prod-server:3306/production",
+      status: "connected",
+      lastSync: "25/12/2024 10:30",
+      recordCount: 1250000,
+      syncInterval: "5 min",
+      enabled: true,
+      tables: ["measurements", "products", "machines"],
+    },
+    {
+      id: 2,
+      name: "Quality API",
+      type: "api",
+      connection: "https://api.quality.example.com/v1",
+      status: "connected",
+      lastSync: "25/12/2024 10:28",
+      recordCount: 450000,
+      syncInterval: "15 min",
+      enabled: true,
+      tables: ["defects", "inspections"],
+    },
+    {
+      id: 3,
+      name: "IoT Sensors",
+      type: "mqtt",
+      connection: "mqtt://iot-broker:1883",
+      status: "connected",
+      lastSync: "25/12/2024 10:31",
+      recordCount: 5800000,
+      syncInterval: "realtime",
+      enabled: true,
+      tables: ["sensor_data", "machine_status"],
+    },
+    {
+      id: 4,
+      name: "Legacy ERP",
+      type: "database",
+      connection: "oracle://erp-server:1521/legacy",
+      status: "disconnected",
+      lastSync: "24/12/2024 18:00",
+      recordCount: 320000,
+      syncInterval: "1 hour",
+      enabled: false,
+      tables: ["orders", "inventory"],
+    },
+    {
+      id: 5,
+      name: "CSV Import",
+      type: "file",
+      connection: "/data/imports/",
+      status: "idle",
+      lastSync: "23/12/2024 09:00",
+      recordCount: 50000,
+      syncInterval: "manual",
+      enabled: true,
+      tables: ["historical_data"],
+    },
+  ],
+  summary: {
+    totalSources: 5,
+    connected: 3,
+    totalRecords: 7870000,
+    lastFullSync: "25/12/2024 06:00",
+  },
+};
 
 export default function AiDataSources() {
   const { toast } = useToast();
@@ -148,25 +217,25 @@ export default function AiDataSources() {
           <Card>
             <CardContent className="pt-4">
               <p className="text-sm text-muted-foreground">Tổng nguồn</p>
-              <p className="text-3xl font-bold">{0}</p>
+              <p className="text-3xl font-bold">{mockDataSources.summary.totalSources}</p>
             </CardContent>
           </Card>
           <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
             <CardContent className="pt-4">
               <p className="text-sm text-green-700">Đã kết nối</p>
-              <p className="text-3xl font-bold text-green-800">{0}</p>
+              <p className="text-3xl font-bold text-green-800">{mockDataSources.summary.connected}</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-4">
               <p className="text-sm text-muted-foreground">Tổng records</p>
-              <p className="text-3xl font-bold">{(0 / 1000000).toFixed(1)}M</p>
+              <p className="text-3xl font-bold">{(mockDataSources.summary.totalRecords / 1000000).toFixed(1)}M</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-4">
               <p className="text-sm text-muted-foreground">Đồng bộ cuối</p>
-              <p className="text-lg font-bold">{"N/A"}</p>
+              <p className="text-lg font-bold">{mockDataSources.summary.lastFullSync}</p>
             </CardContent>
           </Card>
         </div>
@@ -191,7 +260,7 @@ export default function AiDataSources() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {([] as any[]).map((source) => (
+                {mockDataSources.sources.map((source) => (
                   <TableRow key={source.id}>
                     <TableCell>
                       <div>
@@ -242,7 +311,7 @@ export default function AiDataSources() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {([] as any[]).filter(s => s.enabled).map((source) => (
+              {mockDataSources.sources.filter(s => s.enabled).map((source) => (
                 <Card key={source.id}>
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm flex items-center gap-2">

@@ -51,7 +51,81 @@ export default function AiTrainingJobs() {
   };
 
 // Mock training jobs data (for display fallback)
-// Mock data removed - mockJobsData (data comes from tRPC or is not yet implemented)
+const mockJobsData = {
+  summary: {
+    total: 24,
+    running: 2,
+    completed: 18,
+    failed: 4,
+    avgDuration: "45 min",
+  },
+  jobs: [
+    {
+      id: "job-001",
+      name: "CPK Predictor v2.1",
+      model: "XGBoost",
+      status: "running",
+      progress: 67,
+      startTime: "25/12/2024 10:30",
+      duration: "25 min",
+      metrics: { accuracy: 0.92, loss: 0.08 },
+      config: { epochs: 100, batchSize: 32, learningRate: 0.001 },
+    },
+    {
+      id: "job-002",
+      name: "Anomaly Detector v1.5",
+      model: "Isolation Forest",
+      status: "running",
+      progress: 34,
+      startTime: "25/12/2024 10:45",
+      duration: "10 min",
+      metrics: { accuracy: 0.88, loss: 0.12 },
+      config: { epochs: 50, batchSize: 64, learningRate: 0.0005 },
+    },
+    {
+      id: "job-003",
+      name: "OEE Forecaster v3.0",
+      model: "LSTM",
+      status: "completed",
+      progress: 100,
+      startTime: "24/12/2024 14:00",
+      duration: "1h 15min",
+      metrics: { accuracy: 0.94, loss: 0.06 },
+      config: { epochs: 200, batchSize: 16, learningRate: 0.0001 },
+    },
+    {
+      id: "job-004",
+      name: "Defect Classifier v2.0",
+      model: "Random Forest",
+      status: "completed",
+      progress: 100,
+      startTime: "23/12/2024 09:00",
+      duration: "45 min",
+      metrics: { accuracy: 0.91, loss: 0.09 },
+      config: { epochs: 100, batchSize: 32, learningRate: 0.001 },
+    },
+    {
+      id: "job-005",
+      name: "Quality Predictor v1.2",
+      model: "Neural Network",
+      status: "failed",
+      progress: 45,
+      startTime: "22/12/2024 16:00",
+      duration: "30 min",
+      metrics: { accuracy: 0.75, loss: 0.25 },
+      config: { epochs: 150, batchSize: 32, learningRate: 0.001 },
+      error: "Out of memory error",
+    },
+  ],
+  trainingHistory: [
+    { epoch: 1, trainLoss: 0.5, valLoss: 0.55, accuracy: 0.65 },
+    { epoch: 10, trainLoss: 0.3, valLoss: 0.35, accuracy: 0.78 },
+    { epoch: 20, trainLoss: 0.2, valLoss: 0.25, accuracy: 0.85 },
+    { epoch: 30, trainLoss: 0.15, valLoss: 0.18, accuracy: 0.88 },
+    { epoch: 40, trainLoss: 0.1, valLoss: 0.12, accuracy: 0.91 },
+    { epoch: 50, trainLoss: 0.08, valLoss: 0.09, accuracy: 0.92 },
+  ],
+};
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [newJob, setNewJob] = useState({

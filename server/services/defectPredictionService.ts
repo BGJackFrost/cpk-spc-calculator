@@ -263,44 +263,19 @@ export async function predictDefectRate(
     };
   }
   
-  // Query real defect data from spc_defect_records
+  // Generate mock data for demo
   const historicalData: DefectDataPoint[] = [];
-  try {
-    const defectResults = await db.execute(
-      `SELECT DATE(created_at) as date, COUNT(*) as defect_count FROM spc_defect_records WHERE created_at >= ? GROUP BY DATE(created_at) ORDER BY date ASC`,
-      [startDate.toISOString()]
-    ) as any[];
-    
-    const sampleResults = await db.execute(
-      `SELECT DATE(created_at) as date, COUNT(*) as total FROM spc_analysis_history WHERE created_at >= ? GROUP BY DATE(created_at) ORDER BY date ASC`,
-      [startDate.toISOString()]
-    ) as any[];
-    const sampleMap = new Map((sampleResults || []).map((r: any) => [String(r.date), Number(r.total)]));
-    
-    for (const r of (defectResults || [])) {
-      const dateStr = String(r.date);
-      const totalSamples = sampleMap.get(dateStr) || 100;
-      const defectCount = Number(r.defect_count);
-      historicalData.push({
-        date: dateStr,
-        defectRate: totalSamples > 0 ? defectCount / totalSamples : 0,
-        defectCount,
-        totalSamples,
-      });
-    }
-  } catch (err) {
-    console.error('[DefectPrediction] Error querying defect data:', err);
-  }
-  
-  if (historicalData.length === 0) {
-    return {
-      historicalData: [],
-      forecastData: [],
-      metrics: { mape: 0, rmse: 0, accuracy: 0, precision: 0, recall: 0 },
-      trend: 'stable' as const,
-      alerts: ['Không có dữ liệu lỗi trong khoảng thời gian đã chọn'],
-      rootCauses: []
-    };
+  for (let i = 30; i >= 0; i--) {
+    const date = new Date();
+    date.setDate(date.getDate() - i);
+    const baseRate = 0.02 + Math.random() * 0.03;
+    const totalSamples = 100 + Math.floor(Math.random() * 50);
+    historicalData.push({
+      date: date.toISOString().split('T')[0],
+      defectRate: baseRate,
+      defectCount: Math.floor(baseRate * totalSamples),
+      totalSamples
+    });
   }
   
   const defectRates = historicalData.map(d => d.defectRate);
@@ -374,27 +349,14 @@ export async function getDefectStatsByCategory(
   workstationId: number | null,
   days: number = 30
 ): Promise<{ category: string; count: number; percentage: number }[]> {
-  const db = await getDb();
-  if (!db) return [];
-  
-  try {
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - days);
-    const results = await db.execute(
-      `SELECT c.name as category, COUNT(r.id) as cnt FROM spc_defect_records r LEFT JOIN spc_defect_categories c ON r.category_id = c.id WHERE r.created_at >= ? GROUP BY c.name ORDER BY cnt DESC`,
-      [startDate.toISOString()]
-    ) as any[];
-    
-    const total = (results || []).reduce((sum: number, r: any) => sum + Number(r.cnt), 0);
-    return (results || []).map((r: any) => ({
-      category: r.category || 'Khác',
-      count: Number(r.cnt),
-      percentage: total > 0 ? Math.round((Number(r.cnt) / total) * 100) : 0,
-    }));
-  } catch (err) {
-    console.error('[DefectPrediction] Error querying defect stats:', err);
-    return [];
-  }
+  return [
+    { category: 'Trầy xước', count: 15, percentage: 30 },
+    { category: 'Lõm/Móp', count: 10, percentage: 20 },
+    { category: 'Nứt', count: 8, percentage: 16 },
+    { category: 'Đổi màu', count: 7, percentage: 14 },
+    { category: 'Tạp chất', count: 5, percentage: 10 },
+    { category: 'Khác', count: 5, percentage: 10 }
+  ];
 }
 
 // Compare prediction accuracy across algorithms

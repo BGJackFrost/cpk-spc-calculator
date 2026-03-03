@@ -9,7 +9,7 @@ vi.mock('./_core/notification', () => ({
 }));
 
 vi.mock('./db', () => ({
-  getDb: vi.fn().mockReturnValue({
+  getDb: vi.fn().mockResolvedValue({
     execute: vi.fn().mockResolvedValue([[]]),
     select: vi.fn().mockReturnValue({
       from: vi.fn().mockReturnValue({
@@ -35,19 +35,18 @@ describe('Phase 109 - IoT Enhancement Part 2', () => {
       expect(exists).toBe(true);
     });
 
-    it('should have MqttRealtimeWidget component with required props', async () => {
+    it('should have MqttRealtimeWidget imported in IotOverviewDashboard', async () => {
       const fs = await import('fs/promises');
-      const content = await fs.readFile('/home/ubuntu/cpk-spc-calculator/client/src/components/MqttRealtimeWidget.tsx', 'utf-8');
-      expect(content).toContain('MqttRealtimeWidget');
-      expect(content).toContain('showMessages');
-      expect(content).toContain('maxSensors');
+      const content = await fs.readFile('/home/ubuntu/cpk-spc-calculator/client/src/pages/IotOverviewDashboard.tsx', 'utf-8');
+      expect(content).toContain("import MqttRealtimeWidget from '@/components/MqttRealtimeWidget'");
     });
 
-    it('should have IoTMasterDashboard as main IoT dashboard', async () => {
+    it('should render MqttRealtimeWidget in IotOverviewDashboard', async () => {
       const fs = await import('fs/promises');
-      const content = await fs.readFile('/home/ubuntu/cpk-spc-calculator/client/src/pages/IoTMasterDashboard.tsx', 'utf-8');
-      expect(content).toContain('IoTDashboard');
-      expect(content).toContain('DashboardLayout');
+      const content = await fs.readFile('/home/ubuntu/cpk-spc-calculator/client/src/pages/IotOverviewDashboard.tsx', 'utf-8');
+      expect(content).toContain('<MqttRealtimeWidget');
+      expect(content).toContain('showMessages={false}');
+      expect(content).toContain('maxSensors={12}');
     });
 
     it('should have useMqttRealtime hook', async () => {
@@ -85,13 +84,16 @@ describe('Phase 109 - IoT Enhancement Part 2', () => {
       expect(result).toBe(true);
     });
 
-    it('should return empty array when no alert configs exist', async () => {
+    it('should include notification count in runAllAlertChecks result', async () => {
       const { runAllAlertChecks } = await import('./services/iotOeeAlertService');
       const result = await runAllAlertChecks();
       
       expect(Array.isArray(result)).toBe(true);
-      // When no configs exist, result should be empty array
-      expect(result.length).toBe(0);
+      result.forEach(item => {
+        expect(item).toHaveProperty('configId');
+        expect(item).toHaveProperty('alertsTriggered');
+        expect(item).toHaveProperty('notificationsSent');
+      });
     });
   });
 
@@ -113,7 +115,7 @@ describe('Phase 109 - IoT Enhancement Part 2', () => {
       const fs = await import('fs/promises');
       const content = await fs.readFile('/home/ubuntu/cpk-spc-calculator/server/scheduledJobs.ts', 'utf-8');
       expect(content).toContain('checkMttrMtbfReports');
-      expect(content).toContain('MTTR/MTBF');
+      expect(content).toContain('MTTR/MTBF scheduled reports');
     });
 
     it('should support weekly and monthly frequency', async () => {
@@ -127,18 +129,14 @@ describe('Phase 109 - IoT Enhancement Part 2', () => {
     it('should have all required components integrated', async () => {
       const fs = await import('fs/promises');
       
-      // Check IoT Master Dashboard exists
-      const dashboardExists = await fs.access('/home/ubuntu/cpk-spc-calculator/client/src/pages/IoTMasterDashboard.tsx')
-        .then(() => true)
-        .catch(() => false);
-      expect(dashboardExists).toBe(true);
+      const dashboardContent = await fs.readFile('/home/ubuntu/cpk-spc-calculator/client/src/pages/IotOverviewDashboard.tsx', 'utf-8');
+      expect(dashboardContent).toContain('MqttRealtimeWidget');
+      expect(dashboardContent).toContain('MttrMtbfComparisonWidget');
       
-      // Check OEE Alert Service
       const oeeAlertContent = await fs.readFile('/home/ubuntu/cpk-spc-calculator/server/services/iotOeeAlertService.ts', 'utf-8');
       expect(oeeAlertContent).toContain('sendOeeCriticalNotification');
       expect(oeeAlertContent).toContain('notifyOwner');
       
-      // Check Scheduled Jobs
       const scheduledJobsContent = await fs.readFile('/home/ubuntu/cpk-spc-calculator/server/scheduledJobs.ts', 'utf-8');
       expect(scheduledJobsContent).toContain('checkMttrMtbfReports');
     });

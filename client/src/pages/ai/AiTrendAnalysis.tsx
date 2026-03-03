@@ -10,7 +10,44 @@ import { TrendingUp, TrendingDown, Minus, RefreshCw, Download, Brain, AlertTrian
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ComposedChart, Bar, ReferenceLine } from "recharts";
 
 // Mock trend data
-// Mock data removed - mockTrendData (data comes from tRPC or is not yet implemented)
+const mockTrendData = {
+  cpkTrend: [
+    { date: "01/12", actual: 1.15, predicted: 1.18, lower: 1.10, upper: 1.26 },
+    { date: "05/12", actual: 1.22, predicted: 1.20, lower: 1.12, upper: 1.28 },
+    { date: "10/12", actual: 1.18, predicted: 1.22, lower: 1.14, upper: 1.30 },
+    { date: "15/12", actual: 1.28, predicted: 1.25, lower: 1.17, upper: 1.33 },
+    { date: "20/12", actual: 1.32, predicted: 1.30, lower: 1.22, upper: 1.38 },
+    { date: "25/12", actual: 1.35, predicted: 1.33, lower: 1.25, upper: 1.41 },
+    { date: "30/12", actual: null, predicted: 1.38, lower: 1.28, upper: 1.48 },
+    { date: "05/01", actual: null, predicted: 1.42, lower: 1.30, upper: 1.54 },
+  ],
+  seasonalPattern: [
+    { hour: "06:00", avg: 1.25, std: 0.08 },
+    { hour: "08:00", avg: 1.32, std: 0.06 },
+    { hour: "10:00", avg: 1.38, std: 0.05 },
+    { hour: "12:00", avg: 1.35, std: 0.07 },
+    { hour: "14:00", avg: 1.40, std: 0.04 },
+    { hour: "16:00", avg: 1.36, std: 0.06 },
+    { hour: "18:00", avg: 1.30, std: 0.08 },
+    { hour: "20:00", avg: 1.28, std: 0.09 },
+  ],
+  anomalies: [
+    { date: "12/12", value: 0.95, type: "drop", severity: "high", cause: "Thay đổi nguyên liệu" },
+    { date: "18/12", value: 1.55, type: "spike", severity: "medium", cause: "Điều chỉnh máy" },
+  ],
+  insights: [
+    { type: "positive", message: "Xu hướng CPK tăng 12% trong 30 ngày qua. Dự báo đạt 1.42 vào tuần tới." },
+    { type: "info", message: "Phát hiện pattern theo mùa: CPK cao nhất vào buổi chiều (14:00-16:00)." },
+    { type: "warning", message: "Có 2 điểm bất thường trong kỳ phân tích. Cần theo dõi." },
+  ],
+  summary: {
+    currentTrend: "up",
+    trendStrength: 0.85,
+    forecastAccuracy: 0.92,
+    anomalyCount: 2,
+    seasonalStrength: 0.68,
+  },
+};
 
 export default function AiTrendAnalysis() {
   const { toast } = useToast();

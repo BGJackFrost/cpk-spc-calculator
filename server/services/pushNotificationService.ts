@@ -179,7 +179,7 @@ export async function isNotificationEnabled(
   userId: string,
   notificationType: NotificationPayload['type']
 ): Promise<boolean> {
-  const db = await getDb();
+  const db = getDb();
   if (!db) return true; // Default to enabled if no DB
 
   try {
@@ -221,7 +221,7 @@ export async function updateNotificationSettings(
     emailNotifications?: boolean;
   }
 ): Promise<boolean> {
-  const db = await getDb();
+  const db = getDb();
   if (!db) return false;
 
   try {

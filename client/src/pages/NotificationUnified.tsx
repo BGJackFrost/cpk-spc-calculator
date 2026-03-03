@@ -48,17 +48,38 @@ interface NotificationHistory {
 }
 
 // Demo data
-// Mock data removed - demoChannels (data comes from tRPC or is not yet implemented)
+const demoChannels: NotificationChannel[] = [
+  { id: "email", name: "Email", type: "email", enabled: true, config: { smtpHost: "smtp.company.com", smtpPort: 587 } },
+  { id: "sms", name: "SMS (Twilio)", type: "sms", enabled: false, config: { accountSid: "", authToken: "" } },
+  { id: "push", name: "Push Notification", type: "push", enabled: true, config: { firebaseKey: "" } },
+  { id: "in_app", name: "In-App", type: "in_app", enabled: true, config: {} },
+  { id: "telegram", name: "Telegram", type: "telegram", enabled: false, config: { botToken: "", chatId: "" } },
+  { id: "slack", name: "Slack", type: "slack", enabled: false, config: { webhookUrl: "" } },
+];
 
-// Mock data removed - demoPreferences (data comes from tRPC or is not yet implemented)
+const demoPreferences: NotificationPreference[] = [
+  { id: "1", category: "Cảnh báo SPC/CPK", description: "Khi CPK dưới ngưỡng hoặc vi phạm SPC rules", email: true, sms: true, push: true, inApp: true },
+  { id: "2", category: "Cảnh báo OEE", description: "Khi OEE giảm dưới ngưỡng cài đặt", email: true, sms: false, push: true, inApp: true },
+  { id: "3", category: "Bảo trì máy", description: "Nhắc nhở lịch bảo trì và cảnh báo quá hạn", email: true, sms: false, push: true, inApp: true },
+  { id: "4", category: "Phụ tùng thấp", description: "Khi số lượng phụ tùng dưới mức tối thiểu", email: true, sms: false, push: false, inApp: true },
+  { id: "5", category: "Báo cáo định kỳ", description: "Báo cáo tổng hợp hàng ngày/tuần/tháng", email: true, sms: false, push: false, inApp: false },
+  { id: "6", category: "Hệ thống", description: "Thông báo cập nhật, bảo trì hệ thống", email: false, sms: false, push: true, inApp: true },
+  { id: "7", category: "License", description: "Cảnh báo license sắp hết hạn", email: true, sms: true, push: true, inApp: true },
+];
 
-// Mock data removed - demoHistory (data comes from tRPC or is not yet implemented)
+const demoHistory: NotificationHistory[] = [
+  { id: 1, type: "Cảnh báo CPK", channel: "email", title: "CPK thấp - Line 1", message: "CPK sản phẩm A = 1.15 (< 1.33)", status: "sent", sentAt: new Date(Date.now() - 1 * 60 * 60 * 1000) },
+  { id: 2, type: "Cảnh báo OEE", channel: "push", title: "OEE giảm", message: "OEE máy CNC-001 = 68.5%", status: "sent", sentAt: new Date(Date.now() - 2 * 60 * 60 * 1000), readAt: new Date(Date.now() - 1.5 * 60 * 60 * 1000) },
+  { id: 3, type: "Bảo trì", channel: "email", title: "Nhắc nhở bảo trì", message: "Máy Press-001 cần bảo trì định kỳ", status: "sent", sentAt: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+  { id: 4, type: "Hệ thống", channel: "in_app", title: "Cập nhật hệ thống", message: "Phiên bản mới 2.5.0 đã được cài đặt", status: "sent", sentAt: new Date(Date.now() - 48 * 60 * 60 * 1000), readAt: new Date(Date.now() - 47 * 60 * 60 * 1000) },
+  { id: 5, type: "Cảnh báo CPK", channel: "sms", title: "CPK Critical", message: "CPK = 0.95", status: "failed", sentAt: new Date(Date.now() - 3 * 60 * 60 * 1000) },
+];
 
 export default function NotificationUnified() {
   const [activeTab, setActiveTab] = useState("preferences");
-  const [channels, setChannels] = useState<NotificationChannel[]>([]);
-  const [preferences, setPreferences] = useState<NotificationPreference[]>([]);
-  const [history, setHistory] = useState<NotificationHistory[]>([]);
+  const [channels, setChannels] = useState<NotificationChannel[]>(demoChannels);
+  const [preferences, setPreferences] = useState<NotificationPreference[]>(demoPreferences);
+  const [history, setHistory] = useState<NotificationHistory[]>(demoHistory);
   const [filterChannel, setFilterChannel] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   

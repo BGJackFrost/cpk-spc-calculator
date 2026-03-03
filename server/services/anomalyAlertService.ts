@@ -96,7 +96,7 @@ const severityLevels: Record<string, number> = {
 
 // Get all alert configs
 export async function getAllAlertConfigs(): Promise<AnomalyAlertConfig[]> {
-  const db = await getDb();
+  const db = getDb();
   if (!db) return [];
 
   try {
@@ -110,7 +110,7 @@ export async function getAllAlertConfigs(): Promise<AnomalyAlertConfig[]> {
 
 // Get alert config by ID
 export async function getAlertConfigById(id: number): Promise<AnomalyAlertConfig | null> {
-  const db = await getDb();
+  const db = getDb();
   if (!db) return null;
 
   try {
@@ -125,7 +125,7 @@ export async function getAlertConfigById(id: number): Promise<AnomalyAlertConfig
 
 // Create alert config
 export async function createAlertConfig(input: CreateAlertConfigInput): Promise<AnomalyAlertConfig | null> {
-  const db = await getDb();
+  const db = getDb();
   if (!db) return null;
 
   try {
@@ -164,7 +164,7 @@ export async function createAlertConfig(input: CreateAlertConfigInput): Promise<
 
 // Update alert config
 export async function updateAlertConfig(id: number, updates: Partial<CreateAlertConfigInput>): Promise<AnomalyAlertConfig | null> {
-  const db = await getDb();
+  const db = getDb();
   if (!db) return null;
 
   try {
@@ -249,7 +249,7 @@ export async function updateAlertConfig(id: number, updates: Partial<CreateAlert
 
 // Delete alert config
 export async function deleteAlertConfig(id: number): Promise<boolean> {
-  const db = await getDb();
+  const db = getDb();
   if (!db) return false;
 
   try {
@@ -263,7 +263,7 @@ export async function deleteAlertConfig(id: number): Promise<boolean> {
 
 // Toggle alert config active status
 export async function toggleAlertConfig(id: number, isActive: boolean): Promise<boolean> {
-  const db = await getDb();
+  const db = getDb();
   if (!db) return false;
 
   try {
@@ -281,7 +281,7 @@ export async function processAnomalyForAlerts(
   modelId: number,
   deviceId?: number
 ): Promise<{ alertTriggered: boolean; alertId?: number }> {
-  const db = await getDb();
+  const db = getDb();
   if (!db) return { alertTriggered: false };
 
   try {
@@ -369,7 +369,7 @@ async function createAndSendAlert(
   modelId: number,
   deviceId?: number
 ): Promise<number | null> {
-  const db = await getDb();
+  const db = getDb();
   if (!db) return null;
 
   try {
@@ -487,7 +487,7 @@ async function sendNotifications(
   message: string,
   anomalyResult: anomalyDetectionService.AnomalyDetectionResult
 ): Promise<void> {
-  const db = await getDb();
+  const db = getDb();
   if (!db) return;
 
   // Send Email
@@ -657,7 +657,7 @@ export async function getAlertHistory(options: {
   limit?: number;
   offset?: number;
 }): Promise<{ alerts: AnomalyAlertHistory[]; total: number }> {
-  const db = await getDb();
+  const db = getDb();
   if (!db) return { alerts: [], total: 0 };
 
   try {
@@ -717,7 +717,7 @@ export async function getAlertHistory(options: {
 
 // Acknowledge alert
 export async function acknowledgeAlert(alertId: number, userId: number, resolution?: string): Promise<boolean> {
-  const db = await getDb();
+  const db = getDb();
   if (!db) return false;
 
   try {
@@ -743,7 +743,7 @@ export async function getAlertStats(options: {
   acknowledgedCount: number;
   unacknowledgedCount: number;
 }> {
-  const db = await getDb();
+  const db = getDb();
   if (!db) {
     return {
       totalAlerts: 0,

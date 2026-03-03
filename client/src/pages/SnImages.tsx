@@ -53,7 +53,43 @@ interface SnImage {
   annotations?: string;
 }
 
-// Images are loaded from camera capture and file uploads - no mock data
+// Mock data for demo
+const mockImages: SnImage[] = [
+  {
+    id: "1",
+    serialNumber: "SN-2024-001",
+    imageUrl: "https://via.placeholder.com/400x300/3b82f6/ffffff?text=SN-001",
+    productName: "Product A",
+    productionLineName: "Line 1",
+    workstationName: "Station 1",
+    status: "approved",
+    createdAt: new Date("2024-01-10"),
+    createdBy: "Admin",
+  },
+  {
+    id: "2",
+    serialNumber: "SN-2024-002",
+    imageUrl: "https://via.placeholder.com/400x300/22c55e/ffffff?text=SN-002",
+    productName: "Product B",
+    productionLineName: "Line 2",
+    workstationName: "Station 2",
+    status: "pending",
+    createdAt: new Date("2024-01-11"),
+    createdBy: "Operator",
+  },
+  {
+    id: "3",
+    serialNumber: "SN-2024-003",
+    imageUrl: "https://via.placeholder.com/400x300/ef4444/ffffff?text=SN-003",
+    productName: "Product A",
+    productionLineName: "Line 1",
+    workstationName: "Station 3",
+    status: "rejected",
+    notes: "Lỗi bề mặt",
+    createdAt: new Date("2024-01-12"),
+    createdBy: "QC",
+  },
+];
 
 export default function SnImages() {
   const [activeTab, setActiveTab] = useState("gallery");
@@ -61,7 +97,7 @@ export default function SnImages() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [productFilter, setProductFilter] = useState<string>("all");
-  const [images, setImages] = useState<SnImage[]>([]);
+  const [images, setImages] = useState<SnImage[]>(mockImages);
   const [selectedImage, setSelectedImage] = useState<SnImage | null>(null);
   const [compareImages, setCompareImages] = useState<[SnImage | null, SnImage | null]>([null, null]);
   const [isComparing, setIsComparing] = useState(false);

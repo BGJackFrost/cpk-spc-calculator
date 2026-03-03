@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { LazyStreamdown as Streamdown } from "@/components/LazyStreamdown";
+import { Streamdown } from "streamdown";
 import { 
   Brain, AlertTriangle, Clock, CheckCircle, Activity, 
   TrendingDown, TrendingUp, Minus, RefreshCw, Play,

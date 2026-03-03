@@ -33,9 +33,7 @@ export type SseEventType =
   | "avi_aoi_stats_update"
   // NTF Pattern Detection events
   | "ntf_pattern_detected"
-  | "ntf_suggestion_new"
-  // Audit Log events
-  | "audit_log_new";
+  | "ntf_suggestion_new";
 
 export interface SseEvent {
   type: SseEventType;
@@ -445,13 +443,6 @@ export function sendSseEvent(eventType: string, data: any) {
     data,
     timestamp: new Date(),
   });
-  // Bridge to WebSocket for dual-protocol support
-  try {
-    const { wsServer } = require('./websocket');
-    wsServer.bridgeSseEvent(eventType, data);
-  } catch {
-    // WebSocket not available, SSE-only mode
-  }
 }
 
 

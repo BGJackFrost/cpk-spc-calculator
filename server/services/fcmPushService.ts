@@ -35,7 +35,7 @@ export interface NotificationResult {
  * Get active device tokens for a user
  */
 export async function getUserDeviceTokens(userId: string): Promise<string[]> {
-  const db = await getDb();
+  const db = getDb();
   if (!db) return [];
 
   try {

@@ -174,7 +174,7 @@ async function sendTelegramMessage(
  * Lấy tất cả cấu hình Telegram
  */
 export async function getTelegramConfigs(): Promise<TelegramConfig[]> {
-  const db = await getDb();
+  const db = getDb();
   if (!db) return [];
 
   try {
@@ -199,7 +199,7 @@ export async function getTelegramConfigs(): Promise<TelegramConfig[]> {
  * Lấy cấu hình Telegram theo ID
  */
 export async function getTelegramConfigById(id: number): Promise<TelegramConfig | null> {
-  const db = await getDb();
+  const db = getDb();
   if (!db) return null;
 
   try {
@@ -227,7 +227,7 @@ export async function getTelegramConfigById(id: number): Promise<TelegramConfig 
  * Tạo cấu hình Telegram mới
  */
 export async function createTelegramConfig(config: Omit<TelegramConfig, 'id'>): Promise<TelegramConfig | null> {
-  const db = await getDb();
+  const db = getDb();
   if (!db) return null;
 
   try {
@@ -253,7 +253,7 @@ export async function createTelegramConfig(config: Omit<TelegramConfig, 'id'>): 
  * Cập nhật cấu hình Telegram
  */
 export async function updateTelegramConfig(id: number, config: Partial<TelegramConfig>): Promise<boolean> {
-  const db = await getDb();
+  const db = getDb();
   if (!db) return false;
 
   try {
@@ -279,7 +279,7 @@ export async function updateTelegramConfig(id: number, config: Partial<TelegramC
  * Xóa cấu hình Telegram
  */
 export async function deleteTelegramConfig(id: number): Promise<boolean> {
-  const db = await getDb();
+  const db = getDb();
   if (!db) return false;
 
   try {
@@ -298,7 +298,7 @@ export async function sendTelegramAlert(
   alertType: AlertType,
   data: any
 ): Promise<{ sent: number; failed: number; errors: string[] }> {
-  const db = await getDb();
+  const db = getDb();
   const result = { sent: 0, failed: 0, errors: [] as string[] };
 
   // Get active configs that subscribe to this alert type
@@ -378,7 +378,7 @@ export async function getTelegramMessageHistory(
   configId?: number,
   limit: number = 50
 ): Promise<TelegramMessage[]> {
-  const db = await getDb();
+  const db = getDb();
   if (!db) return [];
 
   try {

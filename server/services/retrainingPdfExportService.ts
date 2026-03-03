@@ -49,7 +49,7 @@ export async function generateRetrainingPdfData(options: {
   endDate?: Date;
   limit?: number;
 }): Promise<RetrainingPdfData> {
-  const db = await getDb();
+  const db = getDb();
   const { status, startDate, endDate, limit = 100 } = options;
 
   // Build WHERE clause

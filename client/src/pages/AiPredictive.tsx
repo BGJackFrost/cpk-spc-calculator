@@ -139,10 +139,79 @@ interface ForecastSummary {
 }
 
 // Generate mock historical data
-// Historical data now fetched from tRPC ai.history.list endpoint
+function generateMockHistoricalData(days: number): HistoricalData[] {
+  const data: HistoricalData[] = [];
+  let baseCpk = 1.4;
+  
+  for (let i = days; i >= 1; i--) {
+    const date = new Date();
+    date.setDate(date.getDate() - i);
+    
+    const noise = (Math.random() - 0.5) * 0.15;
+    const trend = Math.sin(i / 7) * 0.05;
+    baseCpk = Math.max(0.9, Math.min(1.8, baseCpk + noise * 0.3 + trend));
+    
+    data.push({
+      date: date.toISOString().split("T")[0],
+      actualCpk: baseCpk,
+    });
+  }
+  
+  return data;
+}
 
 // Generate mock predictions
-// Mock data removed - generateMockPredictions (data comes from tRPC or is not yet implemented)
+function generateMockPredictions(horizon: number, lastCpk: number): { predictions: Prediction[]; summary: ForecastSummary } {
+  const predictions: Prediction[] = [];
+  let baseCpk = lastCpk;
+  const trend = Math.random() > 0.5 ? 0.01 : -0.008;
+  
+  for (let i = 1; i <= horizon; i++) {
+    const date = new Date();
+    date.setDate(date.getDate() + i);
+    
+    const noise = (Math.random() - 0.5) * 0.1;
+    const predictedCpk = baseCpk + trend * i + noise;
+    const uncertainty = 0.05 + (i * 0.015);
+    
+    predictions.push({
+      date: date.toISOString().split("T")[0],
+      predictedCpk: Math.max(0.8, Math.min(2.0, predictedCpk)),
+      lowerBound: Math.max(0.5, predictedCpk - uncertainty),
+      upperBound: Math.min(2.5, predictedCpk + uncertainty),
+      confidence: Math.max(0.6, 0.95 - (i * 0.02)),
+      risk: predictedCpk < 1.0 ? "high" : predictedCpk < 1.33 ? "medium" : "low",
+    });
+    
+    baseCpk = predictedCpk;
+  }
+  
+  const avgCpk = predictions.reduce((sum, p) => sum + p.predictedCpk, 0) / predictions.length;
+  const lastPredCpk = predictions[predictions.length - 1].predictedCpk;
+  const firstPredCpk = predictions[0].predictedCpk;
+  
+  const daysUntilRisk = predictions.findIndex(p => p.predictedCpk < 1.0);
+  
+  return {
+    predictions,
+    summary: {
+      avgPredictedCpk: avgCpk,
+      trend: lastPredCpk > firstPredCpk + 0.05 ? "improving" : lastPredCpk < firstPredCpk - 0.05 ? "declining" : "stable",
+      riskLevel: avgCpk < 1.0 ? "high" : avgCpk < 1.33 ? "medium" : "low",
+      daysUntilRisk: daysUntilRisk >= 0 ? daysUntilRisk + 1 : null,
+      recommendations: avgCpk < 1.33 
+        ? [
+            "Kiểm tra và thay thế dao cắt nếu cần",
+            "Tăng tần suất calibration thiết bị",
+            "Xem xét điều chỉnh thông số quy trình",
+          ]
+        : [
+            "Duy trì điều kiện quy trình hiện tại",
+            "Tiếp tục giám sát xu hướng",
+          ],
+    },
+  };
+}
 
 // Trend icon component
 function TrendIcon({ trend }: { trend: "improving" | "stable" | "declining" }) {
@@ -191,23 +260,11 @@ export default function AiPredictive() {
   const { data: products } = trpc.product.list.useQuery();
   const { data: stations } = trpc.workstation.list.useQuery();
 
-  // Fetch prediction history from backend
-  const { data: historyResult } = trpc.ai.history.list.useQuery({
-    predictionType: "cpk",
-    limit: 50,
-  });
-
-  const historicalData = useMemo(() => {
-    if (!historyResult?.history?.length) return [];
-    return historyResult.history.map((h: any) => ({
-      date: new Date(h.createdAt).toISOString().split('T')[0],
-      actualCpk: h.actualValue ?? h.predictedValue ?? 1.33,
-    }));
-  }, [historyResult]);
-
+  // Generate data
+  const historicalData = useMemo(() => generateMockHistoricalData(30), []);
   const lastActualCpk = historicalData[historicalData.length - 1]?.actualCpk || 1.35;
   const { predictions, summary } = useMemo(
-    () => ({ predictions: [] as any[], summary: { avgCpk: 0, minCpk: 0, maxCpk: 0, trend: 'stable' } }),
+    () => generateMockPredictions(parseInt(horizon), lastActualCpk),
     [horizon, lastActualCpk]
   );
 

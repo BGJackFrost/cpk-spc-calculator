@@ -10,34 +10,33 @@ vi.mock("../db", () => ({
     insert: vi.fn(() => ({
       values: vi.fn(() => Promise.resolve([{ insertId: 1 }])),
     })),
-    select: vi.fn(() => {
-      const mockResult = [{
-        id: 1,
-        name: "Test Firmware",
-        version: "1.0.0",
-        deviceType: "plc",
-        status: "draft",
-      }];
-      // Mock result for leftJoin queries (deployment + firmware name/version)
-      const deploymentResult = [{
-        deployment: { id: 1, name: "Test Deployment", firmwarePackageId: 1, status: "pending" },
-        firmwareName: "Test Firmware",
-        firmwareVersion: "1.0.0",
-      }];
-      const makeChainable = (result: any) => {
-        const chain: any = {};
-        chain.where = vi.fn(() => makeChainable(result));
-        chain.orderBy = vi.fn(() => makeChainable(result));
-        chain.limit = vi.fn(() => Promise.resolve(result));
-        chain.leftJoin = vi.fn(() => makeChainable(deploymentResult));
-        // Make it thenable so await works on the chain directly
-        chain.then = (resolve: any) => Promise.resolve(result).then(resolve);
-        return chain;
-      };
-      return {
-        from: vi.fn(() => makeChainable(mockResult)),
-      };
-    }),
+    select: vi.fn(() => ({
+      from: vi.fn(() => ({
+        where: vi.fn(() => ({
+          limit: vi.fn(() => Promise.resolve([{
+            id: 1,
+            name: "Test Firmware",
+            version: "1.0.0",
+            deviceType: "plc",
+            status: "draft",
+          }])),
+          orderBy: vi.fn(() => Promise.resolve([{
+            id: 1,
+            name: "Test Firmware",
+            version: "1.0.0",
+            deviceType: "plc",
+            status: "draft",
+          }])),
+        })),
+        orderBy: vi.fn(() => Promise.resolve([{
+          id: 1,
+          name: "Test Firmware",
+          version: "1.0.0",
+          deviceType: "plc",
+          status: "draft",
+        }])),
+      })),
+    })),
     update: vi.fn(() => ({
       set: vi.fn(() => ({
         where: vi.fn(() => Promise.resolve()),

@@ -49,7 +49,7 @@ class ScheduledDriftCheckService {
       modelId: aiDriftConfigs.modelId,
     })
     .from(aiDriftConfigs)
-    .where(eq(aiDriftConfigs.isEnabled, 1));
+    .where(eq(aiDriftConfigs.isActive, 1));
 
     // Ensure configs is an array
     if (!Array.isArray(configs) || configs.length === 0) {

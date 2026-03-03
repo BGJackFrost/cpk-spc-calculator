@@ -102,17 +102,115 @@ interface BackupStats {
 }
 
 // Mock data
-// Mock data removed - ([] as any[]) (data comes from tRPC or is not yet implemented)
+const MOCK_BACKUPS: BackupItem[] = [
+  {
+    id: 1,
+    filename: "backup_full_2024-12-19_020000.sql.gz",
+    fileSize: 125000000,
+    backupType: "full",
+    status: "completed",
+    storageLocation: "both",
+    tablesIncluded: ["measurements", "products", "stations", "machines", "users"],
+    rowsBackedUp: 150000,
+    compressionRatio: 0.35,
+    encryptionEnabled: true,
+    createdAt: new Date(Date.now() - 86400000),
+    completedAt: new Date(Date.now() - 86400000 + 300000),
+    expiresAt: new Date(Date.now() + 86400000 * 30),
+  },
+  {
+    id: 2,
+    filename: "backup_incremental_2024-12-19_080000.sql.gz",
+    fileSize: 15000000,
+    backupType: "incremental",
+    status: "completed",
+    storageLocation: "s3",
+    tablesIncluded: ["measurements"],
+    rowsBackedUp: 5000,
+    compressionRatio: 0.28,
+    encryptionEnabled: true,
+    createdAt: new Date(Date.now() - 43200000),
+    completedAt: new Date(Date.now() - 43200000 + 60000),
+    expiresAt: new Date(Date.now() + 86400000 * 7),
+  },
+  {
+    id: 3,
+    filename: "backup_manual_2024-12-19_143000.sql.gz",
+    fileSize: 130000000,
+    backupType: "manual",
+    status: "in_progress",
+    storageLocation: "local",
+    tablesIncluded: ["measurements", "products", "stations", "machines", "users", "audit_logs"],
+    rowsBackedUp: 75000,
+    compressionRatio: 0,
+    encryptionEnabled: false,
+    createdAt: new Date(),
+  },
+];
 
-// Mock data removed - ([] as any[]) (data comes from tRPC or is not yet implemented)
+const MOCK_SCHEDULES: BackupSchedule[] = [
+  {
+    id: "1",
+    name: "Daily Full Backup",
+    type: "full",
+    frequency: "daily",
+    time: "02:00",
+    retentionDays: 30,
+    enabled: true,
+    lastRun: new Date(Date.now() - 86400000),
+    nextRun: new Date(Date.now() + 43200000),
+    notifyOnSuccess: false,
+    notifyOnFailure: true,
+    notifyEmails: ["admin@example.com"],
+  },
+  {
+    id: "2",
+    name: "Hourly Incremental",
+    type: "incremental",
+    frequency: "hourly",
+    time: "00",
+    retentionDays: 7,
+    enabled: true,
+    lastRun: new Date(Date.now() - 3600000),
+    nextRun: new Date(Date.now() + 1800000),
+    notifyOnSuccess: false,
+    notifyOnFailure: true,
+    notifyEmails: ["admin@example.com"],
+  },
+  {
+    id: "3",
+    name: "Weekly Full Backup",
+    type: "full",
+    frequency: "weekly",
+    time: "03:00",
+    dayOfWeek: 0,
+    retentionDays: 90,
+    enabled: true,
+    lastRun: new Date(Date.now() - 86400000 * 3),
+    nextRun: new Date(Date.now() + 86400000 * 4),
+    notifyOnSuccess: true,
+    notifyOnFailure: true,
+    notifyEmails: ["admin@example.com", "backup@example.com"],
+  },
+];
 
-// Mock data removed - ({ totalBackups: 0, totalSize: "0 GB", lastBackup: "N/A", nextScheduled: "N/A", successRate: 0, avgDuration: "0m" } as any) (data comes from tRPC or is not yet implemented)
+const MOCK_STATS: BackupStats = {
+  totalBackups: 45,
+  totalSize: 2500000000,
+  lastBackup: new Date(Date.now() - 3600000),
+  nextScheduledBackup: new Date(Date.now() + 1800000),
+  successRate: 98.5,
+  storageUsed: {
+    local: 1200000000,
+    s3: 1300000000,
+  },
+};
 
 export default function BackupRestore() {
   const [activeTab, setActiveTab] = useState("overview");
-  const [backups, setBackups] = useState<BackupItem[]>([]);
-  const [schedules, setSchedules] = useState<BackupSchedule[]>([]);
-  const [stats, setStats] = useState<BackupStats>([]);
+  const [backups, setBackups] = useState<BackupItem[]>(MOCK_BACKUPS);
+  const [schedules, setSchedules] = useState<BackupSchedule[]>(MOCK_SCHEDULES);
+  const [stats, setStats] = useState<BackupStats>(MOCK_STATS);
   const [isCreatingBackup, setIsCreatingBackup] = useState(false);
   const [backupProgress, setBackupProgress] = useState(0);
   const [selectedBackup, setSelectedBackup] = useState<BackupItem | null>(null);

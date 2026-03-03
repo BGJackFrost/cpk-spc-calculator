@@ -4,10 +4,10 @@ import type { TrpcContext } from './_core/context';
 
 type AuthenticatedUser = NonNullable<TrpcContext['user']>;
 
-function createAuthContext(userId = 1): { ctx: TrpcContext } {
+function createAuthContext(): { ctx: TrpcContext } {
   const user: AuthenticatedUser = {
-    id: userId,
-    openId: `test-open-id-${userId}`,
+    id: 1,
+    openId: 'test-open-id',
     email: 'test@example.com',
     name: 'Test User',
     loginMethod: 'manus',
@@ -50,8 +50,7 @@ describe('mobile router', () => {
     });
 
     it('should return default values when no settings exist', async () => {
-      // Use a unique user ID that won't have existing settings in DB
-      const { ctx } = createAuthContext(99999);
+      const { ctx } = createAuthContext();
       const caller = appRouter.createCaller(ctx);
 
       const result = await caller.mobile.getNotificationSettings();

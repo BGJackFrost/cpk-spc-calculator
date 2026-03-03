@@ -49,16 +49,73 @@ interface LicenseNotification {
 }
 
 // Demo data
-// Mock data removed - demoLicenses (data comes from tRPC or is not yet implemented)
+const demoLicenses: License[] = [
+  {
+    id: 1,
+    key: "LIC-2024-PRO-001",
+    type: "professional",
+    status: "active",
+    maxUsers: 50,
+    currentUsers: 35,
+    features: ["SPC Analysis", "AI Predictions", "Real-time Dashboard", "Email Alerts"],
+    activatedAt: new Date(Date.now() - 180 * 24 * 60 * 60 * 1000),
+    expiresAt: addDays(new Date(), 185),
+    companyName: "ABC Manufacturing",
+    contactEmail: "admin@abc-mfg.com",
+  },
+  {
+    id: 2,
+    key: "LIC-2024-ENT-002",
+    type: "enterprise",
+    status: "active",
+    maxUsers: 200,
+    currentUsers: 150,
+    features: ["All Features", "Custom Integrations", "Priority Support", "On-premise Option"],
+    activatedAt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000),
+    expiresAt: addDays(new Date(), 275),
+    companyName: "XYZ Industries",
+    contactEmail: "it@xyz-ind.com",
+  },
+  {
+    id: 3,
+    key: "LIC-2024-STD-003",
+    type: "standard",
+    status: "expired",
+    maxUsers: 20,
+    currentUsers: 18,
+    features: ["SPC Analysis", "Basic Dashboard", "Email Alerts"],
+    activatedAt: new Date(Date.now() - 400 * 24 * 60 * 60 * 1000),
+    expiresAt: addDays(new Date(), -35),
+    companyName: "DEF Corp",
+    contactEmail: "support@def-corp.com",
+  },
+  {
+    id: 4,
+    key: "LIC-2024-TRL-004",
+    type: "trial",
+    status: "active",
+    maxUsers: 5,
+    currentUsers: 3,
+    features: ["SPC Analysis", "Basic Dashboard"],
+    activatedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+    expiresAt: addDays(new Date(), 20),
+    companyName: "GHI Startup",
+    contactEmail: "ceo@ghi-startup.com",
+  },
+];
 
-// Mock data removed - demoNotifications (data comes from tRPC or is not yet implemented)
+const demoNotifications: LicenseNotification[] = [
+  { id: 1, licenseId: 4, type: "expiry_warning", message: "License sẽ hết hạn trong 20 ngày", sentAt: new Date(Date.now() - 2 * 60 * 60 * 1000), acknowledged: false },
+  { id: 2, licenseId: 3, type: "expiry_critical", message: "License đã hết hạn", sentAt: new Date(Date.now() - 35 * 24 * 60 * 60 * 1000), acknowledged: true },
+  { id: 3, licenseId: 2, type: "usage_warning", message: "Đã sử dụng 75% số lượng users", sentAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), acknowledged: false },
+];
 
 const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6'];
 
 export default function LicenseUnified() {
   const [activeTab, setActiveTab] = useState("dashboard");
-  const [licenses, setLicenses] = useState<License[]>([]);
-  const [notifications, setNotifications] = useState<LicenseNotification[]>([]);
+  const [licenses, setLicenses] = useState<License[]>(demoLicenses);
+  const [notifications, setNotifications] = useState<LicenseNotification[]>(demoNotifications);
   const [isActivateOpen, setIsActivateOpen] = useState(false);
   const [isAddLicenseOpen, setIsAddLicenseOpen] = useState(false);
   const [activationKey, setActivationKey] = useState("");

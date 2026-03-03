@@ -33,7 +33,48 @@ export default function AiRootCause() {
   ];
 
   // Mock analysis result
-  // Mock data removed - mockAnalysis (data comes from tRPC or is not yet implemented)
+  const mockAnalysis = {
+    issue: "CPK giảm đột ngột từ 1.67 xuống 1.12",
+    confidence: 87,
+    rootCauses: [
+      {
+        category: "machine",
+        factor: "Fixture bị lỏng",
+        probability: 45,
+        evidence: ["Độ lệch tăng 30%", "Rung động bất thường", "Lịch sử bảo trì quá hạn"],
+        recommendations: ["Kiểm tra và siết chặt fixture", "Thay thế nếu cần", "Lập lịch bảo trì định kỳ"],
+      },
+      {
+        category: "material",
+        factor: "Lô nguyên liệu không đồng nhất",
+        probability: 30,
+        evidence: ["Phân tích PCA cho thấy phương sai cao", "Nhà cung cấp mới", "Không có COA"],
+        recommendations: ["Yêu cầu COA từ nhà cung cấp", "Tăng cường kiểm tra đầu vào", "Xem xét đổi nhà cung cấp"],
+      },
+      {
+        category: "method",
+        factor: "Thay đổi quy trình sản xuất",
+        probability: 15,
+        evidence: ["Thời gian chu kỳ giảm 10%", "Nhân viên mới", "Không có đào tạo"],
+        recommendations: ["Đào tạo lại nhân viên", "Chuẩn hóa quy trình", "Giám sát chặt chẽ"],
+      },
+      {
+        category: "environment",
+        factor: "Nhiệt độ môi trường không ổn định",
+        probability: 10,
+        evidence: ["Biến động nhiệt độ ±5°C", "Hệ thống HVAC lỗi", "Dữ liệu sensor"],
+        recommendations: ["Sửa chữa hệ thống HVAC", "Lắp đặt cảm biến nhiệt độ", "Kiểm soát môi trường"],
+      },
+    ],
+    radarData: [
+      { category: "Man", value: 5 },
+      { category: "Machine", value: 45 },
+      { category: "Method", value: 15 },
+      { category: "Material", value: 30 },
+      { category: "Measurement", value: 3 },
+      { category: "Environment", value: 10 },
+    ],
+  };
 
   const recentAnalyses = [
     { id: 1, issue: "CPK giảm đột ngột", date: "2024-06-15", confidence: 87, status: "resolved" },
